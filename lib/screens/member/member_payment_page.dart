@@ -1,0 +1,189 @@
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../app_scope.dart';
+import '../../router.dart';
+import '../../shared/components/components.dart';
+import '../../shared/design_tokens.dart';
+import '../../shared/i18n.dart';
+import '../../shared/api_client.dart';
+import 'member_shell.dart';
+
+class MemberPaymentPage extends StatelessWidget {
+  const MemberPaymentPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final data = MemberDataScope.of(context);
+    final pass = data.passes
+        .where((p) => p.id == data.selectedTier)
+        .firstOrNull;
+    final price = pass?.price ?? 0;
+    final visitCap = pass?.visitCap;
+
+    return ListView(
+      padding: const EdgeInsets.all(FFTokens.spacingLg),
+      children: [
+        Row(
+          children: [
+            IconButton(
+              onPressed: () => context.go(AppRoutes.memberPasses),
+              icon: const Icon(Icons.arrow_back),
+            ),
+            Expanded(
+              child: Text(
+                context.tr('member.payment'),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: FFTokens.fgPrimary,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Padding(
+          padding: const EdgeInsets.only(left: 48),
+          child: Text(
+            context.tr('member.paymentBody'),
+            style: const TextStyle(color: FFTokens.fgQuaternary, fontSize: 14),
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Order summary
+        FFCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                context.tr('member.orderSummary'),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: FFTokens.fgPrimary,
+                ),
+              ),
+              const SizedBox(height: 12),
+              _Row(
+                label: context.tr('member.choosePlan'),
+                value: context.tr('pass.${data.selectedTier}'),
+              ),
+              _Row(
+                label: context.tr('home.visits'),
+                value: visitCap == null
+                    ? context.tr('pass.unlimited')
+                    : '$visitCap',
+              ),
+              _Row(label: 'Total', value: 'TZS $price'),
+            ],
+          ),
+        ),
+
+        // Payment method
+        Padding(
+          padding: const EdgeInsets.only(top: 16, bottom: 10),
+          child: Text(
+            context.tr('member.paymentMethod'),
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: FFTokens.fgPrimary,
+            ),
+          ),
+        ),
+        FFActionTile(icon: Icons.phone_android, title: 'M-Pesa', onTap: () {}),
+        FFActionTile(
+          icon: Icons.account_balance,
+          title: 'CRDB Bank Transfer',
+          onTap: () {},
+        ),
+        FFActionTile(
+          icon: Icons.account_balance,
+          title: 'NMB Bank Transfer',
+          onTap: () {},
+        ),
+        const SizedBox(height: 16),
+        _SubmitButton(tier: data.selectedTier),
+      ],
+    );
+  }
+}
+
+class _Row extends StatelessWidget {
+  const _Row({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: FFTokens.fgQuaternary,
+                fontSize: 14,
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              color: FFTokens.fgPrimary,
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SubmitButton extends StatefulWidget {
+  const _SubmitButton({required this.tier});
+
+  final String tier;
+
+  @override
+  State<_SubmitButton> createState() => _SubmitButtonState();
+}
+
+class _SubmitButtonState extends State<_SubmitButton> {
+  bool _loading = false;
+
+  Future<void> _submit() async {
+    setState(() => _loading = true);
+    try {
+      await AppScope.of(context).api.requestPass(widget.tier);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr('member.paymentSubmitted'))),
+      );
+      context.go(AppRoutes.memberHome);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error ${e.status}')));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FilledButton(
+      onPressed: _loading ? null : _submit,
+      child: _loading
+          ? const FFSpinner(size: 18, color: Colors.white)
+          : Text(context.tr('member.requestPayment')),
+    );
+  }
+}

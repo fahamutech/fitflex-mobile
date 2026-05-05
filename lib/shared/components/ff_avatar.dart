@@ -1,0 +1,59 @@
+import 'package:flutter/material.dart';
+import '../design_tokens.dart';
+
+/// Avatar size variants.
+enum FFAvatarSize { sm, md, lg }
+
+/// User avatar with initials fallback — matches portal's Avatar component.
+class FFAvatar extends StatelessWidget {
+  const FFAvatar({super.key, this.name, this.src, this.size = FFAvatarSize.md});
+
+  final String? name;
+  final String? src;
+  final FFAvatarSize size;
+
+  double get _radius => switch (size) {
+    FFAvatarSize.sm => 14,
+    FFAvatarSize.md => 18,
+    FFAvatarSize.lg => 22,
+  };
+
+  double get _fontSize => switch (size) {
+    FFAvatarSize.sm => 12,
+    FFAvatarSize.md => 14,
+    FFAvatarSize.lg => 16,
+  };
+
+  String get _initials {
+    final parts = (name ?? '?').split(' ');
+    return parts
+        .map((w) => w.isNotEmpty ? w[0] : '')
+        .take(2)
+        .join()
+        .toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (src != null && src!.isNotEmpty) {
+      return CircleAvatar(
+        radius: _radius,
+        backgroundImage: NetworkImage(src!),
+        backgroundColor: FFTokens.bgTertiary,
+        onBackgroundImageError: (error, stack) {},
+      );
+    }
+    return CircleAvatar(
+      radius: _radius,
+      backgroundColor: FFTokens.brand100,
+      child: Text(
+        _initials,
+        style: TextStyle(
+          fontSize: _fontSize,
+          fontWeight: FontWeight.w600,
+          color: FFTokens.brand700,
+        ),
+      ),
+    );
+  }
+}
