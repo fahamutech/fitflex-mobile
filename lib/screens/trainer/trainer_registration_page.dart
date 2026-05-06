@@ -22,11 +22,12 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
 
   // Step 0 — Personal
   final _nameCtrl = TextEditingController();
+  final _photoUrlCtrl = TextEditingController();
+  String? _gender;
   final _bioCtrl = TextEditingController();
 
   // Step 1 — Professional
-  final _hourlyRateCtrl = TextEditingController();
-  final _experienceCtrl = TextEditingController();
+  final _sessionRateCtrl = TextEditingController();
   final List<String> _specialties = [];
 
   static const _specialtyOptions = [
@@ -43,9 +44,9 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
   @override
   void dispose() {
     _nameCtrl.dispose();
+    _photoUrlCtrl.dispose();
     _bioCtrl.dispose();
-    _hourlyRateCtrl.dispose();
-    _experienceCtrl.dispose();
+    _sessionRateCtrl.dispose();
     super.dispose();
   }
 
@@ -56,9 +57,10 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
       final api = AppScope.of(context).api;
       await api.trainerRegister({
         'displayName': _nameCtrl.text.trim(),
+        'photoUrl': _photoUrlCtrl.text.trim(),
+        'gender': _gender,
         'bio': _bioCtrl.text.trim(),
-        'hourlyRateTzs': num.tryParse(_hourlyRateCtrl.text) ?? 0,
-        'experienceYears': num.tryParse(_experienceCtrl.text) ?? 0,
+        'hourlyRateTzs': num.tryParse(_sessionRateCtrl.text) ?? 0,
         'specialties': _specialties,
       });
       if (!mounted) return;
@@ -98,7 +100,16 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(context.tr('trainerReg.title')),
-        automaticallyImplyLeading: false,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (_step > 0) {
+              _back();
+            } else {
+              context.go(AppRoutes.role);
+            }
+          },
+        ),
       ),
       body: SafeArea(
         child: Padding(
@@ -210,6 +221,38 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
         ),
         const SizedBox(height: 16),
         TextFormField(
+          controller: _photoUrlCtrl,
+          keyboardType: TextInputType.url,
+          decoration: InputDecoration(
+            labelText: context.tr('trainerReg.picture'),
+            border: const OutlineInputBorder(),
+            prefixIcon: const Icon(Icons.photo_camera_outlined),
+          ),
+          validator: (v) => (v == null || v.trim().isEmpty)
+              ? context.tr('onboarding.required')
+              : null,
+        ),
+        const SizedBox(height: 16),
+        DropdownButtonFormField<String>(
+          initialValue: _gender,
+          decoration: InputDecoration(
+            labelText: context.tr('trainerReg.gender'),
+            border: const OutlineInputBorder(),
+          ),
+          items: ['male', 'female', 'other']
+              .map(
+                (g) => DropdownMenuItem(
+                  value: g,
+                  child: Text(context.tr('onboarding.gender_$g')),
+                ),
+              )
+              .toList(),
+          onChanged: (v) => setState(() => _gender = v),
+          validator: (v) =>
+              v == null ? context.tr('onboarding.required') : null,
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
           controller: _bioCtrl,
           maxLines: 4,
           decoration: InputDecoration(
@@ -244,26 +287,16 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
         ),
         const SizedBox(height: 20),
         TextFormField(
-          controller: _hourlyRateCtrl,
+          controller: _sessionRateCtrl,
           keyboardType: TextInputType.number,
           decoration: InputDecoration(
-            labelText: context.tr('trainerReg.hourlyRate'),
-            suffixText: 'TZS',
+            labelText: context.tr('trainerReg.sessionRate'),
+            suffixText: 'TZS${context.tr('trainerReg.perSession')}',
             border: const OutlineInputBorder(),
           ),
           validator: (v) => (v == null || v.trim().isEmpty)
               ? context.tr('onboarding.required')
               : null,
-        ),
-        const SizedBox(height: 16),
-        TextFormField(
-          controller: _experienceCtrl,
-          keyboardType: TextInputType.number,
-          decoration: InputDecoration(
-            labelText: context.tr('trainerReg.experience'),
-            suffixText: context.tr('trainerReg.years'),
-            border: const OutlineInputBorder(),
-          ),
         ),
         const SizedBox(height: 16),
         Text(

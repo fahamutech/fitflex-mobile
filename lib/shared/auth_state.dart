@@ -28,6 +28,36 @@ class AuthState extends ChangeNotifier {
     _user = u == null ? null : jsonDecode(u) as Map<String, dynamic>;
     _role = prefs.getString('role') ?? 'member';
     api.setToken(_token);
+
+    // If we have a token, refresh user from backend to get latest status
+    if (_token != null) {
+      try {
+        final meRes = await api.me();
+        final freshUser = Map<String, dynamic>.from(meRes['user'] as Map);
+        _user = freshUser;
+        await prefs.setString('user', jsonEncode(freshUser));
+      } on ApiException catch (e) {
+        // Token invalid or user deleted — clear session
+        if (e.status == 401 || e.status == 404) {
+          _token = null;
+          _user = null;
+          api.setToken(null);
+          await prefs.remove('token');
+          await prefs.remove('user');
+        }
+        // For other errors (network etc.), keep cached data
+      } catch (_) {
+        // Network failure — keep cached data, router will use what we have
+      }
+    }
+
+    // Sync role with the authoritative userType from user object
+    final userType = _user?['userType']?.toString();
+    if (userType != null && userType != _role) {
+      _role = userType;
+      await prefs.setString('role', userType);
+    }
+
     notifyListeners();
   }
 

@@ -1,8 +1,17 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Location permissions (GPS for map picker) -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- Camera permission (QR scanner + image capture) -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Internet (map tiles, API) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:label="fitflexmobile"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round">
         <activity
             android:name=".MainActivity"
             android:exported="true"

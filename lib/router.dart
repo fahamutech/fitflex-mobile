@@ -37,6 +37,21 @@ abstract class AppRoutes {
   static const memberPayment = '/member/payment';
 }
 
+bool _isOnboarded(AuthState auth, String role) {
+  if (role == 'gym_operator') {
+    // Gym owner must have at least 1 gym to be considered onboarded
+    final gymIds = auth.user?['gymIds'];
+    return gymIds is List && gymIds.isNotEmpty;
+  }
+  if (role == 'trainer') {
+    if (auth.user?['onboardingCompleted'] == true) return true;
+    if (auth.user?['approvalStatus']?.toString() == 'approved') return true;
+    return false;
+  }
+  // Member
+  return auth.user?['onboardingCompleted'] == true;
+}
+
 GoRouter buildRouter(AuthState auth) {
   return GoRouter(
     initialLocation: AppRoutes.language,
@@ -57,7 +72,7 @@ GoRouter buildRouter(AuthState auth) {
       // Trainer/Owner: redirect to registration if onboarding not done, even while pending
       if (loggedIn && isPending) {
         final role = auth.user?['userType']?.toString() ?? auth.role;
-        final onboarded = auth.user?['onboardingCompleted'] == true;
+        final onboarded = _isOnboarded(auth, role);
         if (role == 'trainer' &&
             !onboarded &&
             loc != AppRoutes.trainerRegistration) {
@@ -79,15 +94,15 @@ GoRouter buildRouter(AuthState auth) {
       if (loggedIn && !isPending && publicRoutes.contains(loc)) {
         final role = auth.user?['userType']?.toString() ?? auth.role;
         if (role == 'member') {
-          final onboarded = auth.user?['onboardingCompleted'] == true;
+          final onboarded = _isOnboarded(auth, role);
           return onboarded ? AppRoutes.memberHome : AppRoutes.memberOnboarding;
         }
         if (role == 'trainer') {
-          final onboarded = auth.user?['onboardingCompleted'] == true;
+          final onboarded = _isOnboarded(auth, role);
           return onboarded ? AppRoutes.home : AppRoutes.trainerRegistration;
         }
         if (role == 'gym_operator') {
-          final onboarded = auth.user?['onboardingCompleted'] == true;
+          final onboarded = _isOnboarded(auth, role);
           return onboarded ? AppRoutes.home : AppRoutes.ownerRegistration;
         }
         return AppRoutes.home;
@@ -96,7 +111,7 @@ GoRouter buildRouter(AuthState auth) {
       // Redirect member to onboarding if not completed
       if (loggedIn && !isPending) {
         final role = auth.user?['userType']?.toString() ?? auth.role;
-        final onboarded = auth.user?['onboardingCompleted'] == true;
+        final onboarded = _isOnboarded(auth, role);
         if (role == 'member' &&
             !onboarded &&
             loc != AppRoutes.memberOnboarding) {

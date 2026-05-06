@@ -42,10 +42,16 @@ class _AuthScreenState extends State<AuthScreen> {
       if (idToken == null) throw StateError('Missing Firebase ID token');
 
       final res = await scope.api.firebaseSession(idToken, scope.auth.role);
-      await scope.auth.signInWithFitFlexSession(
-        res['token'] as String,
-        Map<String, dynamic>.from(res['user'] as Map),
-      );
+      final user = Map<String, dynamic>.from(res['user'] as Map);
+      if (user['userType']?.toString() == 'admin') {
+        await FirebaseAuth.instance.signOut();
+        await scope.auth.signOut();
+        if (!mounted) return;
+        setState(() => _error = context.tr('auth.adminPortalOnly'));
+        return;
+      }
+
+      await scope.auth.signInWithFitFlexSession(res['token'] as String, user);
       // GoRouter redirect will handle navigation based on auth state
     } on FirebaseAuthException catch (e) {
       if (mounted) setState(() => _error = e.message ?? e.code);
@@ -70,7 +76,13 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget build(BuildContext context) {
     final role = AppScope.of(context).auth.role;
     return Scaffold(
-      appBar: AppBar(title: Text(context.tr('app.title'))),
+      appBar: AppBar(
+        title: Text(context.tr('app.title')),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go(AppRoutes.role),
+        ),
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(FFTokens.spacingLg),
@@ -114,12 +126,81 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 }
 
-class PendingApprovalScreen extends StatelessWidget {
+class PendingApprovalScreen extends StatefulWidget {
   const PendingApprovalScreen({super.key});
 
-  Future<void> _backToRoles(BuildContext context) async {
+  @override
+  State<PendingApprovalScreen> createState() => _PendingApprovalScreenState();
+}
+
+class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
+  bool _checking = false;
+  int _pollInterval = 5; // seconds, increases with backoff
+  bool _polling = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _startPolling();
+  }
+
+  @override
+  void dispose() {
+    _polling = false;
+    super.dispose();
+  }
+
+  Future<void> _startPolling() async {
+    while (_polling && mounted) {
+      await Future.delayed(Duration(seconds: _pollInterval));
+      if (!_polling || !mounted) break;
+      await _checkApproval(silent: true);
+      // Exponential backoff: 5s → 10s → 20s → 40s → max 60s
+      if (mounted && _polling) {
+        setState(() {
+          _pollInterval = (_pollInterval * 2).clamp(5, 60);
+        });
+      }
+    }
+  }
+
+  Future<void> _checkApproval({bool silent = false}) async {
+    if (_checking) return;
+    setState(() => _checking = true);
+    try {
+      final api = AppScope.of(context).api;
+      final meRes = await api.me();
+      if (!mounted) return;
+      final user = Map<String, dynamic>.from(meRes['user'] as Map);
+      final status = user['approvalStatus']?.toString();
+      if (status != 'pending_approval') {
+        // Approved! Re-hydrate auth and navigate
+        await AppScope.of(
+          context,
+        ).auth.signIn(AppScope.of(context).auth.token!, user);
+        if (!mounted) return;
+        _polling = false;
+        context.go(AppRoutes.home);
+      } else if (!silent) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.tr('auth.stillPending'))),
+        );
+      }
+    } catch (_) {
+      if (!silent && mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(context.tr('auth.checkFailed'))));
+      }
+    } finally {
+      if (mounted) setState(() => _checking = false);
+    }
+  }
+
+  Future<void> _backToRoles() async {
+    _polling = false;
     await AppScope.of(context).auth.signOut();
-    if (!context.mounted) return;
+    if (!mounted) return;
     context.go(AppRoutes.role);
   }
 
@@ -157,9 +238,24 @@ class PendingApprovalScreen extends StatelessWidget {
                   height: 1.4,
                 ),
               ),
+              const SizedBox(height: 24),
+              FilledButton.icon(
+                onPressed: _checking ? null : () => _checkApproval(),
+                icon: _checking
+                    ? const SizedBox(
+                        height: 16,
+                        width: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.refresh),
+                label: Text(context.tr('auth.checkApproval')),
+              ),
               const Spacer(),
               OutlinedButton(
-                onPressed: () => _backToRoles(context),
+                onPressed: _backToRoles,
                 child: Text(context.tr('auth.backToRoles')),
               ),
             ],

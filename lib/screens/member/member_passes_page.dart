@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app_scope.dart';
 import '../../router.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
@@ -10,6 +11,37 @@ import 'member_shell.dart';
 
 class MemberPassesPage extends StatelessWidget {
   const MemberPassesPage({super.key});
+
+  Future<void> _retry(BuildContext context, MemberData data) async {
+    final api = AppScope.of(context).api;
+    data.update((d) {
+      d.passesLoaded = false;
+      d.passes = [];
+    });
+    try {
+      final res = await api.listSubscriptionTiers();
+      data.update((d) {
+        d.passes = res
+            .whereType<Map<String, dynamic>>()
+            .map(PassTier.fromJson)
+            .toList();
+        d.passesLoaded = true;
+      });
+    } catch (_) {
+      try {
+        final res = await api.listPasses();
+        data.update((d) {
+          d.passes = res
+              .whereType<Map<String, dynamic>>()
+              .map(PassTier.fromJson)
+              .toList();
+          d.passesLoaded = true;
+        });
+      } catch (_) {
+        data.update((d) => d.passesLoaded = true);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,20 +77,44 @@ class MemberPassesPage extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        ...data.passes.map(
-          (p) => _SelectablePass(
-            pass: p,
-            selected: p.id == data.selectedTier,
-            onTap: () => data.update((d) => d.selectedTier = p.id),
+        if (!data.passesLoaded)
+          const Center(child: CircularProgressIndicator())
+        else if (data.passes.isEmpty)
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Column(
+                children: [
+                  Text(
+                    context.tr('home.passesLoadError'),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: FFTokens.fgQuaternary),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton(
+                    onPressed: () => _retry(context, data),
+                    child: Text(context.tr('home.retry')),
+                  ),
+                ],
+              ),
+            ),
+          )
+        else ...[
+          ...data.passes.map(
+            (p) => _SelectablePass(
+              pass: p,
+              selected: p.id == data.selectedTier,
+              onTap: () => data.update((d) => d.selectedTier = p.id),
+            ),
           ),
-        ),
-        const SizedBox(height: 12),
-        FFAlert(message: context.tr('pass.note'), tone: FFAlertTone.info),
-        const SizedBox(height: 16),
-        FilledButton(
-          onPressed: () => context.go(AppRoutes.memberPayment),
-          child: Text(context.tr('member.continuePayment')),
-        ),
+          const SizedBox(height: 12),
+          FFAlert(message: context.tr('pass.note'), tone: FFAlertTone.info),
+          const SizedBox(height: 16),
+          FilledButton(
+            onPressed: () => context.go(AppRoutes.memberPayment),
+            child: Text(context.tr('member.continuePayment')),
+          ),
+        ],
       ],
     );
   }

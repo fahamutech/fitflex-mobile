@@ -1,4 +1,7 @@
 import 'dart:convert';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 class ApiException implements Exception {
@@ -10,13 +13,28 @@ class ApiException implements Exception {
 }
 
 class ApiClient {
-  ApiClient({String? baseUrl})
-    : baseUrl =
-          baseUrl ??
-          const String.fromEnvironment(
-            'API_BASE',
-            defaultValue: 'http://localhost:3000',
-          );
+  ApiClient({String? baseUrl}) : baseUrl = baseUrl ?? _resolveBaseUrl();
+
+  static String _resolveBaseUrl() {
+    // 1. Compile-time --dart-define wins (CI/CD, prod builds).
+    const compileTime = String.fromEnvironment('API_BASE', defaultValue: '');
+    if (compileTime.isNotEmpty) return compileTime;
+
+    // 2. Runtime .env (loaded by main()).
+    String? fromEnv;
+    try {
+      final v = dotenv.maybeGet('API_BASE');
+      if (v != null && v.isNotEmpty) fromEnv = v;
+    } catch (_) {
+      // dotenv not initialised — ignore.
+    }
+    if (fromEnv != null) return fromEnv;
+
+    // 3. Platform-aware fallback so dev runs work out of the box.
+    if (kIsWeb) return 'http://localhost:3000';
+    if (Platform.isAndroid) return 'http://localhost:3000';
+    return 'http://localhost:3000';
+  }
 
   final String baseUrl;
   String? _token;
@@ -32,25 +50,78 @@ class ApiClient {
     };
     late http.Response res;
     final encoded = body == null ? null : jsonEncode(body);
-    switch (method) {
-      case 'GET':
-        res = await http.get(uri, headers: headers);
-        break;
-      case 'POST':
-        res = await http.post(uri, headers: headers, body: encoded);
-        break;
-      case 'PUT':
-        res = await http.put(uri, headers: headers, body: encoded);
-        break;
-      default:
-        throw ArgumentError('Unsupported method $method');
+    _logRequest(method, uri, headers, encoded);
+    try {
+      switch (method) {
+        case 'GET':
+          res = await http
+              .get(uri, headers: headers)
+              .timeout(const Duration(seconds: 12));
+          break;
+        case 'POST':
+          res = await http
+              .post(uri, headers: headers, body: encoded)
+              .timeout(const Duration(seconds: 12));
+          break;
+        case 'PUT':
+          res = await http
+              .put(uri, headers: headers, body: encoded)
+              .timeout(const Duration(seconds: 12));
+          break;
+        default:
+          throw ArgumentError('Unsupported method $method');
+      }
+    } catch (e) {
+      _logError(method, uri, e);
+      rethrow;
     }
+    _logResponse(method, uri, res);
     final decoded = res.body.isEmpty ? null : jsonDecode(res.body);
     if (res.statusCode >= 200 && res.statusCode < 300) return decoded;
     if (res.statusCode == 401 && onUnauthorized != null) {
       onUnauthorized!();
     }
     throw ApiException(res.statusCode, decoded);
+  }
+
+  void _logRequest(
+    String method,
+    Uri uri,
+    Map<String, String> headers,
+    String? body,
+  ) {
+    final safeHeaders = Map<String, String>.from(headers);
+    if (safeHeaders.containsKey('authorization')) {
+      safeHeaders['authorization'] = 'Bearer <redacted>';
+    }
+    debugPrint('[REST] --> $method $uri');
+    debugPrint('[REST] headers: $safeHeaders');
+    if (body != null) debugPrint('[REST] request: ${_safeBody(body)}');
+  }
+
+  void _logResponse(String method, Uri uri, http.Response res) {
+    debugPrint('[REST] <-- ${res.statusCode} $method $uri');
+    debugPrint('[REST] response: ${_safeBody(res.body)}');
+  }
+
+  void _logError(String method, Uri uri, Object error) {
+    debugPrint('[REST] !! $method $uri');
+    debugPrint('[REST] error: $error');
+  }
+
+  String _safeBody(String body) {
+    var text = body;
+    text = text.replaceAll(
+      RegExp(r'"idToken"\s*:\s*"[^"]+"'),
+      '"idToken":"<redacted>"',
+    );
+    text = text.replaceAll(
+      RegExp(r'"token"\s*:\s*"[^"]+"'),
+      '"token":"<redacted>"',
+    );
+    return text.length > 4000
+        ? '${text.substring(0, 4000)}...<truncated>'
+        : text;
   }
 
   Future<Map<String, dynamic>> requestOtp(String phone, String userType) async {
@@ -159,4 +230,25 @@ class ApiClient {
 
   Future<Map<String, dynamic>> operatorCheckIn(String qrToken) async =>
       await _request('POST', '/operator/checkins', body: {'qrToken': qrToken});
+
+  // Owner gym CRUD
+  Future<Map<String, dynamic>> ownerCreateGym(
+    Map<String, dynamic> data,
+  ) async => await _request('POST', '/owner/gyms', body: data);
+
+  Future<void> ownerDeleteGym(String gymId) async =>
+      await _request('POST', '/owner/gyms/$gymId/delete');
+
+  // Owner trainer management
+  Future<Map<String, dynamic>> ownerUpdateTrainer(
+    String trainerId,
+    Map<String, dynamic> data,
+  ) async => await _request('POST', '/owner/trainers/$trainerId', body: data);
+
+  Future<void> ownerRemoveTrainer(String trainerId) async =>
+      await _request('POST', '/owner/trainers/$trainerId/remove');
+
+  // Subscription tiers
+  Future<List<dynamic>> subscriptionTiers() async =>
+      await _request('GET', '/subscription-tiers');
 }

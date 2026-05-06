@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../app_scope.dart';
+import '../../router.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
@@ -9,6 +12,31 @@ import 'widgets/checkin_list.dart';
 
 class MemberProfileTab extends StatelessWidget {
   const MemberProfileTab({super.key});
+
+  Future<void> _confirmSignOut(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(context.tr('home.signout')),
+        content: Text(context.tr('confirm.signout')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(context.tr('member.cancel')),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: FFTokens.error500),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(context.tr('home.signout')),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    await AppScope.of(context).auth.signOut();
+    if (!context.mounted) return;
+    context.go(AppRoutes.language);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -109,6 +137,15 @@ class MemberProfileTab extends StatelessWidget {
           icon: Icons.help_outline,
           title: context.tr('member.help'),
           onTap: () {},
+        ),
+        const SizedBox(height: 16),
+        OutlinedButton.icon(
+          onPressed: () => _confirmSignOut(context),
+          icon: const Icon(Icons.logout, color: FFTokens.fgTertiary),
+          label: Text(
+            context.tr('home.signout'),
+            style: const TextStyle(color: FFTokens.fgTertiary),
+          ),
         ),
       ],
     );

@@ -25,7 +25,7 @@ class _MemberOnboardingPageState extends State<MemberOnboardingPage> {
   final _dobCtrl = TextEditingController();
 
   // Step 1 — Fitness info
-  String? _fitnessGoal;
+  final List<String> _fitnessGoals = [];
   String? _fitnessLevel;
   final _heightCtrl = TextEditingController();
   final _weightCtrl = TextEditingController();
@@ -62,7 +62,7 @@ class _MemberOnboardingPageState extends State<MemberOnboardingPage> {
         'displayName': _nameCtrl.text.trim(),
         'gender': _gender,
         'dateOfBirth': _dobCtrl.text.trim(),
-        'fitnessGoal': _fitnessGoal,
+        'fitnessGoals': _fitnessGoals,
         'fitnessLevel': _fitnessLevel,
         'heightCm': _heightCtrl.text.isNotEmpty
             ? num.tryParse(_heightCtrl.text)
@@ -286,21 +286,36 @@ class _MemberOnboardingPageState extends State<MemberOnboardingPage> {
           style: const TextStyle(fontSize: 14, color: FFTokens.fgTertiary),
         ),
         const SizedBox(height: 20),
-        DropdownButtonFormField<String>(
-          initialValue: _fitnessGoal,
-          decoration: InputDecoration(
-            labelText: context.tr('onboarding.fitnessGoal'),
-            border: const OutlineInputBorder(),
+        Text(
+          context.tr('onboarding.fitnessGoal'),
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: FFTokens.fgSecondary,
           ),
-          items: _goals
-              .map(
-                (g) => DropdownMenuItem(
-                  value: g,
-                  child: Text(context.tr('onboarding.goal_$g')),
-                ),
-              )
-              .toList(),
-          onChanged: (v) => setState(() => _fitnessGoal = v),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: _goals.map((g) {
+            final selected = _fitnessGoals.contains(g);
+            return FilterChip(
+              label: Text(context.tr('onboarding.goal_$g')),
+              selected: selected,
+              selectedColor: FFTokens.brand100,
+              checkmarkColor: FFTokens.brand600,
+              onSelected: (v) {
+                setState(() {
+                  if (v) {
+                    _fitnessGoals.add(g);
+                  } else {
+                    _fitnessGoals.remove(g);
+                  }
+                });
+              },
+            );
+          }).toList(),
         ),
         const SizedBox(height: 16),
         DropdownButtonFormField<String>(

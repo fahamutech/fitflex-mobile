@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -18,6 +19,14 @@ Future<void> main() async {
   // GoRouter uses hash URL strategy by default on web (e.g. /#/member/gyms).
   // This works without server-side rewrites for single-page apps.
   GoRouter.optionURLReflectsImperativeAPIs = true;
+
+  // Load runtime config from bundled .env (API_BASE, etc.).
+  // Failure is non-fatal — ApiClient will fall back to its built-in default.
+  try {
+    await dotenv.load(fileName: '.env');
+  } catch (_) {
+    // .env not bundled or unreadable; continue with defaults.
+  }
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   final api = ApiClient();

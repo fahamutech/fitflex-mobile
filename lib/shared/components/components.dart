@@ -8,5 +8,6 @@ export 'ff_card.dart';
 export 'ff_empty_state.dart';
 export 'ff_metric_card.dart';
 export 'ff_page_header.dart';
+export 'ff_remote_image.dart';
 export 'ff_segmented.dart';
 export 'ff_spinner.dart';

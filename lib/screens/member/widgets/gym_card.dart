@@ -92,10 +92,12 @@ class _GymThumb extends StatelessWidget {
     }
     return ClipRRect(
       borderRadius: BorderRadius.circular(FFTokens.radiusMd),
-      child: Image.network(
-        gym.images.first,
+      child: FFRemoteImage(
+        src: gym.images.first,
+        width: 72,
+        height: 72,
         fit: BoxFit.cover,
-        errorBuilder: (context, error, stack) => Container(
+        fallback: Container(
           color: FFTokens.brand50,
           child: const Icon(Icons.fitness_center, color: FFTokens.brand700),
         ),

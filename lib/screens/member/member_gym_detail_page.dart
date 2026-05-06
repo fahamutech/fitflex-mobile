@@ -169,11 +169,12 @@ class _GymHero extends StatelessWidget {
         borderRadius: BorderRadius.circular(FFTokens.radiusXl),
       ),
       child: gym.images.isNotEmpty
-          ? Image.network(
-              gym.images.first,
+          ? FFRemoteImage(
+              src: gym.images.first,
               width: double.infinity,
+              height: 180,
               fit: BoxFit.cover,
-              errorBuilder: (context, error, stack) => const Center(
+              fallback: const Center(
                 child: Icon(
                   Icons.fitness_center,
                   color: FFTokens.brand700,

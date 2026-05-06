@@ -45,5 +45,16 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- Location permissions -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>FitFlex needs your location to set your gym's position on the map.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>FitFlex needs your location to set your gym's position on the map.</string>
+	<!-- Camera permission -->
+	<key>NSCameraUsageDescription</key>
+	<string>FitFlex needs camera access to scan member QR codes and take gym photos.</string>
+	<!-- Photo library permission -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>FitFlex needs photo library access to upload gym images.</string>
 </dict>
 </plist>

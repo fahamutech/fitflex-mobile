@@ -26,6 +26,13 @@ class LanguageScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 48),
+              Image.asset(
+                'assets/brand/fitflex-logo.png',
+                width: 88,
+                height: 88,
+                alignment: Alignment.centerLeft,
+              ),
+              const SizedBox(height: 20),
               const Text(
                 'FitFlex Af',
                 style: TextStyle(

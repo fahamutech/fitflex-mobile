@@ -18,6 +18,9 @@ class PassSummaryCard extends StatelessWidget {
     final pending = data.pendingPayment;
     final visitsUsed = data.me?.visitsUsed ?? 0;
     final visitCap = data.me?.visitCap;
+    final progress = visitCap == null || visitCap <= 0
+        ? null
+        : (visitsUsed / visitCap).clamp(0, 1).toDouble();
 
     final title = sub == null
         ? context.tr('home.subscribe')
@@ -55,14 +58,38 @@ class PassSummaryCard extends StatelessWidget {
           ),
           if (sub != null) ...[
             const SizedBox(height: 10),
-            LinearProgressIndicator(
-              value: visitCap == null || visitCap == 0
-                  ? null
-                  : (visitsUsed / visitCap).clamp(0, 1).toDouble(),
-              color: FFTokens.brand500,
-              backgroundColor: FFTokens.bgTertiary,
-              borderRadius: BorderRadius.circular(FFTokens.radiusFull),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    context.tr('home.visits'),
+                    style: const TextStyle(
+                      color: FFTokens.fgQuaternary,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                Text(
+                  visitCap == null
+                      ? '$visitsUsed / ${context.tr('pass.unlimited')}'
+                      : '$visitsUsed / $visitCap',
+                  style: const TextStyle(
+                    color: FFTokens.fgSecondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
+            if (progress != null) ...[
+              const SizedBox(height: 6),
+              LinearProgressIndicator(
+                value: progress,
+                color: FFTokens.brand500,
+                backgroundColor: FFTokens.bgTertiary,
+                borderRadius: BorderRadius.circular(FFTokens.radiusFull),
+              ),
+            ],
           ],
           const SizedBox(height: 12),
           Row(

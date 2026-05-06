@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../app_scope.dart';
 import '../../router.dart';
-import '../../shared/api_client.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
 
@@ -25,6 +24,7 @@ class MemberData extends ChangeNotifier {
   List<TrainerProfile> trainers = [];
   List<CheckIn> checkins = [];
   List<PassTier> passes = [];
+  bool passesLoaded = false;
   String? qrToken;
   String selectedTier = 'pro';
   bool loading = false;
@@ -98,15 +98,18 @@ class _MemberShellState extends State<MemberShell> {
 
   Future<void> _refreshAll() async {
     _data.update((d) => d.loading = true);
-    await Future.wait([
-      _refreshMe(),
-      _refreshGyms(),
-      _refreshTrainers(),
-      _refreshCheckins(),
-      _refreshPasses(),
-      _refreshQr(),
-    ]);
-    _data.update((d) => d.loading = false);
+    try {
+      await Future.wait([
+        _refreshMe(),
+        _refreshGyms(),
+        _refreshTrainers(),
+        _refreshCheckins(),
+        _refreshPasses(),
+        _refreshQr(),
+      ]);
+    } finally {
+      _data.update((d) => d.loading = false);
+    }
   }
 
   Future<void> _refreshMe() async {
@@ -117,7 +120,7 @@ class _MemberShellState extends State<MemberShell> {
           Map<String, dynamic>.from(res as Map),
         ),
       );
-    } on ApiException {
+    } catch (_) {
       // ignore
     }
   }
@@ -131,7 +134,7 @@ class _MemberShellState extends State<MemberShell> {
             .map(Gym.fromJson)
             .toList(),
       );
-    } on ApiException {
+    } catch (_) {
       // ignore
     }
   }
@@ -145,7 +148,7 @@ class _MemberShellState extends State<MemberShell> {
             .map(TrainerProfile.fromJson)
             .toList(),
       );
-    } on ApiException {
+    } catch (_) {
       // ignore
     }
   }
@@ -159,33 +162,38 @@ class _MemberShellState extends State<MemberShell> {
             .map(CheckIn.fromJson)
             .toList(),
       );
-    } on ApiException {
+    } catch (_) {
       // ignore
     }
   }
 
   Future<void> _refreshPasses() async {
+    final api = AppScope.of(context).api;
     try {
       // Prefer new subscription-tiers endpoint (includes gymAccess per plan)
-      final res = await AppScope.of(context).api.listSubscriptionTiers();
-      _data.update(
-        (d) => d.passes = res
-            .whereType<Map<String, dynamic>>()
-            .map(PassTier.fromJson)
-            .toList(),
-      );
-    } on ApiException {
+      final res = await api.listSubscriptionTiers();
+      final tiers = res
+          .whereType<Map<String, dynamic>>()
+          .map(PassTier.fromJson)
+          .toList();
+      if (tiers.isEmpty) throw Exception('empty_tiers');
+      _data.update((d) {
+        d.passes = tiers;
+        d.passesLoaded = true;
+      });
+    } catch (_) {
       // Fallback to legacy /passes endpoint
       try {
-        final res = await AppScope.of(context).api.listPasses();
-        _data.update(
-          (d) => d.passes = res
+        final res = await api.listPasses();
+        _data.update((d) {
+          d.passes = res
               .whereType<Map<String, dynamic>>()
               .map(PassTier.fromJson)
-              .toList(),
-        );
-      } on ApiException {
-        // ignore
+              .toList();
+          d.passesLoaded = true;
+        });
+      } catch (_) {
+        _data.update((d) => d.passesLoaded = true);
       }
     }
   }
@@ -194,9 +202,13 @@ class _MemberShellState extends State<MemberShell> {
     try {
       final res = await AppScope.of(context).api.myQr();
       _data.update((d) => d.qrToken = res['token'] as String?);
-    } on ApiException {
+    } catch (_) {
       _data.update((d) => d.qrToken = null);
     }
+  }
+
+  Future<void> refreshPasses() async {
+    await _refreshPasses();
   }
 
   void _onTab(int index) {
@@ -210,27 +222,12 @@ class _MemberShellState extends State<MemberShell> {
     context.go(routes[index]);
   }
 
-  Future<void> _signOut() async {
-    await AppScope.of(context).auth.signOut();
-    if (!mounted) return;
-    context.go(AppRoutes.language);
-  }
-
   @override
   Widget build(BuildContext context) {
     return MemberDataScope(
       data: _data,
       child: Scaffold(
-        appBar: AppBar(
-          title: Text(context.tr('app.title')),
-          actions: [
-            IconButton(
-              tooltip: context.tr('home.signout'),
-              icon: const Icon(Icons.logout),
-              onPressed: _signOut,
-            ),
-          ],
-        ),
+        appBar: AppBar(title: Text(context.tr('app.title'))),
         body: RefreshIndicator(onRefresh: _refreshAll, child: widget.child),
         bottomNavigationBar: NavigationBar(
           selectedIndex: _tabIndex,
