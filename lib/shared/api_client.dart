@@ -42,7 +42,15 @@ class ApiClient {
 
   void setToken(String? token) => _token = token;
 
-  Future<dynamic> _request(String method, String path, {Object? body}) async {
+  Future<dynamic> _request(String method, String path, {Object? body}) =>
+      _doRequest(method, path, body: body, attempt: 0);
+
+  Future<dynamic> _doRequest(
+    String method,
+    String path, {
+    Object? body,
+    required int attempt,
+  }) async {
     final uri = Uri.parse('$baseUrl$path');
     final headers = <String, String>{
       'content-type': 'application/json',
@@ -73,6 +81,14 @@ class ApiClient {
       }
     } catch (e) {
       _logError(method, uri, e);
+      if (attempt < 2 && _isRetryableError(e)) {
+        final delayMs = attempt == 0 ? 400 : 1200;
+        debugPrint(
+          '[REST] retrying $method $uri (attempt ${attempt + 1}) after ${delayMs}ms',
+        );
+        await Future.delayed(Duration(milliseconds: delayMs));
+        return _doRequest(method, path, body: body, attempt: attempt + 1);
+      }
       rethrow;
     }
     _logResponse(method, uri, res);
@@ -82,6 +98,21 @@ class ApiClient {
       onUnauthorized!();
     }
     throw ApiException(res.statusCode, decoded);
+  }
+
+  static bool _isRetryableError(Object e) {
+    if (e is http.ClientException) {
+      final msg = e.message.toLowerCase();
+      return msg.contains('connection abort') ||
+          msg.contains('connection reset') ||
+          msg.contains('broken pipe') ||
+          msg.contains('errno = 103') ||
+          msg.contains('errno = 104') ||
+          msg.contains('errno = 7') ||
+          msg.contains('failed host lookup') ||
+          msg.contains('no address associated');
+    }
+    return false;
   }
 
   void _logRequest(
