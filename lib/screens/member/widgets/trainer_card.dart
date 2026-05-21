@@ -54,7 +54,7 @@ class TrainerCard extends StatelessWidget {
               ),
             ),
             Text(
-              'TZS ${trainer.hourlyRateTzs}${context.tr('trainerReg.perSession')}',
+              '${trainer.sessionRateCurrency} ${trainer.hourlyRateTzs}${context.tr('trainerReg.perSession')}',
               style: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,

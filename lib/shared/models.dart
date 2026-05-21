@@ -69,6 +69,7 @@ class TrainerProfile {
   final num? rating;
   final int? reviewCount;
   final num hourlyRateTzs;
+  final String sessionRateCurrency;
   final int? experienceYears;
   final List<String> gymIds;
   final List<Gym> gyms;
@@ -87,6 +88,7 @@ class TrainerProfile {
     this.rating,
     this.reviewCount,
     required this.hourlyRateTzs,
+    this.sessionRateCurrency = 'TZS',
     this.experienceYears,
     this.gymIds = const [],
     this.gyms = const [],
@@ -107,6 +109,7 @@ class TrainerProfile {
     rating: json['rating'] as num?,
     reviewCount: json['reviewCount'] as int?,
     hourlyRateTzs: json['hourlyRateTzs'] as num? ?? 0,
+    sessionRateCurrency: json['sessionRateCurrency'] as String? ?? 'TZS',
     experienceYears: json['experienceYears'] as int?,
     gymIds: (json['gymIds'] as List?)?.whereType<String>().toList() ?? [],
     gyms:

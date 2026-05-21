@@ -1,12 +1,10 @@
-import 'dart:convert';
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 
-import '../components/components.dart';
+import '../../app_scope.dart';
+import '../api_client.dart';
 import '../design_tokens.dart';
 import '../i18n.dart';
+import 'ff_photo_picker_field.dart';
 
 /// Fullscreen form for adding/editing a trainer (used by gym owners).
 /// Returns the payload Map on save, or null on cancel.
@@ -28,14 +26,16 @@ class TrainerFormPage extends StatefulWidget {
 
 class _TrainerFormPageState extends State<TrainerFormPage> {
   final _formKey = GlobalKey<FormState>();
-  final _picker = ImagePicker();
   late final TextEditingController _name;
   late final TextEditingController _email;
   late final TextEditingController _phone;
   late final TextEditingController _rate;
-  late final TextEditingController _specialties;
   late final TextEditingController _bio;
   String _photo = '';
+  String _currency = 'TZS';
+  List<String> _selectedSpecialties = [];
+  List<String> _availableSpecialties = [];
+  bool _specialtiesLoaded = false;
   bool _busy = false;
 
   @override
@@ -48,22 +48,31 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
     _rate = TextEditingController(
       text: (t['hourlyRateTzs'] as num?)?.toString() ?? '',
     );
-    _specialties = TextEditingController(
-      text: (t['specialties'] as List? ?? const []).join(', '),
-    );
     _bio = TextEditingController(text: t['bio']?.toString() ?? '');
     _photo = t['photoUrl']?.toString() ?? '';
+    _currency = t['sessionRateCurrency']?.toString() ?? 'TZS';
+    _selectedSpecialties =
+        (t['specialties'] as List?)?.whereType<String>().toList() ?? [];
   }
 
   @override
-  void dispose() {
-    _name.dispose();
-    _email.dispose();
-    _phone.dispose();
-    _rate.dispose();
-    _specialties.dispose();
-    _bio.dispose();
-    super.dispose();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_specialtiesLoaded) _loadSpecialties();
+  }
+
+  Future<void> _loadSpecialties() async {
+    try {
+      final api = AppScope.of(context).api;
+      final result = await api.getSpecialties();
+      if (!mounted) return;
+      setState(() {
+        _availableSpecialties = result.whereType<String>().toList();
+        _specialtiesLoaded = true;
+      });
+    } on ApiException {
+      if (mounted) setState(() => _specialtiesLoaded = true);
+    }
   }
 
   String? _required(String? v) => (v == null || v.trim().isEmpty)
@@ -76,53 +85,27 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
     return ok ? null : context.tr('onboarding.invalidEmail');
   }
 
-  Future<void> _pickPhoto() async {
-    final file = await _picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 1024,
-      imageQuality: 80,
-    );
-    if (!mounted) return;
-    if (file != null) setState(() => _photo = file.path);
-  }
-
-  Future<String> _encodedPhoto() async {
-    if (_photo.isEmpty ||
-        _photo.startsWith('http') ||
-        _photo.startsWith('data:')) {
-      return _photo;
-    }
-    final f = File(_photo);
-    if (!await f.exists()) return '';
-    final bytes = await f.readAsBytes();
-    final ext = _photo.split('.').last.toLowerCase();
-    final mime = ext == 'png' ? 'image/png' : 'image/jpeg';
-    return 'data:$mime;base64,${base64Encode(bytes)}';
-  }
-
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _busy = true);
-    final photoUrl = await _encodedPhoto();
-    if (!mounted) return;
-    final specialties = _specialties.text
-        .split(',')
-        .map((s) => s.trim())
-        .where((s) => s.isNotEmpty)
-        .toList();
-    final payload = <String, dynamic>{
-      'displayName': _name.text.trim(),
-      'email': _email.text.trim(),
-      'phone': _phone.text.trim(),
-      'specialties': specialties,
-      'hourlyRateTzs': num.tryParse(_rate.text.trim()) ?? 0,
-      'bio': _bio.text.trim(),
-      'photoUrl': photoUrl,
-      if (widget.initial == null && widget.defaultGymIds.isNotEmpty)
-        'gymIds': widget.defaultGymIds,
-      'status': 'active',
-    };
-    Navigator.of(context).pop(payload);
+    try {
+      final payload = <String, dynamic>{
+        'displayName': _name.text.trim(),
+        'email': _email.text.trim(),
+        'phone': _phone.text.trim(),
+        'specialties': _selectedSpecialties,
+        'hourlyRateTzs': num.tryParse(_rate.text.trim()) ?? 0,
+        'sessionRateCurrency': _currency,
+        'bio': _bio.text.trim(),
+        'photoUrl': _photo,
+        if (widget.initial == null && widget.defaultGymIds.isNotEmpty)
+          'gymIds': widget.defaultGymIds,
+        'status': 'active',
+      };
+      Navigator.of(context).pop(payload);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   @override
@@ -138,7 +121,13 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
         actions: [
           TextButton(
             onPressed: _busy ? null : _save,
-            child: Text(context.tr('member.save')),
+            child: _busy
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(context.tr('member.save')),
           ),
         ],
       ),
@@ -148,6 +137,16 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
           child: ListView(
             padding: const EdgeInsets.all(FFTokens.spacingLg),
             children: [
+              // Photo
+              Center(
+                child: FFPhotoPickerField(
+                  value: _photo.isEmpty ? null : _photo,
+                  onChanged: (url) => setState(() => _photo = url),
+                  size: 96,
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Name
               TextFormField(
                 controller: _name,
                 decoration: InputDecoration(
@@ -157,6 +156,7 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
                 validator: _required,
               ),
               const SizedBox(height: 12),
+              // Email
               TextFormField(
                 controller: _email,
                 keyboardType: TextInputType.emailAddress,
@@ -168,63 +168,7 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
                 validator: isEdit ? null : _emailValidator,
               ),
               const SizedBox(height: 12),
-              Text(
-                context.tr('trainerReg.picture'),
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: FFTokens.fgSecondary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(FFTokens.radiusLg),
-                    child: SizedBox(
-                      width: 72,
-                      height: 72,
-                      child: _photo.isEmpty
-                          ? Container(
-                              color: FFTokens.brand50,
-                              child: const Icon(
-                                Icons.person,
-                                color: FFTokens.brand700,
-                              ),
-                            )
-                          : _photo.startsWith('http') ||
-                                _photo.startsWith('data:')
-                          ? FFRemoteImage(
-                              src: _photo,
-                              width: 72,
-                              height: 72,
-                              fit: BoxFit.cover,
-                              fallback: const Icon(Icons.person),
-                            )
-                          : Image.file(
-                              File(_photo),
-                              width: 72,
-                              height: 72,
-                              fit: BoxFit.cover,
-                            ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  OutlinedButton.icon(
-                    onPressed: _pickPhoto,
-                    icon: const Icon(Icons.add_a_photo, size: 18),
-                    label: Text(context.tr('ownerReg.pickImage')),
-                  ),
-                  if (_photo.isNotEmpty) ...[
-                    const SizedBox(width: 8),
-                    IconButton(
-                      onPressed: () => setState(() => _photo = ''),
-                      icon: const Icon(Icons.close),
-                    ),
-                  ],
-                ],
-              ),
-              const SizedBox(height: 12),
+              // Phone
               TextFormField(
                 controller: _phone,
                 keyboardType: TextInputType.phone,
@@ -234,38 +178,98 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
                 ),
               ),
               const SizedBox(height: 12),
-              TextFormField(
-                controller: _specialties,
-                decoration: InputDecoration(
-                  labelText: context.tr('ownerReg.trainerSpecialties'),
-                  hintText: 'e.g. Yoga, Cardio',
-                  border: const OutlineInputBorder(),
-                ),
+              // Rate + currency row
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _rate,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: context.tr('ownerReg.trainerRate'),
+                        border: const OutlineInputBorder(),
+                      ),
+                      validator: (v) {
+                        final n = num.tryParse((v ?? '').trim());
+                        if (n == null || n < 0) {
+                          return context.tr('onboarding.required');
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 100,
+                    child: DropdownButtonFormField<String>(
+                      initialValue: _currency,
+                      decoration: const InputDecoration(
+                        labelText: 'Currency',
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 'TZS', child: Text('TZS')),
+                        DropdownMenuItem(value: 'USD', child: Text('USD')),
+                      ],
+                      onChanged: (v) => setState(() => _currency = v ?? 'TZS'),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
-              TextFormField(
-                controller: _rate,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: context.tr('ownerReg.trainerRate'),
-                  suffixText: 'TZS',
-                  border: const OutlineInputBorder(),
+              // Specialties chips
+              Text(
+                context.tr('ownerReg.trainerSpecialties'),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: FFTokens.fgPrimary,
                 ),
-                validator: (v) {
-                  final n = num.tryParse((v ?? '').trim());
-                  if (n == null || n < 0) {
-                    return context.tr('onboarding.required');
-                  }
-                  return null;
-                },
               ),
+              const SizedBox(height: 8),
+              if (!_specialtiesLoaded)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              else if (_availableSpecialties.isEmpty)
+                Text(
+                  context.tr('onboarding.required'),
+                  style: const TextStyle(color: FFTokens.fgTertiary, fontSize: 13),
+                )
+              else
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _availableSpecialties.map((s) {
+                    final selected = _selectedSpecialties.contains(s);
+                    return FilterChip(
+                      label: Text(s),
+                      selected: selected,
+                      onSelected: (v) => setState(() {
+                        if (v) {
+                          _selectedSpecialties = [..._selectedSpecialties, s];
+                        } else {
+                          _selectedSpecialties =
+                              _selectedSpecialties.where((x) => x != s).toList();
+                        }
+                      }),
+                    );
+                  }).toList(),
+                ),
               const SizedBox(height: 12),
+              // Bio
               TextFormField(
                 controller: _bio,
                 maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'Bio',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: context.tr('trainerReg.bio'),
+                  border: const OutlineInputBorder(),
+                  alignLabelWithHint: true,
                 ),
               ),
             ],

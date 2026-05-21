@@ -1306,7 +1306,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 10),
             Wrap(
               spacing: 6,
-              children: [_pill('TZS ${trainer?['hourlyRateTzs'] ?? 0}/hr')],
+              children: [_pill('${trainer?['sessionRateCurrency'] ?? 'TZS'} ${trainer?['hourlyRateTzs'] ?? 0}/hr')],
             ),
           ],
         ),
@@ -1980,7 +1980,7 @@ class _HomeScreenState extends State<HomeScreen> {
       const SizedBox(height: 10),
       Wrap(
         spacing: 6,
-        children: [_pill('TZS ${trainer['hourlyRateTzs'] ?? 0}/hr')],
+        children: [_pill('${trainer['sessionRateCurrency'] ?? 'TZS'} ${trainer['hourlyRateTzs'] ?? 0}/hr')],
       ),
       _section(context.tr('member.about')),
       _card(
@@ -2393,7 +2393,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             Text(
-              'TZS ${trainer['hourlyRateTzs'] ?? 0}/hr',
+              '${trainer['sessionRateCurrency'] ?? 'TZS'} ${trainer['hourlyRateTzs'] ?? 0}/hr',
               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
             ),
           ],

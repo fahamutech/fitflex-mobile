@@ -204,6 +204,9 @@ class ApiClient {
 
   Future<List<dynamic>> listGyms() async => await _request('GET', '/gyms');
 
+  Future<List<dynamic>> getSpecialties() async =>
+      await _request('GET', '/settings/specialties');
+
   Future<List<dynamic>> listTrainers() async =>
       await _request('GET', '/trainers');
 

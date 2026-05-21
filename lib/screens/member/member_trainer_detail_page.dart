@@ -71,7 +71,7 @@ class MemberTrainerDetailPage extends StatelessWidget {
             children: [
               FFBadge(
                 label:
-                    'TZS ${trainer.hourlyRateTzs}${context.tr('trainerReg.perSession')}',
+                    '${trainer.sessionRateCurrency} ${trainer.hourlyRateTzs}${context.tr('trainerReg.perSession')}',
                 tone: FFBadgeTone.brand,
               ),
               const SizedBox(width: 6),
