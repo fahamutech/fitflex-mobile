@@ -94,10 +94,19 @@ class ApiClient {
     _logResponse(method, uri, res);
     final decoded = res.body.isEmpty ? null : jsonDecode(res.body);
     if (res.statusCode >= 200 && res.statusCode < 300) return decoded;
-    if (res.statusCode == 401 && onUnauthorized != null) {
+    if (_shouldClearSession(res.statusCode, decoded) &&
+        onUnauthorized != null) {
       onUnauthorized!();
     }
     throw ApiException(res.statusCode, decoded);
+  }
+
+  static bool _shouldClearSession(int statusCode, dynamic decoded) {
+    if (statusCode != 401 || decoded is! Map) return false;
+    final error = decoded['error']?.toString();
+    return error == 'unauthenticated' ||
+        error == 'invalid_token' ||
+        error == 'token_expired';
   }
 
   static bool _isRetryableError(Object e) {
@@ -278,6 +287,10 @@ class ApiClient {
 
   Future<void> ownerRemoveTrainer(String trainerId) async =>
       await _request('POST', '/owner/trainers/$trainerId/remove');
+
+  Future<Map<String, dynamic>> ownerCreateMember(
+    Map<String, dynamic> data,
+  ) async => await _request('POST', '/owner/members', body: data);
 
   // Subscription tiers
   Future<List<dynamic>> subscriptionTiers() async =>

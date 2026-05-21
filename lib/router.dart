@@ -4,6 +4,7 @@ import 'shared/auth_state.dart';
 import 'screens/language_screen.dart';
 import 'screens/role_screen.dart';
 import 'screens/auth_screen.dart';
+import 'screens/email_auth_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/member/member_shell.dart';
 import 'screens/member/member_onboarding_page.dart';
@@ -16,6 +17,8 @@ abstract class AppRoutes {
   static const language = '/';
   static const role = '/role';
   static const auth = '/auth';
+  static const emailAuth = '/auth/email';
+  static const googleWebCallback = '/auth/google-web-callback';
   static const pending = '/pending';
   static const home = '/home';
 
@@ -52,6 +55,30 @@ bool _isOnboarded(AuthState auth, String role) {
   return auth.user?['onboardingCompleted'] == true;
 }
 
+String routeForSignedInUser(AuthState auth) {
+  final role = auth.user?['userType']?.toString() ?? auth.role;
+  final onboarded = _isOnboarded(auth, role);
+  if (auth.isPendingApproval) {
+    if (role == 'trainer' && !onboarded) {
+      return AppRoutes.trainerRegistration;
+    }
+    if (role == 'gym_operator' && !onboarded) {
+      return AppRoutes.ownerRegistration;
+    }
+    return AppRoutes.pending;
+  }
+  if (role == 'member') {
+    return onboarded ? AppRoutes.memberHome : AppRoutes.memberOnboarding;
+  }
+  if (role == 'trainer') {
+    return onboarded ? AppRoutes.home : AppRoutes.trainerRegistration;
+  }
+  if (role == 'gym_operator') {
+    return onboarded ? AppRoutes.home : AppRoutes.ownerRegistration;
+  }
+  return AppRoutes.home;
+}
+
 GoRouter buildRouter(AuthState auth) {
   return GoRouter(
     initialLocation: AppRoutes.language,
@@ -63,7 +90,13 @@ GoRouter buildRouter(AuthState auth) {
       final loc = state.matchedLocation;
 
       // Public routes that don't need auth
-      final publicRoutes = [AppRoutes.language, AppRoutes.role, AppRoutes.auth];
+      final publicRoutes = [
+        AppRoutes.language,
+        AppRoutes.role,
+        AppRoutes.auth,
+        AppRoutes.emailAuth,
+        AppRoutes.googleWebCallback,
+      ];
 
       if (!loggedIn && !publicRoutes.contains(loc)) {
         return AppRoutes.language;
@@ -92,20 +125,7 @@ GoRouter buildRouter(AuthState auth) {
       }
 
       if (loggedIn && !isPending && publicRoutes.contains(loc)) {
-        final role = auth.user?['userType']?.toString() ?? auth.role;
-        if (role == 'member') {
-          final onboarded = _isOnboarded(auth, role);
-          return onboarded ? AppRoutes.memberHome : AppRoutes.memberOnboarding;
-        }
-        if (role == 'trainer') {
-          final onboarded = _isOnboarded(auth, role);
-          return onboarded ? AppRoutes.home : AppRoutes.trainerRegistration;
-        }
-        if (role == 'gym_operator') {
-          final onboarded = _isOnboarded(auth, role);
-          return onboarded ? AppRoutes.home : AppRoutes.ownerRegistration;
-        }
-        return AppRoutes.home;
+        return routeForSignedInUser(auth);
       }
 
       // Redirect member to onboarding if not completed
@@ -146,6 +166,21 @@ GoRouter buildRouter(AuthState auth) {
         path: AppRoutes.auth,
         name: 'auth',
         builder: (context, state) => const AuthScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.emailAuth,
+        name: 'emailAuth',
+        builder: (context, state) => EmailAuthScreen(
+          initialEmail: state.uri.queryParameters['email'] ?? '',
+          initialMode: state.uri.queryParameters['mode'] == 'signup'
+              ? EmailAuthMode.signUp
+              : EmailAuthMode.signIn,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.googleWebCallback,
+        name: 'googleWebCallback',
+        builder: (context, state) => const GoogleWebCallbackScreen(),
       ),
       GoRoute(
         path: AppRoutes.pending,

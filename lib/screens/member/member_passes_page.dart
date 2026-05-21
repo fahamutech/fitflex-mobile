@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../app_scope.dart';
 import '../../router.dart';
@@ -47,75 +48,206 @@ class MemberPassesPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final data = MemberDataScope.of(context);
 
-    return ListView(
-      padding: const EdgeInsets.all(FFTokens.spacingLg),
-      children: [
-        Row(
-          children: [
-            IconButton(
-              onPressed: () => context.go(AppRoutes.memberHome),
-              icon: const Icon(Icons.arrow_back),
-            ),
-            Expanded(
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          onPressed: () => context.go(AppRoutes.memberHome),
+          icon: const Icon(Icons.arrow_back),
+        ),
+        title: Text(context.tr('member.choosePlan')),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(28),
+          child: Padding(
+            padding: const EdgeInsets.only(left: 16, right: 16, bottom: 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
               child: Text(
-                context.tr('member.choosePlan'),
+                context.tr('member.planBody'),
                 style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  color: FFTokens.fgPrimary,
+                  color: FFTokens.fgQuaternary,
+                  fontSize: 13,
                 ),
               ),
             ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Padding(
-          padding: const EdgeInsets.only(left: 48),
-          child: Text(
-            context.tr('member.planBody'),
-            style: const TextStyle(color: FFTokens.fgQuaternary, fontSize: 14),
           ),
         ),
-        const SizedBox(height: 16),
-        if (!data.passesLoaded)
-          const Center(child: CircularProgressIndicator())
-        else if (data.passes.isEmpty)
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 24),
-              child: Column(
-                children: [
-                  Text(
-                    context.tr('home.passesLoadError'),
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: FFTokens.fgQuaternary),
-                  ),
-                  const SizedBox(height: 12),
-                  OutlinedButton(
-                    onPressed: () => _retry(context, data),
-                    child: Text(context.tr('home.retry')),
-                  ),
-                ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(FFTokens.spacingLg),
+        children: [
+          const SizedBox(height: 4),
+          if (data.pendingPayment != null)
+            _PendingBlockCard(pending: data.pendingPayment!)
+          else if (!data.passesLoaded)
+            const Center(child: CircularProgressIndicator())
+          else if (data.passes.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Column(
+                  children: [
+                    Text(
+                      context.tr('home.passesLoadError'),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: FFTokens.fgQuaternary),
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton(
+                      onPressed: () => _retry(context, data),
+                      child: Text(context.tr('home.retry')),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else ...[
+            ...data.passes.map(
+              (p) => _SelectablePass(
+                pass: p,
+                selected: p.id == data.selectedTier,
+                onTap: () => data.update((d) => d.selectedTier = p.id),
               ),
             ),
-          )
-        else ...[
-          ...data.passes.map(
-            (p) => _SelectablePass(
-              pass: p,
-              selected: p.id == data.selectedTier,
-              onTap: () => data.update((d) => d.selectedTier = p.id),
+            const SizedBox(height: 12),
+            FFAlert(message: context.tr('pass.note'), tone: FFAlertTone.info),
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: () => context.go(AppRoutes.memberPayment),
+              child: Text(context.tr('member.continuePayment')),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _PendingBlockCard extends StatelessWidget {
+  const _PendingBlockCard({required this.pending});
+
+  final PaymentRequest pending;
+
+  void _openSupport() {
+    launchUrl(
+      Uri.parse('https://wa.me/255786670499'),
+      mode: LaunchMode.externalApplication,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FFCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: FFTokens.warning50,
+                  border: Border.all(color: FFTokens.warning200),
+                  borderRadius: BorderRadius.circular(FFTokens.radiusXl),
+                ),
+                child: const Icon(
+                  Icons.hourglass_top_rounded,
+                  color: FFTokens.warning700,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      context.tr('member.paymentPendingTitle'),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: FFTokens.fgPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    FFBadge(
+                      label: context.tr('member.waitingApproval'),
+                      tone: FFBadgeTone.warning,
+                      dot: true,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            context.tr('member.paymentPendingBody'),
+            style: const TextStyle(
+              color: FFTokens.fgQuaternary,
+              fontSize: 13,
+              height: 1.45,
             ),
           ),
           const SizedBox(height: 12),
-          FFAlert(message: context.tr('pass.note'), tone: FFAlertTone.info),
+          _DetailRow(
+            label: context.tr('member.paymentPendingPlan'),
+            value: pending.tier.toUpperCase(),
+          ),
+          _DetailRow(
+            label: context.tr('member.paymentPendingAmount'),
+            value: 'TZS ${pending.amountTzs}',
+          ),
+          _DetailRow(
+            label: context.tr('member.paymentPendingStatus'),
+            value: context.tr('member.paymentPendingStatusValue'),
+          ),
           const SizedBox(height: 16),
-          FilledButton(
-            onPressed: () => context.go(AppRoutes.memberPayment),
-            child: Text(context.tr('member.continuePayment')),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _openSupport,
+              icon: const Icon(Icons.support_agent, size: 18),
+              label: Text(context.tr('member.contactSupport')),
+            ),
           ),
         ],
-      ],
+      ),
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  const _DetailRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: FFTokens.fgQuaternary,
+                fontSize: 13,
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              color: FFTokens.fgPrimary,
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

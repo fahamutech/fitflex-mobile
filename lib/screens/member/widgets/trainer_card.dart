@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
+import '../../../shared/i18n.dart';
 import '../../../shared/models.dart';
 
 class TrainerCard extends StatelessWidget {
@@ -53,7 +54,7 @@ class TrainerCard extends StatelessWidget {
               ),
             ),
             Text(
-              'TZS ${trainer.hourlyRateTzs}/hr',
+              'TZS ${trainer.hourlyRateTzs}${context.tr('trainerReg.perSession')}',
               style: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,

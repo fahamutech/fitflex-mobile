@@ -21,92 +21,93 @@ class MemberPaymentPage extends StatelessWidget {
     final price = pass?.price ?? 0;
     final visitCap = pass?.visitCap;
 
-    return ListView(
-      padding: const EdgeInsets.all(FFTokens.spacingLg),
-      children: [
-        Row(
-          children: [
-            IconButton(
-              onPressed: () => context.go(AppRoutes.memberPasses),
-              icon: const Icon(Icons.arrow_back),
-            ),
-            Expanded(
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          onPressed: () => context.go(AppRoutes.memberPasses),
+          icon: const Icon(Icons.arrow_back),
+        ),
+        title: Text(context.tr('member.payment')),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(28),
+          child: Padding(
+            padding: const EdgeInsets.only(left: 16, right: 16, bottom: 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
               child: Text(
-                context.tr('member.payment'),
+                context.tr('member.paymentBody'),
                 style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  color: FFTokens.fgPrimary,
+                  color: FFTokens.fgQuaternary,
+                  fontSize: 13,
                 ),
               ),
             ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Padding(
-          padding: const EdgeInsets.only(left: 48),
-          child: Text(
-            context.tr('member.paymentBody'),
-            style: const TextStyle(color: FFTokens.fgQuaternary, fontSize: 14),
           ),
         ),
-        const SizedBox(height: 16),
-
-        // Order summary
-        FFCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                context.tr('member.orderSummary'),
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: FFTokens.fgPrimary,
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(FFTokens.spacingLg),
+        children: [
+          // Order summary
+          FFCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.tr('member.orderSummary'),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: FFTokens.fgPrimary,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              _Row(
-                label: context.tr('member.choosePlan'),
-                value: context.tr('pass.${data.selectedTier}'),
-              ),
-              _Row(
-                label: context.tr('home.visits'),
-                value: visitCap == null
-                    ? context.tr('pass.unlimited')
-                    : '$visitCap',
-              ),
-              _Row(label: 'Total', value: 'TZS $price'),
-            ],
-          ),
-        ),
-
-        // Payment method
-        Padding(
-          padding: const EdgeInsets.only(top: 16, bottom: 10),
-          child: Text(
-            context.tr('member.paymentMethod'),
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: FFTokens.fgPrimary,
+                const SizedBox(height: 12),
+                _Row(
+                  label: context.tr('member.choosePlan'),
+                  value: context.tr('pass.${data.selectedTier}'),
+                ),
+                _Row(
+                  label: context.tr('home.visits'),
+                  value: visitCap == null
+                      ? context.tr('pass.unlimited')
+                      : '$visitCap',
+                ),
+                _Row(label: 'Total', value: 'TZS $price'),
+              ],
             ),
           ),
-        ),
-        FFActionTile(icon: Icons.phone_android, title: 'M-Pesa', onTap: () {}),
-        FFActionTile(
-          icon: Icons.account_balance,
-          title: 'CRDB Bank Transfer',
-          onTap: () {},
-        ),
-        FFActionTile(
-          icon: Icons.account_balance,
-          title: 'NMB Bank Transfer',
-          onTap: () {},
-        ),
-        const SizedBox(height: 16),
-        _SubmitButton(tier: data.selectedTier),
-      ],
+
+          // Payment method — commented out until payment integrations are live
+          // Padding(
+          //   padding: const EdgeInsets.only(top: 16, bottom: 10),
+          //   child: Text(
+          //     context.tr('member.paymentMethod'),
+          //     style: const TextStyle(
+          //       fontSize: 16,
+          //       fontWeight: FontWeight.w600,
+          //       color: FFTokens.fgPrimary,
+          //     ),
+          //   ),
+          // ),
+          // FFActionTile(
+          //   icon: Icons.phone_android,
+          //   title: 'M-Pesa',
+          //   onTap: () {},
+          // ),
+          // FFActionTile(
+          //   icon: Icons.account_balance,
+          //   title: 'CRDB Bank Transfer',
+          //   onTap: () {},
+          // ),
+          // FFActionTile(
+          //   icon: Icons.account_balance,
+          //   title: 'NMB Bank Transfer',
+          //   onTap: () {},
+          // ),
+          const SizedBox(height: 16),
+          _SubmitButton(tier: data.selectedTier),
+        ],
+      ),
     );
   }
 }

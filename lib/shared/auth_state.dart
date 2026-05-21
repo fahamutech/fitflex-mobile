@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_client.dart';
+import 'firebase_auth_service.dart';
 
 /// Global session state. In a larger app this would be DI'd via Riverpod/Provider.
 class AuthState extends ChangeNotifier {
@@ -85,6 +86,22 @@ class AuthState extends ChangeNotifier {
     await signIn(token, user);
   }
 
+  Future<Map<String, dynamic>> completeFirebaseSession({
+    required String idToken,
+    required String requestedRole,
+    FirebaseAuthService? firebaseAuth,
+  }) async {
+    final res = await api.firebaseSession(idToken, requestedRole);
+    final user = Map<String, dynamic>.from(res['user'] as Map);
+    if (user['userType']?.toString() == 'admin') {
+      await firebaseAuth?.signOut();
+      await signOut();
+      throw const AdminMobileSignInException();
+    }
+    await signInWithFitFlexSession(res['token'] as String, user);
+    return user;
+  }
+
   Future<void> signOut() async {
     _token = null;
     _user = null;
@@ -94,4 +111,8 @@ class AuthState extends ChangeNotifier {
     await prefs.remove('user');
     notifyListeners();
   }
+}
+
+class AdminMobileSignInException implements Exception {
+  const AdminMobileSignInException();
 }

@@ -6,6 +6,7 @@ import '../../router.dart';
 import '../../shared/api_client.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
+import '../../shared/widgets/ff_photo_picker_field.dart';
 
 class TrainerRegistrationPage extends StatefulWidget {
   const TrainerRegistrationPage({super.key});
@@ -22,7 +23,7 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
 
   // Step 0 — Personal
   final _nameCtrl = TextEditingController();
-  final _photoUrlCtrl = TextEditingController();
+  String? _photoUrl;
   String? _gender;
   final _bioCtrl = TextEditingController();
 
@@ -44,7 +45,6 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
   @override
   void dispose() {
     _nameCtrl.dispose();
-    _photoUrlCtrl.dispose();
     _bioCtrl.dispose();
     _sessionRateCtrl.dispose();
     super.dispose();
@@ -57,7 +57,7 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
       final api = AppScope.of(context).api;
       await api.trainerRegister({
         'displayName': _nameCtrl.text.trim(),
-        'photoUrl': _photoUrlCtrl.text.trim(),
+        'photoUrl': _photoUrl ?? '',
         'gender': _gender,
         'bio': _bioCtrl.text.trim(),
         'hourlyRateTzs': num.tryParse(_sessionRateCtrl.text) ?? 0,
@@ -220,17 +220,17 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
               : null,
         ),
         const SizedBox(height: 16),
-        TextFormField(
-          controller: _photoUrlCtrl,
-          keyboardType: TextInputType.url,
-          decoration: InputDecoration(
-            labelText: context.tr('trainerReg.picture'),
-            border: const OutlineInputBorder(),
-            prefixIcon: const Icon(Icons.photo_camera_outlined),
+        Text(
+          context.tr('trainerReg.picture'),
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: FFTokens.fgPrimary),
+        ),
+        const SizedBox(height: 8),
+        Center(
+          child: FFPhotoPickerField(
+            value: _photoUrl,
+            onChanged: (url) => setState(() => _photoUrl = url),
+            size: 100,
           ),
-          validator: (v) => (v == null || v.trim().isEmpty)
-              ? context.tr('onboarding.required')
-              : null,
         ),
         const SizedBox(height: 16),
         DropdownButtonFormField<String>(

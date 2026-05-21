@@ -43,10 +43,14 @@ class _HomeScreenState extends State<HomeScreen> {
   String _gymFilter = 'all';
   String _trainerFilter = 'all';
   String _gymSearch = '';
+  String _gymAmenityFilter = '';
+  String _gymPriceFilter = 'any';
   String _trainerSearch = '';
   bool _showPassSelection = false;
   bool _showPayment = false;
   Position? _userPosition;
+  final TextEditingController _gymSearchCtrl = TextEditingController();
+  final TextEditingController _trainerSearchCtrl = TextEditingController();
 
   // Owner sub-views
   String? _ownerView; // null=dashboard, 'checkins', 'trainers', 'earnings'
@@ -69,6 +73,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _qrTimer?.cancel();
+    _gymSearchCtrl.dispose();
+    _trainerSearchCtrl.dispose();
     super.dispose();
   }
 
@@ -369,6 +375,13 @@ class _HomeScreenState extends State<HomeScreen> {
       final message = context.tr('member.profileUpdated');
       await _refreshMe();
       if (!mounted) return;
+      if (_me != null && _me!['user'] != null) {
+        final user = Map<String, dynamic>.from(_me!['user'] as Map);
+        final token = AppScope.of(context).auth.token;
+        if (token != null) {
+          await AppScope.of(context).auth.signIn(token, user);
+        }
+      }
       setState(() {});
       _toast(message);
     }
@@ -526,6 +539,35 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // ── Owner Member Registration ──
+  Future<void> _showAddMemberDialog() async {
+    final ownerGymIds = _ownerGyms
+        .cast<Map<String, dynamic>>()
+        .map((g) => g['id'].toString())
+        .toList();
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => _AddMemberSheet(
+        ownerGymIds: ownerGymIds,
+        onSaved: (payload) async {
+          if (!mounted) return;
+          final api = AppScope.of(context).api;
+          try {
+            await api.ownerCreateMember(payload);
+            if (!mounted) return;
+            _toast(context.tr('owner.memberAdded'));
+            await _refreshOwnerData();
+            if (mounted) setState(() {});
+          } on ApiException catch (e) {
+            if (!mounted) return;
+            _toast('Error ${e.status}');
+          }
+        },
+      ),
+    );
+  }
+
   String get _displayName {
     final user = (_me?['user'] as Map?) ?? AppScope.of(context).auth.user;
     return (user?['displayName'] ??
@@ -541,6 +583,37 @@ class _HomeScreenState extends State<HomeScreen> {
       _subscription != null && _subscription?['status'] == 'active';
   bool get _isMemberExperience =>
       _userType != 'gym_operator' && _userType != 'trainer';
+
+  String _norm(Object? value) => value?.toString().trim().toLowerCase() ?? '';
+
+  String _gymTierKey(Map<String, dynamic> gym) {
+    final tier = _norm(gym['tier']).replaceAll('-', '_').replaceAll(' ', '_');
+    if (tier == 'mid_tier' || tier == 'midrange' || tier == 'mid_range') {
+      return 'midtier';
+    }
+    if (tier == 'luxury' || tier == 'executive') return 'luxury_executive';
+    return tier;
+  }
+
+  bool _containsQuery(Object? value, String query) =>
+      _norm(value).contains(query);
+
+  bool _listContainsQuery(Object? value, String query) =>
+      (value as List? ?? const []).any((item) => _containsQuery(item, query));
+
+  String _gymAccessLabel(String access, BuildContext context) {
+    switch (access) {
+      case 'luxury_executive':
+        return context.tr('member.accessAll');
+      case 'premium':
+        return context.tr('member.accessPremium');
+      case 'midtier':
+        return context.tr('member.accessMidtier');
+      default:
+        return context.tr('member.accessStandard');
+    }
+  }
+
   bool get _needsOnboarding {
     // Only show member onboarding for actual member userType
     if (_userType != 'member') return false;
@@ -568,6 +641,9 @@ class _HomeScreenState extends State<HomeScreen> {
       _showPassSelection = false;
       _showPayment = false;
     });
+    if (tab == 3 && _hasActivePass) {
+      _refreshQr();
+    }
   }
 
   void _openOwnerTab(int tab) {
@@ -703,17 +779,27 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(title),
-        actions: [
-          if (_ownerView != null)
-            IconButton(
-              tooltip: context.tr('home.back'),
-              icon: const Icon(Icons.arrow_back),
-              onPressed: () => setState(() {
-                _ownerView = null;
-                _selectedOwnerGym = null;
-              }),
-            ),
-        ],
+        leading: _ownerView != null
+            ? IconButton(
+                tooltip: context.tr('home.back'),
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => setState(() {
+                  _ownerView = null;
+                  _selectedOwnerGym = null;
+                }),
+              )
+            : null,
+        // actions: [
+        //   if (_ownerView != null)
+        //     IconButton(
+        //       tooltip: context.tr('home.back'),
+        //       icon: const Icon(Icons.arrow_back),
+        //       onPressed: () => setState(() {
+        //         _ownerView = null;
+        //         _selectedOwnerGym = null;
+        //       }),
+        //     ),
+        // ],
       ),
       body: RefreshIndicator(onRefresh: _refreshAll, child: body),
       bottomNavigationBar: NavigationBar(
@@ -814,6 +900,11 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       ),
       _actionTile(
+        icon: Icons.person_add,
+        title: context.tr('owner.addMember'),
+        onTap: _showAddMemberDialog,
+      ),
+      _actionTile(
         icon: Icons.sports_gymnastics,
         title: context.tr('owner.trainers'),
         subtitle: '${_ownerTrainers.length}',
@@ -908,12 +999,12 @@ class _HomeScreenState extends State<HomeScreen> {
               '${_statsTo!.toLocal().toString().split(' ').first}'
         : context.tr('owner.allTime');
     return _scroll([
-      _backTitle(context.tr('owner.gymCheckins'), () {
-        setState(() {
-          _ownerView = null;
-          _selectedOwnerGym = null;
-        });
-      }),
+      // _backTitle(context.tr('owner.gymCheckins'), () {
+      //   setState(() {
+      //     _ownerView = null;
+      //     _selectedOwnerGym = null;
+      //   });
+      // }),
       _muted(gym['name']?.toString() ?? ''),
       const SizedBox(height: 8),
       Row(
@@ -963,17 +1054,16 @@ class _HomeScreenState extends State<HomeScreen> {
           }
           return Column(
             children: [
-              _card(
-                Row(
-                  children: [
-                    Expanded(
-                      child: _metric(
-                        '${items.length}',
-                        context.tr('owner.checkins'),
-                      ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: _metric(
+                      '${items.length}',
+                      context.tr('owner.checkins'),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
               const SizedBox(height: 8),
               ...items.take(50).map((c) {
@@ -1001,12 +1091,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _ownerTrainersView({bool showBack = true}) {
     final items = _ownerTrainers.cast<Map<String, dynamic>>().toList();
     return _scroll([
-      if (showBack)
-        _backTitle(context.tr('owner.trainers'), () {
-          setState(() => _ownerView = null);
-        })
-      else
-        _title(context.tr('owner.trainers')),
+      // if (showBack)
+      //   _backTitle(context.tr('owner.trainers'), () {
+      //     setState(() => _ownerView = null);
+      //   })
+      // else
+      //   _title(context.tr('owner.trainers')),
       const SizedBox(height: 14),
       if (items.isEmpty)
         _empty()
@@ -1137,9 +1227,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _ownerEarningsView() {
     return _scroll([
-      _backTitle(context.tr('owner.earnings'), () {
-        setState(() => _ownerView = null);
-      }),
+      // _backTitle(context.tr('owner.earnings'), () {
+      //   setState(() => _ownerView = null);
+      // }),
       const SizedBox(height: 14),
       FutureBuilder<Map<String, dynamic>>(
         future: AppScope.of(context).api.ownerEarnings(),
@@ -1216,9 +1306,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 10),
             Wrap(
               spacing: 6,
-              children: [
-                _pill('TZS ${trainer?['hourlyRateTzs'] ?? 0}/session'),
-              ],
+              children: [_pill('TZS ${trainer?['hourlyRateTzs'] ?? 0}/hr')],
             ),
           ],
         ),
@@ -1421,18 +1509,23 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _gymsTab() {
     var gyms = _gyms.cast<Map<String, dynamic>>().toList();
-    // Apply search
-    if (_gymSearch.isNotEmpty) {
-      final q = _gymSearch.toLowerCase();
+
+    // Search
+    final gymQuery = _norm(_gymSearch);
+    if (gymQuery.isNotEmpty) {
       gyms = gyms
           .where(
             (g) =>
-                (g['name']?.toString().toLowerCase().contains(q) ?? false) ||
-                (g['location']?.toString().toLowerCase().contains(q) ?? false),
+                _containsQuery(g['name'], gymQuery) ||
+                _containsQuery(g['location'], gymQuery) ||
+                _containsQuery(g['tier'], gymQuery) ||
+                _listContainsQuery(g['amenities'], gymQuery) ||
+                _listContainsQuery(g['equipment'], gymQuery),
           )
           .toList();
     }
-    // Apply tier filter
+
+    // Tier / sort filter
     if (_gymFilter == 'nearest') {
       if (_userPosition == null) {
         _requestLocation();
@@ -1440,49 +1533,145 @@ class _HomeScreenState extends State<HomeScreen> {
         gyms.sort((a, b) => _distanceToGym(a).compareTo(_distanceToGym(b)));
       }
     } else if (_gymFilter == 'standard') {
-      gyms = gyms.where((g) => g['tier'] == 'standard').toList();
+      gyms = gyms.where((g) => _gymTierKey(g) == 'standard').toList();
     } else if (_gymFilter == 'midtier') {
-      gyms = gyms.where((g) => g['tier'] == 'midtier').toList();
+      gyms = gyms.where((g) => _gymTierKey(g) == 'midtier').toList();
     } else if (_gymFilter == 'premium') {
-      gyms = gyms
-          .where(
-            (g) => g['tier'] == 'premium' || g['tier'] == 'luxury_executive',
-          )
-          .toList();
+      gyms = gyms.where((g) {
+        final tier = _gymTierKey(g);
+        return tier == 'premium' || tier == 'luxury_executive';
+      }).toList();
+    } else if (_gymFilter == 'my_sub') {
+      // Show only gyms compatible with the member's active subscription tier
+      final subAccess = _subscription?['tier']?.toString();
+      final passes = _passes.cast<Map<String, dynamic>>();
+      final gymAccess = passes
+          .firstWhere((p) => p['id'] == subAccess || p['key'] == subAccess,
+              orElse: () => const {})
+          .cast<String, dynamic>()['gymAccess']
+          ?.toString();
+      if (gymAccess != null && gymAccess.isNotEmpty) {
+        gyms = gyms.where((g) {
+          final tierKey = _gymTierKey(g);
+          if (gymAccess == 'luxury_executive') return true;
+          if (gymAccess == 'premium') return tierKey != 'luxury_executive';
+          if (gymAccess == 'midtier') return tierKey == 'standard' || tierKey == 'midtier';
+          return tierKey == 'standard';
+        }).toList();
+      }
     }
-    final filters = ['all', 'nearest', 'standard', 'midtier', 'premium'];
-    final filterLabels = [
+
+    // Amenity filter
+    if (_gymAmenityFilter.isNotEmpty) {
+      gyms = gyms.where((g) => _listContainsQuery(g['amenities'], _gymAmenityFilter)).toList();
+    }
+
+    // Price filter
+    if (_gymPriceFilter == 'under30k') {
+      gyms = gyms.where((g) => (g['ratePerMonth'] as num? ?? double.infinity) < 30000).toList();
+    } else if (_gymPriceFilter == '30k_60k') {
+      gyms = gyms.where((g) {
+        final p = (g['ratePerMonth'] as num? ?? 0).toDouble();
+        return p >= 30000 && p <= 60000;
+      }).toList();
+    } else if (_gymPriceFilter == 'over60k') {
+      gyms = gyms.where((g) => (g['ratePerMonth'] as num? ?? 0) > 60000).toList();
+    }
+
+    // Collect all unique amenities from loaded gyms for amenity chips
+    final allAmenities = <String>{};
+    for (final g in _gyms.cast<Map<String, dynamic>>()) {
+      final ams = g['amenities'];
+      if (ams is List) allAmenities.addAll(ams.map((a) => a.toString()));
+    }
+
+    final tierFilters = ['all', 'nearest', 'standard', 'midtier', 'premium', 'my_sub'];
+    final tierLabels = [
       context.tr('member.all'),
       context.tr('member.nearest'),
-      'Standard',
-      'Mid-Range',
-      'Premium',
+      'Standard', 'Mid-Range', 'Premium',
+      context.tr('member.mySubFilter'),
     ];
+    final priceFilters = ['any', 'under30k', '30k_60k', 'over60k'];
+    final priceLabels = [
+      context.tr('member.anyPrice'),
+      '< 30,000', '30k – 60k', '> 60,000',
+    ];
+
     return _scroll([
       _title(context.tr('member.discoverGyms')),
       TextField(
+        controller: _gymSearchCtrl,
         decoration: InputDecoration(
           hintText: context.tr('member.searchGyms'),
           prefixIcon: const Icon(Icons.search),
+          suffixIcon: _gymSearch.isEmpty
+              ? null
+              : IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () {
+                    _gymSearchCtrl.clear();
+                    setState(() => _gymSearch = '');
+                  },
+                ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(FFTokens.radiusLg),
           ),
         ),
         onChanged: (v) => setState(() => _gymSearch = v),
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: 10),
+      // Tier / sort filter row
       SizedBox(
         height: 38,
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
-          itemCount: filters.length,
-          separatorBuilder: (_, separatorIndex) => const SizedBox(width: 8),
-          itemBuilder: (_, i) => GestureDetector(
-            onTap: () => setState(() => _gymFilter = filters[i]),
-            child: _pill(filterLabels[i], filled: _gymFilter == filters[i]),
+          itemCount: tierFilters.length,
+          separatorBuilder: (context, index) => const SizedBox(width: 8),
+          itemBuilder: (context, i) => GestureDetector(
+            onTap: () => setState(() => _gymFilter = tierFilters[i]),
+            child: _pill(tierLabels[i], filled: _gymFilter == tierFilters[i]),
           ),
         ),
       ),
+      const SizedBox(height: 8),
+      // Price filter row
+      SizedBox(
+        height: 38,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: priceFilters.length,
+          separatorBuilder: (context, index) => const SizedBox(width: 8),
+          itemBuilder: (context, i) => GestureDetector(
+            onTap: () => setState(() => _gymPriceFilter = priceFilters[i]),
+            child: _pill(priceLabels[i], filled: _gymPriceFilter == priceFilters[i]),
+          ),
+        ),
+      ),
+      // Amenity chips (shown only when gyms have amenities)
+      if (allAmenities.isNotEmpty) ...[   
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 38,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: [
+              GestureDetector(
+                onTap: () => setState(() => _gymAmenityFilter = ''),
+                child: _pill(context.tr('member.allAmenities'), filled: _gymAmenityFilter.isEmpty),
+              ),
+              ...allAmenities.map((am) => Padding(
+                padding: const EdgeInsets.only(left: 8),
+                child: GestureDetector(
+                  onTap: () => setState(() =>
+                    _gymAmenityFilter = _gymAmenityFilter == am ? '' : am),
+                  child: _pill(am, filled: _gymAmenityFilter == am),
+                ),
+              )),
+            ],
+          ),
+        ),
+      ],
       const SizedBox(height: 12),
       if (gyms.isEmpty) _empty() else ...gyms.map(_compactGymCard),
     ]);
@@ -1498,10 +1687,10 @@ class _HomeScreenState extends State<HomeScreen> {
         )
         .take(2);
     return _scroll([
-      _backTitle(
-        context.tr('member.gymDetail'),
-        () => setState(() => _selectedGym = null),
-      ),
+      // _backTitle(
+      //   context.tr('member.gymDetail'),
+      //   () => setState(() => _selectedGym = null),
+      // ),
       _imageHero(gym),
       _title(gym['name']?.toString() ?? ''),
       _muted(gym['location']?.toString() ?? ''),
@@ -1554,7 +1743,10 @@ class _HomeScreenState extends State<HomeScreen> {
           Expanded(
             child: OutlinedButton(
               onPressed: () => _openTab(3),
-              child: Text(context.tr('member.visitWithPass')),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(context.tr('member.visitWithPass')),
+              ),
             ),
           ),
         ],
@@ -1564,10 +1756,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _passSelectionScreen() {
     return _scroll([
-      _backTitle(
-        context.tr('member.choosePlan'),
-        () => setState(() => _showPassSelection = false),
-      ),
+      // _backTitle(
+      //   context.tr('member.choosePlan'),
+      //   () => setState(() => _showPassSelection = false),
+      // ),
       _muted(context.tr('member.planBody')),
       const SizedBox(height: 14),
       if (!_passesLoaded)
@@ -1595,8 +1787,46 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         )
-      else
+      else ...[  
         ..._passes.cast<Map<String, dynamic>>().map((p) => _selectablePass(p)),
+        const SizedBox(height: 12),
+        _section(context.tr('member.compatibleGyms')),
+        _muted(context.tr('member.compatibleGymsBody')),
+        const SizedBox(height: 8),
+        if (_selectedTier.isNotEmpty)
+          ..._passes
+              .cast<Map<String, dynamic>>()
+              .where((p) => p['id'] == _selectedTier)
+              .map((p) {
+                final access = p['gymAccess']?.toString() ?? '';
+                return _card(
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        context.tr('member.accessLevel'),
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(_gymAccessLabel(access, context), style: const TextStyle(fontSize: 13)),
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            _showPassSelection = false;
+                            _showPayment = false;
+                            _gymFilter = 'my_sub';
+                          });
+                          _openTab(1);
+                        },
+                        icon: const Icon(Icons.fitness_center, size: 16),
+                        label: Text(context.tr('member.browseCompatibleGyms')),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+      ],
       const SizedBox(height: 8),
       if (_selectedTier.isNotEmpty &&
           _passes.cast<Map<String, dynamic>>().any(
@@ -1615,10 +1845,10 @@ class _HomeScreenState extends State<HomeScreen> {
       orElse: () => {'id': _selectedTier, 'price': 0, 'visitCap': null},
     );
     return _scroll([
-      _backTitle(
-        context.tr('member.payment'),
-        () => setState(() => _showPayment = false),
-      ),
+      // _backTitle(
+      //   context.tr('member.payment'),
+      //   () => setState(() => _showPayment = false),
+      // ),
       _muted(context.tr('member.paymentBody')),
       const SizedBox(height: 14),
       _card(
@@ -1663,25 +1893,31 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _trainersTab() {
     var trainers = _trainers.cast<Map<String, dynamic>>().toList();
     // Apply search
-    if (_trainerSearch.isNotEmpty) {
-      final q = _trainerSearch.toLowerCase();
+    final trainerQuery = _norm(_trainerSearch);
+    if (trainerQuery.isNotEmpty) {
       trainers = trainers
           .where(
             (t) =>
-                (t['displayName']?.toString().toLowerCase().contains(q) ??
-                    false) ||
-                (t['specialties'] as List? ?? []).any(
-                  (s) => s.toString().toLowerCase().contains(q),
-                ),
+                _containsQuery(t['displayName'], trainerQuery) ||
+                _containsQuery(t['bio'], trainerQuery) ||
+                _listContainsQuery(t['specialties'], trainerQuery) ||
+                ((t['gyms'] as List? ?? const []).whereType<Map>().any(
+                  (g) =>
+                      _containsQuery(g['name'], trainerQuery) ||
+                      _containsQuery(g['location'], trainerQuery),
+                )),
           )
           .toList();
     }
     // Apply specialty filter
     if (_trainerFilter != 'all') {
+      final filter = _norm(_trainerFilter);
       trainers = trainers
           .where(
             (t) => (t['specialties'] as List? ?? []).any(
-              (s) => s.toString().toLowerCase() == _trainerFilter.toLowerCase(),
+              (s) => _norm(
+                s,
+              ).replaceAll(' ', '').contains(filter.replaceAll(' ', '')),
             ),
           )
           .toList();
@@ -1690,9 +1926,19 @@ class _HomeScreenState extends State<HomeScreen> {
     return _scroll([
       _title(context.tr('member.findTrainerTitle')),
       TextField(
+        controller: _trainerSearchCtrl,
         decoration: InputDecoration(
           hintText: context.tr('member.searchTrainers'),
           prefixIcon: const Icon(Icons.search),
+          suffixIcon: _trainerSearch.isEmpty
+              ? null
+              : IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () {
+                    _trainerSearchCtrl.clear();
+                    setState(() => _trainerSearch = '');
+                  },
+                ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(FFTokens.radiusLg),
           ),
@@ -1725,16 +1971,16 @@ class _HomeScreenState extends State<HomeScreen> {
     final availability =
         (trainer['availability'] as List?)?.whereType<Map>().toList() ?? [];
     return _scroll([
-      _backTitle(
-        context.tr('member.findTrainerTitle'),
-        () => setState(() => _selectedTrainer = null),
-      ),
+      // _backTitle(
+      //   context.tr('member.findTrainerTitle'),
+      //   () => setState(() => _selectedTrainer = null),
+      // ),
       _title(trainer['displayName']?.toString() ?? ''),
       _muted((trainer['specialties'] as List? ?? []).join(' / ')),
       const SizedBox(height: 10),
       Wrap(
         spacing: 6,
-        children: [_pill('TZS ${trainer['hourlyRateTzs'] ?? 0}/session')],
+        children: [_pill('TZS ${trainer['hourlyRateTzs'] ?? 0}/hr')],
       ),
       _section(context.tr('member.about')),
       _card(
@@ -1838,6 +2084,13 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       _section(context.tr('member.mySubscription')),
       _passSummary(),
+      if (_hasActivePass) ...[  
+        _actionTile(
+          icon: Icons.qr_code_2,
+          title: context.tr('member.showQr'),
+          onTap: () => _openTab(3),
+        ),
+      ],
       _section(context.tr('member.visitHistory')),
       _checkinList(limit: 8),
       _section(context.tr('member.accountSettings')),
@@ -1997,31 +2250,43 @@ class _HomeScreenState extends State<HomeScreen> {
         ? context.tr('home.qr.pendingBody')
         : context.tr('home.qr.lockedBody');
     return _card(
-      Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      Column(
         children: [
-          const Icon(Icons.qr_code_2, color: FFTokens.brandDark, size: 42),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                  ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.qr_code_2, color: FFTokens.brandDark, size: 42),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      body,
+                      style: const TextStyle(
+                        color: FFTokens.textMuted,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  body,
-                  style: const TextStyle(
-                    color: FFTokens.textMuted,
-                    height: 1.35,
-                  ),
-                ),
-              ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: () => setState(() => _showPassSelection = true),
+              child: Text(context.tr('member.subscribe')),
             ),
           ),
         ],
@@ -2128,7 +2393,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             Text(
-              'TZS ${trainer['hourlyRateTzs'] ?? 0}/session',
+              'TZS ${trainer['hourlyRateTzs'] ?? 0}/hr',
               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
             ),
           ],
@@ -2490,14 +2755,14 @@ class _HomeScreenState extends State<HomeScreen> {
     ),
   );
 
-  Widget _backTitle(String text, VoidCallback onBack) {
-    return Row(
-      children: [
-        IconButton(onPressed: onBack, icon: const Icon(Icons.arrow_back)),
-        Expanded(child: _title(text)),
-      ],
-    );
-  }
+  // Widget _backTitle(String text, VoidCallback onBack) {
+  //   return Row(
+  //     children: [
+  //       IconButton(onPressed: onBack, icon: const Icon(Icons.arrow_back)),
+  //       Expanded(child: _title(text)),
+  //     ],
+  //   );
+  // }
 
   Widget _stepText(String text) => Text(
     text,
@@ -2536,4 +2801,203 @@ class _HomeScreenState extends State<HomeScreen> {
       style: const TextStyle(color: FFTokens.textMuted),
     ),
   );
+}
+
+// ── Add Member Bottom Sheet ──────────────────────────────────────────────────
+
+class _AddMemberSheet extends StatefulWidget {
+  const _AddMemberSheet({required this.ownerGymIds, required this.onSaved});
+  final List<String> ownerGymIds;
+  final Future<void> Function(Map<String, dynamic> payload) onSaved;
+
+  @override
+  State<_AddMemberSheet> createState() => _AddMemberSheetState();
+}
+
+class _AddMemberSheetState extends State<_AddMemberSheet> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
+  final _amountCtrl = TextEditingController();
+  String _durationUnit = 'M';
+  DateTime _startDate = DateTime.now();
+  DateTime _endDate = DateTime.now().add(const Duration(days: 30));
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _emailCtrl.dispose();
+    _phoneCtrl.dispose();
+    _amountCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _busy = true);
+    final payload = <String, dynamic>{
+      'displayName': _nameCtrl.text.trim(),
+      if (_emailCtrl.text.trim().isNotEmpty) 'email': _emailCtrl.text.trim(),
+      if (_phoneCtrl.text.trim().isNotEmpty) 'phone': _phoneCtrl.text.trim(),
+      if (widget.ownerGymIds.isNotEmpty) 'gymId': widget.ownerGymIds.first,
+      'durationUnit': _durationUnit,
+      'startDate': _startDate.toIso8601String().split('T').first,
+      'endDate': _endDate.toIso8601String().split('T').first,
+      if (_amountCtrl.text.isNotEmpty)
+        'paidAmount': num.tryParse(_amountCtrl.text) ?? 0,
+    };
+    try {
+      await widget.onSaved(payload);
+      if (mounted) Navigator.of(context).pop();
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _pickDate({required bool isStart}) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: isStart ? _startDate : _endDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+    );
+    if (picked != null && mounted) {
+      setState(() {
+        if (isStart) {
+          _startDate = picked;
+          if (_endDate.isBefore(_startDate)) _endDate = _startDate.add(const Duration(days: 30));
+        } else {
+          _endDate = picked;
+        }
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 16, right: 16, top: 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                context.tr('owner.addMember'),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _nameCtrl,
+                decoration: InputDecoration(
+                  labelText: context.tr('member.fullName'),
+                  border: const OutlineInputBorder(),
+                ),
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? context.tr('onboarding.required') : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _emailCtrl,
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  labelText: context.tr('auth.email'),
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _phoneCtrl,
+                keyboardType: TextInputType.phone,
+                decoration: InputDecoration(
+                  labelText: context.tr('auth.phone'),
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _amountCtrl,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: context.tr('owner.paidAmount'),
+                  suffixText: 'TZS',
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: _durationUnit,
+                decoration: InputDecoration(
+                  labelText: context.tr('owner.durationUnit'),
+                  border: const OutlineInputBorder(),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'D', child: Text('Daily')),
+                  DropdownMenuItem(value: 'W', child: Text('Weekly')),
+                  DropdownMenuItem(value: 'M', child: Text('Monthly')),
+                ],
+                onChanged: (v) => setState(() => _durationUnit = v ?? 'M'),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _pickDate(isStart: true),
+                      icon: const Icon(Icons.calendar_today, size: 16),
+                      label: Text(
+                        '${context.tr('owner.startDate')}: ${_startDate.toIso8601String().split('T').first}',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _pickDate(isStart: false),
+                      icon: const Icon(Icons.calendar_today, size: 16),
+                      label: Text(
+                        '${context.tr('owner.endDate')}: ${_endDate.toIso8601String().split('T').first}',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: _busy ? null : _submit,
+                      child: _busy
+                          ? const SizedBox(
+                              height: 18, width: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : Text(context.tr('owner.registerMember')),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: Text(context.tr('member.cancel')),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

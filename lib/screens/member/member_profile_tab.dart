@@ -1,19 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../app_scope.dart';
 import '../../router.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
+import '../../shared/models.dart';
+import '../../shared/widgets/profile_form_page.dart';
 import 'member_shell.dart';
 import 'widgets/pass_summary_card.dart';
 import 'widgets/checkin_list.dart';
 
-class MemberProfileTab extends StatelessWidget {
+class MemberProfileTab extends StatefulWidget {
   const MemberProfileTab({super.key});
 
-  Future<void> _confirmSignOut(BuildContext context) async {
+  @override
+  State<MemberProfileTab> createState() => _MemberProfileTabState();
+}
+
+class _MemberProfileTabState extends State<MemberProfileTab> {
+  Future<void> _confirmSignOut() async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -32,10 +40,61 @@ class MemberProfileTab extends StatelessWidget {
         ],
       ),
     );
-    if (confirmed != true || !context.mounted) return;
+    if (confirmed != true || !mounted) return;
     await AppScope.of(context).auth.signOut();
-    if (!context.mounted) return;
+    if (!mounted) return;
     context.go(AppRoutes.language);
+  }
+
+  Future<void> _openEditDetails() async {
+    final data = MemberDataScope.of(context);
+    final me = data.me;
+    final user = <String, dynamic>{
+      'userType': 'member',
+      'displayName': me?.user.displayName,
+      'email': me?.user.email,
+      'phone': me?.user.phone,
+      'memberProfile': {
+        'heightCm': me?.user.memberProfile?.heightCm,
+        'weightKg': me?.user.memberProfile?.weightKg,
+        'dateOfBirth': me?.user.memberProfile?.dateOfBirth,
+        'gender': me?.user.memberProfile?.gender,
+      },
+    };
+    final saved = await openProfileForm(
+      context,
+      title: context.tr('member.editDetails'),
+      initialUser: user,
+    );
+    if (saved == true && mounted) {
+      final api = AppScope.of(context).api;
+      try {
+        final res = await api.me();
+        if (!mounted) return;
+        data.update(
+          (d) => d.me = MemberMeResponse.fromJson(
+            Map<String, dynamic>.from(res as Map),
+          ),
+        );
+        final updatedUser = Map<String, dynamic>.from(
+          (res as Map)['user'] as Map? ?? {},
+        );
+        final token = AppScope.of(context).auth.token;
+        if (token != null) {
+          await AppScope.of(context).auth.signIn(token, updatedUser);
+        }
+      } catch (_) {}
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.tr('member.profileUpdated'))),
+        );
+      }
+    }
+  }
+
+  void _openWhatsAppSupport() {
+    final uri = Uri.parse('https://wa.me/255786670499');
+    launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
   @override
@@ -121,26 +180,26 @@ class MemberProfileTab extends StatelessWidget {
         FFActionTile(
           icon: Icons.edit,
           title: context.tr('member.editDetails'),
-          onTap: () {},
+          onTap: _openEditDetails,
         ),
-        FFActionTile(
-          icon: Icons.payment,
-          title: context.tr('member.paymentMethods'),
-          onTap: () {},
-        ),
-        FFActionTile(
-          icon: Icons.notifications,
-          title: context.tr('member.notifications'),
-          onTap: () {},
-        ),
+        // FFActionTile(
+        //   icon: Icons.payment,
+        //   title: context.tr('member.paymentMethods'),
+        //   onTap: () {},
+        // ),
+        // FFActionTile(
+        //   icon: Icons.notifications,
+        //   title: context.tr('member.notifications'),
+        //   onTap: () {},
+        // ),
         FFActionTile(
           icon: Icons.help_outline,
           title: context.tr('member.help'),
-          onTap: () {},
+          onTap: _openWhatsAppSupport,
         ),
         const SizedBox(height: 16),
         OutlinedButton.icon(
-          onPressed: () => _confirmSignOut(context),
+          onPressed: _confirmSignOut,
           icon: const Icon(Icons.logout, color: FFTokens.fgTertiary),
           label: Text(
             context.tr('home.signout'),

@@ -30,125 +30,125 @@ class MemberGymDetailPage extends StatelessWidget {
         .take(2)
         .toList();
 
-    return ListView(
-      padding: const EdgeInsets.all(FFTokens.spacingLg),
-      children: [
-        // Back + title
-        Row(
-          children: [
-            IconButton(
-              onPressed: () => context.go(AppRoutes.memberGyms),
-              icon: const Icon(Icons.arrow_back),
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          onPressed: () => context.go(AppRoutes.memberGyms),
+          icon: const Icon(Icons.arrow_back),
+        ),
+        title: Text(context.tr('member.gymDetail')),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(FFTokens.spacingLg),
+        children: [
+          // Hero image
+          _GymHero(gym: gym),
+
+          // Name + location
+          Text(
+            gym.name,
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w600,
+              color: FFTokens.fgPrimary,
             ),
-            Expanded(
-              child: Text(
-                context.tr('member.gymDetail'),
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  color: FFTokens.fgPrimary,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            gym.location,
+            style: const TextStyle(color: FFTokens.fgQuaternary, fontSize: 14),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              FFBadge(
+                label: gym.tier.replaceAll('_', ' '),
+                tone: FFBadgeTone.brand,
+              ),
+              const SizedBox(width: 6),
+              FFBadge(
+                label: gym.isFreeOnline
+                    ? context.tr('gym.free')
+                    : context.tr('gym.paid'),
+                tone: gym.isFreeOnline ? FFBadgeTone.success : FFBadgeTone.gray,
+              ),
+            ],
+          ),
+
+          // About
+          _SectionTitle(context.tr('member.about')),
+          FFCard(
+            child: Text(
+              gym.venueType == 'online'
+                  ? context.tr('member.planBody')
+                  : '${context.tr('member.openNow')} - QR Check-in - ${gym.perVisitRate} TZS',
+              style: const TextStyle(color: FFTokens.fgQuaternary, height: 1.4),
+            ),
+          ),
+
+          // Amenities & Equipment
+          if (gym.amenities.isNotEmpty || gym.equipment.isNotEmpty) ...[
+            _SectionTitle(context.tr('gym.amenities')),
+            if (gym.amenities.isNotEmpty)
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: gym.amenities
+                    .map((a) => FFBadge(label: a, tone: FFBadgeTone.brand))
+                    .toList(),
+              ),
+            if (gym.equipment.isNotEmpty) ...[
+              if (gym.amenities.isNotEmpty) const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: gym.equipment
+                    .map((e) => FFBadge(label: e, tone: FFBadgeTone.gray))
+                    .toList(),
+              ),
+            ],
+          ],
+
+          // Trainers
+          _SectionTitle(context.tr('member.trainersAtGym')),
+          if (trainersAtGym.isEmpty)
+            FFEmptyState(title: context.tr('member.noData'))
+          else
+            ...trainersAtGym.map((t) => TrainerCard(trainer: t)),
+
+          const SizedBox(height: 16),
+          if (data.pendingPayment != null) ...[
+            FFAlert(
+              message: context.tr('home.qr.pendingBody'),
+              tone: FFAlertTone.warning,
+            ),
+            const SizedBox(height: 8),
+          ],
+          Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: FilledButton(
+                  onPressed: data.pendingPayment != null
+                      ? null
+                      : () => context.go(AppRoutes.memberPasses),
+                  child: Text(context.tr('member.subscribe')),
                 ),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-
-        // Hero image
-        _GymHero(gym: gym),
-
-        // Name + location
-        Text(
-          gym.name,
-          style: const TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w600,
-            color: FFTokens.fgPrimary,
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => context.go(AppRoutes.memberQr),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(context.tr('member.visitWithPass')),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          gym.location,
-          style: const TextStyle(color: FFTokens.fgQuaternary, fontSize: 14),
-        ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            FFBadge(
-              label: gym.tier.replaceAll('_', ' '),
-              tone: FFBadgeTone.brand,
-            ),
-            const SizedBox(width: 6),
-            FFBadge(
-              label: gym.isFreeOnline
-                  ? context.tr('gym.free')
-                  : context.tr('gym.paid'),
-              tone: gym.isFreeOnline ? FFBadgeTone.success : FFBadgeTone.gray,
-            ),
-          ],
-        ),
-
-        // About
-        _SectionTitle(context.tr('member.about')),
-        FFCard(
-          child: Text(
-            gym.venueType == 'online'
-                ? context.tr('member.planBody')
-                : '${context.tr('member.openNow')} - QR Check-in - ${gym.perVisitRate} TZS',
-            style: const TextStyle(color: FFTokens.fgQuaternary, height: 1.4),
-          ),
-        ),
-
-        // Amenities & Equipment
-        if (gym.amenities.isNotEmpty || gym.equipment.isNotEmpty) ...[
-          _SectionTitle(context.tr('gym.amenities')),
-          if (gym.amenities.isNotEmpty)
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: gym.amenities
-                  .map((a) => FFBadge(label: a, tone: FFBadgeTone.brand))
-                  .toList(),
-            ),
-          if (gym.equipment.isNotEmpty) ...[
-            if (gym.amenities.isNotEmpty) const SizedBox(height: 8),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: gym.equipment
-                  .map((e) => FFBadge(label: e, tone: FFBadgeTone.gray))
-                  .toList(),
-            ),
-          ],
         ],
-
-        // Trainers
-        _SectionTitle(context.tr('member.trainersAtGym')),
-        if (trainersAtGym.isEmpty)
-          FFEmptyState(title: context.tr('member.noData'))
-        else
-          ...trainersAtGym.map((t) => TrainerCard(trainer: t)),
-
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              flex: 2,
-              child: FilledButton(
-                onPressed: () => context.go(AppRoutes.memberPasses),
-                child: Text(context.tr('member.subscribe')),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: OutlinedButton(
-                onPressed: () => context.go(AppRoutes.memberQr),
-                child: Text(context.tr('member.visitWithPass')),
-              ),
-            ),
-          ],
-        ),
-      ],
+      ),
     );
   }
 }

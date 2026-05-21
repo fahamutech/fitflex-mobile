@@ -26,8 +26,13 @@ class _ProfileFormPageState extends State<ProfileFormPage> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _name;
   late final TextEditingController _phone;
+  late final TextEditingController _height;
+  late final TextEditingController _weight;
+  late final TextEditingController _dateOfBirth;
+  late String _gender;
   bool _busy = false;
   String? _error;
+  bool get _isMember => widget.initialUser['userType']?.toString() == 'member';
 
   @override
   void initState() {
@@ -38,12 +43,26 @@ class _ProfileFormPageState extends State<ProfileFormPage> {
     _phone = TextEditingController(
       text: widget.initialUser['phone']?.toString() ?? '',
     );
+    final profile = widget.initialUser['memberProfile'] as Map? ?? const {};
+    _height = TextEditingController(
+      text: profile['heightCm']?.toString() ?? '',
+    );
+    _weight = TextEditingController(
+      text: profile['weightKg']?.toString() ?? '',
+    );
+    _dateOfBirth = TextEditingController(
+      text: profile['dateOfBirth']?.toString() ?? '',
+    );
+    _gender = profile['gender']?.toString() ?? '';
   }
 
   @override
   void dispose() {
     _name.dispose();
     _phone.dispose();
+    _height.dispose();
+    _weight.dispose();
+    _dateOfBirth.dispose();
     super.dispose();
   }
 
@@ -58,10 +77,25 @@ class _ProfileFormPageState extends State<ProfileFormPage> {
       _error = null;
     });
     try {
-      await AppScope.of(context).api.updateProfile({
+      final payload = <String, dynamic>{
         'displayName': _name.text.trim(),
         'phone': _phone.text.trim(),
-      });
+      };
+      if (_isMember) {
+        payload.addAll({
+          'heightCm': _height.text.trim().isEmpty
+              ? null
+              : num.tryParse(_height.text.trim()),
+          'weightKg': _weight.text.trim().isEmpty
+              ? null
+              : num.tryParse(_weight.text.trim()),
+          'dateOfBirth': _dateOfBirth.text.trim().isEmpty
+              ? null
+              : _dateOfBirth.text.trim(),
+          'gender': _gender.isEmpty ? null : _gender,
+        });
+      }
+      await AppScope.of(context).api.updateProfile(payload);
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } on ApiException catch (e) {
@@ -133,6 +167,67 @@ class _ProfileFormPageState extends State<ProfileFormPage> {
                   border: OutlineInputBorder(),
                 ),
               ),
+              if (_isMember) ...[
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: _gender.isEmpty ? null : _gender,
+                  decoration: InputDecoration(
+                    labelText: context.tr('onboarding.gender'),
+                    border: const OutlineInputBorder(),
+                  ),
+                  items: [
+                    DropdownMenuItem(
+                      value: 'male',
+                      child: Text(context.tr('onboarding.gender_male')),
+                    ),
+                    DropdownMenuItem(
+                      value: 'female',
+                      child: Text(context.tr('onboarding.gender_female')),
+                    ),
+                    DropdownMenuItem(
+                      value: 'other',
+                      child: Text(context.tr('onboarding.gender_other')),
+                    ),
+                  ],
+                  onChanged: (value) => setState(() => _gender = value ?? ''),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _dateOfBirth,
+                  keyboardType: TextInputType.datetime,
+                  decoration: InputDecoration(
+                    labelText: context.tr('member.dateOfBirth'),
+                    border: const OutlineInputBorder(),
+                    hintText: 'YYYY-MM-DD',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _height,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: context.tr('member.height'),
+                          border: const OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _weight,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: context.tr('member.weight'),
+                          border: const OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               if (_error != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 12),
