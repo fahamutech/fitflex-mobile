@@ -17,14 +17,38 @@ class OwnerQrScannerPage extends StatefulWidget {
 class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
   final MobileScannerController _cameraCtrl = MobileScannerController();
   bool _busy = false;
+  List<Map<String, dynamic>> _gyms = [];
+  String? _selectedGymId;
   Map<String, dynamic>? _verifyResult;
   String? _scannedToken;
   String? _error;
 
   @override
+  void initState() {
+    super.initState();
+    _loadGyms();
+  }
+
+  @override
   void dispose() {
     _cameraCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadGyms() async {
+    try {
+      final result = await AppScope.of(context).api.ownerGyms();
+      if (!mounted) return;
+      final gyms = result.cast<Map<String, dynamic>>();
+      setState(() {
+        _gyms = gyms;
+        if (_selectedGymId == null && gyms.length == 1) {
+          _selectedGymId = gyms.first['id']?.toString();
+        }
+      });
+    } catch (_) {
+      // Existing single-gym operators can still scan with their server-side default.
+    }
   }
 
   Future<void> _onDetect(BarcodeCapture capture) async {
@@ -44,7 +68,7 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
     });
     try {
       final api = AppScope.of(context).api;
-      final result = await api.operatorVerifyQr(qrToken);
+      final result = await api.operatorVerifyQr(qrToken, gymId: _selectedGymId);
       if (!mounted) return;
       setState(() => _verifyResult = result);
     } on ApiException catch (e) {
@@ -62,16 +86,17 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
   }
 
   Future<void> _approveCheckIn() async {
-    if (_scannedToken == null) return;
+    if (_scannedToken == null || _selectedGymId == null) return;
     setState(() => _busy = true);
     try {
       final api = AppScope.of(context).api;
-      await api.operatorCheckIn(_scannedToken!);
+      await api.operatorCheckIn(_scannedToken!, gymId: _selectedGymId);
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(context.tr('ownerScan.approved'))));
-      _reset();
+      final closed = await Navigator.of(context).maybePop();
+      if (!closed && mounted) _reset();
     } on ApiException catch (e) {
       if (!mounted) return;
       final body = e.body is Map ? e.body as Map : {};
@@ -91,6 +116,7 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
       _verifyResult = null;
       _scannedToken = null;
       _error = null;
+      if (_gyms.length != 1) _selectedGymId = null;
     });
   }
 
@@ -145,6 +171,7 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
     final reason = r['reason']?.toString() ?? '';
     final visitsUsed = r['visitsUsed'] as num? ?? 0;
     final visitCap = r['visitCap'] as num?;
+    final needsGymSelection = _gyms.length > 1 && _selectedGymId == null;
 
     return ListView(
       padding: const EdgeInsets.all(FFTokens.spacingLg),
@@ -157,7 +184,10 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
               Row(
                 children: [
                   FFAvatar(
-                    name: member['displayName']?.toString() ?? 'Member',
+                    name:
+                        member['publicId']?.toString() ??
+                        member['userCode']?.toString() ??
+                        'Member',
                     src: member['photoUrl']?.toString(),
                     size: FFAvatarSize.lg,
                   ),
@@ -167,29 +197,16 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          member['displayName']?.toString() ?? 'Unknown',
+                          member['publicId']?.toString() ??
+                              member['userCode']?.toString() ??
+                              member['id']?.toString() ??
+                              'Member',
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
                             color: FFTokens.fgPrimary,
                           ),
                         ),
-                        if (member['email'] != null)
-                          Text(
-                            member['email'].toString(),
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: FFTokens.fgTertiary,
-                            ),
-                          ),
-                        if (member['phone'] != null)
-                          Text(
-                            member['phone'].toString(),
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: FFTokens.fgTertiary,
-                            ),
-                          ),
                       ],
                     ),
                   ),
@@ -253,7 +270,30 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (gym != null)
+              if (_gyms.length > 1) ...[
+                DropdownButtonFormField<String>(
+                  initialValue: _selectedGymId,
+                  decoration: InputDecoration(
+                    labelText: context.tr('ownerScan.chooseGym'),
+                    border: const OutlineInputBorder(),
+                  ),
+                  items: _gyms
+                      .map(
+                        (g) => DropdownMenuItem(
+                          value: g['id']?.toString(),
+                          child: Text(g['name']?.toString() ?? ''),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: _busy || _scannedToken == null
+                      ? null
+                      : (value) async {
+                          setState(() => _selectedGymId = value);
+                          if (value != null) await _verify(_scannedToken!);
+                        },
+                ),
+                const SizedBox(height: 12),
+              ] else if (gym != null)
                 Text(
                   '${context.tr("ownerScan.gym")}: ${gym['name']}',
                   style: const TextStyle(
@@ -272,7 +312,9 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      eligible
+                      needsGymSelection
+                          ? context.tr('ownerScan.selectGymToVerify')
+                          : eligible
                           ? context.tr('ownerScan.eligible')
                           : context.tr('ownerScan.reason_$reason'),
                       style: TextStyle(
@@ -292,7 +334,7 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
         // Actions
         if (eligible)
           FilledButton.icon(
-            onPressed: _busy ? null : _approveCheckIn,
+            onPressed: _busy || _selectedGymId == null ? null : _approveCheckIn,
             icon: _busy
                 ? const SizedBox(
                     height: 18,

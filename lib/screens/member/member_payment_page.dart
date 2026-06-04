@@ -72,6 +72,10 @@ class MemberPaymentPage extends StatelessWidget {
                       ? context.tr('pass.unlimited')
                       : '$visitCap',
                 ),
+                _Row(
+                  label: context.tr('member.availableGyms'),
+                  value: '${data.gyms.length}',
+                ),
                 _Row(label: 'Total', value: 'TZS $price'),
               ],
             ),
@@ -167,6 +171,11 @@ class _SubmitButtonState extends State<_SubmitButton> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.tr('member.paymentSubmitted'))),
       );
+      // Refresh QR and user data after subscription
+      final shellState = context.findAncestorStateOfType<MemberShellState>();
+      await shellState?.refreshQr();
+      await shellState?.refreshMe();
+      if (!mounted) return;
       context.go(AppRoutes.memberHome);
     } on ApiException catch (e) {
       if (!mounted) return;

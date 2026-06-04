@@ -53,6 +53,11 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  integration_test:
+    sdk: flutter
+
+  # Patrol: native UI automation for blackbox journey tests (key/text finders).
+  patrol: ^3.15.2
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -60,6 +65,14 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+
+# Patrol configuration (used by `patrol test` / `patrol develop`).
+patrol:
+  app_name: FitFlex
+  android:
+    package_name: com.example.fitflexmobile
+  ios:
+    bundle_id: com.example.fitflexmobile
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

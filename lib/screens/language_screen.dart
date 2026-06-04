@@ -48,11 +48,13 @@ class LanguageScreen extends StatelessWidget {
               ),
               const SizedBox(height: 32),
               FilledButton(
+                key: const Key('langEnglish'),
                 onPressed: () => _select(context, 'en'),
                 child: const Text('English'),
               ),
               const SizedBox(height: 12),
               FilledButton(
+                key: const Key('langKiswahili'),
                 onPressed: () => _select(context, 'sw'),
                 child: const Text('Kiswahili'),
               ),

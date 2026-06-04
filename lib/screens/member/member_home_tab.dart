@@ -11,8 +11,28 @@ import 'widgets/trainer_card.dart';
 import 'widgets/pass_summary_card.dart';
 import 'widgets/checkin_list.dart';
 
-class MemberHomeTab extends StatelessWidget {
+class MemberHomeTab extends StatefulWidget {
   const MemberHomeTab({super.key});
+
+  @override
+  State<MemberHomeTab> createState() => _MemberHomeTabState();
+}
+
+class _MemberHomeTabState extends State<MemberHomeTab> {
+  @override
+  void initState() {
+    super.initState();
+    // Refresh QR and user data when home tab becomes visible
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshData();
+    });
+  }
+
+  Future<void> _refreshData() async {
+    final shellState = context.findAncestorStateOfType<MemberShellState>();
+    await shellState?.refreshQr();
+    await shellState?.refreshMe();
+  }
 
   @override
   Widget build(BuildContext context) {

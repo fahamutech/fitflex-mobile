@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../router.dart';
+import '../shared/api_client.dart';
 import '../shared/i18n.dart';
 import '../shared/design_tokens.dart';
 import '../shared/auth_state.dart';
 import '../app_scope.dart';
+
+/// Compile-time flag: enables a dev-only mock-login panel for blackbox testing.
+/// Build with `--dart-define=MOCK_AUTH=true`. Never enabled in store builds.
+const bool kMockAuth = bool.fromEnvironment('MOCK_AUTH');
 
 class RoleScreen extends StatelessWidget {
   const RoleScreen({super.key});
@@ -54,8 +59,110 @@ class RoleScreen extends StatelessWidget {
                 icon: Icons.sports_gymnastics,
                 onTap: () => _pick(context, auth, 'trainer'),
               ),
+              if (kMockAuth) const _DevLoginPanel(),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Dev-only panel that mints a mock session via the backend's /auth/dev/login.
+class _DevLoginPanel extends StatefulWidget {
+  const _DevLoginPanel();
+
+  @override
+  State<_DevLoginPanel> createState() => _DevLoginPanelState();
+}
+
+class _DevLoginPanelState extends State<_DevLoginPanel> {
+  bool _busy = false;
+  String? _error;
+
+  Future<void> _login(String role) async {
+    if (_busy) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final auth = AppScope.of(context).auth;
+    try {
+      final res = await AppScope.of(context).api.devLogin(role);
+      final user = Map<String, dynamic>.from(res['user'] as Map);
+      await auth.setRole(user['userType']?.toString() ?? role);
+      await auth.signIn(res['token'] as String, user);
+      if (!mounted) return;
+      context.go(routeForSignedInUser(auth));
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _error = 'Dev login failed (${e.status})');
+    } catch (e) {
+      if (mounted) setState(() => _error = e.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 28),
+      child: Container(
+        padding: const EdgeInsets.all(FFTokens.spacingMd),
+        decoration: BoxDecoration(
+          color: FFTokens.surface,
+          border: Border.all(color: FFTokens.border),
+          borderRadius: BorderRadius.circular(FFTokens.radiusLg),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.bug_report, size: 18, color: FFTokens.textMuted),
+                SizedBox(width: 8),
+                Text(
+                  'DEV: Mock login',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: FFTokens.textMuted,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            if (_busy)
+              const Center(child: CircularProgressIndicator())
+            else
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton(
+                    key: const Key('devLoginMember'),
+                    onPressed: () => _login('member'),
+                    child: const Text('Member'),
+                  ),
+                  OutlinedButton(
+                    key: const Key('devLoginOwner'),
+                    onPressed: () => _login('owner'),
+                    child: const Text('Gym Owner'),
+                  ),
+                  OutlinedButton(
+                    key: const Key('devLoginTrainer'),
+                    onPressed: () => _login('trainer'),
+                    child: const Text('Trainer'),
+                  ),
+                ],
+              ),
+            if (_error != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _error!,
+                style: const TextStyle(color: FFTokens.danger, fontSize: 12),
+              ),
+            ],
+          ],
         ),
       ),
     );

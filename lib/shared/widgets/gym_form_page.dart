@@ -137,12 +137,13 @@ class _GymFormPageState extends State<GymFormPage> {
   }
 
   Future<void> _pickImage() async {
-    final file = await _picker.pickImage(
-      source: ImageSource.gallery,
+    final files = await _picker.pickMultiImage(
       maxWidth: 1024,
       imageQuality: 80,
     );
-    if (file != null) setState(() => _images.add(file.path));
+    if (files.isNotEmpty) {
+      setState(() => _images.addAll(files.map((file) => file.path)));
+    }
   }
 
   Future<List<String>> _encodeImages() async {

@@ -9,6 +9,7 @@ import 'screens/home_screen.dart';
 import 'screens/member/member_shell.dart';
 import 'screens/member/member_onboarding_page.dart';
 import 'screens/trainer/trainer_registration_page.dart';
+import 'screens/owner/owner_dashboard_page.dart';
 import 'screens/owner/owner_registration_page.dart';
 import 'screens/owner/owner_qr_scanner_page.dart';
 
@@ -25,6 +26,7 @@ abstract class AppRoutes {
   // Trainer & Owner registration
   static const trainerRegistration = '/trainer/register';
   static const ownerRegistration = '/owner/register';
+  static const ownerDashboard = '/owner/dashboard';
   static const ownerQrScanner = '/owner/scan';
 
   // Member sub-routes (shell)
@@ -206,6 +208,11 @@ GoRouter buildRouter(AuthState auth) {
         path: AppRoutes.ownerRegistration,
         name: 'ownerRegistration',
         builder: (context, state) => const OwnerRegistrationPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.ownerDashboard,
+        name: 'ownerDashboard',
+        builder: (context, state) => const OwnerDashboardPage(),
       ),
       GoRoute(
         path: AppRoutes.ownerQrScanner,

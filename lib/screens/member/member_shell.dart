@@ -63,10 +63,10 @@ class MemberShell extends StatefulWidget {
   final Widget child;
 
   @override
-  State<MemberShell> createState() => _MemberShellState();
+  MemberShellState createState() => MemberShellState();
 }
 
-class _MemberShellState extends State<MemberShell> {
+class MemberShellState extends State<MemberShell> {
   final MemberData _data = MemberData();
   Timer? _qrTimer;
   bool _started = false;
@@ -211,6 +211,14 @@ class _MemberShellState extends State<MemberShell> {
     await _refreshPasses();
   }
 
+  Future<void> refreshQr() async {
+    await _refreshQr();
+  }
+
+  Future<void> refreshMe() async {
+    await _refreshMe();
+  }
+
   void _onTab(int index) {
     final routes = [
       AppRoutes.memberHome,
@@ -219,6 +227,11 @@ class _MemberShellState extends State<MemberShell> {
       AppRoutes.memberQr,
       AppRoutes.memberProfile,
     ];
+    // Refresh QR when navigating to QR tab
+    if (index == 3) {
+      refreshQr();
+      refreshMe();
+    }
     context.go(routes[index]);
   }
 

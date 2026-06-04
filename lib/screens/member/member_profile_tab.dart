@@ -54,6 +54,7 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
       'displayName': me?.user.displayName,
       'email': me?.user.email,
       'phone': me?.user.phone,
+      'photoUrl': me?.user.photoUrl,
       'memberProfile': {
         'heightCm': me?.user.memberProfile?.heightCm,
         'weightKg': me?.user.memberProfile?.weightKg,

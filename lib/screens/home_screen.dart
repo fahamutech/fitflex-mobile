@@ -55,6 +55,8 @@ class _HomeScreenState extends State<HomeScreen> {
   // Owner sub-views
   String? _ownerView; // null=dashboard, 'checkins', 'trainers', 'earnings'
   Map<String, dynamic>? _selectedOwnerGym;
+  String? _dashboardGymId;
+  String _dashboardMemberType = 'all';
 
   @override
   void didChangeDependencies() {
@@ -81,6 +83,8 @@ class _HomeScreenState extends State<HomeScreen> {
   String get _userType =>
       AppScope.of(context).auth.user?['userType']?.toString() ??
       AppScope.of(context).auth.role;
+
+  String _dateOnly(DateTime value) => value.toIso8601String().split('T').first;
 
   Future<void> _refreshAll() async {
     final isMember = _isMemberExperience;
@@ -265,7 +269,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _refreshDashboard() async {
     try {
-      final res = await AppScope.of(context).api.operatorDashboard();
+      final res = await AppScope.of(context).api.operatorDashboard(
+        gymId: _dashboardGymId,
+        periodStart: _statsFrom == null ? null : _dateOnly(_statsFrom!),
+        periodEnd: _statsTo == null ? null : _dateOnly(_statsTo!),
+        memberType: _dashboardMemberType,
+      );
       if (mounted) setState(() => _dashboard = res);
     } on ApiException {
       /* ignore */
@@ -834,9 +843,26 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _ownerDashboard() {
     final todayCount = (_dashboard?['todayCount'] as num?)?.toInt() ?? 0;
     final monthVisits = (_dashboard?['monthVisits'] as num?)?.toInt() ?? 0;
+    final periodVisits = (_dashboard?['periodVisits'] as num?)?.toInt() ?? 0;
+    final periodMembers = (_dashboard?['periodMembers'] as num?)?.toInt() ?? 0;
+    final directVisits = (_dashboard?['directVisits'] as num?)?.toInt() ?? 0;
+    final directMembers = (_dashboard?['directMembers'] as num?)?.toInt() ?? 0;
+    final fitflexVisits = (_dashboard?['fitflexVisits'] as num?)?.toInt() ?? 0;
+    final fitflexMembers =
+        (_dashboard?['fitflexMembers'] as num?)?.toInt() ?? 0;
+    final overall = _dashboard?['overall'] as Map<String, dynamic>?;
     final dashGym = _dashboard?['gym'] as Map<String, dynamic>?;
     final ownerGymList = _ownerGyms.cast<Map<String, dynamic>>().toList();
     final primaryGym = ownerGymList.isNotEmpty ? ownerGymList.first : dashGym;
+    final selectedGym = _dashboardGymId == null
+        ? null
+        : ownerGymList.cast<Map<String, dynamic>?>().firstWhere(
+            (g) => g?['id']?.toString() == _dashboardGymId,
+            orElse: () => null,
+          );
+    final rangeLabel = (_statsFrom != null && _statsTo != null)
+        ? '${_dateOnly(_statsFrom!)} → ${_dateOnly(_statsTo!)}'
+        : context.tr('owner.thisMonth');
 
     return _scroll([
       _muted(context.tr('owner.dashboardBody')),
@@ -861,6 +887,80 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
       const SizedBox(height: 12),
+      _card(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _section(context.tr('owner.periodSettings')),
+            if (ownerGymList.length > 1) ...[
+              DropdownButtonFormField<String>(
+                initialValue: _dashboardGymId ?? '',
+                decoration: InputDecoration(
+                  labelText: context.tr('owner.gymProfile'),
+                  border: const OutlineInputBorder(),
+                ),
+                items: [
+                  DropdownMenuItem(
+                    value: '',
+                    child: Text(context.tr('owner.allGyms')),
+                  ),
+                  ...ownerGymList.map(
+                    (g) => DropdownMenuItem(
+                      value: g['id']?.toString() ?? '',
+                      child: Text(g['name']?.toString() ?? ''),
+                    ),
+                  ),
+                ],
+                onChanged: (value) {
+                  setState(
+                    () => _dashboardGymId = value == null || value.isEmpty
+                        ? null
+                        : value,
+                  );
+                  _refreshDashboard();
+                },
+              ),
+              const SizedBox(height: 10),
+            ],
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _pickStatsRange,
+                    icon: const Icon(Icons.date_range, size: 18),
+                    label: Text(rangeLabel, overflow: TextOverflow.ellipsis),
+                  ),
+                ),
+                if (_statsFrom != null) ...[
+                  const SizedBox(width: 8),
+                  IconButton(
+                    tooltip: context.tr('owner.clearFilter'),
+                    icon: const Icon(Icons.clear),
+                    onPressed: () {
+                      setState(() {
+                        _statsFrom = null;
+                        _statsTo = null;
+                      });
+                      _refreshDashboard();
+                    },
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _memberTypeChip('all', context.tr('owner.allMembers')),
+                _memberTypeChip('direct', context.tr('owner.directMembers')),
+                _memberTypeChip('fitflex', context.tr('owner.fitflexMembers')),
+              ],
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 12),
       // Stats row
       Row(
         children: [
@@ -880,6 +980,43 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+      const SizedBox(height: 8),
+      Row(
+        children: [
+          Expanded(
+            child: _metric('$periodVisits', context.tr('owner.periodVisits')),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _metric('$periodMembers', context.tr('owner.periodMembers')),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _metric(
+              '${overall?['gymCount'] ?? ownerGymList.length}',
+              context.tr('owner.gyms'),
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 8),
+      Row(
+        children: [
+          Expanded(
+            child: _metric(
+              '$directMembers',
+              '${context.tr('owner.directMembers')} ($directVisits)',
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _metric(
+              '$fitflexMembers',
+              '${context.tr('owner.fitflexMembers')} ($fitflexVisits)',
+            ),
+          ),
+        ],
+      ),
       _section(context.tr('owner.actions')),
       _actionTile(
         icon: Icons.qr_code_scanner,
@@ -889,12 +1026,13 @@ class _HomeScreenState extends State<HomeScreen> {
       _actionTile(
         icon: Icons.people,
         title: context.tr('owner.members'),
-        subtitle: '${context.tr('owner.checkins')}: $monthVisits',
+        subtitle: '${context.tr('owner.checkins')}: $periodVisits',
         onTap: () {
-          if (primaryGym != null) {
+          final targetGym = selectedGym ?? primaryGym;
+          if (targetGym != null) {
             setState(() {
               _ownerView = 'checkins';
-              _selectedOwnerGym = primaryGym;
+              _selectedOwnerGym = targetGym;
             });
           }
         },
@@ -938,6 +1076,18 @@ class _HomeScreenState extends State<HomeScreen> {
           label: Text(context.tr('owner.manageGyms')),
         ),
     ]);
+  }
+
+  Widget _memberTypeChip(String value, String label) {
+    final selected = _dashboardMemberType == value;
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) {
+        setState(() => _dashboardMemberType = value);
+        _refreshDashboard();
+      },
+    );
   }
 
   Widget _ownerManageGymsView() {
@@ -989,6 +1139,7 @@ class _HomeScreenState extends State<HomeScreen> {
           59,
         );
       });
+      await _refreshDashboard();
     }
   }
 
@@ -1069,6 +1220,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ...items.take(50).map((c) {
                 final member = c['member'] as Map?;
                 final memberName =
+                    c['memberPublicId']?.toString() ??
                     member?['displayName']?.toString() ??
                     member?['email']?.toString() ??
                     c['memberName']?.toString() ??
@@ -1306,7 +1458,11 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 10),
             Wrap(
               spacing: 6,
-              children: [_pill('${trainer?['sessionRateCurrency'] ?? 'TZS'} ${trainer?['hourlyRateTzs'] ?? 0}/hr')],
+              children: [
+                _pill(
+                  '${trainer?['sessionRateCurrency'] ?? 'TZS'} ${trainer?['hourlyRateTzs'] ?? 0}/hr',
+                ),
+              ],
             ),
           ],
         ),
@@ -1546,8 +1702,10 @@ class _HomeScreenState extends State<HomeScreen> {
       final subAccess = _subscription?['tier']?.toString();
       final passes = _passes.cast<Map<String, dynamic>>();
       final gymAccess = passes
-          .firstWhere((p) => p['id'] == subAccess || p['key'] == subAccess,
-              orElse: () => const {})
+          .firstWhere(
+            (p) => p['id'] == subAccess || p['key'] == subAccess,
+            orElse: () => const {},
+          )
           .cast<String, dynamic>()['gymAccess']
           ?.toString();
       if (gymAccess != null && gymAccess.isNotEmpty) {
@@ -1555,7 +1713,9 @@ class _HomeScreenState extends State<HomeScreen> {
           final tierKey = _gymTierKey(g);
           if (gymAccess == 'luxury_executive') return true;
           if (gymAccess == 'premium') return tierKey != 'luxury_executive';
-          if (gymAccess == 'midtier') return tierKey == 'standard' || tierKey == 'midtier';
+          if (gymAccess == 'midtier') {
+            return tierKey == 'standard' || tierKey == 'midtier';
+          }
           return tierKey == 'standard';
         }).toList();
       }
@@ -1563,19 +1723,25 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // Amenity filter
     if (_gymAmenityFilter.isNotEmpty) {
-      gyms = gyms.where((g) => _listContainsQuery(g['amenities'], _gymAmenityFilter)).toList();
+      gyms = gyms
+          .where((g) => _listContainsQuery(g['amenities'], _gymAmenityFilter))
+          .toList();
     }
 
     // Price filter
     if (_gymPriceFilter == 'under30k') {
-      gyms = gyms.where((g) => (g['ratePerMonth'] as num? ?? double.infinity) < 30000).toList();
+      gyms = gyms
+          .where((g) => (g['ratePerMonth'] as num? ?? double.infinity) < 30000)
+          .toList();
     } else if (_gymPriceFilter == '30k_60k') {
       gyms = gyms.where((g) {
         final p = (g['ratePerMonth'] as num? ?? 0).toDouble();
         return p >= 30000 && p <= 60000;
       }).toList();
     } else if (_gymPriceFilter == 'over60k') {
-      gyms = gyms.where((g) => (g['ratePerMonth'] as num? ?? 0) > 60000).toList();
+      gyms = gyms
+          .where((g) => (g['ratePerMonth'] as num? ?? 0) > 60000)
+          .toList();
     }
 
     // Collect all unique amenities from loaded gyms for amenity chips
@@ -1585,17 +1751,28 @@ class _HomeScreenState extends State<HomeScreen> {
       if (ams is List) allAmenities.addAll(ams.map((a) => a.toString()));
     }
 
-    final tierFilters = ['all', 'nearest', 'standard', 'midtier', 'premium', 'my_sub'];
+    final tierFilters = [
+      'all',
+      'nearest',
+      'standard',
+      'midtier',
+      'premium',
+      'my_sub',
+    ];
     final tierLabels = [
       context.tr('member.all'),
       context.tr('member.nearest'),
-      'Standard', 'Mid-Range', 'Premium',
+      'Standard',
+      'Mid-Range',
+      'Premium',
       context.tr('member.mySubFilter'),
     ];
     final priceFilters = ['any', 'under30k', '30k_60k', 'over60k'];
     final priceLabels = [
       context.tr('member.anyPrice'),
-      '< 30,000', '30k – 60k', '> 60,000',
+      '< 30,000',
+      '30k – 60k',
+      '> 60,000',
     ];
 
     return _scroll([
@@ -1644,12 +1821,15 @@ class _HomeScreenState extends State<HomeScreen> {
           separatorBuilder: (context, index) => const SizedBox(width: 8),
           itemBuilder: (context, i) => GestureDetector(
             onTap: () => setState(() => _gymPriceFilter = priceFilters[i]),
-            child: _pill(priceLabels[i], filled: _gymPriceFilter == priceFilters[i]),
+            child: _pill(
+              priceLabels[i],
+              filled: _gymPriceFilter == priceFilters[i],
+            ),
           ),
         ),
       ),
       // Amenity chips (shown only when gyms have amenities)
-      if (allAmenities.isNotEmpty) ...[   
+      if (allAmenities.isNotEmpty) ...[
         const SizedBox(height: 8),
         SizedBox(
           height: 38,
@@ -1658,16 +1838,23 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               GestureDetector(
                 onTap: () => setState(() => _gymAmenityFilter = ''),
-                child: _pill(context.tr('member.allAmenities'), filled: _gymAmenityFilter.isEmpty),
-              ),
-              ...allAmenities.map((am) => Padding(
-                padding: const EdgeInsets.only(left: 8),
-                child: GestureDetector(
-                  onTap: () => setState(() =>
-                    _gymAmenityFilter = _gymAmenityFilter == am ? '' : am),
-                  child: _pill(am, filled: _gymAmenityFilter == am),
+                child: _pill(
+                  context.tr('member.allAmenities'),
+                  filled: _gymAmenityFilter.isEmpty,
                 ),
-              )),
+              ),
+              ...allAmenities.map(
+                (am) => Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: GestureDetector(
+                    onTap: () => setState(
+                      () =>
+                          _gymAmenityFilter = _gymAmenityFilter == am ? '' : am,
+                    ),
+                    child: _pill(am, filled: _gymAmenityFilter == am),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -1787,7 +1974,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         )
-      else ...[  
+      else ...[
         ..._passes.cast<Map<String, dynamic>>().map((p) => _selectablePass(p)),
         const SizedBox(height: 12),
         _section(context.tr('member.compatibleGyms')),
@@ -1805,10 +1992,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       Text(
                         context.tr('member.accessLevel'),
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       const SizedBox(height: 4),
-                      Text(_gymAccessLabel(access, context), style: const TextStyle(fontSize: 13)),
+                      Text(
+                        _gymAccessLabel(access, context),
+                        style: const TextStyle(fontSize: 13),
+                      ),
                       const SizedBox(height: 8),
                       OutlinedButton.icon(
                         onPressed: () {
@@ -1980,7 +2173,11 @@ class _HomeScreenState extends State<HomeScreen> {
       const SizedBox(height: 10),
       Wrap(
         spacing: 6,
-        children: [_pill('${trainer['sessionRateCurrency'] ?? 'TZS'} ${trainer['hourlyRateTzs'] ?? 0}/hr')],
+        children: [
+          _pill(
+            '${trainer['sessionRateCurrency'] ?? 'TZS'} ${trainer['hourlyRateTzs'] ?? 0}/hr',
+          ),
+        ],
       ),
       _section(context.tr('member.about')),
       _card(
@@ -2084,7 +2281,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       _section(context.tr('member.mySubscription')),
       _passSummary(),
-      if (_hasActivePass) ...[  
+      if (_hasActivePass) ...[
         _actionTile(
           icon: Icons.qr_code_2,
           title: context.tr('member.showQr'),
@@ -2867,7 +3064,9 @@ class _AddMemberSheetState extends State<_AddMemberSheet> {
       setState(() {
         if (isStart) {
           _startDate = picked;
-          if (_endDate.isBefore(_startDate)) _endDate = _startDate.add(const Duration(days: 30));
+          if (_endDate.isBefore(_startDate)) {
+            _endDate = _startDate.add(const Duration(days: 30));
+          }
         } else {
           _endDate = picked;
         }
@@ -2879,7 +3078,9 @@ class _AddMemberSheetState extends State<_AddMemberSheet> {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.only(
-        left: 16, right: 16, top: 16,
+        left: 16,
+        right: 16,
+        top: 16,
         bottom: MediaQuery.of(context).viewInsets.bottom + 24,
       ),
       child: Form(
@@ -2891,7 +3092,10 @@ class _AddMemberSheetState extends State<_AddMemberSheet> {
             children: [
               Text(
                 context.tr('owner.addMember'),
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -2900,8 +3104,9 @@ class _AddMemberSheetState extends State<_AddMemberSheet> {
                   labelText: context.tr('member.fullName'),
                   border: const OutlineInputBorder(),
                 ),
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? context.tr('onboarding.required') : null,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? context.tr('onboarding.required')
+                    : null,
               ),
               const SizedBox(height: 12),
               TextFormField(
@@ -2979,8 +3184,12 @@ class _AddMemberSheetState extends State<_AddMemberSheet> {
                       onPressed: _busy ? null : _submit,
                       child: _busy
                           ? const SizedBox(
-                              height: 18, width: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
                             )
                           : Text(context.tr('owner.registerMember')),
                     ),

@@ -90,21 +90,17 @@ class MemberGymDetailPage extends StatelessWidget {
           if (gym.amenities.isNotEmpty || gym.equipment.isNotEmpty) ...[
             _SectionTitle(context.tr('gym.amenities')),
             if (gym.amenities.isNotEmpty)
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: gym.amenities
-                    .map((a) => FFBadge(label: a, tone: FFBadgeTone.brand))
-                    .toList(),
+              _CategorizedItems(
+                items: gym.amenities,
+                categories: _amenityCategories,
+                tone: FFBadgeTone.brand,
               ),
             if (gym.equipment.isNotEmpty) ...[
-              if (gym.amenities.isNotEmpty) const SizedBox(height: 8),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: gym.equipment
-                    .map((e) => FFBadge(label: e, tone: FFBadgeTone.gray))
-                    .toList(),
+              _SectionTitle(context.tr('gym.equipment')),
+              _CategorizedItems(
+                items: gym.equipment,
+                categories: _equipmentCategories,
+                tone: FFBadgeTone.gray,
               ),
             ],
           ],
@@ -160,6 +156,7 @@ class _GymHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final images = gym.images;
     return Container(
       height: 180,
       margin: const EdgeInsets.only(bottom: 14),
@@ -168,18 +165,35 @@ class _GymHero extends StatelessWidget {
         color: FFTokens.brand50,
         borderRadius: BorderRadius.circular(FFTokens.radiusXl),
       ),
-      child: gym.images.isNotEmpty
-          ? FFRemoteImage(
-              src: gym.images.first,
-              width: double.infinity,
-              height: 180,
-              fit: BoxFit.cover,
-              fallback: const Center(
-                child: Icon(
-                  Icons.fitness_center,
-                  color: FFTokens.brand700,
-                  size: 48,
-                ),
+      child: images.isNotEmpty
+          ? PageView.builder(
+              itemCount: images.length,
+              itemBuilder: (context, index) => Stack(
+                fit: StackFit.expand,
+                children: [
+                  FFRemoteImage(
+                    src: images[index],
+                    width: double.infinity,
+                    height: 180,
+                    fit: BoxFit.cover,
+                    fallback: const Center(
+                      child: Icon(
+                        Icons.fitness_center,
+                        color: FFTokens.brand700,
+                        size: 48,
+                      ),
+                    ),
+                  ),
+                  if (images.length > 1)
+                    Positioned(
+                      right: 10,
+                      bottom: 10,
+                      child: FFBadge(
+                        label: '${index + 1}/${images.length}',
+                        tone: FFBadgeTone.gray,
+                      ),
+                    ),
+                ],
               ),
             )
           : const Center(
@@ -190,6 +204,280 @@ class _GymHero extends StatelessWidget {
               ),
             ),
     );
+  }
+}
+
+class _ItemCategory {
+  const _ItemCategory(
+    this.titleKey,
+    this.icon,
+    this.items, {
+    this.asRatings = false,
+  });
+
+  final String titleKey;
+  final IconData icon;
+  final Set<String> items;
+  final bool asRatings;
+}
+
+final _amenityCategories = [
+  _ItemCategory('gym.category.wellness', Icons.spa_outlined, {
+    'dry sauna',
+    'infrared sauna',
+    'steam room',
+    'hot tub',
+    'hot tub / jacuzzi',
+    'jacuzzi',
+    'cold plunge',
+    'plunge pool',
+    'indoor pool',
+  }),
+  _ItemCategory('gym.category.facilities', Icons.shower_outlined, {
+    'lockers',
+    'showers',
+    'towel service',
+    'wifi',
+    'wi-fi',
+    'reception',
+  }),
+  _ItemCategory('gym.category.environment', Icons.auto_awesome_outlined, {
+    'cleanliness',
+    'layout',
+    'lighting',
+    'size',
+    'operating hours',
+  }, asRatings: true),
+];
+
+final _equipmentCategories = [
+  _ItemCategory('gym.category.strength', Icons.fitness_center, {
+    'chest press',
+    'smith machine',
+    'leg press',
+    'cable machines',
+    'ez curl bars',
+    'lat pulldown',
+    'squat racks',
+    'power racks',
+    'benches',
+    'dumbbell racks',
+    'barbell + plate stations',
+    'kettlebell sets',
+  }),
+  _ItemCategory('gym.category.functional', Icons.sports_gymnastics_outlined, {
+    'battle ropes',
+    'pull-up bars',
+    'plyo boxes',
+    'crossfit rig',
+    'olympic platform',
+    'trx',
+    'suspension trainers',
+    'multi-station',
+    'jungle gym',
+  }),
+  _ItemCategory('gym.category.combat', Icons.sports_mma_outlined, {
+    'heavy bags',
+    'boxing',
+  }),
+  _ItemCategory('gym.category.mobility', Icons.self_improvement_outlined, {
+    'yoga',
+    'pilates',
+    'stretching area',
+  }),
+  _ItemCategory('gym.category.cardio', Icons.directions_run, {
+    'treadmills',
+    'stationary bikes',
+    'spin',
+    'cycling bikes',
+    'ellipticals',
+    'rowing machines',
+    'stair climbers',
+  }),
+];
+
+class _CategorizedItems extends StatelessWidget {
+  const _CategorizedItems({
+    required this.items,
+    required this.categories,
+    required this.tone,
+  });
+
+  final List<String> items;
+  final List<_ItemCategory> categories;
+  final FFBadgeTone tone;
+
+  @override
+  Widget build(BuildContext context) {
+    final remaining = [...items];
+    final groups =
+        <
+          ({String titleKey, IconData icon, List<String> items, bool asRatings})
+        >[];
+    for (final category in categories) {
+      final matched = remaining
+          .where((item) => category.items.any((known) => _matches(item, known)))
+          .toList();
+      if (matched.isEmpty) continue;
+      remaining.removeWhere(matched.contains);
+      groups.add((
+        titleKey: category.titleKey,
+        icon: category.icon,
+        items: matched,
+        asRatings: category.asRatings,
+      ));
+    }
+    if (remaining.isNotEmpty) {
+      groups.add((
+        titleKey: 'gym.category.other',
+        icon: Icons.more_horiz,
+        items: remaining,
+        asRatings: false,
+      ));
+    }
+
+    return Column(
+      children: groups
+          .map(
+            (group) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _ExpandableChipGroup(
+                title: context.tr(group.titleKey),
+                icon: group.icon,
+                items: group.items,
+                tone: tone,
+                asRatings: group.asRatings,
+              ),
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  bool _matches(String value, String known) {
+    final normalized = value.toLowerCase();
+    return normalized == known || normalized.contains(known);
+  }
+}
+
+class _ExpandableChipGroup extends StatefulWidget {
+  const _ExpandableChipGroup({
+    required this.title,
+    required this.icon,
+    required this.items,
+    required this.tone,
+    required this.asRatings,
+  });
+
+  final String title;
+  final IconData icon;
+  final List<String> items;
+  final FFBadgeTone tone;
+  final bool asRatings;
+
+  @override
+  State<_ExpandableChipGroup> createState() => _ExpandableChipGroupState();
+}
+
+class _ExpandableChipGroupState extends State<_ExpandableChipGroup> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final visible = _expanded || widget.items.length <= 8
+        ? widget.items
+        : widget.items.take(8).toList();
+    return FFCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(widget.icon, color: FFTokens.brand700, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  widget.title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: FFTokens.fgPrimary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (widget.asRatings)
+            Column(
+              children: visible
+                  .map(
+                    (item) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _ratingLabel(item),
+                              style: const TextStyle(
+                                color: FFTokens.fgSecondary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          const Icon(
+                            Icons.star,
+                            color: FFTokens.warning500,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            _ratingValue(item).toStringAsFixed(1),
+                            style: const TextStyle(
+                              color: FFTokens.fgPrimary,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                  .toList(),
+            )
+          else
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: visible
+                  .map((item) => FFBadge(label: item, tone: widget.tone))
+                  .toList(),
+            ),
+          if (widget.items.length > 8) ...[
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: () => setState(() => _expanded = !_expanded),
+              child: Text(
+                _expanded
+                    ? context.tr('gym.showLess')
+                    : context.tr('gym.viewAll'),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  String _ratingLabel(String value) => value
+      .replaceAll('_', ' ')
+      .split(' ')
+      .where((part) => part.isNotEmpty && double.tryParse(part) == null)
+      .map((part) => '${part[0].toUpperCase()}${part.substring(1)}')
+      .join(' ');
+
+  double _ratingValue(String value) {
+    final match = RegExp(r'([0-5](?:\.\d)?)').firstMatch(value);
+    final parsed = match == null ? null : double.tryParse(match.group(1)!);
+    return parsed == null ? 4.0 : parsed.clamp(0, 5).toDouble();
   }
 }
 

@@ -4,6 +4,7 @@ import '../../app_scope.dart';
 import '../api_client.dart';
 import '../design_tokens.dart';
 import '../i18n.dart';
+import 'ff_photo_picker_field.dart';
 
 /// Fullscreen profile editor + sign-out. Used by gym owners and trainers.
 class ProfileFormPage extends StatefulWidget {
@@ -30,6 +31,7 @@ class _ProfileFormPageState extends State<ProfileFormPage> {
   late final TextEditingController _weight;
   late final TextEditingController _dateOfBirth;
   late String _gender;
+  String? _photoUrl;
   bool _busy = false;
   String? _error;
   bool get _isMember => widget.initialUser['userType']?.toString() == 'member';
@@ -43,6 +45,7 @@ class _ProfileFormPageState extends State<ProfileFormPage> {
     _phone = TextEditingController(
       text: widget.initialUser['phone']?.toString() ?? '',
     );
+    _photoUrl = widget.initialUser['photoUrl']?.toString();
     final profile = widget.initialUser['memberProfile'] as Map? ?? const {};
     _height = TextEditingController(
       text: profile['heightCm']?.toString() ?? '',
@@ -80,6 +83,7 @@ class _ProfileFormPageState extends State<ProfileFormPage> {
       final payload = <String, dynamic>{
         'displayName': _name.text.trim(),
         'phone': _phone.text.trim(),
+        if (_photoUrl != null && _photoUrl!.isNotEmpty) 'photoUrl': _photoUrl,
       };
       if (_isMember) {
         payload.addAll({
@@ -140,6 +144,15 @@ class _ProfileFormPageState extends State<ProfileFormPage> {
           child: ListView(
             padding: const EdgeInsets.all(FFTokens.spacingLg),
             children: [
+              if (_isMember) ...[
+                Center(
+                  child: FFPhotoPickerField(
+                    value: _photoUrl,
+                    onChanged: (value) => setState(() => _photoUrl = value),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
               TextFormField(
                 controller: _name,
                 decoration: InputDecoration(

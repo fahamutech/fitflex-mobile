@@ -213,6 +213,7 @@ class MemberSummary {
   final String? phone;
   final String? displayName;
   final String? photoUrl;
+  final String? publicId;
   final String userType;
   final String? accountStatus;
   final MemberProfile? memberProfile;
@@ -226,6 +227,7 @@ class MemberSummary {
     this.phone,
     this.displayName,
     this.photoUrl,
+    this.publicId,
     required this.userType,
     this.accountStatus,
     this.memberProfile,
@@ -240,6 +242,7 @@ class MemberSummary {
     phone: json['phone'] as String?,
     displayName: json['displayName'] as String?,
     photoUrl: json['photoUrl'] as String?,
+    publicId: json['publicId'] as String? ?? json['userCode'] as String?,
     userType: json['userType'] as String? ?? 'member',
     accountStatus: json['accountStatus'] as String?,
     memberProfile: json['memberProfile'] is Map<String, dynamic>
@@ -256,7 +259,8 @@ class MemberSummary {
     onboardingCompleted: json['onboardingCompleted'] as bool?,
   );
 
-  String get resolvedName => displayName ?? email ?? phone ?? 'Member';
+  String get resolvedName =>
+      displayName ?? email ?? phone ?? publicId ?? 'Member';
 }
 
 class Subscription {

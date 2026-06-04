@@ -96,9 +96,19 @@ class PassSummaryCard extends StatelessWidget {
             children: [
               Expanded(
                 child: FilledButton(
-                  onPressed: data.hasActivePass
-                      ? () => context.go(AppRoutes.memberQr)
-                      : () => context.go(AppRoutes.memberPasses),
+                  onPressed: () async {
+                    // Refresh QR and user data before navigation
+                    final shellState = context
+                        .findAncestorStateOfType<MemberShellState>();
+                    await shellState?.refreshQr();
+                    await shellState?.refreshMe();
+                    if (!context.mounted) return;
+                    if (data.hasActivePass) {
+                      context.go(AppRoutes.memberQr);
+                    } else {
+                      context.go(AppRoutes.memberPasses);
+                    }
+                  },
                   child: Text(
                     data.hasActivePass
                         ? context.tr('member.showQr')
@@ -109,7 +119,15 @@ class PassSummaryCard extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () => context.go(AppRoutes.memberPasses),
+                  onPressed: () async {
+                    // Refresh QR and user data before navigation
+                    final shellState = context
+                        .findAncestorStateOfType<MemberShellState>();
+                    await shellState?.refreshQr();
+                    await shellState?.refreshMe();
+                    if (!context.mounted) return;
+                    context.go(AppRoutes.memberPasses);
+                  },
                   child: Text(context.tr('member.upgradePlan')),
                 ),
               ),

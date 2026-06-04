@@ -105,6 +105,7 @@ class MemberPassesPage extends StatelessWidget {
               (p) => _SelectablePass(
                 pass: p,
                 selected: p.id == data.selectedTier,
+                gyms: data.gyms,
                 onTap: () => data.update((d) => d.selectedTier = p.id),
               ),
             ),
@@ -257,14 +258,26 @@ class _SelectablePass extends StatelessWidget {
     required this.pass,
     required this.selected,
     required this.onTap,
+    this.gyms = const [],
   });
 
   final PassTier pass;
   final bool selected;
   final VoidCallback onTap;
+  final List<Gym> gyms;
+
+  List<Gym> _getAccessibleGyms() {
+    if (pass.gymAccess == null || pass.gymAccess!.isEmpty) {
+      return gyms;
+    }
+    return gyms.where((g) => pass.gymAccess!.contains(g.tier)).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final accessibleGyms = _getAccessibleGyms();
+    final gymCount = accessibleGyms.length;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: InkWell(
@@ -309,13 +322,29 @@ class _SelectablePass extends StatelessWidget {
                     if (pass.gymAccess != null && pass.gymAccess!.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(top: 2),
-                        child: Text(
-                          pass.gymAccessLabel,
-                          style: const TextStyle(
-                            color: FFTokens.brand600,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                          ),
+                        child: Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                pass.gymAccessLabel,
+                                style: const TextStyle(
+                                  color: FFTokens.brand600,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '($gymCount ${gymCount == 1 ? context.tr('gym.gym') : context.tr('gym.gyms')})',
+                              style: const TextStyle(
+                                color: FFTokens.fgSecondary,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                   ],

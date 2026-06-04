@@ -191,6 +191,12 @@ class ApiClient {
     );
   }
 
+  /// DEV ONLY: mock login bypassing Firebase (blackbox testing). The backend
+  /// endpoint is disabled in production. [role] = member | trainer | owner.
+  Future<Map<String, dynamic>> devLogin(String role) async {
+    return await _request('POST', '/auth/dev/login', body: {'role': role});
+  }
+
   Future<Map<String, dynamic>> me() async => await _request('GET', '/me');
 
   Future<Map<String, dynamic>> updateProfile(
@@ -265,14 +271,42 @@ class ApiClient {
   Future<List<dynamic>> ownerGymCheckins(String gymId) async =>
       await _request('GET', '/owner/gyms/$gymId/checkins');
 
-  Future<Map<String, dynamic>> operatorDashboard() async =>
-      await _request('GET', '/operator/dashboard');
+  Future<Map<String, dynamic>> operatorDashboard({
+    String? gymId,
+    String? periodStart,
+    String? periodEnd,
+    String? memberType,
+  }) async {
+    final query = <String, String>{
+      if (gymId != null && gymId.isNotEmpty) 'gymId': gymId,
+      if (periodStart != null && periodStart.isNotEmpty)
+        'periodStart': periodStart,
+      if (periodEnd != null && periodEnd.isNotEmpty) 'periodEnd': periodEnd,
+      if (memberType != null && memberType.isNotEmpty) 'memberType': memberType,
+    };
+    final path = query.isEmpty
+        ? '/operator/dashboard'
+        : '/operator/dashboard?${Uri(queryParameters: query).query}';
+    return await _request('GET', path);
+  }
 
-  Future<Map<String, dynamic>> operatorVerifyQr(String qrToken) async =>
-      await _request('POST', '/operator/verify-qr', body: {'qrToken': qrToken});
+  Future<Map<String, dynamic>> operatorVerifyQr(
+    String qrToken, {
+    String? gymId,
+  }) async {
+    final body = <String, dynamic>{'qrToken': qrToken};
+    if (gymId != null) body['gymId'] = gymId;
+    return await _request('POST', '/operator/verify-qr', body: body);
+  }
 
-  Future<Map<String, dynamic>> operatorCheckIn(String qrToken) async =>
-      await _request('POST', '/operator/checkins', body: {'qrToken': qrToken});
+  Future<Map<String, dynamic>> operatorCheckIn(
+    String qrToken, {
+    String? gymId,
+  }) async {
+    final body = <String, dynamic>{'qrToken': qrToken};
+    if (gymId != null) body['gymId'] = gymId;
+    return await _request('POST', '/operator/checkins', body: body);
+  }
 
   // Owner gym CRUD
   Future<Map<String, dynamic>> ownerCreateGym(

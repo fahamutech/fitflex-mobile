@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -28,7 +29,13 @@ Future<void> main() async {
     // .env not bundled or unreadable; continue with defaults.
   }
 
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // Idempotent: avoids a duplicate-app crash if main() runs twice in one
+  // process (e.g. across Patrol integration test cases).
+  if (Firebase.apps.isEmpty) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  }
   final api = ApiClient();
   final auth = AuthState(api);
   await auth.hydrate();
@@ -83,8 +90,8 @@ class _FitFlexAppState extends State<FitFlexApp> {
           animation: widget.locale,
           builder: (context, _) {
             return MaterialApp.router(
-              title: 'FitFlex Af',
-              debugShowCheckedModeBanner: false,
+              title: 'FitFlex',
+              debugShowCheckedModeBanner: kDebugMode,
               theme: buildTheme(),
               locale: widget.locale.locale,
               supportedLocales: const [Locale('en'), Locale('sw')],

@@ -25,6 +25,8 @@ class MemberQrTab extends StatelessWidget {
         else
           _QrLockedCard(data: data),
         const SizedBox(height: 12),
+        const _MarketplaceComingSoonCard(),
+        const SizedBox(height: 12),
 
         // // Scan gym QR
         // FFCard(
@@ -75,6 +77,70 @@ class MemberQrTab extends StatelessWidget {
         ),
         CheckinList(checkins: data.checkins, limit: 5),
       ],
+    );
+  }
+}
+
+class _MarketplaceComingSoonCard extends StatelessWidget {
+  const _MarketplaceComingSoonCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return FFCard(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: FFTokens.bgSecondary,
+              border: Border.all(color: FFTokens.borderSecondary),
+              borderRadius: BorderRadius.circular(FFTokens.radiusXl),
+            ),
+            child: const Icon(
+              Icons.storefront_outlined,
+              color: FFTokens.brand700,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        context.tr('member.marketplace'),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: FFTokens.fgPrimary,
+                        ),
+                      ),
+                    ),
+                    FFBadge(
+                      label: context.tr('member.marketplaceSoon'),
+                      tone: FFBadgeTone.gray,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  context.tr('member.marketplaceBody'),
+                  style: const TextStyle(
+                    color: FFTokens.fgQuaternary,
+                    fontSize: 13,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -120,6 +120,7 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
         ),
         actions: [
           TextButton(
+            key: const Key('trainerFormSave'),
             onPressed: _busy ? null : _save,
             child: _busy
                 ? const SizedBox(
@@ -148,6 +149,7 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
               const SizedBox(height: 16),
               // Name
               TextFormField(
+                key: const Key('trainerFormName'),
                 controller: _name,
                 decoration: InputDecoration(
                   labelText: context.tr('ownerReg.trainerName'),
@@ -158,6 +160,7 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
               const SizedBox(height: 12),
               // Email
               TextFormField(
+                key: const Key('trainerFormEmail'),
                 controller: _email,
                 keyboardType: TextInputType.emailAddress,
                 enabled: !isEdit,
@@ -184,6 +187,7 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
                 children: [
                   Expanded(
                     child: TextFormField(
+                      key: const Key('trainerFormRate'),
                       controller: _rate,
                       keyboardType: TextInputType.number,
                       decoration: InputDecoration(
@@ -207,7 +211,10 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
                       decoration: const InputDecoration(
                         labelText: 'Currency',
                         border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 14,
+                        ),
                       ),
                       items: const [
                         DropdownMenuItem(value: 'TZS', child: Text('TZS')),
@@ -239,7 +246,10 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
               else if (_availableSpecialties.isEmpty)
                 Text(
                   context.tr('onboarding.required'),
-                  style: const TextStyle(color: FFTokens.fgTertiary, fontSize: 13),
+                  style: const TextStyle(
+                    color: FFTokens.fgTertiary,
+                    fontSize: 13,
+                  ),
                 )
               else
                 Wrap(
@@ -254,8 +264,9 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
                         if (v) {
                           _selectedSpecialties = [..._selectedSpecialties, s];
                         } else {
-                          _selectedSpecialties =
-                              _selectedSpecialties.where((x) => x != s).toList();
+                          _selectedSpecialties = _selectedSpecialties
+                              .where((x) => x != s)
+                              .toList();
                         }
                       }),
                     );

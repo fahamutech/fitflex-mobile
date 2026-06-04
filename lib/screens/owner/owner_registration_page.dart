@@ -383,14 +383,13 @@ class _GymCardWidgetState extends State<_GymCardWidget> {
   final ImagePicker _picker = ImagePicker();
 
   Future<void> _pickImage() async {
-    final file = await _picker.pickImage(
-      source: ImageSource.gallery,
+    final files = await _picker.pickMultiImage(
       maxWidth: 1024,
       imageQuality: 80,
     );
-    if (file != null) {
+    if (files.isNotEmpty) {
       setState(() {
-        widget.gym.imagePaths.add(file.path);
+        widget.gym.imagePaths.addAll(files.map((file) => file.path));
       });
       widget.onChanged();
     }
@@ -937,6 +936,7 @@ class _TrainerCreateDialogState extends State<_TrainerCreateDialog> {
         'email': email,
         'specialties': specialties,
         'hourlyRateTzs': num.tryParse(_rateCtrl.text) ?? 0,
+        'pendingGymAssignment': true,
         'status': 'active',
       });
       final created = Map<String, dynamic>.from(result);
