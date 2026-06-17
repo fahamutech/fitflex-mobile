@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../router.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
+import '../../shared/models.dart';
 import 'member_shell.dart';
 import 'widgets/gym_card.dart';
 import 'widgets/trainer_card.dart';
@@ -19,12 +21,16 @@ class MemberHomeTab extends StatefulWidget {
 }
 
 class _MemberHomeTabState extends State<MemberHomeTab> {
+  double? _userLat;
+  double? _userLng;
+
   @override
   void initState() {
     super.initState();
     // Refresh QR and user data when home tab becomes visible
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshData();
+      _fetchLocation();
     });
   }
 
@@ -34,12 +40,43 @@ class _MemberHomeTabState extends State<MemberHomeTab> {
     await shellState?.refreshMe();
   }
 
+  Future<void> _fetchLocation() async {
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return;
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        return;
+      }
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+        ),
+      );
+      if (!mounted) return;
+      setState(() {
+        _userLat = position.latitude;
+        _userLng = position.longitude;
+      });
+    } catch (_) {
+      // Location is optional on home. Keep showing the backend gym list.
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final data = MemberDataScope.of(context);
     final me = data.me;
     final displayName = me?.user.resolvedName ?? context.tr('home.welcome');
-    final gyms = data.gyms.take(2).toList();
+    final gyms = memberHomeNearGyms(
+      data.gyms,
+      userLat: _userLat,
+      userLng: _userLng,
+    );
     final trainers = data.trainers.take(2).toList();
 
     return ListView(
@@ -59,7 +96,17 @@ class _MemberHomeTabState extends State<MemberHomeTab> {
           title: context.tr('member.nearGyms'),
           onSeeAll: () => context.go(AppRoutes.memberGyms),
         ),
-        ...gyms.map((g) => GymCard(gym: g)),
+        ...gyms.map(
+          (g) => GymCard(
+            gym: g,
+            distanceKm: gymDisplayDistanceKm(
+              g,
+              userLat: _userLat,
+              userLng: _userLng,
+              activeFilter: 'home',
+            ),
+          ),
+        ),
 
         // Featured trainers
         _SectionRow(
@@ -84,6 +131,23 @@ class _MemberHomeTabState extends State<MemberHomeTab> {
       ],
     );
   }
+}
+
+List<Gym> memberHomeNearGyms(
+  List<Gym> gyms, {
+  double? userLat,
+  double? userLng,
+}) {
+  if (userLat == null || userLng == null) return gyms.take(2).toList();
+  final sorted = List<Gym>.from(gyms);
+  sorted.sort(
+    (a, b) => gymDistanceKm(
+      a,
+      userLat,
+      userLng,
+    ).compareTo(gymDistanceKm(b, userLat, userLng)),
+  );
+  return sorted.take(2).toList();
 }
 
 class _SectionRow extends StatelessWidget {

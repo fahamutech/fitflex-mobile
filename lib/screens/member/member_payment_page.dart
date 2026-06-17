@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../app_scope.dart';
 import '../../router.dart';
@@ -7,6 +8,7 @@ import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import '../../shared/api_client.dart';
+import '../../shared/models.dart';
 import 'member_shell.dart';
 
 class MemberPaymentPage extends StatelessWidget {
@@ -73,13 +75,23 @@ class MemberPaymentPage extends StatelessWidget {
                       : '$visitCap',
                 ),
                 _Row(
-                  label: context.tr('member.availableGyms'),
-                  value: '${data.gyms.length}',
+                  label: context.tr('member.startDate'),
+                  value: DateFormat('dd MMM yyyy').format(DateTime.now()),
+                ),
+                _Row(
+                  label: context.tr('member.endDate'),
+                  value: DateFormat(
+                    'dd MMM yyyy',
+                  ).format(DateTime.now().add(const Duration(days: 30))),
                 ),
                 _Row(label: 'Total', value: 'TZS $price'),
               ],
             ),
           ),
+
+          // Available gyms details
+          const SizedBox(height: 16),
+          _AvailableGymsSection(pass: pass, gyms: data.gyms),
 
           // Payment method — commented out until payment integrations are live
           // Padding(
@@ -194,6 +206,109 @@ class _SubmitButtonState extends State<_SubmitButton> {
       child: _loading
           ? const FFSpinner(size: 18, color: Colors.white)
           : Text(context.tr('member.requestPayment')),
+    );
+  }
+}
+
+class _AvailableGymsSection extends StatelessWidget {
+  const _AvailableGymsSection({required this.pass, required this.gyms});
+
+  final PassTier? pass;
+  final List<Gym> gyms;
+
+  List<Gym> _getAccessibleGyms() {
+    if (pass == null || pass!.gymAccess == null || pass!.gymAccess!.isEmpty) {
+      return gyms;
+    }
+    return gyms.where((g) {
+      final tier = g.tier
+          .toLowerCase()
+          .replaceAll('-', '_')
+          .replaceAll(' ', '_');
+      switch (pass!.gymAccess) {
+        case 'standard':
+          return tier == 'standard';
+        case 'midtier':
+          return tier == 'standard' || tier == 'mid_tier' || tier == 'midtier';
+        case 'premium':
+          return tier == 'standard' ||
+              tier == 'mid_tier' ||
+              tier == 'midtier' ||
+              tier == 'premium';
+        default:
+          return true;
+      }
+    }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final accessible = _getAccessibleGyms();
+    if (accessible.isEmpty) return const SizedBox.shrink();
+
+    return FFCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.fitness_center,
+                size: 18,
+                color: FFTokens.brand600,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                context.tr('member.availableGyms'),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: FFTokens.fgPrimary,
+                ),
+              ),
+              const Spacer(),
+              FFBadge(label: '${accessible.length}', tone: FFBadgeTone.brand),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...accessible
+              .take(5)
+              .map(
+                (g) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          g.name,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: FFTokens.fgSecondary,
+                          ),
+                        ),
+                      ),
+                      FFBadge(
+                        label: g.tier.replaceAll('_', ' '),
+                        tone: FFBadgeTone.gray,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          if (accessible.length > 5)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                '+${accessible.length - 5} ${context.tr('member.moreGyms')}',
+                style: const TextStyle(
+                  color: FFTokens.brand600,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

@@ -27,6 +27,9 @@ TARGETS=(
   "integration_test/member_test.dart"
   "integration_test/owner_test.dart"
   "integration_test/trainer_test.dart"
+  "integration_test/member_feedback_test.dart"
+  "integration_test/owner_feedback_test.dart"
+  "integration_test/trainer_feedback_test.dart"
 )
 
 cd "$APP_DIR"

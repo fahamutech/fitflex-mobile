@@ -75,7 +75,7 @@ class MemberShellState extends State<MemberShell> {
     final loc = GoRouterState.of(context).matchedLocation;
     if (loc.startsWith('/member/gyms')) return 1;
     if (loc.startsWith('/member/trainers')) return 2;
-    if (loc.startsWith('/member/qr')) return 3;
+    if (loc.startsWith('/member/shop')) return 3;
     if (loc.startsWith('/member/profile')) return 4;
     return 0;
   }
@@ -224,14 +224,9 @@ class MemberShellState extends State<MemberShell> {
       AppRoutes.memberHome,
       AppRoutes.memberGyms,
       AppRoutes.memberTrainers,
-      AppRoutes.memberQr,
+      AppRoutes.memberShop,
       AppRoutes.memberProfile,
     ];
-    // Refresh QR when navigating to QR tab
-    if (index == 3) {
-      refreshQr();
-      refreshMe();
-    }
     context.go(routes[index]);
   }
 
@@ -262,9 +257,9 @@ class MemberShellState extends State<MemberShell> {
               label: context.tr('member.trainers'),
             ),
             NavigationDestination(
-              icon: const Icon(Icons.qr_code_2_outlined),
-              selectedIcon: const Icon(Icons.qr_code_2),
-              label: context.tr('member.qr'),
+              icon: const Icon(Icons.storefront_outlined),
+              selectedIcon: const Icon(Icons.storefront),
+              label: context.tr('member.shop'),
             ),
             NavigationDestination(
               icon: const Icon(Icons.person_outline),

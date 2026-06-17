@@ -7,11 +7,13 @@ import 'screens/auth_screen.dart';
 import 'screens/email_auth_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/member/member_shell.dart';
+import 'screens/member/member_shop_tab.dart';
 import 'screens/member/member_onboarding_page.dart';
 import 'screens/trainer/trainer_registration_page.dart';
 import 'screens/owner/owner_dashboard_page.dart';
 import 'screens/owner/owner_registration_page.dart';
 import 'screens/owner/owner_qr_scanner_page.dart';
+import 'screens/owner/owner_earnings_page.dart';
 
 /// Route path constants.
 abstract class AppRoutes {
@@ -28,6 +30,7 @@ abstract class AppRoutes {
   static const ownerRegistration = '/owner/register';
   static const ownerDashboard = '/owner/dashboard';
   static const ownerQrScanner = '/owner/scan';
+  static const ownerEarnings = '/owner/earnings';
 
   // Member sub-routes (shell)
   static const memberOnboarding = '/member/onboarding';
@@ -37,6 +40,7 @@ abstract class AppRoutes {
   static const memberTrainers = '/member/trainers';
   static const memberTrainerDetail = '/member/trainers/:trainerId';
   static const memberQr = '/member/qr';
+  static const memberShop = '/member/shop';
   static const memberProfile = '/member/profile';
   static const memberPasses = '/member/passes';
   static const memberPayment = '/member/payment';
@@ -219,6 +223,11 @@ GoRouter buildRouter(AuthState auth) {
         name: 'ownerQrScanner',
         builder: (context, state) => const OwnerQrScannerPage(),
       ),
+      GoRoute(
+        path: AppRoutes.ownerEarnings,
+        name: 'ownerEarnings',
+        builder: (context, state) => const OwnerEarningsPage(),
+      ),
       // Member shell with bottom nav
       ShellRoute(
         builder: (context, state, child) =>
@@ -263,6 +272,11 @@ GoRouter buildRouter(AuthState auth) {
             path: AppRoutes.memberQr,
             name: 'memberQr',
             builder: (context, state) => const MemberQrTab(),
+          ),
+          GoRoute(
+            path: AppRoutes.memberShop,
+            name: 'memberShop',
+            builder: (context, state) => const MemberShopTab(),
           ),
           GoRoute(
             path: AppRoutes.memberProfile,

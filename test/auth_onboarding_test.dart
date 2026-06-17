@@ -9,6 +9,7 @@ import 'package:fitflexmobile/shared/api_client.dart';
 import 'package:fitflexmobile/shared/auth_state.dart';
 import 'package:fitflexmobile/shared/design_tokens.dart';
 import 'package:fitflexmobile/shared/i18n.dart';
+import 'package:fitflexmobile/shared/pin_credentials.dart';
 
 Widget _wrap(Widget child) {
   final api = ApiClient(baseUrl: 'http://localhost:0');
@@ -35,6 +36,14 @@ Widget _wrap(Widget child) {
 }
 
 void main() {
+  test('Firebase password uses a string credential derived from the PIN', () {
+    final password = firebasePasswordForPin('1234');
+
+    expect(password, isNot('1234'));
+    expect(password.length, greaterThanOrEqualTo(6));
+    expect(password.endsWith('1234'), isTrue);
+  });
+
   testWidgets('auth screen uses centered email and Google layout', (
     tester,
   ) async {
@@ -55,7 +64,7 @@ void main() {
     expect(find.text('Sign up'), findsOneWidget);
   });
 
-  testWidgets('email sign-up validates password confirmation', (tester) async {
+  testWidgets('email sign-up validates PIN confirmation', (tester) async {
     await tester.pumpWidget(
       _wrap(
         const EmailAuthScreen(
@@ -65,16 +74,47 @@ void main() {
       ),
     );
 
-    await tester.enterText(find.byType(TextFormField).at(2), '123456');
-    await tester.enterText(find.byType(TextFormField).at(3), '654321');
+    await tester.enterText(find.byKey(const Key('pinField')), '12345678');
+    await tester.enterText(
+      find.byKey(const Key('confirmPinField')),
+      '87654321',
+    );
     await tester.ensureVisible(find.text('Create account'));
     await tester.tap(find.text('Create account'));
     await tester.pump();
 
-    expect(find.text('Passwords do not match.'), findsOneWidget);
+    expect(find.text('PINs do not match.'), findsOneWidget);
   });
 
-  testWidgets('email sign-up requires terms acceptance', (tester) async {
+  testWidgets(
+    'email sign-up accepts 4 to 8 digit PINs before terms validation',
+    (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          const EmailAuthScreen(
+            initialEmail: 'member@example.com',
+            initialMode: EmailAuthMode.signUp,
+          ),
+        ),
+      );
+
+      await tester.enterText(find.byKey(const Key('pinField')), '12345678');
+      await tester.enterText(
+        find.byKey(const Key('confirmPinField')),
+        '12345678',
+      );
+      await tester.ensureVisible(find.text('Create account'));
+      await tester.tap(find.text('Create account'));
+      await tester.pump();
+
+      expect(
+        find.text('Accept the Terms and Conditions to create an account.'),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets('email PIN fields allow up to 8 digits', (tester) async {
     await tester.pumpWidget(
       _wrap(
         const EmailAuthScreen(
@@ -84,15 +124,20 @@ void main() {
       ),
     );
 
-    await tester.enterText(find.byType(TextFormField).at(2), '123456');
-    await tester.enterText(find.byType(TextFormField).at(3), '123456');
-    await tester.ensureVisible(find.text('Create account'));
-    await tester.tap(find.text('Create account'));
-    await tester.pump();
-
-    expect(
-      find.text('Accept the Terms and Conditions to create an account.'),
-      findsOneWidget,
+    final pinField = tester.widget<TextField>(
+      find.descendant(
+        of: find.byKey(const Key('pinField')),
+        matching: find.byType(TextField),
+      ),
     );
+    final confirmPinField = tester.widget<TextField>(
+      find.descendant(
+        of: find.byKey(const Key('confirmPinField')),
+        matching: find.byType(TextField),
+      ),
+    );
+
+    expect(pinField.maxLength, 8);
+    expect(confirmPinField.maxLength, 8);
   });
 }

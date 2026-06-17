@@ -30,13 +30,27 @@ class TrainerCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    trainer.displayName,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                      color: FFTokens.fgPrimary,
-                    ),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          trainer.displayName,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                            color: FFTokens.fgPrimary,
+                          ),
+                        ),
+                      ),
+                      if (trainer.approvalStatus == 'approved') ...[
+                        const SizedBox(width: 4),
+                        const Icon(
+                          Icons.verified,
+                          size: 14,
+                          color: FFTokens.success600,
+                        ),
+                      ],
+                    ],
                   ),
                   if (specialties.isNotEmpty) ...[
                     const SizedBox(height: 4),

@@ -3,13 +3,13 @@ import 'package:go_router/go_router.dart';
 
 import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
-import '../../../shared/i18n.dart';
 import '../../../shared/models.dart';
 
 class GymCard extends StatelessWidget {
-  const GymCard({super.key, required this.gym});
+  const GymCard({super.key, required this.gym, this.distanceKm});
 
   final Gym gym;
+  final double? distanceKm;
 
   @override
   Widget build(BuildContext context) {
@@ -25,13 +25,23 @@ class GymCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    gym.name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                      color: FFTokens.fgPrimary,
-                    ),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          gym.name,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                            color: FFTokens.fgPrimary,
+                          ),
+                        ),
+                      ),
+                      if (gymIsVerified(gym)) ...[
+                        const SizedBox(width: 4),
+                        const GymVerifiedIcon(size: 14),
+                      ],
+                    ],
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -48,15 +58,13 @@ class GymCard extends StatelessWidget {
                         label: gym.tier.replaceAll('_', ' '),
                         tone: FFBadgeTone.brand,
                       ),
-                      const SizedBox(width: 6),
-                      FFBadge(
-                        label: gym.isFreeOnline
-                            ? context.tr('gym.free')
-                            : context.tr('gym.paid'),
-                        tone: gym.isFreeOnline
-                            ? FFBadgeTone.success
-                            : FFBadgeTone.gray,
-                      ),
+                      if (distanceKm != null) ...[
+                        const SizedBox(width: 6),
+                        FFBadge(
+                          label: _formatDistance(distanceKm!),
+                          tone: FFBadgeTone.gray,
+                        ),
+                      ],
                     ],
                   ),
                 ],
@@ -72,6 +80,26 @@ class GymCard extends StatelessWidget {
       ),
     );
   }
+}
+
+bool gymIsVerified(Gym gym) =>
+    gym.isVerified ||
+    gym.verificationStatus == 'verified' ||
+    gym.verificationStatus == 'approved';
+
+String _formatDistance(double km) {
+  if (km < 10) return '${km.toStringAsFixed(1)} km';
+  return '${km.round()} km';
+}
+
+class GymVerifiedIcon extends StatelessWidget {
+  const GymVerifiedIcon({super.key, this.size = 16});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) =>
+      Icon(Icons.verified, size: size, color: FFTokens.success600);
 }
 
 class _GymThumb extends StatelessWidget {

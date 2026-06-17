@@ -45,13 +45,27 @@ class MemberTrainerDetailPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      trainer.displayName,
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w600,
-                        color: FFTokens.fgPrimary,
-                      ),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            trainer.displayName,
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w600,
+                              color: FFTokens.fgPrimary,
+                            ),
+                          ),
+                        ),
+                        if (trainer.approvalStatus == 'approved') ...[
+                          const SizedBox(width: 6),
+                          const Icon(
+                            Icons.verified,
+                            size: 20,
+                            color: FFTokens.success600,
+                          ),
+                        ],
+                      ],
                     ),
                     if (trainer.specialties.isNotEmpty)
                       Text(

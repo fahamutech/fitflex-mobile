@@ -14,6 +14,10 @@ class Gym {
   final String status;
   final String? accessMode;
   final String? venueType;
+  final bool isVerified;
+  final String? verificationStatus;
+  final double? latitude;
+  final double? longitude;
   final List<String> images;
   final List<String> amenities;
   final List<String> equipment;
@@ -31,31 +35,75 @@ class Gym {
     required this.status,
     this.accessMode,
     this.venueType,
+    this.isVerified = false,
+    this.verificationStatus,
+    this.latitude,
+    this.longitude,
     this.images = const [],
     this.amenities = const [],
     this.equipment = const [],
   });
 
-  factory Gym.fromJson(Map<String, dynamic> json) => Gym(
-    id: json['id'] as String? ?? '',
-    name: json['name'] as String? ?? '',
-    tier: json['tier'] as String? ?? '',
-    location: json['location'] as String? ?? '',
-    perVisitRate: json['perVisitRate'] as num? ?? 0,
-    ratePerDay: json['ratePerDay'] as num?,
-    ratePerWeek: json['ratePerWeek'] as num?,
-    ratePerMonth: json['ratePerMonth'] as num?,
-    commissionRate: json['commissionRate'] as num? ?? 0,
-    status: json['status'] as String? ?? 'active',
-    accessMode: json['accessMode'] as String?,
-    venueType: json['venueType'] as String?,
-    images: (json['images'] as List?)?.whereType<String>().toList() ?? [],
-    amenities: (json['amenities'] as List?)?.whereType<String>().toList() ?? [],
-    equipment: (json['equipment'] as List?)?.whereType<String>().toList() ?? [],
-  );
+  factory Gym.fromJson(Map<String, dynamic> json) {
+    final coordinates = json['coordinates'];
+    final lat =
+        _coordinateValue(json['lat']) ??
+        (coordinates is Map ? _coordinateValue(coordinates['lat']) : null) ??
+        (coordinates is List && coordinates.isNotEmpty
+            ? _coordinateValue(coordinates[0])
+            : null);
+    final lng =
+        _coordinateValue(json['lng']) ??
+        _coordinateValue(json['longitude']) ??
+        (coordinates is Map
+            ? _coordinateValue(coordinates['lng']) ??
+                  _coordinateValue(coordinates['longitude'])
+            : null) ??
+        (coordinates is List && coordinates.length > 1
+            ? _coordinateValue(coordinates[1])
+            : null);
+
+    return Gym(
+      id: json['id'] as String? ?? '',
+      name: json['name'] as String? ?? '',
+      tier: json['tier'] as String? ?? '',
+      location: json['location'] as String? ?? '',
+      perVisitRate: json['perVisitRate'] as num? ?? 0,
+      ratePerDay: json['ratePerDay'] as num?,
+      ratePerWeek: json['ratePerWeek'] as num?,
+      ratePerMonth: json['ratePerMonth'] as num?,
+      commissionRate: json['commissionRate'] as num? ?? 0,
+      status: json['status'] as String? ?? 'active',
+      accessMode: json['accessMode'] as String?,
+      venueType: json['venueType'] as String?,
+      isVerified: _boolValue(json['isVerified'] ?? json['verified']),
+      verificationStatus: json['verificationStatus'] as String?,
+      latitude: lat,
+      longitude: lng,
+      images: (json['images'] as List?)?.whereType<String>().toList() ?? [],
+      amenities:
+          (json['amenities'] as List?)?.whereType<String>().toList() ?? [],
+      equipment:
+          (json['equipment'] as List?)?.whereType<String>().toList() ?? [],
+    );
+  }
 
   bool get isFreeOnline => accessMode == 'free_online';
   bool get isPaidVisit => accessMode == 'paid_visit';
+  bool get hasCoordinates => latitude != null && longitude != null;
+}
+
+double? _coordinateValue(Object? value) {
+  if (value is num) return value.toDouble();
+  if (value is String) return double.tryParse(value);
+  return null;
+}
+
+bool _boolValue(Object? value) {
+  if (value is bool) return value;
+  if (value is num) return value != 0;
+  if (value is String) return value.toLowerCase() == 'true';
+  return false;
 }
 
 class TrainerProfile {
@@ -175,6 +223,7 @@ class TrainerAvailability {
 
 class MemberProfile {
   final String? fitnessGoal;
+  final List<String> fitnessGoals;
   final String? fitnessLevel;
   final num? heightCm;
   final num? weightKg;
@@ -184,6 +233,7 @@ class MemberProfile {
 
   MemberProfile({
     this.fitnessGoal,
+    this.fitnessGoals = const [],
     this.fitnessLevel,
     this.heightCm,
     this.weightKg,
@@ -194,6 +244,9 @@ class MemberProfile {
 
   factory MemberProfile.fromJson(Map<String, dynamic> json) => MemberProfile(
     fitnessGoal: json['fitnessGoal'] as String?,
+    fitnessGoals:
+        (json['fitnessGoals'] as List?)?.whereType<String>().toList() ??
+        const [],
     fitnessLevel: json['fitnessLevel'] as String?,
     heightCm: json['heightCm'] as num?,
     weightKg: json['weightKg'] as num?,

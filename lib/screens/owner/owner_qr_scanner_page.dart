@@ -22,6 +22,7 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
   Map<String, dynamic>? _verifyResult;
   String? _scannedToken;
   String? _error;
+  int _scanCount = 0;
 
   @override
   void initState() {
@@ -70,7 +71,12 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
       final api = AppScope.of(context).api;
       final result = await api.operatorVerifyQr(qrToken, gymId: _selectedGymId);
       if (!mounted) return;
-      setState(() => _verifyResult = result);
+      final resultGym = result['gym'] as Map<String, dynamic>?;
+      final resultGymId = resultGym?['id']?.toString();
+      setState(() {
+        _verifyResult = result;
+        _selectedGymId ??= resultGymId;
+      });
     } on ApiException catch (e) {
       if (!mounted) return;
       final body = e.body is Map ? e.body as Map : {};
@@ -86,17 +92,22 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
   }
 
   Future<void> _approveCheckIn() async {
-    if (_scannedToken == null || _selectedGymId == null) return;
+    final gymId = _effectiveGymId();
+    if (_scannedToken == null || gymId == null) return;
     setState(() => _busy = true);
     try {
       final api = AppScope.of(context).api;
-      await api.operatorCheckIn(_scannedToken!, gymId: _selectedGymId);
+      await api.operatorCheckIn(_scannedToken!, gymId: gymId);
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(context.tr('ownerScan.approved'))));
-      final closed = await Navigator.of(context).maybePop();
-      if (!closed && mounted) _reset();
+      setState(() => _scanCount++);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${context.tr('ownerScan.approved')} ($_scanCount)'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      // Auto-reset to allow scanning next member immediately
+      _reset();
     } on ApiException catch (e) {
       if (!mounted) return;
       final body = e.body is Map ? e.body as Map : {};
@@ -172,6 +183,7 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
     final visitsUsed = r['visitsUsed'] as num? ?? 0;
     final visitCap = r['visitCap'] as num?;
     final needsGymSelection = _gyms.length > 1 && _selectedGymId == null;
+    final effectiveGymId = _effectiveGymId();
 
     return ListView(
       padding: const EdgeInsets.all(FFTokens.spacingLg),
@@ -334,7 +346,7 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
         // Actions
         if (eligible)
           FilledButton.icon(
-            onPressed: _busy || _selectedGymId == null ? null : _approveCheckIn,
+            onPressed: _busy || effectiveGymId == null ? null : _approveCheckIn,
             icon: _busy
                 ? const SizedBox(
                     height: 18,
@@ -364,5 +376,13 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
         ],
       ],
     );
+  }
+
+  String? _effectiveGymId() {
+    if (_selectedGymId != null && _selectedGymId!.isNotEmpty) {
+      return _selectedGymId;
+    }
+    final gym = _verifyResult?['gym'] as Map<String, dynamic>?;
+    return gym?['id']?.toString();
   }
 }

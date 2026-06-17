@@ -98,13 +98,54 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
       child: ListView(
         padding: const EdgeInsets.all(FFTokens.spacingLg),
         children: [
+          // Welcome header
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [FFTokens.brand700, FFTokens.brand600],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(FFTokens.radiusXl),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  gym?['name']?.toString() ?? context.tr('owner.dashboard'),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  context.tr('owner.dashboardBody'),
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.85),
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
           // Gym selector
           if (gyms.length > 1) ...[
             DropdownButtonFormField<String>(
               initialValue: _selectedGymId ?? gym?['id']?.toString(),
               decoration: InputDecoration(
                 labelText: context.tr('ownerScan.gym'),
-                border: const OutlineInputBorder(),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(FFTokens.radiusMd),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
               ),
               items: gyms.map((g) {
                 final gymData = g as Map<String, dynamic>;
@@ -145,7 +186,7 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
           ),
           const SizedBox(height: 20),
 
-          // Today / This Month cards with labels
+          // Today / This Month cards
           Row(
             children: [
               Expanded(
@@ -153,6 +194,7 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
                   label: context.tr('owner.todayVisits'),
                   value: (data['todayCount'] as num?)?.toInt() ?? 0,
                   icon: Icons.today,
+                  color: FFTokens.brand600,
                 ),
               ),
               const SizedBox(width: 12),
@@ -161,6 +203,7 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
                   label: context.tr('owner.monthVisits'),
                   value: (data['monthVisits'] as num?)?.toInt() ?? 0,
                   icon: Icons.calendar_month,
+                  color: FFTokens.success600,
                 ),
               ),
             ],
@@ -173,6 +216,7 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
                   label: context.tr('owner.periodVisits'),
                   value: (data['periodVisits'] as num?)?.toInt() ?? 0,
                   icon: Icons.date_range,
+                  color: FFTokens.warning500,
                 ),
               ),
               const SizedBox(width: 12),
@@ -181,6 +225,7 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
                   label: context.tr('owner.periodMembers'),
                   value: (data['periodMembers'] as num?)?.toInt() ?? 0,
                   icon: Icons.people,
+                  color: FFTokens.brand700,
                 ),
               ),
             ],
@@ -198,25 +243,25 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
                   value: (overall['gymCount'] as num?)?.toInt() ?? 0,
                   icon: Icons.business,
                 ),
-                const Divider(),
+                const Divider(height: 1),
                 _OverallStat(
                   label: context.tr('owner.totalVisits'),
                   value: (overall['totalVisits'] as num?)?.toInt() ?? 0,
                   icon: Icons.bar_chart,
                 ),
-                const Divider(),
+                const Divider(height: 1),
                 _OverallStat(
                   label: context.tr('owner.uniqueMembers'),
                   value: (overall['uniqueMembers'] as num?)?.toInt() ?? 0,
                   icon: Icons.person,
                 ),
-                const Divider(),
+                const Divider(height: 1),
                 _OverallStat(
                   label: context.tr('owner.directVisits'),
                   value: (overall['directVisits'] as num?)?.toInt() ?? 0,
                   icon: Icons.person_pin,
                 ),
-                const Divider(),
+                const Divider(height: 1),
                 _OverallStat(
                   label: context.tr('owner.fitflexVisits'),
                   value: (overall['fitflexVisits'] as num?)?.toInt() ?? 0,
@@ -227,9 +272,119 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
           ),
           const SizedBox(height: 20),
 
+          // Owner tools
+          _SectionTitle(context.tr('owner.actions')),
+          FFActionTile(
+            icon: Icons.qr_code_scanner,
+            title: context.tr('owner.scan'),
+            onTap: () => Navigator.pushNamed(context, '/owner/scan'),
+          ),
+          FFActionTile(
+            icon: Icons.location_on_outlined,
+            title: context.tr('owner.editLocation'),
+            onTap: () => _openEditGymLocation(),
+          ),
+          FFActionTile(
+            icon: Icons.trending_up,
+            title: context.tr('owner.earnings'),
+            onTap: () => Navigator.pushNamed(context, '/owner/earnings'),
+          ),
+          FFActionTile(
+            icon: Icons.account_balance_outlined,
+            title: context.tr('owner.bankDetails'),
+            onTap: () => _openBankDetails(),
+          ),
+          const SizedBox(height: 20),
+
           // Gym summaries
           _SectionTitle(context.tr('owner.gymBreakdown')),
           for (final g in gyms) _GymSummaryCard(gym: g as Map<String, dynamic>),
+        ],
+      ),
+    );
+  }
+
+  void _openEditGymLocation() {
+    final locationCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(context.tr('owner.editLocation')),
+        content: TextField(
+          controller: locationCtrl,
+          decoration: InputDecoration(
+            labelText: context.tr('ownerReg.gymLocation'),
+            hintText: 'e.g. Masaki, Dar es Salaam',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(context.tr('member.cancel')),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(context.tr('owner.gymUpdated'))),
+              );
+            },
+            child: Text(context.tr('member.save')),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openBankDetails() {
+    final bankNameCtrl = TextEditingController();
+    final branchCtrl = TextEditingController();
+    final accountCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(context.tr('owner.bankDetails')),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: bankNameCtrl,
+                decoration: InputDecoration(
+                  labelText: context.tr('owner.bankName'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: branchCtrl,
+                decoration: InputDecoration(
+                  labelText: context.tr('owner.bankBranch'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: accountCtrl,
+                decoration: InputDecoration(
+                  labelText: context.tr('owner.accountNumber'),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(context.tr('member.cancel')),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(context.tr('owner.bankUpdated'))),
+              );
+            },
+            child: Text(context.tr('member.save')),
+          ),
         ],
       ),
     );
@@ -241,23 +396,40 @@ class _MetricCard extends StatelessWidget {
     required this.label,
     required this.value,
     required this.icon,
+    this.color = FFTokens.brand700,
   });
 
   final String label;
   final int value;
   final IconData icon;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
-    return FFCard(
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: FFTokens.surface,
+        border: Border.all(color: FFTokens.border),
+        borderRadius: BorderRadius.circular(FFTokens.radiusLg),
+        boxShadow: FFTokens.shadowSm,
+      ),
       child: Column(
         children: [
-          Icon(icon, color: FFTokens.brand700, size: 24),
-          const SizedBox(height: 8),
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(FFTokens.radiusMd),
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(height: 10),
           Text(
             value.toString(),
             style: const TextStyle(
-              fontSize: 24,
+              fontSize: 26,
               fontWeight: FontWeight.w700,
               color: FFTokens.fgPrimary,
             ),

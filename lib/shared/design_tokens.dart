@@ -31,6 +31,7 @@ class FFTokens {
   static const Color success50 = Color(0xFFECFDF3);
   static const Color success200 = Color(0xFFABEFC6);
   static const Color success500 = Color(0xFF16A34A);
+  static const Color success600 = Color(0xFF099250);
   static const Color success700 = Color(0xFF067647);
   static const Color success = success500;
 

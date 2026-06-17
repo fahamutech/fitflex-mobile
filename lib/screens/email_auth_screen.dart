@@ -11,6 +11,7 @@ import '../shared/components/components.dart';
 import '../shared/design_tokens.dart';
 import '../shared/firebase_auth_service.dart';
 import '../shared/i18n.dart';
+import '../shared/pin_credentials.dart';
 
 enum EmailAuthMode { signIn, signUp }
 
@@ -35,9 +36,10 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
   FirebaseAuthService? _firebaseAuth;
   late EmailAuthMode _mode;
   late final TextEditingController _emailCtrl;
-  final _passwordCtrl = TextEditingController();
-  final _confirmCtrl = TextEditingController();
-  final _nameCtrl = TextEditingController();
+  final _pinCtrl = TextEditingController();
+  final _confirmPinCtrl = TextEditingController();
+  bool _obscurePin = true;
+  bool _obscureConfirmPin = true;
   bool _acceptedTerms = false;
   bool _busy = false;
   String? _error;
@@ -55,9 +57,8 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
   @override
   void dispose() {
     _emailCtrl.dispose();
-    _passwordCtrl.dispose();
-    _confirmCtrl.dispose();
-    _nameCtrl.dispose();
+    _pinCtrl.dispose();
+    _confirmPinCtrl.dispose();
     super.dispose();
   }
 
@@ -74,7 +75,8 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
     setState(() => _busy = true);
     try {
       final email = _emailCtrl.text.trim();
-      final password = _passwordCtrl.text;
+      final pin = _pinCtrl.text;
+      final password = firebasePasswordForPin(pin);
       final credential = _isSignUp
           ? await _authService.createAccountWithEmail(
               email: email,
@@ -84,9 +86,6 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
               email: email,
               password: password,
             );
-      if (_isSignUp && _nameCtrl.text.trim().isNotEmpty) {
-        await credential.user?.updateDisplayName(_nameCtrl.text.trim());
-      }
       final idToken = await _authService.idTokenFor(credential.user);
       if (idToken == null) throw StateError('Missing Firebase ID token');
       if (!mounted) return;
@@ -151,16 +150,19 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
     return ok ? null : context.tr('onboarding.invalidEmail');
   }
 
-  String? _passwordValidator(String? value) {
+  String? _pinValidator(String? value) {
     final text = value ?? '';
     if (text.isEmpty) return context.tr('onboarding.required');
-    if (text.length < 6) return context.tr('auth.passwordMin');
+    if (!RegExp(r'^\d+$').hasMatch(text)) {
+      return context.tr('auth.pinDigitsOnly');
+    }
+    if (text.length < 4 || text.length > 8) return context.tr('auth.pinLength');
     return null;
   }
 
-  String? _confirmValidator(String? value) {
+  String? _confirmPinValidator(String? value) {
     if (!_isSignUp) return null;
-    if (value != _passwordCtrl.text) return context.tr('auth.passwordMismatch');
+    if (value != _pinCtrl.text) return context.tr('auth.pinMismatch');
     return null;
   }
 
@@ -262,18 +264,8 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
                       ),
                     ),
                     const SizedBox(height: 28),
-                    if (_isSignUp) ...[
-                      TextFormField(
-                        controller: _nameCtrl,
-                        textInputAction: TextInputAction.next,
-                        autofillHints: const [AutofillHints.name],
-                        decoration: InputDecoration(
-                          labelText: context.tr('onboarding.displayName'),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                    ],
                     TextFormField(
+                      key: const Key('emailField'),
                       controller: _emailCtrl,
                       keyboardType: TextInputType.emailAddress,
                       autofillHints: const [AutofillHints.email],
@@ -285,23 +277,51 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
-                      controller: _passwordCtrl,
-                      obscureText: true,
+                      key: const Key('pinField'),
+                      controller: _pinCtrl,
+                      obscureText: _obscurePin,
+                      keyboardType: TextInputType.number,
+                      maxLength: 8,
                       autofillHints: const [AutofillHints.password],
-                      validator: _passwordValidator,
+                      validator: _pinValidator,
                       decoration: InputDecoration(
-                        labelText: context.tr('auth.password'),
+                        labelText: context.tr('auth.pin'),
+                        counterText: '',
+                        suffixIcon: IconButton(
+                          key: const Key('pinVisibilityToggle'),
+                          icon: Icon(
+                            _obscurePin
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                          ),
+                          onPressed: () =>
+                              setState(() => _obscurePin = !_obscurePin),
+                        ),
                       ),
                     ),
                     if (_isSignUp) ...[
                       const SizedBox(height: 12),
                       TextFormField(
-                        controller: _confirmCtrl,
-                        obscureText: true,
+                        key: const Key('confirmPinField'),
+                        controller: _confirmPinCtrl,
+                        obscureText: _obscureConfirmPin,
+                        keyboardType: TextInputType.number,
+                        maxLength: 8,
                         autofillHints: const [AutofillHints.newPassword],
-                        validator: _confirmValidator,
+                        validator: _confirmPinValidator,
                         decoration: InputDecoration(
-                          labelText: context.tr('auth.confirmPassword'),
+                          labelText: context.tr('auth.confirmPin'),
+                          counterText: '',
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscureConfirmPin
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                            ),
+                            onPressed: () => setState(
+                              () => _obscureConfirmPin = !_obscureConfirmPin,
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -309,15 +329,22 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Checkbox(
+                            key: const Key('termsCheckbox'),
                             value: _acceptedTerms,
-                            onChanged: (v) => setState(() => _acceptedTerms = v ?? false),
+                            onChanged: (v) =>
+                                setState(() => _acceptedTerms = v ?? false),
                           ),
                           Expanded(
                             child: RichText(
                               text: TextSpan(
-                                style: TextStyle(fontSize: 14, color: FFTokens.fgSecondary),
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: FFTokens.fgSecondary,
+                                ),
                                 children: [
-                                  TextSpan(text: context.tr('auth.acceptTermsPrefix')),
+                                  TextSpan(
+                                    text: context.tr('auth.acceptTermsPrefix'),
+                                  ),
                                   TextSpan(
                                     text: context.tr('auth.termsLink'),
                                     style: const TextStyle(

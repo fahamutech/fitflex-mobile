@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../router.dart';
 import '../../shared/components/components.dart';
@@ -7,17 +9,34 @@ import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
 import 'member_shell.dart';
+import 'widgets/gym_card.dart';
 import 'widgets/trainer_card.dart';
 
-class MemberGymDetailPage extends StatelessWidget {
+class MemberGymDetailPage extends StatefulWidget {
   const MemberGymDetailPage({super.key, required this.gymId});
 
   final String gymId;
 
   @override
+  State<MemberGymDetailPage> createState() => _MemberGymDetailPageState();
+}
+
+class _MemberGymDetailPageState extends State<MemberGymDetailPage> {
+  bool _openingDirections = false;
+
+  Future<void> _handleDirections(Gym gym) async {
+    setState(() => _openingDirections = true);
+    try {
+      await openMapDirections(gym);
+    } finally {
+      if (mounted) setState(() => _openingDirections = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final data = MemberDataScope.of(context);
-    final gym = data.gyms.where((g) => g.id == gymId).firstOrNull;
+    final gym = data.gyms.where((g) => g.id == widget.gymId).firstOrNull;
 
     if (gym == null) {
       return Center(child: FFEmptyState(title: context.tr('member.noData')));
@@ -25,7 +44,8 @@ class MemberGymDetailPage extends StatelessWidget {
 
     final trainersAtGym = data.trainers
         .where((t) {
-          return t.gymIds.contains(gymId) || t.gyms.any((g) => g.id == gymId);
+          return t.gymIds.contains(widget.gymId) ||
+              t.gyms.any((g) => g.id == widget.gymId);
         })
         .take(2)
         .toList();
@@ -45,13 +65,23 @@ class MemberGymDetailPage extends StatelessWidget {
           _GymHero(gym: gym),
 
           // Name + location
-          Text(
-            gym.name,
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w600,
-              color: FFTokens.fgPrimary,
-            ),
+          Row(
+            children: [
+              Flexible(
+                child: Text(
+                  gym.name,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w600,
+                    color: FFTokens.fgPrimary,
+                  ),
+                ),
+              ),
+              if (gymIsVerified(gym)) ...[
+                const SizedBox(width: 6),
+                const GymVerifiedIcon(size: 20),
+              ],
+            ],
           ),
           const SizedBox(height: 4),
           Text(
@@ -65,14 +95,48 @@ class MemberGymDetailPage extends StatelessWidget {
                 label: gym.tier.replaceAll('_', ' '),
                 tone: FFBadgeTone.brand,
               ),
-              const SizedBox(width: 6),
-              FFBadge(
-                label: gym.isFreeOnline
-                    ? context.tr('gym.free')
-                    : context.tr('gym.paid'),
-                tone: gym.isFreeOnline ? FFBadgeTone.success : FFBadgeTone.gray,
-              ),
+              if (gym.isFreeOnline) ...[
+                const SizedBox(width: 6),
+                FFBadge(
+                  label: context.tr('gym.free'),
+                  tone: FFBadgeTone.success,
+                ),
+              ],
             ],
+          ),
+          const SizedBox(height: 10),
+          // Map toggle for directions
+          InkWell(
+            onTap: _openingDirections ? null : () => _handleDirections(gym),
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _openingDirections
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(
+                          Icons.map_outlined,
+                          size: 18,
+                          color: FFTokens.brand600,
+                        ),
+                  const SizedBox(width: 6),
+                  Text(
+                    context.tr('gym.getDirections'),
+                    style: const TextStyle(
+                      color: FFTokens.brand600,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
 
           // About
@@ -147,6 +211,55 @@ class MemberGymDetailPage extends StatelessWidget {
       ),
     );
   }
+}
+
+Future<void> openMapDirections(Gym gym) async {
+  final origin = await _currentLocation();
+  final uri = gymDirectionsUri(
+    gym,
+    originLat: origin?.latitude,
+    originLng: origin?.longitude,
+  );
+  await launchUrl(uri, mode: LaunchMode.externalApplication);
+}
+
+Future<Position?> _currentLocation() async {
+  final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+  if (!serviceEnabled) return null;
+
+  LocationPermission permission = await Geolocator.checkPermission();
+  if (permission == LocationPermission.denied) {
+    permission = await Geolocator.requestPermission();
+  }
+  if (permission == LocationPermission.denied ||
+      permission == LocationPermission.deniedForever) {
+    return null;
+  }
+
+  try {
+    return await Geolocator.getCurrentPosition(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.medium,
+      ),
+    );
+  } catch (_) {
+    return null;
+  }
+}
+
+Uri gymDirectionsUri(Gym gym, {double? originLat, double? originLng}) {
+  final query = <String, String>{
+    'api': '1',
+    'destination': gym.hasCoordinates
+        ? '${gym.latitude},${gym.longitude}'
+        : gym.location,
+    'travelmode': 'driving',
+  };
+  if (originLat != null && originLng != null) {
+    query['origin'] = '$originLat,$originLng';
+  }
+
+  return Uri.https('www.google.com', '/maps/dir/', query);
 }
 
 class _GymHero extends StatelessWidget {
@@ -336,6 +449,9 @@ class _CategorizedItems extends StatelessWidget {
       ));
     }
 
+    // Sort categories by item count descending (most items first)
+    groups.sort((a, b) => b.items.length.compareTo(a.items.length));
+
     return Column(
       children: groups
           .map(
@@ -347,6 +463,7 @@ class _CategorizedItems extends StatelessWidget {
                 items: group.items,
                 tone: tone,
                 asRatings: group.asRatings,
+                highlightAvailable: true,
               ),
             ),
           )
@@ -367,6 +484,7 @@ class _ExpandableChipGroup extends StatefulWidget {
     required this.items,
     required this.tone,
     required this.asRatings,
+    this.highlightAvailable = false,
   });
 
   final String title;
@@ -374,6 +492,7 @@ class _ExpandableChipGroup extends StatefulWidget {
   final List<String> items;
   final FFBadgeTone tone;
   final bool asRatings;
+  final bool highlightAvailable;
 
   @override
   State<_ExpandableChipGroup> createState() => _ExpandableChipGroupState();
@@ -448,7 +567,31 @@ class _ExpandableChipGroupState extends State<_ExpandableChipGroup> {
               spacing: 6,
               runSpacing: 6,
               children: visible
-                  .map((item) => FFBadge(label: item, tone: widget.tone))
+                  .map(
+                    (item) => widget.highlightAvailable
+                        ? Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: FFTokens.success50,
+                              border: Border.all(color: FFTokens.success200),
+                              borderRadius: BorderRadius.circular(
+                                FFTokens.radiusMd,
+                              ),
+                            ),
+                            child: Text(
+                              item,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: FFTokens.success700,
+                              ),
+                            ),
+                          )
+                        : FFBadge(label: item, tone: widget.tone),
+                  )
                   .toList(),
             ),
           if (widget.items.length > 8) ...[
