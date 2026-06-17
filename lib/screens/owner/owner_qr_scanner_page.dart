@@ -36,19 +36,21 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
     super.dispose();
   }
 
-  Future<void> _loadGyms() async {
+  Future<List<Map<String, dynamic>>> _loadGyms() async {
     try {
       final result = await AppScope.of(context).api.ownerGyms();
-      if (!mounted) return;
       final gyms = result.cast<Map<String, dynamic>>();
+      if (!mounted) return gyms;
       setState(() {
         _gyms = gyms;
         if (_selectedGymId == null && gyms.length == 1) {
           _selectedGymId = gyms.first['id']?.toString();
         }
       });
+      return gyms;
     } catch (_) {
       // Existing single-gym operators can still scan with their server-side default.
+      return _gyms;
     }
   }
 
@@ -59,6 +61,11 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
     final code = barcodes.first.rawValue;
     if (code == null || code.isEmpty) return;
     _scannedToken = code;
+    try {
+      await _cameraCtrl.stop();
+    } catch (_) {
+      // The scanner may already be stopped while a frame is being processed.
+    }
     await _verify(code);
   }
 
@@ -69,13 +76,30 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
     });
     try {
       final api = AppScope.of(context).api;
-      final result = await api.operatorVerifyQr(qrToken, gymId: _selectedGymId);
+      var selectedGymId = _selectedGymId;
+      var result = await api.operatorVerifyQr(qrToken, gymId: selectedGymId);
+      if (!mounted) return;
+      var gyms = _gyms;
+
+      if (result['requiresGymSelection'] == true) {
+        if (gyms.isEmpty) {
+          gyms = await _loadGyms();
+        }
+        selectedGymId ??= gyms.length == 1
+            ? gyms.first['id']?.toString()
+            : null;
+        if (selectedGymId != null && selectedGymId.isNotEmpty) {
+          result = await api.operatorVerifyQr(qrToken, gymId: selectedGymId);
+        }
+      }
+
       if (!mounted) return;
       final resultGym = result['gym'] as Map<String, dynamic>?;
       final resultGymId = resultGym?['id']?.toString();
       setState(() {
+        _gyms = gyms;
         _verifyResult = result;
-        _selectedGymId ??= resultGymId;
+        _selectedGymId = selectedGymId ?? resultGymId;
       });
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -107,7 +131,7 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
         ),
       );
       // Auto-reset to allow scanning next member immediately
-      _reset();
+      await _reset();
     } on ApiException catch (e) {
       if (!mounted) return;
       final body = e.body is Map ? e.body as Map : {};
@@ -122,13 +146,18 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
     }
   }
 
-  void _reset() {
+  Future<void> _reset() async {
     setState(() {
       _verifyResult = null;
       _scannedToken = null;
       _error = null;
       if (_gyms.length != 1) _selectedGymId = null;
     });
+    try {
+      await _cameraCtrl.start();
+    } catch (_) {
+      // Scanner may already be running or unavailable during route changes.
+    }
   }
 
   @override
@@ -182,7 +211,11 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
     final reason = r['reason']?.toString() ?? '';
     final visitsUsed = r['visitsUsed'] as num? ?? 0;
     final visitCap = r['visitCap'] as num?;
-    final needsGymSelection = _gyms.length > 1 && _selectedGymId == null;
+    final needsGymSelection = ownerScanNeedsGymSelection(
+      verifyResult: r,
+      gyms: _gyms,
+      selectedGymId: _selectedGymId,
+    );
     final effectiveGymId = _effectiveGymId();
 
     return ListView(
@@ -282,7 +315,7 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (_gyms.length > 1) ...[
+              if (needsGymSelection || _gyms.length > 1) ...[
                 DropdownButtonFormField<String>(
                   initialValue: _selectedGymId,
                   decoration: InputDecoration(
@@ -304,6 +337,10 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
                           if (value != null) await _verify(_scannedToken!);
                         },
                 ),
+                if (_gyms.isEmpty) ...[
+                  const SizedBox(height: 8),
+                  const FFSpinner(size: 18),
+                ],
                 const SizedBox(height: 12),
               ] else if (gym != null)
                 Text(
@@ -385,4 +422,13 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
     final gym = _verifyResult?['gym'] as Map<String, dynamic>?;
     return gym?['id']?.toString();
   }
+}
+
+bool ownerScanNeedsGymSelection({
+  required Map<String, dynamic> verifyResult,
+  required List<Map<String, dynamic>> gyms,
+  required String? selectedGymId,
+}) {
+  if (selectedGymId != null && selectedGymId.isNotEmpty) return false;
+  return verifyResult['requiresGymSelection'] == true || gyms.length > 1;
 }
