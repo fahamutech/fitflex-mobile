@@ -42,6 +42,6 @@ void main() {
 
     expect(find.text('English'), findsOneWidget);
     expect(find.text('Kiswahili'), findsOneWidget);
-    expect(find.text('FitFlex Af'), findsOneWidget);
+    expect(find.text('FitFlex'), findsOneWidget);
   });
 }

@@ -1,6 +1,6 @@
 # fitflexmobile
 
-FitFlex Af Flutter mobile app for members and trainers.
+FitFlex Flutter mobile app for members and trainers.
 
 ## Firebase Google sign-in
 

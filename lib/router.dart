@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'shared/auth_state.dart';
@@ -10,10 +11,10 @@ import 'screens/member/member_shell.dart';
 import 'screens/member/member_shop_tab.dart';
 import 'screens/member/member_onboarding_page.dart';
 import 'screens/trainer/trainer_registration_page.dart';
-import 'screens/owner/owner_dashboard_page.dart';
+import 'screens/trainer/trainer_home_page.dart';
 import 'screens/owner/owner_registration_page.dart';
 import 'screens/owner/owner_qr_scanner_page.dart';
-import 'screens/owner/owner_earnings_page.dart';
+import 'screens/owner/owner_shell.dart';
 
 /// Route path constants.
 abstract class AppRoutes {
@@ -25,10 +26,17 @@ abstract class AppRoutes {
   static const pending = '/pending';
   static const home = '/home';
 
-  // Trainer & Owner registration
+  // Trainer
   static const trainerRegistration = '/trainer/register';
+  static const trainerHome = '/trainer/home';
+
+  // Owner sub-routes (shell)
   static const ownerRegistration = '/owner/register';
-  static const ownerDashboard = '/owner/dashboard';
+  static const ownerHome = '/owner/home';
+  static const ownerGyms = '/owner/gyms';
+  static const ownerGymCheckins = '/owner/gyms/:gymId/checkins';
+  static const ownerTrainers = '/owner/trainers';
+  static const ownerProfile = '/owner/profile';
   static const ownerQrScanner = '/owner/scan';
   static const ownerEarnings = '/owner/earnings';
 
@@ -77,10 +85,10 @@ String routeForSignedInUser(AuthState auth) {
     return onboarded ? AppRoutes.memberHome : AppRoutes.memberOnboarding;
   }
   if (role == 'trainer') {
-    return onboarded ? AppRoutes.home : AppRoutes.trainerRegistration;
+    return onboarded ? AppRoutes.trainerHome : AppRoutes.trainerRegistration;
   }
   if (role == 'gym_operator') {
-    return onboarded ? AppRoutes.home : AppRoutes.ownerRegistration;
+    return onboarded ? AppRoutes.ownerHome : AppRoutes.ownerRegistration;
   }
   return AppRoutes.home;
 }
@@ -176,11 +184,32 @@ GoRouter buildRouter(AuthState auth) {
       GoRoute(
         path: AppRoutes.emailAuth,
         name: 'emailAuth',
-        builder: (context, state) => EmailAuthScreen(
-          initialEmail: state.uri.queryParameters['email'] ?? '',
-          initialMode: state.uri.queryParameters['mode'] == 'signup'
-              ? EmailAuthMode.signUp
-              : EmailAuthMode.signIn,
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: EmailAuthScreen(
+            initialEmail: state.uri.queryParameters['email'] ?? '',
+            initialMode: state.uri.queryParameters['mode'] == 'signup'
+                ? EmailAuthMode.signUp
+                : EmailAuthMode.signIn,
+          ),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SlideTransition(
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(0, 0.05),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                  ),
+              child: FadeTransition(
+                opacity: CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.easeOut,
+                ),
+                child: child,
+              ),
+            );
+          },
         ),
       ),
       GoRoute(
@@ -193,30 +222,32 @@ GoRouter buildRouter(AuthState auth) {
         name: 'pending',
         builder: (context, state) => const PendingApprovalScreen(),
       ),
-      GoRoute(
-        path: AppRoutes.home,
-        name: 'home',
-        builder: (context, state) => const HomeScreen(),
-      ),
+      // GoRoute(
+      //   path: AppRoutes.home,
+      //   name: 'home',
+      //   builder: (context, state) => const HomeScreen(),
+      // ),
       GoRoute(
         path: AppRoutes.memberOnboarding,
         name: 'memberOnboarding',
         builder: (context, state) => const MemberOnboardingPage(),
       ),
+      // Trainer routes
       GoRoute(
         path: AppRoutes.trainerRegistration,
         name: 'trainerRegistration',
         builder: (context, state) => const TrainerRegistrationPage(),
       ),
       GoRoute(
+        path: AppRoutes.trainerHome,
+        name: 'trainerHome',
+        builder: (context, state) => const TrainerHomePage(),
+      ),
+      // Owner routes
+      GoRoute(
         path: AppRoutes.ownerRegistration,
         name: 'ownerRegistration',
         builder: (context, state) => const OwnerRegistrationPage(),
-      ),
-      GoRoute(
-        path: AppRoutes.ownerDashboard,
-        name: 'ownerDashboard',
-        builder: (context, state) => const OwnerDashboardPage(),
       ),
       GoRoute(
         path: AppRoutes.ownerQrScanner,
@@ -227,6 +258,41 @@ GoRouter buildRouter(AuthState auth) {
         path: AppRoutes.ownerEarnings,
         name: 'ownerEarnings',
         builder: (context, state) => const OwnerEarningsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.ownerGymCheckins,
+        name: 'ownerGymCheckins',
+        builder: (context, state) {
+          final gymId = state.pathParameters['gymId']!;
+          return OwnerCheckinsPage(gymId: gymId);
+        },
+      ),
+      // Owner shell with bottom nav
+      ShellRoute(
+        builder: (context, state, child) =>
+            OwnerShell(state: state, child: child),
+        routes: [
+          GoRoute(
+            path: AppRoutes.ownerHome,
+            name: 'ownerHome',
+            builder: (context, state) => const OwnerHomeTab(),
+          ),
+          GoRoute(
+            path: AppRoutes.ownerGyms,
+            name: 'ownerGyms',
+            builder: (context, state) => const OwnerManageGymsPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.ownerTrainers,
+            name: 'ownerTrainers',
+            builder: (context, state) => const OwnerTrainersPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.ownerProfile,
+            name: 'ownerProfile',
+            builder: (context, state) => const OwnerProfilePage(),
+          ),
+        ],
       ),
       // Member shell with bottom nav
       ShellRoute(

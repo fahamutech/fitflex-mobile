@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// FitFlex Af design tokens — keep in sync with `fitflex-portal/app/globals.css`.
+/// FitFlex design tokens — keep in sync with `fitflex-portal/app/globals.css`.
 class FFTokens {
   FFTokens._();
 
@@ -40,39 +40,39 @@ class FFTokens {
   static const Color warning500 = Color(0xFFF59E0B);
   static const Color warning700 = Color(0xFFB54708);
 
-  // ── Foreground / text ──
-  static const Color fgPrimary = Color(0xFF0F172A);
-  static const Color fgSecondary = Color(0xFF344054);
-  static const Color fgTertiary = Color(0xFF475467);
-  static const Color fgQuaternary = Color(0xFF667085);
-  static const Color fgDisabled = Color(0xFF98A2B3);
-  static const Color fgBrand = brand600;
+  // ── Foreground / text ── (dark-mode values)
+  static const Color fgPrimary = Color(0xFFFFFFFF);
+  static const Color fgSecondary = Color(0xFFCDD5DF);
+  static const Color fgTertiary = Color(0xFFAAB4C4);
+  static const Color fgQuaternary = Color(0xFF8899AA);
+  static const Color fgDisabled = Color(0xFF55677A);
+  static const Color fgBrand = Color(0xFF2CC97A);
 
   // Legacy aliases
   static const Color text = fgPrimary;
   static const Color textMuted = fgQuaternary;
 
-  // ── Background / surface ──
-  static const Color bgPrimary = Color(0xFFFFFFFF);
-  static const Color bgSecondary = Color(0xFFF9FAFB);
-  static const Color bgTertiary = Color(0xFFF2F4F7);
+  // ── Background / surface ── (dark-mode values)
+  static const Color bgPrimary = Color(0xFF0D1B2A);
+  static const Color bgSecondary = Color(0xFF162438);
+  static const Color bgTertiary = Color(0xFF162438);
 
   // Legacy aliases
   static const Color surface = bgPrimary;
   static const Color surface2 = bgSecondary;
 
-  // ── Borders ──
-  static const Color borderPrimary = Color(0xFFD0D5DD);
-  static const Color borderSecondary = Color(0xFFE4E7EC);
+  // ── Borders ── (dark-mode values)
+  static const Color borderPrimary = Color(0xFF1F3350);
+  static const Color borderSecondary = Color(0xFF1F3350);
 
   // Legacy alias
   static const Color border = borderSecondary;
 
-  // ── Gray scale ──
-  static const Color gray100 = Color(0xFFF2F4F7);
-  static const Color gray200 = Color(0xFFE4E7EC);
-  static const Color gray500 = Color(0xFF667085);
-  static const Color gray700 = Color(0xFF344054);
+  // ── Gray scale ── (dark-mode values)
+  static const Color gray100 = Color(0xFF162438);
+  static const Color gray200 = Color(0xFF1F3350);
+  static const Color gray500 = Color(0xFF8899AA);
+  static const Color gray700 = Color(0xFFCDD5DF);
 
   // ── Radii ──
   static const double radiusXs = 4;
@@ -92,122 +92,603 @@ class FFTokens {
   // ── Shadows ──
   static List<BoxShadow> get shadowXs => [
     BoxShadow(
-      color: Colors.black.withValues(alpha: 0.05),
-      blurRadius: 2,
-      offset: const Offset(0, 1),
+      color: Colors.black.withValues(alpha: 0.18),
+      blurRadius: 4,
+      offset: const Offset(0, 2),
     ),
   ];
 
   static List<BoxShadow> get shadowSm => [
     BoxShadow(
-      color: Colors.black.withValues(alpha: 0.06),
-      blurRadius: 3,
-      offset: const Offset(0, 1),
-    ),
-    BoxShadow(
-      color: Colors.black.withValues(alpha: 0.10),
-      blurRadius: 2,
-      offset: const Offset(0, 1),
+      color: Colors.black.withValues(alpha: 0.25),
+      blurRadius: 10,
+      offset: const Offset(0, 4),
     ),
   ];
+
+  // ── Dark mode surfaces (login-flow screens) ──
+  static const Color darkBg = Color(0xFF0D1B2A);
+  static const Color darkSurface = Color(0xFF162438);
+  static const Color darkBorder = Color(0xFF1F3350);
+
+  // ── Vibrant brand green (dark-mode CTA + selection state) ──
+  static const Color brandVibrant = Color(0xFF2CC97A);
+
+  // ── On-dark text ──
+  static const Color darkFgPrimary = Color(0xFFFFFFFF);
+  static const Color darkFgSecondary = Color(0xFFCDD5DF);
+  static const Color darkFgMuted = Color(0xFF8899AA);
+
+  // ── Role-card accent icon colors ──
+  static const Color iconAccentGreen = Color(0xFF2CC97A);
+  static const Color accentOrange = Color(0xFFF59E0B);
+  static const Color accentIndigo = Color(0xFF6366F1);
 }
 
-ThemeData buildTheme() {
+ThemeData buildDarkTheme() {
+  const bg = FFTokens.darkBg;
+  const surface = FFTokens.darkSurface;
+  const onSurface = FFTokens.darkFgPrimary;
+  const primary = FFTokens.brandVibrant;
+  const bord = FFTokens.darkBorder;
+
   return ThemeData(
     useMaterial3: true,
-    colorScheme: ColorScheme.fromSeed(
-      seedColor: FFTokens.brand,
-      primary: FFTokens.brand,
-      surface: FFTokens.surface,
+    brightness: Brightness.dark,
+    scaffoldBackgroundColor: bg,
+    colorScheme: const ColorScheme.dark(
+      primary: primary,
+      onPrimary: Colors.black,
+      secondary: primary,
+      onSecondary: Colors.black,
+      surface: surface,
+      onSurface: onSurface,
+      surfaceContainerHighest: surface,
+      outline: bord,
+      error: FFTokens.danger,
+      onError: Colors.white,
     ),
-    scaffoldBackgroundColor: FFTokens.bgSecondary,
+    // ── Text ──────────────────────────────────────────────────────────────────
+    textTheme: const TextTheme(
+      displayLarge: TextStyle(
+        color: onSurface,
+        fontSize: 57,
+        fontWeight: FontWeight.w400,
+      ),
+      displayMedium: TextStyle(
+        color: onSurface,
+        fontSize: 45,
+        fontWeight: FontWeight.w400,
+      ),
+      displaySmall: TextStyle(
+        color: onSurface,
+        fontSize: 36,
+        fontWeight: FontWeight.w400,
+      ),
+      headlineLarge: TextStyle(
+        color: onSurface,
+        fontSize: 40,
+        fontWeight: FontWeight.w800,
+      ),
+      headlineMedium: TextStyle(
+        color: onSurface,
+        fontSize: 32,
+        fontWeight: FontWeight.w800,
+      ),
+      headlineSmall: TextStyle(
+        color: onSurface,
+        fontSize: 24,
+        fontWeight: FontWeight.w700,
+      ),
+      titleLarge: TextStyle(
+        color: onSurface,
+        fontSize: 22,
+        fontWeight: FontWeight.w700,
+      ),
+      titleMedium: TextStyle(
+        color: onSurface,
+        fontSize: 17,
+        fontWeight: FontWeight.w700,
+      ),
+      titleSmall: TextStyle(
+        color: onSurface,
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+      ),
+      bodyLarge: TextStyle(
+        color: onSurface,
+        fontSize: 16,
+        fontWeight: FontWeight.w400,
+      ),
+      bodyMedium: TextStyle(
+        color: onSurface,
+        fontSize: 15,
+        fontWeight: FontWeight.w400,
+      ),
+      bodySmall: TextStyle(
+        color: FFTokens.darkFgMuted,
+        fontSize: 13,
+        fontWeight: FontWeight.w400,
+      ),
+      labelLarge: TextStyle(
+        color: onSurface,
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
+      ),
+      labelMedium: TextStyle(
+        color: FFTokens.darkFgMuted,
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
+      ),
+      labelSmall: TextStyle(
+        color: FFTokens.darkFgMuted,
+        fontSize: 11,
+        fontWeight: FontWeight.w500,
+      ),
+    ),
+    // ── App bar ───────────────────────────────────────────────────────────────
     appBarTheme: const AppBarTheme(
-      backgroundColor: FFTokens.bgPrimary,
-      foregroundColor: FFTokens.fgPrimary,
+      backgroundColor: bg,
+      foregroundColor: onSurface,
       elevation: 0,
-      centerTitle: false,
+      surfaceTintColor: Colors.transparent,
+      titleTextStyle: TextStyle(
+        color: onSurface,
+        fontSize: 18,
+        fontWeight: FontWeight.w600,
+      ),
+      iconTheme: IconThemeData(color: onSurface),
     ),
+    // ── Bottom navigation ─────────────────────────────────────────────────────
+    navigationBarTheme: NavigationBarThemeData(
+      backgroundColor: surface,
+      elevation: 0,
+      surfaceTintColor: Colors.transparent,
+      indicatorColor: primary.withValues(alpha: 0.18),
+      iconTheme: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return const IconThemeData(color: primary);
+        }
+        return const IconThemeData(color: FFTokens.darkFgMuted);
+      }),
+      labelTextStyle: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return const TextStyle(
+            color: primary,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+          );
+        }
+        return const TextStyle(color: FFTokens.darkFgMuted, fontSize: 11);
+      }),
+    ),
+    // ── Card ──────────────────────────────────────────────────────────────────
+    cardTheme: CardThemeData(
+      color: surface,
+      elevation: 0,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(FFTokens.radiusXl),
+        side: const BorderSide(color: bord),
+      ),
+    ),
+    // ── Buttons ───────────────────────────────────────────────────────────────
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
-        backgroundColor: FFTokens.brand600,
-        foregroundColor: Colors.white,
+        backgroundColor: primary,
+        foregroundColor: Colors.black,
+        disabledBackgroundColor: surface,
+        disabledForegroundColor: FFTokens.darkFgMuted,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(FFTokens.radiusLg),
+          borderRadius: BorderRadius.circular(FFTokens.radiusFull),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        textStyle: const TextStyle(
+          fontWeight: FontWeight.w700,
+          fontSize: 15,
+          letterSpacing: 0.5,
+        ),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        foregroundColor: FFTokens.fgSecondary,
-        side: const BorderSide(color: FFTokens.borderPrimary),
+        foregroundColor: FFTokens.darkFgSecondary,
+        side: const BorderSide(color: bord),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(FFTokens.radiusLg),
+          borderRadius: BorderRadius.circular(FFTokens.radiusFull),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
-      style: TextButton.styleFrom(foregroundColor: FFTokens.brand700),
+      style: TextButton.styleFrom(foregroundColor: primary),
     ),
-    cardTheme: CardThemeData(
-      color: FFTokens.bgPrimary,
-      elevation: 0,
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(
-        side: const BorderSide(color: FFTokens.borderSecondary),
-        borderRadius: BorderRadius.circular(FFTokens.radiusXl),
-      ),
-    ),
+    // ── Input ─────────────────────────────────────────────────────────────────
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: FFTokens.bgPrimary,
-      labelStyle: const TextStyle(
-        color: FFTokens.fgSecondary,
-        fontSize: 14,
-        fontWeight: FontWeight.w500,
-      ),
-      hintStyle: const TextStyle(color: FFTokens.fgQuaternary),
+      fillColor: surface,
+      labelStyle: const TextStyle(color: FFTokens.darkFgMuted, fontSize: 14),
+      hintStyle: const TextStyle(color: FFTokens.darkFgMuted),
+      suffixIconColor: FFTokens.darkFgMuted,
+      prefixIconColor: FFTokens.darkFgMuted,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(FFTokens.radiusMd),
-        borderSide: const BorderSide(color: FFTokens.borderPrimary),
+        borderSide: const BorderSide(color: bord),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(FFTokens.radiusMd),
-        borderSide: const BorderSide(color: FFTokens.borderPrimary),
+        borderSide: const BorderSide(color: bord),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(FFTokens.radiusMd),
-        borderSide: const BorderSide(color: FFTokens.brand500, width: 2),
+        borderSide: const BorderSide(color: primary, width: 2),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(FFTokens.radiusMd),
-        borderSide: const BorderSide(color: FFTokens.error500),
+        borderSide: const BorderSide(color: FFTokens.danger),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(FFTokens.radiusMd),
+        borderSide: const BorderSide(color: FFTokens.danger, width: 2),
+      ),
     ),
-    navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: FFTokens.bgPrimary,
-      indicatorColor: FFTokens.brand50,
+    // ── Misc ──────────────────────────────────────────────────────────────────
+    dividerTheme: const DividerThemeData(color: bord, thickness: 1),
+    progressIndicatorTheme: const ProgressIndicatorThemeData(color: primary),
+    iconTheme: const IconThemeData(color: FFTokens.darkFgMuted),
+    listTileTheme: const ListTileThemeData(
+      textColor: onSurface,
+      iconColor: FFTokens.darkFgMuted,
+      tileColor: surface,
+    ),
+    chipTheme: ChipThemeData(
+      backgroundColor: surface,
+      selectedColor: primary.withValues(alpha: 0.18),
+      side: const BorderSide(color: bord),
+      labelStyle: const TextStyle(color: onSurface),
+      checkmarkColor: primary,
+    ),
+    snackBarTheme: SnackBarThemeData(
+      backgroundColor: surface,
+      contentTextStyle: const TextStyle(color: onSurface),
+      actionTextColor: primary,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(FFTokens.radiusMd),
+      ),
+      behavior: SnackBarBehavior.floating,
+    ),
+    bottomSheetTheme: const BottomSheetThemeData(
+      backgroundColor: surface,
       surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(FFTokens.radiusXl),
+        ),
+      ),
+    ),
+    dialogTheme: DialogThemeData(
+      backgroundColor: surface,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(FFTokens.radiusXl),
+      ),
+      titleTextStyle: const TextStyle(
+        color: onSurface,
+        fontSize: 18,
+        fontWeight: FontWeight.w600,
+      ),
+      contentTextStyle: const TextStyle(
+        color: FFTokens.darkFgSecondary,
+        fontSize: 14,
+      ),
+    ),
+    checkboxTheme: CheckboxThemeData(
+      fillColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return primary;
+        return Colors.transparent;
+      }),
+      checkColor: WidgetStateProperty.all(Colors.black),
+      side: const BorderSide(color: bord, width: 2),
+    ),
+    switchTheme: SwitchThemeData(
+      thumbColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return Colors.black;
+        return FFTokens.darkFgMuted;
+      }),
+      trackColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return primary;
+        return bord;
+      }),
+    ),
+    radioTheme: RadioThemeData(
+      fillColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return primary;
+        return bord;
+      }),
+    ),
+  );
+}
+
+ThemeData buildTheme() {
+  // ── Light-mode palette ──
+  const bg = Color(0xFFF9FAFB);
+  const surface = Colors.white;
+  const onSurface = Color(0xFF101828);
+  const primary = Color(0xFF1A6B32);
+  const onPrimary = Colors.white;
+  const bord = Color(0xFFE4E7EC);
+  const muted = Color(0xFF667085);
+
+  return ThemeData(
+    useMaterial3: true,
+    brightness: Brightness.light,
+    scaffoldBackgroundColor: bg,
+    colorScheme: const ColorScheme.light(
+      primary: primary,
+      onPrimary: onPrimary,
+      secondary: primary,
+      onSecondary: onPrimary,
+      surface: surface,
+      onSurface: onSurface,
+      surfaceContainerHighest: surface,
+      outline: bord,
+      error: FFTokens.danger,
+      onError: Colors.white,
+    ),
+    // ── Text ──────────────────────────────────────────────────────────────────
+    textTheme: const TextTheme(
+      displayLarge: TextStyle(
+        color: onSurface,
+        fontSize: 57,
+        fontWeight: FontWeight.w400,
+      ),
+      displayMedium: TextStyle(
+        color: onSurface,
+        fontSize: 45,
+        fontWeight: FontWeight.w400,
+      ),
+      displaySmall: TextStyle(
+        color: onSurface,
+        fontSize: 36,
+        fontWeight: FontWeight.w400,
+      ),
+      headlineLarge: TextStyle(
+        color: onSurface,
+        fontSize: 40,
+        fontWeight: FontWeight.w800,
+      ),
+      headlineMedium: TextStyle(
+        color: onSurface,
+        fontSize: 32,
+        fontWeight: FontWeight.w800,
+      ),
+      headlineSmall: TextStyle(
+        color: onSurface,
+        fontSize: 24,
+        fontWeight: FontWeight.w700,
+      ),
+      titleLarge: TextStyle(
+        color: onSurface,
+        fontSize: 22,
+        fontWeight: FontWeight.w700,
+      ),
+      titleMedium: TextStyle(
+        color: onSurface,
+        fontSize: 17,
+        fontWeight: FontWeight.w700,
+      ),
+      titleSmall: TextStyle(
+        color: onSurface,
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+      ),
+      bodyLarge: TextStyle(
+        color: onSurface,
+        fontSize: 16,
+        fontWeight: FontWeight.w400,
+      ),
+      bodyMedium: TextStyle(
+        color: onSurface,
+        fontSize: 15,
+        fontWeight: FontWeight.w400,
+      ),
+      bodySmall: TextStyle(
+        color: muted,
+        fontSize: 13,
+        fontWeight: FontWeight.w400,
+      ),
+      labelLarge: TextStyle(
+        color: onSurface,
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
+      ),
+      labelMedium: TextStyle(
+        color: muted,
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
+      ),
+      labelSmall: TextStyle(
+        color: muted,
+        fontSize: 11,
+        fontWeight: FontWeight.w500,
+      ),
+    ),
+    // ── App bar ───────────────────────────────────────────────────────────────
+    appBarTheme: const AppBarTheme(
+      backgroundColor: surface,
+      foregroundColor: onSurface,
+      elevation: 0,
+      surfaceTintColor: Colors.transparent,
+      titleTextStyle: TextStyle(
+        color: onSurface,
+        fontSize: 18,
+        fontWeight: FontWeight.w600,
+      ),
+      iconTheme: IconThemeData(color: onSurface),
+    ),
+    // ── Bottom navigation ─────────────────────────────────────────────────────
+    navigationBarTheme: NavigationBarThemeData(
+      backgroundColor: surface,
+      elevation: 0,
+      surfaceTintColor: Colors.transparent,
+      indicatorColor: FFTokens.brand50,
+      iconTheme: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return const IconThemeData(color: primary);
+        }
+        return const IconThemeData(color: muted);
+      }),
       labelTextStyle: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
           return const TextStyle(
-            fontSize: 12,
+            color: primary,
+            fontSize: 11,
             fontWeight: FontWeight.w600,
-            color: FFTokens.brand700,
           );
         }
-        return const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-          color: FFTokens.fgQuaternary,
-        );
+        return const TextStyle(color: muted, fontSize: 11);
       }),
     ),
-    dividerTheme: const DividerThemeData(
-      color: FFTokens.borderSecondary,
-      thickness: 1,
+    // ── Card ──────────────────────────────────────────────────────────────────
+    cardTheme: CardThemeData(
+      color: surface,
+      elevation: 0,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(FFTokens.radiusXl),
+        side: const BorderSide(color: bord),
+      ),
+    ),
+    // ── Buttons ───────────────────────────────────────────────────────────────
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        backgroundColor: primary,
+        foregroundColor: onPrimary,
+        disabledBackgroundColor: const Color(0xFFE4E7EC),
+        disabledForegroundColor: muted,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(FFTokens.radiusFull),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        textStyle: const TextStyle(
+          fontWeight: FontWeight.w700,
+          fontSize: 15,
+          letterSpacing: 0.5,
+        ),
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: onSurface,
+        side: const BorderSide(color: bord),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(FFTokens.radiusFull),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(foregroundColor: primary),
+    ),
+    // ── Input ─────────────────────────────────────────────────────────────────
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: surface,
+      labelStyle: const TextStyle(color: muted, fontSize: 14),
+      hintStyle: const TextStyle(color: muted),
+      suffixIconColor: muted,
+      prefixIconColor: muted,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(FFTokens.radiusMd),
+        borderSide: const BorderSide(color: bord),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(FFTokens.radiusMd),
+        borderSide: const BorderSide(color: bord),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(FFTokens.radiusMd),
+        borderSide: const BorderSide(color: primary, width: 2),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(FFTokens.radiusMd),
+        borderSide: const BorderSide(color: FFTokens.danger),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(FFTokens.radiusMd),
+        borderSide: const BorderSide(color: FFTokens.danger, width: 2),
+      ),
+    ),
+    // ── Misc ──────────────────────────────────────────────────────────────────
+    dividerTheme: const DividerThemeData(color: bord, thickness: 1),
+    progressIndicatorTheme: const ProgressIndicatorThemeData(color: primary),
+    iconTheme: const IconThemeData(color: muted),
+    listTileTheme: const ListTileThemeData(
+      textColor: onSurface,
+      iconColor: muted,
+      tileColor: surface,
+    ),
+    chipTheme: ChipThemeData(
+      backgroundColor: surface,
+      selectedColor: FFTokens.brand50,
+      side: const BorderSide(color: bord),
+      labelStyle: const TextStyle(color: onSurface),
+      checkmarkColor: primary,
+    ),
+    snackBarTheme: SnackBarThemeData(
+      backgroundColor: onSurface,
+      contentTextStyle: const TextStyle(color: Colors.white),
+      actionTextColor: FFTokens.brand200,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(FFTokens.radiusMd),
+      ),
+      behavior: SnackBarBehavior.floating,
+    ),
+    bottomSheetTheme: const BottomSheetThemeData(
+      backgroundColor: surface,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(FFTokens.radiusXl),
+        ),
+      ),
+    ),
+    dialogTheme: DialogThemeData(
+      backgroundColor: surface,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(FFTokens.radiusXl),
+      ),
+      titleTextStyle: const TextStyle(
+        color: onSurface,
+        fontSize: 18,
+        fontWeight: FontWeight.w600,
+      ),
+      contentTextStyle: const TextStyle(color: muted, fontSize: 14),
+    ),
+    checkboxTheme: CheckboxThemeData(
+      fillColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return primary;
+        return Colors.transparent;
+      }),
+      checkColor: WidgetStateProperty.all(Colors.white),
+      side: const BorderSide(color: bord, width: 2),
+    ),
+    switchTheme: SwitchThemeData(
+      thumbColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return Colors.white;
+        return muted;
+      }),
+      trackColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return primary;
+        return bord;
+      }),
+    ),
+    radioTheme: RadioThemeData(
+      fillColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return primary;
+        return bord;
+      }),
     ),
   );
 }

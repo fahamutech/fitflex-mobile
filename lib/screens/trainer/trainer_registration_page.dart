@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../app_scope.dart';
 import '../../router.dart';
 import '../../shared/api_client.dart';
+import '../../shared/components/theme_toggle_button.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import '../../shared/widgets/ff_photo_picker_field.dart';
@@ -110,6 +111,7 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
             }
           },
         ),
+        actions: const [ThemeToggleButton()],
       ),
       body: SafeArea(
         child: Padding(
@@ -222,7 +224,11 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
         const SizedBox(height: 16),
         Text(
           context.tr('trainerReg.picture'),
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: FFTokens.fgPrimary),
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: FFTokens.fgPrimary,
+          ),
         ),
         const SizedBox(height: 8),
         Center(

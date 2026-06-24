@@ -1,5 +1,4 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -32,52 +31,57 @@ class EmailAuthScreen extends StatefulWidget {
 }
 
 class _EmailAuthScreenState extends State<EmailAuthScreen> {
-  final _formKey = GlobalKey<FormState>();
   FirebaseAuthService? _firebaseAuth;
-  late EmailAuthMode _mode;
-  late final TextEditingController _emailCtrl;
-  final _pinCtrl = TextEditingController();
-  final _confirmPinCtrl = TextEditingController();
-  bool _obscurePin = true;
-  bool _obscureConfirmPin = true;
-  bool _acceptedTerms = false;
   bool _busy = false;
-  String? _error;
+  String _pin = '';
+  final int _minPinLength = 4;
+  final int _maxPinLength = 6;
+  bool _obscurePin = true;
 
   FirebaseAuthService get _authService =>
       _firebaseAuth ??= widget.authService ?? FirebaseAuthService();
 
-  @override
-  void initState() {
-    super.initState();
-    _mode = widget.initialMode;
-    _emailCtrl = TextEditingController(text: widget.initialEmail);
+  void _onDigit(int digit) {
+    if (_pin.length < _maxPinLength) {
+      setState(() => _pin += digit.toString());
+    }
   }
 
-  @override
-  void dispose() {
-    _emailCtrl.dispose();
-    _pinCtrl.dispose();
-    _confirmPinCtrl.dispose();
-    super.dispose();
+  void _onDelete() {
+    if (_pin.isNotEmpty) {
+      setState(() => _pin = _pin.substring(0, _pin.length - 1));
+    }
   }
 
-  bool get _isSignUp => _mode == EmailAuthMode.signUp;
+  void _showErrorDialog(String message) {
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Authentication Error'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              setState(() => _pin = '');
+            },
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
 
   Future<void> _submit() async {
-    setState(() => _error = null);
-    if (!_formKey.currentState!.validate()) return;
-    if (_isSignUp && !_acceptedTerms) {
-      setState(() => _error = context.tr('auth.acceptTermsRequired'));
-      return;
-    }
-
+    if (_pin.length < _minPinLength) return;
     setState(() => _busy = true);
+
     try {
-      final email = _emailCtrl.text.trim();
-      final pin = _pinCtrl.text;
-      final password = firebasePasswordForPin(pin);
-      final credential = _isSignUp
+      final email = widget.initialEmail;
+      final password = firebasePasswordForPin(_pin);
+
+      final credential = widget.initialMode == EmailAuthMode.signUp
           ? await _authService.createAccountWithEmail(
               email: email,
               password: password,
@@ -86,8 +90,10 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
               email: email,
               password: password,
             );
+
       final idToken = await _authService.idTokenFor(credential.user);
       if (idToken == null) throw StateError('Missing Firebase ID token');
+
       if (!mounted) return;
       final auth = AppScope.of(context).auth;
       await auth.completeFirebaseSession(
@@ -95,16 +101,17 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
         requestedRole: auth.role,
         firebaseAuth: _authService,
       );
+
       if (!mounted) return;
       context.go(routeForSignedInUser(auth));
     } on FirebaseAuthException catch (e) {
-      if (mounted) setState(() => _error = _firebaseError(e));
+      _showErrorDialog(_firebaseError(e));
     } on ApiException catch (e) {
       await _handleSessionApiError(e);
     } on AdminMobileSignInException {
-      if (mounted) setState(() => _error = context.tr('auth.adminPortalOnly'));
+      _showErrorDialog(context.tr('auth.adminPortalOnly'));
     } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
+      _showErrorDialog(e.toString());
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -118,10 +125,10 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
       final message = context.tr('auth.roleConflict');
       await _authService.signOut();
       await auth.signOut();
-      if (mounted) setState(() => _error = message);
+      _showErrorDialog(message);
       return;
     }
-    if (mounted) setState(() => _error = 'API ${e.status}');
+    _showErrorDialog('API ${e.status}');
   }
 
   String _firebaseError(FirebaseAuthException e) {
@@ -143,269 +150,104 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
     }
   }
 
-  String? _emailValidator(String? value) {
-    final text = value?.trim() ?? '';
-    if (text.isEmpty) return context.tr('onboarding.required');
-    final ok = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(text);
-    return ok ? null : context.tr('onboarding.invalidEmail');
-  }
-
-  String? _pinValidator(String? value) {
-    final text = value ?? '';
-    if (text.isEmpty) return context.tr('onboarding.required');
-    if (!RegExp(r'^\d+$').hasMatch(text)) {
-      return context.tr('auth.pinDigitsOnly');
-    }
-    if (text.length < 4 || text.length > 8) return context.tr('auth.pinLength');
-    return null;
-  }
-
-  String? _confirmPinValidator(String? value) {
-    if (!_isSignUp) return null;
-    if (value != _pinCtrl.text) return context.tr('auth.pinMismatch');
-    return null;
-  }
-
-  void _switchMode(EmailAuthMode mode) {
-    setState(() {
-      _mode = mode;
-      _error = null;
-    });
-  }
-
-  void _showTermsDialog(BuildContext context) {
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(ctx.tr('auth.termsTitle')),
-        contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: SingleChildScrollView(
-            child: Text(
-              ctx.tr('auth.termsContent'),
-              style: const TextStyle(fontSize: 13, height: 1.6),
-            ),
-          ),
-        ),
-        actions: [
-          FilledButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              setState(() => _acceptedTerms = true);
-            },
-            child: Text(ctx.tr('auth.acceptAndClose')),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(ctx.tr('member.cancel')),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(context.tr('app.title')),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go(AppRoutes.auth),
+          onPressed: _busy
+              ? null
+              : () {
+                  if (context.canPop()) {
+                    context.pop();
+                  } else {
+                    context.go(AppRoutes.auth);
+                  }
+                },
         ),
+        actions: const [ThemeToggleButton()],
       ),
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(FFTokens.spacingLg),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: FFTokens.spacingLg,
+            vertical: FFTokens.spacingMd,
+          ),
+          child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
+              constraints: const BoxConstraints(maxWidth: 400),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: FFTokens.spacingLg),
+                  Text(
+                    widget.initialMode == EmailAuthMode.signUp
+                        ? 'Create PIN'
+                        : 'Verification PIN',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      color: FFTokens.darkFgPrimary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: FFTokens.spacingSm),
+                  Text(
+                    widget.initialEmail,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: FFTokens.brandVibrant,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: FFTokens.spacingXl * 1.5),
+                  Stack(
+                    alignment: Alignment.centerRight,
+                    children: [
+                      PinInputRow(pin: _pin, obscure: _obscurePin),
+                      IconButton(
+                        icon: Icon(
+                          _obscurePin ? Icons.visibility : Icons.visibility_off,
+                          color: FFTokens.darkFgMuted,
+                        ),
+                        onPressed: () {
+                          setState(() => _obscurePin = !_obscurePin);
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: FFTokens.spacingXl * 1.5),
+                  Expanded(
+                    child: CustomKeypad(
+                      onDigit: _onDigit,
+                      onDelete: _onDelete,
+                      onOk: _submit,
+                      okEnabled: _pin.length >= _minPinLength,
+                      isLoading: _busy,
+                    ),
+                  ),
+                  const SizedBox(height: FFTokens.spacingLg),
+                  if (widget.initialMode == EmailAuthMode.signIn)
                     Center(
-                      child: Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: FFTokens.surface,
-                          borderRadius: BorderRadius.circular(14),
-                          boxShadow: FFTokens.shadowSm,
-                          border: Border.all(color: FFTokens.border),
-                        ),
-                        padding: const EdgeInsets.all(8),
-                        child: Image.asset('assets/brand/fitflex-logo.png'),
-                      ),
-                    ),
-                    const SizedBox(height: 28),
-                    Text(
-                      _isSignUp
-                          ? context.tr('auth.createTitle')
-                          : context.tr('auth.emailTitle'),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w700,
-                        color: FFTokens.fgPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      _isSignUp
-                          ? context.tr('auth.createSubtitle')
-                          : context.tr('auth.emailSubtitle'),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        color: FFTokens.fgQuaternary,
-                      ),
-                    ),
-                    const SizedBox(height: 28),
-                    TextFormField(
-                      key: const Key('emailField'),
-                      controller: _emailCtrl,
-                      keyboardType: TextInputType.emailAddress,
-                      autofillHints: const [AutofillHints.email],
-                      validator: _emailValidator,
-                      decoration: InputDecoration(
-                        labelText: context.tr('member.email'),
-                        hintText: context.tr('auth.emailPlaceholder'),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      key: const Key('pinField'),
-                      controller: _pinCtrl,
-                      obscureText: _obscurePin,
-                      keyboardType: TextInputType.number,
-                      maxLength: 8,
-                      autofillHints: const [AutofillHints.password],
-                      validator: _pinValidator,
-                      decoration: InputDecoration(
-                        labelText: context.tr('auth.pin'),
-                        counterText: '',
-                        suffixIcon: IconButton(
-                          key: const Key('pinVisibilityToggle'),
-                          icon: Icon(
-                            _obscurePin
-                                ? Icons.visibility_off
-                                : Icons.visibility,
-                          ),
-                          onPressed: () =>
-                              setState(() => _obscurePin = !_obscurePin),
-                        ),
-                      ),
-                    ),
-                    if (_isSignUp) ...[
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        key: const Key('confirmPinField'),
-                        controller: _confirmPinCtrl,
-                        obscureText: _obscureConfirmPin,
-                        keyboardType: TextInputType.number,
-                        maxLength: 8,
-                        autofillHints: const [AutofillHints.newPassword],
-                        validator: _confirmPinValidator,
-                        decoration: InputDecoration(
-                          labelText: context.tr('auth.confirmPin'),
-                          counterText: '',
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscureConfirmPin
-                                  ? Icons.visibility_off
-                                  : Icons.visibility,
-                            ),
-                            onPressed: () => setState(
-                              () => _obscureConfirmPin = !_obscureConfirmPin,
-                            ),
+                      child: TextButton(
+                        onPressed: _busy
+                            ? null
+                            : () {
+                                // Forgot password logic here
+                              },
+                        child: const Text(
+                          'Forgot Password? Reset',
+                          style: TextStyle(
+                            color: FFTokens.darkFgMuted,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Checkbox(
-                            key: const Key('termsCheckbox'),
-                            value: _acceptedTerms,
-                            onChanged: (v) =>
-                                setState(() => _acceptedTerms = v ?? false),
-                          ),
-                          Expanded(
-                            child: RichText(
-                              text: TextSpan(
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: FFTokens.fgSecondary,
-                                ),
-                                children: [
-                                  TextSpan(
-                                    text: context.tr('auth.acceptTermsPrefix'),
-                                  ),
-                                  TextSpan(
-                                    text: context.tr('auth.termsLink'),
-                                    style: const TextStyle(
-                                      color: FFTokens.brand600,
-                                      decoration: TextDecoration.underline,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    recognizer: TapGestureRecognizer()
-                                      ..onTap = () => _showTermsDialog(context),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                    if (_error != null) ...[
-                      const SizedBox(height: 12),
-                      FFAlert(message: _error!, tone: FFAlertTone.error),
-                    ],
-                    const SizedBox(height: 18),
-                    FilledButton(
-                      onPressed: _busy ? null : _submit,
-                      child: _busy
-                          ? const FFSpinner(size: 18, color: Colors.white)
-                          : Text(
-                              _isSignUp
-                                  ? context.tr('auth.createAccount')
-                                  : context.tr('auth.signInWithEmail'),
-                            ),
                     ),
-                    const SizedBox(height: 18),
-                    Wrap(
-                      alignment: WrapAlignment.center,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Text(
-                          _isSignUp
-                              ? context.tr('auth.haveAccount')
-                              : context.tr('auth.noAccount'),
-                          style: const TextStyle(color: FFTokens.fgQuaternary),
-                        ),
-                        TextButton(
-                          onPressed: _busy
-                              ? null
-                              : () => _switchMode(
-                                  _isSignUp
-                                      ? EmailAuthMode.signIn
-                                      : EmailAuthMode.signUp,
-                                ),
-                          child: Text(
-                            _isSignUp
-                                ? context.tr('auth.signIn')
-                                : context.tr('auth.signUp'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                  const SizedBox(height: FFTokens.spacingMd),
+                ],
               ),
             ),
           ),

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app_scope.dart';
 import '../../router.dart';
+import '../../shared/components/theme_toggle_button.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
 
@@ -235,7 +236,10 @@ class MemberShellState extends State<MemberShell> {
     return MemberDataScope(
       data: _data,
       child: Scaffold(
-        appBar: AppBar(title: Text(context.tr('app.title'))),
+        appBar: AppBar(
+          title: Text(context.tr('app.title')),
+          actions: const [ThemeToggleButton()],
+        ),
         body: RefreshIndicator(onRefresh: _refreshAll, child: widget.child),
         bottomNavigationBar: NavigationBar(
           selectedIndex: _tabIndex,

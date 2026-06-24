@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../app_scope.dart';
 import '../../router.dart';
 import '../../shared/api_client.dart';
+import '../../shared/components/theme_toggle_button.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import '../../shared/widgets/location_picker.dart';
@@ -185,6 +186,7 @@ class _OwnerRegistrationPageState extends State<OwnerRegistrationPage> {
             }
           },
         ),
+        actions: const [ThemeToggleButton()],
       ),
       body: SafeArea(
         child: Padding(

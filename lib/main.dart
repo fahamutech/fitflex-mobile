@@ -12,6 +12,7 @@ import 'shared/api_client.dart';
 import 'shared/auth_state.dart';
 import 'shared/design_tokens.dart';
 import 'shared/i18n.dart';
+import 'shared/theme_notifier.dart';
 import 'firebase_options.dart';
 
 Future<void> main() async {
@@ -45,7 +46,16 @@ Future<void> main() async {
   final saved = prefs.getString('locale');
   if (saved != null) locale.set(Locale(saved));
 
-  runApp(FitFlexApp(api: api, auth: auth, locale: locale));
+  final themeNotifier = ThemeNotifier();
+
+  runApp(
+    FitFlexApp(
+      api: api,
+      auth: auth,
+      locale: locale,
+      themeNotifier: themeNotifier,
+    ),
+  );
 }
 
 class FitFlexApp extends StatefulWidget {
@@ -54,11 +64,13 @@ class FitFlexApp extends StatefulWidget {
     required this.api,
     required this.auth,
     required this.locale,
+    required this.themeNotifier,
   });
 
   final ApiClient api;
   final AuthState auth;
   final FFLocale locale;
+  final ThemeNotifier themeNotifier;
 
   @override
   State<FitFlexApp> createState() => _FitFlexAppState();
@@ -84,25 +96,30 @@ class _FitFlexAppState extends State<FitFlexApp> {
     return AppScope(
       api: widget.api,
       auth: widget.auth,
-      child: FFLocaleScope(
-        notifier: widget.locale,
-        child: AnimatedBuilder(
-          animation: widget.locale,
-          builder: (context, _) {
-            return MaterialApp.router(
-              title: 'FitFlex',
-              debugShowCheckedModeBanner: kDebugMode,
-              theme: buildTheme(),
-              locale: widget.locale.locale,
-              supportedLocales: const [Locale('en'), Locale('sw')],
-              localizationsDelegates: const [
-                GlobalMaterialLocalizations.delegate,
-                GlobalWidgetsLocalizations.delegate,
-                GlobalCupertinoLocalizations.delegate,
-              ],
-              routerConfig: _router,
-            );
-          },
+      child: ThemeScope(
+        notifier: widget.themeNotifier,
+        child: FFLocaleScope(
+          notifier: widget.locale,
+          child: AnimatedBuilder(
+            animation: Listenable.merge([widget.locale, widget.themeNotifier]),
+            builder: (context, _) {
+              return MaterialApp.router(
+                title: 'FitFlex',
+                debugShowCheckedModeBanner: kDebugMode,
+                theme: buildTheme(),
+                darkTheme: buildDarkTheme(),
+                themeMode: widget.themeNotifier.mode,
+                locale: widget.locale.locale,
+                supportedLocales: const [Locale('en'), Locale('sw')],
+                localizationsDelegates: const [
+                  GlobalMaterialLocalizations.delegate,
+                  GlobalWidgetsLocalizations.delegate,
+                  GlobalCupertinoLocalizations.delegate,
+                ],
+                routerConfig: _router,
+              );
+            },
+          ),
         ),
       ),
     );

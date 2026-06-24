@@ -3,9 +3,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../app_scope.dart';
 import '../../router.dart';
-import '../../shared/api_client.dart';
+import '../../shared/components/theme_toggle_button.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
+import 'member_onboarding_controller.dart';
 
 class MemberOnboardingPage extends StatefulWidget {
   const MemberOnboardingPage({super.key});
@@ -16,187 +17,351 @@ class MemberOnboardingPage extends StatefulWidget {
 
 class _MemberOnboardingPageState extends State<MemberOnboardingPage> {
   final _formKey = GlobalKey<FormState>();
-  int _step = 0;
-  bool _busy = false;
+  late final MemberOnboardingController _controller;
 
-  // Step 0 — Personal info
-  final _nameCtrl = TextEditingController();
-  String? _gender;
-  final _dobCtrl = TextEditingController();
-
-  // Step 1 — Fitness info
-  final List<String> _fitnessGoals = [];
-  String? _fitnessLevel;
-  final _heightCtrl = TextEditingController();
-  final _weightCtrl = TextEditingController();
-
-  // Step 2 — Preferences
-  final List<String> _workoutTimes = [];
-
-  static const _genders = ['male', 'female', 'other'];
   static const _goals = [
     'lose_weight',
-    'build_muscle',
+    'gain_muscle',
     'stay_fit',
-    'improve_flexibility',
-    'stress_relief',
+    'improve_endurance',
+    'learn_new_skill',
   ];
+
+  static const _goalEmojis = {
+    'lose_weight': '🏃‍♂️',
+    'gain_muscle': '💪',
+    'stay_fit': '🧘',
+    'improve_endurance': '⚡',
+    'learn_new_skill': '🥊',
+  };
+
+  static const _genders = ['male', 'female', 'other'];
   static const _levels = ['beginner', 'intermediate', 'advanced'];
-  static const _timeOptions = ['morning', 'afternoon', 'evening'];
+
+  static const _levelEmojis = {
+    'beginner': '🌱',
+    'intermediate': '⚡',
+    'advanced': '🏆',
+  };
+
+  bool _initialized = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialized) {
+      _initialized = true;
+      final scope = AppScope.of(context);
+      _controller = MemberOnboardingController(
+        api: scope.api,
+        auth: scope.auth,
+      );
+    }
+  }
 
   @override
   void dispose() {
-    _nameCtrl.dispose();
-    _dobCtrl.dispose();
-    _heightCtrl.dispose();
-    _weightCtrl.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _busy = true);
-    try {
-      final api = AppScope.of(context).api;
-      await api.updateProfile({
-        'displayName': _nameCtrl.text.trim(),
-        'gender': _gender,
-        'dateOfBirth': _dobCtrl.text.trim(),
-        'fitnessGoals': _fitnessGoals,
-        'fitnessLevel': _fitnessLevel,
-        'heightCm': _heightCtrl.text.isNotEmpty
-            ? num.tryParse(_heightCtrl.text)
-            : null,
-        'weightKg': _weightCtrl.text.isNotEmpty
-            ? num.tryParse(_weightCtrl.text)
-            : null,
-        'preferredWorkoutTimes': _workoutTimes,
-        'onboardingCompleted': true,
-      });
-      if (!mounted) return;
-      // Re-hydrate auth user to reflect onboarding completion
-      final meRes = await api.me();
-      if (!mounted) return;
-      final user = Map<String, dynamic>.from(meRes['user'] as Map);
-      await AppScope.of(
-        context,
-      ).auth.signIn(AppScope.of(context).auth.token!, user);
-      if (!mounted) return;
-      context.go(AppRoutes.memberHome);
-    } on ApiException catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: ${e.status}')));
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+  void _submit() {
+    _controller.submit(
+      onSuccess: () {
+        if (!mounted) return;
+        context.go(AppRoutes.memberHome);
+      },
+      onError: (msg) {
+        if (!mounted) return;
+        _showErrorDialog(context, msg);
+      },
+    );
   }
 
   void _next() {
-    if (_step < 2) {
-      setState(() => _step++);
-    } else {
-      _submit();
+    if (_controller.step == 1) {
+      if (!_formKey.currentState!.validate()) return;
     }
+    _controller.next(() {
+      _submit();
+    });
   }
 
-  void _back() {
-    if (_step > 0) setState(() => _step--);
+  void _showErrorDialog(BuildContext context, String message) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: FFTokens.darkSurface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(FFTokens.radiusLg),
+          ),
+          title: Row(
+            children: [
+              const Icon(
+                Icons.error_outline_rounded,
+                color: FFTokens.danger,
+                size: 28,
+              ),
+              const SizedBox(width: 10),
+              Text(
+                context.tr('onboarding.error'),
+                style: const TextStyle(
+                  color: FFTokens.darkFgPrimary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            message,
+            style: const TextStyle(
+              color: FFTokens.darkFgSecondary,
+              fontSize: 15,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                context.tr('onboarding.ok'),
+                style: const TextStyle(
+                  color: FFTokens.brandVibrant,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(context.tr('onboarding.title')),
-        automaticallyImplyLeading: false,
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(FFTokens.spacingLg),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              children: [
-                // Step indicator
-                Row(
-                  children: List.generate(3, (i) {
-                    final active = i <= _step;
-                    return Expanded(
-                      child: Container(
-                        height: 4,
-                        margin: const EdgeInsets.symmetric(horizontal: 2),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(2),
-                          color: active
-                              ? FFTokens.brand600
-                              : FFTokens.borderSecondary,
-                        ),
-                      ),
-                    );
-                  }),
-                ),
-                const SizedBox(height: 24),
-
-                // Content
-                Expanded(
-                  child: SingleChildScrollView(child: _buildStep(context)),
-                ),
-
-                // Navigation buttons
-                const SizedBox(height: 16),
-                Row(
+    return ListenableBuilder(
+      listenable: _controller,
+      builder: (context, _) {
+        final progress = (_controller.step + 1) / 3;
+        return Scaffold(
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            actions: const [ThemeToggleButton()],
+          ),
+          body: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: FFTokens.spacingLg,
+              ),
+              child: Form(
+                key: _formKey,
+                child: Column(
                   children: [
-                    if (_step > 0)
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: _back,
-                          child: Text(context.tr('onboarding.back')),
+                    const SizedBox(height: 16),
+                    // MEMBER SETUP header
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.fitness_center_rounded,
+                          color: FFTokens.brandVibrant,
+                          size: 22,
                         ),
-                      ),
-                    if (_step > 0) const SizedBox(width: 12),
-                    Expanded(
-                      child: FilledButton(
-                        onPressed: _busy ? null : _next,
-                        child: _busy
-                            ? const SizedBox(
-                                height: 18,
-                                width: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : Text(
-                                _step < 2
-                                    ? context.tr('onboarding.next')
-                                    : context.tr('onboarding.finish'),
-                              ),
+                        const SizedBox(width: 8),
+                        Text(
+                          context.tr('member.setupTitle'),
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: FFTokens.darkFgPrimary,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    // Progress bar
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(FFTokens.radiusFull),
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        minHeight: 4,
+                        backgroundColor: FFTokens.darkBorder,
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                          FFTokens.brandVibrant,
+                        ),
                       ),
                     ),
+                    const SizedBox(height: 28),
+
+                    // Step content with smooth slide transition
+                    Expanded(
+                      child: PageView(
+                        controller: _controller.pageController,
+                        physics: const NeverScrollableScrollPhysics(),
+                        onPageChanged: (index) {
+                          _controller.setStep(index);
+                        },
+                        children: [
+                          SingleChildScrollView(
+                            child: _buildGoalsStep(context),
+                          ),
+                          SingleChildScrollView(
+                            child: _buildPersonalStep(context),
+                          ),
+                          SingleChildScrollView(
+                            child: _buildFitnessLevelStep(context),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Navigation actions with smooth fade animations
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        if (_controller.step > 0) ...[
+                          Expanded(
+                            child: OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: FFTokens.darkFgSecondary,
+                                side: const BorderSide(
+                                  color: FFTokens.darkBorder,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    FFTokens.radiusFull,
+                                  ),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
+                              ),
+                              onPressed: _controller.busy
+                                  ? null
+                                  : _controller.back,
+                              child: Text(context.tr('onboarding.back')),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                        ],
+                        Expanded(
+                          child: AnimatedOpacity(
+                            duration: const Duration(milliseconds: 250),
+                            opacity: _controller.canProceed ? 1.0 : 0.5,
+                            child: FilledButton(
+                              style: FilledButton.styleFrom(
+                                backgroundColor: FFTokens.brandVibrant,
+                                foregroundColor: Colors.black,
+                                disabledBackgroundColor: FFTokens.darkSurface,
+                                disabledForegroundColor: FFTokens.darkFgMuted,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    FFTokens.radiusFull,
+                                  ),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
+                                textStyle: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 15,
+                                  letterSpacing: 0.8,
+                                ),
+                              ),
+                              onPressed:
+                                  (_controller.canProceed && !_controller.busy)
+                                  ? _next
+                                  : null,
+                              child: _controller.busy
+                                  ? const SizedBox(
+                                      height: 18,
+                                      width: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.black,
+                                      ),
+                                    )
+                                  : Text(
+                                      _controller.step < 2
+                                          ? context.tr('onboarding.next')
+                                          : context.tr('onboarding.finish'),
+                                    ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
                   ],
                 ),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildStep(BuildContext context) {
-    switch (_step) {
-      case 0:
-        return _buildPersonalStep(context);
-      case 1:
-        return _buildFitnessStep(context);
-      case 2:
-        return _buildPreferencesStep(context);
-      default:
-        return const SizedBox.shrink();
-    }
+  // ── Step 0: Fitness Goals ────────────────────────────────────────────────────
+
+  Widget _buildGoalsStep(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          context.tr('onboarding.fitnessTitle'),
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 26,
+            fontWeight: FontWeight.w700,
+            color: FFTokens.darkFgPrimary,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          context.tr('onboarding.fitnessSubtitle'),
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 14, color: FFTokens.darkFgMuted),
+        ),
+        const SizedBox(height: 24),
+        // 2-column goal grid
+        for (int row = 0; row < (_goals.length / 2).ceil(); row++) ...[
+          if (row > 0) const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _GoalTile(
+                  label: context.tr('onboarding.goal_${_goals[row * 2]}'),
+                  emoji: _goalEmojis[_goals[row * 2]] ?? '',
+                  selected: _controller.fitnessGoals.contains(_goals[row * 2]),
+                  onTap: () => _controller.toggleGoal(_goals[row * 2]),
+                ),
+              ),
+              const SizedBox(width: 12),
+              if (row * 2 + 1 < _goals.length)
+                Expanded(
+                  child: _GoalTile(
+                    label: context.tr('onboarding.goal_${_goals[row * 2 + 1]}'),
+                    emoji: _goalEmojis[_goals[row * 2 + 1]] ?? '',
+                    selected: _controller.fitnessGoals.contains(
+                      _goals[row * 2 + 1],
+                    ),
+                    onTap: () => _controller.toggleGoal(_goals[row * 2 + 1]),
+                  ),
+                )
+              else
+                const Expanded(child: SizedBox()),
+            ],
+          ),
+        ],
+        const SizedBox(height: 8),
+      ],
+    );
   }
+
+  // ── Step 1: Personal info ──────────────────────────────────
 
   Widget _buildPersonalStep(BuildContext context) {
     return Column(
@@ -205,52 +370,59 @@ class _MemberOnboardingPageState extends State<MemberOnboardingPage> {
         Text(
           context.tr('onboarding.personalTitle'),
           style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: FFTokens.fgPrimary,
+            fontSize: 24,
+            fontWeight: FontWeight.w700,
+            color: FFTokens.darkFgPrimary,
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 6),
         Text(
           context.tr('onboarding.personalSubtitle'),
-          style: const TextStyle(fontSize: 14, color: FFTokens.fgTertiary),
+          style: const TextStyle(fontSize: 14, color: FFTokens.darkFgMuted),
         ),
-        const SizedBox(height: 20),
-        TextFormField(
-          controller: _nameCtrl,
-          decoration: InputDecoration(
-            labelText: context.tr('onboarding.displayName'),
-            border: const OutlineInputBorder(),
-          ),
+        const SizedBox(height: 24),
+        _DarkTextField(
+          controller: _controller.nameCtrl,
+          label: context.tr('onboarding.displayName'),
           validator: (v) => (v == null || v.trim().isEmpty)
               ? context.tr('onboarding.required')
               : null,
         ),
         const SizedBox(height: 16),
-        DropdownButtonFormField<String>(
-          initialValue: _gender,
-          decoration: InputDecoration(
-            labelText: context.tr('onboarding.gender'),
-            border: const OutlineInputBorder(),
+        // Gender radio choice group
+        Text(
+          context.tr('onboarding.gender'),
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: FFTokens.darkFgSecondary,
           ),
-          items: _genders
-              .map(
-                (g) => DropdownMenuItem(
-                  value: g,
-                  child: Text(context.tr('onboarding.gender_$g')),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: _genders.map((g) {
+            final selected = _controller.gender == g;
+            return Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(right: g != _genders.last ? 10 : 0),
+                child: _GenderRadioTile(
+                  label: context.tr('onboarding.gender_$g'),
+                  selected: selected,
+                  onTap: () => _controller.setGender(g),
                 ),
-              )
-              .toList(),
-          onChanged: (v) => setState(() => _gender = v),
+              ),
+            );
+          }).toList(),
         ),
         const SizedBox(height: 16),
-        TextFormField(
-          controller: _dobCtrl,
+        _DarkTextField(
+          controller: _controller.dobCtrl,
+          label: context.tr('onboarding.dob'),
           readOnly: true,
-          decoration: InputDecoration(
-            labelText: context.tr('onboarding.dob'),
-            border: const OutlineInputBorder(),
-            suffixIcon: const Icon(Icons.calendar_today),
+          suffixIcon: const Icon(
+            Icons.calendar_today,
+            color: FFTokens.darkFgMuted,
+            size: 18,
           ),
           onTap: () async {
             final date = await showDatePicker(
@@ -260,104 +432,34 @@ class _MemberOnboardingPageState extends State<MemberOnboardingPage> {
               lastDate: DateTime.now(),
             );
             if (date != null) {
-              _dobCtrl.text = date.toIso8601String().split('T').first;
+              _controller.dobCtrl.text = date
+                  .toIso8601String()
+                  .split('T')
+                  .first;
             }
           },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFitnessStep(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          context.tr('onboarding.fitnessTitle'),
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: FFTokens.fgPrimary,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          context.tr('onboarding.fitnessSubtitle'),
-          style: const TextStyle(fontSize: 14, color: FFTokens.fgTertiary),
-        ),
-        const SizedBox(height: 20),
-        Text(
-          context.tr('onboarding.fitnessGoal'),
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: FFTokens.fgSecondary,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: _goals.map((g) {
-            final selected = _fitnessGoals.contains(g);
-            return FilterChip(
-              label: Text(context.tr('onboarding.goal_$g')),
-              selected: selected,
-              selectedColor: FFTokens.brand100,
-              checkmarkColor: FFTokens.brand600,
-              onSelected: (v) {
-                setState(() {
-                  if (v) {
-                    _fitnessGoals.add(g);
-                  } else {
-                    _fitnessGoals.remove(g);
-                  }
-                });
-              },
-            );
-          }).toList(),
-        ),
-        const SizedBox(height: 16),
-        DropdownButtonFormField<String>(
-          initialValue: _fitnessLevel,
-          decoration: InputDecoration(
-            labelText: context.tr('onboarding.fitnessLevel'),
-            border: const OutlineInputBorder(),
-          ),
-          items: _levels
-              .map(
-                (l) => DropdownMenuItem(
-                  value: l,
-                  child: Text(context.tr('onboarding.level_$l')),
-                ),
-              )
-              .toList(),
-          onChanged: (v) => setState(() => _fitnessLevel = v),
+          validator: (v) => (v == null || v.trim().isEmpty)
+              ? context.tr('onboarding.required')
+              : null,
         ),
         const SizedBox(height: 16),
         Row(
           children: [
             Expanded(
-              child: TextFormField(
-                controller: _heightCtrl,
+              child: _DarkTextField(
+                controller: _controller.heightCtrl,
+                label: context.tr('onboarding.height'),
                 keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: context.tr('onboarding.height'),
-                  suffixText: 'cm',
-                  border: const OutlineInputBorder(),
-                ),
+                suffixText: 'cm',
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: TextFormField(
-                controller: _weightCtrl,
+              child: _DarkTextField(
+                controller: _controller.weightCtrl,
+                label: context.tr('onboarding.weight'),
                 keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: context.tr('onboarding.weight'),
-                  suffixText: 'kg',
-                  border: const OutlineInputBorder(),
-                ),
+                suffixText: 'kg',
               ),
             ),
           ],
@@ -366,40 +468,284 @@ class _MemberOnboardingPageState extends State<MemberOnboardingPage> {
     );
   }
 
-  Widget _buildPreferencesStep(BuildContext context) {
+  // ── Step 2: Fitness level ─────────────────────────────────────────────────────
+
+  Widget _buildFitnessLevelStep(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          context.tr('onboarding.preferencesTitle'),
+          context.tr('onboarding.levelTitle'),
+          textAlign: TextAlign.center,
           style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: FFTokens.fgPrimary,
+            fontSize: 26,
+            fontWeight: FontWeight.w700,
+            color: FFTokens.darkFgPrimary,
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 10),
         Text(
-          context.tr('onboarding.preferencesSubtitle'),
-          style: const TextStyle(fontSize: 14, color: FFTokens.fgTertiary),
+          context.tr('onboarding.levelSubtitle'),
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 14, color: FFTokens.darkFgMuted),
         ),
-        const SizedBox(height: 20),
-        ..._timeOptions.map(
-          (t) => CheckboxListTile(
-            title: Text(context.tr('onboarding.time_$t')),
-            value: _workoutTimes.contains(t),
-            onChanged: (v) {
-              setState(() {
-                if (v == true) {
-                  _workoutTimes.add(t);
-                } else {
-                  _workoutTimes.remove(t);
-                }
-              });
-            },
+        const SizedBox(height: 28),
+        ..._levels.map(
+          (l) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _DarkLevelTile(
+              label: context.tr('onboarding.level_$l'),
+              description: context.tr('onboarding.level_${l}_desc'),
+              emoji: _levelEmojis[l] ?? '',
+              selected: _controller.fitnessLevel == l,
+              onTap: () => _controller.setFitnessLevel(l),
+            ),
           ),
         ),
       ],
+    );
+  }
+}
+
+// ── Shared dark-themed input widgets ────────────────────────────────────────────
+
+class _GoalTile extends StatelessWidget {
+  const _GoalTile({
+    required this.label,
+    required this.emoji,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final String emoji;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        height: 84,
+        decoration: BoxDecoration(
+          color: selected
+              ? FFTokens.brandVibrant.withValues(alpha: 0.12)
+              : FFTokens.darkSurface,
+          borderRadius: BorderRadius.circular(FFTokens.radiusLg),
+          border: Border.all(
+            color: selected ? FFTokens.brandVibrant : FFTokens.darkBorder,
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 22)),
+            const SizedBox(height: 6),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: selected
+                      ? FFTokens.brandVibrant
+                      : FFTokens.darkFgSecondary,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DarkTextField extends StatelessWidget {
+  const _DarkTextField({
+    required this.controller,
+    required this.label,
+    this.readOnly = false,
+    this.keyboardType,
+    this.validator,
+    this.onTap,
+    this.suffixIcon,
+    this.suffixText,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final bool readOnly;
+  final TextInputType? keyboardType;
+  final String? Function(String?)? validator;
+  final VoidCallback? onTap;
+  final Widget? suffixIcon;
+  final String? suffixText;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: controller,
+      readOnly: readOnly,
+      keyboardType: keyboardType,
+      validator: validator,
+      onTap: onTap,
+      autovalidateMode: AutovalidateMode.onUserInteraction,
+      style: const TextStyle(color: FFTokens.darkFgPrimary),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: FFTokens.darkFgMuted),
+        suffixIcon: suffixIcon,
+        suffixText: suffixText,
+        suffixStyle: const TextStyle(color: FFTokens.darkFgMuted),
+        filled: true,
+        fillColor: FFTokens.darkSurface,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(FFTokens.radiusMd),
+          borderSide: const BorderSide(color: FFTokens.darkBorder),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(FFTokens.radiusMd),
+          borderSide: const BorderSide(color: FFTokens.darkBorder),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(FFTokens.radiusMd),
+          borderSide: const BorderSide(color: FFTokens.brandVibrant, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(FFTokens.radiusMd),
+          borderSide: const BorderSide(color: FFTokens.danger),
+        ),
+      ),
+    );
+  }
+}
+
+class _GenderRadioTile extends StatelessWidget {
+  const _GenderRadioTile({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: selected
+              ? FFTokens.brandVibrant.withValues(alpha: 0.1)
+              : FFTokens.darkSurface,
+          borderRadius: BorderRadius.circular(FFTokens.radiusMd),
+          border: Border.all(
+            color: selected ? FFTokens.brandVibrant : FFTokens.darkBorder,
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              selected ? Icons.radio_button_checked : Icons.radio_button_off,
+              size: 18,
+              color: selected ? FFTokens.brandVibrant : FFTokens.darkFgMuted,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: selected
+                    ? FFTokens.brandVibrant
+                    : FFTokens.darkFgSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DarkLevelTile extends StatelessWidget {
+  const _DarkLevelTile({
+    required this.label,
+    required this.description,
+    required this.emoji,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final String description;
+  final String emoji;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: selected
+              ? FFTokens.brandVibrant.withValues(alpha: 0.1)
+              : FFTokens.darkSurface,
+          borderRadius: BorderRadius.circular(FFTokens.radiusLg),
+          border: Border.all(
+            color: selected ? FFTokens.brandVibrant : FFTokens.darkBorder,
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 28)),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: selected
+                          ? FFTokens.brandVibrant
+                          : FFTokens.darkFgPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    description,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: FFTokens.darkFgMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -24,17 +24,23 @@ class FFLocale extends ChangeNotifier {
 
   static const Map<String, Map<String, String>> _messages = {
     'en': {
-      'app.title': 'FitFlex Af',
-      'lang.choose': 'Choose your language',
+      'app.title': 'FitFlex',
+      'lang.title': 'Choose language',
+      'lang.slogan': 'Choose your preferred language',
       'lang.continue': 'Continue',
       'role.choose': 'I am a…',
+      'role.welcomeTitle': 'Welcome to FitFlex',
+      'role.welcomeSubtitle': 'To get started, please tell us who you are.',
       'role.member': 'Gym Member',
       'role.owner': 'Gym Owner',
-      'role.trainer': 'Trainer',
+      'role.trainer': 'Personal Trainer',
+      'role.vendor': 'Fitness Vendor',
       'role.operator': 'Gym Operator',
-      'role.memberBody': 'Discover gyms, passes and trainers',
-      'role.ownerBody': 'Register and manage your gym profile',
-      'role.trainerBody': 'List services and accept bookings',
+      'role.memberBody': 'Find gyms, book trainers, and shop for gear.',
+      'role.ownerBody': 'Manage your facility and connect with members.',
+      'role.trainerBody': 'Offer your services and manage your clients.',
+      'role.vendorBody':
+          'Onboard your brand stock, sell health gear & supplements.',
       'auth.phone': 'Phone number',
       'auth.requestOtp': 'Send verification code',
       'auth.code': '6-digit code',
@@ -55,10 +61,16 @@ class FFLocale extends ChangeNotifier {
       'auth.adminPortalOnly':
           'Admin accounts can only sign in through the FitFlex portal.',
       'auth.backToRoles': 'Choose another role',
+      'auth.onboardingTitle': 'Onboarding Journey',
+      'auth.onboardingSubtitle':
+          'Complete authentication to configure your fitflex space.',
+      'auth.googleHint':
+          'Use Google identity registered on Tanzania & East Africa devices',
+      'auth.emailSectionLabel': 'Insert email address (manually)',
       'auth.loginTitle': 'Log in to your account',
       'auth.loginSubtitle': 'Welcome back! Please enter your details.',
-      'auth.emailPlaceholder': 'Enter your email',
-      'auth.continueWithEmail': 'Continue with email',
+      'auth.emailPlaceholder': 'e.g., aisha.juma@gmail.com',
+      'auth.continueWithEmail': 'Continue',
       'auth.continueWithGoogle': 'Continue with Google',
       'auth.or': 'OR',
       'auth.noAccount': 'Don\'t have an account?',
@@ -73,18 +85,18 @@ class FFLocale extends ChangeNotifier {
       'auth.confirmPassword': 'Confirm password',
       'auth.signInWithEmail': 'Sign in with email',
       'auth.createAccount': 'Create account',
-      'auth.acceptTerms': 'I agree to the FitFlex Af Terms and Conditions',
+      'auth.acceptTerms': 'I agree to the FitFlex Terms and Conditions',
       'auth.acceptTermsPrefix': 'I agree to the ',
       'auth.termsLink': 'Terms and Conditions',
       'auth.termsTitle': 'Terms and Conditions',
       'auth.acceptAndClose': 'Accept',
       'auth.termsContent':
-          'Welcome to FitFlex Af.\n\n'
-          '1. USE OF SERVICE\nBy creating an account you agree to use FitFlex Af in accordance with applicable laws and these Terms.\n\n'
+          'Welcome to FitFlex.\n\n'
+          '1. USE OF SERVICE\nBy creating an account you agree to use FitFlex in accordance with applicable laws and these Terms.\n\n'
           '2. MEMBERSHIP\nYour gym membership pass is personal and non-transferable. Each check-in is verified via QR code.\n\n'
           '3. PAYMENTS\nPayments are processed in accordance with the selected subscription plan. Refunds are subject to the gym owner policy.\n\n'
           '4. PRIVACY\nWe collect personal information to deliver gym access services. Your data will not be sold to third parties. See our Privacy Policy for full details.\n\n'
-          '5. ACCOUNT TERMINATION\nFitFlex Af reserves the right to suspend accounts that violate these Terms.\n\n'
+          '5. ACCOUNT TERMINATION\nFitFlex reserves the right to suspend accounts that violate these Terms.\n\n'
           '6. CHANGES\nWe may update these Terms from time to time. Continued use after changes constitutes acceptance.\n\n'
           'For questions contact: support@fitflexaf.co.tz',
       'auth.acceptTermsRequired':
@@ -149,9 +161,10 @@ class FFLocale extends ChangeNotifier {
       'trainer.editProfile': 'Edit profile',
       'home.welcome': 'Welcome',
       'member.goodMorning': 'Good morning',
-      'member.joinTitle': 'Join FitFlex Af',
+      'member.joinTitle': 'Join FitFlex',
       'member.joinBody':
           'Access partner gyms, passes and trainers across Dar es Salaam.',
+      'member.setupTitle': 'MEMBER SETUP',
       'member.goalsStep': 'Step 1 of 3 - Your goals',
       'member.goalsTitle': 'What are your fitness goals?',
       'member.goalsBody':
@@ -317,6 +330,8 @@ class FFLocale extends ChangeNotifier {
       'onboarding.finish': 'Finish',
       'onboarding.required': 'This field is required',
       'onboarding.invalidEmail': 'Enter a valid email address',
+      'onboarding.error': 'Error',
+      'onboarding.ok': 'OK',
       'owner.profile': 'Profile',
       'owner.dateRange': 'Date range',
       'owner.startDate': 'Start date',
@@ -324,25 +339,37 @@ class FFLocale extends ChangeNotifier {
       'owner.clearFilter': 'Clear filter',
       'owner.allTime': 'All time',
       'onboarding.personalTitle': 'Personal information',
-      'onboarding.personalSubtitle': 'Let us know a bit about you.',
+      'onboarding.personalSubtitle': 'Let us know about you',
       'onboarding.displayName': 'Your name',
       'onboarding.gender': 'Gender',
       'onboarding.gender_male': 'Male',
       'onboarding.gender_female': 'Female',
       'onboarding.gender_other': 'Other',
       'onboarding.dob': 'Date of birth',
-      'onboarding.fitnessTitle': 'Fitness profile',
-      'onboarding.fitnessSubtitle': 'Help us personalise your experience.',
+      'onboarding.fitnessTitle': 'What are your fitness goals',
+      'onboarding.fitnessSubtitle': 'Select all that apply',
       'onboarding.fitnessGoal': 'Fitness goal',
-      'onboarding.goal_lose_weight': 'Lose weight',
+      'onboarding.goal_lose_weight': 'Lose Weight',
+      'onboarding.goal_gain_muscle': 'Gain Muscle',
+      'onboarding.goal_stay_fit': 'Stay Fit',
+      'onboarding.goal_improve_endurance': 'Improve Endurance',
+      'onboarding.goal_learn_new_skill': 'Learn a New Skill',
       'onboarding.goal_build_muscle': 'Build muscle',
-      'onboarding.goal_stay_fit': 'Stay fit',
       'onboarding.goal_improve_flexibility': 'Improve flexibility',
       'onboarding.goal_stress_relief': 'Stress relief',
+      'onboarding.levelTitle': 'Fitness goal',
+      'onboarding.levelSubtitle':
+          'Help us recommend the suitable gym and trainers',
       'onboarding.fitnessLevel': 'Fitness level',
       'onboarding.level_beginner': 'Beginner',
+      'onboarding.level_beginner_desc':
+          'New to fitness training or restarting your journey.',
       'onboarding.level_intermediate': 'Intermediate',
+      'onboarding.level_intermediate_desc':
+          'You work out regularly and want to step up.',
       'onboarding.level_advanced': 'Advanced',
+      'onboarding.level_advanced_desc':
+          'Highly active. Ready for intense, structured training.',
       'onboarding.height': 'Height',
       'onboarding.weight': 'Weight',
       'onboarding.preferencesTitle': 'Workout preferences',
@@ -539,17 +566,23 @@ class FFLocale extends ChangeNotifier {
       'owner.filterMonthly': 'Monthly',
     },
     'sw': {
-      'app.title': 'FitFlex Af',
+      'app.title': 'FitFlex',
+      'lang.title': 'Chagua Lugha',
       'lang.choose': 'Chagua lugha yako',
       'lang.continue': 'Endelea',
       'role.choose': 'Mimi ni…',
+      'role.welcomeTitle': 'Karibu FitFlex',
+      'role.welcomeSubtitle': 'Ili kuanza, tafadhali tuambie wewe ni nani.',
       'role.member': 'Mwanachama wa Jimu',
       'role.owner': 'Mmiliki wa Gym',
-      'role.trainer': 'Mkocha',
+      'role.trainer': 'Mkocha wa Kibinafsi',
+      'role.vendor': 'Muuzaji wa Fitness',
       'role.operator': 'Mwendeshaji wa Jimu',
-      'role.memberBody': 'Gundua gym, pasi na makocha',
-      'role.ownerBody': 'Sajili na simamia wasifu wa gym yako',
-      'role.trainerBody': 'Onyesha huduma na pokea bookings',
+      'role.memberBody': 'Tafuta gym, weka booking za makocha, na nunua vifaa.',
+      'role.ownerBody': 'Simamia kituo chako na unganika na wanachama.',
+      'role.trainerBody': 'Toa huduma zako na simamia wateja wako.',
+      'role.vendorBody':
+          'Ingiza bidhaa zako, uze vifaa vya afya na virutubisho.',
       'auth.phone': 'Nambari ya simu',
       'auth.requestOtp': 'Tuma msimbo wa uthibitisho',
       'auth.code': 'Msimbo wa tarakimu 6',
@@ -570,10 +603,16 @@ class FFLocale extends ChangeNotifier {
       'auth.adminPortalOnly':
           'Akaunti za admin zinaweza kuingia kupitia portal ya FitFlex pekee.',
       'auth.backToRoles': 'Chagua nafasi nyingine',
+      'auth.onboardingTitle': 'Safari ya Usajili',
+      'auth.onboardingSubtitle':
+          'Kamilisha uthibitishaji kuanzisha nafasi yako ya fitflex.',
+      'auth.googleHint':
+          'Tumia kitambulisho cha Google kilichosajiliwa kwenye vifaa vya Tanzania na Afrika Mashariki',
+      'auth.emailSectionLabel': 'Weka anwani ya barua pepe (kwa mkono)',
       'auth.loginTitle': 'Ingia kwenye akaunti yako',
       'auth.loginSubtitle': 'Karibu tena! Tafadhali weka taarifa zako.',
-      'auth.emailPlaceholder': 'Weka barua pepe yako',
-      'auth.continueWithEmail': 'Endelea kwa barua pepe',
+      'auth.emailPlaceholder': 'mfano., aisha.juma@gmail.com',
+      'auth.continueWithEmail': 'Endelea',
       'auth.continueWithGoogle': 'Endelea na Google',
       'auth.or': 'AU',
       'auth.noAccount': 'Huna akaunti?',
@@ -589,18 +628,18 @@ class FFLocale extends ChangeNotifier {
       'auth.confirmPassword': 'Thibitisha nenosiri',
       'auth.signInWithEmail': 'Ingia kwa barua pepe',
       'auth.createAccount': 'Tengeneza akaunti',
-      'auth.acceptTerms': 'Nakubali Sheria na Masharti ya FitFlex Af',
+      'auth.acceptTerms': 'Nakubali Sheria na Masharti ya FitFlex',
       'auth.acceptTermsPrefix': 'Nakubali ',
       'auth.termsLink': 'Sheria na Masharti',
       'auth.termsTitle': 'Sheria na Masharti',
       'auth.acceptAndClose': 'Kubali',
       'auth.termsContent':
-          'Karibu FitFlex Af.\n\n'
-          '1. MATUMIZI YA HUDUMA\nKwa kuunda akaunti unakubali kutumia FitFlex Af kwa mujibu wa sheria na Masharti haya.\n\n'
+          'Karibu FitFlex.\n\n'
+          '1. MATUMIZI YA HUDUMA\nKwa kuunda akaunti unakubali kutumia FitFlex kwa mujibu wa sheria na Masharti haya.\n\n'
           '2. UANACHAMA\nPasi yako ya uanachama wa gym ni ya kibinafsi na haiwezi kuhamishiwa mtu mwingine. Kila mahudhurio yathibitishwa kupitia msimbo wa QR.\n\n'
           '3. MALIPO\nMalipo yanafanywa kulingana na mpango wa usajili uliochaguliwa. Marejesho yanategemea sera ya mmiliki wa gym.\n\n'
           '4. FARAGHA\nTunakusanya taarifa binafsi ili kutoa huduma za ufikiaji wa gym. Data yako haitauzwa kwa wahusika wengine.\n\n'
-          '5. KUSIMAMISHWA KWA AKAUNTI\nFitFlex Af ina haki ya kusimamisha akaunti zinazokiuka Masharti haya.\n\n'
+          '5. KUSIMAMISHWA KWA AKAUNTI\nFitFlex ina haki ya kusimamisha akaunti zinazokiuka Masharti haya.\n\n'
           '6. MABADILIKO\nTunaweza kusasisha Masharti haya wakati wowote. Matumizi ya kuendelea baada ya mabadiliko yanamaanisha makubaliano.\n\n'
           'Kwa maswali wasiliana: support@fitflexaf.co.tz',
       'auth.acceptTermsRequired':
@@ -689,8 +728,9 @@ class FFLocale extends ChangeNotifier {
       'trainer.editProfile': 'Hariri wasifu',
       'home.welcome': 'Karibu',
       'member.goodMorning': 'Habari ya asubuhi',
-      'member.joinTitle': 'Jiunge na FitFlex Af',
+      'member.joinTitle': 'Jiunge na FitFlex',
       'member.joinBody': 'Fikia gym, pasi na makocha washirika Dar es Salaam.',
+      'member.setupTitle': 'MPANGILIO WA MWANACHAMA',
       'member.goalsStep': 'Hatua 1 kati ya 3 - Malengo yako',
       'member.goalsTitle': 'Malengo yako ya mazoezi ni yapi?',
       'member.goalsBody':
@@ -867,6 +907,8 @@ class FFLocale extends ChangeNotifier {
       'onboarding.finish': 'Maliza',
       'onboarding.required': 'Sehemu hii inahitajika',
       'onboarding.invalidEmail': 'Weka anwani sahihi ya barua pepe',
+      'onboarding.error': 'Hitilafu',
+      'onboarding.ok': 'Sawa',
       'owner.profile': 'Wasifu',
       'owner.dateRange': 'Kipindi',
       'owner.startDate': 'Tarehe ya kuanza',
@@ -874,25 +916,37 @@ class FFLocale extends ChangeNotifier {
       'owner.clearFilter': 'Ondoa kichujio',
       'owner.allTime': 'Wakati wote',
       'onboarding.personalTitle': 'Taarifa binafsi',
-      'onboarding.personalSubtitle': 'Tufahamishe kuhusu wewe.',
+      'onboarding.personalSubtitle': 'Tufahamishe kuhusu wewe',
       'onboarding.displayName': 'Jina lako',
       'onboarding.gender': 'Jinsia',
       'onboarding.gender_male': 'Mwanaume',
       'onboarding.gender_female': 'Mwanamke',
       'onboarding.gender_other': 'Nyingine',
       'onboarding.dob': 'Tarehe ya kuzaliwa',
-      'onboarding.fitnessTitle': 'Wasifu wa mazoezi',
-      'onboarding.fitnessSubtitle': 'Tusaidie kuboresha uzoefu wako.',
+      'onboarding.fitnessTitle': 'Malengo yako ya mazoezi ni yapi',
+      'onboarding.fitnessSubtitle': 'Chagua yote yanayofaa',
       'onboarding.fitnessGoal': 'Lengo la mazoezi',
-      'onboarding.goal_lose_weight': 'Kupunguza uzito',
+      'onboarding.goal_lose_weight': 'Kupunguza Uzito',
+      'onboarding.goal_gain_muscle': 'Jenga Misuli',
+      'onboarding.goal_stay_fit': 'Kubaki Fiti',
+      'onboarding.goal_improve_endurance': 'Boresha Uvumilivu',
+      'onboarding.goal_learn_new_skill': 'Jifunza Ujuzi Mpya',
       'onboarding.goal_build_muscle': 'Kujenga misuli',
-      'onboarding.goal_stay_fit': 'Kubaki fiti',
       'onboarding.goal_improve_flexibility': 'Kuboresha unyumbufu',
       'onboarding.goal_stress_relief': 'Kupunguza msongo',
+      'onboarding.levelTitle': 'Lengo la mazoezi',
+      'onboarding.levelSubtitle':
+          'Tusaidie kupendekeza gym na wakufunzi wanaofaa',
       'onboarding.fitnessLevel': 'Kiwango cha mazoezi',
       'onboarding.level_beginner': 'Anayeanza',
+      'onboarding.level_beginner_desc':
+          'Mgeni kwenye mazoezi au unaanza upya safari yako.',
       'onboarding.level_intermediate': 'Wastani',
+      'onboarding.level_intermediate_desc':
+          'Unafanya mazoezi mara kwa mara na unataka kuongeza kiwango.',
       'onboarding.level_advanced': 'Mzoefu',
+      'onboarding.level_advanced_desc':
+          'Mzoefu sana. Uko tayari kwa mazoezi makali ya utaratibu.',
       'onboarding.height': 'Urefu',
       'onboarding.weight': 'Uzito',
       'onboarding.preferencesTitle': 'Mapendekezo ya mazoezi',
