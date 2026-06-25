@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../design_tokens.dart';
 
 /// Loading spinner — matches portal's Spinner component.
 class FFSpinner extends StatelessWidget {
@@ -15,7 +14,7 @@ class FFSpinner extends StatelessWidget {
       height: size,
       child: CircularProgressIndicator(
         strokeWidth: 2.5,
-        color: color ?? FFTokens.fgDisabled,
+        color: color ?? Theme.of(context).colorScheme.primary,
       ),
     );
   }

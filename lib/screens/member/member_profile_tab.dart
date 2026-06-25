@@ -304,8 +304,10 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
                     return FilterChip(
                       label: Text(context.tr('onboarding.goal_$goal')),
                       selected: isSelected,
-                      selectedColor: FFTokens.brand100,
-                      checkmarkColor: FFTokens.brand600,
+                      selectedColor: Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.1),
+                      checkmarkColor: Theme.of(context).colorScheme.primary,
                       onSelected: (value) => setDialogState(() {
                         if (value) {
                           selected.add(goal);
@@ -432,10 +434,8 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
                   children: [
                     Text(
                       displayName,
-                      style: const TextStyle(
-                        fontSize: 18,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
-                        color: FFTokens.fgPrimary,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -476,15 +476,15 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
         const SizedBox(height: 12),
 
         // Subscription
-        _SectionTitle(context.tr('member.mySubscription')),
+        FFSectionTitle(context.tr('member.mySubscription')),
         PassSummaryCard(data: data),
 
         // Visit history
-        _SectionTitle(context.tr('member.visitHistory')),
+        FFSectionTitle(context.tr('member.visitHistory')),
         CheckinList(checkins: data.checkins, limit: 8),
 
         // Settings
-        _SectionTitle(context.tr('member.accountSettings')),
+        FFSectionTitle(context.tr('member.accountSettings')),
         FFActionTile(
           icon: Icons.edit,
           title: context.tr('member.editDetails'),
@@ -513,34 +513,16 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
         const SizedBox(height: 16),
         OutlinedButton.icon(
           onPressed: _confirmSignOut,
-          icon: const Icon(Icons.logout, color: FFTokens.fgTertiary),
+          icon: Icon(
+            Icons.logout,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
           label: Text(
             context.tr('home.signout'),
-            style: const TextStyle(color: FFTokens.fgTertiary),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
           ),
         ),
       ],
-    );
-  }
-}
-
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 16, bottom: 10),
-      child: Text(
-        text,
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: FFTokens.fgPrimary,
-        ),
-      ),
     );
   }
 }

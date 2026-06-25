@@ -30,10 +30,10 @@ class GymCard extends StatelessWidget {
                       Flexible(
                         child: Text(
                           gym.name,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.w600,
                             fontSize: 14,
-                            color: FFTokens.fgPrimary,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                       ),
@@ -46,8 +46,8 @@ class GymCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     gym.location,
-                    style: const TextStyle(
-                      color: FFTokens.fgQuaternary,
+                    style: TextStyle(
+                      color: Theme.of(context).textTheme.bodySmall?.color,
                       fontSize: 12,
                     ),
                   ),
@@ -70,9 +70,9 @@ class GymCard extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(
+            Icon(
               Icons.chevron_right,
-              color: FFTokens.fgDisabled,
+              color: Theme.of(context).colorScheme.outline,
               size: 20,
             ),
           ],
@@ -90,6 +90,118 @@ bool gymIsVerified(Gym gym) =>
 String _formatDistance(double km) {
   if (km < 10) return '${km.toStringAsFixed(1)} km';
   return '${km.round()} km';
+}
+
+/// Portrait card used inside a responsive grid.
+/// Uses a surface-shade background instead of elevation for separation.
+class GymGridCard extends StatelessWidget {
+  const GymGridCard({super.key, required this.gym, this.distanceKm});
+
+  final Gym gym;
+  final double? distanceKm;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    return GestureDetector(
+      onTap: () => context.go('/member/gyms/${gym.id}'),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: cs.surface,
+          borderRadius: BorderRadius.circular(FFTokens.radiusLg),
+          border: Border.all(color: cs.outlineVariant),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // ── Image / thumbnail ──────────────────────────────────────
+            ClipRRect(
+              borderRadius: BorderRadius.vertical(
+                top: Radius.circular(FFTokens.radiusLg),
+              ),
+              child: AspectRatio(
+                aspectRatio: 4 / 3,
+                child: gym.images.isEmpty
+                    ? Container(
+                        color: cs.primary.withValues(alpha: 0.1),
+                        child: Icon(
+                          Icons.fitness_center,
+                          size: 36,
+                          color: cs.primary,
+                        ),
+                      )
+                    : FFRemoteImage(
+                        src: gym.images.first,
+                        width: double.infinity,
+                        height: double.infinity,
+                        fit: BoxFit.cover,
+                        fallback: Container(
+                          color: cs.primary.withValues(alpha: 0.1),
+                          child: Icon(
+                            Icons.fitness_center,
+                            size: 36,
+                            color: cs.primary,
+                          ),
+                        ),
+                      ),
+              ),
+            ),
+            // ── Content ────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          gym.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: tt.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      if (gymIsVerified(gym)) ...[
+                        const SizedBox(width: 4),
+                        const GymVerifiedIcon(size: 13),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    gym.location,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: tt.bodySmall?.copyWith(fontSize: 11),
+                  ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 4,
+                    runSpacing: 4,
+                    children: [
+                      FFBadge(
+                        label: gym.tier.replaceAll('_', ' '),
+                        tone: FFBadgeTone.brand,
+                      ),
+                      if (distanceKm != null)
+                        FFBadge(
+                          label: _formatDistance(distanceKm!),
+                          tone: FFBadgeTone.gray,
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class GymVerifiedIcon extends StatelessWidget {
@@ -112,10 +224,13 @@ class _GymThumb extends StatelessWidget {
     if (gym.images.isEmpty) {
       return Container(
         decoration: BoxDecoration(
-          color: FFTokens.brand50,
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(FFTokens.radiusMd),
         ),
-        child: const Icon(Icons.fitness_center, color: FFTokens.brand700),
+        child: Icon(
+          Icons.fitness_center,
+          color: Theme.of(context).colorScheme.primary,
+        ),
       );
     }
     return ClipRRect(
@@ -126,8 +241,11 @@ class _GymThumb extends StatelessWidget {
         height: 72,
         fit: BoxFit.cover,
         fallback: Container(
-          color: FFTokens.brand50,
-          child: const Icon(Icons.fitness_center, color: FFTokens.brand700),
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+          child: Icon(
+            Icons.fitness_center,
+            color: Theme.of(context).colorScheme.primary,
+          ),
         ),
       ),
     );

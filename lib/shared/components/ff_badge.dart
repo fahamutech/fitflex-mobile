@@ -59,7 +59,10 @@ class FFBadge extends StatelessWidget {
     };
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      padding: const EdgeInsets.symmetric(
+        horizontal: FFTokens.spacingSm + 2,
+        vertical: FFTokens.spacing2xs,
+      ),
       decoration: BoxDecoration(
         color: bg,
         border: Border.all(color: ring),
@@ -77,15 +80,11 @@ class FFBadge extends StatelessWidget {
                 shape: BoxShape.circle,
               ),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: FFTokens.spacingXs + 2),
           ],
           Text(
             label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: fg,
-            ),
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(color: fg),
           ),
         ],
       ),

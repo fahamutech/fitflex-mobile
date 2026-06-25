@@ -84,7 +84,10 @@ class _MemberHomeTabState extends State<MemberHomeTab> {
       children: [
         Text(
           context.tr('member.goodMorning'),
-          style: const TextStyle(color: FFTokens.fgQuaternary, fontSize: 14),
+          style: TextStyle(
+            color: Theme.of(context).textTheme.bodySmall?.color,
+            fontSize: 14,
+          ),
         ),
         FFPageHeader(title: displayName),
 
@@ -120,11 +123,9 @@ class _MemberHomeTabState extends State<MemberHomeTab> {
           padding: const EdgeInsets.only(top: 16, bottom: 10),
           child: Text(
             context.tr('member.activity'),
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: FFTokens.fgPrimary,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
           ),
         ),
         CheckinList(checkins: data.checkins, limit: 3),
@@ -165,11 +166,9 @@ class _SectionRow extends StatelessWidget {
           Expanded(
             child: Text(
               title,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: FFTokens.fgPrimary,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
           ),
           TextButton(

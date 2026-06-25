@@ -70,10 +70,8 @@ class _MemberGymDetailPageState extends State<MemberGymDetailPage> {
               Flexible(
                 child: Text(
                   gym.name,
-                  style: const TextStyle(
-                    fontSize: 24,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: FFTokens.fgPrimary,
                   ),
                 ),
               ),
@@ -86,7 +84,10 @@ class _MemberGymDetailPageState extends State<MemberGymDetailPage> {
           const SizedBox(height: 4),
           Text(
             gym.location,
-            style: const TextStyle(color: FFTokens.fgQuaternary, fontSize: 14),
+            style: TextStyle(
+              color: Theme.of(context).textTheme.bodySmall?.color,
+              fontSize: 14,
+            ),
           ),
           const SizedBox(height: 10),
           Row(
@@ -120,16 +121,16 @@ class _MemberGymDetailPageState extends State<MemberGymDetailPage> {
                           height: 18,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(
+                      : Icon(
                           Icons.map_outlined,
                           size: 18,
-                          color: FFTokens.brand600,
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                   const SizedBox(width: 6),
                   Text(
                     context.tr('gym.getDirections'),
-                    style: const TextStyle(
-                      color: FFTokens.brand600,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
                       fontWeight: FontWeight.w500,
                       fontSize: 13,
                     ),
@@ -140,19 +141,22 @@ class _MemberGymDetailPageState extends State<MemberGymDetailPage> {
           ),
 
           // About
-          _SectionTitle(context.tr('member.about')),
+          FFSectionTitle(context.tr('member.about')),
           FFCard(
             child: Text(
               gym.venueType == 'online'
                   ? context.tr('member.planBody')
                   : '${context.tr('member.openNow')} - QR Check-in - ${gym.perVisitRate} TZS',
-              style: const TextStyle(color: FFTokens.fgQuaternary, height: 1.4),
+              style: TextStyle(
+                color: Theme.of(context).textTheme.bodySmall?.color,
+                height: 1.4,
+              ),
             ),
           ),
 
           // Amenities & Equipment
           if (gym.amenities.isNotEmpty || gym.equipment.isNotEmpty) ...[
-            _SectionTitle(context.tr('gym.amenities')),
+            FFSectionTitle(context.tr('gym.amenities')),
             if (gym.amenities.isNotEmpty)
               _CategorizedItems(
                 items: gym.amenities,
@@ -160,7 +164,7 @@ class _MemberGymDetailPageState extends State<MemberGymDetailPage> {
                 tone: FFBadgeTone.brand,
               ),
             if (gym.equipment.isNotEmpty) ...[
-              _SectionTitle(context.tr('gym.equipment')),
+              FFSectionTitle(context.tr('gym.equipment')),
               _CategorizedItems(
                 items: gym.equipment,
                 categories: _equipmentCategories,
@@ -170,7 +174,7 @@ class _MemberGymDetailPageState extends State<MemberGymDetailPage> {
           ],
 
           // Trainers
-          _SectionTitle(context.tr('member.trainersAtGym')),
+          FFSectionTitle(context.tr('member.trainersAtGym')),
           if (trainersAtGym.isEmpty)
             FFEmptyState(title: context.tr('member.noData'))
           else
@@ -275,7 +279,7 @@ class _GymHero extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 14),
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: FFTokens.brand50,
+        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(FFTokens.radiusXl),
       ),
       child: images.isNotEmpty
@@ -289,10 +293,10 @@ class _GymHero extends StatelessWidget {
                     width: double.infinity,
                     height: 180,
                     fit: BoxFit.cover,
-                    fallback: const Center(
+                    fallback: Center(
                       child: Icon(
                         Icons.fitness_center,
-                        color: FFTokens.brand700,
+                        color: Theme.of(context).colorScheme.primary,
                         size: 48,
                       ),
                     ),
@@ -309,10 +313,10 @@ class _GymHero extends StatelessWidget {
                 ],
               ),
             )
-          : const Center(
+          : Center(
               child: Icon(
                 Icons.fitness_center,
-                color: FFTokens.brand700,
+                color: Theme.of(context).colorScheme.primary,
                 size: 48,
               ),
             ),
@@ -512,15 +516,18 @@ class _ExpandableChipGroupState extends State<_ExpandableChipGroup> {
         children: [
           Row(
             children: [
-              Icon(widget.icon, color: FFTokens.brand700, size: 18),
+              Icon(
+                widget.icon,
+                color: Theme.of(context).colorScheme.primary,
+                size: 18,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   widget.title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: FFTokens.fgPrimary,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
               ),
             ],
@@ -537,8 +544,8 @@ class _ExpandableChipGroupState extends State<_ExpandableChipGroup> {
                           Expanded(
                             child: Text(
                               _ratingLabel(item),
-                              style: const TextStyle(
-                                color: FFTokens.fgSecondary,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.onSurface,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -551,8 +558,8 @@ class _ExpandableChipGroupState extends State<_ExpandableChipGroup> {
                           const SizedBox(width: 4),
                           Text(
                             _ratingValue(item).toStringAsFixed(1),
-                            style: const TextStyle(
-                              color: FFTokens.fgPrimary,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onSurface,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -621,26 +628,5 @@ class _ExpandableChipGroupState extends State<_ExpandableChipGroup> {
     final match = RegExp(r'([0-5](?:\.\d)?)').firstMatch(value);
     final parsed = match == null ? null : double.tryParse(match.group(1)!);
     return parsed == null ? 4.0 : parsed.clamp(0, 5).toDouble();
-  }
-}
-
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 16, bottom: 10),
-      child: Text(
-        text,
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: FFTokens.fgPrimary,
-        ),
-      ),
-    );
   }
 }

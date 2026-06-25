@@ -64,17 +64,7 @@ class MemberQrTab extends StatelessWidget {
         // ),
 
         // Recent checkins
-        Padding(
-          padding: const EdgeInsets.only(top: 16, bottom: 10),
-          child: Text(
-            context.tr('member.recentCheckins'),
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: FFTokens.fgPrimary,
-            ),
-          ),
-        ),
+        FFSectionTitle(context.tr('member.recentCheckins')),
         CheckinList(checkins: data.checkins, limit: 5),
       ],
     );
@@ -94,13 +84,13 @@ class _MarketplaceComingSoonCard extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: FFTokens.bgSecondary,
-              border: Border.all(color: FFTokens.borderSecondary),
+              color: Theme.of(context).colorScheme.surface,
+              border: Border.all(color: Theme.of(context).colorScheme.outline),
               borderRadius: BorderRadius.circular(FFTokens.radiusXl),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.storefront_outlined,
-              color: FFTokens.brand700,
+              color: Theme.of(context).colorScheme.primary,
               size: 24,
             ),
           ),
@@ -114,11 +104,7 @@ class _MarketplaceComingSoonCard extends StatelessWidget {
                     Expanded(
                       child: Text(
                         context.tr('member.marketplace'),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: FFTokens.fgPrimary,
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium,
                       ),
                     ),
                     FFBadge(
@@ -130,11 +116,9 @@ class _MarketplaceComingSoonCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   context.tr('member.marketplaceBody'),
-                  style: const TextStyle(
-                    color: FFTokens.fgQuaternary,
-                    fontSize: 13,
-                    height: 1.4,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(height: 1.4),
                 ),
               ],
             ),
@@ -157,11 +141,7 @@ class _QrCard extends StatelessWidget {
         children: [
           Text(
             context.tr('home.qr'),
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: FFTokens.fgPrimary,
-            ),
+            style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 12),
           if (data.qrToken != null)
@@ -169,13 +149,13 @@ class _QrCard extends StatelessWidget {
               data: data.qrToken!,
               size: 220,
               backgroundColor: Colors.white,
-              eyeStyle: const QrEyeStyle(
+              eyeStyle: QrEyeStyle(
                 eyeShape: QrEyeShape.square,
-                color: FFTokens.brand700,
+                color: Theme.of(context).colorScheme.primary,
               ),
-              dataModuleStyle: const QrDataModuleStyle(
+              dataModuleStyle: QrDataModuleStyle(
                 dataModuleShape: QrDataModuleShape.square,
-                color: FFTokens.brand700,
+                color: Theme.of(context).colorScheme.primary,
               ),
             )
           else
@@ -186,7 +166,7 @@ class _QrCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             context.tr('home.qr.refreshes'),
-            style: const TextStyle(color: FFTokens.fgQuaternary, fontSize: 12),
+            style: Theme.of(context).textTheme.labelSmall,
           ),
         ],
       ),
@@ -220,13 +200,15 @@ class _QrLockedCard extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: FFTokens.bgSecondary,
-                  border: Border.all(color: FFTokens.borderSecondary),
+                  color: Theme.of(context).colorScheme.surface,
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
                   borderRadius: BorderRadius.circular(FFTokens.radiusXl),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.qr_code_2,
-                  color: FFTokens.brand700,
+                  color: Theme.of(context).colorScheme.primary,
                   size: 24,
                 ),
               ),
@@ -235,21 +217,13 @@ class _QrLockedCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: FFTokens.fgPrimary,
-                      ),
-                    ),
+                    Text(title, style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 4),
                     Text(
                       body,
-                      style: const TextStyle(
-                        color: FFTokens.fgQuaternary,
-                        height: 1.4,
-                      ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(height: 1.4),
                     ),
                   ],
                 ),
@@ -293,7 +267,10 @@ class _PendingPaymentCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             '${pending.tier.toUpperCase()} - TZS ${pending.amountTzs}',
-            style: const TextStyle(color: FFTokens.fgQuaternary, fontSize: 14),
+            style: TextStyle(
+              color: Theme.of(context).textTheme.bodySmall?.color,
+              fontSize: 14,
+            ),
           ),
         ],
       ),

@@ -66,93 +66,167 @@ class _MemberTrainersTabState extends State<MemberTrainersTab> {
     return result;
   }
 
+  /// Returns the responsive column count based on available width.
+  int _crossAxisCount(double width) {
+    if (width >= 900) return 4;
+    if (width >= 600) return 3;
+    return 2;
+  }
+
   @override
   Widget build(BuildContext context) {
     final data = MemberDataScope.of(context);
     final trainers = _filtered(data.trainers);
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
 
-    return ListView(
-      padding: const EdgeInsets.all(FFTokens.spacingLg),
-      children: [
-        FFPageHeader(title: context.tr('member.findTrainerTitle')),
-        TextField(
-          controller: _searchCtrl,
-          decoration: InputDecoration(
-            hintText: context.tr('member.searchTrainers'),
-            prefixIcon: const Icon(Icons.search, size: 20),
-            suffixIcon: _search.isEmpty
-                ? null
-                : IconButton(
-                    icon: const Icon(Icons.close, size: 18),
-                    onPressed: () {
-                      _searchCtrl.clear();
-                      setState(() => _search = '');
-                    },
-                  ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(FFTokens.radiusLg),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cols = _crossAxisCount(constraints.maxWidth);
+
+        return CustomScrollView(
+          slivers: [
+            // ── Header + controls ─────────────────────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  FFTokens.spacingLg,
+                  FFTokens.spacingLg,
+                  FFTokens.spacingLg,
+                  0,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    FFPageHeader(title: context.tr('member.findTrainerTitle')),
+                    TextField(
+                      controller: _searchCtrl,
+                      decoration: InputDecoration(
+                        hintText: context.tr('member.searchTrainers'),
+                        prefixIcon: const Icon(Icons.search, size: 20),
+                        suffixIcon: _search.isEmpty
+                            ? null
+                            : IconButton(
+                                icon: const Icon(Icons.close, size: 18),
+                                onPressed: () {
+                                  _searchCtrl.clear();
+                                  setState(() => _search = '');
+                                },
+                              ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(
+                            FFTokens.radiusLg,
+                          ),
+                        ),
+                      ),
+                      onChanged: (v) => setState(() => _search = v),
+                    ),
+                    const SizedBox(height: 12),
+                    // ── Specialty filter chips ─────────────────────────
+                    SizedBox(
+                      height: 38,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _specialtyFilters.length,
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(width: 8),
+                        itemBuilder: (_, i) {
+                          final selected = _filter == _specialtyFilters[i];
+                          final label = _specialtyFilters[i] == 'all'
+                              ? context.tr('member.all')
+                              : _specialtyFilters[i];
+                          return GestureDetector(
+                            onTap: () =>
+                                setState(() => _filter = _specialtyFilters[i]),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 100),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: selected ? cs.primary : cs.surface,
+                                border: Border.all(
+                                  color: selected ? cs.primary : cs.outline,
+                                ),
+                                borderRadius: BorderRadius.circular(
+                                  FFTokens.radiusXl,
+                                ),
+                              ),
+                              child: Text(
+                                label,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: selected ? cs.onPrimary : cs.onSurface,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
-          onChanged: (v) => setState(() => _search = v),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 38,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: _specialtyFilters.length,
-            separatorBuilder: (context, index) => const SizedBox(width: 8),
-            itemBuilder: (context, i) {
-              final selected = _filter == _specialtyFilters[i];
-              final label = _specialtyFilters[i] == 'all'
-                  ? context.tr('member.all')
-                  : _specialtyFilters[i];
-              return GestureDetector(
-                onTap: () => setState(() => _filter = _specialtyFilters[i]),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 100),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: selected ? FFTokens.brand700 : FFTokens.bgSecondary,
-                    border: Border.all(
-                      color: selected
-                          ? FFTokens.brand700
-                          : FFTokens.borderSecondary,
+
+            // ── Section header with shade separation ─────────────────────
+            SliverToBoxAdapter(
+              child: Container(
+                margin: const EdgeInsets.only(top: 20),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: FFTokens.spacingLg,
+                  vertical: 10,
+                ),
+                color: cs.surfaceContainerLow,
+                child: Row(
+                  children: [
+                    Text(
+                      context.tr('member.topRated'),
+                      style: tt.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                    borderRadius: BorderRadius.circular(FFTokens.radiusXl),
+                    const Spacer(),
+                    if (trainers.isNotEmpty)
+                      Text(
+                        '${trainers.length}',
+                        style: tt.bodySmall?.copyWith(color: cs.primary),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+
+            // ── Grid ──────────────────────────────────────────────────────
+            if (trainers.isEmpty)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: Padding(
+                  padding: const EdgeInsets.all(FFTokens.spacingLg),
+                  child: FFEmptyState(title: context.tr('member.noData')),
+                ),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.all(FFTokens.spacingLg),
+                sliver: SliverGrid(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, i) => TrainerGridCard(trainer: trainers[i]),
+                    childCount: trainers.length,
                   ),
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: selected ? Colors.white : FFTokens.fgSecondary,
-                    ),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: cols,
+                    crossAxisSpacing: FFTokens.spacingMd,
+                    mainAxisSpacing: FFTokens.spacingMd,
+                    childAspectRatio: 0.68,
                   ),
                 ),
-              );
-            },
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(top: 16, bottom: 10),
-          child: Text(
-            context.tr('member.topRated'),
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: FFTokens.fgPrimary,
-            ),
-          ),
-        ),
-        if (trainers.isEmpty)
-          FFEmptyState(title: context.tr('member.noData'))
-        else
-          ...trainers.map((t) => TrainerCard(trainer: t)),
-      ],
+              ),
+          ],
+        );
+      },
     );
   }
 }

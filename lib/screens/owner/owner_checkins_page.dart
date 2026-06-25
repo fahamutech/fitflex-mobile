@@ -105,7 +105,9 @@ class _OwnerCheckinsPageState extends State<OwnerCheckinsPage> {
                 return FFCard(
                   child: Text(
                     context.tr('owner.noCheckins'),
-                    style: const TextStyle(color: FFTokens.textMuted),
+                    style: TextStyle(
+                      color: Theme.of(context).textTheme.bodySmall?.color,
+                    ),
                   ),
                 );
               }

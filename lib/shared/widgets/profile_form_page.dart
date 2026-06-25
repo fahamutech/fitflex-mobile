@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app_scope.dart';
 import '../api_client.dart';
+import '../components/components.dart';
 import '../design_tokens.dart';
 import '../i18n.dart';
 import 'ff_photo_picker_field.dart';
@@ -153,41 +154,25 @@ class _ProfileFormPageState extends State<ProfileFormPage> {
                 ),
                 const SizedBox(height: 16),
               ],
-              TextFormField(
+              FFTextField(
                 controller: _name,
-                decoration: InputDecoration(
-                  labelText: context.tr('ownerReg.displayName'),
-                  border: const OutlineInputBorder(),
-                ),
+                label: context.tr('ownerReg.displayName'),
                 validator: _required,
               ),
-              const SizedBox(height: 12),
-              TextFormField(
+              const SizedBox(height: FFTokens.spacingSm),
+              FFTextField(
                 controller: _phone,
                 keyboardType: TextInputType.phone,
-                decoration: InputDecoration(
-                  labelText: context.tr('member.phone'),
-                  border: const OutlineInputBorder(),
-                  hintText: '+255...',
-                ),
+                label: context.tr('member.phone'),
+                hint: '+255...',
               ),
-              const SizedBox(height: 12),
-              TextFormField(
-                initialValue: email,
-                enabled: false,
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  border: OutlineInputBorder(),
-                ),
-              ),
+              const SizedBox(height: FFTokens.spacingSm),
+              FFTextField(initialValue: email, enabled: false, label: 'Email'),
               if (_isMember) ...[
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: _gender.isEmpty ? null : _gender,
-                  decoration: InputDecoration(
-                    labelText: context.tr('onboarding.gender'),
-                    border: const OutlineInputBorder(),
-                  ),
+                const SizedBox(height: FFTokens.spacingSm),
+                FFDropdownField<String>(
+                  value: _gender.isEmpty ? null : _gender,
+                  label: context.tr('onboarding.gender'),
                   items: [
                     DropdownMenuItem(
                       value: 'male',
@@ -204,38 +189,29 @@ class _ProfileFormPageState extends State<ProfileFormPage> {
                   ],
                   onChanged: (value) => setState(() => _gender = value ?? ''),
                 ),
-                const SizedBox(height: 12),
-                TextFormField(
+                const SizedBox(height: FFTokens.spacingSm),
+                FFTextField(
                   controller: _dateOfBirth,
                   keyboardType: TextInputType.datetime,
-                  decoration: InputDecoration(
-                    labelText: context.tr('member.dateOfBirth'),
-                    border: const OutlineInputBorder(),
-                    hintText: 'YYYY-MM-DD',
-                  ),
+                  label: context.tr('member.dateOfBirth'),
+                  hint: 'YYYY-MM-DD',
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: FFTokens.spacingSm),
                 Row(
                   children: [
                     Expanded(
-                      child: TextFormField(
+                      child: FFTextField(
                         controller: _height,
                         keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          labelText: context.tr('member.height'),
-                          border: const OutlineInputBorder(),
-                        ),
+                        label: context.tr('member.height'),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: FFTokens.spacingSm),
                     Expanded(
-                      child: TextFormField(
+                      child: FFTextField(
                         controller: _weight,
                         keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          labelText: context.tr('member.weight'),
-                          border: const OutlineInputBorder(),
-                        ),
+                        label: context.tr('member.weight'),
                       ),
                     ),
                   ],
@@ -243,16 +219,20 @@ class _ProfileFormPageState extends State<ProfileFormPage> {
               ],
               if (_error != null)
                 Padding(
-                  padding: const EdgeInsets.only(top: 12),
+                  padding: const EdgeInsets.only(top: FFTokens.spacingSm),
                   child: Text(
                     _error!,
-                    style: const TextStyle(color: FFTokens.error500),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
                   ),
                 ),
               const SizedBox(height: 24),
               if (widget.onSignOut != null)
                 FilledButton.icon(
-                  style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: FFTokens.error500,
+                  ),
                   onPressed: () {
                     Navigator.of(context).pop(false);
                     widget.onSignOut!();

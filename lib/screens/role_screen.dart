@@ -30,7 +30,7 @@ class _RoleScreenState extends State<RoleScreen>
     super.initState();
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 400),
+      duration: FFTokens.motionSlow,
     );
     _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
     _slideAnim = Tween<Offset>(
@@ -181,7 +181,8 @@ class _RoleRadioTile extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
+        duration: FFTokens.motionMedium,
+        curve: FFTokens.motionCurve,
         padding: const EdgeInsets.symmetric(
           horizontal: FFTokens.spacingLg,
           vertical: FFTokens.spacingMd,
@@ -308,20 +309,19 @@ class _DevLoginPanelState extends State<_DevLoginPanel> {
             children: [
               Icon(
                 Icons.bug_report,
-                size: 18,
+                size: FFTokens.iconSm,
                 color: Theme.of(context).colorScheme.outline,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: FFTokens.spacingSm),
               Text(
                 'DEV: Mock login',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
                   color: Theme.of(context).colorScheme.outline,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: FFTokens.spacingSm),
           if (_busy)
             const Center(child: CircularProgressIndicator())
           else
@@ -347,10 +347,12 @@ class _DevLoginPanelState extends State<_DevLoginPanel> {
               ],
             ),
           if (_error != null) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: FFTokens.spacingSm),
             Text(
               _error!,
-              style: const TextStyle(color: FFTokens.danger, fontSize: 12),
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: Theme.of(context).colorScheme.error,
+              ),
             ),
           ],
         ],

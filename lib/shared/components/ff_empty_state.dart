@@ -11,15 +11,16 @@ class FFEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
+      padding: const EdgeInsets.symmetric(
+        horizontal: FFTokens.spacingLg,
+        vertical: FFTokens.spacing2xl,
+      ),
       decoration: BoxDecoration(
-        color: FFTokens.bgSecondary,
-        border: Border.all(
-          color: FFTokens.borderPrimary,
-          style: BorderStyle.solid,
-        ),
+        color: theme.colorScheme.surfaceContainerHighest,
+        border: Border.all(color: theme.colorScheme.outline),
         borderRadius: BorderRadius.circular(FFTokens.radiusXl),
       ),
       child: Column(
@@ -28,27 +29,23 @@ class FFEmptyState extends StatelessWidget {
           Text(
             title,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: FFTokens.fgSecondary,
-            ),
+            style: theme.textTheme.titleSmall,
           ),
           if (body != null) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: FFTokens.spacingSm),
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 280),
               child: Text(
                 body!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: FFTokens.fgQuaternary,
-                ),
+                style: theme.textTheme.bodySmall,
               ),
             ),
           ],
-          if (action != null) ...[const SizedBox(height: 16), action!],
+          if (action != null) ...[
+            const SizedBox(height: FFTokens.spacingMd),
+            action!,
+          ],
         ],
       ),
     );

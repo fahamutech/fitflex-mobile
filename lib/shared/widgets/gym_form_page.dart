@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../app_scope.dart';
+import '../components/components.dart';
 import '../design_tokens.dart';
 import '../i18n.dart';
 import 'location_picker.dart';
@@ -248,30 +249,21 @@ class _GymFormPageState extends State<GymFormPage> {
           child: ListView(
             padding: const EdgeInsets.all(FFTokens.spacingLg),
             children: [
-              TextFormField(
+              FFTextField(
                 controller: _nameCtrl,
-                decoration: InputDecoration(
-                  labelText: context.tr('ownerReg.gymName'),
-                  border: const OutlineInputBorder(),
-                ),
+                label: context.tr('ownerReg.gymName'),
                 validator: _required,
               ),
-              const SizedBox(height: 12),
-              TextFormField(
+              const SizedBox(height: FFTokens.spacingSm),
+              FFTextField(
                 controller: _locationCtrl,
-                decoration: InputDecoration(
-                  labelText: context.tr('ownerReg.gymLocation'),
-                  border: const OutlineInputBorder(),
-                ),
+                label: context.tr('ownerReg.gymLocation'),
                 validator: _required,
               ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: _tier,
-                decoration: InputDecoration(
-                  labelText: context.tr('ownerReg.tier'),
-                  border: const OutlineInputBorder(),
-                ),
+              const SizedBox(height: FFTokens.spacingSm),
+              FFDropdownField<String>(
+                value: _tier,
+                label: context.tr('ownerReg.tier'),
                 items: [
                   DropdownMenuItem(
                     value: 'standard',
@@ -292,46 +284,29 @@ class _GymFormPageState extends State<GymFormPage> {
                 ],
                 onChanged: (v) => setState(() => _tier = v ?? 'standard'),
               ),
-              const SizedBox(height: 12),
-              TextFormField(
+              const SizedBox(height: FFTokens.spacingSm),
+              FFTextField(
                 controller: _rateDayCtrl,
                 keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: context.tr('ownerReg.ratePerDay'),
-                  border: const OutlineInputBorder(),
-                ),
+                label: context.tr('ownerReg.ratePerDay'),
                 validator: _requiredNumber,
               ),
-              const SizedBox(height: 12),
-              TextFormField(
+              const SizedBox(height: FFTokens.spacingSm),
+              FFTextField(
                 controller: _rateWeekCtrl,
                 keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: context.tr('ownerReg.ratePerWeek'),
-                  border: const OutlineInputBorder(),
-                ),
+                label: context.tr('ownerReg.ratePerWeek'),
                 validator: _requiredNumber,
               ),
-              const SizedBox(height: 12),
-              TextFormField(
+              const SizedBox(height: FFTokens.spacingSm),
+              FFTextField(
                 controller: _rateMonthCtrl,
                 keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: context.tr('ownerReg.ratePerMonth'),
-                  border: const OutlineInputBorder(),
-                ),
+                label: context.tr('ownerReg.ratePerMonth'),
                 validator: _requiredNumber,
               ),
-              const SizedBox(height: 16),
-              Text(
-                context.tr('ownerReg.trainersLabel'),
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: FFTokens.fgSecondary,
-                ),
-              ),
-              const SizedBox(height: 8),
+              const SizedBox(height: FFTokens.spacingMd),
+              FFFieldLabel(context.tr('ownerReg.trainersLabel')),
               if (_loadingTrainers)
                 const Padding(
                   padding: EdgeInsets.all(8),
@@ -361,16 +336,8 @@ class _GymFormPageState extends State<GymFormPage> {
                     );
                   }).toList(),
                 ),
-              const SizedBox(height: 16),
-              Text(
-                context.tr('ownerReg.mapLabel'),
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: FFTokens.fgSecondary,
-                ),
-              ),
-              const SizedBox(height: 8),
+              const SizedBox(height: FFTokens.spacingMd),
+              FFFieldLabel(context.tr('ownerReg.mapLabel')),
               LocationPicker(
                 initialLat: _lat,
                 initialLng: _lng,
@@ -380,16 +347,8 @@ class _GymFormPageState extends State<GymFormPage> {
                   _lng = latlng.longitude;
                 },
               ),
-              const SizedBox(height: 16),
-              Text(
-                context.tr('ownerReg.imagesLabel'),
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: FFTokens.fgSecondary,
-                ),
-              ),
-              const SizedBox(height: 8),
+              const SizedBox(height: FFTokens.spacingMd),
+              FFFieldLabel(context.tr('ownerReg.imagesLabel')),
               if (_images.isNotEmpty)
                 SizedBox(
                   height: 80,

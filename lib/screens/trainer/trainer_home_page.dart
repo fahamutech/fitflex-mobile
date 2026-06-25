@@ -138,7 +138,10 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
           children: [
             Text(
               context.tr('trainer.dashboardBody'),
-              style: const TextStyle(color: FFTokens.textMuted, height: 1.35),
+              style: TextStyle(
+                color: Theme.of(context).textTheme.bodySmall?.color,
+                height: 1.35,
+              ),
             ),
             const SizedBox(height: 14),
             FFCard(
@@ -156,8 +159,8 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
                   const SizedBox(height: 4),
                   Text(
                     (trainer?['specialties'] as List? ?? []).join(' / '),
-                    style: const TextStyle(
-                      color: FFTokens.textMuted,
+                    style: TextStyle(
+                      color: Theme.of(context).textTheme.bodySmall?.color,
                       height: 1.35,
                     ),
                   ),
@@ -222,10 +225,15 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
             const SizedBox(height: 16),
             OutlinedButton.icon(
               onPressed: _signOut,
-              icon: const Icon(Icons.logout, color: FFTokens.fgTertiary),
+              icon: Icon(
+                Icons.logout,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
               label: Text(
                 context.tr('home.signout'),
-                style: const TextStyle(color: FFTokens.fgTertiary),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
               ),
             ),
           ],

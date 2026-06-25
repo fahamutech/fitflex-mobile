@@ -16,17 +16,20 @@ class FFPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final child = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(
+        horizontal: FFTokens.spacingSm + 2,
+        vertical: FFTokens.spacingXs + 2,
+      ),
       decoration: BoxDecoration(
         color: filled ? FFTokens.brand : FFTokens.brandLight,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(FFTokens.radiusFull),
       ),
       child: Text(
         label.replaceAll('_', ' '),
-        style: TextStyle(
+        style: theme.textTheme.labelSmall?.copyWith(
           color: filled ? Colors.white : FFTokens.brandDark,
-          fontSize: 11,
           fontWeight: FontWeight.w700,
         ),
       ),

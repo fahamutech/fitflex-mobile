@@ -59,6 +59,7 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
       }
       if (perm == LocationPermission.denied ||
           perm == LocationPermission.deniedForever) {
+        if (!mounted) return;
         setState(() => _locationLoading = false);
         return;
       }
@@ -67,12 +68,14 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
           accuracy: LocationAccuracy.medium,
         ),
       );
+      if (!mounted) return;
       setState(() {
         _userLat = position.latitude;
         _userLng = position.longitude;
         _locationLoading = false;
       });
     } catch (_) {
+      if (!mounted) return;
       setState(() => _locationLoading = false);
     }
   }
@@ -151,10 +154,19 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
     return result;
   }
 
+  /// Returns the responsive column count based on available width.
+  int _crossAxisCount(double width) {
+    if (width >= 900) return 4;
+    if (width >= 600) return 3;
+    return 2;
+  }
+
   @override
   Widget build(BuildContext context) {
     final data = MemberDataScope.of(context);
     final gyms = _filtered(data.gyms);
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
 
     final filterLabels = [
       context.tr('member.all'),
@@ -164,201 +176,273 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
       'Premium',
     ];
 
-    return ListView(
-      padding: const EdgeInsets.all(FFTokens.spacingLg),
-      children: [
-        FFPageHeader(title: context.tr('member.discoverGyms')),
-        TextField(
-          controller: _searchCtrl,
-          decoration: InputDecoration(
-            hintText: context.tr('member.searchGyms'),
-            prefixIcon: const Icon(Icons.search, size: 20),
-            suffixIcon: _search.isEmpty
-                ? null
-                : IconButton(
-                    icon: const Icon(Icons.close, size: 18),
-                    onPressed: () {
-                      _searchCtrl.clear();
-                      setState(() => _search = '');
-                    },
-                  ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(FFTokens.radiusLg),
-            ),
-          ),
-          onChanged: (v) => setState(() => _search = v),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 38,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: _filters.length + 1,
-            separatorBuilder: (context, index) => const SizedBox(width: 8),
-            itemBuilder: (_, i) {
-              // Last item is the "Other Filters" button
-              if (i == _filters.length) {
-                return GestureDetector(
-                  onTap: () => setState(() => _showFilters = !_showFilters),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 100),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _showFilters
-                          ? FFTokens.brand700
-                          : FFTokens.bgSecondary,
-                      border: Border.all(
-                        color: _showFilters
-                            ? FFTokens.brand700
-                            : FFTokens.borderSecondary,
-                      ),
-                      borderRadius: BorderRadius.circular(FFTokens.radiusXl),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.tune,
-                          size: 14,
-                          color: _showFilters
-                              ? Colors.white
-                              : FFTokens.fgSecondary,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          context.tr('member.otherFilters'),
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: _showFilters
-                                ? Colors.white
-                                : FFTokens.fgSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }
-              final selected = _filter == _filters[i];
-              return GestureDetector(
-                onTap: () {
-                  setState(() => _filter = _filters[i]);
-                  if (_filters[i] == 'nearest') _fetchLocation();
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 100),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: selected ? FFTokens.brand700 : FFTokens.bgSecondary,
-                    border: Border.all(
-                      color: selected
-                          ? FFTokens.brand700
-                          : FFTokens.borderSecondary,
-                    ),
-                    borderRadius: BorderRadius.circular(FFTokens.radiusXl),
-                  ),
-                  child: Text(
-                    filterLabels[i],
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: selected ? Colors.white : FFTokens.fgSecondary,
-                    ),
-                  ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cols = _crossAxisCount(constraints.maxWidth);
+
+        return CustomScrollView(
+          slivers: [
+            // ── Header + controls ────────────────────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  FFTokens.spacingLg,
+                  FFTokens.spacingLg,
+                  FFTokens.spacingLg,
+                  0,
                 ),
-              );
-            },
-          ),
-        ),
-        // Price filter panel
-        if (_showFilters) ...[
-          const SizedBox(height: 12),
-          FFCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  context.tr('member.priceRange'),
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: FFTokens.fgPrimary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: _priceFilters.map((p) {
-                    final selected = _priceFilter == p;
-                    return GestureDetector(
-                      onTap: () => setState(() => _priceFilter = p),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: selected
-                              ? FFTokens.brand100
-                              : FFTokens.bgSecondary,
-                          border: Border.all(
-                            color: selected
-                                ? FFTokens.brand500
-                                : FFTokens.borderSecondary,
-                          ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    FFPageHeader(title: context.tr('member.discoverGyms')),
+                    TextField(
+                      controller: _searchCtrl,
+                      decoration: InputDecoration(
+                        hintText: context.tr('member.searchGyms'),
+                        prefixIcon: const Icon(Icons.search, size: 20),
+                        suffixIcon: _search.isEmpty
+                            ? null
+                            : IconButton(
+                                icon: const Icon(Icons.close, size: 18),
+                                onPressed: () {
+                                  _searchCtrl.clear();
+                                  setState(() => _search = '');
+                                },
+                              ),
+                        border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(
-                            FFTokens.radiusMd,
-                          ),
-                        ),
-                        child: Text(
-                          p == 'any' ? context.tr('member.anyPrice') : p,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: selected
-                                ? FontWeight.w600
-                                : FontWeight.w400,
-                            color: selected
-                                ? FFTokens.brand700
-                                : FFTokens.fgSecondary,
+                            FFTokens.radiusLg,
                           ),
                         ),
                       ),
-                    );
-                  }).toList(),
+                      onChanged: (v) => setState(() => _search = v),
+                    ),
+                    const SizedBox(height: 12),
+                    // ── Tier filter chips ──────────────────────────────
+                    SizedBox(
+                      height: 38,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _filters.length + 1,
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(width: 8),
+                        itemBuilder: (_, i) {
+                          if (i == _filters.length) {
+                            return GestureDetector(
+                              onTap: () =>
+                                  setState(() => _showFilters = !_showFilters),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 100),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _showFilters ? cs.primary : cs.surface,
+                                  border: Border.all(
+                                    color: _showFilters
+                                        ? cs.primary
+                                        : cs.outline,
+                                  ),
+                                  borderRadius: BorderRadius.circular(
+                                    FFTokens.radiusXl,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.tune,
+                                      size: 14,
+                                      color: _showFilters
+                                          ? cs.onPrimary
+                                          : cs.onSurface,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      context.tr('member.otherFilters'),
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                        color: _showFilters
+                                            ? cs.onPrimary
+                                            : cs.onSurface,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }
+                          final selected = _filter == _filters[i];
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() => _filter = _filters[i]);
+                              if (_filters[i] == 'nearest') {
+                                _fetchLocation();
+                              }
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 100),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: selected ? cs.primary : cs.surface,
+                                border: Border.all(
+                                  color: selected ? cs.primary : cs.outline,
+                                ),
+                                borderRadius: BorderRadius.circular(
+                                  FFTokens.radiusXl,
+                                ),
+                              ),
+                              child: Text(
+                                filterLabels[i],
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: selected ? cs.onPrimary : cs.onSurface,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    // ── Price filter panel ─────────────────────────────
+                    if (_showFilters) ...[
+                      const SizedBox(height: 12),
+                      FFCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              context.tr('member.priceRange'),
+                              style: tt.labelMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: _priceFilters.map((p) {
+                                final sel = _priceFilter == p;
+                                return GestureDetector(
+                                  onTap: () => setState(() => _priceFilter = p),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 5,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: sel
+                                          ? cs.primary.withValues(alpha: 0.1)
+                                          : cs.surface,
+                                      border: Border.all(
+                                        color: sel ? cs.primary : cs.outline,
+                                      ),
+                                      borderRadius: BorderRadius.circular(
+                                        FFTokens.radiusMd,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      p == 'any'
+                                          ? context.tr('member.anyPrice')
+                                          : p,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: sel
+                                            ? FontWeight.w600
+                                            : FontWeight.w400,
+                                        color: sel ? cs.primary : cs.onSurface,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    if (_locationLoading)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        child: Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-        ],
-        if (_locationLoading)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-          ),
-        const SizedBox(height: 16),
-        if (gyms.isEmpty)
-          FFEmptyState(title: context.tr('member.noData'))
-        else
-          ...gyms.map(
-            (g) => GymCard(
-              gym: g,
-              distanceKm: gymDisplayDistanceKm(
-                g,
-                userLat: _userLat,
-                userLng: _userLng,
-                activeFilter: _filter,
               ),
             ),
-          ),
-      ],
+
+            // ── Section header ───────────────────────────────────────────
+            SliverToBoxAdapter(
+              child: Container(
+                margin: const EdgeInsets.only(top: 20),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: FFTokens.spacingLg,
+                  vertical: 10,
+                ),
+                color: cs.surfaceContainerLow,
+                child: Row(
+                  children: [
+                    Text(
+                      context.tr('member.discoverGyms'),
+                      style: tt.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (gyms.isNotEmpty)
+                      Text(
+                        '${gyms.length}',
+                        style: tt.bodySmall?.copyWith(color: cs.primary),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+
+            // ── Grid ────────────────────────────────────────────────────
+            if (gyms.isEmpty)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: Padding(
+                  padding: const EdgeInsets.all(FFTokens.spacingLg),
+                  child: FFEmptyState(title: context.tr('member.noData')),
+                ),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.all(FFTokens.spacingLg),
+                sliver: SliverGrid(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, i) => GymGridCard(
+                      gym: gyms[i],
+                      distanceKm: gymDisplayDistanceKm(
+                        gyms[i],
+                        userLat: _userLat,
+                        userLng: _userLng,
+                        activeFilter: _filter,
+                      ),
+                    ),
+                    childCount: gyms.length,
+                  ),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: cols,
+                    crossAxisSpacing: FFTokens.spacingMd,
+                    mainAxisSpacing: FFTokens.spacingMd,
+                    childAspectRatio: 0.72,
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }

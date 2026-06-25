@@ -21,6 +21,7 @@ class FFActionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return FFCard(
       child: InkWell(
         onTap: onTap,
@@ -28,46 +29,37 @@ class FFActionTile extends StatelessWidget {
         child: Row(
           children: [
             Container(
-              width: 40,
-              height: 40,
+              width: FFTokens.iconBox,
+              height: FFTokens.iconBox,
               decoration: BoxDecoration(
-                color: FFTokens.bgSecondary,
-                border: Border.all(color: FFTokens.borderSecondary),
+                color: theme.colorScheme.surfaceContainerHighest,
+                border: Border.all(color: theme.colorScheme.outline),
                 borderRadius: BorderRadius.circular(FFTokens.radiusLg),
               ),
-              child: Icon(icon, color: FFTokens.fgBrand, size: 20),
+              child: Icon(
+                icon,
+                color: theme.colorScheme.primary,
+                size: FFTokens.iconMd,
+              ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: FFTokens.spacingSm),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                      color: FFTokens.fgPrimary,
-                    ),
-                  ),
+                  Text(title, style: theme.textTheme.titleSmall),
                   if (subtitle != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle!,
-                      style: const TextStyle(
-                        color: FFTokens.fgQuaternary,
-                        fontSize: 12,
-                      ),
-                    ),
+                    const SizedBox(height: FFTokens.spacing2xs),
+                    Text(subtitle!, style: theme.textTheme.bodySmall),
                   ],
                 ],
               ),
             ),
             trailing ??
-                const Icon(
+                Icon(
                   Icons.chevron_right,
-                  color: FFTokens.fgDisabled,
-                  size: 20,
+                  color: theme.colorScheme.onSurfaceVariant,
+                  size: FFTokens.iconMd,
                 ),
           ],
         ),

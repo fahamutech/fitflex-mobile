@@ -35,15 +35,16 @@ class PassSummaryCard extends StatelessWidget {
         children: [
           Text(
             context.tr('member.yourPass'),
-            style: const TextStyle(color: FFTokens.fgQuaternary, fontSize: 12),
+            style: TextStyle(
+              color: Theme.of(context).textTheme.bodySmall?.color,
+              fontSize: 12,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 20,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w600,
-              color: FFTokens.fgPrimary,
             ),
           ),
           const SizedBox(height: 4),
@@ -63,8 +64,8 @@ class PassSummaryCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     context.tr('home.visits'),
-                    style: const TextStyle(
-                      color: FFTokens.fgQuaternary,
+                    style: TextStyle(
+                      color: Theme.of(context).textTheme.bodySmall?.color,
                       fontSize: 12,
                     ),
                   ),
@@ -73,8 +74,8 @@ class PassSummaryCard extends StatelessWidget {
                   visitCap == null
                       ? '$visitsUsed / ${context.tr('pass.unlimited')}'
                       : '$visitsUsed / $visitCap',
-                  style: const TextStyle(
-                    color: FFTokens.fgSecondary,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
@@ -85,8 +86,8 @@ class PassSummaryCard extends StatelessWidget {
               const SizedBox(height: 6),
               LinearProgressIndicator(
                 value: progress,
-                color: FFTokens.brand500,
-                backgroundColor: FFTokens.bgTertiary,
+                color: Theme.of(context).colorScheme.primary,
+                backgroundColor: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(FFTokens.radiusFull),
               ),
             ],

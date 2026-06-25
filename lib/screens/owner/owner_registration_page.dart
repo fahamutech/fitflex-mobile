@@ -8,7 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../app_scope.dart';
 import '../../router.dart';
 import '../../shared/api_client.dart';
-import '../../shared/components/theme_toggle_button.dart';
+import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import '../../shared/widgets/location_picker.dart';
@@ -206,8 +206,8 @@ class _OwnerRegistrationPageState extends State<OwnerRegistrationPage> {
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(2),
                           color: active
-                              ? FFTokens.brand600
-                              : FFTokens.borderSecondary,
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(context).colorScheme.outline,
                         ),
                       ),
                     );
@@ -232,12 +232,14 @@ class _OwnerRegistrationPageState extends State<OwnerRegistrationPage> {
                       child: FilledButton(
                         onPressed: _busy ? null : _next,
                         child: _busy
-                            ? const SizedBox(
+                            ? SizedBox(
                                 height: 18,
                                 width: 18,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  color: Colors.white,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onPrimary,
                                 ),
                               )
                             : Text(
@@ -274,37 +276,29 @@ class _OwnerRegistrationPageState extends State<OwnerRegistrationPage> {
       children: [
         Text(
           context.tr('ownerReg.ownerTitle'),
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: FFTokens.fgPrimary,
-          ),
+          style: Theme.of(context).textTheme.titleLarge,
         ),
         const SizedBox(height: 4),
         Text(
           context.tr('ownerReg.ownerSubtitle'),
-          style: const TextStyle(fontSize: 14, color: FFTokens.fgTertiary),
-        ),
-        const SizedBox(height: 20),
-        TextFormField(
-          controller: _nameCtrl,
-          decoration: InputDecoration(
-            labelText: context.tr('ownerReg.displayName'),
-            border: const OutlineInputBorder(),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
+        ),
+        const SizedBox(height: FFTokens.spacingLg),
+        FFTextField(
+          controller: _nameCtrl,
+          label: context.tr('ownerReg.displayName'),
           validator: (v) => (v == null || v.trim().isEmpty)
               ? context.tr('onboarding.required')
               : null,
         ),
-        const SizedBox(height: 12),
-        TextFormField(
+        const SizedBox(height: FFTokens.spacingSm),
+        FFTextField(
           controller: _phoneCtrl,
           keyboardType: TextInputType.phone,
-          decoration: InputDecoration(
-            labelText: context.tr('ownerReg.phone'),
-            border: const OutlineInputBorder(),
-            hintText: '+255...',
-          ),
+          label: context.tr('ownerReg.phone'),
+          hint: '+255...',
         ),
       ],
     );
@@ -316,16 +310,14 @@ class _OwnerRegistrationPageState extends State<OwnerRegistrationPage> {
       children: [
         Text(
           context.tr('ownerReg.gymTitle'),
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: FFTokens.fgPrimary,
-          ),
+          style: Theme.of(context).textTheme.titleLarge,
         ),
         const SizedBox(height: 4),
         Text(
           context.tr('ownerReg.gymSubtitle'),
-          style: const TextStyle(fontSize: 14, color: FFTokens.fgTertiary),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
         const SizedBox(height: 20),
         ..._gyms.asMap().entries.map((entry) {
@@ -413,55 +405,42 @@ class _GymCardWidgetState extends State<_GymCardWidget> {
                 Expanded(
                   child: Text(
                     '${context.tr('ownerReg.gym')} ${widget.index + 1}',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: FFTokens.fgPrimary,
-                    ),
+                    style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
                 if (widget.canRemove)
                   IconButton(
-                    icon: const Icon(Icons.close, size: 20),
+                    icon: const Icon(Icons.close, size: FFTokens.iconMd),
                     onPressed: widget.onRemove,
                   ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: FFTokens.spacingSm),
 
             // Name
-            TextFormField(
+            FFTextField(
               controller: gym.nameCtrl,
-              decoration: InputDecoration(
-                labelText: context.tr('ownerReg.gymName'),
-                border: const OutlineInputBorder(),
-              ),
+              label: context.tr('ownerReg.gymName'),
               validator: (v) => (v == null || v.trim().isEmpty)
                   ? context.tr('onboarding.required')
                   : null,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: FFTokens.spacingSm),
 
             // Location (text)
-            TextFormField(
+            FFTextField(
               controller: gym.locationCtrl,
-              decoration: InputDecoration(
-                labelText: context.tr('ownerReg.gymLocation'),
-                border: const OutlineInputBorder(),
-              ),
+              label: context.tr('ownerReg.gymLocation'),
               validator: (v) => (v == null || v.trim().isEmpty)
                   ? context.tr('onboarding.required')
                   : null,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: FFTokens.spacingSm),
 
             // Tier
-            DropdownButtonFormField<String>(
-              initialValue: gym.tier,
-              decoration: InputDecoration(
-                labelText: context.tr('ownerReg.tier'),
-                border: const OutlineInputBorder(),
-              ),
+            FFDropdownField<String>(
+              value: gym.tier,
+              label: context.tr('ownerReg.tier'),
               items: [
                 DropdownMenuItem(
                   value: 'standard',
@@ -485,82 +464,44 @@ class _GymCardWidgetState extends State<_GymCardWidget> {
                 widget.onChanged();
               },
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: FFTokens.spacingSm),
 
-            // Rates row — day / week / month
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: gym.rateDayCtrl,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: context.tr('ownerReg.ratePerDay'),
-                      border: const OutlineInputBorder(),
-                    ),
-                    validator: (v) => (v == null || v.trim().isEmpty)
-                        ? context.tr('onboarding.required')
-                        : null,
-                  ),
-                ),
-              ],
+            // Rates
+            FFTextField(
+              controller: gym.rateDayCtrl,
+              keyboardType: TextInputType.number,
+              label: context.tr('ownerReg.ratePerDay'),
+              validator: (v) => (v == null || v.trim().isEmpty)
+                  ? context.tr('onboarding.required')
+                  : null,
             ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: gym.rateWeekCtrl,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: context.tr('ownerReg.ratePerWeek'),
-                      border: const OutlineInputBorder(),
-                    ),
-                    validator: (v) => (v == null || v.trim().isEmpty)
-                        ? context.tr('onboarding.required')
-                        : null,
-                  ),
-                ),
-              ],
+            const SizedBox(height: FFTokens.spacingSm),
+            FFTextField(
+              controller: gym.rateWeekCtrl,
+              keyboardType: TextInputType.number,
+              label: context.tr('ownerReg.ratePerWeek'),
+              validator: (v) => (v == null || v.trim().isEmpty)
+                  ? context.tr('onboarding.required')
+                  : null,
             ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: gym.rateMonthCtrl,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: context.tr('ownerReg.ratePerMonth'),
-                      border: const OutlineInputBorder(),
-                    ),
-                    validator: (v) => (v == null || v.trim().isEmpty)
-                        ? context.tr('onboarding.required')
-                        : null,
-                  ),
-                ),
-              ],
+            const SizedBox(height: FFTokens.spacingSm),
+            FFTextField(
+              controller: gym.rateMonthCtrl,
+              keyboardType: TextInputType.number,
+              label: context.tr('ownerReg.ratePerMonth'),
+              validator: (v) => (v == null || v.trim().isEmpty)
+                  ? context.tr('onboarding.required')
+                  : null,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: FFTokens.spacingSm),
 
             // Trainer selection
-            Text(
-              context.tr('ownerReg.trainersLabel'),
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: FFTokens.fgSecondary,
-              ),
-            ),
-            const SizedBox(height: 4),
+            FFFieldLabel(context.tr('ownerReg.trainersLabel')),
             Text(
               context.tr('ownerReg.trainersHint'),
-              style: const TextStyle(
-                fontSize: 12,
-                color: FFTokens.fgQuaternary,
-              ),
+              style: Theme.of(context).textTheme.bodySmall,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: FFTokens.spacingSm),
             // Selected trainers chips
             if (gym.trainerIds.isNotEmpty)
               Padding(
@@ -587,8 +528,14 @@ class _GymCardWidgetState extends State<_GymCardWidget> {
                         setState(() => gym.trainerIds.remove(id));
                         widget.onChanged();
                       },
-                      backgroundColor: FFTokens.brand50,
-                      side: const BorderSide(color: FFTokens.brand200),
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.08),
+                      side: BorderSide(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.primary.withValues(alpha: 0.3),
+                      ),
                     );
                   }).toList(),
                 ),
@@ -602,15 +549,7 @@ class _GymCardWidgetState extends State<_GymCardWidget> {
             const SizedBox(height: 16),
 
             // Map picker
-            Text(
-              context.tr('ownerReg.mapLabel'),
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: FFTokens.fgSecondary,
-              ),
-            ),
-            const SizedBox(height: 8),
+            FFFieldLabel(context.tr('ownerReg.mapLabel')),
             LocationPicker(
               initialLat: gym.lat,
               initialLng: gym.lng,
@@ -624,23 +563,12 @@ class _GymCardWidgetState extends State<_GymCardWidget> {
             const SizedBox(height: 16),
 
             // Image picker
-            Text(
-              context.tr('ownerReg.imagesLabel'),
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: FFTokens.fgSecondary,
-              ),
-            ),
-            const SizedBox(height: 4),
+            FFFieldLabel(context.tr('ownerReg.imagesLabel')),
             Text(
               context.tr('ownerReg.imagesHint'),
-              style: const TextStyle(
-                fontSize: 12,
-                color: FFTokens.fgQuaternary,
-              ),
+              style: Theme.of(context).textTheme.bodySmall,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: FFTokens.spacingSm),
             if (gym.imagePaths.isNotEmpty)
               SizedBox(
                 height: 80,
@@ -808,7 +736,9 @@ class _TrainerSearchDialogState extends State<_TrainerSearchDialog> {
                 ? Center(
                     child: Text(
                       context.tr('ownerReg.noTrainersFound'),
-                      style: const TextStyle(color: FFTokens.fgQuaternary),
+                      style: TextStyle(
+                        color: Theme.of(context).textTheme.bodySmall?.color,
+                      ),
                     ),
                   )
                 : ListView.separated(
@@ -831,13 +761,13 @@ class _TrainerSearchDialogState extends State<_TrainerSearchDialog> {
                         title: Text(name),
                         subtitle: email.isNotEmpty ? Text(email) : null,
                         trailing: isSelected
-                            ? const Icon(
+                            ? Icon(
                                 Icons.check_circle,
-                                color: FFTokens.brand600,
+                                color: Theme.of(context).colorScheme.primary,
                               )
-                            : const Icon(
+                            : Icon(
                                 Icons.circle_outlined,
-                                color: FFTokens.fgDisabled,
+                                color: Theme.of(context).colorScheme.outline,
                               ),
                         onTap: () {
                           setState(() {
@@ -984,49 +914,37 @@ class _TrainerCreateDialogState extends State<_TrainerCreateDialog> {
                 child: SingleChildScrollView(
                   child: Column(
                     children: [
-                      TextFormField(
+                      FFTextField(
                         controller: _nameCtrl,
-                        decoration: InputDecoration(
-                          labelText: context.tr('ownerReg.trainerName'),
-                          border: const OutlineInputBorder(),
-                        ),
+                        label: context.tr('ownerReg.trainerName'),
                       ),
-                      const SizedBox(height: 12),
-                      TextFormField(
+                      const SizedBox(height: FFTokens.spacingSm),
+                      FFTextField(
                         controller: _emailCtrl,
                         keyboardType: TextInputType.emailAddress,
-                        decoration: InputDecoration(
-                          labelText: context.tr('ownerReg.trainerEmail'),
-                          border: const OutlineInputBorder(),
-                        ),
+                        label: context.tr('ownerReg.trainerEmail'),
                       ),
-                      const SizedBox(height: 12),
-                      TextFormField(
+                      const SizedBox(height: FFTokens.spacingSm),
+                      FFTextField(
                         controller: _specialtiesCtrl,
-                        decoration: InputDecoration(
-                          labelText: context.tr('ownerReg.trainerSpecialties'),
-                          hintText: 'e.g. Yoga, Cardio',
-                          border: const OutlineInputBorder(),
-                        ),
+                        label: context.tr('ownerReg.trainerSpecialties'),
+                        hint: 'e.g. Yoga, Cardio',
                       ),
-                      const SizedBox(height: 12),
-                      TextFormField(
+                      const SizedBox(height: FFTokens.spacingSm),
+                      FFTextField(
                         controller: _rateCtrl,
                         keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          labelText: context.tr('ownerReg.trainerRate'),
-                          suffixText: 'TZS',
-                          border: const OutlineInputBorder(),
-                        ),
+                        label: context.tr('ownerReg.trainerRate'),
                       ),
                       if (_error != null)
                         Padding(
-                          padding: const EdgeInsets.only(top: 12),
+                          padding: const EdgeInsets.only(
+                            top: FFTokens.spacingSm,
+                          ),
                           child: Text(
                             _error!,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: FFTokens.error500,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.error,
                             ),
                           ),
                         ),
@@ -1040,12 +958,12 @@ class _TrainerCreateDialogState extends State<_TrainerCreateDialog> {
                 child: FilledButton(
                   onPressed: _busy ? null : _submit,
                   child: _busy
-                      ? const SizedBox(
+                      ? SizedBox(
                           height: 18,
                           width: 18,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: Colors.white,
+                            color: Theme.of(context).colorScheme.onPrimary,
                           ),
                         )
                       : Text(context.tr('ownerReg.createTrainer')),

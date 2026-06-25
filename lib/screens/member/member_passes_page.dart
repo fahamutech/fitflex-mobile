@@ -63,10 +63,7 @@ class MemberPassesPage extends StatelessWidget {
               alignment: Alignment.centerLeft,
               child: Text(
                 context.tr('member.planBody'),
-                style: const TextStyle(
-                  color: FFTokens.fgQuaternary,
-                  fontSize: 13,
-                ),
+                style: Theme.of(context).textTheme.bodySmall,
               ),
             ),
           ),
@@ -89,7 +86,7 @@ class MemberPassesPage extends StatelessWidget {
                     Text(
                       context.tr('home.passesLoadError'),
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: FFTokens.fgQuaternary),
+                      style: Theme.of(context).textTheme.bodyMedium,
                     ),
                     const SizedBox(height: 12),
                     OutlinedButton(
@@ -164,11 +161,7 @@ class _PendingBlockCard extends StatelessWidget {
                   children: [
                     Text(
                       context.tr('member.paymentPendingTitle'),
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: FFTokens.fgPrimary,
-                      ),
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 2),
                     FFBadge(
@@ -184,11 +177,9 @@ class _PendingBlockCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             context.tr('member.paymentPendingBody'),
-            style: const TextStyle(
-              color: FFTokens.fgQuaternary,
-              fontSize: 13,
-              height: 1.45,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(height: 1.45),
           ),
           const SizedBox(height: 12),
           _DetailRow(
@@ -231,21 +222,13 @@ class _DetailRow extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: FFTokens.fgQuaternary,
-                fontSize: 13,
-              ),
-            ),
+            child: Text(label, style: Theme.of(context).textTheme.bodySmall),
           ),
           Text(
             value,
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              color: FFTokens.fgPrimary,
-              fontSize: 13,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600),
           ),
         ],
       ),
@@ -284,12 +267,16 @@ class _SelectablePass extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(FFTokens.radiusXl),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 100),
+          duration: FFTokens.motionFast,
           padding: const EdgeInsets.all(FFTokens.spacingMd),
           decoration: BoxDecoration(
-            color: selected ? FFTokens.brand50 : FFTokens.bgPrimary,
+            color: selected
+                ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
+                : Theme.of(context).colorScheme.surface,
             border: Border.all(
-              color: selected ? FFTokens.brand500 : FFTokens.borderSecondary,
+              color: selected
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.outline,
               width: selected ? 2 : 1,
             ),
             borderRadius: BorderRadius.circular(FFTokens.radiusXl),
@@ -303,21 +290,14 @@ class _SelectablePass extends StatelessWidget {
                   children: [
                     Text(
                       context.tr('pass.${pass.id}'),
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: FFTokens.fgPrimary,
-                      ),
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 4),
                     Text(
                       pass.visitCap == null
                           ? context.tr('pass.unlimited')
                           : '${pass.visitCap} ${context.tr('pass.visits')}',
-                      style: const TextStyle(
-                        color: FFTokens.fgQuaternary,
-                        fontSize: 12,
-                      ),
+                      style: Theme.of(context).textTheme.labelSmall,
                     ),
                     if (pass.gymAccess != null && pass.gymAccess!.isNotEmpty)
                       Padding(
@@ -327,22 +307,19 @@ class _SelectablePass extends StatelessWidget {
                             Flexible(
                               child: Text(
                                 pass.gymAccessLabel,
-                                style: const TextStyle(
-                                  color: FFTokens.brand600,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
-                                ),
+                                style: Theme.of(context).textTheme.labelSmall
+                                    ?.copyWith(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                    ),
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
                             const SizedBox(width: 4),
                             Text(
                               '($gymCount ${gymCount == 1 ? context.tr('gym.gym') : context.tr('gym.gyms')})',
-                              style: const TextStyle(
-                                color: FFTokens.fgSecondary,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
-                              ),
+                              style: Theme.of(context).textTheme.labelSmall,
                             ),
                           ],
                         ),
@@ -352,16 +329,13 @@ class _SelectablePass extends StatelessWidget {
               ),
               Text(
                 'TZS ${pass.price}',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: FFTokens.fgPrimary,
-                ),
+                style: Theme.of(context).textTheme.titleSmall,
               ),
               if (selected) ...[
                 const SizedBox(width: 8),
-                const Icon(
+                Icon(
                   Icons.check_circle,
-                  color: FFTokens.brand500,
+                  color: Theme.of(context).colorScheme.primary,
                   size: 20,
                 ),
               ],

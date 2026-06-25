@@ -32,15 +32,17 @@ class _OwnerEarningsPageState extends State<OwnerEarningsPage> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
-                border: Border.all(color: FFTokens.borderSecondary),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.outline,
+                ),
                 borderRadius: BorderRadius.circular(FFTokens.radiusMd),
               ),
               child: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.calendar_today,
                     size: 18,
-                    color: FFTokens.brand600,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -48,19 +50,16 @@ class _OwnerEarningsPageState extends State<OwnerEarningsPage> {
                       _dateRange == null
                           ? context.tr('owner.allTime')
                           : '${_formatDate(_dateRange!.start)} - ${_formatDate(_dateRange!.end)}',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: FFTokens.fgSecondary,
-                      ),
+                      style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ),
                   if (_dateRange != null)
                     GestureDetector(
                       onTap: () => setState(() => _dateRange = null),
-                      child: const Icon(
+                      child: Icon(
                         Icons.close,
                         size: 16,
-                        color: FFTokens.fgTertiary,
+                        color: Theme.of(context).textTheme.bodySmall?.color,
                       ),
                     ),
                 ],
@@ -88,12 +87,12 @@ class _OwnerEarningsPageState extends State<OwnerEarningsPage> {
                     ),
                     decoration: BoxDecoration(
                       color: selected
-                          ? FFTokens.brand700
-                          : FFTokens.bgSecondary,
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.surface,
                       border: Border.all(
                         color: selected
-                            ? FFTokens.brand700
-                            : FFTokens.borderSecondary,
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.outline,
                       ),
                       borderRadius: BorderRadius.circular(FFTokens.radiusXl),
                     ),
@@ -102,7 +101,9 @@ class _OwnerEarningsPageState extends State<OwnerEarningsPage> {
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
-                        color: selected ? Colors.white : FFTokens.fgSecondary,
+                        color: selected
+                            ? Theme.of(context).colorScheme.onPrimary
+                            : Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                   ),
@@ -137,7 +138,7 @@ class _OwnerEarningsPageState extends State<OwnerEarningsPage> {
           const SizedBox(height: 24),
 
           // Pending Invoices (expandable)
-          _SectionTitle(context.tr('owner.pendingInvoices')),
+          FFSectionTitle(context.tr('owner.pendingInvoices')),
           _PendingInvoiceCard(
             month: 'March 2026',
             totalVisits: 45,
@@ -198,28 +199,23 @@ class _EarningsCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: FFTokens.surface,
-        border: Border.all(color: FFTokens.border),
+        color: Theme.of(context).colorScheme.surface,
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
         borderRadius: BorderRadius.circular(FFTokens.radiusLg),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 20),
+          Icon(icon, color: color, size: FFTokens.iconMd),
           const SizedBox(height: 8),
           Text(
             value,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: FFTokens.fgPrimary,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 4),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12, color: FFTokens.fgSecondary),
-          ),
+          Text(label, style: Theme.of(context).textTheme.labelSmall),
         ],
       ),
     );
@@ -259,16 +255,12 @@ class _PendingInvoiceCardState extends State<_PendingInvoiceCard> {
                 Expanded(
                   child: Text(
                     widget.month,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: FFTokens.fgPrimary,
-                    ),
+                    style: Theme.of(context).textTheme.titleSmall,
                   ),
                 ),
                 Icon(
                   _expanded ? Icons.expand_less : Icons.expand_more,
-                  color: FFTokens.fgTertiary,
+                  color: Theme.of(context).textTheme.bodySmall?.color,
                 ),
               ],
             ),
@@ -295,12 +287,14 @@ class _PendingInvoiceCardState extends State<_PendingInvoiceCard> {
                     ),
                     decoration: BoxDecoration(
                       color: selected
-                          ? FFTokens.brand100
-                          : FFTokens.bgSecondary,
+                          ? Theme.of(
+                              context,
+                            ).colorScheme.primary.withValues(alpha: 0.1)
+                          : Theme.of(context).colorScheme.surface,
                       border: Border.all(
                         color: selected
-                            ? FFTokens.brand500
-                            : FFTokens.borderSecondary,
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.outline,
                       ),
                       borderRadius: BorderRadius.circular(FFTokens.radiusMd),
                     ),
@@ -312,8 +306,8 @@ class _PendingInvoiceCardState extends State<_PendingInvoiceCard> {
                             ? FontWeight.w600
                             : FontWeight.w400,
                         color: selected
-                            ? FFTokens.brand700
-                            : FFTokens.fgSecondary,
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                   ),
@@ -353,40 +347,14 @@ class _DetailRow extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: const TextStyle(fontSize: 13, color: FFTokens.fgSecondary),
-        ),
+        Text(label, style: Theme.of(context).textTheme.bodySmall),
         Text(
           value,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: FFTokens.fgPrimary,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600),
         ),
       ],
-    );
-  }
-}
-
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Text(
-        text,
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: FFTokens.fgPrimary,
-        ),
-      ),
     );
   }
 }

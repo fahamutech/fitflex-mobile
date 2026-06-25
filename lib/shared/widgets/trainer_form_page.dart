@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app_scope.dart';
 import '../api_client.dart';
+import '../components/components.dart';
 import '../design_tokens.dart';
 import '../i18n.dart';
 import 'ff_photo_picker_field.dart';
@@ -148,52 +149,40 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
               ),
               const SizedBox(height: 16),
               // Name
-              TextFormField(
+              FFTextField(
                 key: const Key('trainerFormName'),
                 controller: _name,
-                decoration: InputDecoration(
-                  labelText: context.tr('ownerReg.trainerName'),
-                  border: const OutlineInputBorder(),
-                ),
+                label: context.tr('ownerReg.trainerName'),
                 validator: _required,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: FFTokens.spacingSm),
               // Email
-              TextFormField(
+              FFTextField(
                 key: const Key('trainerFormEmail'),
                 controller: _email,
                 keyboardType: TextInputType.emailAddress,
                 enabled: !isEdit,
-                decoration: InputDecoration(
-                  labelText: context.tr('ownerReg.trainerEmail'),
-                  border: const OutlineInputBorder(),
-                ),
+                label: context.tr('ownerReg.trainerEmail'),
                 validator: isEdit ? null : _emailValidator,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: FFTokens.spacingSm),
               // Phone
-              TextFormField(
+              FFTextField(
                 controller: _phone,
                 keyboardType: TextInputType.phone,
-                decoration: InputDecoration(
-                  labelText: context.tr('member.phone'),
-                  border: const OutlineInputBorder(),
-                ),
+                label: context.tr('member.phone'),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: FFTokens.spacingSm),
               // Rate + currency row
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    child: TextFormField(
+                    child: FFTextField(
                       key: const Key('trainerFormRate'),
                       controller: _rate,
                       keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: context.tr('ownerReg.trainerRate'),
-                        border: const OutlineInputBorder(),
-                      ),
+                      label: context.tr('ownerReg.trainerRate'),
                       validator: (v) {
                         final n = num.tryParse((v ?? '').trim());
                         if (n == null || n < 0) {
@@ -203,39 +192,22 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
                       },
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  SizedBox(
+                  const SizedBox(width: FFTokens.spacingSm),
+                  FFDropdownField<String>(
                     width: 100,
-                    child: DropdownButtonFormField<String>(
-                      initialValue: _currency,
-                      decoration: const InputDecoration(
-                        labelText: 'Currency',
-                        border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 14,
-                        ),
-                      ),
-                      items: const [
-                        DropdownMenuItem(value: 'TZS', child: Text('TZS')),
-                        DropdownMenuItem(value: 'USD', child: Text('USD')),
-                      ],
-                      onChanged: (v) => setState(() => _currency = v ?? 'TZS'),
-                    ),
+                    value: _currency,
+                    label: 'Currency',
+                    items: const [
+                      DropdownMenuItem(value: 'TZS', child: Text('TZS')),
+                      DropdownMenuItem(value: 'USD', child: Text('USD')),
+                    ],
+                    onChanged: (v) => setState(() => _currency = v ?? 'TZS'),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: FFTokens.spacingSm),
               // Specialties chips
-              Text(
-                context.tr('ownerReg.trainerSpecialties'),
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: FFTokens.fgPrimary,
-                ),
-              ),
-              const SizedBox(height: 8),
+              FFFieldLabel(context.tr('ownerReg.trainerSpecialties')),
               if (!_specialtiesLoaded)
                 const Center(
                   child: Padding(
@@ -246,10 +218,7 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
               else if (_availableSpecialties.isEmpty)
                 Text(
                   context.tr('onboarding.required'),
-                  style: const TextStyle(
-                    color: FFTokens.fgTertiary,
-                    fontSize: 13,
-                  ),
+                  style: Theme.of(context).textTheme.bodySmall,
                 )
               else
                 Wrap(
@@ -272,16 +241,12 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
                     );
                   }).toList(),
                 ),
-              const SizedBox(height: 12),
+              const SizedBox(height: FFTokens.spacingSm),
               // Bio
-              TextFormField(
+              FFTextField(
                 controller: _bio,
                 maxLines: 3,
-                decoration: InputDecoration(
-                  labelText: context.tr('trainerReg.bio'),
-                  border: const OutlineInputBorder(),
-                  alignLabelWithHint: true,
-                ),
+                label: context.tr('trainerReg.bio'),
               ),
             ],
           ),

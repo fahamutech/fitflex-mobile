@@ -183,20 +183,17 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
                   const SizedBox(height: FFTokens.spacingLg),
                   Text(
                     widget.initialMode == EmailAuthMode.signUp
-                        ? 'Create PIN'
-                        : 'Verification PIN',
+                        ? context.tr('auth.createPin')
+                        : context.tr('auth.verificationPin'),
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      color: FFTokens.darkFgPrimary,
-                      fontWeight: FontWeight.w800,
-                    ),
+                    style: Theme.of(context).textTheme.headlineMedium,
                   ),
                   const SizedBox(height: FFTokens.spacingSm),
                   Text(
                     widget.initialEmail,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: FFTokens.brandVibrant,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0.5,
@@ -210,7 +207,7 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
                       IconButton(
                         icon: Icon(
                           _obscurePin ? Icons.visibility : Icons.visibility_off,
-                          color: FFTokens.darkFgMuted,
+                          color: Theme.of(context).textTheme.bodySmall?.color,
                         ),
                         onPressed: () {
                           setState(() => _obscurePin = !_obscurePin);
@@ -237,10 +234,10 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
                             : () {
                                 // Forgot password logic here
                               },
-                        child: const Text(
-                          'Forgot Password? Reset',
+                        child: Text(
+                          context.tr('auth.forgotPin'),
                           style: TextStyle(
-                            color: FFTokens.darkFgMuted,
+                            color: Theme.of(context).textTheme.bodySmall?.color,
                             fontWeight: FontWeight.w600,
                           ),
                         ),

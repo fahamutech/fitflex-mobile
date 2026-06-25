@@ -131,8 +131,8 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(2),
                           color: active
-                              ? FFTokens.brand600
-                              : FFTokens.borderSecondary,
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(context).colorScheme.outline,
                         ),
                       ),
                     );
@@ -199,16 +199,14 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
       children: [
         Text(
           context.tr('trainerReg.personalTitle'),
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: FFTokens.fgPrimary,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 4),
         Text(
           context.tr('trainerReg.personalSubtitle'),
-          style: const TextStyle(fontSize: 14, color: FFTokens.fgTertiary),
+          style: Theme.of(context).textTheme.bodySmall,
         ),
         const SizedBox(height: 20),
         TextFormField(
@@ -224,11 +222,7 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
         const SizedBox(height: 16),
         Text(
           context.tr('trainerReg.picture'),
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: FFTokens.fgPrimary,
-          ),
+          style: Theme.of(context).textTheme.titleSmall,
         ),
         const SizedBox(height: 8),
         Center(
@@ -280,16 +274,14 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
       children: [
         Text(
           context.tr('trainerReg.professionalTitle'),
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: FFTokens.fgPrimary,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 4),
         Text(
           context.tr('trainerReg.professionalSubtitle'),
-          style: const TextStyle(fontSize: 14, color: FFTokens.fgTertiary),
+          style: Theme.of(context).textTheme.bodySmall,
         ),
         const SizedBox(height: 20),
         TextFormField(
@@ -307,11 +299,7 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
         const SizedBox(height: 16),
         Text(
           context.tr('trainerReg.specialties'),
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: FFTokens.fgPrimary,
-          ),
+          style: Theme.of(context).textTheme.titleSmall,
         ),
         const SizedBox(height: 8),
         Wrap(

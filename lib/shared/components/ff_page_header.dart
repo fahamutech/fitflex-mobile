@@ -16,8 +16,9 @@ class FFPageHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.only(bottom: FFTokens.spacingLg),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -25,28 +26,18 @@ class FFPageHeader extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: FFTokens.fgPrimary,
-                  ),
-                ),
+                Text(title, style: theme.textTheme.titleLarge),
                 if (description != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    description!,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: FFTokens.fgQuaternary,
-                    ),
-                  ),
+                  const SizedBox(height: FFTokens.spacing2xs),
+                  Text(description!, style: theme.textTheme.bodySmall),
                 ],
               ],
             ),
           ),
-          if (actions != null) ...[const SizedBox(width: 12), actions!],
+          if (actions != null) ...[
+            const SizedBox(width: FFTokens.spacingSm),
+            actions!,
+          ],
         ],
       ),
     );

@@ -48,7 +48,7 @@ class _AuthScreenState extends State<AuthScreen>
     super.initState();
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 400),
+      duration: FFTokens.motionSlow,
     );
     _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
     _slideAnim = Tween<Offset>(
@@ -219,11 +219,7 @@ class _AuthScreenState extends State<AuthScreen>
                       Text(
                         context.tr('auth.signIn'),
                         textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.headlineMedium
-                            ?.copyWith(
-                              color: FFTokens.darkFgPrimary,
-                              fontWeight: FontWeight.w800,
-                            ),
+                        style: Theme.of(context).textTheme.headlineMedium,
                       ),
                       const SizedBox(height: 36),
                       // Google sign-in
@@ -238,17 +234,15 @@ class _AuthScreenState extends State<AuthScreen>
                       _DividerLabel(label: context.tr('auth.or')),
                       const SizedBox(height: 28),
                       // Email/Phone field
-                      TextField(
+                      FFTextField(
                         controller: _emailCtrl,
                         enabled: !loading,
                         keyboardType: TextInputType.emailAddress,
                         autofillHints: const [AutofillHints.email],
-                        decoration: InputDecoration(
-                          hintText: 'Email / mobile number',
-                          prefixIcon: const Icon(Icons.mail_outline_rounded),
-                        ),
+                        hint: context.tr('auth.emailOrPhone'),
+                        prefixIcon: const Icon(Icons.mail_outline_rounded),
                         textInputAction: TextInputAction.done,
-                        onSubmitted: _isValidInput && !loading
+                        onFieldSubmitted: _isValidInput && !loading
                             ? (_) => _continueWithEmail()
                             : null,
                       ),
@@ -259,19 +253,28 @@ class _AuthScreenState extends State<AuthScreen>
                             ? null
                             : _continueWithEmail,
                         child: loading
-                            ? const FFSpinner(size: 18, color: Colors.black)
+                            ? FFSpinner(
+                                size: 18,
+                                color: Theme.of(context).colorScheme.onPrimary,
+                              )
                             : Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Text(
                                     context.tr('lang.continue').toUpperCase(),
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 1.2,
-                                    ),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelLarge
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: 1.2,
+                                        ),
                                   ),
-                                  const SizedBox(width: 8),
-                                  const Icon(Icons.chevron_right, size: 20),
+                                  const SizedBox(width: FFTokens.spacingSm),
+                                  const Icon(
+                                    Icons.chevron_right,
+                                    size: FFTokens.iconMd,
+                                  ),
                                 ],
                               ),
                       ),
@@ -286,7 +289,12 @@ class _AuthScreenState extends State<AuthScreen>
                         children: [
                           Text(
                             context.tr('auth.noAccount'),
-                            style: const TextStyle(color: FFTokens.darkFgMuted),
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).textTheme.bodySmall?.color,
+                                ),
                           ),
                           TextButton(
                             onPressed: loading
@@ -398,27 +406,23 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Icon(
+              Icon(
                 Icons.pending_actions,
                 size: 72,
-                color: FFTokens.brand500,
+                color: Theme.of(context).colorScheme.primary,
               ),
               const SizedBox(height: 18),
               Text(
                 context.tr('auth.pendingTitle'),
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w600,
-                  color: FFTokens.fgPrimary,
-                ),
+                style: Theme.of(context).textTheme.titleLarge,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: FFTokens.spacingSm),
               Text(
                 context.tr('auth.pendingBody'),
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: FFTokens.fgQuaternary,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                   height: 1.4,
                 ),
               ),
@@ -426,12 +430,12 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
               FilledButton.icon(
                 onPressed: _checking ? null : () => _checkApproval(),
                 icon: _checking
-                    ? const SizedBox(
+                    ? SizedBox(
                         height: 16,
                         width: 16,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.onPrimary,
                         ),
                       )
                     : const Icon(Icons.refresh),
@@ -558,8 +562,11 @@ class _GoogleSignInButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: FFTokens.darkSurface,
-      borderRadius: BorderRadius.circular(FFTokens.radiusLg),
+      color: Theme.of(context).colorScheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(FFTokens.radiusLg),
+        side: BorderSide(color: Theme.of(context).colorScheme.outline),
+      ),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(FFTokens.radiusLg),
@@ -574,10 +581,9 @@ class _GoogleSignInButton extends StatelessWidget {
                     const SizedBox(width: 14),
                     Text(
                       label,
-                      style: const TextStyle(
-                        color: FFTokens.darkFgPrimary,
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontWeight: FontWeight.w700,
-                        fontSize: 14,
                         letterSpacing: 1.2,
                       ),
                     ),
@@ -600,13 +606,11 @@ class _DividerLabel extends StatelessWidget {
       children: [
         const Expanded(child: Divider()),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          padding: const EdgeInsets.symmetric(horizontal: FFTokens.spacingSm),
           child: Text(
             label,
-            style: const TextStyle(
-              color: FFTokens.darkFgMuted,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
               fontWeight: FontWeight.w600,
-              fontSize: 13,
               letterSpacing: 0.5,
             ),
           ),

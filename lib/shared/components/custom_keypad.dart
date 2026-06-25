@@ -23,12 +23,18 @@ class CustomKeypad extends StatelessWidget {
     VoidCallback? onTap, {
     Color? bgColor,
   }) {
+    final borderCol = bgColor != null
+        ? Colors.transparent
+        : Theme.of(context).colorScheme.outline;
     return Expanded(
       child: Padding(
         padding: const EdgeInsets.all(FFTokens.spacingSm),
         child: Material(
-          color: bgColor ?? FFTokens.darkSurface,
-          borderRadius: BorderRadius.circular(FFTokens.radiusLg),
+          color: bgColor ?? Theme.of(context).colorScheme.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(FFTokens.radiusLg),
+            side: BorderSide(color: borderCol),
+          ),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: isLoading ? null : onTap,
@@ -44,10 +50,9 @@ class CustomKeypad extends StatelessWidget {
       context,
       Text(
         digit.toString(),
-        style: const TextStyle(
-          fontSize: 24,
+        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
           fontWeight: FontWeight.w600,
-          color: FFTokens.darkFgPrimary,
+          color: Theme.of(context).colorScheme.onSurface,
         ),
       ),
       () => onDigit(digit),
@@ -94,9 +99,10 @@ class CustomKeypad extends StatelessWidget {
             children: [
               _buildKey(
                 context,
-                const Icon(
+                Icon(
                   Icons.backspace_outlined,
-                  color: FFTokens.darkFgPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
+                  size: FFTokens.iconLg,
                 ),
                 onDelete,
               ),
@@ -104,22 +110,27 @@ class CustomKeypad extends StatelessWidget {
               _buildKey(
                 context,
                 isLoading
-                    ? const CircularProgressIndicator(
+                    ? CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: FFTokens.bgPrimary,
+                        color: Theme.of(context).colorScheme.onPrimary,
                       )
-                    : const Text(
+                    : Text(
                         'OK',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: FFTokens.bgPrimary,
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              color: okEnabled
+                                  ? Theme.of(context).colorScheme.onPrimary
+                                  : Theme.of(context).colorScheme.onSurface
+                                        .withValues(alpha: 0.38),
+                            ),
                       ),
                 okEnabled ? onOk : null,
                 bgColor: okEnabled
-                    ? FFTokens.brandVibrant
-                    : FFTokens.darkBorder,
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(
+                        context,
+                      ).colorScheme.outline.withValues(alpha: 0.12),
               ),
             ],
           ),

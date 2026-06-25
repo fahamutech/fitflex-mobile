@@ -25,7 +25,7 @@ class _LanguageScreenState extends State<LanguageScreen>
     super.initState();
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 400),
+      duration: FFTokens.motionSlow,
     );
     _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
     _slideAnim = Tween<Offset>(
@@ -149,7 +149,8 @@ class _LanguageTile extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
+        duration: FFTokens.motionMedium,
+        curve: FFTokens.motionCurve,
         padding: const EdgeInsets.symmetric(
           horizontal: FFTokens.spacingLg,
           vertical: FFTokens.spacingMd,

@@ -6,7 +6,6 @@ import 'screens/language_screen.dart';
 import 'screens/role_screen.dart';
 import 'screens/auth_screen.dart';
 import 'screens/email_auth_screen.dart';
-import 'screens/home_screen.dart';
 import 'screens/member/member_shell.dart';
 import 'screens/member/member_shop_tab.dart';
 import 'screens/member/member_onboarding_page.dart';
@@ -222,11 +221,6 @@ GoRouter buildRouter(AuthState auth) {
         name: 'pending',
         builder: (context, state) => const PendingApprovalScreen(),
       ),
-      // GoRoute(
-      //   path: AppRoutes.home,
-      //   name: 'home',
-      //   builder: (context, state) => const HomeScreen(),
-      // ),
       GoRoute(
         path: AppRoutes.memberOnboarding,
         name: 'memberOnboarding',

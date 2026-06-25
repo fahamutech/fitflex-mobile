@@ -16,10 +16,11 @@ class FFSegmented extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.all(FFTokens.spacingXs),
       decoration: BoxDecoration(
-        color: FFTokens.bgTertiary,
+        color: theme.colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(FFTokens.radiusLg),
       ),
       child: Row(
@@ -30,23 +31,26 @@ class FFSegmented extends StatelessWidget {
             child: GestureDetector(
               onTap: () => onChanged(opt.$1),
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 100),
+                duration: FFTokens.motionFast,
+                curve: FFTokens.motionCurve,
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
+                  horizontal: FFTokens.spacingSm,
+                  vertical: FFTokens.spacingXs + 2,
                 ),
                 decoration: BoxDecoration(
-                  color: selected ? FFTokens.bgPrimary : Colors.transparent,
+                  color: selected
+                      ? theme.colorScheme.surface
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(FFTokens.radiusMd),
                   boxShadow: selected ? FFTokens.shadowXs : null,
                 ),
                 child: Text(
                   opt.$2,
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: selected ? FFTokens.fgPrimary : FFTokens.fgTertiary,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: selected
+                        ? theme.colorScheme.onSurface
+                        : theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
               ),

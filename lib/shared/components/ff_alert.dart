@@ -42,7 +42,10 @@ class FFAlert extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(
+        horizontal: FFTokens.spacingMd,
+        vertical: FFTokens.spacingSm + 4,
+      ),
       decoration: BoxDecoration(
         color: bg,
         border: Border.all(color: border),
@@ -50,7 +53,7 @@ class FFAlert extends StatelessWidget {
       ),
       child: Text(
         message,
-        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: fg),
+        style: Theme.of(context).textTheme.labelLarge?.copyWith(color: fg),
       ),
     );
   }

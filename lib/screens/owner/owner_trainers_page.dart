@@ -12,76 +12,68 @@ import 'owner_shell.dart';
 class OwnerTrainersPage extends StatelessWidget {
   const OwnerTrainersPage({super.key});
 
+  int _crossAxisCount(double width) {
+    if (width >= 900) return 4;
+    if (width >= 600) return 3;
+    return 2;
+  }
+
   @override
   Widget build(BuildContext context) {
     final data = OwnerDataScope.of(context);
     final items = data.ownerTrainers;
 
-    return ListView(
-      padding: const EdgeInsets.all(FFTokens.spacingLg),
-      children: [
-        const SizedBox(height: 14),
-        if (items.isEmpty)
-          FFEmptyState(title: context.tr('member.noData'))
-        else
-          ...items.map(
-            (t) => FFCard(
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.sports_gymnastics,
-                    color: FFTokens.brandDark,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          t['displayName']?.toString() ?? '',
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                        Text(
-                          (t['specialties'] as List? ?? []).join(' / '),
-                          style: const TextStyle(
-                            color: FFTokens.textMuted,
-                            fontSize: 12,
-                          ),
-                        ),
-                        if (t['phone'] != null)
-                          Text(
-                            t['phone'].toString(),
-                            style: const TextStyle(
-                              color: FFTokens.textMuted,
-                              fontSize: 12,
-                            ),
-                          ),
-                      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cols = _crossAxisCount(constraints.maxWidth);
+        return CustomScrollView(
+          slivers: [
+            if (items.isEmpty)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: Padding(
+                  padding: const EdgeInsets.all(FFTokens.spacingLg),
+                  child: FFEmptyState(title: context.tr('member.noData')),
+                ),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(
+                  FFTokens.spacingLg,
+                  FFTokens.spacingLg,
+                  FFTokens.spacingLg,
+                  0,
+                ),
+                sliver: SliverGrid(
+                  delegate: SliverChildBuilderDelegate(
+                    (ctx, i) => _OwnerTrainerGridCard(
+                      trainer: items[i],
+                      onEdit: () => _showEditTrainerDialog(context, items[i]),
+                      onRemove: () => _confirmRemoveTrainer(context, items[i]),
                     ),
+                    childCount: items.length,
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.edit, size: 20),
-                    onPressed: () => _showEditTrainerDialog(context, t),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: cols,
+                    crossAxisSpacing: FFTokens.spacingMd,
+                    mainAxisSpacing: FFTokens.spacingMd,
+                    childAspectRatio: 0.72,
                   ),
-                  IconButton(
-                    icon: const Icon(
-                      Icons.person_remove,
-                      size: 20,
-                      color: Colors.red,
-                    ),
-                    onPressed: () => _confirmRemoveTrainer(context, t),
-                  ),
-                ],
+                ),
+              ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(FFTokens.spacingLg),
+                child: OutlinedButton.icon(
+                  onPressed: () => _showAddTrainerDialog(context),
+                  icon: const Icon(Icons.add),
+                  label: Text(context.tr('owner.addTrainer')),
+                ),
               ),
             ),
-          ),
-        const SizedBox(height: 8),
-        OutlinedButton.icon(
-          onPressed: () => _showAddTrainerDialog(context),
-          icon: const Icon(Icons.add),
-          label: Text(context.tr('owner.addTrainer')),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 
@@ -160,7 +152,10 @@ class OwnerTrainersPage extends StatelessWidget {
             child: Text(context.tr('member.cancel')),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
             onPressed: () async {
               Navigator.pop(ctx);
               final api = AppScope.of(context).api;
@@ -188,4 +183,130 @@ class OwnerTrainersPage extends StatelessWidget {
       ),
     );
   }
+}
+
+class _OwnerTrainerGridCard extends StatelessWidget {
+  const _OwnerTrainerGridCard({
+    required this.trainer,
+    required this.onEdit,
+    required this.onRemove,
+  });
+
+  final Map<String, dynamic> trainer;
+  final VoidCallback onEdit;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final name = trainer['displayName']?.toString() ?? '';
+    final specialties = (trainer['specialties'] as List? ?? [])
+        .take(2)
+        .join(' · ');
+    final phone = trainer['phone']?.toString();
+    final photoUrl = trainer['photoUrl']?.toString();
+    final initials = name
+        .split(' ')
+        .where((p) => p.isNotEmpty)
+        .take(2)
+        .map((p) => p[0].toUpperCase())
+        .join();
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(FFTokens.radiusLg),
+        border: Border.all(color: cs.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(FFTokens.radiusLg),
+            ),
+            child: AspectRatio(
+              aspectRatio: 1,
+              child: photoUrl != null && photoUrl.isNotEmpty
+                  ? FFRemoteImage(
+                      src: photoUrl,
+                      width: double.infinity,
+                      height: double.infinity,
+                      fit: BoxFit.cover,
+                      fallback: _initials(cs, initials),
+                    )
+                  : _initials(cs, initials),
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: tt.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  if (specialties.isNotEmpty) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      specialties,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: tt.bodySmall?.copyWith(fontSize: 11),
+                    ),
+                  ],
+                  if (phone != null) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      phone,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: tt.bodySmall?.copyWith(fontSize: 11),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          Divider(height: 1, thickness: 1, color: cs.outlineVariant),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.edit, size: 18),
+                onPressed: onEdit,
+                tooltip: context.tr('owner.editTrainer'),
+                visualDensity: VisualDensity.compact,
+              ),
+              IconButton(
+                icon: Icon(Icons.person_remove, size: 18, color: cs.error),
+                onPressed: onRemove,
+                tooltip: context.tr('owner.removeTrainer'),
+                visualDensity: VisualDensity.compact,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _initials(ColorScheme cs, String initials) => Container(
+    color: cs.primary.withValues(alpha: 0.12),
+    child: Center(
+      child: Text(
+        initials,
+        style: TextStyle(
+          fontSize: 28,
+          fontWeight: FontWeight.w700,
+          color: cs.primary,
+        ),
+      ),
+    ),
+  );
 }

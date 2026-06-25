@@ -87,7 +87,9 @@ class MemberShellState extends State<MemberShell> {
     if (_started) return;
     _started = true;
     _refreshAll();
-    _qrTimer = Timer.periodic(const Duration(seconds: 30), (_) => _refreshQr());
+    _qrTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (_data.hasActivePass) _refreshQr();
+    });
   }
 
   @override
@@ -106,8 +108,8 @@ class MemberShellState extends State<MemberShell> {
         _refreshTrainers(),
         _refreshCheckins(),
         _refreshPasses(),
-        _refreshQr(),
       ]);
+      if (_data.hasActivePass) await _refreshQr();
     } finally {
       _data.update((d) => d.loading = false);
     }
@@ -213,7 +215,7 @@ class MemberShellState extends State<MemberShell> {
   }
 
   Future<void> refreshQr() async {
-    await _refreshQr();
+    if (_data.hasActivePass) await _refreshQr();
   }
 
   Future<void> refreshMe() async {

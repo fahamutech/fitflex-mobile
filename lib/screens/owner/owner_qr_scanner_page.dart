@@ -195,7 +195,7 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
           child: Text(
             context.tr('ownerScan.hint'),
             textAlign: TextAlign.center,
-            style: const TextStyle(color: FFTokens.fgTertiary),
+            style: Theme.of(context).textTheme.bodyMedium,
           ),
         ),
       ],
@@ -246,11 +246,7 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
                               member['userCode']?.toString() ??
                               member['id']?.toString() ??
                               'Member',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: FFTokens.fgPrimary,
-                          ),
+                          style: Theme.of(context).textTheme.titleLarge,
                         ),
                       ],
                     ),
@@ -269,11 +265,7 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
             children: [
               Text(
                 context.tr('ownerScan.passInfo'),
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: FFTokens.fgPrimary,
-                ),
+                style: Theme.of(context).textTheme.titleSmall,
               ),
               const SizedBox(height: 8),
               if (sub != null) ...[
@@ -303,7 +295,7 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
               ] else
                 Text(
                   context.tr('ownerScan.noPass'),
-                  style: const TextStyle(color: FFTokens.fgQuaternary),
+                  style: Theme.of(context).textTheme.bodyMedium,
                 ),
             ],
           ),
@@ -320,7 +312,6 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
                   initialValue: _selectedGymId,
                   decoration: InputDecoration(
                     labelText: context.tr('ownerScan.chooseGym'),
-                    border: const OutlineInputBorder(),
                   ),
                   items: _gyms
                       .map(
@@ -332,9 +323,9 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
                       .toList(),
                   onChanged: _busy || _scannedToken == null
                       ? null
-                      : (value) async {
+                      : (value) {
                           setState(() => _selectedGymId = value);
-                          if (value != null) await _verify(_scannedToken!);
+                          if (value != null) _verify(_scannedToken!);
                         },
                 ),
                 if (_gyms.isEmpty) ...[
@@ -345,10 +336,7 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
               ] else if (gym != null)
                 Text(
                   '${context.tr("ownerScan.gym")}: ${gym['name']}',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: FFTokens.fgSecondary,
-                  ),
+                  style: Theme.of(context).textTheme.bodyMedium,
                 ),
               const SizedBox(height: 8),
               Row(
@@ -366,9 +354,7 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
                           : eligible
                           ? context.tr('ownerScan.eligible')
                           : context.tr('ownerScan.reason_$reason'),
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         color: eligible ? FFTokens.success : FFTokens.danger,
                       ),
                     ),
@@ -385,12 +371,12 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
           FilledButton.icon(
             onPressed: _busy || effectiveGymId == null ? null : _approveCheckIn,
             icon: _busy
-                ? const SizedBox(
+                ? SizedBox(
                     height: 18,
                     width: 18,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onPrimary,
                     ),
                   )
                 : const Icon(Icons.check),

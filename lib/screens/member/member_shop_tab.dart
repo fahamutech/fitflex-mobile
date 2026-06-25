@@ -18,13 +18,15 @@ class MemberShopTab extends StatelessWidget {
             width: 80,
             height: 80,
             decoration: BoxDecoration(
-              color: FFTokens.brand50,
-              border: Border.all(color: FFTokens.brand100),
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+              border: Border.all(
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+              ),
               borderRadius: BorderRadius.circular(FFTokens.radiusXl),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.storefront_outlined,
-              color: FFTokens.brand700,
+              color: Theme.of(context).colorScheme.primary,
               size: 40,
             ),
           ),
@@ -33,18 +35,16 @@ class MemberShopTab extends StatelessWidget {
         Text(
           context.tr('member.shopTitle'),
           textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 22,
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.w600,
-            color: FFTokens.fgPrimary,
           ),
         ),
         const SizedBox(height: 12),
         Text(
           context.tr('member.shopBody'),
           textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: FFTokens.fgQuaternary,
+          style: TextStyle(
+            color: Theme.of(context).textTheme.bodySmall?.color,
             fontSize: 14,
             height: 1.5,
           ),
@@ -63,10 +63,8 @@ class MemberShopTab extends StatelessWidget {
             children: [
               Text(
                 context.tr('member.shopUpcoming'),
-                style: const TextStyle(
-                  fontSize: 16,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: FFTokens.fgPrimary,
                 ),
               ),
               const SizedBox(height: 12),
@@ -102,12 +100,15 @@ class _FeatureRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, size: 20, color: FFTokens.brand600),
+        Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
         const SizedBox(width: 10),
         Expanded(
           child: Text(
             text,
-            style: const TextStyle(color: FFTokens.fgSecondary, fontSize: 14),
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface,
+              fontSize: 14,
+            ),
           ),
         ),
       ],

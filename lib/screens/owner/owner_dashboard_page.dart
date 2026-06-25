@@ -71,7 +71,9 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
                 children: [
                   Text(
                     _error!,
-                    style: const TextStyle(color: FFTokens.error500),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   OutlinedButton(
@@ -102,8 +104,11 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [FFTokens.brand700, FFTokens.brand600],
+              gradient: LinearGradient(
+                colors: [
+                  Theme.of(context).colorScheme.primary,
+                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
+                ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -114,18 +119,15 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
               children: [
                 Text(
                   gym?['name']?.toString() ?? context.tr('owner.dashboard'),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(color: Colors.white),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   context.tr('owner.dashboardBody'),
-                  style: TextStyle(
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Colors.white.withValues(alpha: 0.85),
-                    fontSize: 13,
                   ),
                 ),
               ],
@@ -135,18 +137,9 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
 
           // Gym selector
           if (gyms.length > 1) ...[
-            DropdownButtonFormField<String>(
-              initialValue: _selectedGymId ?? gym?['id']?.toString(),
-              decoration: InputDecoration(
-                labelText: context.tr('ownerScan.gym'),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(FFTokens.radiusMd),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-              ),
+            FFDropdownField<String>(
+              value: _selectedGymId ?? gym?['id']?.toString(),
+              label: context.tr('ownerScan.gym'),
               items: gyms.map((g) {
                 final gymData = g as Map<String, dynamic>;
                 return DropdownMenuItem(
@@ -194,7 +187,7 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
                   label: context.tr('owner.todayVisits'),
                   value: (data['todayCount'] as num?)?.toInt() ?? 0,
                   icon: Icons.today,
-                  color: FFTokens.brand600,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
               const SizedBox(width: 12),
@@ -225,7 +218,7 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
                   label: context.tr('owner.periodMembers'),
                   value: (data['periodMembers'] as num?)?.toInt() ?? 0,
                   icon: Icons.people,
-                  color: FFTokens.brand700,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
             ],
@@ -233,7 +226,7 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
           const SizedBox(height: 20),
 
           // Overall performance section
-          _SectionTitle(context.tr('owner.overallPerformance')),
+          FFSectionTitle(context.tr('owner.overallPerformance')),
           FFCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -273,7 +266,7 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
           const SizedBox(height: 20),
 
           // Owner tools
-          _SectionTitle(context.tr('owner.actions')),
+          FFSectionTitle(context.tr('owner.actions')),
           FFActionTile(
             icon: Icons.qr_code_scanner,
             title: context.tr('owner.scan'),
@@ -297,7 +290,7 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
           const SizedBox(height: 20),
 
           // Gym summaries
-          _SectionTitle(context.tr('owner.gymBreakdown')),
+          FFSectionTitle(context.tr('owner.gymBreakdown')),
           for (final g in gyms) _GymSummaryCard(gym: g as Map<String, dynamic>),
         ],
       ),
@@ -396,7 +389,7 @@ class _MetricCard extends StatelessWidget {
     required this.label,
     required this.value,
     required this.icon,
-    this.color = FFTokens.brand700,
+    required this.color,
   });
 
   final String label;
@@ -406,11 +399,12 @@ class _MetricCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(FFTokens.spacingMd),
       decoration: BoxDecoration(
-        color: FFTokens.surface,
-        border: Border.all(color: FFTokens.border),
+        color: theme.colorScheme.surface,
+        border: Border.all(color: theme.colorScheme.outline),
         borderRadius: BorderRadius.circular(FFTokens.radiusLg),
         boxShadow: FFTokens.shadowSm,
       ),
@@ -423,21 +417,21 @@ class _MetricCard extends StatelessWidget {
               color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(FFTokens.radiusMd),
             ),
-            child: Icon(icon, color: color, size: 20),
+            child: Icon(icon, color: color, size: FFTokens.iconMd),
           ),
           const SizedBox(height: 10),
           Text(
             value.toString(),
-            style: const TextStyle(
-              fontSize: 26,
+            style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.w700,
-              color: FFTokens.fgPrimary,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             label,
-            style: const TextStyle(fontSize: 12, color: FFTokens.fgSecondary),
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
             textAlign: TextAlign.center,
           ),
         ],
@@ -463,21 +457,16 @@ class _OverallStat extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          Icon(icon, color: FFTokens.brand600, size: 20),
-          const SizedBox(width: 12),
+          Icon(
+            icon,
+            color: Theme.of(context).colorScheme.primary,
+            size: FFTokens.iconMd,
+          ),
+          const SizedBox(width: FFTokens.spacingSm),
           Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(color: FFTokens.fgSecondary),
-            ),
+            child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
           ),
-          Text(
-            value.toString(),
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              color: FFTokens.fgPrimary,
-            ),
-          ),
+          Text(value.toString(), style: Theme.of(context).textTheme.titleSmall),
         ],
       ),
     );
@@ -498,11 +487,7 @@ class _GymSummaryCard extends StatelessWidget {
         children: [
           Text(
             gym['gymName']?.toString() ?? gym['name']?.toString() ?? 'Unknown',
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: FFTokens.fgPrimary,
-            ),
+            style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 8),
           Row(
@@ -556,38 +541,17 @@ class _GymStat extends StatelessWidget {
       children: [
         Text(
           value.toString(),
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: FFTokens.fgPrimary,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
         ),
         Text(
           label,
-          style: const TextStyle(fontSize: 11, color: FFTokens.fgQuaternary),
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
       ],
-    );
-  }
-}
-
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 16, bottom: 10),
-      child: Text(
-        text,
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: FFTokens.fgPrimary,
-        ),
-      ),
     );
   }
 }

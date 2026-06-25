@@ -92,7 +92,6 @@ class _MemberOnboardingPageState extends State<MemberOnboardingPage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          backgroundColor: FFTokens.darkSurface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(FFTokens.radiusLg),
           ),
@@ -101,34 +100,26 @@ class _MemberOnboardingPageState extends State<MemberOnboardingPage> {
               const Icon(
                 Icons.error_outline_rounded,
                 color: FFTokens.danger,
-                size: 28,
+                size: FFTokens.iconXl,
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: FFTokens.spacingSm),
               Text(
                 context.tr('onboarding.error'),
-                style: const TextStyle(
-                  color: FFTokens.darkFgPrimary,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
             ],
           ),
-          content: Text(
-            message,
-            style: const TextStyle(
-              color: FFTokens.darkFgSecondary,
-              fontSize: 15,
-            ),
-          ),
+          content: Text(message, style: Theme.of(context).textTheme.bodyMedium),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
               child: Text(
                 context.tr('onboarding.ok'),
-                style: const TextStyle(
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
                   color: FFTokens.brandVibrant,
                   fontWeight: FontWeight.w600,
-                  fontSize: 15,
                 ),
               ),
             ),
@@ -166,17 +157,16 @@ class _MemberOnboardingPageState extends State<MemberOnboardingPage> {
                         const Icon(
                           Icons.fitness_center_rounded,
                           color: FFTokens.brandVibrant,
-                          size: 22,
+                          size: FFTokens.iconLg,
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: FFTokens.spacingSm),
                         Text(
                           context.tr('member.setupTitle'),
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: FFTokens.darkFgPrimary,
-                            letterSpacing: 1.2,
-                          ),
+                          style: Theme.of(context).textTheme.labelLarge
+                              ?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.2,
+                              ),
                         ),
                       ],
                     ),
@@ -187,7 +177,7 @@ class _MemberOnboardingPageState extends State<MemberOnboardingPage> {
                       child: LinearProgressIndicator(
                         value: progress,
                         minHeight: 4,
-                        backgroundColor: FFTokens.darkBorder,
+                        backgroundColor: Theme.of(context).colorScheme.outline,
                         valueColor: const AlwaysStoppedAnimation<Color>(
                           FFTokens.brandVibrant,
                         ),
@@ -225,15 +215,6 @@ class _MemberOnboardingPageState extends State<MemberOnboardingPage> {
                           Expanded(
                             child: OutlinedButton(
                               style: OutlinedButton.styleFrom(
-                                foregroundColor: FFTokens.darkFgSecondary,
-                                side: const BorderSide(
-                                  color: FFTokens.darkBorder,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(
-                                    FFTokens.radiusFull,
-                                  ),
-                                ),
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 16,
                                 ),
@@ -248,26 +229,12 @@ class _MemberOnboardingPageState extends State<MemberOnboardingPage> {
                         ],
                         Expanded(
                           child: AnimatedOpacity(
-                            duration: const Duration(milliseconds: 250),
+                            duration: FFTokens.motionMedium,
                             opacity: _controller.canProceed ? 1.0 : 0.5,
                             child: FilledButton(
                               style: FilledButton.styleFrom(
-                                backgroundColor: FFTokens.brandVibrant,
-                                foregroundColor: Colors.black,
-                                disabledBackgroundColor: FFTokens.darkSurface,
-                                disabledForegroundColor: FFTokens.darkFgMuted,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(
-                                    FFTokens.radiusFull,
-                                  ),
-                                ),
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 16,
-                                ),
-                                textStyle: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 15,
-                                  letterSpacing: 0.8,
                                 ),
                               ),
                               onPressed:
@@ -275,12 +242,14 @@ class _MemberOnboardingPageState extends State<MemberOnboardingPage> {
                                   ? _next
                                   : null,
                               child: _controller.busy
-                                  ? const SizedBox(
+                                  ? SizedBox(
                                       height: 18,
                                       width: 18,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        color: Colors.black,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onPrimary,
                                       ),
                                     )
                                   : Text(
@@ -313,17 +282,15 @@ class _MemberOnboardingPageState extends State<MemberOnboardingPage> {
         Text(
           context.tr('onboarding.fitnessTitle'),
           textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 26,
-            fontWeight: FontWeight.w700,
-            color: FFTokens.darkFgPrimary,
-          ),
+          style: Theme.of(context).textTheme.headlineSmall,
         ),
         const SizedBox(height: 10),
         Text(
           context.tr('onboarding.fitnessSubtitle'),
           textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 14, color: FFTokens.darkFgMuted),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: Theme.of(context).textTheme.bodySmall?.color,
+          ),
         ),
         const SizedBox(height: 24),
         // 2-column goal grid
@@ -369,16 +336,14 @@ class _MemberOnboardingPageState extends State<MemberOnboardingPage> {
       children: [
         Text(
           context.tr('onboarding.personalTitle'),
-          style: const TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w700,
-            color: FFTokens.darkFgPrimary,
-          ),
+          style: Theme.of(context).textTheme.headlineSmall,
         ),
         const SizedBox(height: 6),
         Text(
           context.tr('onboarding.personalSubtitle'),
-          style: const TextStyle(fontSize: 14, color: FFTokens.darkFgMuted),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: Theme.of(context).textTheme.bodySmall?.color,
+          ),
         ),
         const SizedBox(height: 24),
         _DarkTextField(
@@ -392,11 +357,7 @@ class _MemberOnboardingPageState extends State<MemberOnboardingPage> {
         // Gender radio choice group
         Text(
           context.tr('onboarding.gender'),
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: FFTokens.darkFgSecondary,
-          ),
+          style: Theme.of(context).textTheme.labelLarge,
         ),
         const SizedBox(height: 8),
         Row(
@@ -419,10 +380,10 @@ class _MemberOnboardingPageState extends State<MemberOnboardingPage> {
           controller: _controller.dobCtrl,
           label: context.tr('onboarding.dob'),
           readOnly: true,
-          suffixIcon: const Icon(
+          suffixIcon: Icon(
             Icons.calendar_today,
-            color: FFTokens.darkFgMuted,
-            size: 18,
+            color: Theme.of(context).colorScheme.outline,
+            size: FFTokens.iconSm,
           ),
           onTap: () async {
             final date = await showDatePicker(
@@ -477,17 +438,15 @@ class _MemberOnboardingPageState extends State<MemberOnboardingPage> {
         Text(
           context.tr('onboarding.levelTitle'),
           textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 26,
-            fontWeight: FontWeight.w700,
-            color: FFTokens.darkFgPrimary,
-          ),
+          style: Theme.of(context).textTheme.headlineSmall,
         ),
         const SizedBox(height: 10),
         Text(
           context.tr('onboarding.levelSubtitle'),
           textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 14, color: FFTokens.darkFgMuted),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: Theme.of(context).textTheme.bodySmall?.color,
+          ),
         ),
         const SizedBox(height: 28),
         ..._levels.map(
@@ -527,15 +486,18 @@ class _GoalTile extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
+        duration: FFTokens.motionMedium,
+        curve: FFTokens.motionCurve,
         height: 84,
         decoration: BoxDecoration(
           color: selected
-              ? FFTokens.brandVibrant.withValues(alpha: 0.12)
-              : FFTokens.darkSurface,
+              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.12)
+              : Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(FFTokens.radiusLg),
           border: Border.all(
-            color: selected ? FFTokens.brandVibrant : FFTokens.darkBorder,
+            color: selected
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.outline,
             width: selected ? 2 : 1,
           ),
         ),
@@ -551,12 +513,11 @@ class _GoalTile extends StatelessWidget {
                 textAlign: TextAlign.center,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 13,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
                   fontWeight: FontWeight.w600,
                   color: selected
-                      ? FFTokens.brandVibrant
-                      : FFTokens.darkFgSecondary,
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.onSurface,
                 ),
               ),
             ),
@@ -597,31 +558,10 @@ class _DarkTextField extends StatelessWidget {
       validator: validator,
       onTap: onTap,
       autovalidateMode: AutovalidateMode.onUserInteraction,
-      style: const TextStyle(color: FFTokens.darkFgPrimary),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: FFTokens.darkFgMuted),
         suffixIcon: suffixIcon,
         suffixText: suffixText,
-        suffixStyle: const TextStyle(color: FFTokens.darkFgMuted),
-        filled: true,
-        fillColor: FFTokens.darkSurface,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(FFTokens.radiusMd),
-          borderSide: const BorderSide(color: FFTokens.darkBorder),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(FFTokens.radiusMd),
-          borderSide: const BorderSide(color: FFTokens.darkBorder),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(FFTokens.radiusMd),
-          borderSide: const BorderSide(color: FFTokens.brandVibrant, width: 2),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(FFTokens.radiusMd),
-          borderSide: const BorderSide(color: FFTokens.danger),
-        ),
       ),
     );
   }
@@ -643,15 +583,18 @@ class _GenderRadioTile extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
+        duration: FFTokens.motionMedium,
+        curve: FFTokens.motionCurve,
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
           color: selected
-              ? FFTokens.brandVibrant.withValues(alpha: 0.1)
-              : FFTokens.darkSurface,
+              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
+              : Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(FFTokens.radiusMd),
           border: Border.all(
-            color: selected ? FFTokens.brandVibrant : FFTokens.darkBorder,
+            color: selected
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.outline,
             width: selected ? 2 : 1,
           ),
         ),
@@ -660,18 +603,19 @@ class _GenderRadioTile extends StatelessWidget {
           children: [
             Icon(
               selected ? Icons.radio_button_checked : Icons.radio_button_off,
-              size: 18,
-              color: selected ? FFTokens.brandVibrant : FFTokens.darkFgMuted,
+              size: FFTokens.iconSm,
+              color: selected
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).textTheme.bodySmall?.color,
             ),
             const SizedBox(width: 6),
             Text(
               label,
-              style: TextStyle(
-                fontSize: 13,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
                 fontWeight: FontWeight.w600,
                 color: selected
-                    ? FFTokens.brandVibrant
-                    : FFTokens.darkFgSecondary,
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ],
@@ -701,15 +645,18 @@ class _DarkLevelTile extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
+        duration: FFTokens.motionMedium,
+        curve: FFTokens.motionCurve,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: selected
-              ? FFTokens.brandVibrant.withValues(alpha: 0.1)
-              : FFTokens.darkSurface,
+              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
+              : Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(FFTokens.radiusLg),
           border: Border.all(
-            color: selected ? FFTokens.brandVibrant : FFTokens.darkBorder,
+            color: selected
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.outline,
             width: selected ? 2 : 1,
           ),
         ),
@@ -724,20 +671,17 @@ class _DarkLevelTile extends StatelessWidget {
                 children: [
                   Text(
                     label,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       color: selected
-                          ? FFTokens.brandVibrant
-                          : FFTokens.darkFgPrimary,
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     description,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: FFTokens.darkFgMuted,
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: Theme.of(context).textTheme.bodySmall?.color,
                     ),
                   ),
                 ],

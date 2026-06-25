@@ -38,10 +38,7 @@ class MemberPaymentPage extends StatelessWidget {
               alignment: Alignment.centerLeft,
               child: Text(
                 context.tr('member.paymentBody'),
-                style: const TextStyle(
-                  color: FFTokens.fgQuaternary,
-                  fontSize: 13,
-                ),
+                style: Theme.of(context).textTheme.bodySmall,
               ),
             ),
           ),
@@ -57,11 +54,7 @@ class MemberPaymentPage extends StatelessWidget {
               children: [
                 Text(
                   context.tr('member.orderSummary'),
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: FFTokens.fgPrimary,
-                  ),
+                  style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: 12),
                 _Row(
@@ -141,22 +134,9 @@ class _Row extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: FFTokens.fgQuaternary,
-                fontSize: 14,
-              ),
-            ),
+            child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
           ),
-          Text(
-            value,
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              color: FFTokens.fgPrimary,
-              fontSize: 14,
-            ),
-          ),
+          Text(value, style: Theme.of(context).textTheme.titleSmall),
         ],
       ),
     );
@@ -204,7 +184,7 @@ class _SubmitButtonState extends State<_SubmitButton> {
     return FilledButton(
       onPressed: _loading ? null : _submit,
       child: _loading
-          ? const FFSpinner(size: 18, color: Colors.white)
+          ? FFSpinner(size: 18, color: Theme.of(context).colorScheme.onPrimary)
           : Text(context.tr('member.requestPayment')),
     );
   }
@@ -252,19 +232,15 @@ class _AvailableGymsSection extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.fitness_center,
                 size: 18,
-                color: FFTokens.brand600,
+                color: Theme.of(context).colorScheme.primary,
               ),
               const SizedBox(width: 8),
               Text(
                 context.tr('member.availableGyms'),
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: FFTokens.fgPrimary,
-                ),
+                style: Theme.of(context).textTheme.titleMedium,
               ),
               const Spacer(),
               FFBadge(label: '${accessible.length}', tone: FFBadgeTone.brand),
@@ -281,10 +257,7 @@ class _AvailableGymsSection extends StatelessWidget {
                       Expanded(
                         child: Text(
                           g.name,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: FFTokens.fgSecondary,
-                          ),
+                          style: Theme.of(context).textTheme.bodyMedium,
                         ),
                       ),
                       FFBadge(
@@ -300,10 +273,8 @@ class _AvailableGymsSection extends StatelessWidget {
               padding: const EdgeInsets.only(top: 4),
               child: Text(
                 '+${accessible.length - 5} ${context.tr('member.moreGyms')}',
-                style: const TextStyle(
-                  color: FFTokens.brand600,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
             ),

@@ -110,7 +110,10 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
       children: [
         Text(
           context.tr('owner.dashboardBody'),
-          style: const TextStyle(color: FFTokens.textMuted, height: 1.35),
+          style: TextStyle(
+            color: Theme.of(context).textTheme.bodySmall?.color,
+            height: 1.35,
+          ),
         ),
         const SizedBox(height: 14),
         // Primary gym card
@@ -131,7 +134,10 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
               Text(
                 primaryGym?['location']?.toString() ??
                     context.tr('owner.gymPending'),
-                style: const TextStyle(color: FFTokens.textMuted, height: 1.35),
+                style: TextStyle(
+                  color: Theme.of(context).textTheme.bodySmall?.color,
+                  height: 1.35,
+                ),
               ),
             ],
           ),

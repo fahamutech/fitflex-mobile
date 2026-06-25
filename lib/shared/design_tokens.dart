@@ -83,11 +83,30 @@ class FFTokens {
   static const double radiusFull = 999;
 
   // ── Spacing ──
+  static const double spacing2xs = 2;
   static const double spacingXs = 4;
   static const double spacingSm = 8;
   static const double spacingMd = 16;
   static const double spacingLg = 24;
   static const double spacingXl = 32;
+  static const double spacing2xl = 48;
+
+  // ── Icon sizes ──
+  static const double iconXs = 14;
+  static const double iconSm = 16;
+  static const double iconMd = 20;
+  static const double iconLg = 24;
+  static const double iconXl = 32;
+
+  /// Standard square container that wraps a leading icon.
+  static const double iconBox = 40;
+
+  // ── Motion (durations + curves) ──
+  static const Duration motionFast = Duration(milliseconds: 100);
+  static const Duration motionMedium = Duration(milliseconds: 200);
+  static const Duration motionSlow = Duration(milliseconds: 400);
+  static const Curve motionCurve = Curves.easeInOut;
+  static const Curve motionEmphasized = Curves.easeOutCubic;
 
   // ── Shadows ──
   static List<BoxShadow> get shadowXs => [
@@ -144,6 +163,8 @@ ThemeData buildDarkTheme() {
       surface: surface,
       onSurface: onSurface,
       surfaceContainerHighest: surface,
+      surfaceContainerLow: Color(0xFF0F1E2E),
+      outlineVariant: Color(0xFF253B55),
       outline: bord,
       error: FFTokens.danger,
       onError: Colors.white,
@@ -431,6 +452,8 @@ ThemeData buildTheme() {
       surface: surface,
       onSurface: onSurface,
       surfaceContainerHighest: surface,
+      surfaceContainerLow: Color(0xFFF2F4F7),
+      outlineVariant: Color(0xFFD0D5DD),
       outline: bord,
       error: FFTokens.danger,
       onError: Colors.white,
@@ -574,6 +597,7 @@ ThemeData buildTheme() {
           fontWeight: FontWeight.w700,
           fontSize: 15,
           letterSpacing: 0.5,
+          color: onPrimary,
         ),
       ),
     ),

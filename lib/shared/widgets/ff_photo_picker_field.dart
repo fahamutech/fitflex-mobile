@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../design_tokens.dart';
 import '../i18n.dart';
 
 /// A form-friendly photo picker that lets the user choose from the gallery
@@ -87,12 +86,23 @@ class _FFPhotoPickerFieldState extends State<FFPhotoPickerField> {
 
   Widget _buildPreview() {
     final v = widget.value;
-    if (v == null || v.isEmpty) return const Icon(Icons.person, size: 40, color: FFTokens.fgTertiary);
+    if (v == null || v.isEmpty) {
+      return Icon(
+        Icons.person,
+        size: 40,
+        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+      );
+    }
     if (v.startsWith('data:')) {
       final b64 = v.split(',').last;
       return Image.memory(base64Decode(b64), fit: BoxFit.cover);
     }
-    return Image.network(v, fit: BoxFit.cover, errorBuilder: (context, error, stack) => const Icon(Icons.broken_image, size: 40));
+    return Image.network(
+      v,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stack) =>
+          const Icon(Icons.broken_image, size: 40),
+    );
   }
 
   @override
@@ -107,8 +117,8 @@ class _FFPhotoPickerFieldState extends State<FFPhotoPickerField> {
             height: widget.size,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: FFTokens.bgTertiary,
-              border: Border.all(color: FFTokens.borderSecondary),
+              color: Theme.of(context).colorScheme.surface,
+              border: Border.all(color: Theme.of(context).colorScheme.outline),
             ),
             clipBehavior: Clip.antiAlias,
             child: _loading
@@ -120,10 +130,17 @@ class _FFPhotoPickerFieldState extends State<FFPhotoPickerField> {
             height: 28,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: FFTokens.brand600,
-              border: Border.all(color: Colors.white, width: 2),
+              color: Theme.of(context).colorScheme.primary,
+              border: Border.all(
+                color: Theme.of(context).colorScheme.onPrimary,
+                width: 2,
+              ),
             ),
-            child: const Icon(Icons.camera_alt, size: 14, color: Colors.white),
+            child: Icon(
+              Icons.camera_alt,
+              size: 14,
+              color: Theme.of(context).colorScheme.onPrimary,
+            ),
           ),
         ],
       ),

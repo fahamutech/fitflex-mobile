@@ -11,15 +11,15 @@ class FFCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
       width: double.infinity,
-      margin: margin ?? const EdgeInsets.only(bottom: 10),
+      margin: margin ?? const EdgeInsets.only(bottom: FFTokens.spacingSm),
       padding: padding ?? const EdgeInsets.all(FFTokens.spacingMd),
       decoration: BoxDecoration(
-        color: FFTokens.bgPrimary,
-        border: Border.all(color: FFTokens.borderSecondary),
+        color: theme.colorScheme.surface,
+        border: Border.all(color: theme.colorScheme.outlineVariant),
         borderRadius: BorderRadius.circular(FFTokens.radiusXl),
-        boxShadow: FFTokens.shadowSm,
       ),
       child: child,
     );
@@ -35,9 +35,14 @@ class FFCardHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: FFTokens.borderSecondary)),
+      padding: const EdgeInsets.symmetric(
+        horizontal: FFTokens.spacingLg,
+        vertical: FFTokens.spacingMd,
+      ),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: Theme.of(context).colorScheme.outline),
+        ),
       ),
       child: child,
     );
@@ -53,7 +58,10 @@ class FFCardContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+      padding: const EdgeInsets.symmetric(
+        horizontal: FFTokens.spacingLg,
+        vertical: FFTokens.spacingMd,
+      ),
       child: child,
     );
   }
@@ -68,9 +76,14 @@ class FFCardFooter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: FFTokens.borderSecondary)),
+      padding: const EdgeInsets.symmetric(
+        horizontal: FFTokens.spacingLg,
+        vertical: FFTokens.spacingMd,
+      ),
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(color: Theme.of(context).colorScheme.outline),
+        ),
       ),
       child: child,
     );

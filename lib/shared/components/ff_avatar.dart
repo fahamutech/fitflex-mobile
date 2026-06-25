@@ -81,7 +81,7 @@ class _InitialsAvatar extends StatelessWidget {
       backgroundColor: FFTokens.brand100,
       child: Text(
         initials,
-        style: TextStyle(
+        style: Theme.of(context).textTheme.labelLarge?.copyWith(
           fontSize: fontSize,
           fontWeight: FontWeight.w600,
           color: FFTokens.brand700,

@@ -89,7 +89,10 @@ class _LocationPickerState extends State<LocationPicker> {
       children: [
         Text(
           context.tr('ownerReg.mapHint'),
-          style: const TextStyle(fontSize: 12, color: FFTokens.fgQuaternary),
+          style: TextStyle(
+            fontSize: 12,
+            color: Theme.of(context).textTheme.bodySmall?.color,
+          ),
         ),
         const SizedBox(height: 8),
         ClipRRect(
@@ -118,9 +121,9 @@ class _LocationPickerState extends State<LocationPicker> {
                             point: _marker!,
                             width: 40,
                             height: 40,
-                            child: const Icon(
+                            child: Icon(
                               Icons.location_pin,
-                              color: FFTokens.brand600,
+                              color: Theme.of(context).colorScheme.primary,
                               size: 40,
                             ),
                           ),
@@ -134,16 +137,16 @@ class _LocationPickerState extends State<LocationPicker> {
                   child: FloatingActionButton.small(
                     heroTag: 'location_picker_gps',
                     onPressed: _locating ? null : _getCurrentLocation,
-                    backgroundColor: FFTokens.bgPrimary,
+                    backgroundColor: Theme.of(context).colorScheme.surface,
                     child: _locating
                         ? const SizedBox(
                             height: 18,
                             width: 18,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Icon(
+                        : Icon(
                             Icons.my_location,
-                            color: FFTokens.brand600,
+                            color: Theme.of(context).colorScheme.primary,
                             size: 20,
                           ),
                   ),
@@ -157,9 +160,9 @@ class _LocationPickerState extends State<LocationPicker> {
             padding: const EdgeInsets.only(top: 4),
             child: Text(
               '${_marker!.latitude.toStringAsFixed(5)}, ${_marker!.longitude.toStringAsFixed(5)}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
-                color: FFTokens.fgQuaternary,
+                color: Theme.of(context).textTheme.bodySmall?.color,
                 fontFamily: 'monospace',
               ),
             ),

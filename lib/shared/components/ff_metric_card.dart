@@ -26,8 +26,9 @@ class FFMetricCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return FFCard(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(FFTokens.spacingMd),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -37,49 +38,42 @@ class FFMetricCard extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: FFTokens.fgQuaternary,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: FFTokens.spacingSm),
                 Text(
                   value,
-                  style: const TextStyle(
-                    fontSize: 30,
+                  style: theme.textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: FFTokens.fgPrimary,
                     letterSpacing: -0.5,
                   ),
                 ),
                 if (sub != null) ...[
-                  const SizedBox(height: 4),
+                  const SizedBox(height: FFTokens.spacingXs),
                   Text(
                     sub!,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: FFTokens.fgQuaternary,
-                    ),
+                    style: theme.textTheme.bodySmall,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
                 if (trendDirection != null && trendLabel != null) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: FFTokens.spacingSm),
                   _TrendBadge(direction: trendDirection!, label: trendLabel!),
                 ],
               ],
             ),
           ),
           if (icon != null) ...[
-            const SizedBox(width: 16),
+            const SizedBox(width: FFTokens.spacingMd),
             Container(
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: FFTokens.bgSecondary,
-                border: Border.all(color: FFTokens.borderSecondary),
+                color: theme.colorScheme.surfaceContainerHighest,
+                border: Border.all(color: theme.colorScheme.outline),
                 borderRadius: BorderRadius.circular(FFTokens.radiusXl),
               ),
               child: Center(child: icon),
@@ -113,14 +107,17 @@ class _TrendBadge extends StatelessWidget {
       ),
     };
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: const EdgeInsets.symmetric(
+        horizontal: FFTokens.spacingSm,
+        vertical: FFTokens.spacing2xs,
+      ),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(FFTokens.radiusFull),
       ),
       child: Text(
         '$arrow $label',
-        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: fg),
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(color: fg),
       ),
     );
   }

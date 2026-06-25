@@ -50,11 +50,8 @@ class MemberTrainerDetailPage extends StatelessWidget {
                         Flexible(
                           child: Text(
                             trainer.displayName,
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.w600,
-                              color: FFTokens.fgPrimary,
-                            ),
+                            style: Theme.of(context).textTheme.headlineSmall
+                                ?.copyWith(fontWeight: FontWeight.w600),
                           ),
                         ),
                         if (trainer.approvalStatus == 'approved') ...[
@@ -70,8 +67,8 @@ class MemberTrainerDetailPage extends StatelessWidget {
                     if (trainer.specialties.isNotEmpty)
                       Text(
                         trainer.specialties.join(' / '),
-                        style: const TextStyle(
-                          color: FFTokens.fgQuaternary,
+                        style: TextStyle(
+                          color: Theme.of(context).textTheme.bodySmall?.color,
                           fontSize: 14,
                         ),
                       ),
@@ -102,16 +99,19 @@ class MemberTrainerDetailPage extends StatelessWidget {
           ),
 
           // About
-          _SectionTitle(context.tr('member.about')),
+          FFSectionTitle(context.tr('member.about')),
           FFCard(
             child: Text(
               trainer.bio ?? '',
-              style: const TextStyle(color: FFTokens.fgQuaternary, height: 1.4),
+              style: TextStyle(
+                color: Theme.of(context).textTheme.bodySmall?.color,
+                height: 1.4,
+              ),
             ),
           ),
 
           // Gyms
-          _SectionTitle(context.tr('member.availableGyms')),
+          FFSectionTitle(context.tr('member.availableGyms')),
           if (trainer.gyms.isEmpty)
             FFEmptyState(title: context.tr('member.noData'))
           else
@@ -125,7 +125,7 @@ class MemberTrainerDetailPage extends StatelessWidget {
             ),
 
           // Availability
-          _SectionTitle(context.tr('member.availability')),
+          FFSectionTitle(context.tr('member.availability')),
           if (trainer.availability.isEmpty)
             FFEmptyState(title: context.tr('member.noData'))
           else
@@ -140,10 +140,10 @@ class MemberTrainerDetailPage extends StatelessWidget {
                         children: [
                           Text(
                             a.dayLabel,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.w600,
                               fontSize: 14,
-                              color: FFTokens.fgPrimary,
+                              color: Theme.of(context).colorScheme.onSurface,
                             ),
                           ),
                           if (a.gymName != null) ...[
@@ -170,27 +170,6 @@ class MemberTrainerDetailPage extends StatelessWidget {
 
           const SizedBox(height: 20),
         ],
-      ),
-    );
-  }
-}
-
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 16, bottom: 10),
-      child: Text(
-        text,
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: FFTokens.fgPrimary,
-        ),
       ),
     );
   }
