@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../app_scope.dart';
@@ -15,94 +16,118 @@ class OwnerProfilePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final data = OwnerDataScope.of(context);
-    final user =
-        (data.me?['user'] as Map?) ?? AppScope.of(context).auth.user ?? {};
+    final ownerData = context
+        .dependOnInheritedWidgetOfExactType<OwnerDataScope>()
+        ?.notifier;
+    final appAuth = AppScope.of(context).auth;
+    final user = (ownerData?.me?['user'] as Map?) ?? appAuth.user ?? {};
+    final displayName =
+        ownerData?.displayName ??
+        (user['displayName'] ?? user['email'] ?? user['phone'] ?? 'Owner')
+            .toString();
     final email = user['email']?.toString() ?? '';
     final phone = user['phone']?.toString() ?? '';
+    final gymCount = ownerData?.ownerGyms.length ?? 0;
+    final trainerCount = ownerData?.ownerTrainers.length ?? 0;
 
-    return ListView(
-      padding: const EdgeInsets.all(FFTokens.spacingLg),
-      children: [
-        FFCard(
-          child: Row(
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/owner/home');
+            }
+          },
+        ),
+        title: Text(context.tr('member.profile')),
+        actions: const [ThemeToggleButton()],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(FFTokens.spacingLg),
+        children: [
+          FFCard(
+            child: Row(
+              children: [
+                const CircleAvatar(radius: 30, child: Icon(Icons.person)),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        displayName,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        email.isNotEmpty ? email : phone,
+                        style: TextStyle(
+                          color: Theme.of(context).textTheme.bodySmall?.color,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
             children: [
-              const CircleAvatar(radius: 30, child: Icon(Icons.person)),
-              const SizedBox(width: 14),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      data.displayName,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      email.isNotEmpty ? email : phone,
-                      style: TextStyle(
-                        color: Theme.of(context).textTheme.bodySmall?.color,
-                        height: 1.35,
-                      ),
-                    ),
-                  ],
+                child: FFMetricCard(
+                  label: context.tr('owner.myGyms'),
+                  value: '$gymCount',
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: FFMetricCard(
+                  label: context.tr('owner.trainers'),
+                  value: '$trainerCount',
                 ),
               ),
             ],
           ),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: FFMetricCard(
-                label: context.tr('owner.myGyms'),
-                value: '${data.ownerGyms.length}',
-              ),
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Text(
+              context.tr('member.accountSettings'),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
             ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: FFMetricCard(
-                label: context.tr('owner.trainers'),
-                value: '${data.ownerTrainers.length}',
-              ),
+          ),
+          FFActionTile(
+            icon: Icons.edit,
+            title: context.tr('member.editDetails'),
+            onTap: () => _showEditProfileDialog(context),
+          ),
+          FFActionTile(
+            icon: Icons.help_outline,
+            title: context.tr('member.help'),
+            onTap: _openWhatsAppSupport,
+          ),
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            onPressed: () => _signOut(context),
+            icon: Icon(
+              Icons.logout,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: Text(
-            context.tr('member.accountSettings'),
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+            label: Text(
+              context.tr('home.signout'),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+            ),
           ),
-        ),
-        FFActionTile(
-          icon: Icons.edit,
-          title: context.tr('member.editDetails'),
-          onTap: () => _showEditProfileDialog(context),
-        ),
-        FFActionTile(
-          icon: Icons.help_outline,
-          title: context.tr('member.help'),
-          onTap: _openWhatsAppSupport,
-        ),
-        const SizedBox(height: 16),
-        OutlinedButton.icon(
-          onPressed: () => _signOut(context),
-          icon: Icon(
-            Icons.logout,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
-          label: Text(
-            context.tr('home.signout'),
-            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -112,9 +137,13 @@ class OwnerProfilePage extends StatelessWidget {
   }
 
   Future<void> _showEditProfileDialog(BuildContext context) async {
-    final data = OwnerDataScope.of(context);
+    final ownerData = context
+        .dependOnInheritedWidgetOfExactType<OwnerDataScope>()
+        ?.notifier;
     final user = Map<String, dynamic>.from(
-      (data.me?['user'] as Map?) ?? AppScope.of(context).auth.user ?? const {},
+      (ownerData?.me?['user'] as Map?) ??
+          AppScope.of(context).auth.user ??
+          const {},
     );
     final saved = await openProfileForm(
       context,

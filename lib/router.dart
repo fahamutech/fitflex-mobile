@@ -34,6 +34,7 @@ abstract class AppRoutes {
   static const ownerHome = '/owner/home';
   static const ownerGyms = '/owner/gyms';
   static const ownerGymCheckins = '/owner/gyms/:gymId/checkins';
+  static const ownerMembers = '/owner/members';
   static const ownerTrainers = '/owner/trainers';
   static const ownerProfile = '/owner/profile';
   static const ownerQrScanner = '/owner/scan';
@@ -261,6 +262,11 @@ GoRouter buildRouter(AuthState auth) {
           return OwnerCheckinsPage(gymId: gymId);
         },
       ),
+      GoRoute(
+        path: AppRoutes.ownerProfile,
+        name: 'ownerProfile',
+        builder: (context, state) => const OwnerProfilePage(),
+      ),
       // Owner shell with bottom nav
       ShellRoute(
         builder: (context, state, child) =>
@@ -277,14 +283,14 @@ GoRouter buildRouter(AuthState auth) {
             builder: (context, state) => const OwnerManageGymsPage(),
           ),
           GoRoute(
+            path: AppRoutes.ownerMembers,
+            name: 'ownerMembers',
+            builder: (context, state) => const OwnerCheckinsPage(),
+          ),
+          GoRoute(
             path: AppRoutes.ownerTrainers,
             name: 'ownerTrainers',
             builder: (context, state) => const OwnerTrainersPage(),
-          ),
-          GoRoute(
-            path: AppRoutes.ownerProfile,
-            name: 'ownerProfile',
-            builder: (context, state) => const OwnerProfilePage(),
           ),
         ],
       ),

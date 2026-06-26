@@ -8,6 +8,17 @@ import '../../shared/i18n.dart';
 import '../../shared/widgets/trainer_form_page.dart';
 import 'owner_shell.dart';
 
+String _apiErrorMessage(BuildContext context, ApiException e) {
+  final code = (e.body is Map) ? (e.body as Map)['error']?.toString() : null;
+  switch (code) {
+    case 'email_already_in_use':
+    case 'email_already_used_for_trainer':
+      return context.tr('owner.errorEmailAlreadyInUse');
+    default:
+      return context.tr('owner.errorGeneric');
+  }
+}
+
 /// Owner — trainer management view.
 class OwnerTrainersPage extends StatelessWidget {
   const OwnerTrainersPage({super.key});
@@ -57,7 +68,7 @@ class OwnerTrainersPage extends StatelessWidget {
                     crossAxisCount: cols,
                     crossAxisSpacing: FFTokens.spacingMd,
                     mainAxisSpacing: FFTokens.spacingMd,
-                    childAspectRatio: 0.72,
+                    childAspectRatio: 0.64,
                   ),
                 ),
               ),
@@ -102,7 +113,7 @@ class OwnerTrainersPage extends StatelessWidget {
       if (!context.mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Error ${e.status}')));
+      ).showSnackBar(SnackBar(content: Text(_apiErrorMessage(context, e))));
     }
   }
 
@@ -133,7 +144,7 @@ class OwnerTrainersPage extends StatelessWidget {
       if (!context.mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Error ${e.status}')));
+      ).showSnackBar(SnackBar(content: Text(_apiErrorMessage(context, e))));
     }
   }
 
@@ -172,9 +183,9 @@ class OwnerTrainersPage extends StatelessWidget {
                 ).showSnackBar(SnackBar(content: Text(message)));
               } on ApiException catch (e) {
                 if (!context.mounted) return;
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(SnackBar(content: Text('Error ${e.status}')));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(_apiErrorMessage(context, e))),
+                );
               }
             },
             child: Text(context.tr('owner.removeTrainer')),

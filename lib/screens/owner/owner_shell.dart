@@ -69,11 +69,21 @@ class OwnerShellState extends State<OwnerShell> {
   final OwnerData _data = OwnerData();
   bool _started = false;
 
+  @override
+  void initState() {
+    super.initState();
+    _data.addListener(_onDataChanged);
+  }
+
+  void _onDataChanged() {
+    if (mounted) setState(() {});
+  }
+
   int get _tabIndex {
     final loc = GoRouterState.of(context).matchedLocation;
     if (loc.startsWith('/owner/gyms')) return 1;
-    if (loc.startsWith('/owner/trainers')) return 2;
-    if (loc.startsWith('/owner/profile')) return 3;
+    if (loc.startsWith('/owner/members')) return 2;
+    if (loc.startsWith('/owner/trainers')) return 3;
     return 0;
   }
 
@@ -82,9 +92,9 @@ class OwnerShellState extends State<OwnerShell> {
       case 1:
         return context.tr('owner.manageGyms');
       case 2:
-        return context.tr('owner.trainers');
+        return context.tr('owner.members');
       case 3:
-        return context.tr('owner.profile');
+        return context.tr('owner.trainers');
       default:
         return context.tr('owner.dashboard');
     }
@@ -100,6 +110,7 @@ class OwnerShellState extends State<OwnerShell> {
 
   @override
   void dispose() {
+    _data.removeListener(_onDataChanged);
     _data.dispose();
     super.dispose();
   }
@@ -163,11 +174,17 @@ class OwnerShellState extends State<OwnerShell> {
   }
 
   void _onTab(int index) {
+    if (_data.ownerGyms.isEmpty && (index == 1 || index == 2 || index == 3)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr('owner.notApprovedYet'))),
+      );
+      return;
+    }
     const routes = [
       '/owner/home',
       '/owner/gyms',
+      '/owner/members',
       '/owner/trainers',
-      '/owner/profile',
     ];
     context.go(routes[index]);
   }
@@ -177,10 +194,9 @@ class OwnerShellState extends State<OwnerShell> {
     return OwnerDataScope(
       data: _data,
       child: Scaffold(
-        appBar: AppBar(
-          title: Text(_title),
-          actions: const [ThemeToggleButton()],
-        ),
+        appBar: _tabIndex == 0
+            ? null
+            : AppBar(title: Text(_title), actions: const [ThemeToggleButton()]),
         body: RefreshIndicator(onRefresh: refreshAll, child: widget.child),
         bottomNavigationBar: NavigationBar(
           selectedIndex: _tabIndex,
@@ -192,19 +208,37 @@ class OwnerShellState extends State<OwnerShell> {
               label: context.tr('owner.home'),
             ),
             NavigationDestination(
-              icon: const Icon(Icons.fitness_center_outlined),
-              selectedIcon: const Icon(Icons.fitness_center),
+              icon: Icon(
+                Icons.fitness_center_outlined,
+                color: _data.ownerGyms.isEmpty ? Colors.grey : null,
+              ),
+              selectedIcon: Icon(
+                Icons.fitness_center,
+                color: _data.ownerGyms.isEmpty ? Colors.grey : null,
+              ),
               label: context.tr('owner.manageGyms'),
             ),
             NavigationDestination(
-              icon: const Icon(Icons.sports_gymnastics_outlined),
-              selectedIcon: const Icon(Icons.sports_gymnastics),
-              label: context.tr('owner.trainers'),
+              icon: Icon(
+                Icons.people_outlined,
+                color: _data.ownerGyms.isEmpty ? Colors.grey : null,
+              ),
+              selectedIcon: Icon(
+                Icons.people,
+                color: _data.ownerGyms.isEmpty ? Colors.grey : null,
+              ),
+              label: context.tr('owner.members'),
             ),
             NavigationDestination(
-              icon: const Icon(Icons.person_outline),
-              selectedIcon: const Icon(Icons.person),
-              label: context.tr('owner.profile'),
+              icon: Icon(
+                Icons.sports_gymnastics_outlined,
+                color: _data.ownerGyms.isEmpty ? Colors.grey : null,
+              ),
+              selectedIcon: Icon(
+                Icons.sports_gymnastics,
+                color: _data.ownerGyms.isEmpty ? Colors.grey : null,
+              ),
+              label: context.tr('owner.trainers'),
             ),
           ],
         ),

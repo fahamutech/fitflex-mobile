@@ -4,12 +4,13 @@ import '../../app_scope.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
+import 'owner_shell.dart';
 
-/// Owner — view check-ins for a specific gym (standalone pushed page).
+/// Owner — view check-ins for a specific gym (or all checkins in active gym if loaded as tab).
 class OwnerCheckinsPage extends StatefulWidget {
-  const OwnerCheckinsPage({super.key, required this.gymId});
+  const OwnerCheckinsPage({super.key, this.gymId});
 
-  final String gymId;
+  final String? gymId;
 
   @override
   State<OwnerCheckinsPage> createState() => _OwnerCheckinsPageState();
@@ -52,13 +53,40 @@ class _OwnerCheckinsPageState extends State<OwnerCheckinsPage> {
 
   @override
   Widget build(BuildContext context) {
+    OwnerData? data;
+    try {
+      data = OwnerDataScope.of(context);
+    } catch (_) {
+      // ignore
+    }
+
+    final activeGymId =
+        widget.gymId ??
+        data?.dashboardGymId ??
+        (data?.ownerGyms.isNotEmpty == true
+            ? data!.ownerGyms.first['id']?.toString()
+            : null);
+
     final rangeLabel = (_statsFrom != null && _statsTo != null)
         ? '${_dateOnly(_statsFrom!)} → ${_dateOnly(_statsTo!)}'
         : context.tr('owner.allTime');
 
-    return Scaffold(
-      appBar: AppBar(title: Text(context.tr('owner.gymCheckins'))),
-      body: ListView(
+    final bool isTab = widget.gymId == null;
+
+    Widget buildBody() {
+      if (activeGymId == null) {
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(FFTokens.spacingLg),
+            child: FFEmptyState(
+              title: context.tr('owner.noCheckins'),
+              body: context.tr('owner.notApprovedYet'),
+            ),
+          ),
+        );
+      }
+
+      return ListView(
         padding: const EdgeInsets.all(FFTokens.spacingLg),
         children: [
           const SizedBox(height: 8),
@@ -86,7 +114,7 @@ class _OwnerCheckinsPageState extends State<OwnerCheckinsPage> {
           ),
           const SizedBox(height: 8),
           FutureBuilder<List<dynamic>>(
-            future: AppScope.of(context).api.ownerGymCheckins(widget.gymId),
+            future: AppScope.of(context).api.ownerGymCheckins(activeGymId),
             builder: (context, snap) {
               if (snap.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
@@ -146,7 +174,16 @@ class _OwnerCheckinsPageState extends State<OwnerCheckinsPage> {
             },
           ),
         ],
-      ),
+      );
+    }
+
+    if (isTab) {
+      return buildBody();
+    }
+
+    return Scaffold(
+      appBar: AppBar(title: Text(context.tr('owner.gymCheckins'))),
+      body: buildBody(),
     );
   }
 }
