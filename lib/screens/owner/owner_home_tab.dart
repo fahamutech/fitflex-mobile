@@ -87,15 +87,6 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
     }
   }
 
-  String _getInitials(String name) {
-    final parts = name.trim().split(' ');
-    if (parts.isEmpty) return 'O';
-    if (parts.length == 1) {
-      return parts[0].substring(0, parts[0].length >= 2 ? 2 : 1).toUpperCase();
-    }
-    return (parts[0][0] + parts[1][0]).toUpperCase();
-  }
-
   @override
   Widget build(BuildContext context) {
     final data = OwnerDataScope.of(context);
@@ -121,9 +112,6 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
     final periodMembers = (dashboard?['periodMembers'] as num?)?.toInt() ?? 0;
     final directCount = (dashboard?['directMembers'] as num?)?.toInt() ?? 0;
     final fitflexCount = (dashboard?['fitflexMembers'] as num?)?.toInt() ?? 0;
-    final dashGym = dashboard?['gym'] as Map<String, dynamic>?;
-    final primaryGym = ownerGymList.isNotEmpty ? ownerGymList.first : dashGym;
-
     // Parse chartSeries from API
     final rawSeries =
         (dashboard?['chartSeries'] as List<dynamic>?) ?? <dynamic>[];
@@ -165,525 +153,391 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
     final cleanName = rawName.split('@').first.split(' ').first;
     final greeting = context.tr('member.goodMorning');
 
-    final String selectedGymName =
-        primaryGym?['name']?.toString() ?? context.tr('owner.pendingApproval');
-    final String initials = _getInitials(rawName);
-
     final bool showChart = directCount > 0 || fitflexCount > 0;
 
-    return SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.symmetric(
-          horizontal: FFTokens.spacingLg,
-          vertical: FFTokens.spacingMd,
+    return ListView(
+      padding: const EdgeInsets.symmetric(
+        horizontal: FFTokens.spacingLg,
+        vertical: FFTokens.spacingMd,
+      ),
+      children: [
+        // 2. Greeting / Overview
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '$greeting, $cleanName \ud83d\udc4b',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    context.tr('owner.gymSnapshot'),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Filter Picker
+            InkWell(
+              onTap: _showDateFilter,
+              borderRadius: BorderRadius.circular(FFTokens.radiusMd),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
+                  borderRadius: BorderRadius.circular(FFTokens.radiusMd),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.calendar_today_outlined, size: 14),
+                    const SizedBox(width: 6),
+                    Text(
+                      _presetLabel(context),
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Icon(Icons.keyboard_arrow_down, size: 14),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
-        children: [
-          // 1. Header (gym title popup menu + notification bell + avatar)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Left: Gym Icon and Name
-              Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: FFTokens.brand500,
-                      borderRadius: BorderRadius.circular(FFTokens.radiusMd),
-                    ),
-                    child: const Icon(
-                      Icons.fitness_center,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      PopupMenuButton<String>(
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              selectedGymName,
-                              style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(width: 4),
-                            const Icon(Icons.keyboard_arrow_down, size: 16),
-                          ],
-                        ),
-                        itemBuilder: (ctx) => ownerGymList
-                            .map(
-                              (gym) => PopupMenuItem<String>(
-                                value: gym['id']?.toString(),
-                                child: Text(gym['name']?.toString() ?? ''),
-                              ),
-                            )
-                            .toList(),
-                        onSelected: (value) async {
-                          data.update((d) => d.dashboardGymId = value);
-                          final shell = context
-                              .findAncestorStateOfType<OwnerShellState>();
-                          await shell?.refreshDashboard();
-                          if (mounted) setState(() {});
-                        },
-                      ),
-                      Text(
-                        context.tr('owner.dashboard'),
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              // Right: Bell + Avatar
-              Row(
-                children: [
-                  Stack(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.notifications_none, size: 24),
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                context.tr('owner.noNotifications'),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                      Positioned(
-                        right: 8,
-                        top: 8,
-                        child: Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            color: FFTokens.brandVibrant,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const ThemeToggleButton(),
-                  const SizedBox(width: 4),
-                  GestureDetector(
-                    onTap: () => context.push('/owner/profile'),
-                    child: CircleAvatar(
-                      radius: 18,
-                      backgroundColor: FFTokens.brand500,
-                      child: Text(
-                        initials,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: FFTokens.spacingXl),
+        const SizedBox(height: FFTokens.spacingLg),
 
-          // 2. Greeting / Overview
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.start,
+        // 3. Summary cards
+        Row(
+          children: [
+            Expanded(
+              child: FFMetricCard(
+                label: context.tr('owner.totalMembers'),
+                value: '$periodMembers',
+                trendDirection: membersTrendDir,
+                trendLabel: membersTrendLabel,
+                icon: const Icon(
+                  Icons.people_outline,
+                  color: FFTokens.brand600,
+                  size: 20,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: FFMetricCard(
+                label: context.tr('owner.checkins'),
+                value: '$periodVisits',
+                trendDirection: visitsTrendDir,
+                trendLabel: visitsTrendLabel,
+                icon: const Icon(
+                  Icons.check_circle_outline,
+                  color: FFTokens.brand600,
+                  size: 20,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: FFTokens.spacingLg),
+
+        // 4. Quick actions
+        FFCard(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: IntrinsicHeight(
+            child: Row(
+              children: [
+                _buildQuickAction(
+                  context,
+                  icon: Icons.qr_code_scanner,
+                  title: context.tr('owner.checkin'),
+                  onTap: () => context.push('/owner/scan'),
+                ),
+                _buildActionDivider(context),
+                _buildQuickAction(
+                  context,
+                  icon: Icons.wallet_outlined,
+                  title: context.tr('owner.earnings'),
+                  onTap: () => context.push('/owner/earnings'),
+                ),
+                _buildActionDivider(context),
+                _buildQuickAction(
+                  context,
+                  icon: Icons.shopping_bag_outlined,
+                  title: context.tr('owner.shop'),
+                  onTap: () => context.push('/owner/shop'),
+                ),
+                _buildActionDivider(context),
+                _buildQuickAction(
+                  context,
+                  icon: Icons.people_outline,
+                  title: context.tr('owner.members'),
+                  onTap: () => context.go('/owner/members'),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: FFTokens.spacingLg),
+
+        // 5. Grow your gym card
+        Container(
+          padding: const EdgeInsets.all(FFTokens.spacingMd),
+          decoration: BoxDecoration(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
+                : FFTokens.brand50,
+            borderRadius: BorderRadius.circular(FFTokens.radiusXl),
+            border: Border.all(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.2)
+                  : FFTokens.brand100,
+            ),
+          ),
+          child: Row(
             children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.trending_up,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '$greeting, $cleanName \ud83d\udc4b',
-                      style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      context.tr('owner.gymSnapshot'),
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      context.tr('owner.growGym'),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white
+                            : FFTokens.brand800,
                       ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      context.tr('owner.growGymSubtitle'),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white.withValues(alpha: 0.8)
+                            : FFTokens.brand700,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
-              // Filter Picker
-              InkWell(
-                onTap: _showDateFilter,
-                borderRadius: BorderRadius.circular(FFTokens.radiusMd),
-                child: Container(
+              const SizedBox(width: 8),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: FFTokens.brand600,
+                  foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
                     vertical: 8,
                   ),
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: Theme.of(context).colorScheme.outlineVariant,
-                    ),
+                  shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(FFTokens.radiusMd),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.calendar_today_outlined, size: 14),
-                      const SizedBox(width: 6),
-                      Text(
-                        _presetLabel(context),
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      const Icon(Icons.keyboard_arrow_down, size: 14),
-                    ],
-                  ),
+                  elevation: 0,
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: FFTokens.spacingLg),
-
-          // 3. Summary cards
-          Row(
-            children: [
-              Expanded(
-                child: FFMetricCard(
-                  label: context.tr('owner.totalMembers'),
-                  value: '$periodMembers',
-                  trendDirection: membersTrendDir,
-                  trendLabel: membersTrendLabel,
-                  icon: const Icon(
-                    Icons.people_outline,
-                    color: FFTokens.brand600,
-                    size: 20,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FFMetricCard(
-                  label: context.tr('owner.checkins'),
-                  value: '$periodVisits',
-                  trendDirection: visitsTrendDir,
-                  trendLabel: visitsTrendLabel,
-                  icon: const Icon(
-                    Icons.check_circle_outline,
-                    color: FFTokens.brand600,
-                    size: 20,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: FFTokens.spacingLg),
-
-          // 4. Quick actions
-          FFCard(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            child: IntrinsicHeight(
-              child: Row(
-                children: [
-                  _buildQuickAction(
-                    context,
-                    icon: Icons.qr_code_scanner,
-                    title: context.tr('owner.checkin'),
-                    onTap: () => context.push('/owner/scan'),
-                  ),
-                  _buildActionDivider(context),
-                  _buildQuickAction(
-                    context,
-                    icon: Icons.wallet_outlined,
-                    title: context.tr('owner.earnings'),
-                    onTap: () => context.push('/owner/earnings'),
-                  ),
-                  _buildActionDivider(context),
-                  _buildQuickAction(
-                    context,
-                    icon: Icons.shopping_bag_outlined,
-                    title: context.tr('owner.shop'),
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(context.tr('owner.shopComingSoon')),
-                        ),
-                      );
-                    },
-                  ),
-                  _buildActionDivider(context),
-                  _buildQuickAction(
-                    context,
-                    icon: Icons.people_outline,
-                    title: context.tr('owner.members'),
-                    onTap: () => context.go('/owner/members'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: FFTokens.spacingLg),
-
-          // 5. Grow your gym card
-          Container(
-            padding: const EdgeInsets.all(FFTokens.spacingMd),
-            decoration: BoxDecoration(
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
-                  : FFTokens.brand50,
-              borderRadius: BorderRadius.circular(FFTokens.radiusXl),
-              border: Border.all(
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? Theme.of(
-                        context,
-                      ).colorScheme.primary.withValues(alpha: 0.2)
-                    : FFTokens.brand100,
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.surfaceContainerHighest,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.trending_up,
-                    color: Theme.of(context).colorScheme.primary,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        context.tr('owner.growGym'),
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? Colors.white
-                              : FFTokens.brand800,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        context.tr('owner.growGymSubtitle'),
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? Colors.white.withValues(alpha: 0.8)
-                              : FFTokens.brand700,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: FFTokens.brand600,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 8,
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(context.tr('owner.reportsComingSoon')),
                     ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(FFTokens.radiusMd),
-                    ),
-                    elevation: 0,
-                  ),
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(context.tr('owner.reportsComingSoon')),
-                      ),
-                    );
-                  },
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        context.tr('owner.viewReports'),
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const Icon(Icons.chevron_right, size: 12),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: FFTokens.spacingLg),
-
-          // 6. Membership insight graph
-          FFCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  );
+                },
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      context.tr('owner.membershipOverview'),
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      context.tr('owner.viewReports'),
+                      style: const TextStyle(
+                        fontSize: 11,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
+                    const Icon(Icons.chevron_right, size: 12),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: FFTokens.spacingLg),
+
+        // 6. Membership insight graph
+        FFCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    context.tr('owner.membershipOverview'),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.outlineVariant,
                       ),
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: Theme.of(context).colorScheme.outlineVariant,
+                      borderRadius: BorderRadius.circular(FFTokens.radiusMd),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _presetLabel(context),
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(fontWeight: FontWeight.bold),
                         ),
-                        borderRadius: BorderRadius.circular(FFTokens.radiusMd),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.keyboard_arrow_down, size: 12),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              if (!showChart) ...[
+                // Empty State
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const Center(
+                        child: Icon(
+                          Icons.bar_chart_outlined,
+                          size: 48,
+                          color: Colors.grey,
+                        ),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            _presetLabel(context),
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(width: 4),
-                          const Icon(Icons.keyboard_arrow_down, size: 12),
-                        ],
+                      const SizedBox(height: 12),
+                      Text(
+                        context.tr('owner.noMembershipData'),
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        context.tr('owner.noMembershipDataSub'),
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ] else ...[
+                // Legends
+                Row(
+                  children: [
+                    _buildLegendItem(
+                      context,
+                      FFTokens.brand600,
+                      context.tr('owner.directMembers'),
+                    ),
+                    const SizedBox(width: 16),
+                    _buildLegendItem(
+                      context,
+                      FFTokens.brand200,
+                      context.tr('owner.fitflexRoaming'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // Simple line chart using custom paint
+                SizedBox(
+                  height: 150,
+                  width: double.infinity,
+                  child: CustomPaint(
+                    painter: MembershipLineChartPainter(
+                      directPoints: chartDirect,
+                      fitflexPoints: chartFitflex,
+                      labels: chartLabels,
+                      isDark: Theme.of(context).brightness == Brightness.dark,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Divider(),
+                const SizedBox(height: 12),
+                // Insights underneath
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildChartDetail(
+                        context,
+                        bulletColor: FFTokens.brand600,
+                        title: context.tr('owner.directMembers'),
+                        value: '$directCount',
+                        trendDir: membersTrendDir,
+                        trendPct: membersTrendLabel,
+                      ),
+                    ),
+                    Container(
+                      height: 45,
+                      width: 1,
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                    ),
+                    Expanded(
+                      child: _buildChartDetail(
+                        context,
+                        bulletColor: FFTokens.brand200,
+                        title: context.tr('owner.fitflexRoaming'),
+                        value: '$fitflexCount',
+                        trendDir: visitsTrendDir,
+                        trendPct: visitsTrendLabel,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                if (!showChart) ...[
-                  // Empty State
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 24),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        const Center(
-                          child: Icon(
-                            Icons.bar_chart_outlined,
-                            size: 48,
-                            color: Colors.grey,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          context.tr('owner.noMembershipData'),
-                          style: Theme.of(context).textTheme.titleSmall
-                              ?.copyWith(fontWeight: FontWeight.bold),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          context.tr('owner.noMembershipDataSub'),
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
-                              ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  ),
-                ] else ...[
-                  // Legends
-                  Row(
-                    children: [
-                      _buildLegendItem(
-                        context,
-                        FFTokens.brand600,
-                        context.tr('owner.directMembers'),
-                      ),
-                      const SizedBox(width: 16),
-                      _buildLegendItem(
-                        context,
-                        FFTokens.brand200,
-                        context.tr('owner.fitflexRoaming'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  // Simple line chart using custom paint
-                  SizedBox(
-                    height: 150,
-                    width: double.infinity,
-                    child: CustomPaint(
-                      painter: MembershipLineChartPainter(
-                        directPoints: chartDirect,
-                        fitflexPoints: chartFitflex,
-                        labels: chartLabels,
-                        isDark: Theme.of(context).brightness == Brightness.dark,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Divider(),
-                  const SizedBox(height: 12),
-                  // Insights underneath
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildChartDetail(
-                          context,
-                          bulletColor: FFTokens.brand600,
-                          title: context.tr('owner.directMembers'),
-                          value: '$directCount',
-                          trendDir: membersTrendDir,
-                          trendPct: membersTrendLabel,
-                        ),
-                      ),
-                      Container(
-                        height: 45,
-                        width: 1,
-                        color: Theme.of(context).colorScheme.outlineVariant,
-                      ),
-                      Expanded(
-                        child: _buildChartDetail(
-                          context,
-                          bulletColor: FFTokens.brand200,
-                          title: context.tr('owner.fitflexRoaming'),
-                          value: '$fitflexCount',
-                          trendDir: visitsTrendDir,
-                          trendPct: visitsTrendLabel,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
               ],
-            ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 

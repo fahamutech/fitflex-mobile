@@ -329,6 +329,118 @@ class ApiClient {
     Map<String, dynamic> data,
   ) async => await _request('POST', '/owner/members', body: data);
 
+  Future<Map<String, dynamic>> ownerUpdateMember(
+    String memberId,
+    Map<String, dynamic> data,
+  ) async => await _request('PATCH', '/owner/members/$memberId', body: data);
+
+  // Owner member management
+  Future<Map<String, dynamic>> ownerMembers({
+    String? gymId,
+    String? memberType,
+    String? status,
+    String? search,
+  }) async {
+    final query = <String, String>{
+      if (gymId != null && gymId.isNotEmpty) 'gymId': gymId,
+      if (memberType != null && memberType.isNotEmpty && memberType != 'all')
+        'memberType': memberType,
+      if (status != null && status.isNotEmpty && status != 'all')
+        'status': status,
+      if (search != null && search.trim().isNotEmpty) 'search': search.trim(),
+    };
+    final path = query.isEmpty
+        ? '/owner/members'
+        : '/owner/members?${Uri(queryParameters: query).query}';
+    return await _request('GET', path);
+  }
+
+  Future<Map<String, dynamic>> ownerMemberDetail(String memberId) async =>
+      await _request('GET', '/owner/members/$memberId');
+
+  Future<Map<String, dynamic>> ownerMemberCheckInSummary(
+    String memberId, {
+    String? period,
+    String? from,
+    String? to,
+  }) async {
+    final query = <String, String>{
+      if (period != null && period.isNotEmpty) 'period': period,
+      if (from != null && from.isNotEmpty) 'from': from,
+      if (to != null && to.isNotEmpty) 'to': to,
+    };
+    final path = query.isEmpty
+        ? '/owner/members/$memberId/checkin-summary'
+        : '/owner/members/$memberId/checkin-summary?${Uri(queryParameters: query).query}';
+    return await _request('GET', path);
+  }
+
+  Future<Map<String, dynamic>> ownerMemberCheckins(
+    String memberId, {
+    int? cursor,
+    int? limit,
+    String? from,
+    String? to,
+    String? search,
+  }) async {
+    final query = <String, String>{
+      if (cursor != null) 'cursor': '$cursor',
+      if (limit != null) 'limit': '$limit',
+      if (from != null && from.isNotEmpty) 'from': from,
+      if (to != null && to.isNotEmpty) 'to': to,
+      if (search != null && search.trim().isNotEmpty) 'search': search.trim(),
+    };
+    final path = query.isEmpty
+        ? '/owner/members/$memberId/checkins'
+        : '/owner/members/$memberId/checkins?${Uri(queryParameters: query).query}';
+    return await _request('GET', path);
+  }
+
+  Future<Map<String, dynamic>> ownerMemberPayments(
+    String memberId, {
+    int? cursor,
+    int? limit,
+    String? from,
+    String? to,
+    String? search,
+  }) async {
+    final query = <String, String>{
+      if (cursor != null) 'cursor': '$cursor',
+      if (limit != null) 'limit': '$limit',
+      if (from != null && from.isNotEmpty) 'from': from,
+      if (to != null && to.isNotEmpty) 'to': to,
+      if (search != null && search.trim().isNotEmpty) 'search': search.trim(),
+    };
+    final path = query.isEmpty
+        ? '/owner/members/$memberId/payments'
+        : '/owner/members/$memberId/payments?${Uri(queryParameters: query).query}';
+    return await _request('GET', path);
+  }
+
+  Future<Map<String, dynamic>> ownerCheckInMember(
+    String memberId, {
+    String? gymId,
+  }) async => await _request(
+    'POST',
+    '/owner/members/$memberId/checkin',
+    body: {'gymId': ?gymId},
+  );
+
+  Future<Map<String, dynamic>> ownerRenewMember(
+    String memberId,
+    Map<String, dynamic> data,
+  ) async =>
+      await _request('POST', '/owner/members/$memberId/renew', body: data);
+
+  Future<Map<String, dynamic>> ownerSuspendMember(
+    String memberId, {
+    required bool suspend,
+  }) async => await _request(
+    'POST',
+    '/owner/members/$memberId/suspend',
+    body: {'suspend': suspend},
+  );
+
   // Subscription tiers
   Future<List<dynamic>> subscriptionTiers() async =>
       await _request('GET', '/subscription-tiers');

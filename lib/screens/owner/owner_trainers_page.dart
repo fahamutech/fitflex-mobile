@@ -44,7 +44,9 @@ class OwnerTrainersPage extends StatelessWidget {
                 hasScrollBody: false,
                 child: Padding(
                   padding: const EdgeInsets.all(FFTokens.spacingLg),
-                  child: FFEmptyState(title: context.tr('member.noData')),
+                  child: _EmptyTrainers(
+                    onAdd: () => _showAddTrainerDialog(context),
+                  ),
                 ),
               )
             else
@@ -320,4 +322,29 @@ class _OwnerTrainerGridCard extends StatelessWidget {
       ),
     ),
   );
+}
+
+class _EmptyTrainers extends StatelessWidget {
+  const _EmptyTrainers({required this.onAdd});
+
+  final VoidCallback onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: FFTokens.spacingXl),
+      child: FFEmptyState(
+        title: context.tr('owner.noTrainersTitle'),
+        body: context.tr('owner.noTrainersBody'),
+        action: SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: onAdd,
+            icon: const Icon(Icons.person_add_outlined, size: FFTokens.iconMd),
+            label: Text(context.tr('owner.addTrainer')),
+          ),
+        ),
+      ),
+    );
+  }
 }

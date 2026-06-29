@@ -13,7 +13,11 @@ import 'screens/trainer/trainer_registration_page.dart';
 import 'screens/trainer/trainer_home_page.dart';
 import 'screens/owner/owner_registration_page.dart';
 import 'screens/owner/owner_qr_scanner_page.dart';
+import 'screens/owner/owner_shop_page.dart';
 import 'screens/owner/owner_shell.dart';
+import 'screens/owner/members/members_list_page.dart';
+import 'screens/owner/members/member_detail_page.dart';
+import 'screens/owner/members/member_history_page.dart';
 
 /// Route path constants.
 abstract class AppRoutes {
@@ -35,10 +39,14 @@ abstract class AppRoutes {
   static const ownerGyms = '/owner/gyms';
   static const ownerGymCheckins = '/owner/gyms/:gymId/checkins';
   static const ownerMembers = '/owner/members';
+  static const ownerMemberDetail = '/owner/members/:memberId';
+  static const ownerMemberCheckins = '/owner/members/:memberId/checkins';
+  static const ownerMemberPayments = '/owner/members/:memberId/payments';
   static const ownerTrainers = '/owner/trainers';
   static const ownerProfile = '/owner/profile';
   static const ownerQrScanner = '/owner/scan';
   static const ownerEarnings = '/owner/earnings';
+  static const ownerShop = '/owner/shop';
 
   // Member sub-routes (shell)
   static const memberOnboarding = '/member/onboarding';
@@ -132,7 +140,8 @@ GoRouter buildRouter(AuthState auth) {
         }
         if (loc != AppRoutes.pending &&
             loc != AppRoutes.trainerRegistration &&
-            loc != AppRoutes.ownerRegistration) {
+            loc != AppRoutes.ownerRegistration &&
+            loc != AppRoutes.ownerProfile) {
           return AppRoutes.pending;
         }
         return null;
@@ -255,6 +264,11 @@ GoRouter buildRouter(AuthState auth) {
         builder: (context, state) => const OwnerEarningsPage(),
       ),
       GoRoute(
+        path: AppRoutes.ownerShop,
+        name: 'ownerShop',
+        builder: (context, state) => const OwnerShopPage(),
+      ),
+      GoRoute(
         path: AppRoutes.ownerGymCheckins,
         name: 'ownerGymCheckins',
         builder: (context, state) {
@@ -266,6 +280,28 @@ GoRouter buildRouter(AuthState auth) {
         path: AppRoutes.ownerProfile,
         name: 'ownerProfile',
         builder: (context, state) => const OwnerProfilePage(),
+      ),
+      GoRoute(
+        path: AppRoutes.ownerMemberDetail,
+        name: 'ownerMemberDetail',
+        builder: (context, state) =>
+            MemberDetailPage(memberId: state.pathParameters['memberId']!),
+      ),
+      GoRoute(
+        path: AppRoutes.ownerMemberCheckins,
+        name: 'ownerMemberCheckins',
+        builder: (context, state) => MemberHistoryPage(
+          memberId: state.pathParameters['memberId']!,
+          kind: MemberHistoryKind.checkins,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.ownerMemberPayments,
+        name: 'ownerMemberPayments',
+        builder: (context, state) => MemberHistoryPage(
+          memberId: state.pathParameters['memberId']!,
+          kind: MemberHistoryKind.payments,
+        ),
       ),
       // Owner shell with bottom nav
       ShellRoute(
@@ -285,7 +321,7 @@ GoRouter buildRouter(AuthState auth) {
           GoRoute(
             path: AppRoutes.ownerMembers,
             name: 'ownerMembers',
-            builder: (context, state) => const OwnerCheckinsPage(),
+            builder: (context, state) => const OwnerMembersPage(),
           ),
           GoRoute(
             path: AppRoutes.ownerTrainers,

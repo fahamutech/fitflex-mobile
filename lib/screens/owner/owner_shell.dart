@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app_scope.dart';
 import '../../shared/api_client.dart';
-import '../../shared/components/theme_toggle_button.dart';
+import '../../shared/components/components.dart';
 import '../../shared/i18n.dart';
 
 export 'owner_checkins_page.dart';
@@ -51,6 +51,11 @@ class OwnerDataScope extends InheritedNotifier<OwnerData> {
     final scope = context.dependOnInheritedWidgetOfExactType<OwnerDataScope>();
     assert(scope != null, 'OwnerDataScope missing');
     return scope!.notifier!;
+  }
+
+  static OwnerData? maybeOf(BuildContext context) {
+    final scope = context.getInheritedWidgetOfExactType<OwnerDataScope>();
+    return scope?.notifier;
   }
 }
 
@@ -173,6 +178,15 @@ class OwnerShellState extends State<OwnerShell> {
     }
   }
 
+  String _getInitials(String name) {
+    final parts = name.trim().split(' ');
+    if (parts.isEmpty) return 'O';
+    if (parts.length == 1) {
+      return parts[0].substring(0, parts[0].length >= 2 ? 2 : 1).toUpperCase();
+    }
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+
   void _onTab(int index) {
     if (_data.ownerGyms.isEmpty && (index == 1 || index == 2 || index == 3)) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -194,8 +208,30 @@ class OwnerShellState extends State<OwnerShell> {
     return OwnerDataScope(
       data: _data,
       child: Scaffold(
-        appBar: _tabIndex == 0
+        appBar: _tabIndex == 2
             ? null
+            : _tabIndex == 0
+            ? FFOwnerDashboardBar(
+                selectedGymName: _data.ownerGyms.isNotEmpty
+                    ? (_data.ownerGyms.first['name']?.toString() ??
+                          context.tr('owner.pendingApproval'))
+                    : context.tr('owner.pendingApproval'),
+                initials: _getInitials(_data.displayName),
+                ownerGyms: _data.ownerGyms,
+                subtitleLabel: context.tr('owner.dashboard'),
+                onGymSelected: (gymId) async {
+                  _data.update((d) => d.dashboardGymId = gymId);
+                  await refreshDashboard();
+                  if (mounted) setState(() {});
+                },
+                onAvatarTap: () => context.push('/owner/profile'),
+                onNotificationTap: () =>
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(context.tr('owner.noNotifications')),
+                      ),
+                    ),
+              )
             : AppBar(title: Text(_title), actions: const [ThemeToggleButton()]),
         body: RefreshIndicator(onRefresh: refreshAll, child: widget.child),
         bottomNavigationBar: NavigationBar(
