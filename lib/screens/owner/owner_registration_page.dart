@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -68,22 +70,66 @@ class _OwnerRegistrationPageState extends State<OwnerRegistrationPage> {
     super.dispose();
   }
 
-  Future<List<String>> _encodeImages(List<String> paths) async {
-    final encoded = <String>[];
+  static const int _fullMaxDimension = 1280;
+  static const int _fullWebpQuality = 80;
+  static const int _thumbMaxDimension = 320;
+  static const int _thumbWebpQuality = 70;
+
+  Future<String?> _compressToWebpDataUrl(
+    String path, {
+    required int maxDimension,
+    required int quality,
+  }) async {
+    try {
+      final Uint8List? bytes = await FlutterImageCompress.compressWithFile(
+        path,
+        minWidth: maxDimension,
+        minHeight: maxDimension,
+        quality: quality,
+        format: CompressFormat.webp,
+      );
+      if (bytes == null) return null;
+      return 'data:image/webp;base64,${base64Encode(bytes)}';
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Converts local image paths to WebP data URIs, returning parallel
+  /// full-size and thumbnail lists.
+  Future<(List<String>, List<String>)> _encodeImages(List<String> paths) async {
+    final images = <String>[];
+    final thumbnails = <String>[];
     for (final path in paths) {
       try {
         final file = File(path);
-        if (await file.exists()) {
+        if (!await file.exists()) continue;
+        final fullWebp = await _compressToWebpDataUrl(
+          path,
+          maxDimension: _fullMaxDimension,
+          quality: _fullWebpQuality,
+        );
+        final thumbWebp = await _compressToWebpDataUrl(
+          path,
+          maxDimension: _thumbMaxDimension,
+          quality: _thumbWebpQuality,
+        );
+        if (fullWebp != null) {
+          images.add(fullWebp);
+          thumbnails.add(thumbWebp ?? fullWebp);
+        } else {
           final bytes = await file.readAsBytes();
           final ext = path.split('.').last.toLowerCase();
           final mime = ext == 'png' ? 'image/png' : 'image/jpeg';
-          encoded.add('data:$mime;base64,${base64Encode(bytes)}');
+          final dataUrl = 'data:$mime;base64,${base64Encode(bytes)}';
+          images.add(dataUrl);
+          thumbnails.add(dataUrl);
         }
       } catch (_) {
         // Skip unreadable files
       }
     }
-    return encoded;
+    return (images, thumbnails);
   }
 
   Future<void> _submit() async {
@@ -96,7 +142,9 @@ class _OwnerRegistrationPageState extends State<OwnerRegistrationPage> {
       for (final g in _gyms) {
         final json = g.toJson();
         if (g.imagePaths.isNotEmpty) {
-          json['images'] = await _encodeImages(g.imagePaths);
+          final (images, thumbnails) = await _encodeImages(g.imagePaths);
+          json['images'] = images;
+          json['thumbnails'] = thumbnails;
         }
         gymPayloads.add(json);
       }

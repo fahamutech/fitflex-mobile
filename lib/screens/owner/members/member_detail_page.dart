@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app_scope.dart';
 import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
+import '../../../shared/formatters.dart';
 import '../../../shared/i18n.dart';
 import '../owner_shell.dart';
 import 'data/member_models.dart';
@@ -729,7 +730,7 @@ class _PaymentHistoryCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            'TZS ${_money(p.amountTzs)}',
+                            formatCurrency(p.amountTzs),
                             style: theme.textTheme.labelLarge?.copyWith(
                               fontWeight: FontWeight.w700,
                             ),
@@ -751,16 +752,6 @@ class _PaymentHistoryCard extends StatelessWidget {
 
   static String _cap(String v) =>
       v.isEmpty ? v : '${v[0].toUpperCase()}${v.substring(1)}';
-
-  static String _money(num v) {
-    final s = v.toInt().toString();
-    final buf = StringBuffer();
-    for (var i = 0; i < s.length; i++) {
-      if (i > 0 && (s.length - i) % 3 == 0) buf.write(',');
-      buf.write(s[i]);
-    }
-    return buf.toString();
-  }
 }
 
 class _ActionBar extends StatelessWidget {

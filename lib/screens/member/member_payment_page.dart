@@ -6,6 +6,7 @@ import '../../app_scope.dart';
 import '../../router.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
+import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
 import '../../shared/api_client.dart';
 import '../../shared/models.dart';
@@ -77,7 +78,7 @@ class MemberPaymentPage extends StatelessWidget {
                     'dd MMM yyyy',
                   ).format(DateTime.now().add(const Duration(days: 30))),
                 ),
-                _Row(label: 'Total', value: 'TZS $price'),
+                _Row(label: 'Total', value: formatCurrency(price)),
               ],
             ),
           ),

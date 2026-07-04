@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../app_scope.dart';
@@ -41,8 +43,19 @@ class _GymFormPageState extends State<GymFormPage> {
   double? _lng;
 
   /// Mix of existing remote URLs/data-URIs (kept as-is) and new local file
-  /// paths (encoded to base64 on save).
+  /// paths (converted to WebP + encoded to base64 on save).
   final List<String> _images = [];
+
+  /// Small WebP thumbnail counterpart for each entry in [_images] (same
+  /// index = same photo). `null` means "not generated yet" — filled in on
+  /// save, either by compressing a new local file or reusing an existing
+  /// pre-thumbnail image as its own thumbnail.
+  final List<String?> _thumbnails = [];
+
+  static const int _fullMaxDimension = 1280;
+  static const int _fullWebpQuality = 80;
+  static const int _thumbMaxDimension = 320;
+  static const int _thumbWebpQuality = 70;
 
   /// Selected trainer ids
   final List<String> _trainerIds = [];
@@ -75,6 +88,13 @@ class _GymFormPageState extends State<GymFormPage> {
     final imgs = g['images'];
     if (imgs is List) {
       _images.addAll(imgs.whereType<String>());
+    }
+    final thumbs = g['thumbnails'];
+    final existingThumbs = thumbs is List
+        ? thumbs.whereType<String>().toList()
+        : <String>[];
+    for (var i = 0; i < _images.length; i++) {
+      _thumbnails.add(i < existingThumbs.length ? existingThumbs[i] : null);
     }
     final tids = g['trainerIds'];
     if (tids is List) {
@@ -143,38 +163,90 @@ class _GymFormPageState extends State<GymFormPage> {
       imageQuality: 80,
     );
     if (files.isNotEmpty) {
-      setState(() => _images.addAll(files.map((file) => file.path)));
+      setState(() {
+        _images.addAll(files.map((file) => file.path));
+        _thumbnails.addAll(List<String?>.filled(files.length, null));
+      });
     }
   }
 
-  Future<List<String>> _encodeImages() async {
-    final out = <String>[];
-    for (final p in _images) {
+  /// Downscales+re-encodes a local image file as WebP. Returns `null` if the
+  /// file can't be read or compressed (e.g. unsupported platform/format).
+  Future<String?> _compressToWebpDataUrl(
+    String path, {
+    required int maxDimension,
+    required int quality,
+  }) async {
+    try {
+      final Uint8List? bytes = await FlutterImageCompress.compressWithFile(
+        path,
+        minWidth: maxDimension,
+        minHeight: maxDimension,
+        quality: quality,
+        format: CompressFormat.webp,
+      );
+      if (bytes == null) return null;
+      return 'data:image/webp;base64,${base64Encode(bytes)}';
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Builds the final `images`/`thumbnails` payload arrays. New local files
+  /// are converted to WebP (full + thumbnail); pre-existing remote
+  /// URLs/data-URIs are kept as-is, reusing the full image as its own
+  /// thumbnail when no dedicated thumbnail was recorded.
+  Future<(List<String>, List<String>)> _encodeImages() async {
+    final outImages = <String>[];
+    final outThumbnails = <String>[];
+    for (var i = 0; i < _images.length; i++) {
+      final p = _images[i];
+      final existingThumb = i < _thumbnails.length ? _thumbnails[i] : null;
+
       // Pre-existing remote URL or data URI — keep as-is.
       if (p.startsWith('http') || p.startsWith('data:')) {
-        out.add(p);
+        outImages.add(p);
+        outThumbnails.add(existingThumb ?? p);
         continue;
       }
+
       try {
         final f = File(p);
-        if (await f.exists()) {
+        if (!await f.exists()) continue;
+        final fullWebp = await _compressToWebpDataUrl(
+          p,
+          maxDimension: _fullMaxDimension,
+          quality: _fullWebpQuality,
+        );
+        final thumbWebp = await _compressToWebpDataUrl(
+          p,
+          maxDimension: _thumbMaxDimension,
+          quality: _thumbWebpQuality,
+        );
+        if (fullWebp != null) {
+          outImages.add(fullWebp);
+          outThumbnails.add(thumbWebp ?? fullWebp);
+        } else {
+          // Compression unavailable (e.g. web) — fall back to the raw bytes.
           final bytes = await f.readAsBytes();
           final ext = p.split('.').last.toLowerCase();
           final mime = ext == 'png' ? 'image/png' : 'image/jpeg';
-          out.add('data:$mime;base64,${base64Encode(bytes)}');
+          final dataUrl = 'data:$mime;base64,${base64Encode(bytes)}';
+          outImages.add(dataUrl);
+          outThumbnails.add(dataUrl);
         }
       } catch (_) {
         // Skip unreadable file
       }
     }
-    return out;
+    return (outImages, outThumbnails);
   }
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _busy = true);
     try {
-      final images = await _encodeImages();
+      final (images, thumbnails) = await _encodeImages();
       final payload = <String, dynamic>{
         'name': _nameCtrl.text.trim(),
         'location': _locationCtrl.text.trim(),
@@ -188,6 +260,7 @@ class _GymFormPageState extends State<GymFormPage> {
         if (_lat != null && _lng != null)
           'coordinates': {'lat': _lat, 'lng': _lng},
         'images': images,
+        'thumbnails': thumbnails,
         'trainerIds': List<String>.from(_trainerIds),
       };
       if (!mounted) return;
@@ -389,7 +462,12 @@ class _GymFormPageState extends State<GymFormPage> {
                             top: 2,
                             right: 2,
                             child: GestureDetector(
-                              onTap: () => setState(() => _images.removeAt(i)),
+                              onTap: () => setState(() {
+                                _images.removeAt(i);
+                                if (i < _thumbnails.length) {
+                                  _thumbnails.removeAt(i);
+                                }
+                              }),
                               child: Container(
                                 padding: const EdgeInsets.all(2),
                                 decoration: const BoxDecoration(

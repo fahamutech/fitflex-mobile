@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'shared/auth_state.dart';
+import 'screens/splash_screen.dart';
 import 'screens/language_screen.dart';
 import 'screens/role_screen.dart';
 import 'screens/auth_screen.dart';
+import 'screens/sign_up_screen.dart';
 import 'screens/email_auth_screen.dart';
 import 'screens/member/member_shell.dart';
 import 'screens/member/member_shop_tab.dart';
@@ -21,9 +23,11 @@ import 'screens/owner/members/member_history_page.dart';
 
 /// Route path constants.
 abstract class AppRoutes {
-  static const language = '/';
+  static const splash = '/';
+  static const language = '/language';
   static const role = '/role';
   static const auth = '/auth';
+  static const signUp = '/auth/signup';
   static const emailAuth = '/auth/email';
   static const googleWebCallback = '/auth/google-web-callback';
   static const pending = '/pending';
@@ -103,7 +107,7 @@ String routeForSignedInUser(AuthState auth) {
 
 GoRouter buildRouter(AuthState auth) {
   return GoRouter(
-    initialLocation: AppRoutes.language,
+    initialLocation: AppRoutes.splash,
     debugLogDiagnostics: false,
     refreshListenable: auth,
     redirect: (context, state) {
@@ -111,11 +115,15 @@ GoRouter buildRouter(AuthState auth) {
       final isPending = auth.isPendingApproval;
       final loc = state.matchedLocation;
 
+      // Splash controls its own transition; skip auth redirects while showing.
+      if (loc == AppRoutes.splash) return null;
+
       // Public routes that don't need auth
       final publicRoutes = [
         AppRoutes.language,
         AppRoutes.role,
         AppRoutes.auth,
+        AppRoutes.signUp,
         AppRoutes.emailAuth,
         AppRoutes.googleWebCallback,
       ];
@@ -176,6 +184,11 @@ GoRouter buildRouter(AuthState auth) {
     },
     routes: [
       GoRoute(
+        path: AppRoutes.splash,
+        name: 'splash',
+        builder: (context, state) => const SplashScreen(),
+      ),
+      GoRoute(
         path: AppRoutes.language,
         name: 'language',
         builder: (context, state) => const LanguageScreen(),
@@ -189,6 +202,32 @@ GoRouter buildRouter(AuthState auth) {
         path: AppRoutes.auth,
         name: 'auth',
         builder: (context, state) => const AuthScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.signUp,
+        name: 'signUp',
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const SignUpScreen(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SlideTransition(
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(0, 0.05),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                  ),
+              child: FadeTransition(
+                opacity: CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.easeOut,
+                ),
+                child: child,
+              ),
+            );
+          },
+        ),
       ),
       GoRoute(
         path: AppRoutes.emailAuth,

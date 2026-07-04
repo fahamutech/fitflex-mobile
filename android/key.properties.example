@@ -1,0 +1,10 @@
+# Copy this file to `android/key.properties` (git-ignored) and fill in your
+# own values. Never commit the real file or your .jks keystore.
+#
+# Generate the upload keystore first, e.g.:
+#   ./scripts/generate_release_keystore.sh
+#
+storePassword=CHANGE_ME
+keyPassword=CHANGE_ME
+keyAlias=fitflexaf-upload
+storeFile=../fitflexaf-upload-keystore.jks

@@ -1,4 +1,4 @@
-package com.example.fitflexmobile
+package com.fitflexafrica.mobile
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../i18n.dart';
@@ -43,13 +44,35 @@ class _FFPhotoPickerFieldState extends State<FFPhotoPickerField> {
         imageQuality: 80,
       );
       if (file == null || !mounted) return;
-      final bytes = kIsWeb
-          ? await file.readAsBytes()
-          : await File(file.path).readAsBytes();
-      final b64 = base64Encode(bytes);
-      final ext = file.name.split('.').last.toLowerCase();
-      final mime = ext == 'png' ? 'image/png' : 'image/jpeg';
-      widget.onChanged('data:$mime;base64,$b64');
+
+      // Convert to WebP for a smaller payload; fall back to the raw picked
+      // bytes if native compression is unavailable (e.g. some web setups).
+      Uint8List? webpBytes;
+      if (!kIsWeb) {
+        try {
+          webpBytes = await FlutterImageCompress.compressWithFile(
+            file.path,
+            minWidth: 800,
+            minHeight: 800,
+            quality: 80,
+            format: CompressFormat.webp,
+          );
+        } catch (_) {
+          webpBytes = null;
+        }
+      }
+
+      if (webpBytes != null) {
+        widget.onChanged('data:image/webp;base64,${base64Encode(webpBytes)}');
+      } else {
+        final bytes = kIsWeb
+            ? await file.readAsBytes()
+            : await File(file.path).readAsBytes();
+        final b64 = base64Encode(bytes);
+        final ext = file.name.split('.').last.toLowerCase();
+        final mime = ext == 'png' ? 'image/png' : 'image/jpeg';
+        widget.onChanged('data:$mime;base64,$b64');
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }

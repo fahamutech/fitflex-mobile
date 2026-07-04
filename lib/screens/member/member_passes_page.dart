@@ -6,6 +6,7 @@ import '../../app_scope.dart';
 import '../../router.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
+import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
 import 'member_shell.dart';
@@ -188,7 +189,7 @@ class _PendingBlockCard extends StatelessWidget {
           ),
           _DetailRow(
             label: context.tr('member.paymentPendingAmount'),
-            value: 'TZS ${pending.amountTzs}',
+            value: formatCurrency(pending.amountTzs),
           ),
           _DetailRow(
             label: context.tr('member.paymentPendingStatus'),
@@ -328,7 +329,7 @@ class _SelectablePass extends StatelessWidget {
                 ),
               ),
               Text(
-                'TZS ${pass.price}',
+                formatCurrency(pass.price),
                 style: Theme.of(context).textTheme.titleSmall,
               ),
               if (selected) ...[

@@ -35,6 +35,7 @@ class _AuthScreenState extends State<AuthScreen>
   bool _busy = false;
   bool _recovering = false;
   bool _isValidInput = false;
+  String? _inputError;
 
   late final AnimationController _animController;
   late final Animation<double> _fadeAnim;
@@ -72,8 +73,11 @@ class _AuthScreenState extends State<AuthScreen>
     final isPhone = RegExp(r'^\+?[0-9]{7,15}$').hasMatch(text);
 
     final isValid = isEmail || isPhone;
-    if (_isValidInput != isValid) {
-      setState(() => _isValidInput = isValid);
+    if (_isValidInput != isValid || (isValid && _inputError != null)) {
+      setState(() {
+        _isValidInput = isValid;
+        if (isValid) _inputError = null;
+      });
     }
   }
 
@@ -187,6 +191,15 @@ class _AuthScreenState extends State<AuthScreen>
     context.push(path);
   }
 
+  void _attemptContinue({EmailAuthMode mode = EmailAuthMode.signIn}) {
+    if (!_isValidInput) {
+      setState(() => _inputError = context.tr('auth.invalidEmailOrPhone'));
+      return;
+    }
+    setState(() => _inputError = null);
+    _continueWithEmail(mode: mode);
+  }
+
   @override
   Widget build(BuildContext context) {
     final loading = _busy || _recovering;
@@ -223,7 +236,7 @@ class _AuthScreenState extends State<AuthScreen>
                       ),
                       const SizedBox(height: 36),
                       // Google sign-in
-                      _GoogleSignInButton(
+                      FFGoogleSignInButton(
                         label: context
                             .tr('auth.continueWithGoogle')
                             .toUpperCase(),
@@ -231,7 +244,7 @@ class _AuthScreenState extends State<AuthScreen>
                         loading: _busy,
                       ),
                       const SizedBox(height: 28),
-                      _DividerLabel(label: context.tr('auth.or')),
+                      FFDividerLabel(label: context.tr('auth.or')),
                       const SizedBox(height: 28),
                       // Email/Phone field
                       FFTextField(
@@ -240,18 +253,17 @@ class _AuthScreenState extends State<AuthScreen>
                         keyboardType: TextInputType.emailAddress,
                         autofillHints: const [AutofillHints.email],
                         hint: context.tr('auth.emailOrPhone'),
+                        errorText: _inputError,
                         prefixIcon: const Icon(Icons.mail_outline_rounded),
                         textInputAction: TextInputAction.done,
-                        onFieldSubmitted: _isValidInput && !loading
-                            ? (_) => _continueWithEmail()
-                            : null,
+                        onFieldSubmitted: loading
+                            ? null
+                            : (_) => _attemptContinue(),
                       ),
                       const SizedBox(height: 24),
                       // CONTINUE button
                       FilledButton(
-                        onPressed: loading || !_isValidInput
-                            ? null
-                            : _continueWithEmail,
+                        onPressed: loading ? null : () => _attemptContinue(),
                         child: loading
                             ? FFSpinner(
                                 size: 18,
@@ -299,9 +311,7 @@ class _AuthScreenState extends State<AuthScreen>
                           TextButton(
                             onPressed: loading
                                 ? null
-                                : () => _continueWithEmail(
-                                    mode: EmailAuthMode.signUp,
-                                  ),
+                                : () => context.push(AppRoutes.signUp),
                             child: Text(context.tr('auth.createAccount')),
                           ),
                         ],
@@ -541,105 +551,6 @@ class _GoogleWebCallbackScreenState extends State<GoogleWebCallbackScreen> {
                       ],
                     ),
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _GoogleSignInButton extends StatelessWidget {
-  const _GoogleSignInButton({
-    required this.label,
-    required this.onTap,
-    required this.loading,
-  });
-
-  final String label;
-  final VoidCallback? onTap;
-  final bool loading;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Theme.of(context).colorScheme.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(FFTokens.radiusLg),
-        side: BorderSide(color: Theme.of(context).colorScheme.outline),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(FFTokens.radiusLg),
-        child: SizedBox(
-          height: 60,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: loading
-                ? [const FFSpinner(size: 20)]
-                : [
-                    const _GoogleMark(),
-                    const SizedBox(width: 14),
-                    Text(
-                      label,
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                  ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _DividerLabel extends StatelessWidget {
-  const _DividerLabel({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const Expanded(child: Divider()),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: FFTokens.spacingSm),
-          child: Text(
-            label,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ),
-        const Expanded(child: Divider()),
-      ],
-    );
-  }
-}
-
-class _GoogleMark extends StatelessWidget {
-  const _GoogleMark();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 28,
-      height: 28,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-      ),
-      child: const Center(
-        child: Text(
-          'G',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w900,
-            color: Color(0xFF4285F4),
           ),
         ),
       ),

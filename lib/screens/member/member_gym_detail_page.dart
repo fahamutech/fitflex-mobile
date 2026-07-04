@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../router.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
+import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
 import 'member_shell.dart';
@@ -146,7 +147,7 @@ class _MemberGymDetailPageState extends State<MemberGymDetailPage> {
             child: Text(
               gym.venueType == 'online'
                   ? context.tr('member.planBody')
-                  : '${context.tr('member.openNow')} - QR Check-in - ${gym.perVisitRate} TZS',
+                  : '${context.tr('member.openNow')} - QR Check-in - ${formatCurrency(gym.perVisitRate)}',
               style: TextStyle(
                 color: Theme.of(context).textTheme.bodySmall?.color,
                 height: 1.4,

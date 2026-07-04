@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
+import '../../../shared/formatters.dart';
 import '../../../shared/i18n.dart';
 import '../../../shared/models.dart';
 
@@ -87,7 +88,10 @@ class TrainerGridCard extends StatelessWidget {
                   ],
                   const SizedBox(height: 6),
                   Text(
-                    '${trainer.sessionRateCurrency} ${trainer.hourlyRateTzs}',
+                    formatCurrency(
+                      trainer.hourlyRateTzs,
+                      currency: trainer.sessionRateCurrency,
+                    ),
                     style: tt.labelSmall?.copyWith(
                       fontWeight: FontWeight.w700,
                       color: cs.primary,
@@ -194,7 +198,7 @@ class TrainerCard extends StatelessWidget {
               ),
             ),
             Text(
-              '${trainer.sessionRateCurrency} ${trainer.hourlyRateTzs}${context.tr('trainerReg.perSession')}',
+              '${formatCurrency(trainer.hourlyRateTzs, currency: trainer.sessionRateCurrency)}${context.tr('trainerReg.perSession')}',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,

@@ -1,4 +1,4 @@
-package com.example.fitflexmobile;
+package com.fitflexafrica.mobile;
 
 import androidx.test.platform.app.InstrumentationRegistry;
 import org.junit.Test;

@@ -11,6 +11,7 @@ class FFTextField extends StatelessWidget {
     this.initialValue,
     this.label,
     this.hint,
+    this.errorText,
     this.validator,
     this.keyboardType,
     this.obscureText = false,
@@ -28,6 +29,7 @@ class FFTextField extends StatelessWidget {
   final String? initialValue;
   final String? label;
   final String? hint;
+  final String? errorText;
   final FormFieldValidator<String>? validator;
   final TextInputType? keyboardType;
   final bool obscureText;
@@ -57,6 +59,7 @@ class FFTextField extends StatelessWidget {
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
+        errorText: errorText,
         prefixIcon: prefixIcon,
         suffixIcon: suffixIcon,
         alignLabelWithHint: maxLines > 1,

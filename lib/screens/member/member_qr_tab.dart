@@ -5,6 +5,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../router.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
+import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
 import 'member_shell.dart';
 import 'widgets/checkin_list.dart';
@@ -16,113 +17,27 @@ class MemberQrTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final data = MemberDataScope.of(context);
 
-    return ListView(
-      padding: const EdgeInsets.all(FFTokens.spacingLg),
-      children: [
-        if (data.pendingPayment != null) _PendingPaymentCard(data: data),
-        if (data.hasActivePass)
-          _QrCard(data: data)
-        else
-          _QrLockedCard(data: data),
-        const SizedBox(height: 12),
-        const _MarketplaceComingSoonCard(),
-        const SizedBox(height: 12),
-
-        // // Scan gym QR
-        // FFCard(
-        //   child: Column(
-        //     crossAxisAlignment: CrossAxisAlignment.start,
-        //     children: [
-        //       Text(
-        //         context.tr('member.scanGymQr'),
-        //         style: const TextStyle(
-        //           fontSize: 16,
-        //           fontWeight: FontWeight.w600,
-        //           color: FFTokens.fgPrimary,
-        //         ),
-        //       ),
-        //       const SizedBox(height: 4),
-        //       Text(
-        //         context.tr('home.qr'),
-        //         style: const TextStyle(
-        //           color: FFTokens.fgQuaternary,
-        //           fontSize: 14,
-        //         ),
-        //       ),
-        //       const SizedBox(height: 10),
-        //       FilledButton.icon(
-        //         onPressed: () {
-        //           ScaffoldMessenger.of(context).showSnackBar(
-        //             SnackBar(content: Text(context.tr('member.scanGymQr'))),
-        //           );
-        //         },
-        //         icon: const Icon(Icons.camera_alt, size: 18),
-        //         label: Text(context.tr('member.scanGymQr')),
-        //       ),
-        //     ],
-        //   ),
-        // ),
-
-        // Recent checkins
-        FFSectionTitle(context.tr('member.recentCheckins')),
-        CheckinList(checkins: data.checkins, limit: 5),
-      ],
-    );
-  }
-}
-
-class _MarketplaceComingSoonCard extends StatelessWidget {
-  const _MarketplaceComingSoonCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return FFCard(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          onPressed: () => context.go(AppRoutes.memberHome),
+          icon: const Icon(Icons.arrow_back),
+        ),
+        title: Text(context.tr('member.qr')),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(FFTokens.spacingLg),
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              border: Border.all(color: Theme.of(context).colorScheme.outline),
-              borderRadius: BorderRadius.circular(FFTokens.radiusXl),
-            ),
-            child: Icon(
-              Icons.storefront_outlined,
-              color: Theme.of(context).colorScheme.primary,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        context.tr('member.marketplace'),
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                    ),
-                    FFBadge(
-                      label: context.tr('member.marketplaceSoon'),
-                      tone: FFBadgeTone.gray,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  context.tr('member.marketplaceBody'),
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodySmall?.copyWith(height: 1.4),
-                ),
-              ],
-            ),
-          ),
+          if (data.pendingPayment != null) _PendingPaymentCard(data: data),
+          if (data.hasActivePass)
+            _QrCard(data: data)
+          else
+            _QrLockedCard(data: data),
+          const SizedBox(height: 12),
+
+          // Recent checkins
+          FFSectionTitle(context.tr('member.recentCheckins')),
+          CheckinList(checkins: data.checkins, limit: 5),
         ],
       ),
     );
@@ -266,7 +181,7 @@ class _PendingPaymentCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            '${pending.tier.toUpperCase()} - TZS ${pending.amountTzs}',
+            '${pending.tier.toUpperCase()} - ${formatCurrency(pending.amountTzs)}',
             style: TextStyle(
               color: Theme.of(context).textTheme.bodySmall?.color,
               fontSize: 14,

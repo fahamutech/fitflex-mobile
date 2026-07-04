@@ -122,7 +122,7 @@ class GymGridCard extends StatelessWidget {
               ),
               child: AspectRatio(
                 aspectRatio: 4 / 3,
-                child: gym.images.isEmpty
+                child: gym.coverThumbnail == null
                     ? Container(
                         color: cs.primary.withValues(alpha: 0.1),
                         child: Icon(
@@ -132,7 +132,7 @@ class GymGridCard extends StatelessWidget {
                         ),
                       )
                     : FFRemoteImage(
-                        src: gym.images.first,
+                        src: gym.coverThumbnail!,
                         width: double.infinity,
                         height: double.infinity,
                         fit: BoxFit.cover,
@@ -221,7 +221,8 @@ class _GymThumb extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (gym.images.isEmpty) {
+    final thumb = gym.coverThumbnail;
+    if (thumb == null) {
       return Container(
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
@@ -236,7 +237,7 @@ class _GymThumb extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(FFTokens.radiusMd),
       child: FFRemoteImage(
-        src: gym.images.first,
+        src: thumb,
         width: 72,
         height: 72,
         fit: BoxFit.cover,

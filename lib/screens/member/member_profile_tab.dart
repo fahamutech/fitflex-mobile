@@ -14,7 +14,6 @@ import '../../shared/models.dart';
 import '../../shared/pin_credentials.dart';
 import '../../shared/widgets/profile_form_page.dart';
 import 'member_shell.dart';
-import 'widgets/pass_summary_card.dart';
 import 'widgets/checkin_list.dart';
 
 class MemberProfileTab extends StatefulWidget {
@@ -474,10 +473,6 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
           ],
         ),
         const SizedBox(height: 12),
-
-        // Subscription
-        FFSectionTitle(context.tr('member.mySubscription')),
-        PassSummaryCard(data: data),
 
         // Visit history
         FFSectionTitle(context.tr('member.visitHistory')),

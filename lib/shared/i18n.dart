@@ -71,6 +71,8 @@ class FFLocale extends ChangeNotifier {
       'auth.loginSubtitle': 'Welcome back! Please enter your details.',
       'auth.emailPlaceholder': 'e.g., aisha.juma@gmail.com',
       'auth.emailOrPhone': 'Email / mobile number',
+      'auth.invalidEmailOrPhone':
+          'Enter a valid email address or mobile number.',
       'auth.continueWithEmail': 'Continue',
       'auth.continueWithGoogle': 'Continue with Google',
       'auth.or': 'OR',
@@ -753,6 +755,7 @@ class FFLocale extends ChangeNotifier {
       'auth.loginSubtitle': 'Karibu tena! Tafadhali weka taarifa zako.',
       'auth.emailPlaceholder': 'mfano., aisha.juma@gmail.com',
       'auth.emailOrPhone': 'Barua pepe / namba ya simu',
+      'auth.invalidEmailOrPhone': 'Weka barua pepe sahihi au namba ya simu.',
       'auth.continueWithEmail': 'Endelea',
       'auth.continueWithGoogle': 'Endelea na Google',
       'auth.or': 'AU',

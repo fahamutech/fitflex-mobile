@@ -206,6 +206,11 @@ class _OwnerGymGridCard extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final images = (gym['images'] as List?)?.whereType<String>().toList() ?? [];
+    final thumbnails =
+        (gym['thumbnails'] as List?)?.whereType<String>().toList() ?? [];
+    final coverThumbnail = thumbnails.isNotEmpty
+        ? thumbnails.first
+        : (images.isNotEmpty ? images.first : null);
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -222,7 +227,7 @@ class _OwnerGymGridCard extends StatelessWidget {
             ),
             child: AspectRatio(
               aspectRatio: 4 / 3,
-              child: images.isEmpty
+              child: coverThumbnail == null
                   ? Container(
                       color: cs.primary.withValues(alpha: 0.1),
                       child: Icon(
@@ -232,7 +237,7 @@ class _OwnerGymGridCard extends StatelessWidget {
                       ),
                     )
                   : FFRemoteImage(
-                      src: images.first,
+                      src: coverThumbnail,
                       width: double.infinity,
                       height: double.infinity,
                       fit: BoxFit.cover,

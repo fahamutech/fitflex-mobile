@@ -5,6 +5,7 @@ import '../../app_scope.dart';
 import '../../shared/api_client.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
+import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
 import '../../shared/widgets/profile_form_page.dart';
 import '../language_screen.dart';
@@ -170,7 +171,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
                     children: [
                       FFPill(
                         label:
-                            '${trainer?['sessionRateCurrency'] ?? 'TZS'} ${trainer?['hourlyRateTzs'] ?? 0}/hr',
+                            '${formatCurrency(trainer?['hourlyRateTzs'] as num? ?? 0, currency: trainer?['sessionRateCurrency'] as String? ?? 'TZS')}/hr',
                       ),
                     ],
                   ),

@@ -19,6 +19,9 @@ class Gym {
   final double? latitude;
   final double? longitude;
   final List<String> images;
+
+  /// Small WebP previews, parallel to [images] (same index = same photo).
+  final List<String> thumbnails;
   final List<String> amenities;
   final List<String> equipment;
 
@@ -40,6 +43,7 @@ class Gym {
     this.latitude,
     this.longitude,
     this.images = const [],
+    this.thumbnails = const [],
     this.amenities = const [],
     this.equipment = const [],
   });
@@ -81,6 +85,8 @@ class Gym {
       latitude: lat,
       longitude: lng,
       images: (json['images'] as List?)?.whereType<String>().toList() ?? [],
+      thumbnails:
+          (json['thumbnails'] as List?)?.whereType<String>().toList() ?? [],
       amenities:
           (json['amenities'] as List?)?.whereType<String>().toList() ?? [],
       equipment:
@@ -91,6 +97,11 @@ class Gym {
   bool get isFreeOnline => accessMode == 'free_online';
   bool get isPaidVisit => accessMode == 'paid_visit';
   bool get hasCoordinates => latitude != null && longitude != null;
+
+  /// Small preview image for cards/lists — falls back to the full image for
+  /// gyms created before thumbnails existed.
+  String? get coverThumbnail =>
+      thumbnails.isNotEmpty ? thumbnails.first : images.firstOrNull;
 }
 
 double? _coordinateValue(Object? value) {
