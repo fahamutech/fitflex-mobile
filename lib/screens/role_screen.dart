@@ -132,6 +132,15 @@ class _RoleScreenState extends State<RoleScreen>
                           selected: _selectedRole == 'vendor',
                           onTap: () => _select('vendor'),
                         ),
+                        const SizedBox(height: FFTokens.spacingMd),
+                        _RoleRadioTile(
+                          icon: Icons.badge_outlined,
+                          iconColor: FFTokens.accentOrange,
+                          label: context.tr('role.staff'),
+                          description: context.tr('role.staffBody'),
+                          selected: _selectedRole == 'gym_staff',
+                          onTap: () => _select('gym_staff'),
+                        ),
                         if (kMockAuth) ...[
                           const SizedBox(height: FFTokens.spacingXl),
                           const _DevLoginPanel(),

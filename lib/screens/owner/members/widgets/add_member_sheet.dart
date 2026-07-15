@@ -52,7 +52,6 @@ class _MemberFormSheetState extends State<_MemberFormSheet> {
   final _phone = TextEditingController();
   final _amount = TextEditingController();
 
-  String _tier = 'premium';
   String _durationUnit = 'M';
   String? _gymId;
   final DateTime _startDate = DateTime.now();
@@ -64,7 +63,6 @@ class _MemberFormSheetState extends State<_MemberFormSheet> {
     if (initial != null) {
       _name.text = initial.displayName ?? '';
       _phone.text = initial.phone ?? '';
-      _tier = initial.plan?.tier ?? 'premium';
     } else {
       _gymId = widget.gyms.isNotEmpty
           ? widget.gyms.first['id']?.toString()
@@ -96,14 +94,12 @@ class _MemberFormSheetState extends State<_MemberFormSheet> {
       payload = {
         'displayName': _name.text.trim(),
         if (_phone.text.trim().isNotEmpty) 'phone': _phone.text.trim(),
-        'tier': _tier,
       };
     } else {
       payload = {
         'displayName': _name.text.trim(),
         if (_phone.text.trim().isNotEmpty) 'phone': _phone.text.trim(),
         if (_gymId != null) 'gymId': _gymId,
-        'tier': _tier,
         'durationUnit': _durationUnit,
         'startDate': _dateOnly(_startDate),
         'endDate': _dateOnly(_endDate),
@@ -182,22 +178,7 @@ class _MemberFormSheetState extends State<_MemberFormSheet> {
                   ),
                   const SizedBox(height: FFTokens.spacingMd),
                 ],
-                FFDropdownField<String>(
-                  label: context.tr('members.membershipPlan'),
-                  value: _tier,
-                  items: const [
-                    DropdownMenuItem(value: 'basic', child: Text('Basic')),
-                    DropdownMenuItem(value: 'pro', child: Text('Pro')),
-                    DropdownMenuItem(value: 'premium', child: Text('Premium')),
-                    DropdownMenuItem(
-                      value: 'executive',
-                      child: Text('Executive'),
-                    ),
-                  ],
-                  onChanged: (v) => setState(() => _tier = v ?? 'premium'),
-                ),
                 if (!isEdit) ...[
-                  const SizedBox(height: FFTokens.spacingMd),
                   FFDropdownField<String>(
                     label: context.tr('owner.durationUnit'),
                     value: _durationUnit,

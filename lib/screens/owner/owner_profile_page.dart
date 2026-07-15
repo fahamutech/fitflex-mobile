@@ -109,6 +109,12 @@ class OwnerProfilePage extends StatelessWidget {
             title: context.tr('member.editDetails'),
             onTap: () => _showEditProfileDialog(context),
           ),
+          if (ownerData?.isStaff != true)
+            FFActionTile(
+              icon: Icons.badge_outlined,
+              title: context.tr('staff.title'),
+              onTap: () => context.push('/owner/staff'),
+            ),
           FFActionTile(
             icon: Icons.help_outline,
             title: context.tr('member.help'),

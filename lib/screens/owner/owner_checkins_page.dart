@@ -62,7 +62,7 @@ class _OwnerCheckinsPageState extends State<OwnerCheckinsPage> {
 
     final activeGymId =
         widget.gymId ??
-        data?.dashboardGymId ??
+        data?.activeGymId ??
         (data?.ownerGyms.isNotEmpty == true
             ? data!.ownerGyms.first['id']?.toString()
             : null);

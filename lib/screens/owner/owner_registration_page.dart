@@ -379,9 +379,6 @@ class _OwnerRegistrationPageState extends State<OwnerRegistrationPage> {
             onChanged: () => setState(() {}),
             trainers: _trainers,
             loadingTrainers: _loadingTrainers,
-            onTrainerCreated: (trainer) async {
-              setState(() => _trainers.add(trainer));
-            },
           );
         }),
         const SizedBox(height: 12),
@@ -404,7 +401,6 @@ class _GymCardWidget extends StatefulWidget {
   final VoidCallback onChanged;
   final List<Map<String, dynamic>> trainers;
   final bool loadingTrainers;
-  final Future<void> Function(Map<String, dynamic> trainer) onTrainerCreated;
 
   const _GymCardWidget({
     required this.gym,
@@ -414,7 +410,6 @@ class _GymCardWidget extends StatefulWidget {
     required this.onChanged,
     required this.trainers,
     required this.loadingTrainers,
-    required this.onTrainerCreated,
   });
 
   @override
@@ -482,35 +477,6 @@ class _GymCardWidgetState extends State<_GymCardWidget> {
               validator: (v) => (v == null || v.trim().isEmpty)
                   ? context.tr('onboarding.required')
                   : null,
-            ),
-            const SizedBox(height: FFTokens.spacingSm),
-
-            // Tier
-            FFDropdownField<String>(
-              value: gym.tier,
-              label: context.tr('ownerReg.tier'),
-              items: [
-                DropdownMenuItem(
-                  value: 'standard',
-                  child: Text(context.tr('ownerReg.tier_standard')),
-                ),
-                DropdownMenuItem(
-                  value: 'midtier',
-                  child: Text(context.tr('ownerReg.tier_midtier')),
-                ),
-                DropdownMenuItem(
-                  value: 'premium',
-                  child: Text(context.tr('ownerReg.tier_premium')),
-                ),
-                DropdownMenuItem(
-                  value: 'luxury_executive',
-                  child: Text(context.tr('ownerReg.tier_luxury')),
-                ),
-              ],
-              onChanged: (v) {
-                gym.tier = v ?? 'standard';
-                widget.onChanged();
-              },
             ),
             const SizedBox(height: FFTokens.spacingSm),
 
@@ -690,7 +656,6 @@ class _GymCardWidgetState extends State<_GymCardWidget> {
         builder: (_) => _TrainerSearchDialog(
           trainers: widget.trainers,
           selectedIds: gym.trainerIds,
-          onTrainerCreated: widget.onTrainerCreated,
         ),
       ),
     );
@@ -717,12 +682,10 @@ class _TrainerDialogResult {
 class _TrainerSearchDialog extends StatefulWidget {
   final List<Map<String, dynamic>> trainers;
   final List<String> selectedIds;
-  final Future<void> Function(Map<String, dynamic> trainer) onTrainerCreated;
 
   const _TrainerSearchDialog({
     required this.trainers,
     required this.selectedIds,
-    required this.onTrainerCreated,
   });
 
   @override
@@ -830,196 +793,7 @@ class _TrainerSearchDialogState extends State<_TrainerSearchDialog> {
                     },
                   ),
           ),
-          // Create new trainer button
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(FFTokens.spacingMd),
-              child: SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () => _openCreateTrainer(context),
-                  icon: const Icon(Icons.add, size: 18),
-                  label: Text(context.tr('ownerReg.createTrainer')),
-                ),
-              ),
-            ),
-          ),
         ],
-      ),
-    );
-  }
-
-  Future<void> _openCreateTrainer(BuildContext context) async {
-    final created = await Navigator.of(context).push<Map<String, dynamic>>(
-      MaterialPageRoute(
-        fullscreenDialog: true,
-        builder: (_) =>
-            _TrainerCreateDialog(onTrainerCreated: widget.onTrainerCreated),
-      ),
-    );
-    if (created != null && mounted) {
-      setState(() {
-        _selected.add(created['id'] as String);
-      });
-    }
-  }
-}
-
-// ─── Fullscreen Create Trainer Dialog ───
-
-class _TrainerCreateDialog extends StatefulWidget {
-  final Future<void> Function(Map<String, dynamic> trainer) onTrainerCreated;
-
-  const _TrainerCreateDialog({required this.onTrainerCreated});
-
-  @override
-  State<_TrainerCreateDialog> createState() => _TrainerCreateDialogState();
-}
-
-class _TrainerCreateDialogState extends State<_TrainerCreateDialog> {
-  final _nameCtrl = TextEditingController();
-  final _emailCtrl = TextEditingController();
-  final _specialtiesCtrl = TextEditingController();
-  final _rateCtrl = TextEditingController();
-  bool _busy = false;
-  String? _error;
-
-  @override
-  void dispose() {
-    _nameCtrl.dispose();
-    _emailCtrl.dispose();
-    _specialtiesCtrl.dispose();
-    _rateCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submit() async {
-    final name = _nameCtrl.text.trim();
-    final email = _emailCtrl.text.trim();
-    if (name.isEmpty || email.isEmpty) {
-      setState(() => _error = 'Name and email are required.');
-      return;
-    }
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
-    try {
-      final api = AppScope.of(context).api;
-      final specialties = _specialtiesCtrl.text
-          .split(',')
-          .map((s) => s.trim())
-          .where((s) => s.isNotEmpty)
-          .toList();
-      final result = await api.ownerAddTrainer({
-        'displayName': name,
-        'email': email,
-        'specialties': specialties,
-        'hourlyRateTzs': num.tryParse(_rateCtrl.text) ?? 0,
-        'pendingGymAssignment': true,
-        'status': 'active',
-      });
-      final created = Map<String, dynamic>.from(result);
-      await widget.onTrainerCreated(created);
-      if (mounted) {
-        Navigator.of(context).pop(created);
-      }
-    } on ApiException catch (e) {
-      if (mounted) {
-        setState(() {
-          _busy = false;
-          _error = e.status == 409
-              ? 'This email is already in use.'
-              : 'Error: ${e.status}';
-        });
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(() {
-          _busy = false;
-          _error = 'Failed to create trainer.';
-        });
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(context.tr('ownerReg.createTrainer')),
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(FFTokens.spacingLg),
-          child: Column(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      FFTextField(
-                        controller: _nameCtrl,
-                        label: context.tr('ownerReg.trainerName'),
-                      ),
-                      const SizedBox(height: FFTokens.spacingSm),
-                      FFTextField(
-                        controller: _emailCtrl,
-                        keyboardType: TextInputType.emailAddress,
-                        label: context.tr('ownerReg.trainerEmail'),
-                      ),
-                      const SizedBox(height: FFTokens.spacingSm),
-                      FFTextField(
-                        controller: _specialtiesCtrl,
-                        label: context.tr('ownerReg.trainerSpecialties'),
-                        hint: 'e.g. Yoga, Cardio',
-                      ),
-                      const SizedBox(height: FFTokens.spacingSm),
-                      FFTextField(
-                        controller: _rateCtrl,
-                        keyboardType: TextInputType.number,
-                        label: context.tr('ownerReg.trainerRate'),
-                      ),
-                      if (_error != null)
-                        Padding(
-                          padding: const EdgeInsets.only(
-                            top: FFTokens.spacingSm,
-                          ),
-                          child: Text(
-                            _error!,
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.error,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: _busy ? null : _submit,
-                  child: _busy
-                      ? SizedBox(
-                          height: 18,
-                          width: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Theme.of(context).colorScheme.onPrimary,
-                          ),
-                        )
-                      : Text(context.tr('ownerReg.createTrainer')),
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

@@ -16,6 +16,7 @@ import 'screens/trainer/trainer_home_page.dart';
 import 'screens/owner/owner_registration_page.dart';
 import 'screens/owner/owner_qr_scanner_page.dart';
 import 'screens/owner/owner_shop_page.dart';
+import 'screens/owner/owner_staff_page.dart';
 import 'screens/owner/owner_shell.dart';
 import 'screens/owner/members/members_list_page.dart';
 import 'screens/owner/members/member_detail_page.dart';
@@ -51,6 +52,7 @@ abstract class AppRoutes {
   static const ownerQrScanner = '/owner/scan';
   static const ownerEarnings = '/owner/earnings';
   static const ownerShop = '/owner/shop';
+  static const ownerStaff = '/owner/staff';
 
   // Member sub-routes (shell)
   static const memberOnboarding = '/member/onboarding';
@@ -71,6 +73,11 @@ bool _isOnboarded(AuthState auth, String role) {
     // Gym owner must have at least 1 gym to be considered onboarded
     final gymIds = auth.user?['gymIds'];
     return gymIds is List && gymIds.isNotEmpty;
+  }
+  if (role == 'gym_staff') {
+    // Staff accounts are created directly by their gym owner — always
+    // fully onboarded, never self-register or await approval.
+    return true;
   }
   if (role == 'trainer') {
     if (auth.user?['onboardingCompleted'] == true) return true;
@@ -101,6 +108,10 @@ String routeForSignedInUser(AuthState auth) {
   }
   if (role == 'gym_operator') {
     return onboarded ? AppRoutes.ownerHome : AppRoutes.ownerRegistration;
+  }
+  if (role == 'gym_staff') {
+    // Staff reuse the owner shell, gated by their ACL permissions.
+    return AppRoutes.ownerHome;
   }
   return AppRoutes.home;
 }
@@ -306,6 +317,11 @@ GoRouter buildRouter(AuthState auth) {
         path: AppRoutes.ownerShop,
         name: 'ownerShop',
         builder: (context, state) => const OwnerShopPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.ownerStaff,
+        name: 'ownerStaff',
+        builder: (context, state) => const OwnerStaffPage(),
       ),
       GoRoute(
         path: AppRoutes.ownerGymCheckins,

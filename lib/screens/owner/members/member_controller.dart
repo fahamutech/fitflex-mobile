@@ -21,7 +21,7 @@ enum MemberTypeFilter {
 }
 
 class MemberListController extends ChangeNotifier {
-  MemberListController(this._repo);
+  MemberListController(this._repo, {String? gymId}) : _gymId = gymId;
 
   final MemberRepository _repo;
 
@@ -34,6 +34,10 @@ class MemberListController extends ChangeNotifier {
   List<OwnerMember> _members = const [];
   MemberStats _stats = const MemberStats();
 
+  /// The gym currently "in view" (owner action bar selection). When it
+  /// changes, [setActiveGym] reloads the list scoped to the new gym.
+  String? _gymId;
+
   MemberTypeFilter _typeFilter = MemberTypeFilter.all;
   OwnerMemberStatus? _statusFilter; // null == any
   String _search = '';
@@ -45,6 +49,7 @@ class MemberListController extends ChangeNotifier {
   MemberTypeFilter get typeFilter => _typeFilter;
   OwnerMemberStatus? get statusFilter => _statusFilter;
   String get search => _search;
+  String? get gymId => _gymId;
 
   bool get isEmpty => !_loading && _error == null && _members.isEmpty;
   bool get hasActiveFilters =>
@@ -59,6 +64,7 @@ class MemberListController extends ChangeNotifier {
     notifyListeners();
     try {
       final result = await _repo.fetchMembers(
+        gymId: _gymId,
         memberType: _typeFilter.wire,
         status: _statusFilter?.wire,
         search: _search,
@@ -71,6 +77,13 @@ class MemberListController extends ChangeNotifier {
       _loading = false;
       notifyListeners();
     }
+  }
+
+  /// Switches the gym scope (owner action bar) and reloads the list.
+  Future<void> setActiveGym(String? gymId) async {
+    if (_gymId == gymId) return;
+    _gymId = gymId;
+    await load();
   }
 
   Future<void> refresh() => load();

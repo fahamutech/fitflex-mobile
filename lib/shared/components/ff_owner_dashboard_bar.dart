@@ -19,6 +19,7 @@ class FFOwnerDashboardBar extends StatelessWidget
     this.onGymSelected,
     this.onAvatarTap,
     this.onNotificationTap,
+    this.showBackButton = false,
   });
 
   /// The display name of the currently selected gym (or a pending label).
@@ -44,6 +45,10 @@ class FFOwnerDashboardBar extends StatelessWidget
   /// Called when the notification bell is tapped.
   final VoidCallback? onNotificationTap;
 
+  /// Shows a back button instead of the brand mark — for pushed screens
+  /// (e.g. Earnings) reached from an owner tab rather than the bottom nav.
+  final bool showBackButton;
+
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 
@@ -52,21 +57,22 @@ class FFOwnerDashboardBar extends StatelessWidget
     final theme = Theme.of(context);
     return AppBar(
       automaticallyImplyLeading: false,
-      titleSpacing: FFTokens.spacingLg,
+      leading: showBackButton
+          ? IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => Navigator.of(context).maybePop(),
+            )
+          : null,
+      titleSpacing: showBackButton ? 0 : FFTokens.spacingLg,
       title: Row(
         children: [
-          // Gym icon
-          Container(
+          // Brand mark
+          SizedBox(
             width: 36,
             height: 36,
-            decoration: BoxDecoration(
-              color: FFTokens.brand500,
-              borderRadius: BorderRadius.circular(FFTokens.radiusMd),
-            ),
-            child: const Icon(
-              Icons.fitness_center,
-              color: Colors.white,
-              size: 18,
+            child: Image.asset(
+              'assets/brand/fitflex-icon.png',
+              fit: BoxFit.contain,
             ),
           ),
           const SizedBox(width: 10),

@@ -110,6 +110,10 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
 
     final periodVisits = (dashboard?['periodVisits'] as num?)?.toInt() ?? 0;
     final periodMembers = (dashboard?['periodMembers'] as num?)?.toInt() ?? 0;
+    // Real registered-member count for the active gym (not period-scoped) —
+    // matches the Members page's stats.totalMembers. Used for the summary
+    // card below; periodMembers (above) still feeds the trend detail chart.
+    final totalMembers = (dashboard?['totalMembers'] as num?)?.toInt() ?? 0;
     final directCount = (dashboard?['directMembers'] as num?)?.toInt() ?? 0;
     final fitflexCount = (dashboard?['fitflexMembers'] as num?)?.toInt() ?? 0;
     // Parse chartSeries from API
@@ -228,9 +232,7 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
             Expanded(
               child: FFMetricCard(
                 label: context.tr('owner.totalMembers'),
-                value: '$periodMembers',
-                trendDirection: membersTrendDir,
-                trendLabel: membersTrendLabel,
+                value: '$totalMembers',
                 icon: const Icon(
                   Icons.people_outline,
                   color: FFTokens.brand600,
@@ -243,8 +245,6 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
               child: FFMetricCard(
                 label: context.tr('owner.checkins'),
                 value: '$periodVisits',
-                trendDirection: visitsTrendDir,
-                trendLabel: visitsTrendLabel,
                 icon: const Icon(
                   Icons.check_circle_outline,
                   color: FFTokens.brand600,

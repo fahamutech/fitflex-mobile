@@ -334,30 +334,6 @@ class _GymFormPageState extends State<GymFormPage> {
                 validator: _required,
               ),
               const SizedBox(height: FFTokens.spacingSm),
-              FFDropdownField<String>(
-                value: _tier,
-                label: context.tr('ownerReg.tier'),
-                items: [
-                  DropdownMenuItem(
-                    value: 'standard',
-                    child: Text(context.tr('ownerReg.tier_standard')),
-                  ),
-                  DropdownMenuItem(
-                    value: 'midtier',
-                    child: Text(context.tr('ownerReg.tier_midtier')),
-                  ),
-                  DropdownMenuItem(
-                    value: 'premium',
-                    child: Text(context.tr('ownerReg.tier_premium')),
-                  ),
-                  DropdownMenuItem(
-                    value: 'luxury_executive',
-                    child: Text(context.tr('ownerReg.tier_luxury')),
-                  ),
-                ],
-                onChanged: (v) => setState(() => _tier = v ?? 'standard'),
-              ),
-              const SizedBox(height: FFTokens.spacingSm),
               FFTextField(
                 controller: _rateDayCtrl,
                 keyboardType: TextInputType.number,

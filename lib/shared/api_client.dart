@@ -245,6 +245,13 @@ class ApiClient {
     Map<String, dynamic> data,
   ) async => await _request('POST', '/trainer/register', body: data);
 
+  Future<Map<String, dynamic>> trainerApplyToGym(String gymId) async =>
+      await _request('POST', '/trainer/gyms/$gymId/apply');
+
+  Future<Map<String, dynamic>> trainerCancelGymApplication(
+    String gymId,
+  ) async => await _request('POST', '/trainer/gyms/$gymId/apply/cancel');
+
   Future<Map<String, dynamic>> gymOwnerRegister(
     Map<String, dynamic> data,
   ) async => await _request('POST', '/gym-owner/register', body: data);
@@ -258,15 +265,32 @@ class ApiClient {
     Map<String, dynamic> data,
   ) async => await _request('PUT', '/owner/gyms/$gymId', body: data);
 
-  Future<List<dynamic>> ownerTrainers() async =>
-      await _request('GET', '/owner/trainers');
+  Future<List<dynamic>> ownerTrainers({String? gymId}) async {
+    final path = (gymId != null && gymId.isNotEmpty)
+        ? '/owner/trainers?${Uri(queryParameters: {'gymId': gymId}).query}'
+        : '/owner/trainers';
+    return await _request('GET', path);
+  }
 
-  Future<Map<String, dynamic>> ownerAddTrainer(
-    Map<String, dynamic> data,
-  ) async => await _request('POST', '/owner/trainers', body: data);
+  Future<List<dynamic>> ownerPendingTrainers() async =>
+      await _request('GET', '/owner/trainers/pending');
 
-  Future<Map<String, dynamic>> ownerEarnings() async =>
-      await _request('GET', '/owner/earnings');
+  Future<Map<String, dynamic>> ownerDecideTrainerJoin(
+    String trainerId, {
+    required String gymId,
+    required String decision,
+  }) async => await _request(
+    'POST',
+    '/owner/trainers/$trainerId/decision',
+    body: {'gymId': gymId, 'decision': decision},
+  );
+
+  Future<Map<String, dynamic>> ownerEarnings({String? gymId}) async {
+    final path = (gymId != null && gymId.isNotEmpty)
+        ? '/owner/earnings?${Uri(queryParameters: {'gymId': gymId}).query}'
+        : '/owner/earnings';
+    return await _request('GET', path);
+  }
 
   Future<List<dynamic>> ownerGymCheckins(String gymId) async =>
       await _request('GET', '/owner/gyms/$gymId/checkins');
@@ -444,4 +468,20 @@ class ApiClient {
   // Subscription tiers
   Future<List<dynamic>> subscriptionTiers() async =>
       await _request('GET', '/subscription-tiers');
+
+  // Gym staff roster (RBAC) — owner only
+  Future<List<dynamic>> ownerStaff() async =>
+      await _request('GET', '/owner/staff');
+
+  Future<Map<String, dynamic>> ownerCreateStaff(
+    Map<String, dynamic> data,
+  ) async => await _request('POST', '/owner/staff', body: data);
+
+  Future<Map<String, dynamic>> ownerUpdateStaff(
+    String id,
+    Map<String, dynamic> data,
+  ) async => await _request('PUT', '/owner/staff/$id', body: data);
+
+  Future<void> ownerRemoveStaff(String id) async =>
+      await _request('POST', '/owner/staff/$id/remove');
 }

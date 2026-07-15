@@ -21,7 +21,9 @@ class TrainerHomePage extends StatefulWidget {
 class _TrainerHomePageState extends State<TrainerHomePage> {
   Map<String, dynamic>? _me;
   List<Map<String, dynamic>> _trainers = [];
+  List<Map<String, dynamic>> _gyms = [];
   bool _started = false;
+  bool _applyBusy = false;
 
   @override
   void didChangeDependencies() {
@@ -32,7 +34,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
   }
 
   Future<void> _refreshAll() async {
-    await Future.wait([_refreshMe(), _refreshTrainers()]);
+    await Future.wait([_refreshMe(), _refreshTrainers(), _refreshGyms()]);
   }
 
   Future<void> _refreshMe() async {
@@ -53,6 +55,129 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
     } on ApiException {
       // ignore
     }
+  }
+
+  Future<void> _refreshGyms() async {
+    try {
+      final res = await AppScope.of(context).api.listGyms();
+      if (mounted) setState(() => _gyms = res.cast<Map<String, dynamic>>());
+    } on ApiException {
+      // ignore
+    }
+  }
+
+  List<Map<String, dynamic>> get _pendingGyms =>
+      (_myProfile?['pendingGyms'] as List?)
+          ?.whereType<Map<String, dynamic>>()
+          .toList() ??
+      const [];
+
+  List<Map<String, dynamic>> get _availableGymsToApply {
+    final trainer = _myProfile;
+    final linkedIds = (trainer?['gyms'] as List? ?? [])
+        .whereType<Map>()
+        .map((g) => g['id']?.toString())
+        .toSet();
+    final pendingIds = _pendingGyms.map((g) => g['id']?.toString()).toSet();
+    return _gyms
+        .where(
+          (g) =>
+              !linkedIds.contains(g['id']?.toString()) &&
+              !pendingIds.contains(g['id']?.toString()),
+        )
+        .toList();
+  }
+
+  Future<void> _applyToGym(String gymId) async {
+    setState(() => _applyBusy = true);
+    try {
+      await AppScope.of(context).api.trainerApplyToGym(gymId);
+      if (!mounted) return;
+      await _refreshTrainers();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr('trainer.applicationSent'))),
+      );
+    } on ApiException {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.tr('owner.errorGeneric'))));
+    } finally {
+      if (mounted) setState(() => _applyBusy = false);
+    }
+  }
+
+  Future<void> _cancelApplication(String gymId) async {
+    setState(() => _applyBusy = true);
+    try {
+      await AppScope.of(context).api.trainerCancelGymApplication(gymId);
+      if (!mounted) return;
+      await _refreshTrainers();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr('trainer.applicationCancelled'))),
+      );
+    } on ApiException {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.tr('owner.errorGeneric'))));
+    } finally {
+      if (mounted) setState(() => _applyBusy = false);
+    }
+  }
+
+  Future<void> _showApplyGymSheet() async {
+    final available = _availableGymsToApply;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(FFTokens.spacingLg),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                context.tr('trainer.applyToGym'),
+                style: Theme.of(ctx).textTheme.titleMedium,
+              ),
+              const SizedBox(height: FFTokens.spacingMd),
+              if (available.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Text(context.tr('trainer.noGymsToApply')),
+                )
+              else
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: available.length,
+                    itemBuilder: (context, i) {
+                      final gym = available[i];
+                      return ListTile(
+                        title: Text(gym['name']?.toString() ?? ''),
+                        subtitle: Text(gym['location']?.toString() ?? ''),
+                        trailing: FilledButton(
+                          onPressed: _applyBusy
+                              ? null
+                              : () {
+                                  Navigator.of(ctx).pop();
+                                  _applyToGym(gym['id'].toString());
+                                },
+                          child: Text(context.tr('trainer.apply')),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   String get _displayName {
@@ -206,9 +331,9 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
               onTap: _showEditProfileDialog,
             ),
             _section(context.tr('trainer.gyms')),
-            if (gyms.isEmpty)
+            if (gyms.isEmpty && _pendingGyms.isEmpty)
               FFEmptyState(title: context.tr('member.noData'))
-            else
+            else ...[
               ...gyms.map(
                 (g) => FFActionTile(
                   icon: Icons.fitness_center,
@@ -217,6 +342,27 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
                   onTap: () {},
                 ),
               ),
+              ..._pendingGyms.map(
+                (g) => FFActionTile(
+                  icon: Icons.hourglass_top,
+                  title: g['name']?.toString() ?? '',
+                  subtitle: context.tr('trainer.pendingApprovalAtGym'),
+                  trailing: TextButton(
+                    onPressed: _applyBusy
+                        ? null
+                        : () => _cancelApplication(g['id'].toString()),
+                    child: Text(context.tr('trainer.cancel')),
+                  ),
+                  onTap: () {},
+                ),
+              ),
+            ],
+            const SizedBox(height: FFTokens.spacingSm),
+            OutlinedButton.icon(
+              onPressed: _applyBusy ? null : _showApplyGymSheet,
+              icon: const Icon(Icons.add),
+              label: Text(context.tr('trainer.applyToGym')),
+            ),
             _section(context.tr('member.accountSettings')),
             FFActionTile(
               icon: Icons.help_outline,

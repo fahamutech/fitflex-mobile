@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../app_scope.dart';
 import '../../shared/api_client.dart';
@@ -13,16 +14,30 @@ export 'owner_manage_gyms_page.dart';
 export 'owner_profile_page.dart';
 export 'owner_trainers_page.dart';
 
+/// RBAC scopes assignable to gym staff (receptionists etc.) — mirrors the
+/// backend's GYM_STAFF_ACL_SCOPES in fitflex-functions/functions/index.mjs.
+const List<String> kGymStaffAclScopes = [
+  'members',
+  'checkins',
+  'payments',
+  'trainers',
+  'gyms',
+  'shop',
+];
+
 /// Shared owner data that all owner tabs can access.
 class OwnerData extends ChangeNotifier {
   Map<String, dynamic>? me;
   Map<String, dynamic>? dashboard;
   List<Map<String, dynamic>> ownerGyms = [];
   List<Map<String, dynamic>> ownerTrainers = [];
+  List<Map<String, dynamic>> pendingTrainerRequests = [];
   bool loading = false;
 
-  // Dashboard filters
-  String? dashboardGymId;
+  /// The gym currently "in view" across every owner page (Home, Manage Gyms,
+  /// Members, Trainers, Earnings, ...). Persisted locally so it survives app
+  /// restarts — see [OwnerShellState.setActiveGym].
+  String? activeGymId;
   String dashboardMemberType = 'all';
   DateTime? statsFrom;
   DateTime? statsTo;
@@ -31,6 +46,30 @@ class OwnerData extends ChangeNotifier {
     final user = me?['user'] as Map?;
     return (user?['displayName'] ?? user?['email'] ?? user?['phone'] ?? 'Owner')
         .toString();
+  }
+
+  /// True for gym-level staff (receptionists etc.) created by an owner.
+  /// A real gym owner (`gym_operator`) is always unrestricted.
+  bool get isStaff => (me?['user'] as Map?)?['userType'] == 'gym_staff';
+
+  List<String> get aclPermissions =>
+      ((me?['user'] as Map?)?['aclPermissions'] as List?)
+          ?.map((e) => e.toString())
+          .toList() ??
+      const [];
+
+  /// Whether the current user can access a feature scope. Owners always can;
+  /// staff need the matching scope in [aclPermissions].
+  bool canAccess(String scope) => !isStaff || aclPermissions.contains(scope);
+
+  /// Display name of the active gym, falling back to the first owned gym.
+  String activeGymName(String pendingLabel, String fallbackLabel) {
+    if (ownerGyms.isEmpty) return pendingLabel;
+    final match = ownerGyms.firstWhere(
+      (g) => g['id']?.toString() == activeGymId,
+      orElse: () => ownerGyms.first,
+    );
+    return match['name']?.toString() ?? fallbackLabel;
   }
 
   void update(void Function(OwnerData d) fn) {
@@ -70,7 +109,64 @@ class OwnerShell extends StatefulWidget {
   OwnerShellState createState() => OwnerShellState();
 }
 
+/// Definition for a single bottom-nav destination in [OwnerShell]. When
+/// [scope] is non-null the destination is hidden entirely for gym staff who
+/// don't have that ACL permission (owners always see every tab).
+class _OwnerTabDef {
+  const _OwnerTabDef({
+    required this.route,
+    required this.icon,
+    required this.selectedIcon,
+    required this.labelKey,
+    required this.titleKey,
+    this.scope,
+  });
+
+  final String route;
+  final IconData icon;
+  final IconData selectedIcon;
+  final String labelKey;
+  final String titleKey;
+  final String? scope;
+}
+
+const _kOwnerTabs = [
+  _OwnerTabDef(
+    route: '/owner/home',
+    icon: Icons.home_outlined,
+    selectedIcon: Icons.home,
+    labelKey: 'owner.home',
+    titleKey: 'owner.dashboard',
+  ),
+  _OwnerTabDef(
+    route: '/owner/gyms',
+    icon: Icons.fitness_center_outlined,
+    selectedIcon: Icons.fitness_center,
+    labelKey: 'owner.manageGyms',
+    titleKey: 'owner.manageGyms',
+    scope: 'gyms',
+  ),
+  _OwnerTabDef(
+    route: '/owner/members',
+    icon: Icons.people_outlined,
+    selectedIcon: Icons.people,
+    labelKey: 'owner.members',
+    titleKey: 'owner.members',
+    scope: 'members',
+  ),
+  _OwnerTabDef(
+    route: '/owner/trainers',
+    icon: Icons.sports_gymnastics_outlined,
+    selectedIcon: Icons.sports_gymnastics,
+    labelKey: 'owner.trainers',
+    titleKey: 'owner.trainers',
+    scope: 'trainers',
+  ),
+];
+
 class OwnerShellState extends State<OwnerShell> {
+  static const _activeGymPrefsKey = 'owner_active_gym_id';
+
   final OwnerData _data = OwnerData();
   bool _started = false;
 
@@ -84,26 +180,22 @@ class OwnerShellState extends State<OwnerShell> {
     if (mounted) setState(() {});
   }
 
+  /// Tabs visible to the current user — every tab for a real owner, only the
+  /// ACL-permitted ones for gym staff.
+  List<_OwnerTabDef> get _visibleTabs => _kOwnerTabs
+      .where((t) => t.scope == null || _data.canAccess(t.scope!))
+      .toList();
+
   int get _tabIndex {
     final loc = GoRouterState.of(context).matchedLocation;
-    if (loc.startsWith('/owner/gyms')) return 1;
-    if (loc.startsWith('/owner/members')) return 2;
-    if (loc.startsWith('/owner/trainers')) return 3;
+    final tabs = _visibleTabs;
+    for (var i = 0; i < tabs.length; i++) {
+      if (i > 0 && loc.startsWith(tabs[i].route)) return i;
+    }
     return 0;
   }
 
-  String get _title {
-    switch (_tabIndex) {
-      case 1:
-        return context.tr('owner.manageGyms');
-      case 2:
-        return context.tr('owner.members');
-      case 3:
-        return context.tr('owner.trainers');
-      default:
-        return context.tr('owner.dashboard');
-    }
-  }
+  String get _title => context.tr(_visibleTabs[_tabIndex].titleKey);
 
   @override
   void didChangeDependencies() {
@@ -123,15 +215,44 @@ class OwnerShellState extends State<OwnerShell> {
   Future<void> refreshAll() async {
     _data.update((d) => d.loading = true);
     try {
+      await Future.wait([_refreshMe(), _refreshOwnerGyms()]);
+      await _restoreActiveGym();
       await Future.wait([
-        _refreshMe(),
-        _refreshOwnerGyms(),
         refreshDashboard(),
         _refreshOwnerTrainers(),
+        _refreshPendingTrainers(),
       ]);
     } finally {
       _data.update((d) => d.loading = false);
     }
+  }
+
+  /// Restores the persisted active gym (if still owned), else defaults to
+  /// the first owned gym. Must run after [_refreshOwnerGyms].
+  Future<void> _restoreActiveGym() async {
+    if (_data.ownerGyms.isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString(_activeGymPrefsKey);
+    final ownedIds = _data.ownerGyms.map((g) => g['id']?.toString()).toSet();
+    _data.activeGymId = (saved != null && ownedIds.contains(saved))
+        ? saved
+        : _data.ownerGyms.first['id']?.toString();
+  }
+
+  /// Switches the active gym across every owner page, persists the choice,
+  /// and refreshes the gym-scoped data (dashboard + trainers). Members list
+  /// and Earnings listen to [OwnerData] and reload themselves.
+  Future<void> setActiveGym(String gymId) async {
+    if (_data.activeGymId == gymId) return;
+    _data.update((d) => d.activeGymId = gymId);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_activeGymPrefsKey, gymId);
+    await Future.wait([
+      refreshDashboard(),
+      _refreshOwnerTrainers(),
+      _refreshPendingTrainers(),
+    ]);
+    if (mounted) setState(() {});
   }
 
   Future<void> _refreshMe() async {
@@ -156,7 +277,7 @@ class OwnerShellState extends State<OwnerShell> {
     try {
       String dateOnly(DateTime v) => v.toIso8601String().split('T').first;
       final res = await AppScope.of(context).api.operatorDashboard(
-        gymId: _data.dashboardGymId,
+        gymId: _data.activeGymId,
         periodStart: _data.statsFrom == null
             ? null
             : dateOnly(_data.statsFrom!),
@@ -170,9 +291,22 @@ class OwnerShellState extends State<OwnerShell> {
   }
 
   Future<void> _refreshOwnerTrainers() async {
+    if (!_data.canAccess('trainers')) return;
     try {
-      final res = await AppScope.of(context).api.ownerTrainers();
+      final res = await AppScope.of(
+        context,
+      ).api.ownerTrainers(gymId: _data.activeGymId);
       _data.ownerTrainers = res.cast<Map<String, dynamic>>();
+    } on ApiException {
+      // ignore
+    }
+  }
+
+  Future<void> _refreshPendingTrainers() async {
+    if (!_data.canAccess('trainers')) return;
+    try {
+      final res = await AppScope.of(context).api.ownerPendingTrainers();
+      _data.pendingTrainerRequests = res.cast<Map<String, dynamic>>();
     } on ApiException {
       // ignore
     }
@@ -188,94 +322,57 @@ class OwnerShellState extends State<OwnerShell> {
   }
 
   void _onTab(int index) {
-    if (_data.ownerGyms.isEmpty && (index == 1 || index == 2 || index == 3)) {
+    final tabs = _visibleTabs;
+    if (_data.ownerGyms.isEmpty && index != 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.tr('owner.notApprovedYet'))),
       );
       return;
     }
-    const routes = [
-      '/owner/home',
-      '/owner/gyms',
-      '/owner/members',
-      '/owner/trainers',
-    ];
-    context.go(routes[index]);
+    context.go(tabs[index].route);
   }
 
   @override
   Widget build(BuildContext context) {
+    final tabs = _visibleTabs;
     return OwnerDataScope(
       data: _data,
       child: Scaffold(
-        appBar: _tabIndex == 2
-            ? null
-            : _tabIndex == 0
-            ? FFOwnerDashboardBar(
-                selectedGymName: _data.ownerGyms.isNotEmpty
-                    ? (_data.ownerGyms.first['name']?.toString() ??
-                          context.tr('owner.pendingApproval'))
-                    : context.tr('owner.pendingApproval'),
-                initials: _getInitials(_data.displayName),
-                ownerGyms: _data.ownerGyms,
-                subtitleLabel: context.tr('owner.dashboard'),
-                onGymSelected: (gymId) async {
-                  _data.update((d) => d.dashboardGymId = gymId);
-                  await refreshDashboard();
-                  if (mounted) setState(() {});
-                },
-                onAvatarTap: () => context.push('/owner/profile'),
-                onNotificationTap: () =>
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(context.tr('owner.noNotifications')),
-                      ),
-                    ),
-              )
-            : AppBar(title: Text(_title), actions: const [ThemeToggleButton()]),
+        appBar: FFOwnerDashboardBar(
+          selectedGymName: _data.activeGymName(
+            context.tr('owner.pendingApproval'),
+            context.tr('owner.gym'),
+          ),
+          initials: _getInitials(_data.displayName),
+          ownerGyms: _data.ownerGyms,
+          subtitleLabel: _title,
+          onGymSelected: (gymId) => setActiveGym(gymId),
+          onAvatarTap: () => context.push('/owner/profile'),
+          onNotificationTap: () => ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(context.tr('owner.noNotifications'))),
+          ),
+        ),
         body: RefreshIndicator(onRefresh: refreshAll, child: widget.child),
         bottomNavigationBar: NavigationBar(
           selectedIndex: _tabIndex,
           onDestinationSelected: _onTab,
           destinations: [
-            NavigationDestination(
-              icon: const Icon(Icons.home_outlined),
-              selectedIcon: const Icon(Icons.home),
-              label: context.tr('owner.home'),
-            ),
-            NavigationDestination(
-              icon: Icon(
-                Icons.fitness_center_outlined,
-                color: _data.ownerGyms.isEmpty ? Colors.grey : null,
+            for (final tab in tabs)
+              NavigationDestination(
+                icon: Icon(
+                  tab.icon,
+                  color: _data.ownerGyms.isEmpty && tab.route != '/owner/home'
+                      ? Colors.grey
+                      : null,
+                ),
+                selectedIcon: Icon(
+                  tab.selectedIcon,
+                  color: _data.ownerGyms.isEmpty && tab.route != '/owner/home'
+                      ? Colors.grey
+                      : null,
+                ),
+                label: context.tr(tab.labelKey),
               ),
-              selectedIcon: Icon(
-                Icons.fitness_center,
-                color: _data.ownerGyms.isEmpty ? Colors.grey : null,
-              ),
-              label: context.tr('owner.manageGyms'),
-            ),
-            NavigationDestination(
-              icon: Icon(
-                Icons.people_outlined,
-                color: _data.ownerGyms.isEmpty ? Colors.grey : null,
-              ),
-              selectedIcon: Icon(
-                Icons.people,
-                color: _data.ownerGyms.isEmpty ? Colors.grey : null,
-              ),
-              label: context.tr('owner.members'),
-            ),
-            NavigationDestination(
-              icon: Icon(
-                Icons.sports_gymnastics_outlined,
-                color: _data.ownerGyms.isEmpty ? Colors.grey : null,
-              ),
-              selectedIcon: Icon(
-                Icons.sports_gymnastics,
-                color: _data.ownerGyms.isEmpty ? Colors.grey : null,
-              ),
-              label: context.tr('owner.trainers'),
-            ),
           ],
         ),
       ),

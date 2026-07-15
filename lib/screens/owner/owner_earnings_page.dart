@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../../app_scope.dart';
+import '../../shared/api_client.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
+import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
+import 'owner_shell.dart';
 
 class OwnerEarningsPage extends StatefulWidget {
   const OwnerEarningsPage({super.key});
@@ -16,12 +20,59 @@ class _OwnerEarningsPageState extends State<OwnerEarningsPage> {
   String _earningsType = 'all';
   String _visitFilter = 'all';
 
+  bool _loadingEarnings = true;
+  num _totalPaid = 0;
+  num _totalPending = 0;
+  String? _loadedForGymId;
+
   static const _earningsTypes = ['all', 'direct', 'fitflex'];
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final activeGymId = OwnerDataScope.maybeOf(context)?.activeGymId;
+    if (activeGymId != _loadedForGymId) {
+      _loadedForGymId = activeGymId;
+      _loadEarnings(activeGymId);
+    }
+  }
+
+  Future<void> _loadEarnings(String? gymId) async {
+    setState(() => _loadingEarnings = true);
+    try {
+      final res = await AppScope.of(context).api.ownerEarnings(gymId: gymId);
+      if (!mounted) return;
+      setState(() {
+        _totalPaid = (res['totalPaid'] as num?) ?? 0;
+        _totalPending = (res['totalPending'] as num?) ?? 0;
+        _loadingEarnings = false;
+      });
+    } on ApiException {
+      if (!mounted) return;
+      setState(() => _loadingEarnings = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final data = OwnerDataScope.maybeOf(context);
     return Scaffold(
-      appBar: AppBar(title: Text(context.tr('owner.earnings'))),
+      appBar: FFOwnerDashboardBar(
+        showBackButton: true,
+        selectedGymName:
+            data?.activeGymName(
+              context.tr('owner.pendingApproval'),
+              context.tr('owner.gym'),
+            ) ??
+            context.tr('owner.earnings'),
+        initials: '',
+        ownerGyms: data?.ownerGyms ?? const [],
+        subtitleLabel: context.tr('owner.earnings'),
+        onGymSelected: (gymId) async {
+          final shell = context.findAncestorStateOfType<OwnerShellState>();
+          await shell?.setActiveGym(gymId);
+        },
+      ),
       body: ListView(
         padding: const EdgeInsets.all(FFTokens.spacingLg),
         children: [

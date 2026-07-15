@@ -19,7 +19,9 @@ String _apiErrorMessage(BuildContext context, ApiException e) {
   }
 }
 
-/// Owner — trainer management view.
+/// Owner — trainer management view. Trainers self-register and then apply to
+/// join a gym; the owner reviews pending applications here before the
+/// trainer becomes linked and visible to members.
 class OwnerTrainersPage extends StatelessWidget {
   const OwnerTrainersPage({super.key});
 
@@ -33,20 +35,31 @@ class OwnerTrainersPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final data = OwnerDataScope.of(context);
     final items = data.ownerTrainers;
+    final pending = data.pendingTrainerRequests;
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final cols = _crossAxisCount(constraints.maxWidth);
         return CustomScrollView(
           slivers: [
+            if (pending.isNotEmpty)
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(
+                  FFTokens.spacingLg,
+                  FFTokens.spacingLg,
+                  FFTokens.spacingLg,
+                  0,
+                ),
+                sliver: SliverToBoxAdapter(
+                  child: _PendingTrainerRequests(requests: pending),
+                ),
+              ),
             if (items.isEmpty)
               SliverFillRemaining(
                 hasScrollBody: false,
                 child: Padding(
                   padding: const EdgeInsets.all(FFTokens.spacingLg),
-                  child: _EmptyTrainers(
-                    onAdd: () => _showAddTrainerDialog(context),
-                  ),
+                  child: _EmptyTrainers(),
                 ),
               )
             else
@@ -55,7 +68,7 @@ class OwnerTrainersPage extends StatelessWidget {
                   FFTokens.spacingLg,
                   FFTokens.spacingLg,
                   FFTokens.spacingLg,
-                  0,
+                  FFTokens.spacingLg,
                 ),
                 sliver: SliverGrid(
                   delegate: SliverChildBuilderDelegate(
@@ -74,49 +87,10 @@ class OwnerTrainersPage extends StatelessWidget {
                   ),
                 ),
               ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(FFTokens.spacingLg),
-                child: OutlinedButton.icon(
-                  onPressed: () => _showAddTrainerDialog(context),
-                  icon: const Icon(Icons.add),
-                  label: Text(context.tr('owner.addTrainer')),
-                ),
-              ),
-            ),
           ],
         );
       },
     );
-  }
-
-  Future<void> _showAddTrainerDialog(BuildContext context) async {
-    final data = OwnerDataScope.of(context);
-    final ownerGymIds = data.ownerGyms.map((g) => g['id'].toString()).toList();
-    final payload = await openTrainerForm(
-      context,
-      title: context.tr('owner.addTrainer'),
-      defaultGymIds: ownerGymIds,
-    );
-    if (payload == null) return;
-    if (!context.mounted) return;
-    final api = AppScope.of(context).api;
-    final message = context.tr('owner.trainerAdded');
-    try {
-      await api.ownerAddTrainer(payload);
-      if (!context.mounted) return;
-      final shell = context.findAncestorStateOfType<OwnerShellState>();
-      await shell?.refreshAll();
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message)));
-    } on ApiException catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(_apiErrorMessage(context, e))));
-    }
   }
 
   Future<void> _showEditTrainerDialog(
@@ -325,9 +299,7 @@ class _OwnerTrainerGridCard extends StatelessWidget {
 }
 
 class _EmptyTrainers extends StatelessWidget {
-  const _EmptyTrainers({required this.onAdd});
-
-  final VoidCallback onAdd;
+  const _EmptyTrainers();
 
   @override
   Widget build(BuildContext context) {
@@ -336,14 +308,142 @@ class _EmptyTrainers extends StatelessWidget {
       child: FFEmptyState(
         title: context.tr('owner.noTrainersTitle'),
         body: context.tr('owner.noTrainersBody'),
-        action: SizedBox(
-          width: double.infinity,
-          child: FilledButton.icon(
-            onPressed: onAdd,
-            icon: const Icon(Icons.person_add_outlined, size: FFTokens.iconMd),
-            label: Text(context.tr('owner.addTrainer')),
+      ),
+    );
+  }
+}
+
+/// Trainers who self-registered and applied to join one of the owner's
+/// gyms — the owner approves or rejects each request before the trainer is
+/// linked to the gym and visible to members.
+class _PendingTrainerRequests extends StatelessWidget {
+  const _PendingTrainerRequests({required this.requests});
+
+  final List<Map<String, dynamic>> requests;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
+          child: Text(
+            context.tr('owner.pendingTrainerRequests'),
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
           ),
         ),
+        ...requests.expand((trainer) {
+          final pendingGyms = (trainer['pendingGyms'] as List? ?? [])
+              .whereType<Map>()
+              .map(Map<String, dynamic>.from);
+          return pendingGyms.map(
+            (gym) => _PendingTrainerCard(trainer: trainer, gym: gym),
+          );
+        }),
+        const SizedBox(height: FFTokens.spacingSm),
+      ],
+    );
+  }
+}
+
+class _PendingTrainerCard extends StatefulWidget {
+  const _PendingTrainerCard({required this.trainer, required this.gym});
+
+  final Map<String, dynamic> trainer;
+  final Map<String, dynamic> gym;
+
+  @override
+  State<_PendingTrainerCard> createState() => _PendingTrainerCardState();
+}
+
+class _PendingTrainerCardState extends State<_PendingTrainerCard> {
+  bool _busy = false;
+
+  Future<void> _decide(String decision) async {
+    setState(() => _busy = true);
+    final api = AppScope.of(context).api;
+    final message = decision == 'approve'
+        ? context.tr('owner.trainerApproved')
+        : context.tr('owner.trainerRejected');
+    try {
+      await api.ownerDecideTrainerJoin(
+        widget.trainer['id'].toString(),
+        gymId: widget.gym['id'].toString(),
+        decision: decision,
+      );
+      if (!mounted) return;
+      final shell = context.findAncestorStateOfType<OwnerShellState>();
+      await shell?.refreshAll();
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_apiErrorMessage(context, e))));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final name = widget.trainer['displayName']?.toString() ?? '';
+    final specialties = (widget.trainer['specialties'] as List? ?? [])
+        .take(2)
+        .join(' · ');
+    final gymName = widget.gym['name']?.toString() ?? '';
+
+    return FFCard(
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  specialties.isNotEmpty ? '$specialties · $gymName' : gymName,
+                  style: Theme.of(context).textTheme.bodySmall,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          if (_busy)
+            const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          else ...[
+            IconButton(
+              icon: Icon(
+                Icons.close,
+                color: Theme.of(context).colorScheme.error,
+              ),
+              tooltip: context.tr('owner.reject'),
+              onPressed: () => _decide('reject'),
+            ),
+            IconButton(
+              icon: const Icon(Icons.check_circle, color: Colors.green),
+              tooltip: context.tr('owner.approve'),
+              onPressed: () => _decide('approve'),
+            ),
+          ],
+        ],
       ),
     );
   }

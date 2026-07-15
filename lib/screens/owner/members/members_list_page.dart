@@ -36,12 +36,19 @@ class _OwnerMembersPageState extends State<OwnerMembersPage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_started) return;
-    _started = true;
-    _controller = MemberListController(
-      MemberRepository(AppScope.of(context).api),
-    );
-    _controller!.load();
+    final activeGymId = OwnerDataScope.of(context).activeGymId;
+    if (!_started) {
+      _started = true;
+      _controller = MemberListController(
+        MemberRepository(AppScope.of(context).api),
+        gymId: activeGymId,
+      );
+      _controller!.load();
+      return;
+    }
+    // Owner switched the active gym from the shared action bar — reload
+    // scoped to the new gym.
+    _controller?.setActiveGym(activeGymId);
   }
 
   @override
@@ -100,19 +107,12 @@ class _OwnerMembersPageState extends State<OwnerMembersPage> {
     return Stack(
       children: [
         SafeArea(
-          child: Column(
-            children: [
-              const _MembersHeader(),
-              Expanded(
-                child: AnimatedBuilder(
-                  animation: controller,
-                  builder: (context, _) => RefreshIndicator(
-                    onRefresh: controller.refresh,
-                    child: _buildBody(context, controller),
-                  ),
-                ),
-              ),
-            ],
+          child: AnimatedBuilder(
+            animation: controller,
+            builder: (context, _) => RefreshIndicator(
+              onRefresh: controller.refresh,
+              child: _buildBody(context, controller),
+            ),
           ),
         ),
         Positioned(
@@ -143,12 +143,14 @@ class _OwnerMembersPageState extends State<OwnerMembersPage> {
           style: Theme.of(context).textTheme.bodySmall,
         ),
         const SizedBox(height: FFTokens.spacingMd),
-        FilledButton.icon(
-          onPressed: _addMember,
-          icon: const Icon(Icons.add, size: FFTokens.iconMd),
-          label: Text(context.tr('members.addMember')),
-        ),
-        const SizedBox(height: FFTokens.spacingMd),
+        if (c.typeFilter != MemberTypeFilter.fitflex) ...[
+          FilledButton.icon(
+            onPressed: _addMember,
+            icon: const Icon(Icons.add, size: FFTokens.iconMd),
+            label: Text(context.tr('members.addMember')),
+          ),
+          const SizedBox(height: FFTokens.spacingMd),
+        ],
         _StatsRow(stats: c.stats),
         const SizedBox(height: FFTokens.spacingMd),
         Row(
@@ -177,7 +179,7 @@ class _OwnerMembersPageState extends State<OwnerMembersPage> {
           _ErrorState(onRetry: c.refresh)
         else if (c.isEmpty)
           _EmptyMembers(
-            onAdd: _addMember,
+            onAdd: c.typeFilter == MemberTypeFilter.fitflex ? null : _addMember,
             onScan: () => context.push('/owner/scan'),
           )
         else
@@ -192,101 +194,6 @@ class _OwnerMembersPageState extends State<OwnerMembersPage> {
           ),
       ],
     );
-  }
-}
-
-class _MembersHeader extends StatelessWidget {
-  const _MembersHeader();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final data = OwnerDataScope.of(context);
-    final gyms = data.ownerGyms;
-    final selectedName = gyms.isNotEmpty
-        ? (gyms.first['name']?.toString() ?? context.tr('owner.gym'))
-        : context.tr('owner.gym');
-    final name = data.displayName;
-    final initials = _initials(name);
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        FFTokens.spacingLg,
-        FFTokens.spacingSm,
-        FFTokens.spacingLg,
-        FFTokens.spacingMd,
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: FFTokens.brand500,
-                  borderRadius: BorderRadius.circular(FFTokens.radiusMd),
-                ),
-                child: const Icon(
-                  Icons.fitness_center,
-                  color: Colors.white,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    selectedName,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    context.tr('members.headerSubtitle'),
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          Row(
-            children: [
-              const ThemeToggleButton(),
-              const SizedBox(width: 4),
-              GestureDetector(
-                onTap: () => context.push('/owner/profile'),
-                child: CircleAvatar(
-                  radius: 18,
-                  backgroundColor: FFTokens.brand500,
-                  child: Text(
-                    initials,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _initials(String name) {
-    final parts = name.trim().split(' ').where((p) => p.isNotEmpty).toList();
-    if (parts.isEmpty) return 'O';
-    if (parts.length == 1) {
-      return parts[0].substring(0, parts[0].length >= 2 ? 2 : 1).toUpperCase();
-    }
-    return (parts[0][0] + parts[1][0]).toUpperCase();
   }
 }
 
@@ -531,7 +438,7 @@ class _ScanQrButton extends StatelessWidget {
 class _EmptyMembers extends StatelessWidget {
   const _EmptyMembers({required this.onAdd, required this.onScan});
 
-  final VoidCallback onAdd;
+  final VoidCallback? onAdd;
   final VoidCallback onScan;
 
   @override
@@ -543,14 +450,16 @@ class _EmptyMembers extends StatelessWidget {
         body: context.tr('members.noMembersBody'),
         action: Column(
           children: [
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: onAdd,
-                child: Text(context.tr('members.addMember')),
+            if (onAdd != null) ...[
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: onAdd,
+                  child: Text(context.tr('members.addMember')),
+                ),
               ),
-            ),
-            const SizedBox(height: FFTokens.spacingSm),
+              const SizedBox(height: FFTokens.spacingSm),
+            ],
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
