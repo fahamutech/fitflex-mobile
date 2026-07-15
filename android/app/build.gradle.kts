@@ -80,5 +80,7 @@ flutter {
 }
 
 dependencies {
+    implementation(project(":integration_test"))
+    implementation(project(":patrol"))
     androidTestUtil("androidx.test:orchestrator:1.5.1")
 }
