@@ -552,7 +552,7 @@ packages:
     source: hosted
     version: "0.2.2"
   integration_test:
-    dependency: "direct dev"
+    dependency: "direct main"
     description: flutter
     source: sdk
     version: "0.0.0"
@@ -717,7 +717,7 @@ packages:
     source: hosted
     version: "2.3.0"
   patrol:
-    dependency: "direct dev"
+    dependency: "direct main"
     description:
       name: patrol
       sha256: "32fd0709f3871fa56eb9cd88410e3ca816bfa757122bae806a0f842188acb820"
