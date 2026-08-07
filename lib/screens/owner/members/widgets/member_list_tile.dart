@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../shared/components/components.dart';
 import '../../../../shared/design_tokens.dart';
+import '../../../../shared/i18n.dart';
 import '../data/member_models.dart';
 import 'member_format.dart';
 import 'member_presentation.dart';
@@ -19,10 +20,20 @@ class MemberListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final daysLeft = member.daysLeft;
     final subtitleParts = <String>[
       member.memberType.label(context),
       if (member.tier != null && member.tier!.isNotEmpty)
         _capitalize(member.tier!),
+      // B4: surface how many days remain (or since expiry) on the row itself.
+      if (daysLeft != null && member.status == OwnerMemberStatus.expiringSoon)
+        context.tr('members.daysLeftShort').replaceFirst('{days}', '$daysLeft'),
+      if (daysLeft != null &&
+          daysLeft < 0 &&
+          member.status == OwnerMemberStatus.expired)
+        context
+            .tr('members.daysAgoShort')
+            .replaceFirst('{days}', '${-daysLeft}'),
     ];
 
     return Material(

@@ -151,7 +151,19 @@ class _OwnerMembersPageState extends State<OwnerMembersPage> {
           ),
           const SizedBox(height: FFTokens.spacingMd),
         ],
-        _StatsRow(stats: c.stats),
+        _StatsRow(
+          stats: c.stats,
+          onTotal: () =>
+              c.applyFilters(type: MemberTypeFilter.all, status: null),
+          onActiveToday: () => c.applyFilters(
+            type: MemberTypeFilter.all,
+            status: OwnerMemberStatus.checkedIn,
+          ),
+          onExpiringSoon: () => c.applyFilters(
+            type: MemberTypeFilter.all,
+            status: OwnerMemberStatus.expiringSoon,
+          ),
+        ),
         const SizedBox(height: FFTokens.spacingMd),
         Row(
           children: [
@@ -198,9 +210,17 @@ class _OwnerMembersPageState extends State<OwnerMembersPage> {
 }
 
 class _StatsRow extends StatelessWidget {
-  const _StatsRow({required this.stats});
+  const _StatsRow({
+    required this.stats,
+    required this.onTotal,
+    required this.onActiveToday,
+    required this.onExpiringSoon,
+  });
 
   final MemberStats stats;
+  final VoidCallback onTotal;
+  final VoidCallback onActiveToday;
+  final VoidCallback onExpiringSoon;
 
   @override
   Widget build(BuildContext context) {
@@ -209,27 +229,42 @@ class _StatsRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(
-            child: FFStatTile(
-              icon: Icons.groups_outlined,
-              value: '${stats.totalMembers}',
-              label: context.tr('members.totalMembers'),
+            child: InkWell(
+              key: const Key('stat-total-members'),
+              onTap: onTotal,
+              borderRadius: BorderRadius.circular(FFTokens.radiusLg),
+              child: FFStatTile(
+                icon: Icons.groups_outlined,
+                value: '${stats.totalMembers}',
+                label: context.tr('members.totalMembers'),
+              ),
             ),
           ),
           const SizedBox(width: FFTokens.spacingSm),
           Expanded(
-            child: FFStatTile(
-              icon: Icons.trending_up,
-              value: '${stats.activeToday}',
-              label: context.tr('members.activeToday'),
+            child: InkWell(
+              key: const Key('stat-active-today'),
+              onTap: onActiveToday,
+              borderRadius: BorderRadius.circular(FFTokens.radiusLg),
+              child: FFStatTile(
+                icon: Icons.trending_up,
+                value: '${stats.activeToday}',
+                label: context.tr('members.activeToday'),
+              ),
             ),
           ),
           const SizedBox(width: FFTokens.spacingSm),
           Expanded(
-            child: FFStatTile(
-              icon: Icons.schedule,
-              value: '${stats.expiringSoon}',
-              label: context.tr('members.expiringSoon'),
-              accent: FFTokens.warning500,
+            child: InkWell(
+              key: const Key('stat-expiring-soon'),
+              onTap: onExpiringSoon,
+              borderRadius: BorderRadius.circular(FFTokens.radiusLg),
+              child: FFStatTile(
+                icon: Icons.schedule,
+                value: '${stats.expiringSoon}',
+                label: context.tr('members.expiringSoon'),
+                accent: FFTokens.warning500,
+              ),
             ),
           ),
         ],
@@ -289,6 +324,7 @@ class _QuickFilterChips extends StatelessWidget {
       (_QuickFilter.direct, context.tr('members.tabDirect')),
       (_QuickFilter.fitflex, context.tr('members.tabFitflex')),
       (_QuickFilter.active, context.tr('status.active')),
+      (_QuickFilter.expiringSoon, context.tr('status.expiringSoon')),
       (_QuickFilter.expired, context.tr('status.expired')),
     ];
     final selected = _resolveSelected(c);
@@ -314,6 +350,9 @@ class _QuickFilterChips extends StatelessWidget {
 
   _QuickFilter _resolveSelected(MemberListController c) {
     if (c.statusFilter == OwnerMemberStatus.active) return _QuickFilter.active;
+    if (c.statusFilter == OwnerMemberStatus.expiringSoon) {
+      return _QuickFilter.expiringSoon;
+    }
     if (c.statusFilter == OwnerMemberStatus.expired) {
       return _QuickFilter.expired;
     }
@@ -337,6 +376,11 @@ class _QuickFilterChips extends StatelessWidget {
           type: MemberTypeFilter.all,
           status: OwnerMemberStatus.active,
         );
+      case _QuickFilter.expiringSoon:
+        c.applyFilters(
+          type: MemberTypeFilter.all,
+          status: OwnerMemberStatus.expiringSoon,
+        );
       case _QuickFilter.expired:
         c.applyFilters(
           type: MemberTypeFilter.all,
@@ -346,7 +390,7 @@ class _QuickFilterChips extends StatelessWidget {
   }
 }
 
-enum _QuickFilter { all, direct, fitflex, active, expired }
+enum _QuickFilter { all, direct, fitflex, active, expiringSoon, expired }
 
 class _Chip extends StatelessWidget {
   const _Chip({

@@ -228,6 +228,16 @@ class ApiClient {
   Future<Map<String, dynamic>> subscribe(String tier) async =>
       await requestPass(tier);
 
+  /// A7: subscribe to a gym's own Daily/Weekly/Monthly plan.
+  Future<Map<String, dynamic>> subscribeDirect({
+    required String gymId,
+    required String plan,
+  }) async => await _request(
+    'POST',
+    '/me/subscribe',
+    body: {'type': 'direct_sub', 'homeGymId': gymId, 'plan': plan},
+  );
+
   Future<Map<String, dynamic>> myQr() async => await _request('GET', '/me/qr');
 
   Future<Map<String, dynamic>> bookTrainer({
@@ -244,6 +254,83 @@ class ApiClient {
   Future<Map<String, dynamic>> trainerRegister(
     Map<String, dynamic> data,
   ) async => await _request('POST', '/trainer/register', body: data);
+
+  /// C8: trainer updates own professional profile (rate, specialties, bio,
+  /// availability, photo).
+  Future<Map<String, dynamic>> trainerUpdateProfile(
+    Map<String, dynamic> data,
+  ) async => await _request('PUT', '/trainer/me', body: data);
+
+  /// C3: sessions for a date (bookings + manual). Defaults to today.
+  Future<Map<String, dynamic>> trainerSessions({String? date}) async {
+    final path = (date == null || date.isEmpty)
+        ? '/trainer/sessions'
+        : '/trainer/sessions?${Uri(queryParameters: {'date': date}).query}';
+    return await _request('GET', path);
+  }
+
+  /// C3: record a manual session (walk-in client).
+  Future<Map<String, dynamic>> trainerCreateSession(
+    Map<String, dynamic> data,
+  ) async => await _request('POST', '/trainer/sessions', body: data);
+
+  /// C2: earnings auto-calculated from bookings + manual sessions.
+  Future<Map<String, dynamic>> trainerEarnings({
+    String? from,
+    String? to,
+  }) async {
+    final query = <String, String>{
+      if (from != null && from.isNotEmpty) 'from': from,
+      if (to != null && to.isNotEmpty) 'to': to,
+    };
+    final path = query.isEmpty
+        ? '/trainer/earnings'
+        : '/trainer/earnings?${Uri(queryParameters: query).query}';
+    return await _request('GET', path);
+  }
+
+  /// A4: member sends an enquiry or shows interest in a trainer.
+  Future<Map<String, dynamic>> engageTrainer(
+    String trainerId, {
+    required String type,
+    String? message,
+    String? gymId,
+  }) async => await _request(
+    'POST',
+    '/trainers/$trainerId/engage',
+    body: {'type': type, 'message': ?message, 'gymId': ?gymId},
+  );
+
+  /// C4: trainer purchases a gym's trainer pass.
+  Future<Map<String, dynamic>> trainerBuyPass(String gymId) async =>
+      await _request('POST', '/trainer/gyms/$gymId/trainer-pass');
+
+  // Shop (D1)
+  Future<List<dynamic>> listShopProducts({
+    String? category,
+    String? search,
+  }) async {
+    final query = <String, String>{
+      if (category != null && category.isNotEmpty) 'category': category,
+      if (search != null && search.trim().isNotEmpty) 'search': search.trim(),
+    };
+    final path = query.isEmpty
+        ? '/shop/products'
+        : '/shop/products?${Uri(queryParameters: query).query}';
+    return await _request('GET', path);
+  }
+
+  Future<Map<String, dynamic>> createShopOrder(
+    List<Map<String, dynamic>> items, {
+    String? note,
+  }) async => await _request(
+    'POST',
+    '/me/shop-orders',
+    body: {'items': items, 'note': ?note},
+  );
+
+  Future<List<dynamic>> myShopOrders() async =>
+      await _request('GET', '/me/shop-orders');
 
   Future<Map<String, dynamic>> trainerApplyToGym(String gymId) async =>
       await _request('POST', '/trainer/gyms/$gymId/apply');
@@ -291,6 +378,9 @@ class ApiClient {
         : '/owner/earnings';
     return await _request('GET', path);
   }
+
+  Future<List<dynamic>> ownerInvoices() async =>
+      await _request('GET', '/owner/invoices');
 
   Future<List<dynamic>> ownerGymCheckins(String gymId) async =>
       await _request('GET', '/owner/gyms/$gymId/checkins');

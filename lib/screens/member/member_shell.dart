@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app_scope.dart';
 import '../../router.dart';
+import '../../shared/auth_state.dart';
 import '../../shared/components/theme_toggle_button.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
@@ -71,6 +72,8 @@ class MemberShellState extends State<MemberShell> {
   final MemberData _data = MemberData();
   Timer? _qrTimer;
   bool _started = false;
+  AuthState? _auth;
+  String? _lastToken;
 
   int get _tabIndex {
     final loc = GoRouterState.of(context).matchedLocation;
@@ -84,6 +87,15 @@ class MemberShellState extends State<MemberShell> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    // A10: track auth-session changes so a fresh sign-up/sign-in reloads
+    // gyms/trainers without requiring an app restart.
+    final auth = AppScope.of(context).auth;
+    if (!identical(_auth, auth)) {
+      _auth?.removeListener(_onAuthChanged);
+      _auth = auth;
+      _lastToken = auth.token;
+      auth.addListener(_onAuthChanged);
+    }
     if (_started) return;
     _started = true;
     _refreshAll();
@@ -92,8 +104,19 @@ class MemberShellState extends State<MemberShell> {
     });
   }
 
+  void _onAuthChanged() {
+    final token = _auth?.token;
+    if (token != null && token != _lastToken) {
+      _lastToken = token;
+      _refreshAll();
+    } else {
+      _lastToken = token;
+    }
+  }
+
   @override
   void dispose() {
+    _auth?.removeListener(_onAuthChanged);
     _qrTimer?.cancel();
     _data.dispose();
     super.dispose();
@@ -175,9 +198,11 @@ class MemberShellState extends State<MemberShell> {
     try {
       // Prefer new subscription-tiers endpoint (includes gymAccess per plan)
       final res = await api.listSubscriptionTiers();
+      // A7: the "Online Free" option must not be offered to members.
       final tiers = res
           .whereType<Map<String, dynamic>>()
           .map(PassTier.fromJson)
+          .where((t) => t.id != 'online_free')
           .toList();
       if (tiers.isEmpty) throw Exception('empty_tiers');
       _data.update((d) {
@@ -192,6 +217,7 @@ class MemberShellState extends State<MemberShell> {
           d.passes = res
               .whereType<Map<String, dynamic>>()
               .map(PassTier.fromJson)
+              .where((t) => t.id != 'online_free')
               .toList();
           d.passesLoaded = true;
         });

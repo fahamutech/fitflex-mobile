@@ -7,6 +7,7 @@ import '../../shared/design_tokens.dart';
 import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
 import 'owner_shell.dart';
+import 'widgets/invoice_utils.dart';
 
 class OwnerEarningsPage extends StatefulWidget {
   const OwnerEarningsPage({super.key});
@@ -18,11 +19,10 @@ class OwnerEarningsPage extends StatefulWidget {
 class _OwnerEarningsPageState extends State<OwnerEarningsPage> {
   DateTimeRange? _dateRange;
   String _earningsType = 'all';
-  String _visitFilter = 'all';
-
   bool _loadingEarnings = true;
   num _totalPaid = 0;
   num _totalPending = 0;
+  List<OwnerInvoice> _invoices = const [];
   String? _loadedForGymId;
 
   static const _earningsTypes = ['all', 'direct', 'fitflex'];
@@ -39,18 +39,49 @@ class _OwnerEarningsPageState extends State<OwnerEarningsPage> {
 
   Future<void> _loadEarnings(String? gymId) async {
     setState(() => _loadingEarnings = true);
+    final api = AppScope.of(context).api;
     try {
-      final res = await AppScope.of(context).api.ownerEarnings(gymId: gymId);
+      final res = await api.ownerEarnings(gymId: gymId);
       if (!mounted) return;
       setState(() {
         _totalPaid = (res['totalPaid'] as num?) ?? 0;
         _totalPending = (res['totalPending'] as num?) ?? 0;
+      });
+    } on ApiException {
+      // keep previous totals
+    }
+    if (!mounted) return;
+    try {
+      final rows = await api.ownerInvoices();
+      if (!mounted) return;
+      final parsed = rows
+          .whereType<Map<String, dynamic>>()
+          .map(OwnerInvoice.fromJson)
+          .where((i) => gymId == null || gymId.isEmpty || i.gymId == gymId)
+          .toList();
+      setState(() {
+        // B1: month summaries run from the current month backwards.
+        _invoices = sortInvoicesCurrentMonthBackwards(parsed);
         _loadingEarnings = false;
       });
     } on ApiException {
       if (!mounted) return;
       setState(() => _loadingEarnings = false);
     }
+  }
+
+  List<OwnerInvoice> get _visibleInvoices {
+    var rows = _invoices.where((i) => !i.isPaid).toList();
+    final range = _dateRange;
+    if (range != null) {
+      rows = rows.where((i) {
+        final d = i.monthAnchor;
+        if (d == null) return false;
+        return !d.isBefore(range.start) &&
+            !d.isAfter(range.end.add(const Duration(days: 1)));
+      }).toList();
+    }
+    return rows;
   }
 
   @override
@@ -164,13 +195,14 @@ class _OwnerEarningsPageState extends State<OwnerEarningsPage> {
           ),
           const SizedBox(height: 20),
 
-          // Summary cards
+          // Summary cards — real earnings totals (B1/B10)
           Row(
             children: [
               Expanded(
                 child: _EarningsCard(
+                  key: const Key('earnings-total-paid'),
                   label: context.tr('owner.earningsTotal'),
-                  value: 'TZS 0',
+                  value: _loadingEarnings ? '…' : formatCurrency(_totalPaid),
                   icon: Icons.trending_up,
                   color: FFTokens.success600,
                 ),
@@ -178,8 +210,9 @@ class _OwnerEarningsPageState extends State<OwnerEarningsPage> {
               const SizedBox(width: 12),
               Expanded(
                 child: _EarningsCard(
+                  key: const Key('earnings-total-pending'),
                   label: context.tr('owner.earningsPending'),
-                  value: 'TZS 0',
+                  value: _loadingEarnings ? '…' : formatCurrency(_totalPending),
                   icon: Icons.hourglass_top,
                   color: FFTokens.warning500,
                 ),
@@ -188,21 +221,24 @@ class _OwnerEarningsPageState extends State<OwnerEarningsPage> {
           ),
           const SizedBox(height: 24),
 
-          // Pending Invoices (expandable)
+          // Pending Invoices — real data, current month backwards (B1)
           FFSectionTitle(context.tr('owner.pendingInvoices')),
-          _PendingInvoiceCard(
-            month: 'March 2026',
-            totalVisits: 45,
-            visitFilter: _visitFilter,
-            onFilterChanged: (f) => setState(() => _visitFilter = f),
-          ),
-          const SizedBox(height: 12),
-          _PendingInvoiceCard(
-            month: 'February 2026',
-            totalVisits: 38,
-            visitFilter: _visitFilter,
-            onFilterChanged: (f) => setState(() => _visitFilter = f),
-          ),
+          if (_loadingEarnings)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(FFTokens.spacingLg),
+                child: FFSpinner(),
+              ),
+            )
+          else if (_visibleInvoices.isEmpty)
+            FFEmptyState(title: context.tr('owner.noInvoices'))
+          else
+            ..._visibleInvoices.map(
+              (inv) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _InvoiceCard(invoice: inv),
+              ),
+            ),
         ],
       ),
     );
@@ -234,6 +270,7 @@ class _OwnerEarningsPageState extends State<OwnerEarningsPage> {
 
 class _EarningsCard extends StatelessWidget {
   const _EarningsCard({
+    super.key,
     required this.label,
     required this.value,
     required this.icon,
@@ -273,28 +310,21 @@ class _EarningsCard extends StatelessWidget {
   }
 }
 
-class _PendingInvoiceCard extends StatefulWidget {
-  const _PendingInvoiceCard({
-    required this.month,
-    required this.totalVisits,
-    required this.visitFilter,
-    required this.onFilterChanged,
-  });
+class _InvoiceCard extends StatefulWidget {
+  const _InvoiceCard({required this.invoice});
 
-  final String month;
-  final int totalVisits;
-  final String visitFilter;
-  final ValueChanged<String> onFilterChanged;
+  final OwnerInvoice invoice;
 
   @override
-  State<_PendingInvoiceCard> createState() => _PendingInvoiceCardState();
+  State<_InvoiceCard> createState() => _InvoiceCardState();
 }
 
-class _PendingInvoiceCardState extends State<_PendingInvoiceCard> {
+class _InvoiceCardState extends State<_InvoiceCard> {
   bool _expanded = false;
 
   @override
   Widget build(BuildContext context) {
+    final inv = widget.invoice;
     return FFCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -305,10 +335,17 @@ class _PendingInvoiceCardState extends State<_PendingInvoiceCard> {
               children: [
                 Expanded(
                   child: Text(
-                    widget.month,
+                    inv.monthLabel,
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
                 ),
+                FFBadge(
+                  label: inv.isPaid
+                      ? context.tr('owner.invoicePaid')
+                      : context.tr('owner.invoiceUnpaid'),
+                  tone: inv.isPaid ? FFBadgeTone.success : FFBadgeTone.warning,
+                ),
+                const SizedBox(width: 6),
                 Icon(
                   _expanded ? Icons.expand_less : Icons.expand_more,
                   color: Theme.of(context).textTheme.bodySmall?.color,
@@ -319,71 +356,17 @@ class _PendingInvoiceCardState extends State<_PendingInvoiceCard> {
           if (_expanded) ...[
             const SizedBox(height: 12),
             _DetailRow(
-              label: context.tr('owner.totalVisitsInMonth'),
-              value: '${widget.totalVisits}',
+              label: context.tr('owner.invoiceAmount'),
+              value: formatCurrency(inv.amount),
             ),
-            const SizedBox(height: 8),
-            // Visit filter chips
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: ['all', 'daily', 'weekly', 'monthly'].map((f) {
-                final selected = widget.visitFilter == f;
-                return GestureDetector(
-                  onTap: () => widget.onFilterChanged(f),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? Theme.of(
-                              context,
-                            ).colorScheme.primary.withValues(alpha: 0.1)
-                          : Theme.of(context).colorScheme.surface,
-                      border: Border.all(
-                        color: selected
-                            ? Theme.of(context).colorScheme.primary
-                            : Theme.of(context).colorScheme.outline,
-                      ),
-                      borderRadius: BorderRadius.circular(FFTokens.radiusMd),
-                    ),
-                    child: Text(
-                      _filterLabel(context, f),
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: selected
-                            ? FontWeight.w600
-                            : FontWeight.w400,
-                        color: selected
-                            ? Theme.of(context).colorScheme.primary
-                            : Theme.of(context).colorScheme.onSurface,
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 12),
-            _DetailRow(label: context.tr('owner.numberOfUsers'), value: '12'),
+            if (inv.gymName != null) ...[
+              const SizedBox(height: 8),
+              _DetailRow(label: context.tr('owner.gym'), value: inv.gymName!),
+            ],
           ],
         ],
       ),
     );
-  }
-
-  String _filterLabel(BuildContext context, String f) {
-    switch (f) {
-      case 'daily':
-        return context.tr('owner.filterDaily');
-      case 'weekly':
-        return context.tr('owner.filterWeekly');
-      case 'monthly':
-        return context.tr('owner.filterMonthly');
-      default:
-        return context.tr('owner.filterAll');
-    }
   }
 }
 

@@ -32,6 +32,9 @@ class OwnerStaffPage extends StatefulWidget {
 
 class _OwnerStaffPageState extends State<OwnerStaffPage> {
   List<Map<String, dynamic>> _staff = [];
+  // B8: this route lives outside the owner shell, so the gyms must be
+  // fetched here — otherwise the add-staff form shows no gyms to assign.
+  List<Map<String, dynamic>> _fetchedGyms = [];
   bool _loading = true;
 
   @override
@@ -42,9 +45,19 @@ class _OwnerStaffPageState extends State<OwnerStaffPage> {
 
   Future<void> _refresh() async {
     setState(() => _loading = true);
+    final api = AppScope.of(context).api;
     try {
-      final res = await AppScope.of(context).api.ownerStaff();
+      final res = await api.ownerStaff();
       if (mounted) setState(() => _staff = res.cast<Map<String, dynamic>>());
+    } on ApiException {
+      // ignore
+    }
+    if (!mounted) return;
+    try {
+      final gyms = await api.ownerGyms();
+      if (mounted) {
+        setState(() => _fetchedGyms = gyms.cast<Map<String, dynamic>>());
+      }
     } on ApiException {
       // ignore
     } finally {
@@ -54,10 +67,19 @@ class _OwnerStaffPageState extends State<OwnerStaffPage> {
 
   List<Map<String, dynamic>> get _ownerGyms {
     final data = OwnerDataScope.maybeOf(context);
-    return data?.ownerGyms ?? [];
+    final scoped = data?.ownerGyms ?? const [];
+    return scoped.isNotEmpty ? scoped : _fetchedGyms;
   }
 
   Future<void> _showAddStaffDialog() async {
+    // B8: the owner must see (and pick from) their available gyms before
+    // saving a staff account.
+    if (_ownerGyms.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr('staff.noGymsToAssign'))),
+      );
+      return;
+    }
     final payload = await openStaffForm(
       context,
       title: context.tr('staff.addStaff'),

@@ -9,6 +9,7 @@ import '../../shared/i18n.dart';
 import '../../shared/models.dart';
 import 'member_shell.dart';
 import 'widgets/gym_card.dart';
+import 'widgets/gym_filters.dart';
 
 class MemberGymsTab extends StatefulWidget {
   const MemberGymsTab({super.key});
@@ -22,6 +23,8 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
   String _search = '';
   String _filter = 'all';
   String _priceFilter = 'any';
+  final Set<String> _amenityFilter = {};
+  bool _verifiedOnly = false;
   bool _showFilters = false;
   double? _userLat;
   double? _userLng;
@@ -80,77 +83,27 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
     }
   }
 
-  String _norm(Object? v) => v?.toString().trim().toLowerCase() ?? '';
-
-  String _gymTierKey(Gym gym) {
-    final t = _norm(gym.tier).replaceAll('-', '_').replaceAll(' ', '_');
-    if (t == 'mid_tier' || t == 'midrange' || t == 'mid_range') {
-      return 'midtier';
-    }
-    if (t == 'luxury' || t == 'executive') {
-      return 'luxury_executive';
-    }
-    return t;
-  }
-
   List<Gym> _filtered(List<Gym> gyms) {
-    var result = gyms;
-    final q = _norm(_search);
-    if (q.isNotEmpty) {
-      result = result
-          .where(
-            (g) =>
-                _norm(g.name).contains(q) ||
-                _norm(g.location).contains(q) ||
-                _norm(g.tier).contains(q) ||
-                g.amenities.any((a) => _norm(a).contains(q)) ||
-                g.equipment.any((e) => _norm(e).contains(q)),
-          )
-          .toList();
+    var result = applyGymFilter(
+      gyms,
+      GymFilter(
+        search: _search,
+        tier: _filter,
+        price: _priceFilter,
+        amenities: _amenityFilter,
+        verifiedOnly: _verifiedOnly,
+      ),
+    );
+    if (_filter == 'nearest' && _userLat != null && _userLng != null) {
+      result = List.from(result);
+      result.sort(
+        (a, b) => gymDistanceKm(
+          a,
+          _userLat!,
+          _userLng!,
+        ).compareTo(gymDistanceKm(b, _userLat!, _userLng!)),
+      );
     }
-    if (_filter == 'standard') {
-      result = result.where((g) => _gymTierKey(g) == 'standard').toList();
-    } else if (_filter == 'midtier') {
-      result = result.where((g) => _gymTierKey(g) == 'midtier').toList();
-    } else if (_filter == 'premium') {
-      result = result.where((g) {
-        final t = _gymTierKey(g);
-        return t == 'premium' || t == 'luxury_executive';
-      }).toList();
-    } else if (_filter == 'nearest') {
-      if (_userLat != null && _userLng != null) {
-        result = List.from(result);
-        result.sort(
-          (a, b) => gymDistanceKm(
-            a,
-            _userLat!,
-            _userLng!,
-          ).compareTo(gymDistanceKm(b, _userLat!, _userLng!)),
-        );
-      }
-    }
-
-    // Price filter
-    if (_priceFilter != 'any') {
-      result = result.where((g) {
-        final rate = g.ratePerMonth ?? g.perVisitRate;
-        switch (_priceFilter) {
-          case '<60k':
-            return rate < 60000;
-          case '<150k':
-            return rate < 150000;
-          case '<200k':
-            return rate < 200000;
-          case '<350k':
-            return rate < 350000;
-          case '350k+':
-            return rate >= 350000;
-          default:
-            return true;
-        }
-      }).toList();
-    }
-
     return result;
   }
 
@@ -310,7 +263,7 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
                         },
                       ),
                     ),
-                    // ── Price filter panel ─────────────────────────────
+                    // ── Filters panel (A9): price + amenities + verified ──
                     if (_showFilters) ...[
                       const SizedBox(height: 12),
                       FFCard(
@@ -362,6 +315,50 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
                                   ),
                                 );
                               }).toList(),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              context.tr('gym.amenities'),
+                              style: tt.labelMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: availableAmenityOptions(data.gyms).map((
+                                amenity,
+                              ) {
+                                final sel = _amenityFilter.contains(amenity);
+                                return FilterChip(
+                                  label: Text(
+                                    amenity,
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                  selected: sel,
+                                  onSelected: (value) => setState(() {
+                                    if (value) {
+                                      _amenityFilter.add(amenity);
+                                    } else {
+                                      _amenityFilter.remove(amenity);
+                                    }
+                                  }),
+                                );
+                              }).toList(),
+                            ),
+                            const SizedBox(height: 8),
+                            SwitchListTile(
+                              key: const Key('gym-filter-verified'),
+                              contentPadding: EdgeInsets.zero,
+                              dense: true,
+                              title: Text(
+                                context.tr('member.verifiedOnly'),
+                                style: tt.labelMedium,
+                              ),
+                              value: _verifiedOnly,
+                              onChanged: (v) =>
+                                  setState(() => _verifiedOnly = v),
                             ),
                           ],
                         ),

@@ -15,6 +15,7 @@ import '../../shared/pin_credentials.dart';
 import '../../shared/widgets/profile_form_page.dart';
 import 'member_shell.dart';
 import 'widgets/checkin_list.dart';
+import 'widgets/membership_card.dart';
 
 class MemberProfileTab extends StatefulWidget {
   const MemberProfileTab({super.key});
@@ -452,6 +453,10 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
             ],
           ),
         ),
+        const SizedBox(height: 12),
+
+        // Membership (A2/A3): plan, expiry date, days left, subscribed gym
+        MembershipCard(subscription: data.subscription),
         const SizedBox(height: 12),
 
         // Stats

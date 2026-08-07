@@ -49,8 +49,10 @@ class _MemberFormSheet extends StatefulWidget {
 class _MemberFormSheetState extends State<_MemberFormSheet> {
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
+  final _email = TextEditingController();
   final _phone = TextEditingController();
   final _amount = TextEditingController();
+  final _initialPassword = TextEditingController();
 
   String _durationUnit = 'M';
   String? _gymId;
@@ -62,6 +64,7 @@ class _MemberFormSheetState extends State<_MemberFormSheet> {
     final initial = widget.initialMember;
     if (initial != null) {
       _name.text = initial.displayName ?? '';
+      _email.text = initial.email ?? '';
       _phone.text = initial.phone ?? '';
     } else {
       _gymId = widget.gyms.isNotEmpty
@@ -73,8 +76,10 @@ class _MemberFormSheetState extends State<_MemberFormSheet> {
   @override
   void dispose() {
     _name.dispose();
+    _email.dispose();
     _phone.dispose();
     _amount.dispose();
+    _initialPassword.dispose();
     super.dispose();
   }
 
@@ -98,6 +103,7 @@ class _MemberFormSheetState extends State<_MemberFormSheet> {
     } else {
       payload = {
         'displayName': _name.text.trim(),
+        if (_email.text.trim().isNotEmpty) 'email': _email.text.trim(),
         if (_phone.text.trim().isNotEmpty) 'phone': _phone.text.trim(),
         if (_gymId != null) 'gymId': _gymId,
         'durationUnit': _durationUnit,
@@ -105,6 +111,9 @@ class _MemberFormSheetState extends State<_MemberFormSheet> {
         'endDate': _dateOnly(_endDate),
         if (_amount.text.trim().isNotEmpty)
           'paidAmount': num.tryParse(_amount.text.trim()) ?? 0,
+        // B2: optional login credential for the member.
+        if (_initialPassword.text.isNotEmpty)
+          'initialPassword': _initialPassword.text,
       };
     }
     Navigator.pop(context, payload);
@@ -154,6 +163,23 @@ class _MemberFormSheetState extends State<_MemberFormSheet> {
                       : null,
                 ),
                 const SizedBox(height: FFTokens.spacingMd),
+                if (!isEdit) ...[
+                  FFTextField(
+                    key: const Key('add-member-email'),
+                    controller: _email,
+                    label: context.tr('member.email'),
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
+                    validator: (v) {
+                      if (_initialPassword.text.isNotEmpty &&
+                          (v == null || v.trim().isEmpty)) {
+                        return context.tr('members.required');
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: FFTokens.spacingMd),
+                ],
                 FFTextField(
                   controller: _phone,
                   label: context.tr('members.phone'),
@@ -203,6 +229,21 @@ class _MemberFormSheetState extends State<_MemberFormSheet> {
                     controller: _amount,
                     label: context.tr('owner.paidAmount'),
                     keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: FFTokens.spacingMd),
+                  // B2: optional initial password so the member can log in.
+                  FFTextField(
+                    key: const Key('add-member-initial-password'),
+                    controller: _initialPassword,
+                    label: context.tr('members.initialPassword'),
+                    hint: context.tr('members.initialPasswordHint'),
+                    obscureText: true,
+                    validator: (v) {
+                      if (v != null && v.isNotEmpty && v.length < 6) {
+                        return context.tr('members.initialPasswordTooShort');
+                      }
+                      return null;
+                    },
                   ),
                 ],
                 const SizedBox(height: FFTokens.spacingLg),

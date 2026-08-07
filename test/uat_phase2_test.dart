@@ -130,6 +130,13 @@ void main() {
     );
     await tester.pump();
 
+    // A8 reorder placed Amenities lower on the page — scroll it into view.
+    await tester.scrollUntilVisible(
+      find.text('Wellness & Recovery'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+
     // 'dry sauna' → Wellness & Recovery; 'lockers'/'showers' → Member Facilities & Comfort.
     expect(find.text('Wellness & Recovery'), findsOneWidget);
     expect(find.text('Member Facilities & Comfort'), findsOneWidget);

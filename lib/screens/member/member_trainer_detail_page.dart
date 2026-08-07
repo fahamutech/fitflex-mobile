@@ -1,16 +1,70 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app_scope.dart';
 import '../../router.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import 'member_shell.dart';
+import 'widgets/trainer_actions_sheet.dart';
 
-class MemberTrainerDetailPage extends StatelessWidget {
+class MemberTrainerDetailPage extends StatefulWidget {
   const MemberTrainerDetailPage({super.key, required this.trainerId});
 
   final String trainerId;
+
+  @override
+  State<MemberTrainerDetailPage> createState() =>
+      _MemberTrainerDetailPageState();
+}
+
+class _MemberTrainerDetailPageState extends State<MemberTrainerDetailPage> {
+  bool _interestBusy = false;
+
+  String get trainerId => widget.trainerId;
+
+  Future<void> _book() async {
+    final data = MemberDataScope.of(context);
+    final trainer = data.trainers.where((t) => t.id == trainerId).firstOrNull;
+    if (trainer == null) return;
+    final booked = await showTrainerBookingSheet(context, trainer);
+    if (booked == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr('member.bookingConfirmed'))),
+      );
+    }
+  }
+
+  Future<void> _enquire() async {
+    final data = MemberDataScope.of(context);
+    final trainer = data.trainers.where((t) => t.id == trainerId).firstOrNull;
+    if (trainer == null) return;
+    final sent = await showTrainerEnquiryDialog(context, trainer);
+    if (sent == true && mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.tr('member.enquirySent'))));
+    }
+  }
+
+  Future<void> _showInterest() async {
+    setState(() => _interestBusy = true);
+    try {
+      await AppScope.of(context).api.engageTrainer(trainerId, type: 'interest');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr('member.interestSent'))),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr('member.enquiryFailed'))),
+      );
+    } finally {
+      if (mounted) setState(() => _interestBusy = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,6 +82,51 @@ class MemberTrainerDetailPage extends StatelessWidget {
           icon: const Icon(Icons.arrow_back),
         ),
         title: Text(context.tr('member.findTrainerTitle')),
+      ),
+      // A4 — pinned action bar: Book / Enquire / Show interest.
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(FFTokens.spacingMd),
+          child: Row(
+            key: const Key('trainer-actions'),
+            children: [
+              Expanded(
+                flex: 2,
+                child: FilledButton.icon(
+                  key: const Key('trainer-action-book'),
+                  onPressed: _book,
+                  icon: const Icon(Icons.event_available, size: 18),
+                  label: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(context.tr('member.bookSession')),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton(
+                  key: const Key('trainer-action-enquire'),
+                  onPressed: _enquire,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(context.tr('member.enquire')),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton(
+                  key: const Key('trainer-action-interest'),
+                  onPressed: _interestBusy ? null : _showInterest,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(context.tr('member.showInterest')),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
       body: ListView(
         padding: const EdgeInsets.all(FFTokens.spacingLg),
@@ -78,23 +177,27 @@ class MemberTrainerDetailPage extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Row(
+          // A5 — standardized profile facts: rate, experience, rating.
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
             children: [
               FFBadge(
                 label:
                     '${trainer.sessionRateCurrency} ${trainer.hourlyRateTzs}${context.tr('trainerReg.perSession')}',
                 tone: FFBadgeTone.brand,
               ),
-              const SizedBox(width: 6),
-              // FFBadge(
-              //   label: '${trainer.experienceYears ?? 0} yrs',
-              //   tone: FFBadgeTone.gray,
-              // ),
-              // const SizedBox(width: 6),
-              // FFBadge(
-              //   label: '${trainer.rating ?? '-'} rating',
-              //   tone: FFBadgeTone.success,
-              // ),
+              if ((trainer.experienceYears ?? 0) > 0)
+                FFBadge(
+                  label:
+                      '${trainer.experienceYears} ${context.tr('member.yearsExp')}',
+                  tone: FFBadgeTone.gray,
+                ),
+              if ((trainer.rating ?? 0) > 0)
+                FFBadge(
+                  label: '★ ${trainer.rating}',
+                  tone: FFBadgeTone.success,
+                ),
             ],
           ),
 

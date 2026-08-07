@@ -3,6 +3,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../app_scope.dart';
 import '../../router.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
@@ -11,6 +12,7 @@ import '../../shared/i18n.dart';
 import '../../shared/models.dart';
 import 'member_shell.dart';
 import 'widgets/gym_card.dart';
+import 'widgets/gym_plans_sheet.dart';
 import 'widgets/trainer_card.dart';
 
 class MemberGymDetailPage extends StatefulWidget {
@@ -31,6 +33,25 @@ class _MemberGymDetailPageState extends State<MemberGymDetailPage> {
       await openMapDirections(gym);
     } finally {
       if (mounted) setState(() => _openingDirections = false);
+    }
+  }
+
+  // A7: Subscribe → gym's own Daily/Weekly/Monthly plans.
+  Future<void> _openPlans(Gym gym) async {
+    final data = MemberDataScope.of(context);
+    final subscribed = await showGymPlansSheet(context, gym);
+    if (subscribed == true && mounted) {
+      final res = await AppScope.of(context).api.me();
+      if (!mounted) return;
+      data.update(
+        (d) => d.me = MemberMeResponse.fromJson(
+          Map<String, dynamic>.from(res as Map),
+        ),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr('member.subscribeRequested'))),
+      );
     }
   }
 
@@ -59,14 +80,18 @@ class _MemberGymDetailPageState extends State<MemberGymDetailPage> {
         ),
         title: Text(context.tr('member.gymDetail')),
       ),
+      // A8 — section order: gallery → name → location → verification →
+      // ratings → plans → directions → about → equipment → amenities →
+      // trainers → reviews → actions.
       body: ListView(
         padding: const EdgeInsets.all(FFTokens.spacingLg),
         children: [
-          // Hero image
-          _GymHero(gym: gym),
+          // 1. Scrollable photo gallery
+          _GymHero(key: const Key('gym-section-gallery'), gym: gym),
 
-          // Name + location
+          // 2. Name + 3. Location
           Row(
+            key: const Key('gym-section-name'),
             children: [
               Flexible(
                 child: Text(
@@ -76,23 +101,33 @@ class _MemberGymDetailPageState extends State<MemberGymDetailPage> {
                   ),
                 ),
               ),
-              if (gymIsVerified(gym)) ...[
-                const SizedBox(width: 6),
-                const GymVerifiedIcon(size: 20),
-              ],
             ],
           ),
           const SizedBox(height: 4),
           Text(
             gym.location,
+            key: const Key('gym-section-location'),
             style: TextStyle(
               color: Theme.of(context).textTheme.bodySmall?.color,
               fontSize: 14,
             ),
           ),
           const SizedBox(height: 10),
+
+          // 4. Verification status (A6)
           Row(
+            key: const Key('gym-section-verification'),
             children: [
+              FFBadge(
+                label: gymIsVerified(gym)
+                    ? context.tr('gym.verified')
+                    : context.tr('gym.unverified'),
+                tone: gymIsVerified(gym)
+                    ? FFBadgeTone.success
+                    : FFBadgeTone.gray,
+                dot: true,
+              ),
+              const SizedBox(width: 6),
               FFBadge(
                 label: gym.tier.replaceAll('_', ' '),
                 tone: FFBadgeTone.brand,
@@ -106,9 +141,20 @@ class _MemberGymDetailPageState extends State<MemberGymDetailPage> {
               ],
             ],
           ),
-          const SizedBox(height: 10),
-          // Map toggle for directions
+
+          // 5. Ratings
+          _GymRatings(key: const Key('gym-section-ratings'), gym: gym),
+
+          // 6. Gym plans (A7)
+          FFSectionTitle(
+            context.tr('member.gymPlansTitle'),
+            key: const Key('gym-section-plans'),
+          ),
+          _GymPlansPreview(gym: gym, onSubscribe: () => _openPlans(gym)),
+
+          // 7. Directions
           InkWell(
+            key: const Key('gym-section-directions'),
             onTap: _openingDirections ? null : () => _handleDirections(gym),
             borderRadius: BorderRadius.circular(8),
             child: Padding(
@@ -141,8 +187,11 @@ class _MemberGymDetailPageState extends State<MemberGymDetailPage> {
             ),
           ),
 
-          // About
-          FFSectionTitle(context.tr('member.about')),
+          // 8. About
+          FFSectionTitle(
+            context.tr('member.about'),
+            key: const Key('gym-section-about'),
+          ),
           FFCard(
             child: Text(
               gym.venueType == 'online'
@@ -155,32 +204,50 @@ class _MemberGymDetailPageState extends State<MemberGymDetailPage> {
             ),
           ),
 
-          // Amenities & Equipment
-          if (gym.amenities.isNotEmpty || gym.equipment.isNotEmpty) ...[
-            FFSectionTitle(context.tr('gym.amenities')),
-            if (gym.amenities.isNotEmpty)
-              _CategorizedItems(
-                items: gym.amenities,
-                categories: _amenityCategories,
-                tone: FFBadgeTone.brand,
-              ),
-            if (gym.equipment.isNotEmpty) ...[
-              FFSectionTitle(context.tr('gym.equipment')),
-              _CategorizedItems(
-                items: gym.equipment,
-                categories: _equipmentCategories,
-                tone: FFBadgeTone.gray,
-              ),
-            ],
+          // 9. Equipment
+          if (gym.equipment.isNotEmpty) ...[
+            FFSectionTitle(
+              context.tr('gym.equipment'),
+              key: const Key('gym-section-equipment'),
+            ),
+            _CategorizedItems(
+              items: gym.equipment,
+              categories: _equipmentCategories,
+              tone: FFBadgeTone.gray,
+            ),
           ],
 
-          // Trainers
-          FFSectionTitle(context.tr('member.trainersAtGym')),
+          // 10. Amenities
+          if (gym.amenities.isNotEmpty) ...[
+            FFSectionTitle(
+              context.tr('gym.amenities'),
+              key: const Key('gym-section-amenities'),
+            ),
+            _CategorizedItems(
+              items: gym.amenities,
+              categories: _amenityCategories,
+              tone: FFBadgeTone.brand,
+            ),
+          ],
+
+          // 11. Trainers
+          FFSectionTitle(
+            context.tr('member.trainersAtGym'),
+            key: const Key('gym-section-trainers'),
+          ),
           if (trainersAtGym.isEmpty)
             FFEmptyState(title: context.tr('member.noData'))
           else
             ...trainersAtGym.map((t) => TrainerCard(trainer: t)),
 
+          // 12. Reviews
+          FFSectionTitle(
+            context.tr('gym.reviews'),
+            key: const Key('gym-section-reviews'),
+          ),
+          FFEmptyState(title: context.tr('gym.noReviews')),
+
+          // 13. Actions
           const SizedBox(height: 16),
           if (data.pendingPayment != null) ...[
             FFAlert(
@@ -190,13 +257,15 @@ class _MemberGymDetailPageState extends State<MemberGymDetailPage> {
             const SizedBox(height: 8),
           ],
           Row(
+            key: const Key('gym-section-actions'),
             children: [
               Expanded(
                 flex: 2,
                 child: FilledButton(
+                  key: const Key('gym-subscribe-button'),
                   onPressed: data.pendingPayment != null
                       ? null
-                      : () => context.go(AppRoutes.memberPasses),
+                      : () => _openPlans(gym),
                   child: Text(context.tr('member.subscribe')),
                 ),
               ),
@@ -267,8 +336,106 @@ Uri gymDirectionsUri(Gym gym, {double? originLat, double? originLng}) {
   return Uri.https('www.google.com', '/maps/dir/', query);
 }
 
+/// A8 — ratings summary row. Uses the gym's environment rating entries
+/// (stored inside amenities as e.g. "cleanliness 4.5") when present.
+class _GymRatings extends StatelessWidget {
+  const _GymRatings({super.key, required this.gym});
+
+  final Gym gym;
+
+  double? get _averageRating {
+    final values = <double>[];
+    for (final item in gym.amenities) {
+      final match = RegExp(r'([0-5](?:\.\d)?)').firstMatch(item);
+      if (match != null) {
+        final v = double.tryParse(match.group(1)!);
+        if (v != null) values.add(v.clamp(0, 5).toDouble());
+      }
+    }
+    if (values.isEmpty) return null;
+    return values.reduce((a, b) => a + b) / values.length;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final rating = _averageRating;
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Row(
+        children: [
+          const Icon(Icons.star, color: FFTokens.warning500, size: 18),
+          const SizedBox(width: 4),
+          Text(
+            rating == null
+                ? context.tr('gym.noRatings')
+                : rating.toStringAsFixed(1),
+            style: Theme.of(
+              context,
+            ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A7 — inline preview of the gym's Daily/Weekly/Monthly plans with a
+/// subscribe CTA opening the full plan sheet.
+class _GymPlansPreview extends StatelessWidget {
+  const _GymPlansPreview({required this.gym, required this.onSubscribe});
+
+  final Gym gym;
+  final VoidCallback onSubscribe;
+
+  @override
+  Widget build(BuildContext context) {
+    final plans = gymPlansFor(gym);
+    if (plans.isEmpty) {
+      return FFEmptyState(title: context.tr('member.noGymPlans'));
+    }
+    return FFCard(
+      child: Column(
+        children: [
+          ...plans.map(
+            (p) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      context.tr('member.plan_${p.id}'),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    formatCurrency(p.price),
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              key: const Key('gym-plans-cta'),
+              onPressed: onSubscribe,
+              child: Text(context.tr('member.viewPlans')),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _GymHero extends StatelessWidget {
-  const _GymHero({required this.gym});
+  const _GymHero({super.key, required this.gym});
 
   final Gym gym;
 

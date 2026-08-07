@@ -8,7 +8,10 @@ import '../../shared/design_tokens.dart';
 import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
 import '../../shared/widgets/profile_form_page.dart';
+import '../../shared/widgets/shop_browse_page.dart';
+import '../../shared/widgets/trainer_form_page.dart';
 import '../language_screen.dart';
+import 'widgets/trainer_sheets.dart';
 
 /// Standalone trainer dashboard shown after trainer is onboarded.
 class TrainerHomePage extends StatefulWidget {
@@ -157,17 +160,44 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
                     itemCount: available.length,
                     itemBuilder: (context, i) {
                       final gym = available[i];
+                      // C4: show the gym's trainer-pass fee when offered.
+                      final trainerPass = gym['trainerPass'] as Map?;
+                      final passEnabled = trainerPass?['enabled'] == true;
+                      final passFee = trainerPass?['feeTzs'] as num? ?? 0;
                       return ListTile(
                         title: Text(gym['name']?.toString() ?? ''),
-                        subtitle: Text(gym['location']?.toString() ?? ''),
-                        trailing: FilledButton(
-                          onPressed: _applyBusy
-                              ? null
-                              : () {
-                                  Navigator.of(ctx).pop();
-                                  _applyToGym(gym['id'].toString());
-                                },
-                          child: Text(context.tr('trainer.apply')),
+                        subtitle: Text(
+                          [
+                            gym['location']?.toString() ?? '',
+                            if (passEnabled && passFee > 0)
+                              '${context.tr('trainer.passFee')}: ${formatCurrency(passFee)}/${trainerPass?['period'] ?? 'monthly'}',
+                          ].where((s) => s.isNotEmpty).join('\n'),
+                        ),
+                        isThreeLine: passEnabled && passFee > 0,
+                        trailing: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            FilledButton(
+                              onPressed: _applyBusy
+                                  ? null
+                                  : () {
+                                      Navigator.of(ctx).pop();
+                                      _applyToGym(gym['id'].toString());
+                                    },
+                              child: Text(context.tr('trainer.apply')),
+                            ),
+                            if (passEnabled && passFee > 0)
+                              TextButton(
+                                onPressed: _applyBusy
+                                    ? null
+                                    : () {
+                                        Navigator.of(ctx).pop();
+                                        _buyTrainerPass(gym['id'].toString());
+                                      },
+                                child: Text(context.tr('trainer.buyPass')),
+                              ),
+                          ],
                         ),
                       );
                     },
@@ -247,6 +277,49 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
     }
   }
 
+  /// C8 — edit professional details (rate, specialties, bio, photo) via the
+  /// trainer profile endpoint.
+  Future<void> _editProfessionalProfile() async {
+    final trainer = _myProfile;
+    if (trainer == null) return;
+    final payload = await openTrainerForm(
+      context,
+      title: context.tr('trainer.editProfessional'),
+      initial: trainer,
+    );
+    if (payload == null || !mounted) return;
+    try {
+      await AppScope.of(context).api.trainerUpdateProfile(payload);
+      if (!mounted) return;
+      await _refreshTrainers();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr('member.profileUpdated'))),
+      );
+    } on ApiException {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.tr('owner.errorGeneric'))));
+    }
+  }
+
+  /// C4 — pay a gym's trainer pass fee.
+  Future<void> _buyTrainerPass(String gymId) async {
+    try {
+      await AppScope.of(context).api.trainerBuyPass(gymId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr('trainer.passRequested'))),
+      );
+    } on ApiException {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.tr('owner.errorGeneric'))));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final trainer = _myProfile;
@@ -309,26 +382,45 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
                 Expanded(
                   child: FFMetricCard(
                     value: '${gyms.length}',
-                    label: context.tr('trainer.gyms'),
+                    // C5: distinct label — not a second "Gyms" menu entry.
+                    label: context.tr('trainer.linkedGymsCount'),
                   ),
                 ),
               ],
             ),
             _section(context.tr('trainer.sessions')),
+            // C3: bookings + manual sessions for a chosen day.
             FFActionTile(
+              key: const Key('trainer-tile-sessions'),
               icon: Icons.event_available,
               title: context.tr('trainer.todaySessions'),
-              onTap: () {},
+              onTap: () => showTrainerSessionsSheet(context),
             ),
+            // C2: earnings auto-calculated from bookings + sessions.
             FFActionTile(
+              key: const Key('trainer-tile-earnings'),
               icon: Icons.payments,
               title: context.tr('trainer.earnings'),
-              onTap: () {},
+              onTap: () => showTrainerEarningsSheet(context),
             ),
             FFActionTile(
               icon: Icons.edit,
               title: context.tr('trainer.editProfile'),
               onTap: _showEditProfileDialog,
+            ),
+            // C8: professional details (rate, specialties, bio, photo).
+            FFActionTile(
+              key: const Key('trainer-tile-professional'),
+              icon: Icons.workspace_premium_outlined,
+              title: context.tr('trainer.editProfessional'),
+              onTap: _editProfessionalProfile,
+            ),
+            // C7: shop access for trainers.
+            FFActionTile(
+              key: const Key('trainer-tile-shop'),
+              icon: Icons.storefront_outlined,
+              title: context.tr('member.shop'),
+              onTap: () => openShopBrowsePage(context),
             ),
             _section(context.tr('trainer.gyms')),
             if (gyms.isEmpty && _pendingGyms.isEmpty)

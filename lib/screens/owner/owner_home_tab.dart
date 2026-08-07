@@ -226,29 +226,44 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
         ),
         const SizedBox(height: FFTokens.spacingLg),
 
-        // 3. Summary cards
+        // 3. Summary cards — B5/B10: active, tap through to their screens.
         Row(
           children: [
             Expanded(
-              child: FFMetricCard(
-                label: context.tr('owner.totalMembers'),
-                value: '$totalMembers',
-                icon: const Icon(
-                  Icons.people_outline,
-                  color: FFTokens.brand600,
-                  size: 20,
+              child: InkWell(
+                key: const Key('owner-card-total-members'),
+                onTap: () => context.go('/owner/members'),
+                borderRadius: BorderRadius.circular(FFTokens.radiusXl),
+                child: FFMetricCard(
+                  label: context.tr('owner.totalMembers'),
+                  value: '$totalMembers',
+                  icon: const Icon(
+                    Icons.people_outline,
+                    color: FFTokens.brand600,
+                    size: 20,
+                  ),
                 ),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: FFMetricCard(
-                label: context.tr('owner.checkins'),
-                value: '$periodVisits',
-                icon: const Icon(
-                  Icons.check_circle_outline,
-                  color: FFTokens.brand600,
-                  size: 20,
+              child: InkWell(
+                key: const Key('owner-card-checkins'),
+                onTap: () {
+                  final gymId = data.activeGymId;
+                  if (gymId != null) {
+                    context.push('/owner/gyms/$gymId/checkins');
+                  }
+                },
+                borderRadius: BorderRadius.circular(FFTokens.radiusXl),
+                child: FFMetricCard(
+                  label: context.tr('owner.checkins'),
+                  value: '$periodVisits',
+                  icon: const Icon(
+                    Icons.check_circle_outline,
+                    color: FFTokens.brand600,
+                    size: 20,
+                  ),
                 ),
               ),
             ),

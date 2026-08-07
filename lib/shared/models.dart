@@ -331,29 +331,64 @@ class Subscription {
   final String? id;
   final String? type;
   final String? tier;
+
+  /// Direct-sub plan: 'daily' | 'weekly' | 'monthly' (null for platform pass).
+  final String? plan;
   final String status;
+  final String? startedAt;
   final String? renewsAt;
   final String? expiresAt;
+  final String? homeGymId;
+
+  /// The subscribed gym for direct subscriptions (A3), hydrated by /me.
+  final Gym? homeGym;
 
   Subscription({
     this.id,
     this.type,
     this.tier,
+    this.plan,
     required this.status,
+    this.startedAt,
     this.renewsAt,
     this.expiresAt,
+    this.homeGymId,
+    this.homeGym,
   });
 
   factory Subscription.fromJson(Map<String, dynamic> json) => Subscription(
     id: json['id'] as String?,
     type: json['type'] as String?,
     tier: json['tier'] as String?,
+    plan: json['plan'] as String?,
     status: json['status'] as String? ?? 'inactive',
+    startedAt: json['startedAt'] as String?,
     renewsAt: json['renewsAt'] as String?,
     expiresAt: json['expiresAt'] as String?,
+    homeGymId: json['homeGymId'] as String?,
+    homeGym: json['homeGym'] is Map<String, dynamic>
+        ? Gym.fromJson(json['homeGym'] as Map<String, dynamic>)
+        : null,
   );
 
   bool get isActive => status == 'active';
+  bool get isDirect => type == 'direct_sub';
+
+  DateTime? get expiryDate =>
+      expiresAt == null ? null : DateTime.tryParse(expiresAt!);
+
+  /// Whole days remaining until expiry (negative when already expired).
+  int? get daysLeft {
+    final expiry = expiryDate;
+    if (expiry == null) return null;
+    return expiry.difference(DateTime.now()).inHours ~/ 24;
+  }
+
+  bool get isExpired {
+    if (status == 'expired') return true;
+    final expiry = expiryDate;
+    return expiry != null && DateTime.now().isAfter(expiry);
+  }
 }
 
 class PaymentRequest {

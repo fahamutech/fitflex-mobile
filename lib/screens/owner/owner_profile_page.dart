@@ -11,8 +11,40 @@ import '../language_screen.dart';
 import 'owner_shell.dart';
 
 /// Owner — profile view with account settings and sign-out.
-class OwnerProfilePage extends StatelessWidget {
+/// B9: this route lives OUTSIDE the owner shell, so [OwnerDataScope] is
+/// usually unavailable — the page loads its own gym/trainer counts.
+class OwnerProfilePage extends StatefulWidget {
   const OwnerProfilePage({super.key});
+
+  @override
+  State<OwnerProfilePage> createState() => _OwnerProfilePageState();
+}
+
+class _OwnerProfilePageState extends State<OwnerProfilePage> {
+  int? _gymCount;
+  int? _trainerCount;
+  bool _started = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_started) return;
+    _started = true;
+    _loadCounts();
+  }
+
+  Future<void> _loadCounts() async {
+    final api = AppScope.of(context).api;
+    try {
+      final gyms = await api.ownerGyms();
+      if (mounted) setState(() => _gymCount = gyms.length);
+    } catch (_) {}
+    if (!mounted) return;
+    try {
+      final trainers = await api.ownerTrainers();
+      if (mounted) setState(() => _trainerCount = trainers.length);
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,8 +59,14 @@ class OwnerProfilePage extends StatelessWidget {
             .toString();
     final email = user['email']?.toString() ?? '';
     final phone = user['phone']?.toString() ?? '';
-    final gymCount = ownerData?.ownerGyms.length ?? 0;
-    final trainerCount = ownerData?.ownerTrainers.length ?? 0;
+    // Prefer live scope data when inside the shell; fall back to the counts
+    // this page fetched itself (B9 — profile showed 0 gyms / 0 trainers).
+    final gymCount = ownerData?.ownerGyms.isNotEmpty == true
+        ? ownerData!.ownerGyms.length
+        : (_gymCount ?? ownerData?.ownerGyms.length ?? 0);
+    final trainerCount = ownerData?.ownerTrainers.isNotEmpty == true
+        ? ownerData!.ownerTrainers.length
+        : (_trainerCount ?? ownerData?.ownerTrainers.length ?? 0);
 
     return Scaffold(
       appBar: AppBar(
