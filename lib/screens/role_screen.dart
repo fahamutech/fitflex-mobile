@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../router.dart';
 import '../shared/api_client.dart';
+import '../shared/api_error_message.dart';
 import '../shared/components/theme_toggle_button.dart';
 import '../shared/i18n.dart';
 import '../shared/design_tokens.dart';
@@ -56,7 +57,7 @@ class _RoleScreenState extends State<RoleScreen>
     final auth = AppScope.of(context).auth;
     await auth.setRole(_selectedRole!);
     if (!mounted) return;
-    context.go(AppRoutes.auth);
+    context.push(AppRoutes.signUp);
   }
 
   @override
@@ -65,7 +66,8 @@ class _RoleScreenState extends State<RoleScreen>
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go(AppRoutes.language),
+          onPressed: () =>
+              context.canPop() ? context.pop() : context.go(AppRoutes.auth),
         ),
         actions: const [ThemeToggleButton()],
       ),
@@ -294,7 +296,9 @@ class _DevLoginPanelState extends State<_DevLoginPanel> {
       if (!mounted) return;
       context.go(routeForSignedInUser(auth));
     } on ApiException catch (e) {
-      if (mounted) setState(() => _error = 'Dev login failed (${e.status})');
+      if (mounted) {
+        setState(() => _error = apiErrorMessage(FFLocaleScope.of(context), e));
+      }
     } catch (e) {
       if (mounted) setState(() => _error = e.toString());
     } finally {

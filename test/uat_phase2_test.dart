@@ -71,24 +71,16 @@ Gym _gym({
 );
 
 void main() {
-  // ───────────────────────── B5: Marketplace "coming soon" under My QR ─────────────────────────
-  testWidgets('B5: My QR tab shows Marketplace / Shop with a Coming soon badge', (
+  // ───────────────────────── B5: Marketplace is active in its own Shop tab ─────────────────────
+  testWidgets('B5: My QR tab no longer duplicates the active Shop module', (
     tester,
   ) async {
     final data = MemberData();
     await tester.pumpWidget(_wrap(const MemberQrTab(), data: data));
     await tester.pump();
 
-    // The card sits below the QR section in a lazy ListView — scroll it into view.
-    final marketplace = find.text('Marketplace / Shop');
-    await tester.scrollUntilVisible(
-      marketplace,
-      250,
-      scrollable: find.byType(Scrollable).first,
-    );
-
-    expect(marketplace, findsOneWidget);
-    expect(find.text('Coming soon'), findsOneWidget);
+    expect(find.text('Marketplace / Shop'), findsNothing);
+    expect(find.text('Coming soon'), findsNothing);
   });
 
   // ───────────────────────── B2: scrollable gym photos ─────────────────────────
@@ -114,6 +106,15 @@ void main() {
         findsOneWidget,
         reason: 'photo position indicator expected',
       );
+
+      await tester.tap(find.byKey(const Key('gym-photo-0')));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const Key('gym-photo-fullscreen')),
+        findsOneWidget,
+        reason: 'tapping a gym image must open a zoomable full-screen view',
+      );
+      expect(find.byType(InteractiveViewer), findsOneWidget);
     },
   );
 

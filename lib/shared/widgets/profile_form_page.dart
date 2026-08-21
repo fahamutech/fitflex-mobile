@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app_scope.dart';
 import '../api_client.dart';
+import '../api_error_message.dart';
 import '../components/components.dart';
 import '../design_tokens.dart';
 import '../i18n.dart';
@@ -106,7 +107,7 @@ class _ProfileFormPageState extends State<ProfileFormPage> {
     } on ApiException catch (e) {
       setState(() {
         _busy = false;
-        _error = 'Error ${e.status}';
+        _error = apiErrorMessage(FFLocaleScope.of(context), e);
       });
     } catch (_) {
       setState(() {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../app_scope.dart';
 import '../../../shared/api_client.dart';
+import '../../../shared/api_error_message.dart';
 import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
 import '../../../shared/formatters.dart';
@@ -72,7 +73,7 @@ class _GymPlansSheetState extends State<GymPlansSheet> {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _error = '${context.tr('member.subscribeFailed')} (${e.status})';
+        _error = apiErrorMessage(FFLocaleScope.of(context), e);
       });
     } catch (_) {
       if (!mounted) return;

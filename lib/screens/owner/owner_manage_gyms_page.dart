@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app_scope.dart';
 import '../../shared/api_client.dart';
+import '../../shared/api_error_message.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
@@ -113,9 +114,9 @@ class OwnerManageGymsPage extends StatelessWidget {
       ).showSnackBar(SnackBar(content: Text(message)));
     } on ApiException catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error ${e.status}')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(apiErrorMessage(FFLocaleScope.of(context), e))),
+      );
     }
   }
 
@@ -139,9 +140,9 @@ class OwnerManageGymsPage extends StatelessWidget {
       ).showSnackBar(SnackBar(content: Text(message)));
     } on ApiException catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error ${e.status}')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(apiErrorMessage(FFLocaleScope.of(context), e))),
+      );
     }
   }
 
@@ -177,9 +178,13 @@ class OwnerManageGymsPage extends StatelessWidget {
                 ).showSnackBar(SnackBar(content: Text(message)));
               } on ApiException catch (e) {
                 if (!context.mounted) return;
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(SnackBar(content: Text('Error ${e.status}')));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      apiErrorMessage(FFLocaleScope.of(context), e),
+                    ),
+                  ),
+                );
               }
             },
             child: Text(context.tr('owner.deleteGym')),

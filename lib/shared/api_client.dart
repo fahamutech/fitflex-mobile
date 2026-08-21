@@ -94,19 +94,13 @@ class ApiClient {
     _logResponse(method, uri, res);
     final decoded = res.body.isEmpty ? null : jsonDecode(res.body);
     if (res.statusCode >= 200 && res.statusCode < 300) return decoded;
-    if (_shouldClearSession(res.statusCode, decoded) &&
-        onUnauthorized != null) {
+    // A 401 always means this bearer session can no longer be used.  Do not
+    // rely on a particular backend error shape: gateways and proxies often
+    // return their own 401 payloads.
+    if (res.statusCode == 401 && onUnauthorized != null) {
       onUnauthorized!();
     }
     throw ApiException(res.statusCode, decoded);
-  }
-
-  static bool _shouldClearSession(int statusCode, dynamic decoded) {
-    if (statusCode != 401 || decoded is! Map) return false;
-    final error = decoded['error']?.toString();
-    return error == 'unauthenticated' ||
-        error == 'invalid_token' ||
-        error == 'token_expired';
   }
 
   static bool _isRetryableError(Object e) {
@@ -182,12 +176,12 @@ class ApiClient {
 
   Future<Map<String, dynamic>> firebaseSession(
     String idToken,
-    String requestedRole,
+    String? requestedRole,
   ) async {
     return await _request(
       'POST',
       '/auth/firebase/session',
-      body: {'idToken': idToken, 'requestedRole': requestedRole},
+      body: {'idToken': idToken, 'requestedRole': ?requestedRole},
     );
   }
 

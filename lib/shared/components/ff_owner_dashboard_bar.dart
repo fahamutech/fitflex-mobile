@@ -151,6 +151,7 @@ class FFOwnerDashboardBar extends StatelessWidget
         const SizedBox(width: 4),
         // Avatar
         GestureDetector(
+          key: const Key('owner-profile-button'),
           onTap: onAvatarTap,
           child: CircleAvatar(
             radius: 16,

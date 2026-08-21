@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../app_scope.dart';
 import '../router.dart';
 import '../shared/api_client.dart';
+import '../shared/api_error_message.dart';
 import '../shared/auth_state.dart';
 import '../shared/components/components.dart';
 import '../shared/design_tokens.dart';
@@ -130,7 +131,7 @@ class _AuthScreenState extends State<AuthScreen>
       _showErrorDialog(message);
       return;
     }
-    _showErrorDialog('API ${e.status}');
+    _showErrorDialog(apiErrorMessage(FFLocaleScope.of(context), e));
   }
 
   String _firebaseError(FirebaseAuthException e) {
@@ -176,7 +177,6 @@ class _AuthScreenState extends State<AuthScreen>
     final auth = AppScope.of(context).auth;
     await auth.completeFirebaseSession(
       idToken: idToken,
-      requestedRole: auth.role,
       firebaseAuth: _authService,
     );
     if (!mounted) return;
@@ -207,7 +207,7 @@ class _AuthScreenState extends State<AuthScreen>
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: loading ? null : () => context.go(AppRoutes.role),
+          onPressed: loading ? null : () => context.go(AppRoutes.language),
         ),
         actions: const [ThemeToggleButton()],
       ),
@@ -248,6 +248,7 @@ class _AuthScreenState extends State<AuthScreen>
                       const SizedBox(height: 28),
                       // Email/Phone field
                       FFTextField(
+                        key: const Key('login-identifier'),
                         controller: _emailCtrl,
                         enabled: !loading,
                         keyboardType: TextInputType.emailAddress,
@@ -263,6 +264,7 @@ class _AuthScreenState extends State<AuthScreen>
                       const SizedBox(height: 24),
                       // CONTINUE button
                       FilledButton(
+                        key: const Key('login-continue'),
                         onPressed: loading ? null : () => _attemptContinue(),
                         child: loading
                             ? FFSpinner(
@@ -311,7 +313,7 @@ class _AuthScreenState extends State<AuthScreen>
                           TextButton(
                             onPressed: loading
                                 ? null
-                                : () => context.push(AppRoutes.signUp),
+                                : () => context.push(AppRoutes.role),
                             child: Text(context.tr('auth.createAccount')),
                           ),
                         ],
@@ -512,7 +514,9 @@ class _GoogleWebCallbackScreenState extends State<GoogleWebCallbackScreen> {
         if (mounted) setState(() => _error = message);
         return;
       }
-      if (mounted) setState(() => _error = 'API ${e.status}');
+      if (mounted) {
+        setState(() => _error = apiErrorMessage(FFLocaleScope.of(context), e));
+      }
     } on AdminMobileSignInException {
       if (mounted) setState(() => _error = context.tr('auth.adminPortalOnly'));
     } catch (e) {

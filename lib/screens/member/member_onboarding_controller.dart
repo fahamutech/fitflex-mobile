@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../shared/api_client.dart';
+import '../../shared/api_error_message.dart';
 import '../../shared/auth_state.dart';
+import '../../shared/i18n.dart';
 
 class MemberOnboardingController extends ChangeNotifier {
   final ApiClient api;
   final AuthState auth;
+  final FFLocale locale;
 
   int step = 0;
   bool busy = false;
@@ -20,7 +23,11 @@ class MemberOnboardingController extends ChangeNotifier {
 
   final PageController pageController = PageController();
 
-  MemberOnboardingController({required this.api, required this.auth}) {
+  MemberOnboardingController({
+    required this.api,
+    required this.auth,
+    required this.locale,
+  }) {
     nameCtrl.addListener(notifyListeners);
     dobCtrl.addListener(notifyListeners);
     heightCtrl.addListener(notifyListeners);
@@ -134,17 +141,7 @@ class MemberOnboardingController extends ChangeNotifier {
       await auth.signIn(auth.token!, user);
       onSuccess();
     } on ApiException catch (e) {
-      String msg = 'Status code: ${e.status}';
-      if (e.body is Map) {
-        final bodyMap = e.body as Map;
-        msg =
-            bodyMap['error']?.toString() ??
-            bodyMap['message']?.toString() ??
-            msg;
-      } else if (e.body != null) {
-        msg = e.body.toString();
-      }
-      onError(msg);
+      onError(apiErrorMessage(locale, e));
     } catch (e) {
       onError(e.toString());
     } finally {

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../app_scope.dart';
 import '../../router.dart';
 import '../../shared/api_client.dart';
+import '../../shared/api_error_message.dart';
 import '../../shared/components/theme_toggle_button.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
@@ -76,9 +77,9 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
       context.go(AppRoutes.pending);
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: ${e.status}')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(apiErrorMessage(FFLocaleScope.of(context), e))),
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }

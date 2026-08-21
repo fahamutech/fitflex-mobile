@@ -134,6 +134,7 @@ class TrainerProfile {
   final List<Gym> gyms;
   final String status;
   final String? approvalStatus;
+  final bool isVerified;
   final List<TrainerAvailability> availability;
 
   TrainerProfile({
@@ -153,6 +154,7 @@ class TrainerProfile {
     this.gyms = const [],
     required this.status,
     this.approvalStatus,
+    this.isVerified = false,
     this.availability = const [],
   });
 
@@ -179,6 +181,7 @@ class TrainerProfile {
         [],
     status: json['status'] as String? ?? 'active',
     approvalStatus: json['approvalStatus'] as String?,
+    isVerified: _boolValue(json['isVerified'] ?? json['verified']),
     availability:
         (json['availability'] as List?)
             ?.whereType<Map<String, dynamic>>()

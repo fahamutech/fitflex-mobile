@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../app_scope.dart';
 import '../../router.dart';
 import '../../shared/api_client.dart';
+import '../../shared/api_error_message.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/firebase_auth_service.dart';
@@ -78,9 +79,9 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
       ).showSnackBar(SnackBar(content: Text(successMessage)));
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error ${e.status}')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(apiErrorMessage(FFLocaleScope.of(context), e))),
+      );
     }
   }
 
@@ -440,8 +441,12 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
                     ),
                     const SizedBox(height: 4),
                     FFBadge(
-                      label:
-                          data.subscription?.tier ?? context.tr('pass.pending'),
+                      label: data.subscription?.isDirect == true
+                          ? context.tr(
+                              'member.plan_${data.subscription?.plan ?? 'monthly'}',
+                            )
+                          : data.subscription?.tier ??
+                                context.tr('pass.pending'),
                       tone: data.hasActivePass
                           ? FFBadgeTone.success
                           : FFBadgeTone.gray,
@@ -460,23 +465,29 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
         const SizedBox(height: 12),
 
         // Stats
-        Row(
-          children: [
-            Expanded(
-              child: FFMetricCard(
-                label: context.tr('home.visits'),
-                value: '$visitsUsed',
+        if (data.subscription?.isDirect == true)
+          FFMetricCard(
+            label: context.tr('member.membershipDaysLeft'),
+            value: '${(data.subscription?.daysLeft ?? 0).clamp(0, 99999)}',
+          )
+        else
+          Row(
+            children: [
+              Expanded(
+                child: FFMetricCard(
+                  label: context.tr('home.visits'),
+                  value: '$visitsUsed',
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: FFMetricCard(
-                label: context.tr('pass.visits'),
-                value: visitCap == null ? '-' : '$visitCap',
+              const SizedBox(width: 8),
+              Expanded(
+                child: FFMetricCard(
+                  label: context.tr('pass.visits'),
+                  value: visitCap == null ? '-' : '$visitCap',
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
         const SizedBox(height: 12),
 
         // Visit history

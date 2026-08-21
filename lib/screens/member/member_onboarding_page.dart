@@ -55,6 +55,7 @@ class _MemberOnboardingPageState extends State<MemberOnboardingPage> {
       _controller = MemberOnboardingController(
         api: scope.api,
         auth: scope.auth,
+        locale: FFLocaleScope.of(context),
       );
     }
   }

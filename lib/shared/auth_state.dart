@@ -88,7 +88,7 @@ class AuthState extends ChangeNotifier {
 
   Future<Map<String, dynamic>> completeFirebaseSession({
     required String idToken,
-    required String requestedRole,
+    String? requestedRole,
     FirebaseAuthService? firebaseAuth,
   }) async {
     final res = await api.firebaseSession(idToken, requestedRole);

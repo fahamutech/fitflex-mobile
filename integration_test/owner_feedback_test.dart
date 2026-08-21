@@ -8,26 +8,8 @@ import 'journeys.dart';
 
 void main() {
   patrolTest(
-    'Owner: Dashboard, scan, and earnings',
+    'Issues 3-4, 16-29, 42, 46-48: owner matrix',
     config: patrolConfig,
-    ownerProfileDashboardScanAndEarningsJourney,
-  );
-
-  patrolTest(
-    'Owner: Trainer credential and attendant',
-    config: patrolConfig,
-    ownerTrainerCredentialAndAttendantJourney,
-  );
-
-  patrolTest(
-    'Owner: QR failure and scan flow',
-    config: patrolConfig,
-    ownerQrFailureAndTrainerCreationJourney,
-  );
-
-  patrolTest(
-    'Owner: Create gym member',
-    config: patrolConfig,
-    ownerCreateGymMemberJourney,
+    ownerIssueMatrixJourney,
   );
 }

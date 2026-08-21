@@ -8,8 +8,8 @@ import 'journeys.dart';
 
 void main() {
   patrolTest(
-    'Trainer: Registration, rate, and specialty',
+    'Issues 5-8, 30-41: trainer matrix',
     config: patrolConfig,
-    trainerRegistrationRateAndSpecialtyJourney,
+    trainerIssueMatrixJourney,
   );
 }

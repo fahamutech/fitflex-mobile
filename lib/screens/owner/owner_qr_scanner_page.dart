@@ -3,6 +3,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../app_scope.dart';
 import '../../shared/api_client.dart';
+import '../../shared/api_error_message.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
@@ -103,13 +104,7 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
       });
     } on ApiException catch (e) {
       if (!mounted) return;
-      final body = e.body is Map ? e.body as Map : {};
-      setState(
-        () => _error =
-            body['failure']?.toString() ??
-            body['error']?.toString() ??
-            'Error ${e.status}',
-      );
+      setState(() => _error = apiErrorMessage(FFLocaleScope.of(context), e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -134,13 +129,7 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
       await _reset();
     } on ApiException catch (e) {
       if (!mounted) return;
-      final body = e.body is Map ? e.body as Map : {};
-      setState(
-        () => _error =
-            body['failure']?.toString() ??
-            body['error']?.toString() ??
-            'Error ${e.status}',
-      );
+      setState(() => _error = apiErrorMessage(FFLocaleScope.of(context), e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }

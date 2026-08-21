@@ -67,7 +67,7 @@ class TrainerGridCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      if (trainer.approvalStatus == 'approved') ...[
+                      if (trainer.isVerified) ...[
                         const SizedBox(width: 4),
                         const Icon(
                           Icons.verified,
@@ -172,7 +172,7 @@ class TrainerCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      if (trainer.approvalStatus == 'approved') ...[
+                      if (trainer.isVerified) ...[
                         const SizedBox(width: 4),
                         const Icon(
                           Icons.verified,

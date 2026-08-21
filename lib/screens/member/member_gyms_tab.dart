@@ -149,6 +149,7 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
                   children: [
                     FFPageHeader(title: context.tr('member.discoverGyms')),
                     TextField(
+                      key: const Key('gym-search'),
                       controller: _searchCtrl,
                       decoration: InputDecoration(
                         hintText: context.tr('member.searchGyms'),
@@ -175,6 +176,7 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
                     SizedBox(
                       height: 38,
                       child: ListView.separated(
+                        key: const Key('gym-filter-scroll'),
                         scrollDirection: Axis.horizontal,
                         itemCount: _filters.length + 1,
                         separatorBuilder: (context, index) =>
@@ -182,6 +184,7 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
                         itemBuilder: (_, i) {
                           if (i == _filters.length) {
                             return GestureDetector(
+                              key: const Key('gym-filter-more'),
                               onTap: () =>
                                   setState(() => _showFilters = !_showFilters),
                               child: AnimatedContainer(
@@ -229,6 +232,7 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
                           }
                           final selected = _filter == _filters[i];
                           return GestureDetector(
+                            key: Key('gym-filter-${_filters[i]}'),
                             onTap: () {
                               setState(() => _filter = _filters[i]);
                               if (_filters[i] == 'nearest') {
@@ -419,6 +423,7 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
                 sliver: SliverGrid(
                   delegate: SliverChildBuilderDelegate(
                     (context, i) => GymGridCard(
+                      key: Key('gym-card-${gyms[i].id}'),
                       gym: gyms[i],
                       distanceKm: gymDisplayDistanceKm(
                         gyms[i],

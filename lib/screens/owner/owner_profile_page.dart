@@ -160,6 +160,7 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
           ),
           const SizedBox(height: 16),
           OutlinedButton.icon(
+            key: const Key('owner-sign-out'),
             onPressed: () => _signOut(context),
             icon: Icon(
               Icons.logout,
@@ -219,6 +220,7 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
             child: Text(context.tr('member.cancel')),
           ),
           FilledButton(
+            key: const Key('owner-confirm-sign-out'),
             style: FilledButton.styleFrom(backgroundColor: FFTokens.error500),
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(context.tr('home.signout')),

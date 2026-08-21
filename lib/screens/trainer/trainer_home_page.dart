@@ -7,6 +7,7 @@ import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
+import '../../shared/root_back_navigation.dart';
 import '../../shared/widgets/profile_form_page.dart';
 import '../../shared/widgets/shop_browse_page.dart';
 import '../../shared/widgets/trainer_form_page.dart';
@@ -27,6 +28,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
   List<Map<String, dynamic>> _gyms = [];
   bool _started = false;
   bool _applyBusy = false;
+  int _tabIndex = 0;
 
   @override
   void didChangeDependencies() {
@@ -236,6 +238,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
             child: Text(context.tr('member.cancel')),
           ),
           FilledButton(
+            key: const Key('trainer-confirm-sign-out'),
             style: FilledButton.styleFrom(backgroundColor: FFTokens.error500),
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(context.tr('home.signout')),
@@ -322,164 +325,236 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final trainer = _myProfile;
-    final gyms = (trainer?['gyms'] as List?)?.whereType<Map>().toList() ?? [];
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(context.tr('trainer.dashboard')),
-        actions: const [ThemeToggleButton()],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _refreshAll,
-        child: ListView(
-          padding: const EdgeInsets.all(FFTokens.spacingLg),
-          children: [
-            Text(
-              context.tr('trainer.dashboardBody'),
-              style: TextStyle(
-                color: Theme.of(context).textTheme.bodySmall?.color,
-                height: 1.35,
-              ),
-            ),
-            const SizedBox(height: 14),
-            FFCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _section(context.tr('trainer.profile')),
-                  Text(
-                    trainer?['displayName']?.toString() ?? _displayName,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    (trainer?['specialties'] as List? ?? []).join(' / '),
-                    style: TextStyle(
-                      color: Theme.of(context).textTheme.bodySmall?.color,
-                      height: 1.35,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 6,
-                    children: [
-                      FFPill(
-                        label:
-                            '${formatCurrency(trainer?['hourlyRateTzs'] as num? ?? 0, currency: trainer?['sessionRateCurrency'] as String? ?? 'TZS')}/hr',
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: FFMetricCard(
-                    value: '${gyms.length}',
-                    // C5: distinct label — not a second "Gyms" menu entry.
-                    label: context.tr('trainer.linkedGymsCount'),
-                  ),
-                ),
-              ],
-            ),
-            _section(context.tr('trainer.sessions')),
-            // C3: bookings + manual sessions for a chosen day.
-            FFActionTile(
-              key: const Key('trainer-tile-sessions'),
-              icon: Icons.event_available,
-              title: context.tr('trainer.todaySessions'),
-              onTap: () => showTrainerSessionsSheet(context),
-            ),
-            // C2: earnings auto-calculated from bookings + sessions.
-            FFActionTile(
-              key: const Key('trainer-tile-earnings'),
-              icon: Icons.payments,
-              title: context.tr('trainer.earnings'),
-              onTap: () => showTrainerEarningsSheet(context),
-            ),
-            FFActionTile(
-              icon: Icons.edit,
-              title: context.tr('trainer.editProfile'),
-              onTap: _showEditProfileDialog,
-            ),
-            // C8: professional details (rate, specialties, bio, photo).
-            FFActionTile(
-              key: const Key('trainer-tile-professional'),
-              icon: Icons.workspace_premium_outlined,
-              title: context.tr('trainer.editProfessional'),
-              onTap: _editProfessionalProfile,
-            ),
-            // C7: shop access for trainers.
-            FFActionTile(
-              key: const Key('trainer-tile-shop'),
-              icon: Icons.storefront_outlined,
-              title: context.tr('member.shop'),
-              onTap: () => openShopBrowsePage(context),
-            ),
-            _section(context.tr('trainer.gyms')),
-            if (gyms.isEmpty && _pendingGyms.isEmpty)
-              FFEmptyState(title: context.tr('member.noData'))
-            else ...[
-              ...gyms.map(
-                (g) => FFActionTile(
-                  icon: Icons.fitness_center,
-                  title: g['name']?.toString() ?? '',
-                  subtitle: g['location']?.toString(),
-                  onTap: () {},
-                ),
-              ),
-              ..._pendingGyms.map(
-                (g) => FFActionTile(
-                  icon: Icons.hourglass_top,
-                  title: g['name']?.toString() ?? '',
-                  subtitle: context.tr('trainer.pendingApprovalAtGym'),
-                  trailing: TextButton(
-                    onPressed: _applyBusy
-                        ? null
-                        : () => _cancelApplication(g['id'].toString()),
-                    child: Text(context.tr('trainer.cancel')),
-                  ),
-                  onTap: () {},
-                ),
-              ),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        handleRootBack(didPop: didPop);
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          automaticallyImplyLeading: false,
+          title: Text(context.tr('trainer.dashboard')),
+          actions: const [ThemeToggleButton()],
+        ),
+        body: RefreshIndicator(
+          onRefresh: _refreshAll,
+          child: IndexedStack(
+            index: _tabIndex,
+            children: [
+              _dashboardTab(),
+              _sessionsTab(),
+              _gymsTab(),
+              _profileTab(),
             ],
-            const SizedBox(height: FFTokens.spacingSm),
-            OutlinedButton.icon(
-              onPressed: _applyBusy ? null : _showApplyGymSheet,
-              icon: const Icon(Icons.add),
-              label: Text(context.tr('trainer.applyToGym')),
+          ),
+        ),
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: _tabIndex,
+          onDestinationSelected: (index) => setState(() => _tabIndex = index),
+          destinations: [
+            NavigationDestination(
+              key: const Key('trainer-nav-home'),
+              icon: const Icon(Icons.home_outlined),
+              selectedIcon: const Icon(Icons.home),
+              label: context.tr('member.home'),
             ),
-            _section(context.tr('member.accountSettings')),
-            FFActionTile(
-              icon: Icons.help_outline,
-              title: context.tr('member.help'),
-              onTap: _openWhatsAppSupport,
+            NavigationDestination(
+              key: const Key('trainer-nav-sessions'),
+              icon: const Icon(Icons.calendar_month_outlined),
+              selectedIcon: const Icon(Icons.calendar_month),
+              label: context.tr('trainer.sessions'),
             ),
-            const SizedBox(height: 16),
-            OutlinedButton.icon(
-              onPressed: _signOut,
-              icon: Icon(
-                Icons.logout,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-              label: Text(
-                context.tr('home.signout'),
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-              ),
+            NavigationDestination(
+              key: const Key('trainer-nav-gyms'),
+              icon: const Icon(Icons.fitness_center_outlined),
+              selectedIcon: const Icon(Icons.fitness_center),
+              label: context.tr('trainer.gyms'),
+            ),
+            NavigationDestination(
+              key: const Key('trainer-nav-profile'),
+              icon: const Icon(Icons.person_outline),
+              selectedIcon: const Icon(Icons.person),
+              label: context.tr('trainer.profile'),
             ),
           ],
         ),
       ),
     );
   }
+
+  Widget _tabScroll(List<Widget> children) => ListView(
+    padding: const EdgeInsets.all(FFTokens.spacingLg),
+    children: children,
+  );
+
+  Widget _dashboardTab() {
+    final trainer = _myProfile;
+    final gyms = (trainer?['gyms'] as List?)?.whereType<Map>().toList() ?? [];
+    return _tabScroll([
+      Text(
+        context.tr('trainer.dashboardBody'),
+        style: TextStyle(
+          color: Theme.of(context).textTheme.bodySmall?.color,
+          height: 1.35,
+        ),
+      ),
+      const SizedBox(height: 14),
+      FFCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              context.tr('trainer.profile'),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              trainer?['displayName']?.toString() ?? _displayName,
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              (trainer?['specialties'] as List? ?? []).join(' / '),
+              style: TextStyle(
+                color: Theme.of(context).textTheme.bodySmall?.color,
+              ),
+            ),
+            const SizedBox(height: 12),
+            FFPill(
+              key: const Key('trainer-rate-per-session'),
+              label:
+                  '${formatCurrency(trainer?['hourlyRateTzs'] as num? ?? 0, currency: trainer?['sessionRateCurrency'] as String? ?? 'TZS')}${context.tr('trainerReg.perSession')}',
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 12),
+      FFMetricCard(
+        value: '${gyms.length}',
+        label: context.tr('trainer.linkedGymsCount'),
+      ),
+      _section(context.tr('trainer.sessions')),
+      FFActionTile(
+        key: const Key('trainer-tile-sessions'),
+        icon: Icons.event_available,
+        title: context.tr('trainer.todaySessions'),
+        onTap: () => showTrainerSessionsSheet(context),
+      ),
+      FFActionTile(
+        key: const Key('trainer-tile-earnings'),
+        icon: Icons.payments_outlined,
+        title: context.tr('trainer.earnings'),
+        onTap: () => showTrainerEarningsSheet(context),
+      ),
+      FFActionTile(
+        key: const Key('trainer-tile-shop'),
+        icon: Icons.storefront_outlined,
+        title: context.tr('member.shop'),
+        onTap: () => openShopBrowsePage(context),
+      ),
+    ]);
+  }
+
+  Widget _sessionsTab() => _tabScroll([
+    Text(
+      context.tr('trainer.sessions'),
+      style: Theme.of(context).textTheme.headlineSmall,
+    ),
+    const SizedBox(height: 8),
+    Text(
+      context.tr('trainer.dashboardBody'),
+      style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color),
+    ),
+    const SizedBox(height: 16),
+    FFActionTile(
+      key: const Key('trainer-sessions-today'),
+      icon: Icons.today_outlined,
+      title: context.tr('trainer.todaySessions'),
+      onTap: () => showTrainerSessionsSheet(context),
+    ),
+    FFActionTile(
+      key: const Key('trainer-earnings'),
+      icon: Icons.account_balance_wallet_outlined,
+      title: context.tr('trainer.earnings'),
+      onTap: () => showTrainerEarningsSheet(context),
+    ),
+  ]);
+
+  Widget _gymsTab() {
+    final gyms =
+        (_myProfile?['gyms'] as List?)?.whereType<Map>().toList() ?? [];
+    return _tabScroll([
+      Text(
+        context.tr('trainer.gyms'),
+        style: Theme.of(context).textTheme.headlineSmall,
+      ),
+      const SizedBox(height: 12),
+      if (gyms.isEmpty && _pendingGyms.isEmpty)
+        FFEmptyState(title: context.tr('member.noData')),
+      ...gyms.map(
+        (g) => FFActionTile(
+          icon: Icons.fitness_center,
+          title: g['name']?.toString() ?? '',
+          subtitle: g['location']?.toString(),
+          onTap: () {},
+        ),
+      ),
+      ..._pendingGyms.map(
+        (g) => FFActionTile(
+          icon: Icons.hourglass_top,
+          title: g['name']?.toString() ?? '',
+          subtitle: context.tr('trainer.pendingApprovalAtGym'),
+          trailing: TextButton(
+            onPressed: _applyBusy
+                ? null
+                : () => _cancelApplication(g['id'].toString()),
+            child: Text(context.tr('trainer.cancel')),
+          ),
+          onTap: () {},
+        ),
+      ),
+      const SizedBox(height: FFTokens.spacingSm),
+      OutlinedButton.icon(
+        key: const Key('trainer-apply-gym'),
+        onPressed: _applyBusy ? null : _showApplyGymSheet,
+        icon: const Icon(Icons.add),
+        label: Text(context.tr('trainer.applyToGym')),
+      ),
+    ]);
+  }
+
+  Widget _profileTab() => _tabScroll([
+    Text(
+      context.tr('trainer.profile'),
+      style: Theme.of(context).textTheme.headlineSmall,
+    ),
+    const SizedBox(height: 12),
+    FFActionTile(
+      key: const Key('trainer-edit-account'),
+      icon: Icons.edit_outlined,
+      title: context.tr('trainer.editProfile'),
+      onTap: _showEditProfileDialog,
+    ),
+    FFActionTile(
+      key: const Key('trainer-tile-professional'),
+      icon: Icons.workspace_premium_outlined,
+      title: context.tr('trainer.editProfessional'),
+      onTap: _editProfessionalProfile,
+    ),
+    FFActionTile(
+      key: const Key('trainer-help'),
+      icon: Icons.help_outline,
+      title: context.tr('member.help'),
+      onTap: _openWhatsAppSupport,
+    ),
+    const SizedBox(height: 16),
+    OutlinedButton.icon(
+      key: const Key('trainer-sign-out'),
+      onPressed: _signOut,
+      icon: const Icon(Icons.logout),
+      label: Text(context.tr('home.signout')),
+    ),
+  ]);
 
   Widget _section(String text) => Padding(
     padding: const EdgeInsets.only(top: 16, bottom: 10),

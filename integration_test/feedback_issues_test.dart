@@ -8,59 +8,19 @@ import 'package:patrol/patrol.dart';
 import 'journeys.dart';
 
 void main() {
-  // ─── Member ───
   patrolTest(
-    'Member: Onboarding PIN + tour + location',
+    'Issue matrix: member flows',
     config: patrolConfig,
-    memberOnboardingPinTourLocationJourney,
+    memberIssueMatrixJourney,
   );
   patrolTest(
-    'Member: Gym discovery, subscription, Shop',
+    'Issue matrix: owner flows',
     config: patrolConfig,
-    memberGymDiscoverySubscriptionAndShopJourney,
+    ownerIssueMatrixJourney,
   );
   patrolTest(
-    'Member: Profile, gym review, visits',
+    'Issue matrix: trainer flows',
     config: patrolConfig,
-    memberProfileGymReviewAndVisitsJourney,
-  );
-  patrolTest(
-    'Member: Auth terms and profile QR',
-    config: patrolConfig,
-    memberAuthTermsAndProfileQrJourney,
-  );
-  patrolTest(
-    'Member: Gym filters and subscription',
-    config: patrolConfig,
-    memberGymFiltersAndSubscriptionJourney,
-  );
-
-  // ─── Owner ───
-  patrolTest(
-    'Owner: Dashboard, scan, earnings',
-    config: patrolConfig,
-    ownerProfileDashboardScanAndEarningsJourney,
-  );
-  patrolTest(
-    'Owner: Trainer credential and attendant',
-    config: patrolConfig,
-    ownerTrainerCredentialAndAttendantJourney,
-  );
-  patrolTest(
-    'Owner: QR failure and scan flow',
-    config: patrolConfig,
-    ownerQrFailureAndTrainerCreationJourney,
-  );
-  patrolTest(
-    'Owner: Create gym member',
-    config: patrolConfig,
-    ownerCreateGymMemberJourney,
-  );
-
-  // ─── Trainer ───
-  patrolTest(
-    'Trainer: Registration, rate, specialty',
-    config: patrolConfig,
-    trainerRegistrationRateAndSpecialtyJourney,
+    trainerIssueMatrixJourney,
   );
 }

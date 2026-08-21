@@ -4,8 +4,8 @@ import 'journeys.dart';
 
 void main() {
   patrolTest(
-    'Trainer activities journey',
+    'Owner-created direct member can sign in with shared credentials',
     config: patrolConfig,
-    trainerIssueMatrixJourney,
+    directMembershipCredentialJourney,
   );
 }

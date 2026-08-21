@@ -8,6 +8,7 @@ import '../../shared/auth_state.dart';
 import '../../shared/components/theme_toggle_button.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
+import '../../shared/root_back_navigation.dart';
 
 export 'member_home_tab.dart';
 export 'member_gyms_tab.dart';
@@ -261,44 +262,59 @@ class MemberShellState extends State<MemberShell> {
 
   @override
   Widget build(BuildContext context) {
-    return MemberDataScope(
-      data: _data,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(context.tr('app.title')),
-          actions: const [ThemeToggleButton()],
-        ),
-        body: RefreshIndicator(onRefresh: _refreshAll, child: widget.child),
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: _tabIndex,
-          onDestinationSelected: _onTab,
-          destinations: [
-            NavigationDestination(
-              icon: const Icon(Icons.home_outlined),
-              selectedIcon: const Icon(Icons.home),
-              label: context.tr('member.home'),
-            ),
-            NavigationDestination(
-              icon: const Icon(Icons.fitness_center_outlined),
-              selectedIcon: const Icon(Icons.fitness_center),
-              label: context.tr('member.gyms'),
-            ),
-            NavigationDestination(
-              icon: const Icon(Icons.sports_gymnastics_outlined),
-              selectedIcon: const Icon(Icons.sports_gymnastics),
-              label: context.tr('member.trainers'),
-            ),
-            NavigationDestination(
-              icon: const Icon(Icons.storefront_outlined),
-              selectedIcon: const Icon(Icons.storefront),
-              label: context.tr('member.shop'),
-            ),
-            NavigationDestination(
-              icon: const Icon(Icons.person_outline),
-              selectedIcon: const Icon(Icons.person),
-              label: context.tr('member.profile'),
-            ),
-          ],
+    final location = GoRouterState.of(context).matchedLocation;
+    final isRootTab = <String>{
+      AppRoutes.memberHome,
+      AppRoutes.memberGyms,
+      AppRoutes.memberTrainers,
+      AppRoutes.memberShop,
+      AppRoutes.memberProfile,
+    }.contains(location);
+    return PopScope(
+      canPop: !isRootTab,
+      onPopInvokedWithResult: (didPop, _) {
+        if (isRootTab) handleRootBack(didPop: didPop);
+      },
+      child: MemberDataScope(
+        data: _data,
+        child: Scaffold(
+          appBar: AppBar(
+            automaticallyImplyLeading: false,
+            title: Text(context.tr('app.title')),
+            actions: const [ThemeToggleButton()],
+          ),
+          body: RefreshIndicator(onRefresh: _refreshAll, child: widget.child),
+          bottomNavigationBar: NavigationBar(
+            selectedIndex: _tabIndex,
+            onDestinationSelected: _onTab,
+            destinations: [
+              NavigationDestination(
+                icon: const Icon(Icons.home_outlined),
+                selectedIcon: const Icon(Icons.home),
+                label: context.tr('member.home'),
+              ),
+              NavigationDestination(
+                icon: const Icon(Icons.fitness_center_outlined),
+                selectedIcon: const Icon(Icons.fitness_center),
+                label: context.tr('member.gyms'),
+              ),
+              NavigationDestination(
+                icon: const Icon(Icons.sports_gymnastics_outlined),
+                selectedIcon: const Icon(Icons.sports_gymnastics),
+                label: context.tr('member.trainers'),
+              ),
+              NavigationDestination(
+                icon: const Icon(Icons.storefront_outlined),
+                selectedIcon: const Icon(Icons.storefront),
+                label: context.tr('member.shop'),
+              ),
+              NavigationDestination(
+                icon: const Icon(Icons.person_outline),
+                selectedIcon: const Icon(Icons.person),
+                label: context.tr('member.profile'),
+              ),
+            ],
+          ),
         ),
       ),
     );

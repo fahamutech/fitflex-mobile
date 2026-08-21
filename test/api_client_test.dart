@@ -19,7 +19,7 @@ String _baseUrl(HttpServer server) =>
     'http://${server.address.host}:${server.port}';
 
 void main() {
-  test('invalid QR 401 does not clear the auth session', () async {
+  test('any 401 clears the auth session, including a QR failure', () async {
     final server = await _jsonServer(401, {
       'ok': false,
       'failure': 'invalid_or_expired_qr',
@@ -34,7 +34,7 @@ void main() {
         throwsA(isA<ApiException>().having((e) => e.status, 'status', 401)),
       );
 
-      expect(cleared, false);
+      expect(cleared, true);
     } finally {
       await server.close(force: true);
     }

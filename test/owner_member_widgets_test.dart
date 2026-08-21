@@ -66,7 +66,7 @@ void main() {
   // ── MemberListTile ─────────────────────────────────────────────────────────
 
   group('MemberListTile', () {
-    OwnerMember _testMember({
+    OwnerMember testMember({
       OwnerMemberStatus status = OwnerMemberStatus.active,
       OwnerMemberType type = OwnerMemberType.direct,
       String? name = 'Amina Juma',
@@ -84,7 +84,7 @@ void main() {
 
     testWidgets('renders display name', (tester) async {
       await tester.pumpWidget(
-        _wrap(MemberListTile(member: _testMember(), onTap: () {})),
+        _wrap(MemberListTile(member: testMember(), onTap: () {})),
       );
       expect(find.text('Amina Juma'), findsOneWidget);
     });
@@ -95,7 +95,7 @@ void main() {
       await tester.pumpWidget(
         _wrap(
           MemberListTile(
-            member: _testMember(name: ''),
+            member: testMember(name: ''),
             onTap: () {},
           ),
         ),
@@ -106,9 +106,7 @@ void main() {
     testWidgets('calls onTap when tapped', (tester) async {
       var tapped = false;
       await tester.pumpWidget(
-        _wrap(
-          MemberListTile(member: _testMember(), onTap: () => tapped = true),
-        ),
+        _wrap(MemberListTile(member: testMember(), onTap: () => tapped = true)),
       );
       await tester.tap(find.byType(MemberListTile));
       expect(tapped, isTrue);
@@ -119,7 +117,7 @@ void main() {
       await tester.pumpWidget(
         _wrap(
           MemberListTile(
-            member: _testMember(lastCheckin: checkin),
+            member: testMember(lastCheckin: checkin),
             onTap: () {},
           ),
         ),
@@ -129,14 +127,14 @@ void main() {
 
     testWidgets('does not show checkin line when null', (tester) async {
       await tester.pumpWidget(
-        _wrap(MemberListTile(member: _testMember(), onTap: () {})),
+        _wrap(MemberListTile(member: testMember(), onTap: () {})),
       );
       expect(find.byIcon(Icons.calendar_today_outlined), findsNothing);
     });
 
     testWidgets('shows chevron icon', (tester) async {
       await tester.pumpWidget(
-        _wrap(MemberListTile(member: _testMember(), onTap: () {})),
+        _wrap(MemberListTile(member: testMember(), onTap: () {})),
       );
       expect(find.byIcon(Icons.chevron_right), findsOneWidget);
     });
@@ -145,7 +143,7 @@ void main() {
       await tester.pumpWidget(
         _wrap(
           MemberListTile(
-            member: _testMember(status: OwnerMemberStatus.expiringSoon),
+            member: testMember(status: OwnerMemberStatus.expiringSoon),
             onTap: () {},
           ),
         ),

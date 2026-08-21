@@ -4,8 +4,8 @@ import 'journeys.dart';
 
 void main() {
   patrolTest(
-    'Trainer activities journey',
+    'Create account role page and automatic sign-in role',
     config: patrolConfig,
-    trainerIssueMatrixJourney,
+    roleChoiceJourney,
   );
 }

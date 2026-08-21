@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../app_scope.dart';
 import '../../shared/api_client.dart';
 import '../../shared/components/components.dart';
 import '../../shared/i18n.dart';
+import '../../shared/root_back_navigation.dart';
 
 export 'owner_checkins_page.dart';
 export 'owner_earnings_page.dart';
@@ -63,8 +63,8 @@ class OwnerData extends ChangeNotifier {
   bool canAccess(String scope) => !isStaff || aclPermissions.contains(scope);
 
   /// Display name of the active gym, falling back to the first owned gym.
-  String activeGymName(String pendingLabel, String fallbackLabel) {
-    if (ownerGyms.isEmpty) return pendingLabel;
+  String activeGymName(String fallbackLabel) {
+    if (ownerGyms.isEmpty) return fallbackLabel;
     final match = ownerGyms.firstWhere(
       (g) => g['id']?.toString() == activeGymId,
       orElse: () => ownerGyms.first,
@@ -165,8 +165,6 @@ const _kOwnerTabs = [
 ];
 
 class OwnerShellState extends State<OwnerShell> {
-  static const _activeGymPrefsKey = 'owner_active_gym_id';
-
   final OwnerData _data = OwnerData();
   bool _started = false;
 
@@ -227,26 +225,22 @@ class OwnerShellState extends State<OwnerShell> {
     }
   }
 
-  /// Restores the persisted active gym (if still owned), else defaults to
-  /// the first owned gym. Must run after [_refreshOwnerGyms].
+  /// Select the first owned gym after fresh data loads. The selection stays
+  /// in memory only so it cannot become stale between sessions.
   Future<void> _restoreActiveGym() async {
     if (_data.ownerGyms.isEmpty) return;
-    final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getString(_activeGymPrefsKey);
     final ownedIds = _data.ownerGyms.map((g) => g['id']?.toString()).toSet();
-    _data.activeGymId = (saved != null && ownedIds.contains(saved))
-        ? saved
-        : _data.ownerGyms.first['id']?.toString();
+    if (_data.activeGymId == null || !ownedIds.contains(_data.activeGymId)) {
+      _data.activeGymId = _data.ownerGyms.first['id']?.toString();
+    }
   }
 
-  /// Switches the active gym across every owner page, persists the choice,
+  /// Switches the active gym across every owner page,
   /// and refreshes the gym-scoped data (dashboard + trainers). Members list
   /// and Earnings listen to [OwnerData] and reload themselves.
   Future<void> setActiveGym(String gymId) async {
     if (_data.activeGymId == gymId) return;
     _data.update((d) => d.activeGymId = gymId);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_activeGymPrefsKey, gymId);
     await Future.wait([
       refreshDashboard(),
       _refreshOwnerTrainers(),
@@ -335,45 +329,48 @@ class OwnerShellState extends State<OwnerShell> {
   @override
   Widget build(BuildContext context) {
     final tabs = _visibleTabs;
-    return OwnerDataScope(
-      data: _data,
-      child: Scaffold(
-        appBar: FFOwnerDashboardBar(
-          selectedGymName: _data.activeGymName(
-            context.tr('owner.pendingApproval'),
-            context.tr('owner.gym'),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        handleRootBack(didPop: didPop);
+      },
+      child: OwnerDataScope(
+        data: _data,
+        child: Scaffold(
+          appBar: FFOwnerDashboardBar(
+            selectedGymName: _data.activeGymName(context.tr('owner.gym')),
+            initials: _getInitials(_data.displayName),
+            ownerGyms: _data.ownerGyms,
+            subtitleLabel: _title,
+            onGymSelected: (gymId) => setActiveGym(gymId),
+            onAvatarTap: () => context.push('/owner/profile'),
+            onNotificationTap: () => ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(context.tr('owner.noNotifications'))),
+            ),
           ),
-          initials: _getInitials(_data.displayName),
-          ownerGyms: _data.ownerGyms,
-          subtitleLabel: _title,
-          onGymSelected: (gymId) => setActiveGym(gymId),
-          onAvatarTap: () => context.push('/owner/profile'),
-          onNotificationTap: () => ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(context.tr('owner.noNotifications'))),
+          body: RefreshIndicator(onRefresh: refreshAll, child: widget.child),
+          bottomNavigationBar: NavigationBar(
+            selectedIndex: _tabIndex,
+            onDestinationSelected: _onTab,
+            destinations: [
+              for (final tab in tabs)
+                NavigationDestination(
+                  icon: Icon(
+                    tab.icon,
+                    color: _data.ownerGyms.isEmpty && tab.route != '/owner/home'
+                        ? Colors.grey
+                        : null,
+                  ),
+                  selectedIcon: Icon(
+                    tab.selectedIcon,
+                    color: _data.ownerGyms.isEmpty && tab.route != '/owner/home'
+                        ? Colors.grey
+                        : null,
+                  ),
+                  label: context.tr(tab.labelKey),
+                ),
+            ],
           ),
-        ),
-        body: RefreshIndicator(onRefresh: refreshAll, child: widget.child),
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: _tabIndex,
-          onDestinationSelected: _onTab,
-          destinations: [
-            for (final tab in tabs)
-              NavigationDestination(
-                icon: Icon(
-                  tab.icon,
-                  color: _data.ownerGyms.isEmpty && tab.route != '/owner/home'
-                      ? Colors.grey
-                      : null,
-                ),
-                selectedIcon: Icon(
-                  tab.selectedIcon,
-                  color: _data.ownerGyms.isEmpty && tab.route != '/owner/home'
-                      ? Colors.grey
-                      : null,
-                ),
-                label: context.tr(tab.labelKey),
-              ),
-          ],
         ),
       ),
     );

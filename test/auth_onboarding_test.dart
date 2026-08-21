@@ -7,9 +7,12 @@ import 'package:fitflexmobile/screens/auth_screen.dart';
 import 'package:fitflexmobile/screens/email_auth_screen.dart';
 import 'package:fitflexmobile/shared/api_client.dart';
 import 'package:fitflexmobile/shared/auth_state.dart';
+import 'package:fitflexmobile/shared/components/custom_keypad.dart';
+import 'package:fitflexmobile/shared/components/pin_input_row.dart';
 import 'package:fitflexmobile/shared/design_tokens.dart';
 import 'package:fitflexmobile/shared/i18n.dart';
 import 'package:fitflexmobile/shared/pin_credentials.dart';
+import 'package:fitflexmobile/shared/theme_notifier.dart';
 
 Widget _wrap(Widget child) {
   final api = ApiClient(baseUrl: 'http://localhost:0');
@@ -19,17 +22,20 @@ Widget _wrap(Widget child) {
   return AppScope(
     api: api,
     auth: auth,
-    child: FFLocaleScope(
-      notifier: locale,
-      child: MaterialApp(
-        theme: buildTheme(),
-        supportedLocales: const [Locale('en'), Locale('sw')],
-        localizationsDelegates: const [
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        home: child,
+    child: ThemeScope(
+      notifier: ThemeNotifier(),
+      child: FFLocaleScope(
+        notifier: locale,
+        child: MaterialApp(
+          theme: buildTheme(),
+          supportedLocales: const [Locale('en'), Locale('sw')],
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          home: child,
+        ),
       ),
     ),
   );
@@ -51,20 +57,18 @@ void main() {
       _wrap(const AuthScreen(enableFirebaseRecovery: false)),
     );
 
-    expect(find.text('Log in to your account'), findsOneWidget);
-    expect(
-      find.text('Welcome back! Please enter your details.'),
-      findsOneWidget,
-    );
-    expect(find.byType(TextField), findsOneWidget);
-    expect(find.text('Continue with email'), findsOneWidget);
+    expect(find.text('Sign in'), findsOneWidget);
+    expect(find.byKey(const Key('login-identifier')), findsOneWidget);
+    expect(find.byKey(const Key('login-continue')), findsOneWidget);
     expect(find.text('OR'), findsOneWidget);
-    expect(find.text('Continue with Google'), findsOneWidget);
+    expect(find.text('CONTINUE WITH GOOGLE'), findsOneWidget);
     expect(find.text('Don\'t have an account?'), findsOneWidget);
-    expect(find.text('Sign up'), findsOneWidget);
+    expect(find.text('Create account'), findsOneWidget);
   });
 
-  testWidgets('email sign-up validates PIN confirmation', (tester) async {
+  testWidgets('email sign-up enables submission at four PIN digits', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       _wrap(
         const EmailAuthScreen(
@@ -74,47 +78,23 @@ void main() {
       ),
     );
 
-    await tester.enterText(find.byKey(const Key('pinField')), '12345678');
-    await tester.enterText(
-      find.byKey(const Key('confirmPinField')),
-      '87654321',
+    expect(
+      tester.widget<CustomKeypad>(find.byType(CustomKeypad)).okEnabled,
+      isFalse,
     );
-    await tester.ensureVisible(find.text('Create account'));
-    await tester.tap(find.text('Create account'));
-    await tester.pump();
-
-    expect(find.text('PINs do not match.'), findsOneWidget);
-  });
-
-  testWidgets(
-    'email sign-up accepts 4 to 8 digit PINs before terms validation',
-    (tester) async {
-      await tester.pumpWidget(
-        _wrap(
-          const EmailAuthScreen(
-            initialEmail: 'member@example.com',
-            initialMode: EmailAuthMode.signUp,
-          ),
-        ),
-      );
-
-      await tester.enterText(find.byKey(const Key('pinField')), '12345678');
-      await tester.enterText(
-        find.byKey(const Key('confirmPinField')),
-        '12345678',
-      );
-      await tester.ensureVisible(find.text('Create account'));
-      await tester.tap(find.text('Create account'));
+    for (var i = 0; i < 4; i++) {
+      await tester.tap(find.text('1'));
       await tester.pump();
+    }
+    expect(
+      tester.widget<CustomKeypad>(find.byType(CustomKeypad)).okEnabled,
+      isTrue,
+    );
+  });
 
-      expect(
-        find.text('Accept the Terms and Conditions to create an account.'),
-        findsOneWidget,
-      );
-    },
-  );
-
-  testWidgets('email PIN fields allow up to 8 digits', (tester) async {
+  testWidgets('email PIN keypad caps credentials at six digits', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       _wrap(
         const EmailAuthScreen(
@@ -124,20 +104,11 @@ void main() {
       ),
     );
 
-    final pinField = tester.widget<TextField>(
-      find.descendant(
-        of: find.byKey(const Key('pinField')),
-        matching: find.byType(TextField),
-      ),
-    );
-    final confirmPinField = tester.widget<TextField>(
-      find.descendant(
-        of: find.byKey(const Key('confirmPinField')),
-        matching: find.byType(TextField),
-      ),
-    );
+    for (var i = 0; i < 8; i++) {
+      await tester.tap(find.text('2'));
+      await tester.pump();
+    }
 
-    expect(pinField.maxLength, 8);
-    expect(confirmPinField.maxLength, 8);
+    expect(tester.widget<PinInputRow>(find.byType(PinInputRow)).pin, '222222');
   });
 }

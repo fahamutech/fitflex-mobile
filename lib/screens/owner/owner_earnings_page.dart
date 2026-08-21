@@ -91,10 +91,7 @@ class _OwnerEarningsPageState extends State<OwnerEarningsPage> {
       appBar: FFOwnerDashboardBar(
         showBackButton: true,
         selectedGymName:
-            data?.activeGymName(
-              context.tr('owner.pendingApproval'),
-              context.tr('owner.gym'),
-            ) ??
+            data?.activeGymName(context.tr('owner.gym')) ??
             context.tr('owner.earnings'),
         initials: '',
         ownerGyms: data?.ownerGyms ?? const [],

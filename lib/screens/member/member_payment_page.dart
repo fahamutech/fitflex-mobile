@@ -9,6 +9,7 @@ import '../../shared/design_tokens.dart';
 import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
 import '../../shared/api_client.dart';
+import '../../shared/api_error_message.dart';
 import '../../shared/models.dart';
 import 'member_shell.dart';
 
@@ -172,9 +173,9 @@ class _SubmitButtonState extends State<_SubmitButton> {
       context.go(AppRoutes.memberHome);
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error ${e.status}')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(apiErrorMessage(FFLocaleScope.of(context), e))),
+      );
     } finally {
       if (mounted) setState(() => _loading = false);
     }

@@ -4,7 +4,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_scope.dart';
 import 'router.dart';
@@ -41,10 +40,7 @@ Future<void> main() async {
   final auth = AuthState(api);
   await auth.hydrate();
 
-  final prefs = await SharedPreferences.getInstance();
   final locale = FFLocale();
-  final saved = prefs.getString('locale');
-  if (saved != null) locale.set(Locale(saved));
 
   final themeNotifier = ThemeNotifier();
 

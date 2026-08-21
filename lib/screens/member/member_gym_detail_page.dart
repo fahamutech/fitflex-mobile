@@ -84,6 +84,7 @@ class _MemberGymDetailPageState extends State<MemberGymDetailPage> {
       // ratings → plans → directions → about → equipment → amenities →
       // trainers → reviews → actions.
       body: ListView(
+        key: const Key('gym-detail-scroll'),
         padding: const EdgeInsets.all(FFTokens.spacingLg),
         children: [
           // 1. Scrollable photo gallery
@@ -439,6 +440,62 @@ class _GymHero extends StatelessWidget {
 
   final Gym gym;
 
+  void _openPhoto(BuildContext context, String image, int index) {
+    showDialog<void>(
+      context: context,
+      barrierColor: Colors.black,
+      builder: (dialogContext) => Dialog.fullscreen(
+        key: const Key('gym-photo-fullscreen'),
+        backgroundColor: Colors.black,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            InteractiveViewer(
+              minScale: 1,
+              maxScale: 5,
+              child: FFRemoteImage(
+                src: image,
+                width: double.infinity,
+                height: double.infinity,
+                fit: BoxFit.contain,
+                fallback: const Center(
+                  child: Icon(Icons.broken_image_outlined, color: Colors.white),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 12,
+              right: 12,
+              child: SafeArea(
+                child: IconButton.filled(
+                  key: const Key('gym-photo-close'),
+                  onPressed: () => Navigator.pop(dialogContext),
+                  icon: const Icon(Icons.close),
+                  tooltip: MaterialLocalizations.of(
+                    dialogContext,
+                  ).closeButtonTooltip,
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: 20,
+              left: 0,
+              right: 0,
+              child: SafeArea(
+                child: Center(
+                  child: Text(
+                    '${index + 1}/${gym.images.length}',
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final images = gym.images;
@@ -453,32 +510,36 @@ class _GymHero extends StatelessWidget {
       child: images.isNotEmpty
           ? PageView.builder(
               itemCount: images.length,
-              itemBuilder: (context, index) => Stack(
-                fit: StackFit.expand,
-                children: [
-                  FFRemoteImage(
-                    src: images[index],
-                    width: double.infinity,
-                    height: 180,
-                    fit: BoxFit.cover,
-                    fallback: Center(
-                      child: Icon(
-                        Icons.fitness_center,
-                        color: Theme.of(context).colorScheme.primary,
-                        size: 48,
+              itemBuilder: (context, index) => GestureDetector(
+                key: Key('gym-photo-$index'),
+                onTap: () => _openPhoto(context, images[index], index),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    FFRemoteImage(
+                      src: images[index],
+                      width: double.infinity,
+                      height: 180,
+                      fit: BoxFit.cover,
+                      fallback: Center(
+                        child: Icon(
+                          Icons.fitness_center,
+                          color: Theme.of(context).colorScheme.primary,
+                          size: 48,
+                        ),
                       ),
                     ),
-                  ),
-                  if (images.length > 1)
-                    Positioned(
-                      right: 10,
-                      bottom: 10,
-                      child: FFBadge(
-                        label: '${index + 1}/${images.length}',
-                        tone: FFBadgeTone.gray,
+                    if (images.length > 1)
+                      Positioned(
+                        right: 10,
+                        bottom: 10,
+                        child: FFBadge(
+                          label: '${index + 1}/${images.length}',
+                          tone: FFBadgeTone.gray,
+                        ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             )
           : Center(

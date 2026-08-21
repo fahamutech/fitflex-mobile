@@ -17,6 +17,10 @@
 #
 set -euo pipefail
 
+# Patrol's CLI update check is unrelated to the test and can fail on an
+# otherwise healthy offline/local run. CI mode disables only that check.
+export CI="${CI:-true}"
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_DIR="$(dirname "$SCRIPT_DIR")"
 BACKEND_DIR="$(cd "$APP_DIR/../fitflex-functions" 2>/dev/null && pwd || true)"
@@ -27,6 +31,8 @@ TARGETS=(
   "integration_test/member_test.dart"
   "integration_test/owner_test.dart"
   "integration_test/trainer_test.dart"
+  "integration_test/role_choice_test.dart"
+  "integration_test/direct_membership_test.dart"
   "integration_test/member_feedback_test.dart"
   "integration_test/owner_feedback_test.dart"
   "integration_test/trainer_feedback_test.dart"
@@ -85,6 +91,11 @@ for t in "${TARGETS[@]}"; do
   echo "────────────────────────────────────────────────────────"
   echo "▶ $t"
   echo "────────────────────────────────────────────────────────"
+  # USB reconnects clear reverse mappings. Re-apply immediately before every
+  # target so a long multi-target run never silently loses the local backend.
+  if [[ "$API_BASE" == *localhost* || "$API_BASE" == *127.0.0.1* ]]; then
+    adb reverse tcp:3000 tcp:3000 >/dev/null
+  fi
   if ! patrol test --target "$t" "${DEVICE_ARGS[@]}" "${DEFINES[@]}"; then
     FAILED+=("$t")
   fi

@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import '../../../../shared/components/components.dart';
 import '../../../../shared/design_tokens.dart';
 import '../../../../shared/i18n.dart';
+import '../../../../shared/pin_credentials.dart';
 import '../data/member_models.dart';
 
 /// Opens the Add Member sheet, returning the create payload or null if cancelled.
@@ -113,7 +114,7 @@ class _MemberFormSheetState extends State<_MemberFormSheet> {
           'paidAmount': num.tryParse(_amount.text.trim()) ?? 0,
         // B2: optional login credential for the member.
         if (_initialPassword.text.isNotEmpty)
-          'initialPassword': _initialPassword.text,
+          'initialPassword': firebasePasswordForPin(_initialPassword.text),
       };
     }
     Navigator.pop(context, payload);
@@ -155,6 +156,7 @@ class _MemberFormSheetState extends State<_MemberFormSheet> {
                 ),
                 const SizedBox(height: FFTokens.spacingMd),
                 FFTextField(
+                  key: const Key('add-member-name'),
                   controller: _name,
                   label: context.tr('member.fullName'),
                   textInputAction: TextInputAction.next,
@@ -237,9 +239,12 @@ class _MemberFormSheetState extends State<_MemberFormSheet> {
                     controller: _initialPassword,
                     label: context.tr('members.initialPassword'),
                     hint: context.tr('members.initialPasswordHint'),
+                    keyboardType: TextInputType.number,
                     obscureText: true,
                     validator: (v) {
-                      if (v != null && v.isNotEmpty && v.length < 6) {
+                      if (v != null &&
+                          v.isNotEmpty &&
+                          !RegExp(r'^\d{4,8}$').hasMatch(v)) {
                         return context.tr('members.initialPasswordTooShort');
                       }
                       return null;
@@ -248,6 +253,7 @@ class _MemberFormSheetState extends State<_MemberFormSheet> {
                 ],
                 const SizedBox(height: FFTokens.spacingLg),
                 FilledButton(
+                  key: const Key('add-member-save'),
                   onPressed: _submit,
                   child: Text(
                     context.tr(

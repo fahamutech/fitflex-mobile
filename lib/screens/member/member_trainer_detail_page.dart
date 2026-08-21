@@ -115,10 +115,11 @@ class _MemberTrainerDetailPageState extends State<MemberTrainerDetailPage> {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: OutlinedButton(
+                child: OutlinedButton.icon(
                   key: const Key('trainer-action-interest'),
                   onPressed: _interestBusy ? null : _showInterest,
-                  child: FittedBox(
+                  icon: const Icon(Icons.favorite_border, size: 18),
+                  label: FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(context.tr('member.showInterest')),
                   ),
@@ -153,7 +154,7 @@ class _MemberTrainerDetailPageState extends State<MemberTrainerDetailPage> {
                                 ?.copyWith(fontWeight: FontWeight.w600),
                           ),
                         ),
-                        if (trainer.approvalStatus == 'approved') ...[
+                        if (trainer.isVerified) ...[
                           const SizedBox(width: 6),
                           const Icon(
                             Icons.verified,

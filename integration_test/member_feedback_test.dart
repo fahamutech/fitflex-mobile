@@ -8,32 +8,8 @@ import 'journeys.dart';
 
 void main() {
   patrolTest(
-    'Member: Onboarding PIN + tour + location',
+    'Issues 1-15, 17-18, 22, 31, 41-42, 45, 48: member matrix',
     config: patrolConfig,
-    memberOnboardingPinTourLocationJourney,
-  );
-
-  patrolTest(
-    'Member: Gym discovery, subscription, and Shop tab',
-    config: patrolConfig,
-    memberGymDiscoverySubscriptionAndShopJourney,
-  );
-
-  patrolTest(
-    'Member: Profile, gym review, and visits',
-    config: patrolConfig,
-    memberProfileGymReviewAndVisitsJourney,
-  );
-
-  patrolTest(
-    'Member: Auth terms and profile QR',
-    config: patrolConfig,
-    memberAuthTermsAndProfileQrJourney,
-  );
-
-  patrolTest(
-    'Member: Gym filters and subscription',
-    config: patrolConfig,
-    memberGymFiltersAndSubscriptionJourney,
+    memberIssueMatrixJourney,
   );
 }
