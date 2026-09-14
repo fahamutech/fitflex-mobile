@@ -114,6 +114,7 @@ class GymGridCard extends StatelessWidget {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
           children: [
             // ── Image / thumbnail ──────────────────────────────────────
             ClipRRect(
@@ -148,53 +149,62 @@ class GymGridCard extends StatelessWidget {
               ),
             ),
             // ── Content ────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.all(10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+            Flexible(
+              child: ClipRect(
+                child: Padding(
+                  // Keep the compact two-column card within the Pixel 7 grid's
+                  // 241.3 px extent, including the verified and distance badges.
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Flexible(
-                        child: Text(
-                          gym.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: tt.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              gym.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: tt.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
-                        ),
+                          if (gymIsVerified(gym)) ...[
+                            const SizedBox(width: 4),
+                            const GymVerifiedIcon(size: 13),
+                          ],
+                        ],
                       ),
-                      if (gymIsVerified(gym)) ...[
-                        const SizedBox(width: 4),
-                        const GymVerifiedIcon(size: 13),
-                      ],
+                      const SizedBox(height: 3),
+                      Text(
+                        gym.location,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: tt.bodySmall?.copyWith(fontSize: 11),
+                      ),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 4,
+                        runSpacing: 4,
+                        children: [
+                          FFBadge(
+                            label: gym.tier.replaceAll('_', ' '),
+                            tone: FFBadgeTone.brand,
+                          ),
+                          if (distanceKm != null)
+                            FFBadge(
+                              label: _formatDistance(distanceKm!),
+                              tone: FFBadgeTone.gray,
+                            ),
+                        ],
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 3),
-                  Text(
-                    gym.location,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: tt.bodySmall?.copyWith(fontSize: 11),
-                  ),
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 4,
-                    runSpacing: 4,
-                    children: [
-                      FFBadge(
-                        label: gym.tier.replaceAll('_', ' '),
-                        tone: FFBadgeTone.brand,
-                      ),
-                      if (distanceKm != null)
-                        FFBadge(
-                          label: _formatDistance(distanceKm!),
-                          tone: FFBadgeTone.gray,
-                        ),
-                    ],
-                  ),
-                ],
+                ),
               ),
             ),
           ],

@@ -182,13 +182,18 @@ class TrainerProfile {
     status: json['status'] as String? ?? 'active',
     approvalStatus: json['approvalStatus'] as String?,
     isVerified: _boolValue(json['isVerified'] ?? json['verified']),
-    availability:
-        (json['availability'] as List?)
-            ?.whereType<Map<String, dynamic>>()
-            .map(TrainerAvailability.fromJson)
-            .toList() ??
-        [],
+    availability: _trainerAvailabilityFromJson(json['availability']),
   );
+}
+
+List<TrainerAvailability> _trainerAvailabilityFromJson(Object? value) {
+  if (value is! List) return const [];
+  return value
+      .whereType<Map>()
+      .map(
+        (item) => TrainerAvailability.fromJson(Map<String, dynamic>.from(item)),
+      )
+      .toList();
 }
 
 class TrainerAvailability {

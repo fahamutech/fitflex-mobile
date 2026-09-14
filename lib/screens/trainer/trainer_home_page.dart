@@ -175,10 +175,8 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
                               '${context.tr('trainer.passFee')}: ${formatCurrency(passFee)}/${trainerPass?['period'] ?? 'monthly'}',
                           ].where((s) => s.isNotEmpty).join('\n'),
                         ),
-                        isThreeLine: passEnabled && passFee > 0,
-                        trailing: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.end,
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             FilledButton(
                               onPressed: _applyBusy
@@ -190,14 +188,17 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
                               child: Text(context.tr('trainer.apply')),
                             ),
                             if (passEnabled && passFee > 0)
-                              TextButton(
+                              IconButton(
+                                tooltip: context.tr('trainer.buyPass'),
                                 onPressed: _applyBusy
                                     ? null
                                     : () {
                                         Navigator.of(ctx).pop();
                                         _buyTrainerPass(gym['id'].toString());
                                       },
-                                child: Text(context.tr('trainer.buyPass')),
+                                icon: const Icon(
+                                  Icons.card_membership_outlined,
+                                ),
                               ),
                           ],
                         ),
@@ -292,10 +293,18 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
     );
     if (payload == null || !mounted) return;
     try {
-      await AppScope.of(context).api.trainerUpdateProfile(payload);
+      final result = await AppScope.of(
+        context,
+      ).api.trainerUpdateProfile(payload);
       if (!mounted) return;
-      await _refreshTrainers();
-      if (!mounted) return;
+      final updated = result['trainer'] ?? result;
+      if (updated is Map<String, dynamic>) {
+        setState(() {
+          _trainers = _trainers
+              .map((item) => item['id'] == updated['id'] ? updated : item)
+              .toList();
+        });
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.tr('member.profileUpdated'))),
       );
@@ -314,6 +323,103 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.tr('trainer.passRequested'))),
+      );
+    } on ApiException {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.tr('owner.errorGeneric'))));
+    }
+  }
+
+  Future<void> _showEngagementInbox() async {
+    try {
+      final rows = await AppScope.of(context).api.trainerEngagements();
+      if (!mounted) return;
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        builder: (sheetContext) => SafeArea(
+          child: SizedBox(
+            height: MediaQuery.sizeOf(sheetContext).height * .7,
+            child: ListView(
+              padding: const EdgeInsets.all(FFTokens.spacingLg),
+              children: [
+                Text(
+                  sheetContext.tr('trainer.enquiries'),
+                  style: Theme.of(sheetContext).textTheme.titleLarge,
+                ),
+                const SizedBox(height: FFTokens.spacingMd),
+                if (rows.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 32),
+                    child: Text(sheetContext.tr('trainer.noEnquiries')),
+                  )
+                else
+                  ...rows.whereType<Map>().map((row) {
+                    final member = row['member'] as Map?;
+                    final isInterest = row['type'] == 'interest';
+                    final email = member?['email']?.toString().trim() ?? '';
+                    final phone = member?['phone']?.toString().trim() ?? '';
+                    final contact = [
+                      if (email.isNotEmpty) email,
+                      if (phone.isNotEmpty) phone,
+                    ].join(' · ');
+                    final replyUri = email.isNotEmpty
+                        ? Uri(scheme: 'mailto', path: email)
+                        : phone.isNotEmpty
+                        ? Uri(scheme: 'tel', path: phone)
+                        : null;
+                    return Card(
+                      child: ListTile(
+                        leading: Icon(
+                          isInterest
+                              ? Icons.favorite_outline
+                              : Icons.chat_bubble_outline,
+                        ),
+                        title: Text(
+                          member?['displayName']?.toString() ??
+                              sheetContext.tr('trainer.member'),
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              row['message']?.toString() ??
+                                  (isInterest
+                                      ? sheetContext.tr('trainer.interested')
+                                      : ''),
+                            ),
+                            if (contact.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                '${sheetContext.tr('trainer.contact')}: $contact',
+                              ),
+                            ],
+                          ],
+                        ),
+                        trailing: replyUri == null
+                            ? null
+                            : IconButton(
+                                key: Key('trainer-reply-${row['id']}'),
+                                tooltip: sheetContext.tr('trainer.reply'),
+                                onPressed: () => launchUrl(
+                                  replyUri,
+                                  mode: LaunchMode.externalApplication,
+                                ),
+                                icon: Icon(
+                                  email.isNotEmpty
+                                      ? Icons.email_outlined
+                                      : Icons.phone_outlined,
+                                ),
+                              ),
+                      ),
+                    );
+                  }),
+              ],
+            ),
+          ),
+        ),
       );
     } on ApiException {
       if (!mounted) return;
@@ -445,6 +551,12 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
         icon: Icons.payments_outlined,
         title: context.tr('trainer.earnings'),
         onTap: () => showTrainerEarningsSheet(context),
+      ),
+      FFActionTile(
+        key: const Key('trainer-engagement-inbox'),
+        icon: Icons.mark_email_unread_outlined,
+        title: context.tr('trainer.enquiries'),
+        onTap: _showEngagementInbox,
       ),
       FFActionTile(
         key: const Key('trainer-tile-shop'),

@@ -89,5 +89,34 @@ void main() {
     test('out-of-stock product reports not purchasable', () {
       expect(product(stock: 0).inStock, isFalse);
     });
+
+    test('parses database decimals and rich product details safely', () {
+      final rich = ShopProduct.fromJson({
+        'id': 'rich',
+        'vendorId': 'vendor-1',
+        'name': 'Resistance Bands',
+        'priceTzs': '45000.00',
+        'discountPriceTzs': '39000.00',
+        'rating': '4.80',
+        'soldCount': '64',
+        'distanceKm': '3.20',
+        'stock': 12,
+        'vendor': {'businessName': 'Performance Store'},
+        'reviews': [
+          {'rating': 5, 'comment': 'Excellent'},
+        ],
+        'similarProducts': [
+          {'id': 'similar', 'name': 'Yoga Mat', 'priceTzs': 30000},
+        ],
+      });
+
+      expect(rich.effectivePrice, 39000);
+      expect(rich.rating, 4.8);
+      expect(rich.soldCount, 64);
+      expect(rich.distanceKm, 3.2);
+      expect(rich.vendor['businessName'], 'Performance Store');
+      expect(rich.reviews.single['comment'], 'Excellent');
+      expect(rich.similarProducts.single.name, 'Yoga Mat');
+    });
   });
 }

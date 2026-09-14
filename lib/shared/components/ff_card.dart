@@ -12,16 +12,20 @@ class FFCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      width: double.infinity,
-      margin: margin ?? const EdgeInsets.only(bottom: FFTokens.spacingSm),
-      padding: padding ?? const EdgeInsets.all(FFTokens.spacingMd),
-      decoration: BoxDecoration(
+    return Padding(
+      padding: margin ?? const EdgeInsets.only(bottom: FFTokens.spacingSm),
+      child: Material(
         color: theme.colorScheme.surface,
-        border: Border.all(color: theme.colorScheme.outlineVariant),
-        borderRadius: BorderRadius.circular(FFTokens.radiusXl),
+        shape: RoundedRectangleBorder(
+          side: BorderSide(color: theme.colorScheme.outlineVariant),
+          borderRadius: BorderRadius.circular(FFTokens.radiusXl),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: padding ?? const EdgeInsets.all(FFTokens.spacingMd),
+          child: child,
+        ),
       ),
-      child: child,
     );
   }
 }

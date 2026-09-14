@@ -38,7 +38,11 @@ class _GymFormPageState extends State<GymFormPage> {
   late final TextEditingController _rateDayCtrl;
   late final TextEditingController _rateWeekCtrl;
   late final TextEditingController _rateMonthCtrl;
+  late final TextEditingController _trainerPassFeeCtrl;
   String _tier = 'standard';
+  String _trainerPassPeriod = 'monthly';
+  bool _trainerPassEnabled = false;
+  final List<Map<String, dynamic>> _classes = [];
   double? _lat;
   double? _lng;
 
@@ -77,6 +81,22 @@ class _GymFormPageState extends State<GymFormPage> {
     );
     _rateWeekCtrl = TextEditingController(text: _numText(g['ratePerWeek']));
     _rateMonthCtrl = TextEditingController(text: _numText(g['ratePerMonth']));
+    final trainerPass = g['trainerPass'];
+    if (trainerPass is Map) {
+      _trainerPassEnabled = trainerPass['enabled'] == true;
+      _trainerPassFeeCtrl = TextEditingController(
+        text: _numText(trainerPass['feeTzs']),
+      );
+      _trainerPassPeriod = trainerPass['period']?.toString() ?? 'monthly';
+    } else {
+      _trainerPassFeeCtrl = TextEditingController();
+    }
+    final classes = g['classes'];
+    if (classes is List) {
+      _classes.addAll(
+        classes.whereType<Map>().map((item) => Map<String, dynamic>.from(item)),
+      );
+    }
     _tier = (g['tier']?.toString().isNotEmpty ?? false)
         ? g['tier'].toString()
         : 'standard';
@@ -126,6 +146,7 @@ class _GymFormPageState extends State<GymFormPage> {
     _rateDayCtrl.dispose();
     _rateWeekCtrl.dispose();
     _rateMonthCtrl.dispose();
+    _trainerPassFeeCtrl.dispose();
     super.dispose();
   }
 
@@ -262,6 +283,12 @@ class _GymFormPageState extends State<GymFormPage> {
         'images': images,
         'thumbnails': thumbnails,
         'trainerIds': List<String>.from(_trainerIds),
+        'classes': _classes,
+        'trainerPass': {
+          'enabled': _trainerPassEnabled,
+          'feeTzs': num.tryParse(_trainerPassFeeCtrl.text) ?? 0,
+          'period': _trainerPassPeriod,
+        },
       };
       if (!mounted) return;
       Navigator.of(context).pop(payload);
@@ -288,6 +315,107 @@ class _GymFormPageState extends State<GymFormPage> {
     return null;
   }
 
+  String? _optionalNonNegativeNumber(String? v) {
+    if (v == null || v.trim().isEmpty) return null;
+    final n = num.tryParse(v.trim());
+    return n == null || n < 0 ? context.tr('onboarding.required') : null;
+  }
+
+  Future<void> _showClassEditor({int? index}) async {
+    final existing = index == null
+        ? const <String, dynamic>{}
+        : _classes[index];
+    final name = TextEditingController(
+      text: existing['name']?.toString() ?? '',
+    );
+    final schedule = TextEditingController(
+      text: existing['schedule']?.toString() ?? '',
+    );
+    final price = TextEditingController(text: _numText(existing['price']));
+    final location = TextEditingController(
+      text: existing['location']?.toString() ?? '',
+    );
+    final saved = await showDialog<bool>(
+      context: context,
+      useRootNavigator: false,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(context.tr('ownerReg.classEditorTitle')),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                key: const Key('gym-class-name'),
+                controller: name,
+                decoration: InputDecoration(
+                  labelText: context.tr('ownerReg.className'),
+                ),
+              ),
+              TextField(
+                key: const Key('gym-class-schedule'),
+                controller: schedule,
+                decoration: InputDecoration(
+                  labelText: context.tr('ownerReg.classSchedule'),
+                ),
+              ),
+              TextField(
+                key: const Key('gym-class-price'),
+                controller: price,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: context.tr('ownerReg.classPrice'),
+                ),
+              ),
+              TextField(
+                key: const Key('gym-class-location'),
+                controller: location,
+                decoration: InputDecoration(
+                  labelText: context.tr('ownerReg.classLocation'),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(context.tr('member.cancel')),
+          ),
+          FilledButton(
+            key: const Key('gym-class-save'),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(context.tr('member.save')),
+          ),
+        ],
+      ),
+    );
+    if (saved == true && name.text.trim().isNotEmpty && mounted) {
+      setState(() {
+        final item = <String, dynamic>{
+          if (existing['id'] != null) 'id': existing['id'],
+          'name': name.text.trim(),
+          'schedule': schedule.text.trim(),
+          'price': num.tryParse(price.text.trim()) ?? 0,
+          'location': location.text.trim(),
+        };
+        if (index == null) {
+          _classes.add(item);
+        } else {
+          _classes[index] = item;
+        }
+      });
+    }
+    // The dialog route is still animating out immediately after `await
+    // showDialog`; disposing now can leave its TextFields rebuilding against
+    // disposed controllers. Release them after that transition settles.
+    Future<void>.delayed(const Duration(milliseconds: 300), () {
+      name.dispose();
+      schedule.dispose();
+      price.dispose();
+      location.dispose();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.initial != null;
@@ -305,6 +433,7 @@ class _GymFormPageState extends State<GymFormPage> {
         ),
         actions: [
           TextButton(
+            key: const Key('gym-form-save'),
             onPressed: _busy ? null : _save,
             child: _busy
                 ? const SizedBox(
@@ -320,6 +449,7 @@ class _GymFormPageState extends State<GymFormPage> {
         child: Form(
           key: _formKey,
           child: ListView(
+            key: const Key('gym-form-scroll'),
             padding: const EdgeInsets.all(FFTokens.spacingLg),
             children: [
               FFTextField(
@@ -345,14 +475,14 @@ class _GymFormPageState extends State<GymFormPage> {
                 controller: _rateWeekCtrl,
                 keyboardType: TextInputType.number,
                 label: context.tr('ownerReg.ratePerWeek'),
-                validator: _requiredNumber,
+                validator: _optionalNonNegativeNumber,
               ),
               const SizedBox(height: FFTokens.spacingSm),
               FFTextField(
                 controller: _rateMonthCtrl,
                 keyboardType: TextInputType.number,
                 label: context.tr('ownerReg.ratePerMonth'),
-                validator: _requiredNumber,
+                validator: _optionalNonNegativeNumber,
               ),
               const SizedBox(height: FFTokens.spacingMd),
               FFFieldLabel(context.tr('ownerReg.trainersLabel')),
@@ -385,6 +515,74 @@ class _GymFormPageState extends State<GymFormPage> {
                     );
                   }).toList(),
                 ),
+              const SizedBox(height: FFTokens.spacingMd),
+              FFFieldLabel(context.tr('ownerReg.classesLabel')),
+              if (_classes.isEmpty)
+                Text(
+                  context.tr('ownerReg.noClasses'),
+                  style: Theme.of(context).textTheme.bodySmall,
+                )
+              else
+                ..._classes.asMap().entries.map(
+                  (entry) => ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(entry.value['name']?.toString() ?? ''),
+                    subtitle: Text(
+                      [entry.value['schedule'], entry.value['location']]
+                          .whereType<String>()
+                          .where((v) => v.isNotEmpty)
+                          .join(' · '),
+                    ),
+                    trailing: IconButton(
+                      tooltip: context.tr('ownerReg.editClass'),
+                      icon: const Icon(Icons.edit_outlined),
+                      onPressed: () => _showClassEditor(index: entry.key),
+                    ),
+                  ),
+                ),
+              OutlinedButton.icon(
+                key: const Key('gym-add-class'),
+                onPressed: _showClassEditor,
+                icon: const Icon(Icons.add, size: 18),
+                label: Text(context.tr('ownerReg.addClass')),
+              ),
+              const SizedBox(height: FFTokens.spacingMd),
+              FFFieldLabel(context.tr('ownerReg.trainerPassLabel')),
+              SwitchListTile(
+                key: const Key('gym-trainer-pass-enabled'),
+                contentPadding: EdgeInsets.zero,
+                title: Text(context.tr('ownerReg.trainerPassEnabled')),
+                value: _trainerPassEnabled,
+                onChanged: (value) =>
+                    setState(() => _trainerPassEnabled = value),
+              ),
+              if (_trainerPassEnabled) ...[
+                FFTextField(
+                  key: const Key('gym-trainer-pass-fee'),
+                  controller: _trainerPassFeeCtrl,
+                  keyboardType: TextInputType.number,
+                  label: context.tr('ownerReg.trainerPassFee'),
+                  validator: _requiredNumber,
+                ),
+                const SizedBox(height: FFTokens.spacingSm),
+                DropdownButtonFormField<String>(
+                  key: const Key('gym-trainer-pass-period'),
+                  initialValue: _trainerPassPeriod,
+                  decoration: InputDecoration(
+                    labelText: context.tr('ownerReg.trainerPassPeriod'),
+                  ),
+                  items: const ['daily', 'weekly', 'monthly']
+                      .map(
+                        (period) => DropdownMenuItem(
+                          value: period,
+                          child: Text(period),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) =>
+                      setState(() => _trainerPassPeriod = value ?? 'monthly'),
+                ),
+              ],
               const SizedBox(height: FFTokens.spacingMd),
               FFFieldLabel(context.tr('ownerReg.mapLabel')),
               LocationPicker(

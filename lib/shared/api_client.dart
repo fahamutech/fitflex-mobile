@@ -76,6 +76,11 @@ class ApiClient {
               .put(uri, headers: headers, body: encoded)
               .timeout(const Duration(seconds: 12));
           break;
+        case 'DELETE':
+          res = await http
+              .delete(uri, headers: headers, body: encoded)
+              .timeout(const Duration(seconds: 12));
+          break;
         default:
           throw ArgumentError('Unsupported method $method');
       }
@@ -191,6 +196,18 @@ class ApiClient {
     return await _request('POST', '/auth/dev/login', body: {'role': role});
   }
 
+  /// DEV ONLY: remove E2E-created test users by email pattern or list.
+  Future<Map<String, dynamic>> devCleanup({
+    String? emailPattern,
+    List<String>? emails,
+  }) async {
+    return await _request(
+      'POST',
+      '/auth/dev/cleanup',
+      body: {'emailPattern': ?emailPattern, 'emails': ?emails},
+    );
+  }
+
   Future<Map<String, dynamic>> me() async => await _request('GET', '/me');
 
   Future<Map<String, dynamic>> updateProfile(
@@ -295,6 +312,10 @@ class ApiClient {
     body: {'type': type, 'message': ?message, 'gymId': ?gymId},
   );
 
+  /// A4: trainer inbox for member enquiries and expressions of interest.
+  Future<List<dynamic>> trainerEngagements() async =>
+      await _request('GET', '/trainer/engagements');
+
   /// C4: trainer purchases a gym's trainer pass.
   Future<Map<String, dynamic>> trainerBuyPass(String gymId) async =>
       await _request('POST', '/trainer/gyms/$gymId/trainer-pass');
@@ -303,10 +324,28 @@ class ApiClient {
   Future<List<dynamic>> listShopProducts({
     String? category,
     String? search,
+    String? brand,
+    String? vendorId,
+    num? minPrice,
+    num? maxPrice,
+    num? minRating,
+    num? maxDistanceKm,
+    bool? delivery,
+    bool? promotions,
+    String? sort,
   }) async {
     final query = <String, String>{
       if (category != null && category.isNotEmpty) 'category': category,
       if (search != null && search.trim().isNotEmpty) 'search': search.trim(),
+      if (brand != null && brand.trim().isNotEmpty) 'brand': brand.trim(),
+      if (vendorId != null && vendorId.isNotEmpty) 'vendorId': vendorId,
+      if (minPrice != null) 'minPrice': '$minPrice',
+      if (maxPrice != null) 'maxPrice': '$maxPrice',
+      if (minRating != null) 'minRating': '$minRating',
+      if (maxDistanceKm != null) 'maxDistanceKm': '$maxDistanceKm',
+      if (delivery != null) 'delivery': '$delivery',
+      if (promotions != null) 'promotions': '$promotions',
+      if (sort != null && sort.isNotEmpty) 'sort': sort,
     };
     final path = query.isEmpty
         ? '/shop/products'
@@ -317,14 +356,140 @@ class ApiClient {
   Future<Map<String, dynamic>> createShopOrder(
     List<Map<String, dynamic>> items, {
     String? note,
+    required String deliveryMethod,
+    String? pickupGymId,
+    String? deliveryAddress,
+    required String paymentMethod,
+    String paymentOutcome = 'success',
   }) async => await _request(
     'POST',
     '/me/shop-orders',
-    body: {'items': items, 'note': ?note},
+    body: {
+      'items': items,
+      'note': ?note,
+      'deliveryMethod': deliveryMethod,
+      'pickupGymId': ?pickupGymId,
+      'deliveryAddress': ?deliveryAddress,
+      'paymentMethod': paymentMethod,
+      'paymentOutcome': paymentOutcome,
+    },
   );
+
+  Future<Map<String, dynamic>> shopProduct(String id) async =>
+      await _request('GET', '/shop/products/$id');
+
+  Future<Map<String, dynamic>> vendorStore(String id) async =>
+      await _request('GET', '/shop/vendors/$id');
+
+  Future<Map<String, dynamic>> sendMarketplaceEnquiry(
+    String productId,
+    String message,
+  ) async => await _request(
+    'POST',
+    '/me/marketplace-enquiries',
+    body: {'productId': productId, 'message': message},
+  );
+
+  Future<Map<String, dynamic>> reviewMarketplaceProduct(
+    String orderId,
+    String productId,
+    int rating,
+    String comment,
+  ) async => await _request(
+    'POST',
+    '/me/shop-orders/$orderId/reviews',
+    body: {'productId': productId, 'rating': rating, 'comment': comment},
+  );
+
+  Future<Map<String, dynamic>> reorderMarketplaceOrder(String orderId) async =>
+      await _request('POST', '/me/shop-orders/$orderId/reorder');
 
   Future<List<dynamic>> myShopOrders() async =>
       await _request('GET', '/me/shop-orders');
+
+  Future<List<dynamic>> vendorProducts() async =>
+      await _request('GET', '/vendor/products');
+
+  Future<Map<String, dynamic>> vendorSaveProduct(
+    Map<String, dynamic> data, {
+    String? productId,
+  }) async => await _request(
+    productId == null ? 'POST' : 'PUT',
+    productId == null ? '/vendor/products' : '/vendor/products/$productId',
+    body: data,
+  );
+
+  Future<List<dynamic>> vendorOrders() async =>
+      await _request('GET', '/vendor/orders');
+
+  Future<Map<String, dynamic>> vendorUpdateOrderStatus(
+    String orderId,
+    String status,
+  ) async => await _request(
+    'POST',
+    '/vendor/orders/$orderId/status',
+    body: {'status': status},
+  );
+
+  Future<Map<String, dynamic>> vendorProfile() async =>
+      await _request('GET', '/vendor/profile');
+
+  Future<Map<String, dynamic>> vendorSaveProfile(
+    Map<String, dynamic> data,
+  ) async => await _request('PUT', '/vendor/profile', body: data);
+
+  Future<Map<String, dynamic>> vendorDuplicateProduct(String productId) async =>
+      await _request('POST', '/vendor/products/$productId/duplicate');
+
+  Future<Map<String, dynamic>> vendorDeleteProduct(String productId) async =>
+      await _request('DELETE', '/vendor/products/$productId');
+
+  Future<Map<String, dynamic>> vendorPayments() async =>
+      await _request('GET', '/vendor/payments');
+
+  Future<String> vendorStatement() async {
+    final response = await http
+        .get(
+          Uri.parse('$baseUrl/vendor/payments/statement'),
+          headers: {if (_token != null) 'authorization': 'Bearer $_token'},
+        )
+        .timeout(const Duration(seconds: 12));
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return response.body;
+    }
+    throw ApiException(response.statusCode, response.body);
+  }
+
+  Future<List<dynamic>> vendorEnquiries({
+    String? search,
+  }) async => await _request(
+    'GET',
+    search == null || search.trim().isEmpty
+        ? '/vendor/enquiries'
+        : '/vendor/enquiries?search=${Uri.encodeQueryComponent(search.trim())}',
+  );
+
+  Future<Map<String, dynamic>> vendorReplyEnquiry(
+    String enquiryId,
+    String message,
+  ) async => await _request(
+    'POST',
+    '/vendor/enquiries/$enquiryId/reply',
+    body: {'message': message},
+  );
+
+  Future<Map<String, dynamic>> vendorResolveEnquiry(String enquiryId) async =>
+      await _request('POST', '/vendor/enquiries/$enquiryId/resolve');
+
+  Future<List<dynamic>> vendorStaff() async =>
+      await _request('GET', '/vendor/staff');
+
+  Future<Map<String, dynamic>> vendorCreateStaff(
+    Map<String, dynamic> data,
+  ) async => await _request('POST', '/vendor/staff', body: data);
+
+  Future<Map<String, dynamic>> vendorDisableStaff(String staffId) async =>
+      await _request('POST', '/vendor/staff/$staffId/disable');
 
   Future<Map<String, dynamic>> trainerApplyToGym(String gymId) async =>
       await _request('POST', '/trainer/gyms/$gymId/apply');
@@ -425,6 +590,10 @@ class ApiClient {
       await _request('POST', '/owner/gyms/$gymId/delete');
 
   // Owner trainer management
+  Future<Map<String, dynamic>> ownerCreateTrainer(
+    Map<String, dynamic> data,
+  ) async => await _request('POST', '/owner/trainers', body: data);
+
   Future<Map<String, dynamic>> ownerUpdateTrainer(
     String trainerId,
     Map<String, dynamic> data,

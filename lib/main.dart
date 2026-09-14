@@ -16,6 +16,7 @@ import 'firebase_options.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  const mockAuth = bool.fromEnvironment('MOCK_AUTH');
 
   // GoRouter uses hash URL strategy by default on web (e.g. /#/member/gyms).
   // This works without server-side rewrites for single-page apps.
@@ -31,7 +32,7 @@ Future<void> main() async {
 
   // Idempotent: avoids a duplicate-app crash if main() runs twice in one
   // process (e.g. across Patrol integration test cases).
-  if (Firebase.apps.isEmpty) {
+  if (!mockAuth && Firebase.apps.isEmpty) {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );

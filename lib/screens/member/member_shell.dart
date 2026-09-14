@@ -169,14 +169,21 @@ class MemberShellState extends State<MemberShell> {
   Future<void> _refreshTrainers() async {
     try {
       final res = await AppScope.of(context).api.listTrainers();
-      _data.update(
-        (d) => d.trainers = res
-            .whereType<Map<String, dynamic>>()
-            .map(TrainerProfile.fromJson)
-            .toList(),
-      );
-    } catch (_) {
-      // ignore
+      final trainers = <TrainerProfile>[];
+      for (final item in res.whereType<Map>()) {
+        try {
+          trainers.add(
+            TrainerProfile.fromJson(Map<String, dynamic>.from(item)),
+          );
+        } catch (error) {
+          // A single malformed public profile must not hide the rest of the
+          // trainer directory from members.
+          debugPrint('[MemberShell] Skipping malformed trainer: $error');
+        }
+      }
+      _data.update((d) => d.trainers = trainers);
+    } catch (error) {
+      debugPrint('[MemberShell] Could not refresh trainers: $error');
     }
   }
 
@@ -258,6 +265,10 @@ class MemberShellState extends State<MemberShell> {
       AppRoutes.memberProfile,
     ];
     context.go(routes[index]);
+    // The trainer catalogue can be populated just after an authenticated
+    // session is established. Refresh it when the member opens the tab so a
+    // stale initial request never leaves the directory empty.
+    if (index == 2) unawaited(_refreshTrainers());
   }
 
   @override
@@ -299,11 +310,13 @@ class MemberShellState extends State<MemberShell> {
                 label: context.tr('member.gyms'),
               ),
               NavigationDestination(
+                key: const Key('member-nav-trainers'),
                 icon: const Icon(Icons.sports_gymnastics_outlined),
                 selectedIcon: const Icon(Icons.sports_gymnastics),
                 label: context.tr('member.trainers'),
               ),
               NavigationDestination(
+                key: const Key('member-nav-shop'),
                 icon: const Icon(Icons.storefront_outlined),
                 selectedIcon: const Icon(Icons.storefront),
                 label: context.tr('member.shop'),

@@ -99,9 +99,7 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
       final auth = AppScope.of(context).auth;
       await auth.completeFirebaseSession(
         idToken: idToken,
-        requestedRole: widget.initialMode == EmailAuthMode.signUp
-            ? auth.role
-            : null,
+        requestedRole: auth.role,
         firebaseAuth: _authService,
       );
 

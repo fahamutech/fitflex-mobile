@@ -21,6 +21,7 @@ import 'screens/owner/owner_shell.dart';
 import 'screens/owner/members/members_list_page.dart';
 import 'screens/owner/members/member_detail_page.dart';
 import 'screens/owner/members/member_history_page.dart';
+import 'screens/vendor/vendor_home_page.dart';
 
 /// Route path constants.
 abstract class AppRoutes {
@@ -37,6 +38,9 @@ abstract class AppRoutes {
   // Trainer
   static const trainerRegistration = '/trainer/register';
   static const trainerHome = '/trainer/home';
+
+  // Vendor
+  static const vendorHome = '/vendor/home';
 
   // Owner sub-routes (shell)
   static const ownerRegistration = '/owner/register';
@@ -113,6 +117,7 @@ String routeForSignedInUser(AuthState auth) {
     // Staff reuse the owner shell, gated by their ACL permissions.
     return AppRoutes.ownerHome;
   }
+  if (role == 'vendor' || role == 'vendor_staff') return AppRoutes.vendorHome;
   return AppRoutes.home;
 }
 
@@ -296,6 +301,11 @@ GoRouter buildRouter(AuthState auth) {
         path: AppRoutes.trainerHome,
         name: 'trainerHome',
         builder: (context, state) => const TrainerHomePage(),
+      ),
+      GoRoute(
+        path: AppRoutes.vendorHome,
+        name: 'vendorHome',
+        builder: (context, state) => const VendorHomePage(),
       ),
       // Owner routes
       GoRoute(

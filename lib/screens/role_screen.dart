@@ -357,6 +357,11 @@ class _DevLoginPanelState extends State<_DevLoginPanel> {
                   onPressed: () => _login('trainer'),
                   child: const Text('Trainer'),
                 ),
+                OutlinedButton(
+                  key: const Key('devLoginVendor'),
+                  onPressed: () => _login('vendor'),
+                  child: const Text('Vendor'),
+                ),
               ],
             ),
           if (_error != null) ...[

@@ -42,6 +42,25 @@ class OwnerTrainersPage extends StatelessWidget {
         final cols = _crossAxisCount(constraints.maxWidth);
         return CustomScrollView(
           slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(
+                FFTokens.spacingLg,
+                FFTokens.spacingLg,
+                FFTokens.spacingLg,
+                0,
+              ),
+              sliver: SliverToBoxAdapter(
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: FilledButton.icon(
+                    key: const Key('owner-add-trainer'),
+                    onPressed: () => _createTrainer(context, data.ownerGyms),
+                    icon: const Icon(Icons.person_add_alt_1),
+                    label: Text(context.tr('owner.addTrainer')),
+                  ),
+                ),
+              ),
+            ),
             if (pending.isNotEmpty)
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(
@@ -91,6 +110,60 @@ class OwnerTrainersPage extends StatelessWidget {
         );
       },
     );
+  }
+
+  Future<void> _createTrainer(
+    BuildContext context,
+    List<Map<String, dynamic>> gyms,
+  ) async {
+    if (gyms.isEmpty) return;
+    final gymId = await showModalBottomSheet<String>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(FFTokens.spacingLg),
+              child: Text(
+                sheetContext.tr('owner.chooseTrainerGym'),
+                style: Theme.of(sheetContext).textTheme.titleMedium,
+              ),
+            ),
+            ...gyms.map(
+              (gym) => ListTile(
+                key: Key('owner-trainer-gym-${gym['id']}'),
+                title: Text(gym['name']?.toString() ?? ''),
+                onTap: () => Navigator.pop(sheetContext, gym['id']?.toString()),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (gymId == null || !context.mounted) return;
+    final payload = await openTrainerForm(
+      context,
+      title: context.tr('owner.addTrainer'),
+      defaultGymIds: [gymId],
+      requireInitialPin: true,
+    );
+    if (payload == null || !context.mounted) return;
+    payload['gymId'] = gymId;
+    try {
+      await AppScope.of(context).api.ownerCreateTrainer(payload);
+      if (!context.mounted) return;
+      await context.findAncestorStateOfType<OwnerShellState>()?.refreshAll();
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.tr('owner.trainerAdded'))));
+    } on ApiException catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_apiErrorMessage(context, e))));
+    }
   }
 
   Future<void> _showEditTrainerDialog(

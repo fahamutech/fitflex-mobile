@@ -441,56 +441,101 @@ class _GymHero extends StatelessWidget {
   final Gym gym;
 
   void _openPhoto(BuildContext context, String image, int index) {
+    final controller = PageController(initialPage: index);
+    var currentIndex = index;
     showDialog<void>(
       context: context,
       barrierColor: Colors.black,
-      builder: (dialogContext) => Dialog.fullscreen(
-        key: const Key('gym-photo-fullscreen'),
-        backgroundColor: Colors.black,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            InteractiveViewer(
-              minScale: 1,
-              maxScale: 5,
-              child: FFRemoteImage(
-                src: image,
-                width: double.infinity,
-                height: double.infinity,
-                fit: BoxFit.contain,
-                fallback: const Center(
-                  child: Icon(Icons.broken_image_outlined, color: Colors.white),
-                ),
-              ),
-            ),
-            Positioned(
-              top: 12,
-              right: 12,
-              child: SafeArea(
-                child: IconButton.filled(
-                  key: const Key('gym-photo-close'),
-                  onPressed: () => Navigator.pop(dialogContext),
-                  icon: const Icon(Icons.close),
-                  tooltip: MaterialLocalizations.of(
-                    dialogContext,
-                  ).closeButtonTooltip,
-                ),
-              ),
-            ),
-            Positioned(
-              bottom: 20,
-              left: 0,
-              right: 0,
-              child: SafeArea(
-                child: Center(
-                  child: Text(
-                    '${index + 1}/${gym.images.length}',
-                    style: const TextStyle(color: Colors.white),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => Dialog.fullscreen(
+          key: const Key('gym-photo-fullscreen'),
+          backgroundColor: Colors.black,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              PageView.builder(
+                controller: controller,
+                itemCount: gym.images.length,
+                onPageChanged: (value) =>
+                    setDialogState(() => currentIndex = value),
+                itemBuilder: (context, photoIndex) => InteractiveViewer(
+                  minScale: 1,
+                  maxScale: 5,
+                  child: FFRemoteImage(
+                    src: gym.images[photoIndex],
+                    width: double.infinity,
+                    height: double.infinity,
+                    fit: BoxFit.contain,
+                    fallback: const Center(
+                      child: Icon(
+                        Icons.broken_image_outlined,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+              if (gym.images.length > 1) ...[
+                Positioned(
+                  left: 12,
+                  top: 0,
+                  bottom: 0,
+                  child: IconButton.filled(
+                    key: const Key('gym-photo-previous'),
+                    onPressed: currentIndex == 0
+                        ? null
+                        : () => controller.previousPage(
+                            duration: const Duration(milliseconds: 180),
+                            curve: Curves.easeOut,
+                          ),
+                    icon: const Icon(Icons.chevron_left),
+                  ),
+                ),
+                Positioned(
+                  right: 12,
+                  top: 0,
+                  bottom: 0,
+                  child: IconButton.filled(
+                    key: const Key('gym-photo-next'),
+                    onPressed: currentIndex == gym.images.length - 1
+                        ? null
+                        : () => controller.nextPage(
+                            duration: const Duration(milliseconds: 180),
+                            curve: Curves.easeOut,
+                          ),
+                    icon: const Icon(Icons.chevron_right),
+                  ),
+                ),
+              ],
+              Positioned(
+                top: 12,
+                right: 12,
+                child: SafeArea(
+                  child: IconButton.filled(
+                    key: const Key('gym-photo-close'),
+                    onPressed: () => Navigator.pop(dialogContext),
+                    icon: const Icon(Icons.close),
+                    tooltip: MaterialLocalizations.of(
+                      dialogContext,
+                    ).closeButtonTooltip,
+                  ),
+                ),
+              ),
+              Positioned(
+                bottom: 20,
+                left: 0,
+                right: 0,
+                child: SafeArea(
+                  child: Center(
+                    child: Text(
+                      '${currentIndex + 1}/${gym.images.length}',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

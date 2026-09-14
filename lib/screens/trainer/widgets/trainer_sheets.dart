@@ -138,6 +138,8 @@ class _TrainerSessionsSheetState extends State<TrainerSessionsSheet> {
                           if (s['slot'] != null) s['slot'].toString(),
                           if ((s['gym'] as Map?)?['name'] != null)
                             (s['gym'] as Map)['name'].toString(),
+                          if (s['locationLabel'] != null)
+                            s['locationLabel'].toString(),
                         ].join(' · '),
                       ),
                       trailing: Text(
@@ -195,6 +197,8 @@ class _TrainerAddSessionSheetState extends State<TrainerAddSessionSheet> {
   final _phone = TextEditingController();
   final _slot = TextEditingController();
   final _amount = TextEditingController();
+  final _location = TextEditingController();
+  String _locationType = 'my_gym';
   bool _busy = false;
   String? _error;
 
@@ -205,6 +209,7 @@ class _TrainerAddSessionSheetState extends State<TrainerAddSessionSheet> {
     _phone.dispose();
     _slot.dispose();
     _amount.dispose();
+    _location.dispose();
     super.dispose();
   }
 
@@ -229,6 +234,8 @@ class _TrainerAddSessionSheetState extends State<TrainerAddSessionSheet> {
         if (_slot.text.trim().isNotEmpty) 'slot': _slot.text.trim(),
         if (_amount.text.trim().isNotEmpty)
           'amountTzs': num.tryParse(_amount.text.trim()) ?? 0,
+        'locationType': _locationType,
+        if (_locationType != 'my_gym') 'locationLabel': _location.text.trim(),
       });
       if (mounted) Navigator.pop(context, true);
     } catch (_) {
@@ -293,6 +300,41 @@ class _TrainerAddSessionSheetState extends State<TrainerAddSessionSheet> {
                 keyboardType: TextInputType.number,
                 label: context.tr('owner.paidAmount'),
               ),
+              const SizedBox(height: FFTokens.spacingSm),
+              FFDropdownField<String>(
+                key: const Key('session-location-type'),
+                value: _locationType,
+                label: context.tr('trainer.sessionLocation'),
+                items: [
+                  DropdownMenuItem(
+                    value: 'my_gym',
+                    child: Text(context.tr('trainer.locationMyGym')),
+                  ),
+                  DropdownMenuItem(
+                    value: 'other_gym',
+                    child: Text(context.tr('trainer.locationOtherGym')),
+                  ),
+                  DropdownMenuItem(
+                    value: 'other_location',
+                    child: Text(context.tr('trainer.locationOther')),
+                  ),
+                ],
+                onChanged: (value) =>
+                    setState(() => _locationType = value ?? 'my_gym'),
+              ),
+              if (_locationType != 'my_gym') ...[
+                const SizedBox(height: FFTokens.spacingSm),
+                FFTextField(
+                  key: const Key('session-other-location'),
+                  controller: _location,
+                  label: context.tr('trainer.locationName'),
+                  validator: (value) =>
+                      _locationType != 'my_gym' &&
+                          (value == null || value.trim().isEmpty)
+                      ? context.tr('onboarding.required')
+                      : null,
+                ),
+              ],
               if (_error != null) ...[
                 const SizedBox(height: 8),
                 FFAlert(message: _error!, tone: FFAlertTone.error),

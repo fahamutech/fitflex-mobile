@@ -2,7 +2,9 @@ import 'package:fitflexmobile/screens/member/member_gym_detail_page.dart';
 import 'package:fitflexmobile/screens/member/member_gyms_tab.dart';
 import 'package:fitflexmobile/screens/member/member_home_tab.dart';
 import 'package:fitflexmobile/screens/member/widgets/gym_card.dart';
+import 'package:fitflexmobile/screens/member/widgets/trainer_card.dart';
 import 'package:fitflexmobile/shared/models.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Gym _gym({
@@ -89,6 +91,90 @@ void main() {
       );
     },
   );
+
+  testWidgets('verified backend gym renders the member-facing badge', (
+    tester,
+  ) async {
+    final gym = Gym.fromJson({
+      'id': 'verified-card',
+      'name': 'Verified Gym',
+      'tier': 'standard',
+      'location': 'Masaki',
+      'perVisitRate': 5000,
+      'commissionRate': 12,
+      'status': 'active',
+      'verified': true,
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: GymCard(gym: gym)),
+      ),
+    );
+
+    expect(find.byType(GymVerifiedIcon), findsOneWidget);
+    expect(find.byIcon(Icons.verified), findsOneWidget);
+  });
+
+  testWidgets('verified gym grid card fits the Pixel 7 grid constraints', (
+    tester,
+  ) async {
+    final gym = Gym.fromJson({
+      'id': 'pixel-7-card',
+      'name': 'Verified Gym With A Long Name',
+      'tier': 'standard',
+      'location': 'Makumbusho, Dar es Salaam',
+      'perVisitRate': 10000,
+      'commissionRate': 12,
+      'status': 'active',
+      'verified': true,
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Center(
+          child: SizedBox(
+            width: 173.7,
+            height: 241.3,
+            child: GymGridCard(gym: gym, distanceKm: 3.2),
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
+    expect(find.byType(GymVerifiedIcon), findsOneWidget);
+    expect(find.text('3.2 km'), findsOneWidget);
+  });
+
+  testWidgets('trainer grid card fits the Infinix device grid constraints', (
+    tester,
+  ) async {
+    final trainer = TrainerProfile(
+      id: 'infinix-card',
+      displayName: 'Trainer With A Long Display Name',
+      specialties: const ['Strength', 'Conditioning'],
+      hourlyRateTzs: 50000,
+      status: 'active',
+      isVerified: true,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Center(
+          child: SizedBox(
+            width: 169.3,
+            height: 249,
+            child: TrainerGridCard(trainer: trainer),
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
+    expect(find.byIcon(Icons.verified), findsOneWidget);
+    expect(find.text('TZS 50,000'), findsOneWidget);
+  });
 
   test('nearest sorting can order gyms by km distance', () {
     final gyms = [

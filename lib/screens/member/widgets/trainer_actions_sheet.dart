@@ -136,51 +136,76 @@ class _TrainerBookingSheetState extends State<TrainerBookingSheet> {
               widget.trainer.displayName,
               style: Theme.of(context).textTheme.bodySmall,
             ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                key: const Key('trainer-book-close'),
+                onPressed: _busy ? null : () => Navigator.pop(context),
+                child: Text(context.tr('member.close')),
+              ),
+            ),
             const SizedBox(height: 14),
             if (availability.isEmpty)
               FFEmptyState(title: context.tr('member.noAvailability'))
             else ...[
               // A4/C1: members may only pick from the trainer's open slots.
-              ...availability.map(
-                (a) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
+              Flexible(
+                child: SingleChildScrollView(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            a.dayLabel,
-                            style: Theme.of(context).textTheme.labelMedium
-                                ?.copyWith(fontWeight: FontWeight.w600),
+                    children: availability
+                        .map(
+                          (a) => Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Text(
+                                      a.dayLabel,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                    ),
+                                    if (a.gymName != null) ...[
+                                      const SizedBox(width: 8),
+                                      FFBadge(
+                                        label: a.gymName!,
+                                        tone: FFBadgeTone.brand,
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Wrap(
+                                  spacing: 6,
+                                  runSpacing: 6,
+                                  children: a.slots.map((slot) {
+                                    final selected =
+                                        _selectedDay == a &&
+                                        _selectedSlot == slot;
+                                    return ChoiceChip(
+                                      key: Key('slot-${a.day}-$slot'),
+                                      label: Text(slot),
+                                      selected: selected,
+                                      onSelected: _busy
+                                          ? null
+                                          : (_) => setState(() {
+                                              _selectedDay = a;
+                                              _selectedSlot = slot;
+                                            }),
+                                    );
+                                  }).toList(),
+                                ),
+                              ],
+                            ),
                           ),
-                          if (a.gymName != null) ...[
-                            const SizedBox(width: 8),
-                            FFBadge(label: a.gymName!, tone: FFBadgeTone.brand),
-                          ],
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: a.slots.map((slot) {
-                          final selected =
-                              _selectedDay == a && _selectedSlot == slot;
-                          return ChoiceChip(
-                            key: Key('slot-${a.day}-$slot'),
-                            label: Text(slot),
-                            selected: selected,
-                            onSelected: _busy
-                                ? null
-                                : (_) => setState(() {
-                                    _selectedDay = a;
-                                    _selectedSlot = slot;
-                                  }),
-                          );
-                        }).toList(),
-                      ),
-                    ],
+                        )
+                        .toList(),
                   ),
                 ),
               ),
@@ -278,6 +303,8 @@ Future<bool?> showTrainerEnquiryDialog(
       );
     },
   );
-  ctrl.dispose();
+  // AlertDialog remains mounted during its exit transition. Defer disposal so
+  // its TextField is never rebuilt with an already-disposed controller.
+  Future<void>.delayed(const Duration(milliseconds: 300), ctrl.dispose);
   return sent;
 }

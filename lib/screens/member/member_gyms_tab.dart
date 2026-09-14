@@ -134,6 +134,7 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
         final cols = _crossAxisCount(constraints.maxWidth);
 
         return CustomScrollView(
+          key: const Key('gym-page-scroll'),
           slivers: [
             // ── Header + controls ────────────────────────────────────────
             SliverToBoxAdapter(
@@ -352,17 +353,20 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
                               }).toList(),
                             ),
                             const SizedBox(height: 8),
-                            SwitchListTile(
-                              key: const Key('gym-filter-verified'),
-                              contentPadding: EdgeInsets.zero,
-                              dense: true,
-                              title: Text(
-                                context.tr('member.verifiedOnly'),
-                                style: tt.labelMedium,
+                            Material(
+                              color: Colors.transparent,
+                              child: SwitchListTile(
+                                key: const Key('gym-filter-verified'),
+                                contentPadding: EdgeInsets.zero,
+                                dense: true,
+                                title: Text(
+                                  context.tr('member.verifiedOnly'),
+                                  style: tt.labelMedium,
+                                ),
+                                value: _verifiedOnly,
+                                onChanged: (v) =>
+                                    setState(() => _verifiedOnly = v),
                               ),
-                              value: _verifiedOnly,
-                              onChanged: (v) =>
-                                  setState(() => _verifiedOnly = v),
                             ),
                           ],
                         ),

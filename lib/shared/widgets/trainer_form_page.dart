@@ -13,12 +13,14 @@ class TrainerFormPage extends StatefulWidget {
   final Map<String, dynamic>? initial;
   final String title;
   final List<String> defaultGymIds;
+  final bool requireInitialPin;
 
   const TrainerFormPage({
     super.key,
     this.initial,
     required this.title,
     this.defaultGymIds = const [],
+    this.requireInitialPin = false,
   });
 
   @override
@@ -32,9 +34,11 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
   late final TextEditingController _phone;
   late final TextEditingController _rate;
   late final TextEditingController _bio;
+  late final TextEditingController _initialPin;
   String _photo = '';
   String _currency = 'TZS';
   List<String> _selectedSpecialties = [];
+  List<Map<String, dynamic>> _availability = [];
   List<String> _availableSpecialties = [];
   bool _specialtiesLoaded = false;
   bool _busy = false;
@@ -50,10 +54,17 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
       text: (t['hourlyRateTzs'] as num?)?.toString() ?? '',
     );
     _bio = TextEditingController(text: t['bio']?.toString() ?? '');
+    _initialPin = TextEditingController();
     _photo = t['photoUrl']?.toString() ?? '';
     _currency = t['sessionRateCurrency']?.toString() ?? 'TZS';
     _selectedSpecialties =
         (t['specialties'] as List?)?.whereType<String>().toList() ?? [];
+    _availability =
+        (t['availability'] as List?)
+            ?.whereType<Map>()
+            .map((entry) => Map<String, dynamic>.from(entry))
+            .toList() ??
+        [];
   }
 
   @override
@@ -86,6 +97,11 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
     return ok ? null : context.tr('onboarding.invalidEmail');
   }
 
+  String? _pinValidator(String? v) =>
+      RegExp(r'^\d{4}$').hasMatch((v ?? '').trim())
+      ? null
+      : context.tr('onboarding.required');
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _busy = true);
@@ -99,6 +115,8 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
         'sessionRateCurrency': _currency,
         'bio': _bio.text.trim(),
         'photoUrl': _photo,
+        'availability': _availability,
+        if (widget.requireInitialPin) 'initialPin': _initialPin.text.trim(),
         if (widget.initial == null && widget.defaultGymIds.isNotEmpty)
           'gymIds': widget.defaultGymIds,
         'status': 'active',
@@ -166,6 +184,17 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
                 validator: isEdit ? null : _emailValidator,
               ),
               const SizedBox(height: FFTokens.spacingSm),
+              if (widget.requireInitialPin) ...[
+                FFTextField(
+                  key: const Key('trainerFormPin'),
+                  controller: _initialPin,
+                  keyboardType: TextInputType.number,
+                  obscureText: true,
+                  label: context.tr('owner.initialPin'),
+                  validator: _pinValidator,
+                ),
+                const SizedBox(height: FFTokens.spacingSm),
+              ],
               // Phone
               FFTextField(
                 controller: _phone,
@@ -248,11 +277,106 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
                 maxLines: 3,
                 label: context.tr('trainerReg.bio'),
               ),
+              const SizedBox(height: FFTokens.spacingMd),
+              FFFieldLabel(context.tr('trainer.availability')),
+              Text(
+                context.tr('trainer.availabilityHint'),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 8),
+              ..._availability.asMap().entries.map((entry) {
+                final value = entry.value;
+                final day =
+                    value['day']?.toString() ??
+                    value['date']?.toString() ??
+                    context.tr('trainer.availability');
+                final slots =
+                    (value['slots'] as List?)
+                        ?.map((slot) => slot.toString())
+                        .join(', ') ??
+                    '';
+                return ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(day),
+                  subtitle: Text(slots),
+                  trailing: IconButton(
+                    tooltip: context.tr('member.delete'),
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () =>
+                        setState(() => _availability.removeAt(entry.key)),
+                  ),
+                );
+              }),
+              OutlinedButton.icon(
+                key: const Key('trainer-availability-add'),
+                onPressed: _addAvailability,
+                icon: const Icon(Icons.add),
+                label: Text(context.tr('trainer.addAvailability')),
+              ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _addAvailability() async {
+    final day = TextEditingController();
+    final slots = TextEditingController();
+    final entry = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(dialogContext.tr('trainer.addAvailability')),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              key: const Key('trainer-availability-day'),
+              controller: day,
+              decoration: InputDecoration(
+                labelText: dialogContext.tr('trainer.availabilityDay'),
+              ),
+            ),
+            TextField(
+              key: const Key('trainer-availability-slots'),
+              controller: slots,
+              decoration: InputDecoration(
+                labelText: dialogContext.tr('trainer.availabilitySlots'),
+                hintText: '09:00, 10:00',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(dialogContext.tr('member.cancel')),
+          ),
+          FilledButton(
+            key: const Key('trainer-availability-save'),
+            onPressed: () {
+              final selectedSlots = slots.text
+                  .split(',')
+                  .map((slot) => slot.trim())
+                  .where((slot) => slot.isNotEmpty)
+                  .toList();
+              if (day.text.trim().isEmpty || selectedSlots.isEmpty) return;
+              Navigator.pop(dialogContext, {
+                'day': day.text.trim().toLowerCase(),
+                'slots': selectedSlots,
+              });
+            },
+            child: Text(dialogContext.tr('member.save')),
+          ),
+        ],
+      ),
+    );
+    Future<void>.delayed(const Duration(milliseconds: 300), () {
+      day.dispose();
+      slots.dispose();
+    });
+    if (entry != null && mounted) setState(() => _availability.add(entry));
   }
 }
 
@@ -261,6 +385,7 @@ Future<Map<String, dynamic>?> openTrainerForm(
   Map<String, dynamic>? initial,
   required String title,
   List<String> defaultGymIds = const [],
+  bool requireInitialPin = false,
 }) {
   return Navigator.of(context).push<Map<String, dynamic>>(
     MaterialPageRoute(
@@ -269,6 +394,7 @@ Future<Map<String, dynamic>?> openTrainerForm(
         initial: initial,
         title: title,
         defaultGymIds: defaultGymIds,
+        requireInitialPin: requireInitialPin,
       ),
     ),
   );

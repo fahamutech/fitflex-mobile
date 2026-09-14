@@ -51,7 +51,7 @@ class TrainerGridCard extends StatelessWidget {
             ),
             // ── Content ────────────────────────────────────────────────
             Padding(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

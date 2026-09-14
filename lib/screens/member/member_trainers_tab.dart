@@ -85,6 +85,7 @@ class _MemberTrainersTabState extends State<MemberTrainersTab> {
         final cols = _crossAxisCount(constraints.maxWidth);
 
         return CustomScrollView(
+          key: const Key('trainer-page-scroll'),
           slivers: [
             // ── Header + controls ─────────────────────────────────────────
             SliverToBoxAdapter(
@@ -100,6 +101,7 @@ class _MemberTrainersTabState extends State<MemberTrainersTab> {
                   children: [
                     FFPageHeader(title: context.tr('member.findTrainerTitle')),
                     TextField(
+                      key: const Key('trainer-search'),
                       controller: _searchCtrl,
                       decoration: InputDecoration(
                         hintText: context.tr('member.searchTrainers'),
@@ -213,7 +215,10 @@ class _MemberTrainersTabState extends State<MemberTrainersTab> {
                 padding: const EdgeInsets.all(FFTokens.spacingLg),
                 sliver: SliverGrid(
                   delegate: SliverChildBuilderDelegate(
-                    (context, i) => TrainerGridCard(trainer: trainers[i]),
+                    (context, i) => TrainerGridCard(
+                      key: Key('trainer-card-${trainers[i].id}'),
+                      trainer: trainers[i],
+                    ),
                     childCount: trainers.length,
                   ),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(

@@ -27,7 +27,6 @@ class _FFRemoteImageState extends State<FFRemoteImage> {
   bool _invalid = false;
 
   @override
-  @override
   void initState() {
     super.initState();
     _resolveProvider(widget.src);
@@ -62,8 +61,21 @@ class _FFRemoteImageState extends State<FFRemoteImage> {
     final fallbackWidget = widget.fallback ?? const Icon(Icons.broken_image);
     if (_invalid || _provider == null) return fallbackWidget;
 
+    final pixelRatio = MediaQuery.devicePixelRatioOf(context);
+    final cacheWidth = widget.width?.isFinite == true
+        ? (widget.width! * pixelRatio).round()
+        : null;
+    final cacheHeight = widget.height?.isFinite == true
+        ? (widget.height! * pixelRatio).round()
+        : null;
+    final image = ResizeImage.resizeIfNeeded(
+      cacheWidth,
+      cacheHeight,
+      _provider!,
+    );
+
     return Image(
-      image: _provider!,
+      image: image,
       width: widget.width,
       height: widget.height,
       fit: widget.fit,
