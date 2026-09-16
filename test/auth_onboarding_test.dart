@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -10,6 +13,7 @@ import 'package:fitflexmobile/shared/auth_state.dart';
 import 'package:fitflexmobile/shared/components/custom_keypad.dart';
 import 'package:fitflexmobile/shared/components/pin_input_row.dart';
 import 'package:fitflexmobile/shared/design_tokens.dart';
+import 'package:fitflexmobile/shared/firebase_auth_service.dart';
 import 'package:fitflexmobile/shared/i18n.dart';
 import 'package:fitflexmobile/shared/pin_credentials.dart';
 import 'package:fitflexmobile/shared/theme_notifier.dart';
@@ -42,6 +46,27 @@ Widget _wrap(Widget child) {
 }
 
 void main() {
+  test(
+    'authentication operations time out instead of loading forever',
+    () async {
+      final pending = Completer<String>();
+
+      await expectLater(
+        authenticationWithTimeout(
+          pending.future,
+          timeout: const Duration(milliseconds: 10),
+        ),
+        throwsA(
+          isA<FirebaseAuthException>().having(
+            (error) => error.code,
+            'code',
+            'network-request-failed',
+          ),
+        ),
+      );
+    },
+  );
+
   test('Firebase password uses a string credential derived from the PIN', () {
     final password = firebasePasswordForPin('1234');
 

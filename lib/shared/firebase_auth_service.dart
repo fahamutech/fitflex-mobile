@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_sign_in/google_sign_in.dart';
 
 class FirebaseAuthService {
-  FirebaseAuthService({FirebaseAuth? auth})
-    : _auth = auth ?? FirebaseAuth.instance;
+  FirebaseAuthService({
+    FirebaseAuth? auth,
+    this.operationTimeout = const Duration(seconds: 20),
+  }) : _auth = auth ?? FirebaseAuth.instance;
 
   static const _defaultServerClientId = String.fromEnvironment(
     'GOOGLE_SIGN_IN_SERVER_CLIENT_ID',
@@ -13,6 +17,7 @@ class FirebaseAuthService {
   );
 
   final FirebaseAuth _auth;
+  final Duration operationTimeout;
   Future<void>? _googleInit;
 
   User? get currentUser => _auth.currentUser;
@@ -21,16 +26,17 @@ class FirebaseAuthService {
     required String email,
     required String password,
   }) {
-    return _auth.signInWithEmailAndPassword(email: email, password: password);
+    return _withTimeout(
+      _auth.signInWithEmailAndPassword(email: email, password: password),
+    );
   }
 
   Future<UserCredential> createAccountWithEmail({
     required String email,
     required String password,
   }) {
-    return _auth.createUserWithEmailAndPassword(
-      email: email,
-      password: password,
+    return _withTimeout(
+      _auth.createUserWithEmailAndPassword(email: email, password: password),
     );
   }
 
@@ -50,8 +56,8 @@ class FirebaseAuthService {
       email: email,
       password: currentPassword,
     );
-    await user.reauthenticateWithCredential(credential);
-    await user.updatePassword(newPassword);
+    await _withTimeout(user.reauthenticateWithCredential(credential));
+    await _withTimeout(user.updatePassword(newPassword));
   }
 
   Future<UserCredential?> signInWithGoogle() async {
@@ -59,11 +65,11 @@ class FirebaseAuthService {
       ..setCustomParameters({'prompt': 'select_account'});
 
     if (kIsWeb) {
-      return _auth.signInWithPopup(provider);
+      return _withTimeout(_auth.signInWithPopup(provider));
     }
 
     await _ensureGoogleSignInInitialized();
-    final googleUser = await GoogleSignIn.instance.authenticate();
+    final googleUser = await _withTimeout(GoogleSignIn.instance.authenticate());
     final googleIdToken = googleUser.authentication.idToken;
     if (googleIdToken == null) {
       throw FirebaseAuthException(
@@ -72,34 +78,51 @@ class FirebaseAuthService {
       );
     }
     final credential = GoogleAuthProvider.credential(idToken: googleIdToken);
-    return _auth.signInWithCredential(credential);
+    return _withTimeout(_auth.signInWithCredential(credential));
   }
 
   Future<void> _ensureGoogleSignInInitialized() {
-    return _googleInit ??= GoogleSignIn.instance.initialize(
-      serverClientId: _defaultServerClientId,
+    return _googleInit ??= _withTimeout(
+      GoogleSignIn.instance.initialize(serverClientId: _defaultServerClientId),
     );
   }
 
   Future<UserCredential?> completeWebRedirect() async {
     if (!kIsWeb) return null;
-    return _auth.getRedirectResult();
+    return _withTimeout(_auth.getRedirectResult());
   }
 
   Future<String?> idTokenFor(User? user) {
     if (user == null) return Future.value();
-    return user.getIdToken();
+    return _withTimeout(user.getIdToken());
   }
 
   Future<void> signOut() async {
-    await _auth.signOut();
+    await _withTimeout(_auth.signOut());
     if (!kIsWeb) {
       try {
         await _ensureGoogleSignInInitialized();
-        await GoogleSignIn.instance.signOut();
+        await _withTimeout(GoogleSignIn.instance.signOut());
       } catch (_) {
         // Firebase sign-out is authoritative for app state.
       }
     }
   }
+
+  Future<T> _withTimeout<T>(Future<T> operation) {
+    return authenticationWithTimeout(operation, timeout: operationTimeout);
+  }
+}
+
+Future<T> authenticationWithTimeout<T>(
+  Future<T> operation, {
+  Duration timeout = const Duration(seconds: 20),
+}) {
+  return operation.timeout(
+    timeout,
+    onTimeout: () => throw FirebaseAuthException(
+      code: 'network-request-failed',
+      message: 'Authentication timed out. Check your connection and try again.',
+    ),
+  );
 }
