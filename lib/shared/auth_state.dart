@@ -101,7 +101,16 @@ class AuthState extends ChangeNotifier {
     String? requestedRole,
     FirebaseAuthService? firebaseAuth,
   }) async {
-    final res = await api.firebaseSession(idToken, requestedRole);
+    Map<String, dynamic> res;
+    try {
+      res = await api.firebaseSession(idToken, requestedRole);
+    } on ApiException catch (error) {
+      final fallbackRole = requestedRole == null
+          ? preferredAutomaticRole(error.body)
+          : null;
+      if (fallbackRole == null) rethrow;
+      res = await api.firebaseSession(idToken, fallbackRole);
+    }
     final user = Map<String, dynamic>.from(res['user'] as Map);
     if (user['userType']?.toString() == 'admin') {
       await firebaseAuth?.signOut();
@@ -121,6 +130,20 @@ class AuthState extends ChangeNotifier {
     await prefs.remove('user');
     notifyListeners();
   }
+}
+
+String? preferredAutomaticRole(Object? errorBody) {
+  if (errorBody is! Map ||
+      errorBody['error']?.toString() != 'profile_role_required') {
+    return null;
+  }
+  final availableRoles = errorBody['availableRoles'];
+  if (availableRoles is! Iterable) return null;
+  final operationalRoles = availableRoles
+      .map((role) => role.toString())
+      .where((role) => role.isNotEmpty && role != 'member')
+      .toSet();
+  return operationalRoles.length == 1 ? operationalRoles.single : null;
 }
 
 class AdminMobileSignInException implements Exception {

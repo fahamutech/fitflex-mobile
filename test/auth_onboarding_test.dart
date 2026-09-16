@@ -46,6 +46,30 @@ Widget _wrap(Widget child) {
 }
 
 void main() {
+  test('role conflict automatically selects the single non-member profile', () {
+    expect(
+      preferredAutomaticRole({
+        'error': 'profile_role_required',
+        'availableRoles': ['member', 'vendor'],
+      }),
+      'vendor',
+    );
+    expect(
+      preferredAutomaticRole({
+        'error': 'profile_role_required',
+        'availableRoles': ['gym_operator', 'member'],
+      }),
+      'gym_operator',
+    );
+    expect(
+      preferredAutomaticRole({
+        'error': 'profile_role_required',
+        'availableRoles': ['trainer', 'vendor', 'member'],
+      }),
+      isNull,
+    );
+  });
+
   test(
     'authentication operations time out instead of loading forever',
     () async {
