@@ -72,10 +72,20 @@ class AuthState extends ChangeNotifier {
   Future<void> signIn(String token, Map<String, dynamic> user) async {
     _token = token;
     _user = user;
+    // The backend owns role assignment. Persist the role returned with every
+    // session so a later app launch (or a logout followed by login) cannot
+    // reuse a stale role selected during an earlier registration attempt.
+    final sessionRole = user['userType']?.toString();
+    if (sessionRole != null && sessionRole.isNotEmpty) {
+      _role = sessionRole;
+    }
     api.setToken(token);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('token', token);
     await prefs.setString('user', jsonEncode(user));
+    if (sessionRole != null && sessionRole.isNotEmpty) {
+      await prefs.setString('role', sessionRole);
+    }
     notifyListeners();
   }
 

@@ -498,7 +498,6 @@ class _GoogleWebCallbackScreenState extends State<GoogleWebCallbackScreen> {
       final auth = AppScope.of(context).auth;
       await auth.completeFirebaseSession(
         idToken: idToken,
-        requestedRole: auth.role,
         firebaseAuth: _firebaseAuth,
       );
       if (!mounted) return;

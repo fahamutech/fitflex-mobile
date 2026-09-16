@@ -99,7 +99,11 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
       final auth = AppScope.of(context).auth;
       await auth.completeFirebaseSession(
         idToken: idToken,
-        requestedRole: auth.role,
+        // A role is only supplied while creating an account. During sign-in
+        // FitFlex must resolve the existing role stored on the backend.
+        requestedRole: widget.initialMode == EmailAuthMode.signUp
+            ? auth.role
+            : null,
         firebaseAuth: _authService,
       );
 

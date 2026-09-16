@@ -60,6 +60,24 @@ void main() {
   });
 
   test(
+    'session persists the authoritative vendor role returned by login',
+    () async {
+      final wrapped = _wrap(const SizedBox());
+      await wrapped.auth.setRole('member');
+      await wrapped.auth.signIn('vendor-token', {
+        'id': 'usr_vendor_test',
+        'userType': 'vendor',
+        'approvalStatus': 'approved',
+      });
+
+      expect(wrapped.auth.role, 'vendor');
+      expect(routeForSignedInUser(wrapped.auth), AppRoutes.vendorHome);
+      final preferences = await SharedPreferences.getInstance();
+      expect(preferences.getString('role'), 'vendor');
+    },
+  );
+
+  test(
     'vendor staff session is routed to the permission-aware vendor portal',
     () async {
       final wrapped = _wrap(const SizedBox());
