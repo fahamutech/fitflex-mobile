@@ -12,6 +12,7 @@ import 'widgets/gym_card.dart';
 import 'widgets/trainer_card.dart';
 import 'widgets/pass_summary_card.dart';
 import 'widgets/checkin_list.dart';
+import 'widgets/today_activity_card.dart';
 
 class MemberHomeTab extends StatefulWidget {
   const MemberHomeTab({super.key});
@@ -94,6 +95,9 @@ class _MemberHomeTabState extends State<MemberHomeTab> {
         // Pass summary
         PassSummaryCard(data: data),
 
+        // Today's activity (fitness tracking — separate from gym visits)
+        TodayActivityCard(data: data),
+
         // Near gyms
         _SectionRow(
           title: context.tr('member.nearGyms'),
@@ -122,7 +126,7 @@ class _MemberHomeTabState extends State<MemberHomeTab> {
         Padding(
           padding: const EdgeInsets.only(top: 16, bottom: 10),
           child: Text(
-            context.tr('member.activity'),
+            context.tr('member.recentVisits'),
             style: Theme.of(
               context,
             ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),

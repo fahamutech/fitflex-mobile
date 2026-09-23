@@ -28,6 +28,18 @@ class _MemberTrainersTabState extends State<MemberTrainersTab> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    // The trainer catalogue can be populated just after an authenticated
+    // session is established. Refresh it whenever the directory opens so a
+    // stale initial request never leaves it empty.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.findAncestorStateOfType<MemberShellState>()?.refreshTrainers();
+    });
+  }
+
+  @override
   void dispose() {
     _searchCtrl.dispose();
     super.dispose();
