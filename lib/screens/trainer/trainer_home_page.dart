@@ -13,6 +13,7 @@ import '../../shared/widgets/shop_browse_page.dart';
 import '../../shared/widgets/trainer_form_page.dart';
 import '../language_screen.dart';
 import 'trainer_clients_tab.dart';
+import 'widgets/clients_digest.dart';
 import 'widgets/trainer_sheets.dart';
 
 /// Standalone trainer dashboard shown after trainer is onboarded.
@@ -542,6 +543,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
           ],
         ),
       ),
+      ClientsDigest(onOpenClients: () => setState(() => _tabIndex = 1)),
       const SizedBox(height: 12),
       FFMetricCard(
         value: '${gyms.length}',

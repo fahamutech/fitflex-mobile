@@ -119,7 +119,7 @@ class MemberShellState extends State<MemberShell> {
     if (loc.startsWith('/member/trainers')) return 2;
     if (loc.startsWith('/member/shop')) return 3;
     if (loc.startsWith('/member/profile')) return 4;
-    if (loc.startsWith('/member/trainer-connections')) return 4;
+    if (loc.startsWith('/member/privacy')) return 4;
     return 0;
   }
 
