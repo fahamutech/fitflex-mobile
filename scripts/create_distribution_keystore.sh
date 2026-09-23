@@ -30,8 +30,10 @@ if [ -f "$KEYSTORE_PATH" ]; then
   exit 1
 fi
 
-# 32 random alphanumeric characters, held only in this process's environment.
-KS_PASS="$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32)"
+# 32 random hex characters, held only in this process's environment. (No
+# `tr </dev/urandom | head` pipe: tr dies of SIGPIPE, which pipefail treats
+# as failure and silently aborts the script.)
+KS_PASS="$(openssl rand -hex 16)"
 export KS_PASS
 
 "$KEYTOOL" -genkeypair \
