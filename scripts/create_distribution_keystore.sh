@@ -51,13 +51,13 @@ printf '%s' "$ALIAS"   | gh secret set ANDROID_DIST_KEY_ALIAS -R "$REPO"
 
 # Google sign-in on Android only works for signing certificates registered on
 # the Firebase Android app, so register this key's fingerprints.
-FIREBASE_ANDROID_APP_ID="1:318978253903:android:578eecbe0556347d45f63a"
+FIREBASE_ANDROID_APP_ID="1:318978253903:android:be3d05f90368b60545f63a"
 CERT_INFO="$("$KEYTOOL" -list -v -keystore "$KEYSTORE_PATH" -alias "$ALIAS" -storepass:env KS_PASS)"
 unset KS_PASS
 SHA1="$(printf '%s\n' "$CERT_INFO" | awk '/SHA1:/ {print $2; exit}')"
 SHA256="$(printf '%s\n' "$CERT_INFO" | awk '/SHA256:/ {print $2; exit}')"
 for SHA in "$SHA1" "$SHA256"; do
-  firebase apps:android:sha:create "$FIREBASE_ANDROID_APP_ID" "$SHA" --project fitflex-af-pilot \
+  firebase apps:android:sha:create "$FIREBASE_ANDROID_APP_ID" "${SHA//:/}" --project fitflex-af-pilot \
     || echo "Could not register $SHA — add it in Firebase console → Project settings → Android app."
 done
 

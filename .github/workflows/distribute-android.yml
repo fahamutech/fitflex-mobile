@@ -17,7 +17,7 @@ permissions:
   contents: read
 
 env:
-  FIREBASE_ANDROID_APP_ID: '1:318978253903:android:578eecbe0556347d45f63a'
+  FIREBASE_ANDROID_APP_ID: '1:318978253903:android:be3d05f90368b60545f63a'
 
 jobs:
   distribute:
