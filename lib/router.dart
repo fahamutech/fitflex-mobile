@@ -65,6 +65,7 @@ abstract class AppRoutes {
   static const memberActivity = '/member/activity';
   static const memberProgress = '/member/activity/progress';
   static const memberWorkout = '/member/activity/workouts/:workoutId';
+  static const memberChallenge = '/member/activity/challenges/:challengeId';
   static const memberGyms = '/member/gyms';
   static const memberGymDetail = '/member/gyms/:gymId';
   static const memberTrainers = '/member/trainers';
@@ -421,6 +422,13 @@ GoRouter buildRouter(AuthState auth) {
                 name: 'memberProgress',
                 builder: (context, state) =>
                     const MemberActivityTab(initialSection: 'progress'),
+              ),
+              GoRoute(
+                path: 'challenges/:challengeId',
+                name: 'memberChallenge',
+                builder: (context, state) => MemberChallengePage(
+                  challengeId: state.pathParameters['challengeId']!,
+                ),
               ),
               GoRoute(
                 path: 'workouts/:workoutId',

@@ -7,6 +7,7 @@ import '../../../shared/activity/gym_sharing.dart';
 import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
 import '../../../shared/i18n.dart';
+import '../../../shared/widgets/challenge_manager_page.dart';
 import '../../member/widgets/activity_widgets.dart' show activityTypeLabel;
 
 String engagementStatusLabel(BuildContext context, String status) =>
@@ -131,7 +132,9 @@ class _GymMemberActivityCardState extends State<GymMemberActivityCard> {
                   style: theme.textTheme.labelLarge,
                 ),
                 const SizedBox(height: FFTokens.spacingXs),
-                if (g.classAttendance == null && g.gymWorkouts == null)
+                if (g.classAttendance == null &&
+                    g.gymWorkouts == null &&
+                    g.challenges == null)
                   Row(
                     key: const Key('gym-nothing-shared'),
                     children: [
@@ -161,6 +164,14 @@ class _GymMemberActivityCardState extends State<GymMemberActivityCard> {
                       '${fmt.format(c.date)}${c.durationMinutes == null ? '' : ' · ${c.durationMinutes} ${context.tr('activity.min')}'}',
                       style: theme.textTheme.bodySmall,
                     ),
+                ],
+                if (g.challenges case final challenges?) ...[
+                  const SizedBox(height: FFTokens.spacingXs),
+                  Text(
+                    context.tr('gymShare.challenges'),
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                  SharedChallengesList(items: challenges),
                 ],
                 if (g.gymWorkouts case final workouts?) ...[
                   const SizedBox(height: FFTokens.spacingXs),

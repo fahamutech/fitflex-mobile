@@ -4,6 +4,7 @@
 /// the member switches individual permissions on.
 library;
 
+import 'challenge.dart';
 import 'goal.dart';
 import 'workout.dart';
 
@@ -468,9 +469,13 @@ class ClientOverview {
   final Map<String, ClientStreak?>? streaks;
   final ClientSummary? summary;
 
+  /// Null unless the member shares challenge data with this trainer.
+  final List<SharedChallengeProgress>? challenges;
+
   const ClientOverview({
     required this.client,
     this.summary,
+    this.challenges,
     this.activity,
     this.workouts = const [],
     this.goals,
@@ -527,6 +532,7 @@ class ClientOverview {
       goals: goals,
       streaks: streaks,
       summary: ClientSummary.tryParse(json['summary']),
+      challenges: SharedChallengeProgress.parseList(json['challenges']),
     );
   }
 }

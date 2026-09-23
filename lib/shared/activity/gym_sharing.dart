@@ -5,6 +5,8 @@
 /// with a gym only when the member switches it on for that gym.
 library;
 
+import 'challenge.dart';
+
 /// What a member can additionally share with a gym. Wire keys match the
 /// backend.
 enum GymPermission {
@@ -130,6 +132,7 @@ class GymMemberActivity {
   /// Null unless the member shares it with this gym.
   final List<GymVisitItem>? classAttendance;
   final List<GymVisitItem>? gymWorkouts;
+  final List<SharedChallengeProgress>? challenges;
 
   const GymMemberActivity({
     required this.gym,
@@ -137,6 +140,7 @@ class GymMemberActivity {
     required this.engagement,
     this.classAttendance,
     this.gymWorkouts,
+    this.challenges,
   });
 
   static List<GymVisitItem>? _items(Object? json) => json is List
@@ -163,6 +167,7 @@ class GymMemberActivity {
       ),
       classAttendance: _items(json['classAttendance']),
       gymWorkouts: _items(json['gymWorkouts']),
+      challenges: SharedChallengeProgress.parseList(json['challenges']),
     );
   }
 }

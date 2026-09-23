@@ -13,6 +13,7 @@ import '../member/widgets/activity_widgets.dart' show formatSteps, formatKm;
 import '../member/widgets/goal_widgets.dart' show goalTitle;
 import '../member/widgets/trainer_sharing.dart' show permissionLabel;
 import '../member/widgets/workout_widgets.dart' show exerciseTarget;
+import '../../shared/widgets/challenge_manager_page.dart';
 import 'trainer_plan_editor_page.dart';
 import 'widgets/client_summary_card.dart';
 
@@ -316,6 +317,10 @@ class _TrainerClientPageState extends State<TrainerClientPage> {
                   ],
                 ),
               ),
+        ],
+        if (o.challenges != null) ...[
+          FFSectionTitle(context.tr('share.challenges')),
+          FFCard(child: SharedChallengesList(items: o.challenges!)),
         ],
         FFSectionTitle(context.tr('assign.upcoming')),
         if (upcoming.isEmpty)

@@ -6,6 +6,7 @@ import '../../app_scope.dart';
 import '../../router.dart';
 import '../../shared/activity/activity.dart';
 import '../../shared/activity/activity_config.dart';
+import '../../shared/activity/challenge.dart';
 import '../../shared/activity/goal.dart';
 import '../../shared/activity/gym_sharing.dart';
 import '../../shared/activity/trainer_connection.dart';
@@ -19,6 +20,7 @@ import '../../shared/root_back_navigation.dart';
 export 'member_home_tab.dart';
 export 'member_activity_tab.dart';
 export 'member_workout_page.dart';
+export 'member_challenge_page.dart';
 export 'member_gyms_tab.dart';
 export 'member_gym_detail_page.dart';
 export 'member_trainers_tab.dart';
@@ -46,6 +48,15 @@ class MemberData extends ChangeNotifier {
   bool workoutsLoaded = false;
   List<TrainerConnection> trainerConnections = [];
   List<GymSharing> gymSharing = [];
+  List<Challenge> challenges = [];
+  bool challengesLoaded = false;
+
+  /// Gym check-ins as the challenge engine needs them.
+  List<({DateTime at, String? gymId})> get checkInMoments => [
+    for (final c in checkins)
+      if (DateTime.tryParse(c.timestamp) case final at?)
+        (at: at, gymId: c.gymId),
+  ];
 
   /// The open (pending or active) connection with [trainerId], if any.
   TrainerConnection? connectionWith(String trainerId) => trainerConnections
@@ -178,6 +189,7 @@ class MemberShellState extends State<MemberShell> {
         _refreshWorkouts(),
         _refreshConnections(),
         _refreshGymSharing(),
+        _refreshChallenges(),
       ]);
       if (_data.hasActivePass) await _refreshQr();
     } finally {
@@ -313,6 +325,26 @@ class MemberShellState extends State<MemberShell> {
 
   Future<void> refreshConnections() async {
     await _refreshConnections();
+  }
+
+  Future<void> _refreshChallenges() async {
+    try {
+      final rows = await AppScope.of(context).api.myChallenges();
+      _data.update((d) {
+        d.challenges = [
+          for (final r in rows.whereType<Map>())
+            ?Challenge.tryParse(Map<String, dynamic>.from(r)),
+        ];
+        d.challengesLoaded = true;
+      });
+    } catch (error) {
+      debugPrint('[MemberShell] Could not load challenges: $error');
+      _data.update((d) => d.challengesLoaded = true);
+    }
+  }
+
+  Future<void> refreshChallenges() async {
+    await _refreshChallenges();
   }
 
   Future<void> _refreshGymSharing() async {

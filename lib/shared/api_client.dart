@@ -489,6 +489,61 @@ class ApiClient {
         : '/owner/engagement?${Uri(queryParameters: {'gymId': gymId}).query}',
   );
 
+  // ── Challenges ────────────────────────────────────────────────────────
+  Future<List<dynamic>> myChallenges() async {
+    final res = await _request('GET', '/me/challenges');
+    return (res as Map)['challenges'] as List? ?? const [];
+  }
+
+  Future<Map<String, dynamic>> joinChallenge(String id) async =>
+      await _request('POST', '/challenges/${Uri.encodeComponent(id)}/join');
+
+  Future<Map<String, dynamic>> leaveChallenge(String id) async =>
+      await _request('POST', '/challenges/${Uri.encodeComponent(id)}/leave');
+
+  /// Creator endpoints. [scope] is `trainer` or `owner` (gym owner/staff);
+  /// gym calls pass [gymId].
+  String _creatorPath(String scope, String rest, {String? gymId}) {
+    final q = gymId == null
+        ? ''
+        : '?${Uri(queryParameters: {'gymId': gymId}).query}';
+    return '/$scope/challenges$rest$q';
+  }
+
+  Future<List<dynamic>> creatorChallenges(String scope, {String? gymId}) async {
+    final res = await _request('GET', _creatorPath(scope, '', gymId: gymId));
+    return (res as Map)['challenges'] as List? ?? const [];
+  }
+
+  Future<Map<String, dynamic>> createChallenge(
+    String scope,
+    Map<String, dynamic> body, {
+    String? gymId,
+  }) async =>
+      await _request('POST', _creatorPath(scope, '', gymId: gymId), body: body);
+
+  Future<Map<String, dynamic>> cancelChallenge(
+    String scope,
+    String id, {
+    String? gymId,
+  }) async => await _request(
+    'POST',
+    _creatorPath(scope, '/${Uri.encodeComponent(id)}/cancel', gymId: gymId),
+  );
+
+  Future<Map<String, dynamic>> challengeParticipants(
+    String scope,
+    String id, {
+    String? gymId,
+  }) async => await _request(
+    'GET',
+    _creatorPath(
+      scope,
+      '/${Uri.encodeComponent(id)}/participants',
+      gymId: gymId,
+    ),
+  );
+
   Future<void> registerDeviceToken(String token, {String? platform}) async =>
       await _request(
         'POST',
