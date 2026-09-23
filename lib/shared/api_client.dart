@@ -334,6 +334,47 @@ class ApiClient {
     body: data,
   );
 
+  Future<List<dynamic>> workoutTemplates() async {
+    final res = await _request('GET', '/workouts/templates');
+    return (res as Map)['templates'] as List? ?? const [];
+  }
+
+  Future<List<dynamic>> myWorkouts({String? from, String? to}) async {
+    final query = Uri(queryParameters: {'from': ?from, 'to': ?to}).query;
+    final res = await _request(
+      'GET',
+      query.isEmpty ? '/me/workouts' : '/me/workouts?$query',
+    );
+    return (res as Map)['workouts'] as List? ?? const [];
+  }
+
+  Future<Map<String, dynamic>> planWorkout(Map<String, dynamic> data) async =>
+      await _request('POST', '/me/workouts', body: data);
+
+  Future<Map<String, dynamic>> startWorkout(String id) async =>
+      await _request('POST', '/me/workouts/${Uri.encodeComponent(id)}/start');
+
+  Future<Map<String, dynamic>> saveWorkout(
+    String id,
+    Map<String, dynamic> log,
+  ) async => await _request(
+    'PATCH',
+    '/me/workouts/${Uri.encodeComponent(id)}',
+    body: log,
+  );
+
+  Future<Map<String, dynamic>> completeWorkout(
+    String id,
+    Map<String, dynamic> log,
+  ) async => await _request(
+    'POST',
+    '/me/workouts/${Uri.encodeComponent(id)}/complete',
+    body: log,
+  );
+
+  Future<Map<String, dynamic>> skipWorkout(String id) async =>
+      await _request('POST', '/me/workouts/${Uri.encodeComponent(id)}/skip');
+
   Future<void> registerDeviceToken(String token, {String? platform}) async =>
       await _request(
         'POST',

@@ -7,6 +7,7 @@ import '../../router.dart';
 import '../../shared/activity/activity.dart';
 import '../../shared/activity/activity_config.dart';
 import '../../shared/activity/goal.dart';
+import '../../shared/activity/workout.dart';
 import '../../shared/auth_state.dart';
 import '../../shared/components/theme_toggle_button.dart';
 import '../../shared/i18n.dart';
@@ -15,6 +16,7 @@ import '../../shared/root_back_navigation.dart';
 
 export 'member_home_tab.dart';
 export 'member_activity_tab.dart';
+export 'member_workout_page.dart';
 export 'member_gyms_tab.dart';
 export 'member_gym_detail_page.dart';
 export 'member_trainers_tab.dart';
@@ -38,6 +40,8 @@ class MemberData extends ChangeNotifier {
   bool activityIsSample = false;
   List<Goal> goals = [];
   bool goalsLoaded = false;
+  List<Workout> workouts = [];
+  bool workoutsLoaded = false;
   bool passesLoaded = false;
   String? qrToken;
   String selectedTier = 'pro';
@@ -148,6 +152,7 @@ class MemberShellState extends State<MemberShell> {
         _refreshFavorites(),
         _refreshActivity(),
         _refreshGoals(),
+        _refreshWorkouts(),
       ]);
       if (_data.hasActivePass) await _refreshQr();
     } finally {
@@ -248,6 +253,29 @@ class MemberShellState extends State<MemberShell> {
 
   Future<void> refreshGoals() async {
     await _refreshGoals();
+  }
+
+  Future<void> _refreshWorkouts() async {
+    try {
+      final now = DateTime.now();
+      final workouts = await AppScope.of(context).workouts.list(
+        from: DateTime(now.year, now.month, now.day - activityHistoryDays + 1),
+        to: DateTime(now.year, now.month, now.day + 14),
+      );
+      _data.update((d) {
+        d.workouts = workouts;
+        d.workoutsLoaded = true;
+      });
+    } catch (error) {
+      debugPrint('[MemberShell] Could not load workouts: $error');
+      _data.update((d) => d.workoutsLoaded = true);
+    }
+  }
+
+  /// After a workout changes: its list, and — once finished — the activity
+  /// it was recorded as, which moves goals, progress and streaks.
+  Future<void> refreshAfterWorkout() async {
+    await Future.wait([_refreshWorkouts(), _refreshActivity()]);
   }
 
   Future<void> refreshTrainers() async {

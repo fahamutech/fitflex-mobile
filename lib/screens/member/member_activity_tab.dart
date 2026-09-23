@@ -5,6 +5,7 @@ import '../../shared/activity/activity_summary.dart';
 import '../../shared/activity/goal.dart';
 import '../../shared/activity/progress_engine.dart';
 import '../../shared/activity/streaks.dart';
+import '../../shared/activity/workout.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
@@ -12,6 +13,7 @@ import 'member_shell.dart';
 import 'widgets/activity_widgets.dart';
 import 'widgets/goal_widgets.dart';
 import 'widgets/progress_section.dart';
+import 'widgets/workout_widgets.dart';
 
 /// Member Activity tab: Overview · Workouts · Challenges · Progress.
 class MemberActivityTab extends StatefulWidget {
@@ -69,7 +71,7 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
           )
         else
           ...switch (_section) {
-            'workouts' => _workouts(context, data.activities),
+            'workouts' => _workouts(context, data, today),
             'challenges' => _challenges(context),
             'progress' => buildProgressSection(context, data, today),
             _ => _overview(context, data.activities, data.goals, today),
@@ -92,7 +94,9 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
       activities: activities,
     )!;
     final recent = activities.take(8).toList();
+    final data = MemberDataScope.of(context);
     return [
+      TodayWorkoutCard(data: data, now: today),
       FFSectionTitle(context.tr('activity.today')),
       _TileRow(
         left: FFStatTile(
@@ -164,12 +168,51 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
     ];
   }
 
-  List<Widget> _workouts(BuildContext context, List<Activity> activities) {
-    final workouts = activities.where((a) => a.isWorkout).toList();
-    if (workouts.isEmpty) {
-      return [FFEmptyState(title: context.tr('activity.noWorkouts'))];
-    }
-    return workouts.map((a) => ActivityTimelineTile(activity: a)).toList();
+  List<Widget> _workouts(BuildContext context, MemberData data, DateTime now) {
+    final todayIds = todaysWorkouts(
+      data.workouts,
+      now,
+    ).map((w) => w.id).toSet();
+    final upcoming =
+        data.workouts
+            .where((w) => w.status.isOpen && !todayIds.contains(w.id))
+            .where((w) => !w.scheduledDate.isBefore(dayOf(now)))
+            .toList()
+          ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
+    final done = data.workouts
+        .where((w) => w.status == WorkoutStatus.completed)
+        .toList();
+    // Workouts recorded some other way (a run, a class) — completed
+    // structured workouts are already listed above.
+    final other = data.activities
+        .where((a) => a.isWorkout && a.workoutId == null)
+        .toList();
+    return [
+      TodayWorkoutCard(data: data, now: now),
+      if (todayIds.isNotEmpty || upcoming.isNotEmpty)
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton.icon(
+            key: const Key('workout-plan-more'),
+            onPressed: () => showPlanWorkoutSheet(context),
+            icon: const Icon(Icons.add, size: 18),
+            label: Text(context.tr('workout.plan')),
+          ),
+        ),
+      if (upcoming.isNotEmpty) ...[
+        FFSectionTitle(context.tr('workout.upcoming')),
+        for (final w in upcoming) WorkoutTile(workout: w),
+      ],
+      if (done.isNotEmpty) ...[
+        FFSectionTitle(context.tr('workout.completedList')),
+        for (final w in done) WorkoutTile(workout: w),
+      ],
+      FFSectionTitle(context.tr('workout.otherActivity')),
+      if (other.isEmpty)
+        FFEmptyState(title: context.tr('activity.noWorkouts'))
+      else
+        for (final a in other) ActivityTimelineTile(activity: a),
+    ];
   }
 
   List<Widget> _challenges(BuildContext context) => [

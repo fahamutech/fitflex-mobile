@@ -10,6 +10,7 @@ import '../../../shared/design_tokens.dart';
 import '../../../shared/i18n.dart';
 import '../member_shell.dart';
 import 'activity_widgets.dart';
+import 'workout_widgets.dart';
 
 /// Compact "Today's activity" summary for the member Home tab.
 class TodayActivityCard extends StatelessWidget {
@@ -32,6 +33,7 @@ class TodayActivityCard extends StatelessWidget {
       activities: data.activities,
     )!.current;
     final stepGoal = dailyStepGoal(data.goals);
+    final workout = todaysWorkouts(data.workouts, today).firstOrNull;
 
     return FFCard(
       key: const Key('today-activity-card'),
@@ -96,6 +98,40 @@ class TodayActivityCard extends StatelessWidget {
               steps: summary.steps,
               goal: stepGoal.target.round(),
               dense: true,
+            ),
+          ],
+          if (workout != null) ...[
+            const SizedBox(height: FFTokens.spacingSm),
+            InkWell(
+              key: const Key('home-today-workout'),
+              onTap: () => context.go(workoutRoute(workout.id)),
+              borderRadius: BorderRadius.circular(FFTokens.radiusMd),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: FFTokens.spacingXs,
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.fitness_center,
+                      size: FFTokens.iconSm,
+                      color: theme.colorScheme.primary,
+                    ),
+                    const SizedBox(width: FFTokens.spacingSm),
+                    Expanded(
+                      child: Text(
+                        '${context.tr('workout.today')}: ${workout.name}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right, size: 18),
+                  ],
+                ),
+              ),
             ),
           ],
           Align(

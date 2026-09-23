@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'shared/activity/activity_config.dart';
 import 'shared/activity/activity_provider.dart';
 import 'shared/activity/goal_repository.dart';
+import 'shared/activity/workout_repository.dart';
 import 'shared/api_client.dart';
 import 'shared/auth_state.dart';
 
@@ -13,6 +14,7 @@ class AppScope extends InheritedWidget {
     required this.auth,
     this.activityProvider,
     this.goalRepository,
+    this.workoutRepository,
     required super.child,
   });
 
@@ -23,12 +25,13 @@ class AppScope extends InheritedWidget {
   /// as in widget tests — sample data is used.
   final ActivityProvider? activityProvider;
   final GoalRepository? goalRepository;
+  final WorkoutRepository? workoutRepository;
 
-  static final ActivityProvider _sampleActivity = sampleActivityProvider();
-  static final GoalRepository _sampleGoals = LocalGoalRepository();
+  static final ActivityBackend _sample = ActivityBackend.sample();
 
-  ActivityProvider get activity => activityProvider ?? _sampleActivity;
-  GoalRepository get goals => goalRepository ?? _sampleGoals;
+  ActivityProvider get activity => activityProvider ?? _sample.activity;
+  GoalRepository get goals => goalRepository ?? _sample.goals;
+  WorkoutRepository get workouts => workoutRepository ?? _sample.workouts;
 
   static AppScope of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<AppScope>();
@@ -41,5 +44,6 @@ class AppScope extends InheritedWidget {
       api != oldWidget.api ||
       auth != oldWidget.auth ||
       activityProvider != oldWidget.activityProvider ||
-      goalRepository != oldWidget.goalRepository;
+      goalRepository != oldWidget.goalRepository ||
+      workoutRepository != oldWidget.workoutRepository;
 }
