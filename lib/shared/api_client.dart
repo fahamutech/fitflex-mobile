@@ -1,6 +1,5 @@
 import 'dart:convert';
-import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
@@ -11,6 +10,9 @@ class ApiException implements Exception {
   @override
   String toString() => 'ApiException($status, $body)';
 }
+
+/// Production backend. Used whenever API_BASE is not provided.
+const kLiveApiBase = 'https://fitflex-faas.bfast.smartstock.co.tz';
 
 class ApiClient {
   ApiClient({String? baseUrl}) : baseUrl = baseUrl ?? _resolveBaseUrl();
@@ -30,10 +32,9 @@ class ApiClient {
     }
     if (fromEnv != null) return fromEnv;
 
-    // 3. Platform-aware fallback so dev runs work out of the box.
-    if (kIsWeb) return 'http://localhost:3000';
-    if (Platform.isAndroid) return 'http://localhost:3000';
-    return 'http://localhost:3000';
+    // 3. Live server. Builds that set nothing always reach production; local
+    //    development opts into its own backend with API_BASE in .env.
+    return kLiveApiBase;
   }
 
   final String baseUrl;

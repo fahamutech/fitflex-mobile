@@ -1,0 +1,12 @@
+{
+  "projects": {
+    "default": "fitflex-af-pilot"
+  },
+  "targets": {
+    "fitflex-af-pilot": {
+      "hosting": {
+        "app": ["fitflex-af-app"]
+      }
+    }
+  }
+}
