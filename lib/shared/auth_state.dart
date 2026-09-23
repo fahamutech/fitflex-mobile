@@ -1,16 +1,21 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_client.dart';
 import 'firebase_auth_service.dart';
+import 'push_service.dart';
 
 /// Global session state. In a larger app this would be DI'd via Riverpod/Provider.
 class AuthState extends ChangeNotifier {
-  AuthState(this.api) {
+  AuthState(this.api, {this.push}) {
     api.onUnauthorized = () => signOut();
   }
 
   final ApiClient api;
+
+  /// Optional: registers the device for push while a session exists.
+  final PushService? push;
   String? _token;
   Map<String, dynamic>? _user;
   String _role = 'member';
@@ -37,6 +42,7 @@ class AuthState extends ChangeNotifier {
         final freshUser = Map<String, dynamic>.from(meRes['user'] as Map);
         _user = freshUser;
         await prefs.setString('user', jsonEncode(freshUser));
+        unawaited(push?.register());
       } on ApiException catch (e) {
         // Token invalid or user deleted — clear session
         if (e.status == 401 || e.status == 404) {
@@ -87,6 +93,7 @@ class AuthState extends ChangeNotifier {
       await prefs.setString('role', sessionRole);
     }
     notifyListeners();
+    unawaited(push?.register());
   }
 
   Future<void> signInWithFitFlexSession(
@@ -122,6 +129,8 @@ class AuthState extends ChangeNotifier {
   }
 
   Future<void> signOut() async {
+    // While the session token is still set, so the backend accepts the call.
+    await push?.unregister();
     _token = null;
     _user = null;
     api.setToken(null);

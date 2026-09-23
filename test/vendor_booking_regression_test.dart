@@ -247,7 +247,7 @@ void main() {
       expect(tester.takeException(), isNull);
       expect(find.byType(SingleChildScrollView), findsOneWidget);
       expect(
-        find.byKey(const Key('trainer-book-confirm')).hitTestable(),
+        find.byKey(const Key('trainer-book-slots')).hitTestable(),
         findsOneWidget,
       );
       expect(find.byKey(const Key('slot-monday-08:00')), findsOneWidget);

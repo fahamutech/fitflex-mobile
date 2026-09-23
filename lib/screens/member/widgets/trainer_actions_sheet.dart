@@ -4,6 +4,7 @@ import '../../../app_scope.dart';
 import '../../../shared/api_client.dart';
 import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
+import '../../../shared/formatters.dart';
 import '../../../shared/i18n.dart';
 import '../../../shared/models.dart';
 
@@ -57,63 +58,112 @@ class TrainerBookingSheet extends StatefulWidget {
   State<TrainerBookingSheet> createState() => _TrainerBookingSheetState();
 }
 
+/// One selectable slot: availability entry + time, resolved to a date.
+class _PickedSlot {
+  _PickedSlot(this.entry, this.slot, this.date);
+  final TrainerAvailability entry;
+  final String slot;
+  final String date;
+
+  String get key => '$date|$slot';
+  Map<String, String> toJson() => {'date': date, 'slot': slot};
+}
+
 class _TrainerBookingSheetState extends State<TrainerBookingSheet> {
-  TrainerAvailability? _selectedDay;
-  String? _selectedSlot;
+  static const _maxSlots = 12;
+
+  // UAT #58: members pick several slots, see a priced summary, then confirm.
+  final Map<String, _PickedSlot> _picked = {};
+  String? _pickedGymId;
+  Map<String, dynamic>? _summary; // non-null = summary step
   bool _busy = false;
   String? _error;
 
-  String? get _gymId {
-    final entryGym = _selectedDay?.gymId;
+  String? _gymFor(TrainerAvailability entry) {
+    final entryGym = entry.gymId;
     if (entryGym != null && entryGym.isNotEmpty) return entryGym;
     return widget.trainer.gymIds.firstOrNull ??
         widget.trainer.gyms.firstOrNull?.id;
   }
 
-  Future<void> _book() async {
-    final day = _selectedDay;
-    final slot = _selectedSlot;
-    final gymId = _gymId;
-    if (day == null || slot == null || gymId == null) return;
-    final date = nextDateForAvailabilityDay(day.day);
-    if (date == null) return;
+  List<Map<String, String>> get _slotJson {
+    final list = _picked.values.toList()
+      ..sort((a, b) => '${a.date} ${a.slot}'.compareTo('${b.date} ${b.slot}'));
+    return list.map((p) => p.toJson()).toList();
+  }
+
+  void _toggle(TrainerAvailability entry, String slot) {
+    final date = nextDateForAvailabilityDay(entry.day);
+    final gymId = _gymFor(entry);
+    if (date == null || gymId == null) return;
+    final pick = _PickedSlot(entry, slot, date);
+    setState(() {
+      _error = null;
+      // One booking is at one gym: picking a slot elsewhere starts over.
+      if (_pickedGymId != null && _pickedGymId != gymId) _picked.clear();
+      _pickedGymId = gymId;
+      if (_picked.remove(pick.key) == null) {
+        if (_picked.length >= _maxSlots) {
+          _error = context.tr('member.tooManySlots');
+          return;
+        }
+        _picked[pick.key] = pick;
+      }
+      if (_picked.isEmpty) _pickedGymId = null;
+    });
+  }
+
+  String _errorText(Object e) {
+    final code = (e is ApiException && e.body is Map)
+        ? (e.body as Map)['error']?.toString()
+        : null;
+    return switch (code) {
+      'slot_already_booked' => context.tr('member.slotAlreadyBooked'),
+      'slot_not_available' => context.tr('member.slotNotAvailable'),
+      'too_many_slots' => context.tr('member.tooManySlots'),
+      'trainer_rate_not_set' => context.tr('member.trainerRateNotSet'),
+      _ => context.tr('member.bookingFailed'),
+    };
+  }
+
+  Future<void> _run(Future<void> Function() action) async {
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
-      await AppScope.of(context).api.bookTrainer(
-        trainerId: widget.trainer.id,
-        gymId: gymId,
-        date: date,
-        slot: slot,
-      );
-      if (mounted) Navigator.pop(context, true);
-    } on ApiException catch (e) {
+      await action();
+    } catch (e) {
       if (!mounted) return;
-      final code = (e.body is Map)
-          ? (e.body as Map)['error']?.toString()
-          : null;
-      setState(() {
-        _busy = false;
-        _error = switch (code) {
-          'slot_already_booked' => context.tr('member.slotAlreadyBooked'),
-          'slot_not_available' => context.tr('member.slotNotAvailable'),
-          _ => context.tr('member.bookingFailed'),
-        };
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _busy = false;
-        _error = context.tr('member.bookingFailed');
-      });
+      setState(() => _error = _errorText(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
+  Future<void> _quote() => _run(() async {
+    final res = await AppScope.of(context).api.quoteTrainerBooking(
+      trainerId: widget.trainer.id,
+      gymId: _pickedGymId!,
+      slots: _slotJson,
+    );
+    if (mounted) {
+      setState(() => _summary = res['summary'] as Map<String, dynamic>?);
+    }
+  });
+
+  Future<void> _confirm() => _run(() async {
+    await AppScope.of(context).api.bookTrainer(
+      trainerId: widget.trainer.id,
+      gymId: _pickedGymId!,
+      slots: _slotJson,
+    );
+    if (mounted) Navigator.pop(context, true);
+  });
+
   @override
   Widget build(BuildContext context) {
-    final availability = widget.trainer.availability;
+    final summary = _summary;
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.only(
@@ -126,7 +176,11 @@ class _TrainerBookingSheetState extends State<TrainerBookingSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              context.tr('member.bookSession'),
+              context.tr(
+                summary == null
+                    ? 'member.bookSession'
+                    : 'member.bookingSummary',
+              ),
               style: Theme.of(
                 context,
               ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
@@ -145,94 +199,191 @@ class _TrainerBookingSheetState extends State<TrainerBookingSheet> {
               ),
             ),
             const SizedBox(height: 14),
-            if (availability.isEmpty)
-              FFEmptyState(title: context.tr('member.noAvailability'))
-            else ...[
-              // A4/C1: members may only pick from the trainer's open slots.
-              Flexible(
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: availability
-                        .map(
-                          (a) => Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Text(
-                                      a.dayLabel,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .labelMedium
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                    ),
-                                    if (a.gymName != null) ...[
-                                      const SizedBox(width: 8),
-                                      FFBadge(
-                                        label: a.gymName!,
-                                        tone: FFBadgeTone.brand,
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                                const SizedBox(height: 6),
-                                Wrap(
-                                  spacing: 6,
-                                  runSpacing: 6,
-                                  children: a.slots.map((slot) {
-                                    final selected =
-                                        _selectedDay == a &&
-                                        _selectedSlot == slot;
-                                    return ChoiceChip(
-                                      key: Key('slot-${a.day}-$slot'),
-                                      label: Text(slot),
-                                      selected: selected,
-                                      onSelected: _busy
-                                          ? null
-                                          : (_) => setState(() {
-                                              _selectedDay = a;
-                                              _selectedSlot = slot;
-                                            }),
-                                    );
-                                  }).toList(),
-                                ),
-                              ],
-                            ),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                ),
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: 6),
-                FFAlert(message: _error!, tone: FFAlertTone.error),
-              ],
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  key: const Key('trainer-book-confirm'),
-                  onPressed: _selectedSlot == null || _busy ? null : _book,
-                  child: _busy
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(context.tr('member.bookSession')),
-                ),
-              ),
-            ],
+            if (summary != null) ..._summaryStep(summary) else ..._pickStep(),
           ],
         ),
       ),
     );
+  }
+
+  List<Widget> _pickStep() {
+    final availability = widget.trainer.availability;
+    if (availability.isEmpty) {
+      return [FFEmptyState(title: context.tr('member.noAvailability'))];
+    }
+    final count = _picked.length;
+    return [
+      Text(
+        context.tr('member.selectSlots'),
+        style: Theme.of(context).textTheme.bodySmall,
+      ),
+      const SizedBox(height: 8),
+      // A4/C1: members may only pick from the trainer's open slots.
+      Flexible(
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: availability.map((a) {
+              final date = nextDateForAvailabilityDay(a.day);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          date == null ? a.dayLabel : '${a.dayLabel} · $date',
+                          style: Theme.of(context).textTheme.labelMedium
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                        if (a.gymName != null) ...[
+                          const SizedBox(width: 8),
+                          FFBadge(label: a.gymName!, tone: FFBadgeTone.brand),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: a.slots.map((slot) {
+                        final selected =
+                            _picked.containsKey('$date|$slot') &&
+                            _pickedGymId == _gymFor(a);
+                        return FilterChip(
+                          key: Key('slot-${a.day}-$slot'),
+                          label: Text(slot),
+                          selected: selected,
+                          onSelected: _busy ? null : (_) => _toggle(a, slot),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ),
+      if (_error != null) ...[
+        const SizedBox(height: 6),
+        FFAlert(message: _error!, tone: FFAlertTone.error),
+      ],
+      const SizedBox(height: 10),
+      SizedBox(
+        width: double.infinity,
+        child: FilledButton(
+          key: const Key('trainer-book-slots'),
+          onPressed: count == 0 || _busy ? null : _quote,
+          child: _busy
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Text(
+                  count == 0
+                      ? context.tr('member.bookSession')
+                      : context
+                            .tr('member.bookSlots')
+                            .replaceAll('{n}', '$count'),
+                ),
+        ),
+      ),
+    ];
+  }
+
+  List<Widget> _summaryStep(Map<String, dynamic> summary) {
+    final currency = summary['currency']?.toString() ?? 'TZS';
+    num n(String k) => (summary[k] as num?) ?? 0;
+    final slots = (summary['slots'] as List? ?? const [])
+        .whereType<Map>()
+        .map((s) => '${s['date']}  ${s['slot']}')
+        .toList();
+    final textTheme = Theme.of(context).textTheme;
+    Widget row(String label, String value, {bool strong = false}) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: strong ? textTheme.titleSmall : textTheme.bodyMedium,
+            ),
+          ),
+          Text(
+            value,
+            style: strong ? textTheme.titleSmall : textTheme.bodyMedium,
+          ),
+        ],
+      ),
+    );
+    return [
+      ...slots.map(
+        (s) => Padding(
+          padding: const EdgeInsets.only(bottom: 4),
+          child: Row(
+            children: [
+              const Icon(Icons.event_available, size: 16),
+              const SizedBox(width: 8),
+              Text(s, key: Key('summary-slot-$s')),
+            ],
+          ),
+        ),
+      ),
+      const Divider(height: 20),
+      row(
+        context.tr('member.pricePerSession'),
+        formatCurrency(n('pricePerSession'), currency: currency),
+      ),
+      row(
+        context.tr('member.subtotal'),
+        formatCurrency(n('subtotal'), currency: currency),
+      ),
+      if (n('discount') > 0)
+        row(
+          '${context.tr('member.passDiscount')} (${n('discountPct')}%)',
+          '− ${formatCurrency(n('discount'), currency: currency)}',
+        ),
+      row(
+        context.tr('member.total'),
+        formatCurrency(n('total'), currency: currency),
+        strong: true,
+      ),
+      const SizedBox(height: 8),
+      Text(context.tr('member.bookingPaymentNote'), style: textTheme.bodySmall),
+      if (_error != null) ...[
+        const SizedBox(height: 8),
+        FFAlert(message: _error!, tone: FFAlertTone.error),
+      ],
+      const SizedBox(height: 12),
+      Row(
+        children: [
+          Expanded(
+            child: OutlinedButton(
+              key: const Key('trainer-book-back'),
+              onPressed: _busy ? null : () => setState(() => _summary = null),
+              child: Text(context.tr('member.back')),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: FilledButton(
+              key: const Key('trainer-book-confirm'),
+              onPressed: _busy ? null : _confirm,
+              child: _busy
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(context.tr('member.confirmBooking')),
+            ),
+          ),
+        ],
+      ),
+    ];
   }
 }
 

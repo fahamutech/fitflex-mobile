@@ -9,6 +9,7 @@ import 'app_scope.dart';
 import 'router.dart';
 import 'shared/api_client.dart';
 import 'shared/auth_state.dart';
+import 'shared/push_service.dart';
 import 'shared/design_tokens.dart';
 import 'shared/i18n.dart';
 import 'shared/theme_notifier.dart';
@@ -38,7 +39,7 @@ Future<void> main() async {
     );
   }
   final api = ApiClient();
-  final auth = AuthState(api);
+  final auth = AuthState(api, push: mockAuth ? null : PushService(api));
   await auth.hydrate();
 
   final locale = FFLocale();
