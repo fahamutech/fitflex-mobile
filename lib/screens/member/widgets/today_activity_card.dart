@@ -14,9 +14,19 @@ import 'workout_widgets.dart';
 
 /// Compact "Today's activity" summary for the member Home tab.
 class TodayActivityCard extends StatelessWidget {
-  const TodayActivityCard({super.key, required this.data, this.now});
+  const TodayActivityCard({
+    super.key,
+    required this.data,
+    this.now,
+    this.showWorkout = true,
+    this.showStreak = true,
+  });
 
   final MemberData data;
+
+  /// Home hides these when they have a card of their own.
+  final bool showWorkout;
+  final bool showStreak;
 
   /// Injectable clock for tests.
   final DateTime? now;
@@ -33,7 +43,9 @@ class TodayActivityCard extends StatelessWidget {
       activities: data.activities,
     )!.current;
     final stepGoal = dailyStepGoal(data.goals);
-    final workout = todaysWorkouts(data.workouts, today).firstOrNull;
+    final workout = showWorkout
+        ? todaysWorkouts(data.workouts, today).firstOrNull
+        : null;
 
     return FFCard(
       key: const Key('today-activity-card'),
@@ -85,11 +97,12 @@ class TodayActivityCard extends StatelessWidget {
                 value: '${summary.workoutCount}',
                 label: context.tr('activity.workoutCount'),
               ),
-              _MiniStat(
-                icon: Icons.local_fire_department,
-                value: '$streak',
-                label: context.tr('activity.streak'),
-              ),
+              if (showStreak)
+                _MiniStat(
+                  icon: Icons.local_fire_department,
+                  value: '$streak',
+                  label: context.tr('activity.streak'),
+                ),
             ],
           ),
           if (stepGoal != null) ...[
