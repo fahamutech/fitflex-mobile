@@ -252,15 +252,48 @@ class ApiClient {
 
   Future<Map<String, dynamic>> myQr() async => await _request('GET', '/me/qr');
 
+  /// Push: register / remove this device's FCM token.
+  Future<void> registerDeviceToken(String token, {String? platform}) async =>
+      await _request(
+        'POST',
+        '/me/device-tokens',
+        body: {'token': token, 'platform': ?platform},
+      );
+
+  Future<void> unregisterDeviceToken(String token) async => await _request(
+    'POST',
+    '/me/device-tokens/remove',
+    body: {'token': token},
+  );
+
+  /// In-app notification inbox (newest first) plus unread count.
+  Future<Map<String, dynamic>> notifications() async =>
+      await _request('GET', '/me/notifications') as Map<String, dynamic>;
+
+  Future<void> markNotificationRead(String id) async =>
+      await _request('POST', '/me/notifications/$id/read');
+
+  /// Price one or more slots (Pass discount applied) without booking them.
+  Future<Map<String, dynamic>> quoteTrainerBooking({
+    required String trainerId,
+    required String gymId,
+    required List<Map<String, String>> slots,
+  }) async => await _request(
+    'POST',
+    '/me/trainer-bookings/quote',
+    body: {'trainerId': trainerId, 'gymId': gymId, 'slots': slots},
+  );
+
+  /// Book one or more slots. They stay payment_pending until an admin
+  /// approves the payment request the backend creates alongside them.
   Future<Map<String, dynamic>> bookTrainer({
     required String trainerId,
     required String gymId,
-    required String date,
-    required String slot,
+    required List<Map<String, String>> slots,
   }) async => await _request(
     'POST',
     '/me/trainer-bookings',
-    body: {'trainerId': trainerId, 'gymId': gymId, 'date': date, 'slot': slot},
+    body: {'trainerId': trainerId, 'gymId': gymId, 'slots': slots},
   );
 
   Future<Map<String, dynamic>> trainerRegister(
