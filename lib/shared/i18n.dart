@@ -129,6 +129,21 @@ class FFLocale extends ChangeNotifier {
       'error.reason.slotUnavailable':
           'That trainer slot is no longer available',
       'error.reason.paymentDeclined': 'Payment was declined',
+      'error.network':
+          'No connection to FitFlex. Check your internet and try again.',
+      'error.reason.gymClosed': 'This gym is closed right now',
+      'error.reason.basicDailyLimit':
+          'Basic Pass allows one gym per day. Upgrade to visit more gyms today',
+      'error.reason.qrExpired': 'QR code expired. Ask the member to refresh it',
+      'error.reason.invalidGymQr': 'That is not a FitFlex gym QR code',
+      'error.reason.notYourGym': 'That gym is not one you manage',
+      'error.reason.gymRequired': 'Choose a gym first',
+      'error.reason.emailAlreadyUsed': 'That email is already registered',
+      'error.reason.invalidCredentials': 'Wrong email or PIN',
+      'error.reason.accountSuspended':
+          'This account is suspended. Contact support',
+      'error.reason.activeSubscriptionRequired':
+          'You need an active plan for this',
       'confirm.signout': 'Are you sure you want to sign out of this account?',
       'owner.dashboard': 'Gym Owner Dashboard',
       'owner.home': 'Home',
@@ -286,6 +301,18 @@ class FFLocale extends ChangeNotifier {
       'member.searchGyms': 'Search by name or area',
       'member.all': 'All',
       'member.nearest': 'Nearest',
+      'member.saved': 'Saved',
+      'member.saveGym': 'Save gym',
+      'member.unsaveGym': 'Remove from saved',
+      'member.scanGymQrHint':
+          'Point your camera at the FitFlex QR code at the gym entrance.',
+      'member.checkedInAt': 'Checked in at {gym}',
+      'member.visitNumber': 'Visit {n} this cycle',
+      'member.scanAgain': 'Scan again',
+      'member.done': 'Done',
+      'owner.entranceQr': 'Entrance QR',
+      'owner.entranceQrHint':
+          'Print this and post it at the entrance. Members with a FitFlex pass scan it to check themselves in.',
       'member.mySubFilter': 'My Plan',
       'member.anyPrice': 'Any price',
       'member.verifiedOnly': 'Verified gyms only',
@@ -1118,6 +1145,21 @@ class FFLocale extends ChangeNotifier {
       'error.reason.visitCapReached': 'Kikomo cha ziara kimefikiwa',
       'error.reason.slotUnavailable': 'Muda huo wa mkufunzi haupatikani tena',
       'error.reason.paymentDeclined': 'Malipo yamekataliwa',
+      'error.network':
+          'Hakuna muunganisho na FitFlex. Angalia intaneti yako kisha ujaribu tena.',
+      'error.reason.gymClosed': 'Gym hii imefungwa kwa sasa',
+      'error.reason.basicDailyLimit':
+          'Pasi ya Basic inaruhusu gym moja kwa siku. Panda daraja kutembelea gym zaidi leo',
+      'error.reason.qrExpired': 'QR imeisha muda. Mwambie mwanachama aisasishe',
+      'error.reason.invalidGymQr': 'Hiyo si QR ya gym ya FitFlex',
+      'error.reason.notYourGym': 'Gym hiyo si unayoisimamia',
+      'error.reason.gymRequired': 'Chagua gym kwanza',
+      'error.reason.emailAlreadyUsed': 'Barua pepe hiyo tayari imesajiliwa',
+      'error.reason.invalidCredentials': 'Barua pepe au PIN si sahihi',
+      'error.reason.accountSuspended':
+          'Akaunti hii imesimamishwa. Wasiliana na msaada',
+      'error.reason.activeSubscriptionRequired':
+          'Unahitaji mpango unaotumika kwa hili',
       'confirm.signout': 'Una uhakika unataka kutoka kwenye akaunti hii?',
       'owner.dashboard': 'Dashibodi ya Mmiliki wa Gym',
       'owner.home': 'Nyumbani',
@@ -1302,6 +1344,18 @@ class FFLocale extends ChangeNotifier {
       'member.searchGyms': 'Tafuta kwa jina au eneo',
       'member.all': 'Zote',
       'member.nearest': 'Karibu',
+      'member.saved': 'Zilizohifadhiwa',
+      'member.saveGym': 'Hifadhi gym',
+      'member.unsaveGym': 'Ondoa kwenye zilizohifadhiwa',
+      'member.scanGymQrHint':
+          'Elekeza kamera kwenye QR ya FitFlex iliyo mlangoni mwa gym.',
+      'member.checkedInAt': 'Umeingia {gym}',
+      'member.visitNumber': 'Ziara ya {n} katika mzunguko huu',
+      'member.scanAgain': 'Skani tena',
+      'member.done': 'Maliza',
+      'owner.entranceQr': 'QR ya mlangoni',
+      'owner.entranceQrHint':
+          'Ichapishe na uibandike mlangoni. Wanachama wenye pasi ya FitFlex huiskani ili kujiandikisha kuingia.',
       'member.mySubFilter': 'Mpango wangu',
       'member.anyPrice': 'Bei yoyote',
       'member.verifiedOnly': 'Gym zilizothibitishwa pekee',

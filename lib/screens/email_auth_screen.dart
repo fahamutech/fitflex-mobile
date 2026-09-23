@@ -116,7 +116,7 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
     } on AdminMobileSignInException {
       _showErrorDialog(context.tr('auth.adminPortalOnly'));
     } catch (e) {
-      _showErrorDialog(e.toString());
+      _showErrorDialog(errorMessage(FFLocaleScope.of(context), e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }

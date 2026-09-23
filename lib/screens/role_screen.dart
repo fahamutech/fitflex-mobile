@@ -300,7 +300,9 @@ class _DevLoginPanelState extends State<_DevLoginPanel> {
         setState(() => _error = apiErrorMessage(FFLocaleScope.of(context), e));
       }
     } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
+      if (mounted) {
+        setState(() => _error = errorMessage(FFLocaleScope.of(context), e));
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }

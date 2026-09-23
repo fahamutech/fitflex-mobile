@@ -27,6 +27,7 @@ class MemberData extends ChangeNotifier {
   List<TrainerProfile> trainers = [];
   List<CheckIn> checkins = [];
   List<PassTier> passes = [];
+  Set<String> favoriteGymIds = {};
   bool passesLoaded = false;
   String? qrToken;
   String selectedTier = 'pro';
@@ -132,6 +133,7 @@ class MemberShellState extends State<MemberShell> {
         _refreshTrainers(),
         _refreshCheckins(),
         _refreshPasses(),
+        _refreshFavorites(),
       ]);
       if (_data.hasActivePass) await _refreshQr();
     } finally {
@@ -184,6 +186,15 @@ class MemberShellState extends State<MemberShell> {
       _data.update((d) => d.trainers = trainers);
     } catch (error) {
       debugPrint('[MemberShell] Could not refresh trainers: $error');
+    }
+  }
+
+  Future<void> _refreshFavorites() async {
+    try {
+      final ids = await AppScope.of(context).api.favoriteGymIds();
+      _data.update((d) => d.favoriteGymIds = ids.toSet());
+    } catch (_) {
+      // Saved gyms are a convenience; the rest of the tab still works.
     }
   }
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../shared/api_error_message.dart';
 
 import '../../app_scope.dart';
 import '../../shared/components/components.dart';
@@ -44,7 +45,7 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.toString();
+        _error = errorMessage(FFLocaleScope.of(context), e);
         _loading = false;
       });
     }
