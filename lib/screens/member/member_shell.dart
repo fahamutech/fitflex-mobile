@@ -7,6 +7,7 @@ import '../../router.dart';
 import '../../shared/activity/activity.dart';
 import '../../shared/activity/activity_config.dart';
 import '../../shared/activity/goal.dart';
+import '../../shared/activity/gym_sharing.dart';
 import '../../shared/activity/trainer_connection.dart';
 import '../../shared/activity/workout.dart';
 import '../../shared/auth_state.dart';
@@ -44,6 +45,7 @@ class MemberData extends ChangeNotifier {
   List<Workout> workouts = [];
   bool workoutsLoaded = false;
   List<TrainerConnection> trainerConnections = [];
+  List<GymSharing> gymSharing = [];
 
   /// The open (pending or active) connection with [trainerId], if any.
   TrainerConnection? connectionWith(String trainerId) => trainerConnections
@@ -175,6 +177,7 @@ class MemberShellState extends State<MemberShell> {
         _refreshGoals(),
         _refreshWorkouts(),
         _refreshConnections(),
+        _refreshGymSharing(),
       ]);
       if (_data.hasActivePass) await _refreshQr();
     } finally {
@@ -310,6 +313,20 @@ class MemberShellState extends State<MemberShell> {
 
   Future<void> refreshConnections() async {
     await _refreshConnections();
+  }
+
+  Future<void> _refreshGymSharing() async {
+    try {
+      final rows = await AppScope.of(context).api.myGymSharing();
+      _data.update(
+        (d) => d.gymSharing = [
+          for (final r in rows.whereType<Map>())
+            ?GymSharing.tryParse(Map<String, dynamic>.from(r)),
+        ],
+      );
+    } catch (error) {
+      debugPrint('[MemberShell] Could not load gym sharing: $error');
+    }
   }
 
   /// After a workout changes: its list, and — once finished — the activity

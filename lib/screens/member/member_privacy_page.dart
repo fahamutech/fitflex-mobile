@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app_scope.dart';
 import '../../router.dart';
+import '../../shared/activity/gym_sharing.dart';
 import '../../shared/activity/trainer_connection.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
@@ -19,6 +20,8 @@ class MemberPrivacyPage extends StatelessWidget {
       context,
     ).trainerConnections.where((c) => c.status.isOpen).toList();
     final sharingWith = connections.where((c) => !c.permissions.isEmpty).length;
+    final gyms = MemberDataScope.of(context).gymSharing;
+    final gymsSharing = gyms.where((g) => g.permissions.isNotEmpty).length;
     return ListView(
       padding: const EdgeInsets.all(FFTokens.spacingLg),
       children: [
@@ -34,12 +37,19 @@ class MemberPrivacyPage extends StatelessWidget {
           key: const Key('privacy-activity-sharing'),
           icon: Icons.share_outlined,
           title: context.tr('sharing.title'),
-          subtitle: connections.isEmpty
-              ? context.tr('sharing.noTrainers')
-              : context
-                    .tr('sharing.summary')
-                    .replaceAll('{n}', '$sharingWith')
-                    .replaceAll('{total}', '${connections.length}'),
+          subtitle: [
+            connections.isEmpty
+                ? context.tr('sharing.noTrainers')
+                : context
+                      .tr('sharing.summary')
+                      .replaceAll('{n}', '$sharingWith')
+                      .replaceAll('{total}', '${connections.length}'),
+            if (gyms.isNotEmpty)
+              context
+                  .tr('gymShare.summary')
+                  .replaceAll('{n}', '$gymsSharing')
+                  .replaceAll('{total}', '${gyms.length}'),
+          ].join(' · '),
           onTap: () => context.go(AppRoutes.memberActivitySharing),
         ),
       ],
@@ -190,6 +200,7 @@ class _MemberActivitySharingPageState extends State<MemberActivitySharingPage> {
           title: context.tr('sharing.title'),
           description: context.tr('sharing.body'),
         ),
+        FFSectionTitle(context.tr('sharing.trainers')),
         if (connections.isEmpty)
           FFEmptyState(
             title: context.tr('sharing.noTrainers'),
@@ -201,6 +212,7 @@ class _MemberActivitySharingPageState extends State<MemberActivitySharingPage> {
           )
         else
           for (final c in connections) _trainerCard(context, c),
+        const GymSharingSection(),
       ],
     );
   }
@@ -402,4 +414,156 @@ class _BackRow extends StatelessWidget {
       label: Text(label),
     ),
   );
+}
+
+/// Activity sharing → Gyms: check-ins and visit patterns are always the
+/// gym's; everything from the activity log is off unless switched on here.
+class GymSharingSection extends StatefulWidget {
+  const GymSharingSection({super.key});
+
+  @override
+  State<GymSharingSection> createState() => _GymSharingSectionState();
+}
+
+class _GymSharingSectionState extends State<GymSharingSection> {
+  final Map<String, Set<GymPermission>> _pending = {};
+  final Set<String> _saved = {};
+
+  Future<void> _set(GymSharing g, GymPermission p, bool on) async {
+    final api = AppScope.of(context).api;
+    final data = MemberDataScope.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final failed = context.tr('sharing.failed');
+    final next = {...g.permissions};
+    on ? next.add(p) : next.remove(p);
+    setState(() {
+      _pending[g.gym.id] = next;
+      _saved.remove(g.gym.id);
+    });
+    try {
+      await api.updateGymSharing(g.gym.id, gymPermissionsJson(next));
+      data.update(
+        (d) => d.gymSharing = [
+          for (final x in d.gymSharing)
+            x.gym.id == g.gym.id ? x.withPermissions(next) : x,
+        ],
+      );
+      if (mounted) setState(() => _saved.add(g.gym.id));
+    } catch (_) {
+      messenger.showSnackBar(SnackBar(content: Text(failed)));
+    } finally {
+      if (mounted) setState(() => _pending.remove(g.gym.id));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final gyms = MemberDataScope.of(context).gymSharing;
+    return Column(
+      key: const Key('gym-sharing'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        FFSectionTitle(context.tr('gymShare.title')),
+        if (gyms.isEmpty)
+          FFEmptyState(
+            title: context.tr('gymShare.none'),
+            body: context.tr('gymShare.noneBody'),
+          )
+        else
+          for (final g in gyms)
+            FFCard(
+              key: Key('gym-sharing-${g.gym.id}'),
+              margin: const EdgeInsets.only(bottom: FFTokens.spacingMd),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    g.gym.name ?? '',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    context.tr(
+                      g.reasons.contains('member')
+                          ? 'gymShare.yourGym'
+                          : 'gymShare.visited',
+                    ),
+                    style: theme.textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: FFTokens.spacingSm),
+                  // Not a switch: the gym records these itself.
+                  Row(
+                    key: Key('gym-always-${g.gym.id}'),
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.lock_outline, size: 18),
+                      const SizedBox(width: FFTokens.spacingSm),
+                      Expanded(
+                        child: Text(
+                          context
+                              .tr('gymShare.always')
+                              .replaceAll('{gym}', g.gym.name ?? ''),
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ),
+                    ],
+                  ),
+                  for (final p in GymPermission.values) ...[
+                    const Divider(height: FFTokens.spacingLg),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                context.tr('gymShare.${p.wire}'),
+                                style: theme.textTheme.bodyLarge,
+                              ),
+                              Text(
+                                context.tr('gymShare.${p.wire}.hint'),
+                                style: theme.textTheme.bodySmall,
+                              ),
+                            ],
+                          ),
+                        ),
+                        Switch(
+                          key: Key('gym-share-${p.wire}-${g.gym.id}'),
+                          value: (_pending[g.gym.id] ?? g.permissions).contains(
+                            p,
+                          ),
+                          onChanged: _pending.containsKey(g.gym.id)
+                              ? null
+                              : (on) => _set(g, p, on),
+                        ),
+                      ],
+                    ),
+                  ],
+                  if (_saved.contains(g.gym.id))
+                    Padding(
+                      padding: const EdgeInsets.only(top: FFTokens.spacingSm),
+                      child: Text(
+                        context
+                            .tr('sharing.savedNow')
+                            .replaceAll('{name}', g.gym.name ?? ''),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+        Padding(
+          padding: const EdgeInsets.only(top: FFTokens.spacingXs),
+          child: Text(
+            context.tr('gymShare.neverShared'),
+            style: theme.textTheme.bodySmall,
+          ),
+        ),
+      ],
+    );
+  }
 }

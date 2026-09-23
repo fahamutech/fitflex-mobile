@@ -457,6 +457,38 @@ class ApiClient {
   Future<void> trainerDeletePlan(String id) async =>
       await _request('DELETE', '/trainer/plans/${Uri.encodeComponent(id)}');
 
+  // ── Gym ↔ member sharing ──────────────────────────────────────────────
+  Future<List<dynamic>> myGymSharing() async {
+    final res = await _request('GET', '/me/gym-sharing');
+    return (res as Map)['gyms'] as List? ?? const [];
+  }
+
+  Future<Map<String, dynamic>> updateGymSharing(
+    String gymId,
+    Map<String, bool> permissions,
+  ) async => await _request(
+    'PUT',
+    '/me/gym-sharing/${Uri.encodeComponent(gymId)}',
+    body: {'permissions': permissions},
+  );
+
+  Future<List<dynamic>> ownerMemberActivity(String memberId) async {
+    final res = await _request(
+      'GET',
+      '/owner/members/${Uri.encodeComponent(memberId)}/activity',
+    );
+    return (res as Map)['gyms'] as List? ?? const [];
+  }
+
+  Future<Map<String, dynamic>> ownerEngagement({
+    String? gymId,
+  }) async => await _request(
+    'GET',
+    gymId == null
+        ? '/owner/engagement'
+        : '/owner/engagement?${Uri(queryParameters: {'gymId': gymId}).query}',
+  );
+
   Future<void> registerDeviceToken(String token, {String? platform}) async =>
       await _request(
         'POST',

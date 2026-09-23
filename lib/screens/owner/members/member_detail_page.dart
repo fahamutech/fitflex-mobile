@@ -18,6 +18,7 @@ import 'widgets/check_in_member_sheet.dart';
 import 'widgets/member_format.dart';
 import 'widgets/member_presentation.dart';
 import 'widgets/renew_member_sheet.dart';
+import '../widgets/gym_engagement_widgets.dart';
 
 class MemberDetailPage extends StatefulWidget {
   const MemberDetailPage({super.key, required this.memberId});
@@ -224,6 +225,8 @@ class _DetailBody extends StatelessWidget {
         _ProfileCard(detail: detail),
         const SizedBox(height: FFTokens.spacingMd),
         _CheckInSummaryCard(controller: controller),
+        // Visit patterns, plus only what the member shares with this gym.
+        GymMemberActivityCard(memberId: detail.id),
         if (detail.plan != null) ...[
           const SizedBox(height: FFTokens.spacingMd),
           _PlanCard(plan: detail.plan!),
