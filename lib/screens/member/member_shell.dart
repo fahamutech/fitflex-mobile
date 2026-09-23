@@ -6,6 +6,7 @@ import '../../app_scope.dart';
 import '../../router.dart';
 import '../../shared/activity/activity.dart';
 import '../../shared/activity/activity_config.dart';
+import '../../shared/activity/activity_provider.dart';
 import '../../shared/activity/challenge.dart';
 import '../../shared/activity/goal.dart';
 import '../../shared/activity/gym_sharing.dart';
@@ -259,14 +260,14 @@ class MemberShellState extends State<MemberShell> {
     final userId = _auth?.user?['id']?.toString() ?? '';
     try {
       final now = DateTime.now();
-      final activities = await provider.activitiesBetween(
+      final activities = await provider.getActivities(
         userId: userId,
         from: DateTime(now.year, now.month, now.day - activityHistoryDays + 1),
         to: now.add(const Duration(days: 1)),
       );
       _data.update((d) {
         d.activities = activities;
-        d.activityIsSample = provider.id == 'mock';
+        d.activityIsSample = provider.kind == ActivityProviderKind.sample;
         d.activityLoaded = true;
       });
     } catch (error) {

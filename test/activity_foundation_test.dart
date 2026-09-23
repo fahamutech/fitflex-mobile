@@ -90,7 +90,7 @@ void main() {
     final today = DateTime(2026, 9, 23, 12);
     final ActivityProvider provider = MockActivityProvider(clock: () => today);
 
-    Future<List<Activity>> history() => provider.activitiesBetween(
+    Future<List<Activity>> history() => provider.getActivities(
       userId: 'u1',
       from: DateTime(2026, 1, 1),
       to: DateTime(2027, 1, 1),
@@ -126,7 +126,7 @@ void main() {
     });
 
     test('is newest-first and respects the requested window', () async {
-      final week = await provider.activitiesBetween(
+      final week = await provider.getActivities(
         userId: 'u1',
         from: DateTime(2026, 9, 17),
         to: DateTime(2026, 9, 24),
@@ -146,12 +146,12 @@ void main() {
         clock: () => today.add(const Duration(days: 3)),
       );
       final window = (from: DateTime(2026, 9, 1), to: DateTime(2026, 9, 10));
-      final a = await provider.activitiesBetween(
+      final a = await provider.getActivities(
         userId: 'u1',
         from: window.from,
         to: window.to,
       );
-      final b = await later.activitiesBetween(
+      final b = await later.getActivities(
         userId: 'u1',
         from: window.from,
         to: window.to,
