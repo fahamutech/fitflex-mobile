@@ -31,7 +31,7 @@ class _MemberTrainerDetailPageState extends State<MemberTrainerDetailPage> {
     final booked = await showTrainerBookingSheet(context, trainer);
     if (booked == true && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('member.bookingConfirmed'))),
+        SnackBar(content: Text(context.tr('member.bookingRequested'))),
       );
     }
   }

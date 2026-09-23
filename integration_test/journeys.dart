@@ -501,7 +501,7 @@ Future<void> memberIssueMatrixJourney(PatrolIntegrationTester $) async {
   await $(const Key('trainer-action-book')).tap();
   await $('Book a session').waitUntilVisible();
   expect(
-    find.byKey(const Key('trainer-book-confirm')).evaluate().isNotEmpty ||
+    find.byKey(const Key('trainer-book-slots')).evaluate().isNotEmpty ||
         find.text('No availability listed.').evaluate().isNotEmpty,
     isTrue,
   );
@@ -539,8 +539,10 @@ Future<void> memberSlotBookingJourney(PatrolIntegrationTester $) async {
   ][DateTime.now().weekday - 1];
   await $(Key('slot-$today-10:00')).waitUntilVisible();
   await $(Key('slot-$today-10:00')).tap();
+  await $(const Key('trainer-book-slots')).tap();
+  await $('Booking summary').waitUntilVisible();
   await $(const Key('trainer-book-confirm')).tap();
-  await $('Trainer session booked').waitUntilVisible();
+  await $('Booking requested. Your sessions are confirmed once the payment is approved.').waitUntilVisible();
 }
 
 /// Seeds a real member enquiry for the trainer notification regression.
@@ -692,7 +694,7 @@ Future<void> memberBookedSlotDeclineJourney(PatrolIntegrationTester $) async {
     'sunday',
   ][DateTime.now().weekday - 1];
   await $(Key('slot-$today-10:00')).tap();
-  await $(const Key('trainer-book-confirm')).tap();
+  await $(const Key('trainer-book-slots')).tap();
   await $('That slot was just booked. Pick another.').waitUntilVisible();
 }
 
