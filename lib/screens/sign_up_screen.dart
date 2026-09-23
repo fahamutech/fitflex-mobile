@@ -135,7 +135,7 @@ class _SignUpScreenState extends State<SignUpScreen>
     } on AdminMobileSignInException {
       _showErrorDialog(adminPortalOnlyMsg);
     } catch (e) {
-      _showErrorDialog(e.toString());
+      if (mounted) _showErrorDialog(errorMessage(FFLocaleScope.of(context), e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }

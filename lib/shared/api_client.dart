@@ -7,8 +7,25 @@ class ApiException implements Exception {
   final int status;
   final dynamic body;
   ApiException(this.status, this.body);
+
+  /// The backend's machine-readable reason, e.g. 'visits_exhausted'.
+  String? get code {
+    final b = body;
+    if (b is Map) return (b['error'] ?? b['failure'])?.toString();
+    return null;
+  }
+
+  // Readable fallback for places that still interpolate the exception;
+  // screens should use errorMessage() for translated copy.
   @override
-  String toString() => 'ApiException($status, $body)';
+  String toString() {
+    final c = code;
+    if (c == null || c.isEmpty) return 'Request failed ($status)';
+    final words = c.replaceAll(RegExp(r'[_-]+'), ' ').trim();
+    return words.isEmpty
+        ? 'Request failed ($status)'
+        : '${words[0].toUpperCase()}${words.substring(1)}';
+  }
 }
 
 /// Production backend. Used whenever API_BASE is not provided.
@@ -251,6 +268,27 @@ class ApiClient {
   );
 
   Future<Map<String, dynamic>> myQr() async => await _request('GET', '/me/qr');
+
+  /// Member self check-in: scan the static QR posted at the gym entrance.
+  Future<Map<String, dynamic>> scanGymQr(String gymQr) async =>
+      await _request('POST', '/me/checkins/scan', body: {'gymQr': gymQr})
+          as Map<String, dynamic>;
+
+  /// Owner/staff: the printable entrance QR for one of their gyms.
+  Future<Map<String, dynamic>> gymEntranceQr(String gymId) async =>
+      await _request('GET', '/operator/gyms/$gymId/entrance-qr')
+          as Map<String, dynamic>;
+
+  /// Saved gyms (US017).
+  Future<List<String>> favoriteGymIds() async {
+    final res = await _request('GET', '/me/favorites/gyms');
+    return ((res as Map)['favoriteGymIds'] as List? ?? const [])
+        .map((e) => e.toString())
+        .toList();
+  }
+
+  Future<void> setFavoriteGym(String gymId, bool favorite) async =>
+      await _request(favorite ? 'PUT' : 'DELETE', '/me/favorites/gyms/$gymId');
 
   /// Push: register / remove this device's FCM token.
   Future<void> registerDeviceToken(String token, {String? platform}) async =>

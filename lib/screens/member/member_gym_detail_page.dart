@@ -79,6 +79,7 @@ class _MemberGymDetailPageState extends State<MemberGymDetailPage> {
           icon: const Icon(Icons.arrow_back),
         ),
         title: Text(context.tr('member.gymDetail')),
+        actions: [_SaveGymButton(gymId: gym.id)],
       ),
       // A8 — section order: gallery → name → location → verification →
       // ratings → plans → directions → about → equipment → amenities →
@@ -902,5 +903,56 @@ class _ExpandableChipGroupState extends State<_ExpandableChipGroup> {
     final match = RegExp(r'([0-5](?:\.\d)?)').firstMatch(value);
     final parsed = match == null ? null : double.tryParse(match.group(1)!);
     return parsed == null ? 4.0 : parsed.clamp(0, 5).toDouble();
+  }
+}
+
+/// US017 — save / unsave this gym. Optimistic, reverted if the call fails.
+class _SaveGymButton extends StatefulWidget {
+  const _SaveGymButton({required this.gymId});
+
+  final String gymId;
+
+  @override
+  State<_SaveGymButton> createState() => _SaveGymButtonState();
+}
+
+class _SaveGymButtonState extends State<_SaveGymButton> {
+  bool _busy = false;
+
+  Future<void> _toggle(MemberData data, bool saved) async {
+    final api = AppScope.of(context).api;
+    final messenger = ScaffoldMessenger.of(context);
+    final failed = context.tr('error.requestFailed');
+    setState(() => _busy = true);
+    data.update((d) {
+      final next = {...d.favoriteGymIds};
+      saved ? next.remove(widget.gymId) : next.add(widget.gymId);
+      d.favoriteGymIds = next;
+    });
+    try {
+      await api.setFavoriteGym(widget.gymId, !saved);
+    } catch (_) {
+      data.update((d) {
+        final next = {...d.favoriteGymIds};
+        saved ? next.add(widget.gymId) : next.remove(widget.gymId);
+        d.favoriteGymIds = next;
+      });
+      messenger.showSnackBar(SnackBar(content: Text(failed)));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final data = MemberDataScope.of(context);
+    final saved = data.favoriteGymIds.contains(widget.gymId);
+    return IconButton(
+      key: const Key('gym-save-toggle'),
+      tooltip: context.tr(saved ? 'member.unsaveGym' : 'member.saveGym'),
+      onPressed: _busy ? null : () => _toggle(data, saved),
+      icon: Icon(saved ? Icons.favorite : Icons.favorite_border),
+      color: saved ? Theme.of(context).colorScheme.primary : null,
+    );
   }
 }

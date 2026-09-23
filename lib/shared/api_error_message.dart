@@ -1,5 +1,23 @@
+import 'dart:async';
+
+import 'package:http/http.dart' as http;
+
 import 'api_client.dart';
 import 'i18n.dart';
+
+/// Any caught error → user-facing copy (UAT #48). Prefer this over
+/// `e.toString()`, which shows raw text like "ApiException(400, {...})".
+String errorMessage(FFLocale locale, Object error) {
+  if (error is ApiException) return apiErrorMessage(locale, error);
+  if (error is TimeoutException || error is http.ClientException) {
+    return locale.t('error.network');
+  }
+  final text = error.toString();
+  if (text.contains('SocketException') || text.contains('Failed host lookup')) {
+    return locale.t('error.network');
+  }
+  return locale.t('error.requestFailed');
+}
 
 /// Converts API failures into user-facing copy. Backend validation/decline
 /// reasons win over the HTTP status so a 400 never leaks into the UI alone.
@@ -34,6 +52,7 @@ String? _firstReason(dynamic value) {
   if (value is Map) {
     for (final key in const [
       'reason',
+      'failure', // check-in declines: { ok:false, failure:'visits_exhausted' }
       'message',
       'error_description',
       'error',
@@ -57,6 +76,24 @@ String? _knownReason(FFLocale locale, String reason) {
     'visit_cap_reached': 'error.reason.visitCapReached',
     'slot_unavailable': 'error.reason.slotUnavailable',
     'payment_declined': 'error.reason.paymentDeclined',
+    // Check-in (BL-012) — codes the backend actually returns.
+    'subscription_inactive': 'error.reason.membershipExpired',
+    'tier_not_covered': 'error.reason.gymTierNotCovered',
+    'visits_exhausted': 'error.reason.visitCapReached',
+    'gym_closed': 'error.reason.gymClosed',
+    'basic_daily_limit': 'error.reason.basicDailyLimit',
+    'invalid_or_expired_qr': 'error.reason.qrExpired',
+    'invalid_gym_qr': 'error.reason.invalidGymQr',
+    'not_your_gym': 'error.reason.notYourGym',
+    'gym_required': 'error.reason.gymRequired',
+    // Trainer booking.
+    'slot_already_booked': 'error.reason.slotUnavailable',
+    'slot_not_available': 'error.reason.slotUnavailable',
+    // Accounts.
+    'email_already_used': 'error.reason.emailAlreadyUsed',
+    'invalid_credentials': 'error.reason.invalidCredentials',
+    'account_suspended': 'error.reason.accountSuspended',
+    'active_subscription_required': 'error.reason.activeSubscriptionRequired',
   };
   final key = keys[reason.trim().toLowerCase()];
   return key == null ? null : locale.t(key);

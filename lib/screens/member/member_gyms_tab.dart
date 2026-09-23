@@ -30,7 +30,14 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
   double? _userLng;
   bool _locationLoading = false;
 
-  static const _filters = ['all', 'nearest', 'standard', 'midtier', 'premium'];
+  static const _filters = [
+    'all',
+    'saved',
+    'nearest',
+    'standard',
+    'midtier',
+    'premium',
+  ];
   static const _priceFilters = [
     'any',
     '<60k',
@@ -83,12 +90,14 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
     }
   }
 
-  List<Gym> _filtered(List<Gym> gyms) {
+  List<Gym> _filtered(List<Gym> gyms, Set<String> favoriteIds) {
     var result = applyGymFilter(
-      gyms,
+      _filter == 'saved'
+          ? gyms.where((g) => favoriteIds.contains(g.id)).toList()
+          : gyms,
       GymFilter(
         search: _search,
-        tier: _filter,
+        tier: _filter == 'saved' ? 'all' : _filter,
         price: _priceFilter,
         amenities: _amenityFilter,
         verifiedOnly: _verifiedOnly,
@@ -117,12 +126,13 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
   @override
   Widget build(BuildContext context) {
     final data = MemberDataScope.of(context);
-    final gyms = _filtered(data.gyms);
+    final gyms = _filtered(data.gyms, data.favoriteGymIds);
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
     final filterLabels = [
       context.tr('member.all'),
+      context.tr('member.saved'),
       context.tr('member.nearest'),
       'Standard',
       'Mid-Range',

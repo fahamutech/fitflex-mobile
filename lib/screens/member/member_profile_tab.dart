@@ -251,7 +251,7 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
                         } catch (e) {
                           setDialogState(() {
                             busy = false;
-                            error = e.toString();
+                            error = errorMessage(FFLocaleScope.of(context), e);
                           });
                         }
                       },

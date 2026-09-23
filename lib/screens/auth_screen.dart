@@ -164,7 +164,7 @@ class _AuthScreenState extends State<AuthScreen>
     } on AdminMobileSignInException {
       _showErrorDialog(adminPortalOnlyMsg);
     } catch (e) {
-      _showErrorDialog(e.toString());
+      if (mounted) _showErrorDialog(errorMessage(FFLocaleScope.of(context), e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -519,7 +519,9 @@ class _GoogleWebCallbackScreenState extends State<GoogleWebCallbackScreen> {
     } on AdminMobileSignInException {
       if (mounted) setState(() => _error = context.tr('auth.adminPortalOnly'));
     } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
+      if (mounted) {
+        setState(() => _error = errorMessage(FFLocaleScope.of(context), e));
+      }
     }
   }
 

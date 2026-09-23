@@ -143,7 +143,7 @@ class MemberOnboardingController extends ChangeNotifier {
     } on ApiException catch (e) {
       onError(apiErrorMessage(locale, e));
     } catch (e) {
-      onError(e.toString());
+      onError(errorMessage(locale, e));
     } finally {
       setBusy(false);
     }

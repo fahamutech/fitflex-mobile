@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../app_scope.dart';
 import '../../router.dart';
+import '../../shared/models.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
+import 'member_scan_gym_page.dart';
 import 'member_shell.dart';
 import 'widgets/checkin_list.dart';
 
@@ -33,6 +36,16 @@ class MemberQrTab extends StatelessWidget {
             _QrCard(data: data)
           else
             _QrLockedCard(data: data),
+          if (data.hasActivePass) ...[
+            const SizedBox(height: 12),
+            // Tech Brief §5: self check-in by scanning the gym's entrance QR.
+            OutlinedButton.icon(
+              key: const Key('member-scan-gym-qr'),
+              icon: const Icon(Icons.qr_code_scanner),
+              label: Text(context.tr('member.scanGymQr')),
+              onPressed: () => _scanGym(context, data),
+            ),
+          ],
           const SizedBox(height: 12),
 
           // Recent checkins
@@ -41,6 +54,25 @@ class MemberQrTab extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+Future<void> _scanGym(BuildContext context, MemberData data) async {
+  final api = AppScope.of(context).api;
+  final checkedIn = await Navigator.of(
+    context,
+  ).push<bool>(MaterialPageRoute(builder: (_) => const MemberScanGymPage()));
+  if (checkedIn != true) return;
+  try {
+    final res = await api.myCheckins();
+    data.update(
+      (d) => d.checkins = res
+          .whereType<Map<String, dynamic>>()
+          .map(CheckIn.fromJson)
+          .toList(),
+    );
+  } catch (_) {
+    // The list refreshes on the next app resume anyway.
   }
 }
 

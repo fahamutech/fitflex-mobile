@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../app_scope.dart';
 import '../../shared/api_client.dart';
@@ -298,6 +299,17 @@ class _OwnerGymGridCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               IconButton(
+                key: Key('owner-gym-entrance-qr-${gym['id']}'),
+                icon: const Icon(Icons.qr_code_2, size: 18),
+                onPressed: () => showGymEntranceQr(
+                  context,
+                  gymId: gym['id']?.toString() ?? '',
+                  gymName: gym['name']?.toString() ?? '',
+                ),
+                tooltip: context.tr('owner.entranceQr'),
+                visualDensity: VisualDensity.compact,
+              ),
+              IconButton(
                 icon: const Icon(Icons.edit, size: 18),
                 onPressed: onEdit,
                 tooltip: context.tr('owner.editGym'),
@@ -315,4 +327,64 @@ class _OwnerGymGridCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Tech Brief §5: the static QR members scan to check themselves in.
+Future<void> showGymEntranceQr(
+  BuildContext context, {
+  required String gymId,
+  required String gymName,
+}) async {
+  final api = AppScope.of(context).api;
+  final locale = FFLocaleScope.of(context);
+  await showDialog<void>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(gymName),
+      content: FutureBuilder<Map<String, dynamic>>(
+        future: api.gymEntranceQr(gymId),
+        builder: (ctx, snap) {
+          if (snap.hasError) {
+            return FFAlert(
+              tone: FFAlertTone.error,
+              message: errorMessage(locale, snap.error!),
+            );
+          }
+          final payload = snap.data?['payload']?.toString();
+          if (payload == null) {
+            return const SizedBox(
+              height: 240,
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 240,
+                height: 240,
+                child: QrImageView(
+                  key: const Key('owner-entrance-qr-image'),
+                  data: payload,
+                  backgroundColor: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                ctx.tr('owner.entranceQrHint'),
+                textAlign: TextAlign.center,
+                style: Theme.of(ctx).textTheme.bodySmall,
+              ),
+            ],
+          );
+        },
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: Text(ctx.tr('member.close')),
+        ),
+      ],
+    ),
+  );
 }
