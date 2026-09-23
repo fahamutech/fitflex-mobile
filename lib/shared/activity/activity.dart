@@ -1,0 +1,186 @@
+/// Activity & Progress Engine — core activity model.
+///
+/// An [Activity] is a single bout of movement a member did (a walk, a run, a
+/// strength session…). It is deliberately independent of the user model and
+/// of gym visits: a `CheckIn` records that a member entered a gym, an
+/// [Activity] records what they did. The two may share a `gymId`, but a
+/// check-in never becomes an activity on its own.
+library;
+
+/// What kind of movement an activity was. Wire values are snake_case.
+enum ActivityType {
+  walking('walking'),
+  running('running'),
+  jogging('jogging'),
+  cycling('cycling'),
+  hiking('hiking'),
+  swimming('swimming'),
+  sports('sports'),
+  strength('strength'),
+  hiit('hiit'),
+  functional('functional'),
+  groupClass('group_class'),
+  personalTraining('personal_training'),
+  mobility('mobility'),
+  stretching('stretching'),
+  other('other');
+
+  const ActivityType(this.wire);
+
+  final String wire;
+
+  /// Unknown or missing values fall back to [other] so newer backends never
+  /// break older app builds.
+  static ActivityType fromWire(String? value) => values.firstWhere(
+    (t) => t.wire == value,
+    orElse: () => ActivityType.other,
+  );
+
+  /// Movement measured mainly by distance/steps rather than sets and reps.
+  bool get isDistanceBased => const {
+    walking,
+    running,
+    jogging,
+    cycling,
+    hiking,
+    swimming,
+  }.contains(this);
+}
+
+/// Where an activity record came from. This is provenance only — it says
+/// nothing about whether a device integration exists (none do yet).
+enum ActivitySource {
+  /// Synced from a health platform or wearable (Apple Health, Health
+  /// Connect, a watch…).
+  device('device'),
+
+  /// Tracked inside the FitFlex app itself.
+  fitflex('fitflex'),
+
+  /// Typed in by the member.
+  manual('manual'),
+
+  /// Logged by a linked trainer.
+  trainer('trainer'),
+
+  /// Logged by a gym (e.g. a class roster).
+  gym('gym');
+
+  const ActivitySource(this.wire);
+
+  final String wire;
+
+  /// Unknown values fall back to [manual], the least-trusted source.
+  static ActivitySource fromWire(String? value) => values.firstWhere(
+    (s) => s.wire == value,
+    orElse: () => ActivitySource.manual,
+  );
+}
+
+enum ActivityIntensity {
+  low('low'),
+  moderate('moderate'),
+  high('high');
+
+  const ActivityIntensity(this.wire);
+
+  final String wire;
+
+  static ActivityIntensity? fromWire(String? value) {
+    for (final i in values) {
+      if (i.wire == value) return i;
+    }
+    return null;
+  }
+}
+
+class Activity {
+  final String id;
+  final String userId;
+  final ActivityType type;
+  final ActivitySource source;
+  final DateTime startedAt;
+
+  // Metrics — every one is optional; a strength session has no distance and
+  // a device step summary has no workout.
+  final int? durationMinutes;
+  final double? distanceKm;
+  final int? steps;
+  final int? activeMinutes;
+  final int? calories;
+  final ActivityIntensity? intensity;
+
+  // Optional links into the rest of FitFlex.
+  final String? workoutId;
+  final String? gymId;
+  final String? trainerId;
+
+  final String? notes;
+
+  const Activity({
+    required this.id,
+    required this.userId,
+    required this.type,
+    required this.source,
+    required this.startedAt,
+    this.durationMinutes,
+    this.distanceKm,
+    this.steps,
+    this.activeMinutes,
+    this.calories,
+    this.intensity,
+    this.workoutId,
+    this.gymId,
+    this.trainerId,
+    this.notes,
+  });
+
+  /// End time, when the duration is known.
+  DateTime? get endedAt => durationMinutes == null
+      ? null
+      : startedAt.add(Duration(minutes: durationMinutes!));
+
+  factory Activity.fromJson(Map<String, dynamic> json) {
+    final startedAt = DateTime.tryParse(json['startedAt'] as String? ?? '');
+    if (startedAt == null) {
+      // Without a start time an activity can't be placed on a day, so it
+      // would silently corrupt daily totals and streaks.
+      throw FormatException('Activity is missing a valid startedAt', json);
+    }
+    return Activity(
+      id: json['id'] as String? ?? '',
+      userId: json['userId'] as String? ?? '',
+      type: ActivityType.fromWire(json['type'] as String?),
+      source: ActivitySource.fromWire(json['source'] as String?),
+      startedAt: startedAt,
+      durationMinutes: (json['durationMinutes'] as num?)?.toInt(),
+      distanceKm: (json['distanceKm'] as num?)?.toDouble(),
+      steps: (json['steps'] as num?)?.toInt(),
+      activeMinutes: (json['activeMinutes'] as num?)?.toInt(),
+      calories: (json['calories'] as num?)?.toInt(),
+      intensity: ActivityIntensity.fromWire(json['intensity'] as String?),
+      workoutId: json['workoutId'] as String?,
+      gymId: json['gymId'] as String?,
+      trainerId: json['trainerId'] as String?,
+      notes: json['notes'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'userId': userId,
+    'type': type.wire,
+    'source': source.wire,
+    'startedAt': startedAt.toUtc().toIso8601String(),
+    'durationMinutes': ?durationMinutes,
+    'distanceKm': ?distanceKm,
+    'steps': ?steps,
+    'activeMinutes': ?activeMinutes,
+    'calories': ?calories,
+    'intensity': ?intensity?.wire,
+    'workoutId': ?workoutId,
+    'gymId': ?gymId,
+    'trainerId': ?trainerId,
+    'notes': ?notes,
+  };
+}

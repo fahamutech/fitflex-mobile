@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app_scope.dart';
 import '../../router.dart';
+import '../../shared/activity/activity.dart';
 import '../../shared/auth_state.dart';
 import '../../shared/components/theme_toggle_button.dart';
 import '../../shared/i18n.dart';
@@ -11,6 +12,7 @@ import '../../shared/models.dart';
 import '../../shared/root_back_navigation.dart';
 
 export 'member_home_tab.dart';
+export 'member_activity_tab.dart';
 export 'member_gyms_tab.dart';
 export 'member_gym_detail_page.dart';
 export 'member_trainers_tab.dart';
@@ -28,6 +30,10 @@ class MemberData extends ChangeNotifier {
   List<CheckIn> checkins = [];
   List<PassTier> passes = [];
   Set<String> favoriteGymIds = {};
+  // Fitness activity — separate from gym [checkins]; a visit is not a workout.
+  List<Activity> activities = [];
+  bool activityLoaded = false;
+  bool activityIsSample = false;
   bool passesLoaded = false;
   String? qrToken;
   String selectedTier = 'pro';
@@ -79,7 +85,9 @@ class MemberShellState extends State<MemberShell> {
 
   int get _tabIndex {
     final loc = GoRouterState.of(context).matchedLocation;
-    if (loc.startsWith('/member/gyms')) return 1;
+    if (loc.startsWith('/member/activity')) return 1;
+    // Trainer discovery lives under Gyms now that Activity has the tab.
+    if (loc.startsWith('/member/gyms')) return 2;
     if (loc.startsWith('/member/trainers')) return 2;
     if (loc.startsWith('/member/shop')) return 3;
     if (loc.startsWith('/member/profile')) return 4;
@@ -134,6 +142,7 @@ class MemberShellState extends State<MemberShell> {
         _refreshCheckins(),
         _refreshPasses(),
         _refreshFavorites(),
+        _refreshActivity(),
       ]);
       if (_data.hasActivePass) await _refreshQr();
     } finally {
@@ -196,6 +205,31 @@ class MemberShellState extends State<MemberShell> {
     } catch (_) {
       // Saved gyms are a convenience; the rest of the tab still works.
     }
+  }
+
+  Future<void> _refreshActivity() async {
+    final provider = AppScope.of(context).activity;
+    final userId = _auth?.user?['id']?.toString() ?? '';
+    try {
+      final now = DateTime.now();
+      final activities = await provider.activitiesBetween(
+        userId: userId,
+        from: DateTime(now.year, now.month, now.day - 41),
+        to: now.add(const Duration(days: 1)),
+      );
+      _data.update((d) {
+        d.activities = activities;
+        d.activityIsSample = provider.id == 'mock';
+        d.activityLoaded = true;
+      });
+    } catch (error) {
+      debugPrint('[MemberShell] Could not load activity: $error');
+      _data.update((d) => d.activityLoaded = true);
+    }
+  }
+
+  Future<void> refreshTrainers() async {
+    await _refreshTrainers();
   }
 
   Future<void> _refreshCheckins() async {
@@ -270,16 +304,12 @@ class MemberShellState extends State<MemberShell> {
   void _onTab(int index) {
     final routes = [
       AppRoutes.memberHome,
+      AppRoutes.memberActivity,
       AppRoutes.memberGyms,
-      AppRoutes.memberTrainers,
       AppRoutes.memberShop,
       AppRoutes.memberProfile,
     ];
     context.go(routes[index]);
-    // The trainer catalogue can be populated just after an authenticated
-    // session is established. Refresh it when the member opens the tab so a
-    // stale initial request never leaves the directory empty.
-    if (index == 2) unawaited(_refreshTrainers());
   }
 
   @override
@@ -287,6 +317,7 @@ class MemberShellState extends State<MemberShell> {
     final location = GoRouterState.of(context).matchedLocation;
     final isRootTab = <String>{
       AppRoutes.memberHome,
+      AppRoutes.memberActivity,
       AppRoutes.memberGyms,
       AppRoutes.memberTrainers,
       AppRoutes.memberShop,
@@ -316,15 +347,16 @@ class MemberShellState extends State<MemberShell> {
                 label: context.tr('member.home'),
               ),
               NavigationDestination(
+                key: const Key('member-nav-activity'),
+                icon: const Icon(Icons.directions_run_outlined),
+                selectedIcon: const Icon(Icons.directions_run),
+                label: context.tr('activity.title'),
+              ),
+              NavigationDestination(
+                key: const Key('member-nav-gyms'),
                 icon: const Icon(Icons.fitness_center_outlined),
                 selectedIcon: const Icon(Icons.fitness_center),
                 label: context.tr('member.gyms'),
-              ),
-              NavigationDestination(
-                key: const Key('member-nav-trainers'),
-                icon: const Icon(Icons.sports_gymnastics_outlined),
-                selectedIcon: const Icon(Icons.sports_gymnastics),
-                label: context.tr('member.trainers'),
               ),
               NavigationDestination(
                 key: const Key('member-nav-shop'),

@@ -484,7 +484,8 @@ Future<void> memberIssueMatrixJourney(PatrolIntegrationTester $) async {
 
   // Trainer standardized profile and all engagement actions (#5–8, #30–31).
   await $.native.pressBack();
-  await $(const Key('member-nav-trainers')).tap();
+  await $(const Key('member-nav-gyms')).tap();
+  await $(const Key('member-find-trainer')).tap();
   await $('Find a trainer').waitUntilVisible();
   await $(
     const Key('trainer-card-trn_aa1ff43e'),
@@ -522,7 +523,8 @@ Future<void> memberIssueMatrixJourney(PatrolIntegrationTester $) async {
 /// Physical-device booking flow for report items #5, #30, and #31.
 Future<void> memberSlotBookingJourney(PatrolIntegrationTester $) async {
   await devLoginMember($);
-  await $(const Key('member-nav-trainers')).tap();
+  await $(const Key('member-nav-gyms')).tap();
+  await $(const Key('member-find-trainer')).tap();
   await $('Find a trainer').waitUntilVisible();
   await $(const Key('trainer-search')).enterText('Dev Trainer');
   await $(const Key('trainer-card-trn_dev')).waitUntilVisible();
@@ -548,7 +550,8 @@ Future<void> memberSlotBookingJourney(PatrolIntegrationTester $) async {
 /// Seeds a real member enquiry for the trainer notification regression.
 Future<void> memberTrainerEnquiryJourney(PatrolIntegrationTester $) async {
   await devLoginMember($);
-  await $(const Key('member-nav-trainers')).tap();
+  await $(const Key('member-nav-gyms')).tap();
+  await $(const Key('member-find-trainer')).tap();
   await $('Find a trainer').waitUntilVisible();
   await $(const Key('trainer-search')).enterText('Dev Trainer');
   await $(const Key('trainer-card-trn_dev')).tap();
@@ -678,7 +681,8 @@ Future<void> marketplaceBuyerJourney(PatrolIntegrationTester $) async {
 /// must tell a member why a trainer booking was declined.
 Future<void> memberBookedSlotDeclineJourney(PatrolIntegrationTester $) async {
   await devLoginMember($);
-  await $(const Key('member-nav-trainers')).tap();
+  await $(const Key('member-nav-gyms')).tap();
+  await $(const Key('member-find-trainer')).tap();
   await $('Find a trainer').waitUntilVisible();
   await $(const Key('trainer-search')).enterText('Dev Trainer');
   await $(const Key('trainer-card-trn_dev')).waitUntilVisible();

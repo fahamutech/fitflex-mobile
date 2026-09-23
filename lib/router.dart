@@ -61,6 +61,7 @@ abstract class AppRoutes {
   // Member sub-routes (shell)
   static const memberOnboarding = '/member/onboarding';
   static const memberHome = '/member';
+  static const memberActivity = '/member/activity';
   static const memberGyms = '/member/gyms';
   static const memberGymDetail = '/member/gyms/:gymId';
   static const memberTrainers = '/member/trainers';
@@ -404,6 +405,11 @@ GoRouter buildRouter(AuthState auth) {
             path: AppRoutes.memberHome,
             name: 'memberHome',
             builder: (context, state) => const MemberHomeTab(),
+          ),
+          GoRoute(
+            path: AppRoutes.memberActivity,
+            name: 'memberActivity',
+            builder: (context, state) => const MemberActivityTab(),
           ),
           GoRoute(
             path: AppRoutes.memberGyms,

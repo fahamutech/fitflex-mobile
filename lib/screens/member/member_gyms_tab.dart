@@ -2,7 +2,9 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../router.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
@@ -158,7 +160,20 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    FFPageHeader(title: context.tr('member.discoverGyms')),
+                    FFPageHeader(
+                      title: context.tr('member.discoverGyms'),
+                      // Trainer discovery moved here from the bottom nav
+                      // when Activity took that slot.
+                      actions: TextButton.icon(
+                        key: const Key('member-find-trainer'),
+                        onPressed: () => context.go(AppRoutes.memberTrainers),
+                        icon: const Icon(
+                          Icons.sports_gymnastics_outlined,
+                          size: 18,
+                        ),
+                        label: Text(context.tr('member.trainers')),
+                      ),
+                    ),
                     TextField(
                       key: const Key('gym-search'),
                       controller: _searchCtrl,
