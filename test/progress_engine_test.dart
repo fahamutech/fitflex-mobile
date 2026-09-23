@@ -406,7 +406,7 @@ void main() {
             ],
           ),
         );
-        final acts = await provider.activitiesBetween(
+        final acts = await provider.getActivities(
           userId: 'u1',
           from: DateTime(2026, 9, 1),
           to: DateTime(2026, 9, 30),

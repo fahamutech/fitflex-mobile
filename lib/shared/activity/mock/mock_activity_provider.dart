@@ -5,7 +5,9 @@ import 'mock_activity_data.dart';
 
 /// Demo/test [ActivityProvider] serving generated history. It is not wired
 /// to any device and must never be presented to members as real tracking.
-class MockActivityProvider implements ActivityProvider {
+class MockActivityProvider
+    with ActivityTotalsFromSessions
+    implements ActivityProvider {
   MockActivityProvider({DateTime Function()? clock, this.days = 42, this.log})
     : _clock = clock ?? DateTime.now;
 
@@ -22,16 +24,22 @@ class MockActivityProvider implements ActivityProvider {
   String get id => 'mock';
 
   @override
+  ActivityProviderKind get kind => ActivityProviderKind.sample;
+
+  @override
+  Set<ActivityDataType> get supports => ActivityDataType.values.toSet();
+
+  @override
   Future<bool> isAvailable() async => true;
 
   @override
   Future<bool> requestAccess() async => true;
 
   @override
-  Future<List<Activity>> activitiesBetween({
-    required String userId,
+  Future<List<Activity>> getActivities({
     required DateTime from,
     required DateTime to,
+    String userId = '',
   }) async {
     final all = generateMockActivities(
       userId: userId,

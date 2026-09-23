@@ -6,7 +6,9 @@ import 'activity_provider.dart';
 
 /// Activities stored on the FitFlex backend (`/me/activities`). The server
 /// scopes results to the signed-in member, so [userId] is not sent.
-class ApiActivityProvider implements ActivityProvider {
+class ApiActivityProvider
+    with ActivityTotalsFromSessions
+    implements ActivityProvider {
   ApiActivityProvider(this.api);
 
   final ApiClient api;
@@ -15,16 +17,22 @@ class ApiActivityProvider implements ActivityProvider {
   String get id => 'fitflex_api';
 
   @override
+  ActivityProviderKind get kind => ActivityProviderKind.fitflex;
+
+  @override
+  Set<ActivityDataType> get supports => ActivityDataType.values.toSet();
+
+  @override
   Future<bool> isAvailable() async => true;
 
   @override
   Future<bool> requestAccess() async => true;
 
   @override
-  Future<List<Activity>> activitiesBetween({
-    required String userId,
+  Future<List<Activity>> getActivities({
     required DateTime from,
     required DateTime to,
+    String userId = '',
   }) async {
     final rows = await api.myActivities(from: from, to: to);
     final out = <Activity>[];
