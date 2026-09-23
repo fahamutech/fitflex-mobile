@@ -75,6 +75,14 @@ jobs:
             echo "storeFile=../fitflex-distribution.jks"
           } > android/key.properties
 
+      # android/gradle.properties asks for an 8 GB heap; private-repo runners
+      # have ~7 GB of RAM, so R8 in release builds swaps for 30+ minutes.
+      # User-level gradle.properties overrides the project value on CI only.
+      - name: Fit Gradle to the runner
+        run: |
+          mkdir -p ~/.gradle
+          echo "org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError" >> ~/.gradle/gradle.properties
+
       - name: Get Flutter dependencies
         run: flutter pub get
 
