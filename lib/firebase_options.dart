@@ -27,7 +27,7 @@ class DefaultFirebaseOptions {
   // ── Android — from android/app/google-services.json ──
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyC57ErqlO4j1_CAQWF_Uuc2FwsC4BdIo3E',
-    appId: '1:318978253903:android:578eecbe0556347d45f63a',
+    appId: '1:318978253903:android:be3d05f90368b60545f63a',
     messagingSenderId: '318978253903',
     projectId: 'fitflex-af-pilot',
     storageBucket: 'fitflex-af-pilot.firebasestorage.app',
