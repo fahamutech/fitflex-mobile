@@ -41,6 +41,14 @@ String workoutMeta(BuildContext context, Workout w) {
   return parts.join(' · ');
 }
 
+/// "From Coach Amani" (or "From your trainer" if the name isn't loaded).
+String trainerLabel(BuildContext context, MemberData data, Workout w) {
+  final name = data.trainerName(w.trainerId);
+  return name == null
+      ? context.tr('plan.fromYourTrainer')
+      : context.tr('plan.from').replaceAll('{name}', name);
+}
+
 /// Today's open workouts (planned or in progress), newest first.
 List<Workout> todaysWorkouts(List<Workout> workouts, DateTime now) {
   final today = dayOf(now);
@@ -97,6 +105,15 @@ class TodayWorkoutCard extends StatelessWidget {
             ),
           ),
           Text(workoutMeta(context, w), style: theme.textTheme.bodySmall),
+          if (w.fromTrainer)
+            Text(
+              trainerLabel(context, data, w),
+              key: const Key('today-workout-trainer'),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           const SizedBox(height: FFTokens.spacingMd),
           for (final e in w.exercises.take(preview))
             Padding(
@@ -171,13 +188,16 @@ class WorkoutTile extends StatelessWidget {
       WorkoutStatus.inProgress => context.tr('workout.status.in_progress'),
       WorkoutStatus.planned => workoutMeta(context, w),
     };
+    final from = w.fromTrainer
+        ? ' · ${trainerLabel(context, MemberDataScope.of(context), w)}'
+        : '';
     return FFActionTile(
       key: Key('workout-tile-${w.id}'),
       icon: w.status == WorkoutStatus.completed
           ? Icons.check_circle_outline
           : activityTypeIcon(w.activityType),
       title: w.name,
-      subtitle: '$date · $status',
+      subtitle: '$date · $status$from',
       onTap: () => context.go(workoutRoute(w.id)),
     );
   }
@@ -336,6 +356,121 @@ class _PlanWorkoutSheetState extends State<_PlanWorkoutSheet> {
           },
         ),
       ),
+    );
+  }
+}
+
+/// My Trainer Plan: for each trainer who assigns workouts, what's coming
+/// up and what's been done.
+class TrainerPlanBlock extends StatelessWidget {
+  const TrainerPlanBlock({super.key, required this.data, required this.now});
+
+  final MemberData data;
+  final DateTime now;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final today = dayOf(now);
+    final byTrainer = <String, List<Workout>>{};
+    for (final w in data.workouts.where((w) => w.fromTrainer)) {
+      byTrainer.putIfAbsent(w.trainerId!, () => []).add(w);
+    }
+    final connected = data.trainerConnections
+        .where((c) => c.status.isOpen)
+        .map((c) => c.trainerId);
+    for (final id in connected) {
+      byTrainer.putIfAbsent(id, () => []);
+    }
+    if (byTrainer.isEmpty) return const SizedBox.shrink();
+    return Column(
+      key: const Key('trainer-plan'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        FFSectionTitle(context.tr('plan.title')),
+        for (final e in byTrainer.entries)
+          () {
+            final name =
+                data.trainerName(e.key) ?? context.tr('connect.yourTrainer');
+            final upcoming =
+                e.value
+                    .where(
+                      (w) =>
+                          w.status.isOpen && !w.scheduledDate.isBefore(today),
+                    )
+                    .toList()
+                  ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
+            final done = e.value
+                .where((w) => w.status == WorkoutStatus.completed)
+                .length;
+            final pending =
+                data.connectionWith(e.key)?.status.wire == 'pending';
+            return FFCard(
+              key: Key('trainer-plan-${e.key}'),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    pending
+                        ? context.tr('plan.waiting')
+                        : context
+                              .tr('plan.summary')
+                              .replaceAll('{upcoming}', '${upcoming.length}')
+                              .replaceAll('{done}', '$done'),
+                    style: theme.textTheme.bodySmall,
+                  ),
+                  if (upcoming.isEmpty && !pending)
+                    Padding(
+                      padding: const EdgeInsets.only(top: FFTokens.spacingXs),
+                      child: Text(
+                        context.tr('plan.nothingYet'),
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ),
+                  for (final w in upcoming.take(3))
+                    Padding(
+                      padding: const EdgeInsets.only(top: FFTokens.spacingSm),
+                      child: InkWell(
+                        onTap: () => context.go(workoutRoute(w.id)),
+                        child: Row(
+                          children: [
+                            Icon(
+                              w.status == WorkoutStatus.inProgress
+                                  ? Icons.play_circle_outline
+                                  : Icons.event_outlined,
+                              size: 18,
+                              color: theme.colorScheme.primary,
+                            ),
+                            const SizedBox(width: FFTokens.spacingSm),
+                            Expanded(
+                              child: Text(
+                                w.name,
+                                style: theme.textTheme.bodyMedium,
+                              ),
+                            ),
+                            Text(
+                              dayOf(w.scheduledDate) == today
+                                  ? context.tr('workout.dayToday')
+                                  : DateFormat(
+                                      'EEE d MMM',
+                                    ).format(w.scheduledDate),
+                              style: theme.textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          }(),
+      ],
     );
   }
 }

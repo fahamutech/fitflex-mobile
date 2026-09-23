@@ -375,6 +375,88 @@ class ApiClient {
   Future<Map<String, dynamic>> skipWorkout(String id) async =>
       await _request('POST', '/me/workouts/${Uri.encodeComponent(id)}/skip');
 
+  // ── Trainer ↔ member connections ──────────────────────────────────────
+  Future<List<dynamic>> myTrainerConnections() async {
+    final res = await _request('GET', '/me/trainer-connections');
+    return (res as Map)['connections'] as List? ?? const [];
+  }
+
+  Future<Map<String, dynamic>> requestTrainerConnection(
+    String trainerId,
+    Map<String, bool> permissions,
+  ) async => await _request(
+    'POST',
+    '/trainers/${Uri.encodeComponent(trainerId)}/connect',
+    body: {'permissions': permissions},
+  );
+
+  Future<Map<String, dynamic>> updateTrainerConnection(
+    String id,
+    Map<String, bool> permissions,
+  ) async => await _request(
+    'PATCH',
+    '/me/trainer-connections/${Uri.encodeComponent(id)}',
+    body: {'permissions': permissions},
+  );
+
+  Future<Map<String, dynamic>> endTrainerConnection(String id) async =>
+      await _request(
+        'POST',
+        '/me/trainer-connections/${Uri.encodeComponent(id)}/end',
+      );
+
+  Future<List<dynamic>> trainerClients() async {
+    final res = await _request('GET', '/trainer/clients');
+    return (res as Map)['clients'] as List? ?? const [];
+  }
+
+  Future<Map<String, dynamic>> trainerDecideClient(
+    String id, {
+    required bool accept,
+  }) async => await _request(
+    'POST',
+    '/trainer/clients/${Uri.encodeComponent(id)}/${accept ? 'accept' : 'decline'}',
+  );
+
+  Future<Map<String, dynamic>> trainerEndClient(String id) async =>
+      await _request('POST', '/trainer/clients/${Uri.encodeComponent(id)}/end');
+
+  Future<Map<String, dynamic>> trainerClientOverview(String id) async =>
+      await _request('GET', '/trainer/clients/${Uri.encodeComponent(id)}');
+
+  Future<Map<String, dynamic>> trainerAssignWorkout(
+    String clientId,
+    Map<String, dynamic> data,
+  ) async => await _request(
+    'POST',
+    '/trainer/clients/${Uri.encodeComponent(clientId)}/workouts',
+    body: data,
+  );
+
+  Future<void> trainerCancelWorkout(String workoutId) async => await _request(
+    'DELETE',
+    '/trainer/workouts/${Uri.encodeComponent(workoutId)}',
+  );
+
+  Future<List<dynamic>> trainerPlans() async {
+    final res = await _request('GET', '/trainer/plans');
+    return (res as Map)['plans'] as List? ?? const [];
+  }
+
+  Future<Map<String, dynamic>> trainerSavePlan(
+    String? id,
+    Map<String, dynamic> plan,
+  ) async => id == null
+      ? await _request('POST', '/trainer/plans', body: plan)
+      : await _request(
+          'PUT',
+          '/trainer/plans/${Uri.encodeComponent(id)}',
+          body: plan,
+        );
+
+  Future<void> trainerDeletePlan(String id) async =>
+      await _request('DELETE', '/trainer/plans/${Uri.encodeComponent(id)}');
+
   Future<void> registerDeviceToken(String token, {String? platform}) async =>
       await _request(
         'POST',

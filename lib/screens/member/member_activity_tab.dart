@@ -189,6 +189,7 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
         .toList();
     return [
       TodayWorkoutCard(data: data, now: now),
+      TrainerPlanBlock(data: data, now: now),
       if (todayIds.isNotEmpty || upcoming.isNotEmpty)
         Align(
           alignment: Alignment.centerRight,

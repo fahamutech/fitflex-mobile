@@ -295,6 +295,18 @@ class _MemberWorkoutPageState extends State<MemberWorkoutPage> {
             padding: const EdgeInsets.only(top: FFTokens.spacingXs),
             child: Text(w.description!, style: theme.textTheme.bodyMedium),
           ),
+        if (w.fromTrainer)
+          Padding(
+            padding: const EdgeInsets.only(top: FFTokens.spacingXs),
+            child: Text(
+              trainerLabel(context, MemberDataScope.of(context), w),
+              key: const Key('workout-trainer'),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
         const SizedBox(height: FFTokens.spacingXs),
         Text(
           [

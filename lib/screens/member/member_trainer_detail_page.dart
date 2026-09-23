@@ -8,6 +8,7 @@ import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import 'member_shell.dart';
 import 'widgets/trainer_actions_sheet.dart';
+import 'widgets/trainer_sharing.dart';
 
 class MemberTrainerDetailPage extends StatefulWidget {
   const MemberTrainerDetailPage({super.key, required this.trainerId});
@@ -201,6 +202,12 @@ class _MemberTrainerDetailPageState extends State<MemberTrainerDetailPage> {
                   tone: FFBadgeTone.success,
                 ),
             ],
+          ),
+
+          // Connect for a trainer plan — the member chooses what's shared.
+          TrainerConnectCard(
+            trainerId: trainer.id,
+            trainerName: trainer.displayName,
           ),
 
           // About

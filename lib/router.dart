@@ -11,6 +11,7 @@ import 'screens/email_auth_screen.dart';
 import 'screens/member/member_shell.dart';
 import 'screens/member/member_shop_tab.dart';
 import 'screens/member/member_onboarding_page.dart';
+import 'screens/member/widgets/trainer_sharing.dart';
 import 'screens/trainer/trainer_registration_page.dart';
 import 'screens/trainer/trainer_home_page.dart';
 import 'screens/owner/owner_registration_page.dart';
@@ -73,6 +74,7 @@ abstract class AppRoutes {
   static const memberProfile = '/member/profile';
   static const memberPasses = '/member/passes';
   static const memberPayment = '/member/payment';
+  static const memberTrainerConnections = '/member/trainer-connections';
 }
 
 bool _isOnboarded(AuthState auth, String role) {
@@ -477,6 +479,11 @@ GoRouter buildRouter(AuthState auth) {
             path: AppRoutes.memberPasses,
             name: 'memberPasses',
             builder: (context, state) => const MemberPassesPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.memberTrainerConnections,
+            name: 'memberTrainerConnections',
+            builder: (context, state) => const MemberTrainerConnectionsPage(),
           ),
           GoRoute(
             path: AppRoutes.memberPayment,

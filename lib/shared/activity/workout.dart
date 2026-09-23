@@ -188,6 +188,9 @@ class Workout {
   final String? trainerId;
   final String? gymId;
   final String? templateId;
+
+  /// `template`, `member` or `trainer`.
+  final String? source;
   final String name;
   final String? description;
 
@@ -212,6 +215,7 @@ class Workout {
     this.trainerId,
     this.gymId,
     this.templateId,
+    this.source,
     required this.name,
     this.description,
     required this.activityType,
@@ -224,6 +228,9 @@ class Workout {
     this.activityId,
     this.notes,
   });
+
+  /// Assigned by a connected trainer.
+  bool get fromTrainer => trainerId != null;
 
   int get setsTotal => exercises.fold(0, (n, e) => n + e.workoutSets.length);
   int get setsCompleted => exercises.fold(
@@ -245,6 +252,7 @@ class Workout {
       trainerId: json['trainerId'] as String?,
       gymId: json['gymId'] as String?,
       templateId: json['templateId'] as String?,
+      source: json['source'] as String?,
       name: json['name'] as String? ?? '',
       description: json['description'] as String?,
       activityType: ActivityType.fromWire(json['activityType'] as String?),
@@ -291,6 +299,7 @@ class Workout {
     'trainerId': trainerId,
     'gymId': gymId,
     'templateId': templateId,
+    'source': source,
     'name': name,
     'description': description,
     'activityType': activityType.wire,
