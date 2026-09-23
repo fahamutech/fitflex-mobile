@@ -17,12 +17,27 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # pubspec.yaml requires Dart ^3.10.8, i.e. Flutter 3.38 or newer.
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.27.0'
+          flutter-version: '3.44.2'
           channel: stable
           cache: true
+
+      # .env is a bundled asset (pubspec.yaml) and google-services.json is
+      # required by the Android Gradle plugin; both are gitignored.
+      - name: Write build-time config files
+        env:
+          API_BASE: ${{ vars.API_BASE || 'http://localhost:3000' }}
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          echo "API_BASE=$API_BASE" > .env
+          if [ -z "$GOOGLE_SERVICES_JSON" ]; then
+            echo "::error::Secret GOOGLE_SERVICES_JSON is not set (contents of android/app/google-services.json)."
+            exit 1
+          fi
+          printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
 
       - name: Get Flutter dependencies
         run: flutter pub get

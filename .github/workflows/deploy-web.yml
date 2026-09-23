@@ -1,0 +1,67 @@
+name: Deploy Flutter Web to Firebase Hosting
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: flutter-web-hosting-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-deploy:
+    name: Build web release and deploy
+    runs-on: ubuntu-latest
+
+    # API_BASE is compiled in via --dart-define. Set it as a repository
+    # variable (Settings → Secrets and variables → Actions → Variables).
+    env:
+      API_BASE: ${{ vars.API_BASE }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ApiClient falls back to http://localhost:3000 when API_BASE is empty,
+      # which would ship a web app that cannot reach the backend.
+      - name: Check API base is configured
+        run: |
+          if [ -z "$API_BASE" ]; then
+            echo "::error::Repository variable API_BASE is not set (e.g. https://fitflex-faas.bfast.smartstock.co.tz)."
+            exit 1
+          fi
+
+      # pubspec.yaml requires Dart ^3.10.8, i.e. Flutter 3.38 or newer.
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.2'
+          channel: stable
+          cache: true
+
+      # .env is declared as a bundled asset in pubspec.yaml, so it must exist
+      # for the build to succeed. It is gitignored, so generate it here.
+      - name: Write runtime .env
+        run: echo "API_BASE=$API_BASE" > .env
+
+      - name: Get Flutter dependencies
+        run: flutter pub get
+
+      - name: Build web release
+        run: flutter build web --release --dart-define=API_BASE="$API_BASE"
+
+      - name: Deploy to Firebase Hosting (live)
+        if: github.event_name != 'pull_request'
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_FITFLEX_AF_PILOT }}
+          projectId: fitflex-af-pilot
+          target: app
+          channelId: live
