@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'shared/activity/activity_config.dart';
 import 'shared/activity/activity_provider.dart';
-import 'shared/activity/mock/mock_activity_provider.dart';
+import 'shared/activity/goal_repository.dart';
 import 'shared/api_client.dart';
 import 'shared/auth_state.dart';
 
@@ -11,19 +12,23 @@ class AppScope extends InheritedWidget {
     required this.api,
     required this.auth,
     this.activityProvider,
+    this.goalRepository,
     required super.child,
   });
 
   final ApiClient api;
   final AuthState auth;
 
-  /// Activity data source. Only the mock exists today; pass a real provider
-  /// here once device or API integration lands.
+  /// Activity and goal sources (see `activity_config.dart`). When omitted —
+  /// as in widget tests — sample data is used.
   final ActivityProvider? activityProvider;
+  final GoalRepository? goalRepository;
 
-  static final ActivityProvider _mockActivity = MockActivityProvider();
+  static final ActivityProvider _sampleActivity = sampleActivityProvider();
+  static final GoalRepository _sampleGoals = LocalGoalRepository();
 
-  ActivityProvider get activity => activityProvider ?? _mockActivity;
+  ActivityProvider get activity => activityProvider ?? _sampleActivity;
+  GoalRepository get goals => goalRepository ?? _sampleGoals;
 
   static AppScope of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<AppScope>();
@@ -35,5 +40,6 @@ class AppScope extends InheritedWidget {
   bool updateShouldNotify(AppScope oldWidget) =>
       api != oldWidget.api ||
       auth != oldWidget.auth ||
-      activityProvider != oldWidget.activityProvider;
+      activityProvider != oldWidget.activityProvider ||
+      goalRepository != oldWidget.goalRepository;
 }

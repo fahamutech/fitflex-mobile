@@ -1,27 +1,38 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import '../../shared/activity/activity.dart';
 import '../../shared/activity/activity_summary.dart';
+import '../../shared/activity/goal.dart';
+import '../../shared/activity/progress_engine.dart';
+import '../../shared/activity/streaks.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import 'member_shell.dart';
 import 'widgets/activity_widgets.dart';
+import 'widgets/goal_widgets.dart';
+import 'widgets/progress_section.dart';
 
 /// Member Activity tab: Overview · Workouts · Challenges · Progress.
 class MemberActivityTab extends StatefulWidget {
-  const MemberActivityTab({super.key, this.now});
+  const MemberActivityTab({
+    super.key,
+    this.now,
+    this.initialSection = 'overview',
+  });
 
   /// Injectable clock for tests.
   final DateTime? now;
+
+  /// `overview`, `workouts`, `challenges` or `progress`.
+  final String initialSection;
 
   @override
   State<MemberActivityTab> createState() => _MemberActivityTabState();
 }
 
 class _MemberActivityTabState extends State<MemberActivityTab> {
-  String _section = 'overview';
+  late String _section = widget.initialSection;
 
   @override
   Widget build(BuildContext context) {
@@ -60,8 +71,8 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
           ...switch (_section) {
             'workouts' => _workouts(context, data.activities),
             'challenges' => _challenges(context),
-            'progress' => _progress(context, data.activities, today),
-            _ => _overview(context, data.activities, today),
+            'progress' => buildProgressSection(context, data, today),
+            _ => _overview(context, data.activities, data.goals, today),
           },
       ],
     );
@@ -70,10 +81,16 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
   List<Widget> _overview(
     BuildContext context,
     List<Activity> activities,
+    List<Goal> goals,
     DateTime today,
   ) {
     final s = summarizeDay(activities, today);
-    final streak = currentStreak(activities, today: today);
+    final stepGoal = dailyStepGoal(goals)?.target.round();
+    final streak = computeStreak(
+      StreakKind.activity,
+      today: today,
+      activities: activities,
+    )!;
     final recent = activities.take(8).toList();
     return [
       FFSectionTitle(context.tr('activity.today')),
@@ -114,37 +131,29 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
         ),
       ),
       const SizedBox(height: FFTokens.spacingSm),
-      FFCard(
-        key: const Key('activity-daily-goal'),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              context.tr('activity.dailyGoal'),
-              style: Theme.of(context).textTheme.labelLarge,
-            ),
-            const SizedBox(height: FFTokens.spacingXs),
-            Text(
-              '${formatSteps(s.steps)} / ${formatSteps(defaultDailyStepGoal)}',
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: FFTokens.spacingSm),
-            ActivityGoalBar(steps: s.steps, goal: defaultDailyStepGoal),
-          ],
+      if (stepGoal != null)
+        FFCard(
+          key: const Key('activity-daily-goal'),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                context.tr('activity.dailyGoal'),
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
+              const SizedBox(height: FFTokens.spacingXs),
+              Text(
+                '${formatSteps(s.steps)} / ${formatSteps(stepGoal)}',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: FFTokens.spacingSm),
+              ActivityGoalBar(steps: s.steps, goal: stepGoal),
+            ],
+          ),
         ),
-      ),
-      FFMetricCard(
-        key: const Key('activity-streak'),
-        label: context.tr('activity.streak'),
-        value: context.tr('activity.dayStreak').replaceAll('{n}', '$streak'),
-        sub: context.tr('activity.streakHint'),
-        icon: const Icon(
-          Icons.local_fire_department,
-          color: FFTokens.warning500,
-        ),
-      ),
+      StreakCard(key: const Key('activity-streak'), streak: streak),
       FFSectionTitle(context.tr('activity.currentChallenge')),
       ..._challenges(context),
       FFSectionTitle(context.tr('activity.recent')),
@@ -170,92 +179,6 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
       body: context.tr('activity.challengesSoon'),
     ),
   ];
-
-  List<Widget> _progress(
-    BuildContext context,
-    List<Activity> activities,
-    DateTime today,
-  ) {
-    final days = summarizeDays(activities, today: today).reversed.toList();
-    final theme = Theme.of(context);
-    final steps = days.fold<int>(0, (t, d) => t + d.steps);
-    final minutes = days.fold<int>(0, (t, d) => t + d.activeMinutes);
-    final workouts = days.fold<int>(0, (t, d) => t + d.workoutCount);
-    return [
-      FFSectionTitle(context.tr('activity.last7Days')),
-      _TileRow(
-        left: FFStatTile(
-          icon: Icons.directions_walk,
-          value: formatSteps(steps),
-          label: context.tr('activity.steps'),
-        ),
-        right: FFStatTile(
-          icon: Icons.timer_outlined,
-          value: '$minutes',
-          label: context.tr('activity.activeMinutes'),
-        ),
-      ),
-      _TileRow(
-        left: FFStatTile(
-          icon: Icons.fitness_center,
-          value: '$workouts',
-          label: context.tr('activity.workoutCount'),
-        ),
-        right: FFStatTile(
-          icon: Icons.local_fire_department,
-          value: '${currentStreak(activities, today: today)}',
-          label: context.tr('activity.streak'),
-          accent: FFTokens.warning500,
-        ),
-      ),
-      const SizedBox(height: FFTokens.spacingSm),
-      FFCard(
-        key: const Key('activity-progress-days'),
-        child: Column(
-          children: [
-            for (final d in days)
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: FFTokens.spacingXs,
-                ),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 44,
-                      child: Text(
-                        DateFormat('EEE').format(d.day),
-                        style: theme.textTheme.labelLarge,
-                      ),
-                    ),
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(
-                          FFTokens.radiusFull,
-                        ),
-                        child: LinearProgressIndicator(
-                          value: d.goalProgress().clamp(0.0, 1.0),
-                          minHeight: 8,
-                          backgroundColor:
-                              theme.colorScheme.surfaceContainerHighest,
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      width: 64,
-                      child: Text(
-                        formatSteps(d.steps),
-                        textAlign: TextAlign.right,
-                        style: theme.textTheme.bodySmall,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-        ),
-      ),
-    ];
-  }
 }
 
 class _TileRow extends StatelessWidget {

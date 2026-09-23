@@ -94,6 +94,11 @@ class ApiClient {
               .put(uri, headers: headers, body: encoded)
               .timeout(const Duration(seconds: 12));
           break;
+        case 'PATCH':
+          res = await http
+              .patch(uri, headers: headers, body: encoded)
+              .timeout(const Duration(seconds: 12));
+          break;
         case 'DELETE':
           res = await http
               .delete(uri, headers: headers, body: encoded)
@@ -291,6 +296,44 @@ class ApiClient {
       await _request(favorite ? 'PUT' : 'DELETE', '/me/favorites/gyms/$gymId');
 
   /// Push: register / remove this device's FCM token.
+  // ── Activity & Progress Engine ────────────────────────────────────────
+  Future<List<dynamic>> myActivities({
+    required DateTime from,
+    required DateTime to,
+  }) async {
+    final query = Uri(
+      queryParameters: {
+        'from': from.toUtc().toIso8601String(),
+        'to': to.toUtc().toIso8601String(),
+      },
+    ).query;
+    final res = await _request('GET', '/me/activities?$query');
+    return (res as Map)['activities'] as List? ?? const [];
+  }
+
+  Future<Map<String, dynamic>> logActivity(Map<String, dynamic> data) async =>
+      await _request('POST', '/me/activities', body: data);
+
+  Future<void> deleteActivity(String id) async =>
+      await _request('DELETE', '/me/activities/${Uri.encodeComponent(id)}');
+
+  Future<List<dynamic>> myGoals() async {
+    final res = await _request('GET', '/me/goals');
+    return (res as Map)['goals'] as List? ?? const [];
+  }
+
+  Future<Map<String, dynamic>> createGoal(Map<String, dynamic> data) async =>
+      await _request('POST', '/me/goals', body: data);
+
+  Future<Map<String, dynamic>> updateGoal(
+    String id,
+    Map<String, dynamic> data,
+  ) async => await _request(
+    'PATCH',
+    '/me/goals/${Uri.encodeComponent(id)}',
+    body: data,
+  );
+
   Future<void> registerDeviceToken(String token, {String? platform}) async =>
       await _request(
         'POST',

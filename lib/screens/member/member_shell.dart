@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../app_scope.dart';
 import '../../router.dart';
 import '../../shared/activity/activity.dart';
+import '../../shared/activity/activity_config.dart';
+import '../../shared/activity/goal.dart';
 import '../../shared/auth_state.dart';
 import '../../shared/components/theme_toggle_button.dart';
 import '../../shared/i18n.dart';
@@ -34,6 +36,8 @@ class MemberData extends ChangeNotifier {
   List<Activity> activities = [];
   bool activityLoaded = false;
   bool activityIsSample = false;
+  List<Goal> goals = [];
+  bool goalsLoaded = false;
   bool passesLoaded = false;
   String? qrToken;
   String selectedTier = 'pro';
@@ -143,6 +147,7 @@ class MemberShellState extends State<MemberShell> {
         _refreshPasses(),
         _refreshFavorites(),
         _refreshActivity(),
+        _refreshGoals(),
       ]);
       if (_data.hasActivePass) await _refreshQr();
     } finally {
@@ -214,7 +219,7 @@ class MemberShellState extends State<MemberShell> {
       final now = DateTime.now();
       final activities = await provider.activitiesBetween(
         userId: userId,
-        from: DateTime(now.year, now.month, now.day - 41),
+        from: DateTime(now.year, now.month, now.day - activityHistoryDays + 1),
         to: now.add(const Duration(days: 1)),
       );
       _data.update((d) {
@@ -226,6 +231,23 @@ class MemberShellState extends State<MemberShell> {
       debugPrint('[MemberShell] Could not load activity: $error');
       _data.update((d) => d.activityLoaded = true);
     }
+  }
+
+  Future<void> _refreshGoals() async {
+    try {
+      final goals = await AppScope.of(context).goals.list();
+      _data.update((d) {
+        d.goals = goals;
+        d.goalsLoaded = true;
+      });
+    } catch (error) {
+      debugPrint('[MemberShell] Could not load goals: $error');
+      _data.update((d) => d.goalsLoaded = true);
+    }
+  }
+
+  Future<void> refreshGoals() async {
+    await _refreshGoals();
   }
 
   Future<void> refreshTrainers() async {

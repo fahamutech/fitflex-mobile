@@ -44,13 +44,19 @@ class FFSegmented extends StatelessWidget {
                   borderRadius: BorderRadius.circular(FFTokens.radiusMd),
                   boxShadow: selected ? FFTokens.shadowXs : null,
                 ),
-                child: Text(
-                  opt.$2,
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: selected
-                        ? theme.colorScheme.onSurface
-                        : theme.colorScheme.onSurfaceVariant,
+                // Shrink a long label to one line rather than breaking it
+                // mid-word when options share a narrow row.
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    opt.$2,
+                    maxLines: 1,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: selected
+                          ? theme.colorScheme.onSurface
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ),
               ),

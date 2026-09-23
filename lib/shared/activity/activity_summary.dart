@@ -1,6 +1,7 @@
 import 'activity.dart';
 
-/// Step target used until members can set their own goals.
+/// Step target for [DaySummary.goalProgress] when none is given; the
+/// member's own daily step goal takes precedence wherever one exists.
 const defaultDailyStepGoal = 8000;
 
 /// A day counts toward the streak when it has a workout or at least this
@@ -69,33 +70,4 @@ DaySummary summarizeDay(Iterable<Activity> activities, DateTime day) {
     activityCount: count,
     workoutCount: workouts,
   );
-}
-
-/// One summary per day for the [days] days ending on [today], oldest first.
-List<DaySummary> summarizeDays(
-  Iterable<Activity> activities, {
-  required DateTime today,
-  int days = 7,
-}) {
-  final t = dayOf(today);
-  return [
-    for (var back = days - 1; back >= 0; back--)
-      summarizeDay(activities, DateTime(t.year, t.month, t.day - back)),
-  ];
-}
-
-/// Consecutive qualifying days ending today. A day that hasn't qualified
-/// *yet* doesn't break the streak, so counting starts from yesterday when
-/// today is still short.
-int currentStreak(Iterable<Activity> activities, {required DateTime today}) {
-  final list = activities.toList();
-  final t = dayOf(today);
-  var back = summarizeDay(list, t).countsForStreak ? 0 : 1;
-  var streak = 0;
-  while (true) {
-    final day = DateTime(t.year, t.month, t.day - back);
-    if (!summarizeDay(list, day).countsForStreak) return streak;
-    streak++;
-    back++;
-  }
 }
