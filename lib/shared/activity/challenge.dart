@@ -44,6 +44,39 @@ enum ChallengeCreator {
   );
 }
 
+/// How a challenge is contested.
+enum ChallengeMode {
+  individual('individual'),
+
+  /// Creator-named teams; members pick one.
+  teams('teams'),
+
+  /// Each member's gym is their team (FitFlex challenges).
+  gymVsGym('gym_vs_gym'),
+
+  /// Each employee's department is their team (company challenges).
+  department('department');
+
+  const ChallengeMode(this.wire);
+
+  final String wire;
+
+  static ChallengeMode fromWire(String? v) => values.firstWhere(
+    (m) => m.wire == v,
+    orElse: () => ChallengeMode.individual,
+  );
+
+  bool get hasTeams => this != ChallengeMode.individual;
+}
+
+class ChallengeTeamRef {
+  final String id;
+  final String name;
+  final String? gymId;
+
+  const ChallengeTeamRef({required this.id, required this.name, this.gymId});
+}
+
 /// `upcoming`, `active`, `ended` or `cancelled`.
 enum ChallengePhase {
   upcoming,
@@ -79,6 +112,12 @@ class Challenge {
   final ChallengePhase phase;
   final int participantCount;
   final bool joined;
+  final ChallengeMode mode;
+  final List<ChallengeTeamRef> teams;
+  final String? myTeamId;
+
+  /// Whether the member chose to appear in this challenge's ranking.
+  final bool leaderboardOptIn;
 
   const Challenge({
     required this.id,
@@ -96,7 +135,40 @@ class Challenge {
     this.phase = ChallengePhase.active,
     this.participantCount = 0,
     this.joined = false,
+    this.mode = ChallengeMode.individual,
+    this.teams = const [],
+    this.myTeamId,
+    this.leaderboardOptIn = false,
   });
+
+  String? get myTeamName =>
+      teams.where((t) => t.id == myTeamId).firstOrNull?.name;
+
+  Challenge copyWith({
+    bool? joined,
+    bool? leaderboardOptIn,
+    int? participantCount,
+  }) => Challenge(
+    id: id,
+    name: name,
+    description: description,
+    type: type,
+    target: target,
+    startDate: startDate,
+    endDate: endDate,
+    creatorType: creatorType,
+    creatorId: creatorId,
+    creatorName: creatorName,
+    rewards: rewards,
+    visibility: visibility,
+    phase: phase,
+    participantCount: participantCount ?? this.participantCount,
+    joined: joined ?? this.joined,
+    mode: mode,
+    teams: teams,
+    myTeamId: myTeamId,
+    leaderboardOptIn: leaderboardOptIn ?? this.leaderboardOptIn,
+  );
 
   static DateTime? _date(Object? v) {
     final d = DateTime.tryParse(
@@ -130,6 +202,17 @@ class Challenge {
       phase: ChallengePhase.fromWire(json['phase'] as String?),
       participantCount: (json['participantCount'] as num?)?.toInt() ?? 0,
       joined: json['joined'] == true,
+      mode: ChallengeMode.fromWire(json['mode'] as String?),
+      teams: [
+        for (final t in (json['teams'] as List? ?? const []).whereType<Map>())
+          ChallengeTeamRef(
+            id: t['id'] as String? ?? '',
+            name: t['name'] as String? ?? '',
+            gymId: t['gymId'] as String?,
+          ),
+      ],
+      myTeamId: json['myTeamId'] as String?,
+      leaderboardOptIn: json['leaderboardOptIn'] == true,
     );
   }
 
@@ -283,5 +366,111 @@ class SharedChallengeProgress {
             phase: ChallengePhase.fromWire(r['phase'] as String?),
           ),
     ];
+  }
+}
+
+/// One opted-in person on a leaderboard.
+class LeaderboardEntry {
+  final int rank;
+
+  /// First name and last initial.
+  final String name;
+  final num progress;
+  final double fraction;
+  final bool completed;
+  final bool isYou;
+
+  const LeaderboardEntry({
+    required this.rank,
+    required this.name,
+    required this.progress,
+    required this.fraction,
+    this.completed = false,
+    this.isYou = false,
+  });
+}
+
+class TeamStanding {
+  final int rank;
+  final String teamId;
+  final String name;
+  final int members;
+
+  /// Average of members' completion (each capped at 100%), 0–1.
+  final double averageCompletion;
+  final num total;
+
+  const TeamStanding({
+    required this.rank,
+    required this.teamId,
+    required this.name,
+    required this.members,
+    required this.averageCompletion,
+    required this.total,
+  });
+}
+
+/// A challenge's opt-in ranking, as the server builds it.
+class ChallengeLeaderboard {
+  final int participants;
+  final List<LeaderboardEntry> individuals;
+  final List<TeamStanding> teams;
+
+  /// Teams too small to show without revealing individuals.
+  final int hiddenTeams;
+  final int minTeamSize;
+
+  /// Your standing among those listed (null for creators).
+  final ({bool optedIn, int rank, int of, num progress, String? teamId})? you;
+
+  const ChallengeLeaderboard({
+    this.participants = 0,
+    this.individuals = const [],
+    this.teams = const [],
+    this.hiddenTeams = 0,
+    this.minTeamSize = 3,
+    this.you,
+  });
+
+  factory ChallengeLeaderboard.fromJson(Map<String, dynamic> json) {
+    final you = json['you'];
+    return ChallengeLeaderboard(
+      participants: (json['participants'] as num?)?.toInt() ?? 0,
+      individuals: [
+        for (final i
+            in (json['individuals'] as List? ?? const []).whereType<Map>())
+          LeaderboardEntry(
+            rank: (i['rank'] as num?)?.toInt() ?? 0,
+            name: i['name'] as String? ?? '',
+            progress: i['progress'] as num? ?? 0,
+            fraction: (i['fraction'] as num?)?.toDouble() ?? 0,
+            completed: i['completed'] == true,
+            isYou: i['you'] == true,
+          ),
+      ],
+      teams: [
+        for (final t in (json['teams'] as List? ?? const []).whereType<Map>())
+          TeamStanding(
+            rank: (t['rank'] as num?)?.toInt() ?? 0,
+            teamId: t['teamId'] as String? ?? '',
+            name: t['name'] as String? ?? '',
+            members: (t['members'] as num?)?.toInt() ?? 0,
+            averageCompletion:
+                (t['averageCompletion'] as num?)?.toDouble() ?? 0,
+            total: t['total'] as num? ?? 0,
+          ),
+      ],
+      hiddenTeams: (json['hiddenTeams'] as num?)?.toInt() ?? 0,
+      minTeamSize: (json['minTeamSize'] as num?)?.toInt() ?? 3,
+      you: you is Map
+          ? (
+              optedIn: you['optedIn'] == true,
+              rank: (you['rank'] as num?)?.toInt() ?? 0,
+              of: (you['of'] as num?)?.toInt() ?? 0,
+              progress: you['progress'] as num? ?? 0,
+              teamId: you['teamId'] as String?,
+            )
+          : null,
+    );
   }
 }

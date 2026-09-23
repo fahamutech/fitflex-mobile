@@ -495,8 +495,48 @@ class ApiClient {
     return (res as Map)['challenges'] as List? ?? const [];
   }
 
-  Future<Map<String, dynamic>> joinChallenge(String id) async =>
-      await _request('POST', '/challenges/${Uri.encodeComponent(id)}/join');
+  Future<Map<String, dynamic>> joinChallenge(
+    String id, {
+    String? teamId,
+    String? gymId,
+    bool leaderboardOptIn = false,
+  }) async => await _request(
+    'POST',
+    '/challenges/${Uri.encodeComponent(id)}/join',
+    body: {
+      'teamId': ?teamId,
+      'gymId': ?gymId,
+      'leaderboardOptIn': leaderboardOptIn,
+    },
+  );
+
+  Future<Map<String, dynamic>> setLeaderboardOptIn(
+    String id,
+    bool optIn,
+  ) async => await _request(
+    'PUT',
+    '/challenges/${Uri.encodeComponent(id)}/leaderboard-opt-in',
+    body: {'optIn': optIn},
+  );
+
+  Future<Map<String, dynamic>> challengeLeaderboard(String id) async =>
+      await _request(
+        'GET',
+        '/challenges/${Uri.encodeComponent(id)}/leaderboard',
+      );
+
+  Future<Map<String, dynamic>> creatorLeaderboard(
+    String scope,
+    String id, {
+    String? gymId,
+  }) async => await _request(
+    'GET',
+    _creatorPath(
+      scope,
+      '/${Uri.encodeComponent(id)}/leaderboard',
+      gymId: gymId,
+    ),
+  );
 
   Future<Map<String, dynamic>> leaveChallenge(String id) async =>
       await _request('POST', '/challenges/${Uri.encodeComponent(id)}/leave');

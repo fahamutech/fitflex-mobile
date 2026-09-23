@@ -11,6 +11,7 @@ import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import 'member_shell.dart';
+import 'widgets/challenge_leaderboard.dart';
 import 'widgets/challenge_widgets.dart';
 
 /// One challenge: what it is, who runs it, how far along you are, rewards,
@@ -40,12 +41,26 @@ class _MemberChallengePageState extends State<MemberChallengePage> {
       c.joined ? 'challenge.leftToast' : 'challenge.joinedToast',
     );
     final failed = context.tr('challenge.failed');
+    JoinChoice? choice;
+    if (!c.joined) {
+      choice = await showJoinChallengeSheet(
+        context,
+        challenge: c,
+        myGyms: data.gymSharing,
+      );
+      if (choice == null || !mounted) return;
+    }
     setState(() => _busy = true);
     try {
       if (c.joined) {
         await api.leaveChallenge(c.id);
       } else {
-        await api.joinChallenge(c.id);
+        await api.joinChallenge(
+          c.id,
+          teamId: choice!.teamId,
+          gymId: choice.gymId,
+          leaderboardOptIn: choice.leaderboardOptIn,
+        );
       }
       if (shell != null) {
         await shell.refreshChallenges();
@@ -54,7 +69,14 @@ class _MemberChallengePageState extends State<MemberChallengePage> {
         data.update(
           (d) => d.challenges = [
             for (final x in d.challenges)
-              x.id == c.id ? _withJoined(x, !c.joined) : x,
+              x.id == c.id
+                  ? x.copyWith(
+                      joined: !c.joined,
+                      leaderboardOptIn: choice?.leaderboardOptIn ?? false,
+                      participantCount:
+                          x.participantCount + (c.joined ? -1 : 1),
+                    )
+                  : x,
           ],
         );
       }
@@ -65,24 +87,6 @@ class _MemberChallengePageState extends State<MemberChallengePage> {
       if (mounted) setState(() => _busy = false);
     }
   }
-
-  Challenge _withJoined(Challenge c, bool joined) => Challenge(
-    id: c.id,
-    name: c.name,
-    description: c.description,
-    type: c.type,
-    target: c.target,
-    startDate: c.startDate,
-    endDate: c.endDate,
-    creatorType: c.creatorType,
-    creatorId: c.creatorId,
-    creatorName: c.creatorName,
-    rewards: c.rewards,
-    visibility: c.visibility,
-    phase: c.phase,
-    participantCount: c.participantCount + (joined ? 1 : -1),
-    joined: joined,
-  );
 
   /// Null for FitFlex/corporate (who never see individuals); otherwise
   /// whether this trainer or gym can see the member's progress.
@@ -194,6 +198,19 @@ class _MemberChallengePageState extends State<MemberChallengePage> {
             ),
           ),
         ],
+        if (c.joined && c.phase != ChallengePhase.cancelled)
+          ChallengeLeaderboardSection(
+            key: ValueKey('lb-${c.id}-${c.leaderboardOptIn}'),
+            challenge: c,
+          ),
+        if (!c.joined && c.mode.hasTeams)
+          Padding(
+            padding: const EdgeInsets.only(top: FFTokens.spacingSm),
+            child: Text(
+              context.tr('leaderboard.mode.${c.mode.wire}'),
+              style: theme.textTheme.bodySmall,
+            ),
+          ),
         if (sees != null)
           FFCard(
             key: const Key('challenge-privacy'),

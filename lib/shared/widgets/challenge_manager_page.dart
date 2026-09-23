@@ -165,6 +165,7 @@ class _ParticipantsPage extends StatefulWidget {
 
 class _ParticipantsPageState extends State<_ParticipantsPage> {
   List<Map<String, dynamic>>? _rows;
+  ChallengeLeaderboard? _board;
 
   @override
   void didChangeDependencies() {
@@ -189,6 +190,18 @@ class _ParticipantsPageState extends State<_ParticipantsPage> {
       );
     } catch (_) {
       if (mounted) setState(() => _rows = const []);
+    }
+    if (widget.challenge.mode.hasTeams && mounted) {
+      try {
+        final lb = await AppScope.of(context).api.creatorLeaderboard(
+          widget.scope,
+          widget.challenge.id,
+          gymId: widget.gymId,
+        );
+        if (mounted) setState(() => _board = ChallengeLeaderboard.fromJson(lb));
+      } catch (_) {
+        // Standings are extra; the participant list stands on its own.
+      }
     }
   }
 
@@ -259,6 +272,31 @@ class _ParticipantsPageState extends State<_ParticipantsPage> {
                   style: theme.textTheme.bodySmall,
                 ),
                 const SizedBox(height: FFTokens.spacingMd),
+                if (_board case final b? when c.mode.hasTeams)
+                  FFCard(
+                    key: const Key('creator-team-standings'),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          context.tr('leaderboard.teams'),
+                          style: theme.textTheme.titleSmall,
+                        ),
+                        if (b.teams.isEmpty)
+                          Text(
+                            context
+                                .tr('leaderboard.noTeamsYet')
+                                .replaceAll('{n}', '${b.minTeamSize}'),
+                            style: theme.textTheme.bodySmall,
+                          ),
+                        for (final t in b.teams)
+                          Text(
+                            '${t.rank}. ${t.name} · ${(t.averageCompletion * 100).round()}% · ${context.tr('leaderboard.members').replaceAll('{n}', '${t.members}')}',
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                      ],
+                    ),
+                  ),
                 if (rows.isEmpty)
                   FFEmptyState(title: context.tr('challenge.noParticipants'))
                 else
@@ -352,12 +390,14 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
     end: DateTime(widget.now.year, widget.now.month, widget.now.day + 13),
   );
   bool _public = false;
+  bool _teams = false;
+  final _teamNames = TextEditingController();
   bool _busy = false;
   String? _error;
 
   @override
   void dispose() {
-    for (final c in [_name, _description, _rewards, _target]) {
+    for (final c in [_name, _description, _rewards, _target, _teamNames]) {
       c.dispose();
     }
     super.dispose();
@@ -378,6 +418,16 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
 
   Future<void> _save() async {
     if (!_form.currentState!.validate()) return;
+    if (_teams) {
+      final names = [
+        for (final t in _teamNames.text.split(','))
+          if (t.trim().isNotEmpty) t.trim().toLowerCase(),
+      ];
+      if (names.length < 2 || names.toSet().length != names.length) {
+        setState(() => _error = context.tr('leaderboard.teamsInvalid'));
+        return;
+      }
+    }
     final days = _range.end.difference(_range.start).inDays + 1;
     if (days > 92) {
       setState(() => _error = context.tr('challenge.tooLong'));
@@ -403,6 +453,12 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
             if (r.trim().isNotEmpty) r.trim(),
         ],
         'visibility': _public ? 'public' : 'audience',
+        'mode': _teams ? 'teams' : 'individual',
+        if (_teams)
+          'teams': [
+            for (final t in _teamNames.text.split(','))
+              if (t.trim().isNotEmpty) t.trim(),
+          ],
       });
       navigator.pop(true);
     } catch (_) {
@@ -521,6 +577,24 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
                 border: const OutlineInputBorder(),
               ),
             ),
+            SwitchListTile(
+              key: const Key('challenge-teams'),
+              contentPadding: EdgeInsets.zero,
+              value: _teams,
+              onChanged: (v) => setState(() => _teams = v),
+              title: Text(context.tr('leaderboard.teamChallenge')),
+              subtitle: Text(context.tr('leaderboard.teamChallengeHint')),
+            ),
+            if (_teams)
+              TextFormField(
+                key: const Key('challenge-team-names'),
+                controller: _teamNames,
+                decoration: InputDecoration(
+                  labelText: context.tr('leaderboard.teamNames'),
+                  helperText: context.tr('leaderboard.teamNamesHelp'),
+                  border: const OutlineInputBorder(),
+                ),
+              ),
             SwitchListTile(
               key: const Key('challenge-public'),
               contentPadding: EdgeInsets.zero,

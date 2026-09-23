@@ -116,10 +116,18 @@ class _FakeApi extends ApiClient {
   Map<String, dynamic> participants = {};
 
   @override
-  Future<Map<String, dynamic>> joinChallenge(String id) async {
+  Future<Map<String, dynamic>> joinChallenge(
+    String id, {
+    String? teamId,
+    String? gymId,
+    bool leaderboardOptIn = false,
+  }) async {
     calls.add(('join', id));
     return {};
   }
+
+  @override
+  Future<Map<String, dynamic>> challengeLeaderboard(String id) async => {};
 
   @override
   Future<Map<String, dynamic>> leaveChallenge(String id) async {
@@ -360,9 +368,15 @@ void main() {
 
       await tester.tap(find.byKey(const Key('challenge-join')));
       await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('join-confirm')));
+      await tester.pumpAndSettle();
       expect(api.calls.single, ('join', 'c1'));
       expect(data.challenges.single.joined, isTrue);
       expect(find.text('32,450 / 50,000'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('challenge-leave')),
+        300,
+      );
       expect(find.byKey(const Key('challenge-leave')), findsOneWidget);
     });
   });

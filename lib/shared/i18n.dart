@@ -770,6 +770,44 @@ class FFLocale extends ChangeNotifier {
       'challenge.noParticipants': 'Nobody has joined yet.',
       'challenge.progressNotShared': 'Progress not shared',
       'challenge.noneJoinedYours': "Hasn't joined any of your challenges.",
+      'leaderboard.title': 'Leaderboard',
+      'leaderboard.teams': 'Team standings',
+      'leaderboard.joinTitle': 'Join {name}',
+      'leaderboard.pickTeam': 'Choose your team',
+      'leaderboard.pickGym': 'Which gym are you representing?',
+      'leaderboard.noGyms': 'Join or visit a gym first to take part.',
+      'leaderboard.departmentNote': 'Your team is your department at work.',
+      'leaderboard.optIn': 'Show me on the leaderboard',
+      'leaderboard.optInHint':
+          'Off by default. If you switch it on, other participants see your first name, last initial and progress in this challenge. You can switch it off any time.',
+      'leaderboard.youAre': "You're #{rank} of {of} on the leaderboard",
+      'leaderboard.youWouldBe': "You'd be #{rank} of {of}. You're not listed",
+      'leaderboard.yourTeam': 'Your team: {team}',
+      'leaderboard.you': 'you',
+      'leaderboard.nobodyListed': 'Nobody has chosen to appear yet.',
+      'leaderboard.members': '{n} members',
+      'leaderboard.noTeamsYet':
+          'Team standings appear once a team has {n} members.',
+      'leaderboard.hiddenTeamsOne':
+          'One smaller team will appear once it reaches {n} members.',
+      'leaderboard.hiddenTeams':
+          '{count} smaller teams will appear once they reach {n} members.',
+      'leaderboard.teamRule':
+          'Teams are ranked by average completion, so team size doesn’t decide the winner.',
+      'leaderboard.fairPlay':
+          'Rankings count activity toward the challenge goal only, never weight or body measurements.',
+      'leaderboard.mode.teams':
+          'This is a team challenge: you’ll pick a team when you join.',
+      'leaderboard.mode.gym_vs_gym': 'Gym vs gym: you represent your gym.',
+      'leaderboard.mode.department':
+          'Team challenge: you represent your department.',
+      'leaderboard.teamChallenge': 'Team challenge',
+      'leaderboard.teamChallengeHint':
+          'Members pick a team; teams are ranked by average completion.',
+      'leaderboard.teamNames': 'Team names',
+      'leaderboard.teamNamesHelp':
+          'Separate with commas, e.g. Red, Blue, Green',
+      'leaderboard.teamsInvalid': 'Add at least two different team names.',
       'member.searchGyms': 'Search by name or area',
       'member.all': 'All',
       'member.nearest': 'Nearest',
@@ -2313,6 +2351,46 @@ class FFLocale extends ChangeNotifier {
       'challenge.noParticipants': 'Bado hakuna aliyejiunga.',
       'challenge.progressNotShared': 'Maendeleo hayashirikiwi',
       'challenge.noneJoinedYours': 'Hajajiunga na changamoto zako zozote.',
+      'leaderboard.title': 'Msimamo',
+      'leaderboard.teams': 'Msimamo wa timu',
+      'leaderboard.joinTitle': 'Jiunge na {name}',
+      'leaderboard.pickTeam': 'Chagua timu yako',
+      'leaderboard.pickGym': 'Unaiwakilisha jimu gani?',
+      'leaderboard.noGyms': 'Jiunge au tembelea jimu kwanza ili kushiriki.',
+      'leaderboard.departmentNote': 'Timu yako ni idara yako kazini.',
+      'leaderboard.optIn': 'Nionyeshe kwenye msimamo',
+      'leaderboard.optInHint':
+          'Imezimwa kwa chaguo-msingi. Ukiiwasha, washiriki wengine wataona jina lako la kwanza, herufi ya kwanza ya jina la mwisho na maendeleo yako kwenye changamoto hii. Unaweza kuizima wakati wowote.',
+      'leaderboard.youAre': 'Wewe ni wa {rank} kati ya {of} kwenye msimamo',
+      'leaderboard.youWouldBe': 'Ungekuwa wa {rank} kati ya {of}. Hauonyeshwi',
+      'leaderboard.yourTeam': 'Timu yako: {team}',
+      'leaderboard.you': 'wewe',
+      'leaderboard.nobodyListed': 'Bado hakuna aliyechagua kuonekana.',
+      'leaderboard.members': 'Wanachama {n}',
+      'leaderboard.noTeamsYet':
+          'Msimamo wa timu utaonekana timu ikifikia wanachama {n}.',
+      'leaderboard.hiddenTeamsOne':
+          'Timu moja ndogo itaonekana ikifikia wanachama {n}.',
+      'leaderboard.hiddenTeams':
+          'Timu {count} ndogo zitaonekana zikifikia wanachama {n}.',
+      'leaderboard.teamRule':
+          'Timu zinapangwa kwa wastani wa ukamilishaji, kwa hiyo ukubwa wa timu hauamui mshindi.',
+      'leaderboard.fairPlay':
+          'Msimamo unahesabu shughuli kuelekea lengo la changamoto tu, kamwe si uzito au vipimo vya mwili.',
+      'leaderboard.mode.teams':
+          'Hii ni changamoto ya timu: utachagua timu ukijiunga.',
+      'leaderboard.mode.gym_vs_gym':
+          'Jimu dhidi ya jimu: unaiwakilisha jimu yako.',
+      'leaderboard.mode.department':
+          'Changamoto ya timu: unaiwakilisha idara yako.',
+      'leaderboard.teamChallenge': 'Changamoto ya timu',
+      'leaderboard.teamChallengeHint':
+          'Wanachama wanachagua timu; timu zinapangwa kwa wastani wa ukamilishaji.',
+      'leaderboard.teamNames': 'Majina ya timu',
+      'leaderboard.teamNamesHelp':
+          'Tenganisha kwa koma, mf. Nyekundu, Bluu, Kijani',
+      'leaderboard.teamsInvalid':
+          'Ongeza angalau majina mawili tofauti ya timu.',
       'member.searchGyms': 'Tafuta kwa jina au eneo',
       'member.all': 'Zote',
       'member.nearest': 'Karibu',
