@@ -53,26 +53,26 @@ jobs:
           fi
           printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
 
-      # Every distributed build must be signed with the same upload key, or
-      # testers cannot install a new build over the previous one. The runner's
-      # debug key is random per run, so refuse to distribute without it.
-      - name: Restore upload keystore
+      # Every distributed build must be signed with the same key, or testers
+      # cannot install a new build over the previous one (the runner's debug
+      # key is random per run). This is the App Distribution-only key from
+      # scripts/create_distribution_keystore.sh, NOT the Play upload key.
+      - name: Restore distribution keystore
         env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS || 'fitflexaf-upload' }}
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_DIST_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_DIST_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_DIST_KEY_ALIAS || 'fitflex-distribution' }}
         run: |
-          if [ -z "$ANDROID_KEYSTORE_BASE64" ] || [ -z "$ANDROID_KEYSTORE_PASSWORD" ]; then
-            echo "::error::Signing secrets ANDROID_KEYSTORE_BASE64 / ANDROID_KEYSTORE_PASSWORD are not set."
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEYSTORE_PASSWORD" ]; then
+            echo "::error::Run scripts/create_distribution_keystore.sh to create the ANDROID_DIST_* signing secrets."
             exit 1
           fi
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/fitflexaf-upload-keystore.jks
+          echo "$KEYSTORE_BASE64" | base64 --decode > android/fitflex-distribution.jks
           {
-            echo "storePassword=$ANDROID_KEYSTORE_PASSWORD"
-            echo "keyPassword=${ANDROID_KEY_PASSWORD:-$ANDROID_KEYSTORE_PASSWORD}"
-            echo "keyAlias=$ANDROID_KEY_ALIAS"
-            echo "storeFile=../fitflexaf-upload-keystore.jks"
+            echo "storePassword=$KEYSTORE_PASSWORD"
+            echo "keyPassword=$KEYSTORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "storeFile=../fitflex-distribution.jks"
           } > android/key.properties
 
       - name: Get Flutter dependencies
