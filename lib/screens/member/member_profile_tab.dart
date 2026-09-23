@@ -507,10 +507,10 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
           onTap: _openGoalsDialog,
         ),
         FFActionTile(
-          key: const Key('profile-trainer-sharing'),
-          icon: Icons.handshake_outlined,
-          title: context.tr('connect.pageTitle'),
-          onTap: () => context.go(AppRoutes.memberTrainerConnections),
+          key: const Key('profile-privacy'),
+          icon: Icons.privacy_tip_outlined,
+          title: context.tr('privacy.title'),
+          onTap: () => context.go(AppRoutes.memberPrivacy),
         ),
         FFActionTile(
           icon: Icons.schedule_outlined,

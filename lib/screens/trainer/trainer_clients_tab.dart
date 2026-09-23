@@ -6,8 +6,10 @@ import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import '../member/widgets/trainer_sharing.dart' show sharedSummary;
+import '../../shared/widgets/challenge_manager_page.dart';
 import 'trainer_client_page.dart';
 import 'trainer_plan_editor_page.dart';
+import 'widgets/client_summary_card.dart';
 
 /// Trainer's Clients tab: connection requests, connected clients (who
 /// chose what to share), and the trainer's workout plan library.
@@ -185,14 +187,30 @@ class _TrainerClientsTabState extends State<TrainerClientsTab> {
             )
           else
             for (final c in active)
-              FFActionTile(
-                key: Key('client-${c.id}'),
-                icon: Icons.person_outline,
-                title: c.member?.displayName ?? '',
-                subtitle:
-                    '${context.tr('share.canSee')}: ${sharedSummary(context, c.permissions)}',
-                onTap: () => _openClient(c),
-              ),
+              c.summary == null
+                  ? FFActionTile(
+                      key: Key('client-${c.id}'),
+                      icon: Icons.person_outline,
+                      title: c.member?.displayName ?? '',
+                      subtitle:
+                          '${context.tr('share.canSee')}: ${sharedSummary(context, c.permissions)}',
+                      onTap: () => _openClient(c),
+                    )
+                  : ClientSummaryCard(
+                      key: Key('client-${c.id}'),
+                      name: c.member?.displayName ?? '',
+                      photoUrl: c.member?.photoUrl,
+                      summary: c.summary!,
+                      onTap: () => _openClient(c),
+                    ),
+          FFSectionTitle(context.tr('challenge.manageTitle')),
+          FFActionTile(
+            key: const Key('trainer-challenges'),
+            icon: Icons.emoji_events_outlined,
+            title: context.tr('challenge.manageTitle'),
+            subtitle: context.tr('challenge.manageBody.trainer'),
+            onTap: () => openChallengeManager(context, scope: 'trainer'),
+          ),
           Row(
             children: [
               Expanded(child: FFSectionTitle(context.tr('plans.title'))),

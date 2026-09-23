@@ -11,7 +11,7 @@ import 'screens/email_auth_screen.dart';
 import 'screens/member/member_shell.dart';
 import 'screens/member/member_shop_tab.dart';
 import 'screens/member/member_onboarding_page.dart';
-import 'screens/member/widgets/trainer_sharing.dart';
+import 'screens/member/member_privacy_page.dart';
 import 'screens/trainer/trainer_registration_page.dart';
 import 'screens/trainer/trainer_home_page.dart';
 import 'screens/owner/owner_registration_page.dart';
@@ -65,6 +65,7 @@ abstract class AppRoutes {
   static const memberActivity = '/member/activity';
   static const memberProgress = '/member/activity/progress';
   static const memberWorkout = '/member/activity/workouts/:workoutId';
+  static const memberChallenge = '/member/activity/challenges/:challengeId';
   static const memberGyms = '/member/gyms';
   static const memberGymDetail = '/member/gyms/:gymId';
   static const memberTrainers = '/member/trainers';
@@ -74,7 +75,8 @@ abstract class AppRoutes {
   static const memberProfile = '/member/profile';
   static const memberPasses = '/member/passes';
   static const memberPayment = '/member/payment';
-  static const memberTrainerConnections = '/member/trainer-connections';
+  static const memberPrivacy = '/member/privacy';
+  static const memberActivitySharing = '/member/privacy/activity-sharing';
 }
 
 bool _isOnboarded(AuthState auth, String role) {
@@ -422,6 +424,13 @@ GoRouter buildRouter(AuthState auth) {
                     const MemberActivityTab(initialSection: 'progress'),
               ),
               GoRoute(
+                path: 'challenges/:challengeId',
+                name: 'memberChallenge',
+                builder: (context, state) => MemberChallengePage(
+                  challengeId: state.pathParameters['challengeId']!,
+                ),
+              ),
+              GoRoute(
                 path: 'workouts/:workoutId',
                 name: 'memberWorkout',
                 builder: (context, state) => MemberWorkoutPage(
@@ -481,9 +490,16 @@ GoRouter buildRouter(AuthState auth) {
             builder: (context, state) => const MemberPassesPage(),
           ),
           GoRoute(
-            path: AppRoutes.memberTrainerConnections,
-            name: 'memberTrainerConnections',
-            builder: (context, state) => const MemberTrainerConnectionsPage(),
+            path: AppRoutes.memberPrivacy,
+            name: 'memberPrivacy',
+            builder: (context, state) => const MemberPrivacyPage(),
+            routes: [
+              GoRoute(
+                path: 'activity-sharing',
+                name: 'memberActivitySharing',
+                builder: (context, state) => const MemberActivitySharingPage(),
+              ),
+            ],
           ),
           GoRoute(
             path: AppRoutes.memberPayment,

@@ -235,47 +235,6 @@ void main() {
       expect(find.byKey(const Key('trainer-connect')), findsNothing);
     });
 
-    testWidgets('Connections page changes sharing and disconnects', (
-      tester,
-    ) async {
-      tester.view.physicalSize = const Size(1080, 3000);
-      tester.view.devicePixelRatio = 3;
-      addTearDown(tester.view.reset);
-      final api = _FakeApi();
-      final data = MemberData()
-        ..trainerConnections = [
-          TrainerConnection.fromJson(
-            _connectionJson(status: 'active', permissions: {'steps': true}),
-          ),
-        ];
-      await tester.pumpWidget(
-        _app(api, const MemberTrainerConnectionsPage(), data: data),
-      );
-      expect(find.text('Coach Amani'), findsOneWidget);
-      expect(find.text('Connected'), findsOneWidget);
-
-      await tester.tap(find.byKey(const Key('connection-edit-tmr_1')));
-      await tester.pumpAndSettle();
-      expect(
-        tester
-            .widget<SwitchListTile>(find.byKey(const Key('share-steps')))
-            .value,
-        isTrue,
-      );
-      await tester.tap(find.byKey(const Key('share-steps')));
-      await tester.pump();
-      await tester.tap(find.byKey(const Key('share-save')));
-      await tester.pumpAndSettle();
-      expect(api.calls.last.$1, 'update');
-      expect((api.calls.last.$2 as Map)['steps'], isFalse);
-
-      await tester.tap(find.byKey(const Key('connection-end-tmr_1')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('connect-end-confirm')));
-      await tester.pumpAndSettle();
-      expect(api.calls.last, ('end', 'tmr_1'));
-    });
-
     testWidgets('My trainer plan lists what the trainer planned', (
       tester,
     ) async {

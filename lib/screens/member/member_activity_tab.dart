@@ -11,6 +11,7 @@ import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import 'member_shell.dart';
 import 'widgets/activity_widgets.dart';
+import 'widgets/challenge_widgets.dart';
 import 'widgets/goal_widgets.dart';
 import 'widgets/progress_section.dart';
 import 'widgets/workout_widgets.dart';
@@ -72,7 +73,7 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
         else
           ...switch (_section) {
             'workouts' => _workouts(context, data, today),
-            'challenges' => _challenges(context),
+            'challenges' => buildChallengesSection(context, data, today),
             'progress' => buildProgressSection(context, data, today),
             _ => _overview(context, data.activities, data.goals, today),
           },
@@ -159,7 +160,7 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
         ),
       StreakCard(key: const Key('activity-streak'), streak: streak),
       FFSectionTitle(context.tr('activity.currentChallenge')),
-      ..._challenges(context),
+      currentChallengeBlock(context, data, today),
       FFSectionTitle(context.tr('activity.recent')),
       if (recent.isEmpty)
         FFEmptyState(title: context.tr('activity.noActivity'))
@@ -215,14 +216,6 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
         for (final a in other) ActivityTimelineTile(activity: a),
     ];
   }
-
-  List<Widget> _challenges(BuildContext context) => [
-    FFEmptyState(
-      key: const Key('activity-no-challenge'),
-      title: context.tr('activity.noChallenge'),
-      body: context.tr('activity.challengesSoon'),
-    ),
-  ];
 }
 
 class _TileRow extends StatelessWidget {

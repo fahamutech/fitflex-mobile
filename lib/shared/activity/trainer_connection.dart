@@ -4,6 +4,7 @@
 /// the member switches individual permissions on.
 library;
 
+import 'challenge.dart';
 import 'goal.dart';
 import 'workout.dart';
 
@@ -117,6 +118,9 @@ class TrainerConnection {
   /// Present on the trainer's side.
   final ConnectionPerson? member;
 
+  /// Trainer's side, active clients only: this week at a glance.
+  final ClientSummary? summary;
+
   const TrainerConnection({
     required this.id,
     required this.trainerId,
@@ -127,7 +131,21 @@ class TrainerConnection {
     this.connectedAt,
     this.trainer,
     this.member,
+    this.summary,
   });
+
+  TrainerConnection withPermissions(TrainerPermissions p) => TrainerConnection(
+    id: id,
+    trainerId: trainerId,
+    memberId: memberId,
+    status: status,
+    permissions: p,
+    requestedAt: requestedAt,
+    connectedAt: connectedAt,
+    trainer: trainer,
+    member: member,
+    summary: summary,
+  );
 
   factory TrainerConnection.fromJson(Map<String, dynamic> json) =>
       TrainerConnection(
@@ -140,7 +158,103 @@ class TrainerConnection {
         connectedAt: DateTime.tryParse(json['connectedAt'] as String? ?? ''),
         trainer: ConnectionPerson.tryParse(json['trainer']),
         member: ConnectionPerson.tryParse(json['member']),
+        summary: ClientSummary.tryParse(json['summary']),
       );
+}
+
+/// Something a trainer can act on, or celebrate. [value] depends on [code]:
+/// `missed_workouts` → count, `inactive` → days since last workout (null
+/// when none in 13 weeks), `streak_ended` → the streak's length.
+class ClientPrompt {
+  final bool positive;
+  final String code;
+  final int? value;
+
+  const ClientPrompt({required this.positive, required this.code, this.value});
+}
+
+/// A client's week at a glance, built by the server from shared data only.
+/// Fields the member doesn't share are null.
+class ClientSummary {
+  final DateTime weekStart;
+  final int? workouts;
+  final int? steps;
+  final double? distanceKm;
+  final int? activeMinutes;
+  final ClientGoal? goal;
+  final int? streak;
+  final int plannedNext7Days;
+  final DateTime? lastWorkoutDate;
+  final List<ClientPrompt> prompts;
+
+  const ClientSummary({
+    required this.weekStart,
+    this.workouts,
+    this.steps,
+    this.distanceKm,
+    this.activeMinutes,
+    this.goal,
+    this.streak,
+    this.plannedNext7Days = 0,
+    this.lastWorkoutDate,
+    this.prompts = const [],
+  });
+
+  List<ClientPrompt> get needsAttention =>
+      prompts.where((p) => !p.positive).toList();
+
+  bool get hasWeekNumbers =>
+      workouts != null ||
+      steps != null ||
+      distanceKm != null ||
+      activeMinutes != null;
+
+  static ClientSummary? tryParse(Object? json) {
+    if (json is! Map) return null;
+    final week = json['week'] is Map ? json['week'] as Map : const {};
+    final g = json['goal'];
+    ClientGoal? goal;
+    if (g is Map) {
+      final type = GoalType.fromWire(g['type'] as String?);
+      final period = GoalPeriod.fromWire(g['period'] as String?);
+      if (type != null && period != null) {
+        goal = ClientGoal(
+          type: type,
+          period: period,
+          target: g['target'] as num? ?? 0,
+          current: g['current'] as num? ?? 0,
+          completed: g['completed'] == true,
+        );
+      }
+    }
+    final last = DateTime.tryParse(json['lastWorkoutDate'] as String? ?? '');
+    return ClientSummary(
+      weekStart:
+          DateTime.tryParse(json['weekStart'] as String? ?? '') ??
+          DateTime(1970),
+      workouts: (week['workouts'] as num?)?.toInt(),
+      steps: (week['steps'] as num?)?.toInt(),
+      distanceKm: (week['distanceKm'] as num?)?.toDouble(),
+      activeMinutes: (week['activeMinutes'] as num?)?.toInt(),
+      goal: goal,
+      streak: json['streak'] is Map
+          ? ((json['streak'] as Map)['current'] as num?)?.toInt()
+          : null,
+      plannedNext7Days: (json['plannedNext7Days'] as num?)?.toInt() ?? 0,
+      lastWorkoutDate: last == null
+          ? null
+          : DateTime(last.year, last.month, last.day),
+      prompts: [
+        for (final a
+            in (json['attention'] as List? ?? const []).whereType<Map>())
+          ClientPrompt(
+            positive: a['kind'] == 'positive',
+            code: a['code'] as String? ?? '',
+            value: (a['value'] as num?)?.toInt(),
+          ),
+      ],
+    );
+  }
 }
 
 // ── Trainer plans ───────────────────────────────────────────────────────────
@@ -353,9 +467,15 @@ class ClientOverview {
   final List<ClientWorkout> workouts;
   final List<ClientGoal>? goals;
   final Map<String, ClientStreak?>? streaks;
+  final ClientSummary? summary;
+
+  /// Null unless the member shares challenge data with this trainer.
+  final List<SharedChallengeProgress>? challenges;
 
   const ClientOverview({
     required this.client,
+    this.summary,
+    this.challenges,
     this.activity,
     this.workouts = const [],
     this.goals,
@@ -411,6 +531,8 @@ class ClientOverview {
       ],
       goals: goals,
       streaks: streaks,
+      summary: ClientSummary.tryParse(json['summary']),
+      challenges: SharedChallengeProgress.parseList(json['challenges']),
     );
   }
 }

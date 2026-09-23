@@ -5,6 +5,8 @@ import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import 'owner_shell.dart';
+import '../../shared/widgets/challenge_manager_page.dart';
+import 'widgets/gym_engagement_widgets.dart';
 
 /// Owner dashboard home tab — shows stats, quick actions, and gym summary.
 class OwnerHomeTab extends StatefulWidget {
@@ -309,6 +311,24 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
           ),
         ),
         const SizedBox(height: FFTokens.spacingLg),
+
+        // Membership engagement from the gym's own check-ins.
+        GymEngagementCard(
+          gymId: data.activeGymId,
+          onOpenMember: (id) => context.push('/owner/members/$id'),
+        ),
+        FFActionTile(
+          key: const Key('owner-challenges'),
+          icon: Icons.emoji_events_outlined,
+          title: context.tr('challenge.manageTitle'),
+          subtitle: context.tr('challenge.manageBody.owner'),
+          onTap: () => openChallengeManager(
+            context,
+            scope: 'owner',
+            gymId: data.activeGymId,
+          ),
+        ),
+        const SizedBox(height: FFTokens.spacingMd),
 
         // 5. Grow your gym card
         Container(

@@ -6,7 +6,9 @@ import '../../app_scope.dart';
 import '../../router.dart';
 import '../../shared/activity/activity.dart';
 import '../../shared/activity/activity_config.dart';
+import '../../shared/activity/challenge.dart';
 import '../../shared/activity/goal.dart';
+import '../../shared/activity/gym_sharing.dart';
 import '../../shared/activity/trainer_connection.dart';
 import '../../shared/activity/workout.dart';
 import '../../shared/auth_state.dart';
@@ -18,6 +20,7 @@ import '../../shared/root_back_navigation.dart';
 export 'member_home_tab.dart';
 export 'member_activity_tab.dart';
 export 'member_workout_page.dart';
+export 'member_challenge_page.dart';
 export 'member_gyms_tab.dart';
 export 'member_gym_detail_page.dart';
 export 'member_trainers_tab.dart';
@@ -44,6 +47,16 @@ class MemberData extends ChangeNotifier {
   List<Workout> workouts = [];
   bool workoutsLoaded = false;
   List<TrainerConnection> trainerConnections = [];
+  List<GymSharing> gymSharing = [];
+  List<Challenge> challenges = [];
+  bool challengesLoaded = false;
+
+  /// Gym check-ins as the challenge engine needs them.
+  List<({DateTime at, String? gymId})> get checkInMoments => [
+    for (final c in checkins)
+      if (DateTime.tryParse(c.timestamp) case final at?)
+        (at: at, gymId: c.gymId),
+  ];
 
   /// The open (pending or active) connection with [trainerId], if any.
   TrainerConnection? connectionWith(String trainerId) => trainerConnections
@@ -119,7 +132,7 @@ class MemberShellState extends State<MemberShell> {
     if (loc.startsWith('/member/trainers')) return 2;
     if (loc.startsWith('/member/shop')) return 3;
     if (loc.startsWith('/member/profile')) return 4;
-    if (loc.startsWith('/member/trainer-connections')) return 4;
+    if (loc.startsWith('/member/privacy')) return 4;
     return 0;
   }
 
@@ -175,6 +188,8 @@ class MemberShellState extends State<MemberShell> {
         _refreshGoals(),
         _refreshWorkouts(),
         _refreshConnections(),
+        _refreshGymSharing(),
+        _refreshChallenges(),
       ]);
       if (_data.hasActivePass) await _refreshQr();
     } finally {
@@ -310,6 +325,40 @@ class MemberShellState extends State<MemberShell> {
 
   Future<void> refreshConnections() async {
     await _refreshConnections();
+  }
+
+  Future<void> _refreshChallenges() async {
+    try {
+      final rows = await AppScope.of(context).api.myChallenges();
+      _data.update((d) {
+        d.challenges = [
+          for (final r in rows.whereType<Map>())
+            ?Challenge.tryParse(Map<String, dynamic>.from(r)),
+        ];
+        d.challengesLoaded = true;
+      });
+    } catch (error) {
+      debugPrint('[MemberShell] Could not load challenges: $error');
+      _data.update((d) => d.challengesLoaded = true);
+    }
+  }
+
+  Future<void> refreshChallenges() async {
+    await _refreshChallenges();
+  }
+
+  Future<void> _refreshGymSharing() async {
+    try {
+      final rows = await AppScope.of(context).api.myGymSharing();
+      _data.update(
+        (d) => d.gymSharing = [
+          for (final r in rows.whereType<Map>())
+            ?GymSharing.tryParse(Map<String, dynamic>.from(r)),
+        ],
+      );
+    } catch (error) {
+      debugPrint('[MemberShell] Could not load gym sharing: $error');
+    }
   }
 
   /// After a workout changes: its list, and — once finished — the activity
