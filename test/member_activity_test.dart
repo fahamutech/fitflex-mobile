@@ -2,6 +2,8 @@ import 'package:fitflexmobile/screens/member/member_shell.dart';
 import 'package:fitflexmobile/screens/member/widgets/today_activity_card.dart';
 import 'package:fitflexmobile/shared/activity/activity.dart';
 import 'package:fitflexmobile/shared/activity/activity_summary.dart';
+import 'package:fitflexmobile/shared/activity/goal.dart';
+import 'package:fitflexmobile/shared/activity/streaks.dart';
 import 'package:fitflexmobile/shared/design_tokens.dart';
 import 'package:fitflexmobile/shared/i18n.dart';
 import 'package:flutter/material.dart';
@@ -69,11 +71,29 @@ Widget _wrap(Widget child, MemberData data) => FFLocaleScope(
   ),
 );
 
-MemberData _data({bool sample = false, List<Activity>? activities}) =>
-    MemberData()
-      ..activities = activities ?? _history()
-      ..activityLoaded = true
-      ..activityIsSample = sample;
+final _stepGoal = Goal(
+  id: 'g-steps',
+  userId: 'u1',
+  type: GoalType.steps,
+  target: 8000,
+  period: GoalPeriod.day,
+  startDate: DateTime(2026, 9, 1),
+  source: GoalSource.defaults,
+);
+
+MemberData _data({
+  bool sample = false,
+  List<Activity>? activities,
+  List<Goal>? goals,
+}) => MemberData()
+  ..activities = activities ?? _history()
+  ..activityLoaded = true
+  ..activityIsSample = sample
+  ..goals = goals ?? [_stepGoal]
+  ..goalsLoaded = true;
+
+int _activityStreak(List<Activity> acts) =>
+    computeStreak(StreakKind.activity, today: _now, activities: acts)!.current;
 
 void main() {
   group('activity summary', () {
@@ -104,21 +124,14 @@ void main() {
     });
 
     test('streak counts back until the first inactive day', () {
-      expect(currentStreak(_history(), today: _now), 8);
+      expect(_activityStreak(_history()), 8);
     });
 
     test('an unfinished today does not break the streak', () {
       final noToday = _history()
           .where((a) => !a.id.startsWith('today'))
           .toList();
-      expect(currentStreak(noToday, today: _now), 7);
-    });
-
-    test('summarizeDays returns one entry per day, oldest first', () {
-      final days = summarizeDays(_history(), today: _now);
-      expect(days, hasLength(7));
-      expect(days.first.day, DateTime(2026, 9, 17));
-      expect(days.last.day, DateTime(2026, 9, 23));
+      expect(_activityStreak(noToday), 7);
     });
   });
 
@@ -145,6 +158,17 @@ void main() {
     final data = MemberData();
     await tester.pumpWidget(_wrap(TodayActivityCard(data: data), data));
     expect(find.byKey(const Key('today-activity-card')), findsNothing);
+  });
+
+  testWidgets('Home card hides the goal bar without a daily step goal', (
+    tester,
+  ) async {
+    final data = _data(goals: []);
+    await tester.pumpWidget(
+      _wrap(TodayActivityCard(data: data, now: _now), data),
+    );
+    expect(find.byKey(const Key('activity-goal-percent')), findsNothing);
+    expect(find.textContaining('6,240'), findsOneWidget);
   });
 
   testWidgets('Home card hides the sample badge for real data', (tester) async {
@@ -174,7 +198,7 @@ void main() {
       300,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.text('8-day streak'), findsOneWidget);
+    expect(find.text('8-day activity streak'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.byKey(const Key('activity-no-challenge')),
       300,
@@ -200,8 +224,7 @@ void main() {
 
     await tester.tap(section('Progress'));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('activity-progress-days')), findsOneWidget);
-    expect(find.text('Last 7 days'), findsOneWidget);
+    expect(find.byKey(const Key('progress-goals')), findsOneWidget);
   });
 
   testWidgets('Activity tab shows empty states without history', (
@@ -215,6 +238,6 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('No activity logged yet.'), findsOneWidget);
-    expect(find.text('0-day streak'), findsOneWidget);
+    expect(find.text('Start a streak today.'), findsOneWidget);
   });
 }

@@ -6,6 +6,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
 
 import 'app_scope.dart';
+import 'shared/activity/activity_config.dart';
 import 'router.dart';
 import 'shared/api_client.dart';
 import 'shared/auth_state.dart';
@@ -76,11 +77,16 @@ class FitFlexApp extends StatefulWidget {
 
 class _FitFlexAppState extends State<FitFlexApp> {
   late final GoRouter _router;
+  late final ActivityBackend _activity;
 
   @override
   void initState() {
     super.initState();
     _router = buildRouter(widget.auth);
+    _activity = ActivityBackend.create(
+      widget.api,
+      sample: activitySampleDataEnabled(),
+    );
   }
 
   @override
@@ -94,6 +100,9 @@ class _FitFlexAppState extends State<FitFlexApp> {
     return AppScope(
       api: widget.api,
       auth: widget.auth,
+      activityProvider: _activity.activity,
+      goalRepository: _activity.goals,
+      workoutRepository: _activity.workouts,
       child: ThemeScope(
         notifier: widget.themeNotifier,
         child: FFLocaleScope(

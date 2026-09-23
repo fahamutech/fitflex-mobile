@@ -94,6 +94,11 @@ class ApiClient {
               .put(uri, headers: headers, body: encoded)
               .timeout(const Duration(seconds: 12));
           break;
+        case 'PATCH':
+          res = await http
+              .patch(uri, headers: headers, body: encoded)
+              .timeout(const Duration(seconds: 12));
+          break;
         case 'DELETE':
           res = await http
               .delete(uri, headers: headers, body: encoded)
@@ -291,6 +296,167 @@ class ApiClient {
       await _request(favorite ? 'PUT' : 'DELETE', '/me/favorites/gyms/$gymId');
 
   /// Push: register / remove this device's FCM token.
+  // ── Activity & Progress Engine ────────────────────────────────────────
+  Future<List<dynamic>> myActivities({
+    required DateTime from,
+    required DateTime to,
+  }) async {
+    final query = Uri(
+      queryParameters: {
+        'from': from.toUtc().toIso8601String(),
+        'to': to.toUtc().toIso8601String(),
+      },
+    ).query;
+    final res = await _request('GET', '/me/activities?$query');
+    return (res as Map)['activities'] as List? ?? const [];
+  }
+
+  Future<Map<String, dynamic>> logActivity(Map<String, dynamic> data) async =>
+      await _request('POST', '/me/activities', body: data);
+
+  Future<void> deleteActivity(String id) async =>
+      await _request('DELETE', '/me/activities/${Uri.encodeComponent(id)}');
+
+  Future<List<dynamic>> myGoals() async {
+    final res = await _request('GET', '/me/goals');
+    return (res as Map)['goals'] as List? ?? const [];
+  }
+
+  Future<Map<String, dynamic>> createGoal(Map<String, dynamic> data) async =>
+      await _request('POST', '/me/goals', body: data);
+
+  Future<Map<String, dynamic>> updateGoal(
+    String id,
+    Map<String, dynamic> data,
+  ) async => await _request(
+    'PATCH',
+    '/me/goals/${Uri.encodeComponent(id)}',
+    body: data,
+  );
+
+  Future<List<dynamic>> workoutTemplates() async {
+    final res = await _request('GET', '/workouts/templates');
+    return (res as Map)['templates'] as List? ?? const [];
+  }
+
+  Future<List<dynamic>> myWorkouts({String? from, String? to}) async {
+    final query = Uri(queryParameters: {'from': ?from, 'to': ?to}).query;
+    final res = await _request(
+      'GET',
+      query.isEmpty ? '/me/workouts' : '/me/workouts?$query',
+    );
+    return (res as Map)['workouts'] as List? ?? const [];
+  }
+
+  Future<Map<String, dynamic>> planWorkout(Map<String, dynamic> data) async =>
+      await _request('POST', '/me/workouts', body: data);
+
+  Future<Map<String, dynamic>> startWorkout(String id) async =>
+      await _request('POST', '/me/workouts/${Uri.encodeComponent(id)}/start');
+
+  Future<Map<String, dynamic>> saveWorkout(
+    String id,
+    Map<String, dynamic> log,
+  ) async => await _request(
+    'PATCH',
+    '/me/workouts/${Uri.encodeComponent(id)}',
+    body: log,
+  );
+
+  Future<Map<String, dynamic>> completeWorkout(
+    String id,
+    Map<String, dynamic> log,
+  ) async => await _request(
+    'POST',
+    '/me/workouts/${Uri.encodeComponent(id)}/complete',
+    body: log,
+  );
+
+  Future<Map<String, dynamic>> skipWorkout(String id) async =>
+      await _request('POST', '/me/workouts/${Uri.encodeComponent(id)}/skip');
+
+  // ── Trainer ↔ member connections ──────────────────────────────────────
+  Future<List<dynamic>> myTrainerConnections() async {
+    final res = await _request('GET', '/me/trainer-connections');
+    return (res as Map)['connections'] as List? ?? const [];
+  }
+
+  Future<Map<String, dynamic>> requestTrainerConnection(
+    String trainerId,
+    Map<String, bool> permissions,
+  ) async => await _request(
+    'POST',
+    '/trainers/${Uri.encodeComponent(trainerId)}/connect',
+    body: {'permissions': permissions},
+  );
+
+  Future<Map<String, dynamic>> updateTrainerConnection(
+    String id,
+    Map<String, bool> permissions,
+  ) async => await _request(
+    'PATCH',
+    '/me/trainer-connections/${Uri.encodeComponent(id)}',
+    body: {'permissions': permissions},
+  );
+
+  Future<Map<String, dynamic>> endTrainerConnection(String id) async =>
+      await _request(
+        'POST',
+        '/me/trainer-connections/${Uri.encodeComponent(id)}/end',
+      );
+
+  Future<List<dynamic>> trainerClients() async {
+    final res = await _request('GET', '/trainer/clients');
+    return (res as Map)['clients'] as List? ?? const [];
+  }
+
+  Future<Map<String, dynamic>> trainerDecideClient(
+    String id, {
+    required bool accept,
+  }) async => await _request(
+    'POST',
+    '/trainer/clients/${Uri.encodeComponent(id)}/${accept ? 'accept' : 'decline'}',
+  );
+
+  Future<Map<String, dynamic>> trainerEndClient(String id) async =>
+      await _request('POST', '/trainer/clients/${Uri.encodeComponent(id)}/end');
+
+  Future<Map<String, dynamic>> trainerClientOverview(String id) async =>
+      await _request('GET', '/trainer/clients/${Uri.encodeComponent(id)}');
+
+  Future<Map<String, dynamic>> trainerAssignWorkout(
+    String clientId,
+    Map<String, dynamic> data,
+  ) async => await _request(
+    'POST',
+    '/trainer/clients/${Uri.encodeComponent(clientId)}/workouts',
+    body: data,
+  );
+
+  Future<void> trainerCancelWorkout(String workoutId) async => await _request(
+    'DELETE',
+    '/trainer/workouts/${Uri.encodeComponent(workoutId)}',
+  );
+
+  Future<List<dynamic>> trainerPlans() async {
+    final res = await _request('GET', '/trainer/plans');
+    return (res as Map)['plans'] as List? ?? const [];
+  }
+
+  Future<Map<String, dynamic>> trainerSavePlan(
+    String? id,
+    Map<String, dynamic> plan,
+  ) async => id == null
+      ? await _request('POST', '/trainer/plans', body: plan)
+      : await _request(
+          'PUT',
+          '/trainer/plans/${Uri.encodeComponent(id)}',
+          body: plan,
+        );
+
+  Future<void> trainerDeletePlan(String id) async =>
+      await _request('DELETE', '/trainer/plans/${Uri.encodeComponent(id)}');
+
   Future<void> registerDeviceToken(String token, {String? platform}) async =>
       await _request(
         'POST',

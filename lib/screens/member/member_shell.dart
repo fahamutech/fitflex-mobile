@@ -5,6 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../../app_scope.dart';
 import '../../router.dart';
 import '../../shared/activity/activity.dart';
+import '../../shared/activity/activity_config.dart';
+import '../../shared/activity/goal.dart';
+import '../../shared/activity/trainer_connection.dart';
+import '../../shared/activity/workout.dart';
 import '../../shared/auth_state.dart';
 import '../../shared/components/theme_toggle_button.dart';
 import '../../shared/i18n.dart';
@@ -13,6 +17,7 @@ import '../../shared/root_back_navigation.dart';
 
 export 'member_home_tab.dart';
 export 'member_activity_tab.dart';
+export 'member_workout_page.dart';
 export 'member_gyms_tab.dart';
 export 'member_gym_detail_page.dart';
 export 'member_trainers_tab.dart';
@@ -34,6 +39,29 @@ class MemberData extends ChangeNotifier {
   List<Activity> activities = [];
   bool activityLoaded = false;
   bool activityIsSample = false;
+  List<Goal> goals = [];
+  bool goalsLoaded = false;
+  List<Workout> workouts = [];
+  bool workoutsLoaded = false;
+  List<TrainerConnection> trainerConnections = [];
+
+  /// The open (pending or active) connection with [trainerId], if any.
+  TrainerConnection? connectionWith(String trainerId) => trainerConnections
+      .where((c) => c.trainerId == trainerId && c.status.isOpen)
+      .firstOrNull;
+
+  /// Display name for a trainer, from the directory or a connection.
+  String? trainerName(String? trainerId) {
+    if (trainerId == null) return null;
+    final t = trainers.where((t) => t.id == trainerId).firstOrNull;
+    if (t != null) return t.displayName;
+    return trainerConnections
+        .where((c) => c.trainerId == trainerId)
+        .firstOrNull
+        ?.trainer
+        ?.displayName;
+  }
+
   bool passesLoaded = false;
   String? qrToken;
   String selectedTier = 'pro';
@@ -91,6 +119,7 @@ class MemberShellState extends State<MemberShell> {
     if (loc.startsWith('/member/trainers')) return 2;
     if (loc.startsWith('/member/shop')) return 3;
     if (loc.startsWith('/member/profile')) return 4;
+    if (loc.startsWith('/member/trainer-connections')) return 4;
     return 0;
   }
 
@@ -143,6 +172,9 @@ class MemberShellState extends State<MemberShell> {
         _refreshPasses(),
         _refreshFavorites(),
         _refreshActivity(),
+        _refreshGoals(),
+        _refreshWorkouts(),
+        _refreshConnections(),
       ]);
       if (_data.hasActivePass) await _refreshQr();
     } finally {
@@ -214,7 +246,7 @@ class MemberShellState extends State<MemberShell> {
       final now = DateTime.now();
       final activities = await provider.activitiesBetween(
         userId: userId,
-        from: DateTime(now.year, now.month, now.day - 41),
+        from: DateTime(now.year, now.month, now.day - activityHistoryDays + 1),
         to: now.add(const Duration(days: 1)),
       );
       _data.update((d) {
@@ -226,6 +258,64 @@ class MemberShellState extends State<MemberShell> {
       debugPrint('[MemberShell] Could not load activity: $error');
       _data.update((d) => d.activityLoaded = true);
     }
+  }
+
+  Future<void> _refreshGoals() async {
+    try {
+      final goals = await AppScope.of(context).goals.list();
+      _data.update((d) {
+        d.goals = goals;
+        d.goalsLoaded = true;
+      });
+    } catch (error) {
+      debugPrint('[MemberShell] Could not load goals: $error');
+      _data.update((d) => d.goalsLoaded = true);
+    }
+  }
+
+  Future<void> refreshGoals() async {
+    await _refreshGoals();
+  }
+
+  Future<void> _refreshWorkouts() async {
+    try {
+      final now = DateTime.now();
+      final workouts = await AppScope.of(context).workouts.list(
+        from: DateTime(now.year, now.month, now.day - activityHistoryDays + 1),
+        to: DateTime(now.year, now.month, now.day + 14),
+      );
+      _data.update((d) {
+        d.workouts = workouts;
+        d.workoutsLoaded = true;
+      });
+    } catch (error) {
+      debugPrint('[MemberShell] Could not load workouts: $error');
+      _data.update((d) => d.workoutsLoaded = true);
+    }
+  }
+
+  Future<void> _refreshConnections() async {
+    try {
+      final rows = await AppScope.of(context).api.myTrainerConnections();
+      _data.update(
+        (d) => d.trainerConnections = [
+          for (final r in rows.whereType<Map>())
+            TrainerConnection.fromJson(Map<String, dynamic>.from(r)),
+        ],
+      );
+    } catch (error) {
+      debugPrint('[MemberShell] Could not load trainer connections: $error');
+    }
+  }
+
+  Future<void> refreshConnections() async {
+    await _refreshConnections();
+  }
+
+  /// After a workout changes: its list, and — once finished — the activity
+  /// it was recorded as, which moves goals, progress and streaks.
+  Future<void> refreshAfterWorkout() async {
+    await Future.wait([_refreshWorkouts(), _refreshActivity()]);
   }
 
   Future<void> refreshTrainers() async {

@@ -3,11 +3,14 @@ import 'package:go_router/go_router.dart';
 
 import '../../../router.dart';
 import '../../../shared/activity/activity_summary.dart';
+import '../../../shared/activity/progress_engine.dart';
+import '../../../shared/activity/streaks.dart';
 import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
 import '../../../shared/i18n.dart';
 import '../member_shell.dart';
 import 'activity_widgets.dart';
+import 'workout_widgets.dart';
 
 /// Compact "Today's activity" summary for the member Home tab.
 class TodayActivityCard extends StatelessWidget {
@@ -24,7 +27,13 @@ class TodayActivityCard extends StatelessWidget {
     final theme = Theme.of(context);
     final today = now ?? DateTime.now();
     final summary = summarizeDay(data.activities, today);
-    final streak = currentStreak(data.activities, today: today);
+    final streak = computeStreak(
+      StreakKind.activity,
+      today: today,
+      activities: data.activities,
+    )!.current;
+    final stepGoal = dailyStepGoal(data.goals);
+    final workout = todaysWorkouts(data.workouts, today).firstOrNull;
 
     return FFCard(
       key: const Key('today-activity-card'),
@@ -83,12 +92,48 @@ class TodayActivityCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: FFTokens.spacingMd),
-          ActivityGoalBar(
-            steps: summary.steps,
-            goal: defaultDailyStepGoal,
-            dense: true,
-          ),
+          if (stepGoal != null) ...[
+            const SizedBox(height: FFTokens.spacingMd),
+            ActivityGoalBar(
+              steps: summary.steps,
+              goal: stepGoal.target.round(),
+              dense: true,
+            ),
+          ],
+          if (workout != null) ...[
+            const SizedBox(height: FFTokens.spacingSm),
+            InkWell(
+              key: const Key('home-today-workout'),
+              onTap: () => context.go(workoutRoute(workout.id)),
+              borderRadius: BorderRadius.circular(FFTokens.radiusMd),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: FFTokens.spacingXs,
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.fitness_center,
+                      size: FFTokens.iconSm,
+                      color: theme.colorScheme.primary,
+                    ),
+                    const SizedBox(width: FFTokens.spacingSm),
+                    Expanded(
+                      child: Text(
+                        '${context.tr('workout.today')}: ${workout.name}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right, size: 18),
+                  ],
+                ),
+              ),
+            ),
+          ],
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(

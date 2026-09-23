@@ -12,6 +12,7 @@ import '../../shared/widgets/profile_form_page.dart';
 import '../../shared/widgets/shop_browse_page.dart';
 import '../../shared/widgets/trainer_form_page.dart';
 import '../language_screen.dart';
+import 'trainer_clients_tab.dart';
 import 'widgets/trainer_sheets.dart';
 
 /// Standalone trainer dashboard shown after trainer is onboarded.
@@ -448,6 +449,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
             index: _tabIndex,
             children: [
               _dashboardTab(),
+              const TrainerClientsTab(),
               _sessionsTab(),
               _gymsTab(),
               _profileTab(),
@@ -463,6 +465,12 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
               icon: const Icon(Icons.home_outlined),
               selectedIcon: const Icon(Icons.home),
               label: context.tr('member.home'),
+            ),
+            NavigationDestination(
+              key: const Key('trainer-nav-clients'),
+              icon: const Icon(Icons.groups_outlined),
+              selectedIcon: const Icon(Icons.groups),
+              label: context.tr('clients.title'),
             ),
             NavigationDestination(
               key: const Key('trainer-nav-sessions'),

@@ -507,6 +507,12 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
           onTap: _openGoalsDialog,
         ),
         FFActionTile(
+          key: const Key('profile-trainer-sharing'),
+          icon: Icons.handshake_outlined,
+          title: context.tr('connect.pageTitle'),
+          onTap: () => context.go(AppRoutes.memberTrainerConnections),
+        ),
+        FFActionTile(
           icon: Icons.schedule_outlined,
           title: context.tr('member.workoutPreferences'),
           onTap: _openWorkoutPreferencesDialog,

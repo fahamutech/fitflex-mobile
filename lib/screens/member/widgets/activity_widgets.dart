@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../shared/activity/activity.dart';
 import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
 import '../../../shared/formatters.dart';
+import '../../../router.dart';
 import '../../../shared/i18n.dart';
 
 IconData activityTypeIcon(ActivityType type) => switch (type) {
@@ -63,11 +65,22 @@ class ActivityTimelineTile extends StatelessWidget {
       if (a.steps != null && a.type == ActivityType.walking)
         '${formatSteps(a.steps!)} ${context.tr('activity.steps').toLowerCase()}',
     ];
+    final workoutId = a.workoutId;
     return FFActionTile(
       icon: activityTypeIcon(a.type),
-      title: activityTypeLabel(context, a.type),
+      // A finished workout is recorded under its own name.
+      title: workoutId != null && (a.notes ?? '').isNotEmpty
+          ? a.notes!
+          : activityTypeLabel(context, a.type),
       subtitle: parts.join(' · '),
-      onTap: () {},
+      onTap: workoutId == null
+          ? () {}
+          : () => context.go(
+              AppRoutes.memberWorkout.replaceFirst(
+                ':workoutId',
+                Uri.encodeComponent(workoutId),
+              ),
+            ),
     );
   }
 }
