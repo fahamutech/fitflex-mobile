@@ -1,21 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../router.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
 import 'member_shell.dart';
-import 'widgets/gym_card.dart';
-import 'widgets/trainer_card.dart';
+import 'home_feed.dart';
+import 'widgets/challenge_widgets.dart';
+import 'widgets/goal_widgets.dart';
+import 'widgets/home_cards.dart';
 import 'widgets/pass_summary_card.dart';
-import 'widgets/checkin_list.dart';
 import 'widgets/today_activity_card.dart';
+import 'widgets/workout_widgets.dart';
 
 class MemberHomeTab extends StatefulWidget {
-  const MemberHomeTab({super.key});
+  const MemberHomeTab({super.key, this.now});
+
+  /// Injectable clock for tests.
+  final DateTime? now;
 
   @override
   State<MemberHomeTab> createState() => _MemberHomeTabState();
@@ -73,68 +76,123 @@ class _MemberHomeTabState extends State<MemberHomeTab> {
     final data = MemberDataScope.of(context);
     final me = data.me;
     final displayName = me?.user.resolvedName ?? context.tr('home.welcome');
-    final gyms = memberHomeNearGyms(
-      data.gyms,
-      userLat: _userLat,
-      userLng: _userLng,
-    );
-    final trainers = data.trainers.take(2).toList();
+    final now = widget.now ?? DateTime.now();
+    final picks = pickHomeCards(data, now, lat: _userLat, lng: _userLng);
+    bool has(HomeCardKind k) => picks.any((p) => p.kind == k);
 
     return ListView(
+      key: const Key('member-home'),
       padding: const EdgeInsets.all(FFTokens.spacingLg),
       children: [
         Text(
-          context.tr('member.goodMorning'),
+          context.tr(
+            now.hour < 12
+                ? 'member.goodMorning'
+                : now.hour < 17
+                ? 'member.goodAfternoon'
+                : 'member.goodEvening',
+          ),
           style: TextStyle(
             color: Theme.of(context).textTheme.bodySmall?.color,
             fontSize: 14,
           ),
         ),
         FFPageHeader(title: displayName),
-
-        // Pass summary
-        PassSummaryCard(data: data),
-
-        // Today's activity (fitness tracking — separate from gym visits)
-        TodayActivityCard(data: data),
-
-        // Near gyms
-        _SectionRow(
-          title: context.tr('member.nearGyms'),
-          onSeeAll: () => context.go(AppRoutes.memberGyms),
-        ),
-        ...gyms.map(
-          (g) => GymCard(
-            gym: g,
-            distanceKm: gymDisplayDistanceKm(
-              g,
-              userLat: _userLat,
-              userLng: _userLng,
-              activeFilter: 'home',
-            ),
+        for (final p in picks)
+          KeyedSubtree(
+            key: Key('home-card-${p.kind.name}'),
+            child: _card(context, data, p, now, has),
           ),
-        ),
-
-        // Featured trainers
-        _SectionRow(
-          title: context.tr('member.featuredTrainers'),
-          onSeeAll: () => context.go(AppRoutes.memberTrainers),
-        ),
-        ...trainers.map((t) => TrainerCard(trainer: t)),
-
-        // Activity
-        Padding(
-          padding: const EdgeInsets.only(top: 16, bottom: 10),
-          child: Text(
-            context.tr('member.recentVisits'),
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-          ),
-        ),
-        CheckinList(checkins: data.checkins, limit: 3),
       ],
     );
+  }
+
+  Widget _card(
+    BuildContext context,
+    MemberData data,
+    HomeCardPick p,
+    DateTime now,
+    bool Function(HomeCardKind) has,
+  ) {
+    const gap = SizedBox(height: FFTokens.spacingSm);
+    switch (p.kind) {
+      case HomeCardKind.passport:
+        return Padding(
+          padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
+          child: PassSummaryCard(data: data),
+        );
+      case HomeCardKind.todayActivity:
+        return Padding(
+          padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
+          child: TodayActivityCard(
+            data: data,
+            now: now,
+            showWorkout: !has(HomeCardKind.todayWorkout),
+            showStreak: !has(HomeCardKind.streak),
+          ),
+        );
+      case HomeCardKind.todayWorkout:
+        return Column(
+          children: [
+            gap,
+            TodayWorkoutCard(data: data, now: now),
+          ],
+        );
+      case HomeCardKind.streak:
+        return Column(
+          children: [
+            gap,
+            HomeStreakCard(pick: p),
+          ],
+        );
+      case HomeCardKind.goal:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            FFSectionTitle(context.tr('home.currentGoal')),
+            if (p.goal case final g?)
+              GoalCard(progress: g)
+            else
+              FFActionTile(
+                key: const Key('home-set-goal'),
+                icon: Icons.flag_outlined,
+                title: context.tr('home.setGoal'),
+                subtitle: context.tr('home.setGoalBody'),
+                onTap: () => showAddGoalSheet(context),
+              ),
+          ],
+        );
+      case HomeCardKind.challenge:
+        final s = p.standing;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            FFSectionTitle(
+              context.tr(
+                s != null ? 'home.activeChallenge' : 'home.tryChallenge',
+              ),
+            ),
+            ChallengeCard(
+              challenge: s?.challenge ?? p.invite!,
+              progress: s?.progress,
+              now: now,
+            ),
+          ],
+        );
+      case HomeCardKind.recommendation:
+        final g = p.gym;
+        return HomeRecommendation(
+          pick: p,
+          distanceKm: g == null
+              ? null
+              : gymDisplayDistanceKm(
+                  g,
+                  userLat: _userLat,
+                  userLng: _userLng,
+                  activeFilter: 'home',
+                ),
+        );
+    }
   }
 }
 
@@ -153,34 +211,4 @@ List<Gym> memberHomeNearGyms(
     ).compareTo(gymDistanceKm(b, userLat, userLng)),
   );
   return sorted.take(2).toList();
-}
-
-class _SectionRow extends StatelessWidget {
-  const _SectionRow({required this.title, required this.onSeeAll});
-
-  final String title;
-  final VoidCallback onSeeAll;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 18, bottom: 10),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              title,
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-            ),
-          ),
-          TextButton(
-            onPressed: onSeeAll,
-            child: Text(context.tr('home.seeAll')),
-          ),
-        ],
-      ),
-    );
-  }
 }

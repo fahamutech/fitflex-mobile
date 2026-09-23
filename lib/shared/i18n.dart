@@ -265,6 +265,8 @@ class FFLocale extends ChangeNotifier {
       'trainer.editProfile': 'Edit profile',
       'home.welcome': 'Welcome',
       'member.goodMorning': 'Good morning',
+      'member.goodAfternoon': 'Good afternoon',
+      'member.goodEvening': 'Good evening',
       'member.joinTitle': 'Join FitFlex',
       'member.joinBody':
           'Access partner gyms, passes and trainers across Dar es Salaam.',
@@ -1116,6 +1118,27 @@ class FFLocale extends ChangeNotifier {
       'home.paidGyms': 'Paid visit gyms',
       'home.signout': 'Sign out',
       'home.seeAll': 'See all',
+      'home.currentGoal': 'Current goal',
+      'home.setGoal': 'Set a goal',
+      'home.setGoalBody':
+          'Pick something to aim for, like steps or workouts this week.',
+      'home.activeChallenge': 'Active challenge',
+      'home.tryChallenge': 'Try a challenge',
+      'home.recommended': 'Recommended for you',
+      'home.why.gymUsePass':
+          "You haven't checked in anywhere yet. This gym is a good place to start.",
+      'home.why.gymExplore': 'A gym you can visit with a FitFlex pass.',
+      'home.why.gymTryNew':
+          'Your pass works at other gyms too. Try somewhere new.',
+      'home.why.trainerRegular':
+          "You've been training regularly. A coach can help plan what's next.",
+      'home.streak.title': '{n}-day streak',
+      'home.streak.endedTitle': 'Your {n}-day streak ended',
+      'home.streak.atRisk':
+          'Nothing counted yet today. Any activity keeps it going.',
+      'home.streak.milestone': "That's a milestone. Keep it rolling.",
+      'home.streak.best': 'Your longest streak yet.',
+      'home.streak.ended': 'Be active today to start a new one.',
       'home.passesLoadError':
           'Could not load plans. Please check your connection.',
       'home.retry': 'Retry',
@@ -1835,6 +1858,8 @@ class FFLocale extends ChangeNotifier {
       'trainer.editProfile': 'Hariri wasifu',
       'home.welcome': 'Karibu',
       'member.goodMorning': 'Habari ya asubuhi',
+      'member.goodAfternoon': 'Habari ya mchana',
+      'member.goodEvening': 'Habari ya jioni',
       'member.joinTitle': 'Jiunge na FitFlex',
       'member.joinBody': 'Fikia gym, pasi na makocha washirika Dar es Salaam.',
       'member.setupTitle': 'MPANGILIO WA MWANACHAMA',
@@ -2699,6 +2724,26 @@ class FFLocale extends ChangeNotifier {
       'home.back': 'Rudi',
       'home.signout': 'Toka',
       'home.seeAll': 'Tazama zote',
+      'home.currentGoal': 'Lengo la sasa',
+      'home.setGoal': 'Weka lengo',
+      'home.setGoalBody': 'Chagua cha kulenga, kama hatua au mazoezi wiki hii.',
+      'home.activeChallenge': 'Changamoto inayoendelea',
+      'home.tryChallenge': 'Jaribu changamoto',
+      'home.recommended': 'Tunakupendekezea',
+      'home.why.gymUsePass':
+          'Bado hujaingia jimu yoyote. Jimu hii ni mahali pazuri pa kuanzia.',
+      'home.why.gymExplore': 'Jimu unayoweza kutembelea kwa pasi ya FitFlex.',
+      'home.why.gymTryNew':
+          'Pasi yako inafanya kazi kwenye jimu nyingine pia. Jaribu mahali papya.',
+      'home.why.trainerRegular':
+          'Umekuwa ukifanya mazoezi mara kwa mara. Kocha anaweza kukusaidia kupanga hatua inayofuata.',
+      'home.streak.title': 'Mfululizo wa siku {n}',
+      'home.streak.endedTitle': 'Mfululizo wako wa siku {n} umeisha',
+      'home.streak.atRisk':
+          'Bado hakuna kilichohesabiwa leo. Shughuli yoyote itaendeleza mfululizo.',
+      'home.streak.milestone': 'Hiyo ni hatua muhimu. Endelea hivyo.',
+      'home.streak.best': 'Mfululizo wako mrefu zaidi hadi sasa.',
+      'home.streak.ended': 'Kuwa na shughuli leo ili kuanza mpya.',
       'home.passesLoadError':
           'Imeshindwa kupakia mipango. Tafadhali angalia muunganiko wako.',
       'home.retry': 'Jaribu tena',
