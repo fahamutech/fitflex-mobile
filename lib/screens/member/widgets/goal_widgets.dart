@@ -18,21 +18,37 @@ String _amount(GoalType type, num value) => switch (type) {
   _ => '${value.round()}',
 };
 
-/// e.g. "8,000 steps a day", "3 workouts a week", "100 km by 31 Oct".
+/// e.g. "8,000 steps a day", "3 workouts a week", "100 km by 31 Oct",
+/// "4 workouts, 21–27 Sep". Coaching and challenge goals use their title.
 String goalTitle(BuildContext context, Goal g) {
+  final title = g.title?.trim();
+  if (title != null &&
+      title.isNotEmpty &&
+      (g.isCoaching || g.challengeId != null)) {
+    return title;
+  }
   final what = context
       .tr('goal.type.${g.type.wire}')
       .replaceAll('{n}', _amount(g.type, g.target));
-  final when = g.period == GoalPeriod.custom
-      ? context
-            .tr('goal.period.custom')
-            .replaceAll(
-              '{date}',
-              DateFormat('d MMM').format(g.endDate ?? g.startDate),
-            )
-      : context.tr('goal.period.${g.period.wire}');
-  return '$what $when';
+  if (g.period == GoalPeriod.custom) {
+    final end = g.endDate ?? g.startDate;
+    // A short dated goal (a trainer's "this week") reads as its range.
+    if (end.difference(g.startDate).inDays <= 13) {
+      return context
+          .tr('goal.range')
+          .replaceAll('{what}', what)
+          .replaceAll('{range}', goalRange(g.startDate, end));
+    }
+    return '$what ${context.tr('goal.period.custom').replaceAll('{date}', DateFormat('d MMM').format(end))}';
+  }
+  return '$what ${context.tr('goal.period.${g.period.wire}')}';
 }
+
+/// "21–27 Sep", or "28 Sep – 4 Oct" across months.
+String goalRange(DateTime start, DateTime end) =>
+    start.month == end.month && start.year == end.year
+    ? '${start.day}–${DateFormat('d MMM').format(end)}'
+    : '${DateFormat('d MMM').format(start)} – ${DateFormat('d MMM').format(end)}';
 
 /// Current goals with progress, plus "Add goal".
 class GoalsBlock extends StatelessWidget {
@@ -68,12 +84,55 @@ class GoalsBlock extends StatelessWidget {
             title: context.tr('progress.noGoals'),
             body: context.tr('progress.noGoalsBody'),
           )
-        else
-          for (final g in goals)
+        else ...[
+          if (goals.any((g) => g.isFromTrainer)) ...[
+            _GoalGroupLabel(context.tr('goal.group.trainer')),
+            for (final g in goals.where((g) => g.isFromTrainer))
+              GoalCard(progress: evaluateGoal(g, data.activities, now)),
+            if (goals.any((g) => !g.isFromTrainer))
+              _GoalGroupLabel(context.tr('goal.group.yours')),
+          ],
+          for (final g in goals.where((g) => !g.isFromTrainer))
             GoalCard(progress: evaluateGoal(g, data.activities, now)),
+        ],
       ],
     );
   }
+}
+
+/// Marks a coaching goal done (or undoes it) and updates the member's goals
+/// with the saved result, so the card moves at once.
+Future<void> _mark(BuildContext context, Goal g, {bool undo = false}) async {
+  final repo = AppScope.of(context).goals;
+  final data = MemberDataScope.of(context);
+  final messenger = ScaffoldMessenger.of(context);
+  final failed = context.tr('goal.saveFailed');
+  try {
+    final saved = await repo.checkIn(g.id, undo: undo);
+    data.update(
+      (d) => d.goals = [for (final x in d.goals) x.id == saved.id ? saved : x],
+    );
+  } catch (_) {
+    messenger.showSnackBar(SnackBar(content: Text(failed)));
+  }
+}
+
+class _GoalGroupLabel extends StatelessWidget {
+  const _GoalGroupLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(
+      top: FFTokens.spacingXs,
+      bottom: FFTokens.spacingSm,
+    ),
+    child: Text(
+      text.toUpperCase(),
+      style: FFTokens.monoLabel(Theme.of(context).colorScheme.onSurfaceVariant),
+    ),
+  );
 }
 
 class GoalCard extends StatelessWidget {
@@ -98,11 +157,23 @@ class GoalCard extends StatelessWidget {
         : p.ended
         ? context.tr('goal.ended')
         : null;
-    final origin = switch (g.source) {
-      GoalSource.trainer => context.tr('goal.fromTrainer'),
-      GoalSource.challenge => context.tr('goal.fromChallenge'),
-      _ => null,
-    };
+    // Trainer goals say who set them, so they don't read as a target that
+    // appeared from nowhere.
+    final origin = g.isFromTrainer
+        ? (g.createdByName == null
+              ? context.tr('goal.fromTrainer')
+              : context
+                    .tr('goal.assignedBy')
+                    .replaceAll('{name}', g.createdByName!))
+        : g.source == GoalSource.challenge
+        ? context.tr('goal.fromChallenge')
+        : null;
+    final canMark =
+        g.isCoaching &&
+        g.status == GoalStatus.active &&
+        !p.completed &&
+        !p.upcoming &&
+        !p.ended;
 
     return FFCard(
       key: Key('goal-${g.id}'),
@@ -118,6 +189,26 @@ class GoalCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (g.isFromTrainer)
+                        Padding(
+                          padding: const EdgeInsets.only(
+                            bottom: FFTokens.spacing2xs,
+                          ),
+                          child: Text(
+                            context
+                                .tr(
+                                  g.isCoaching
+                                      ? 'goal.label.coaching'
+                                      : 'goal.label.trainer',
+                                )
+                                .toUpperCase(),
+                            key: Key('goal-trainer-label-${g.id}'),
+                            style: FFTokens.monoLabel(
+                              theme.colorScheme.primary,
+                              size: 10,
+                            ),
+                          ),
+                        ),
                       Text(
                         goalTitle(context, g),
                         style: theme.textTheme.titleSmall?.copyWith(
@@ -125,7 +216,11 @@ class GoalCard extends StatelessWidget {
                         ),
                       ),
                       if (origin != null)
-                        Text(origin, style: theme.textTheme.bodySmall),
+                        Text(
+                          origin,
+                          key: Key('goal-origin-${g.id}'),
+                          style: theme.textTheme.bodySmall,
+                        ),
                     ],
                   ),
                 ),
@@ -154,6 +249,28 @@ class GoalCard extends StatelessWidget {
               ' · ${(p.fraction * 100).round()}%',
               style: theme.textTheme.bodySmall,
             ),
+            if (g.isCoaching && g.status == GoalStatus.active)
+              Padding(
+                padding: const EdgeInsets.only(top: FFTokens.spacingSm),
+                child: Row(
+                  children: [
+                    FilledButton.tonalIcon(
+                      key: Key('goal-mark-${g.id}'),
+                      onPressed: canMark ? () => _mark(context, g) : null,
+                      icon: const Icon(Icons.check, size: 18),
+                      label: Text(context.tr('goal.markDone')),
+                    ),
+                    if (p.current > 0) ...[
+                      const SizedBox(width: FFTokens.spacingSm),
+                      TextButton(
+                        key: Key('goal-undo-${g.id}'),
+                        onPressed: () => _mark(context, g, undo: true),
+                        child: Text(context.tr('goal.undoDone')),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
           ],
         ),
       ),

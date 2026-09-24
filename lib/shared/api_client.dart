@@ -325,6 +325,37 @@ class ApiClient {
   Future<Map<String, dynamic>> createGoal(Map<String, dynamic> data) async =>
       await _request('POST', '/me/goals', body: data);
 
+  /// Marks a coaching goal done now, or undoes the latest mark.
+  Future<Map<String, dynamic>> goalCheckIn(
+    String id, {
+    bool undo = false,
+  }) async => await _request(
+    'POST',
+    '/me/goals/${Uri.encodeComponent(id)}/check-in${undo ? '/undo' : ''}',
+  );
+
+  /// Trainer: set a goal for a client (see fitflex-functions
+  /// POST /trainer/clients/:id/goals).
+  Future<Map<String, dynamic>> trainerAssignGoal(
+    String relationshipId,
+    Map<String, dynamic> body,
+  ) async => await _request(
+    'POST',
+    '/trainer/clients/${Uri.encodeComponent(relationshipId)}/goals',
+    body: body,
+  );
+
+  /// Trainer: retarget, retitle or archive a goal they set.
+  Future<Map<String, dynamic>> trainerUpdateGoal(
+    String relationshipId,
+    String goalId,
+    Map<String, dynamic> body,
+  ) async => await _request(
+    'PATCH',
+    '/trainer/clients/${Uri.encodeComponent(relationshipId)}/goals/${Uri.encodeComponent(goalId)}',
+    body: body,
+  );
+
   Future<Map<String, dynamic>> updateGoal(
     String id,
     Map<String, dynamic> data,

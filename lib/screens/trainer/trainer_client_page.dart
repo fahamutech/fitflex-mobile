@@ -15,6 +15,7 @@ import '../member/widgets/trainer_sharing.dart' show permissionLabel;
 import '../member/widgets/workout_widgets.dart' show exerciseTarget;
 import '../../shared/widgets/challenge_manager_page.dart';
 import 'trainer_plan_editor_page.dart';
+import 'widgets/trainer_goals.dart';
 import 'widgets/client_summary_card.dart';
 
 /// A trainer's view of one client: only what the client shares, the
@@ -233,12 +234,23 @@ class _TrainerClientPageState extends State<TrainerClientPage> {
             ),
           ),
         if (o.activity != null) _ActivityCard(days: o.activity!, perms: perms),
+        if (o.client.status == TrainerConnectionStatus.active)
+          TrainerGoalsSection(
+            clientName: _name,
+            relationshipId: widget.connection.id,
+            overview: o,
+            now: widget.now ?? DateTime.now(),
+            onChanged: _load,
+          ),
         if (o.goals != null) ...[
           FFSectionTitle(context.tr('progress.currentGoals')),
           if (o.goals!.isEmpty)
             FFEmptyState(title: context.tr('progress.noGoals'))
           else
-            for (final g in o.goals!)
+            // Goals this trainer set are listed above, under "Goals you set".
+            for (final g in o.goals!.where(
+              (g) => !o.assignedGoals.any((a) => a.goal.id == g.id),
+            ))
               FFCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

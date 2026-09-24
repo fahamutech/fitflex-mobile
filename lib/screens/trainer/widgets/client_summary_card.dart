@@ -53,6 +53,7 @@ String _goalLine(BuildContext context, ClientGoal g) {
     GoalType.activeMinutes =>
       context.tr('activity.activeMinutes').toLowerCase(),
     GoalType.distanceKm => 'km',
+    GoalType.custom => context.tr('goal.times'),
   };
   final period = context.tr('goal.period.${g.period.wire}');
   return '${n(g.current)} / ${n(g.target)} $unit $period';
