@@ -569,6 +569,12 @@ class ApiClient {
     ),
   );
 
+  /// Rewards the member earned from challenges, and where each stands.
+  Future<List<dynamic>> myRewards() async {
+    final res = await _request('GET', '/me/rewards');
+    return (res as Map)['rewards'] as List? ?? const [];
+  }
+
   Future<Map<String, dynamic>> leaveChallenge(String id) async =>
       await _request('POST', '/challenges/${Uri.encodeComponent(id)}/leave');
 
