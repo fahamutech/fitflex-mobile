@@ -12,6 +12,7 @@ import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import 'member_shell.dart';
 import 'widgets/challenge_leaderboard.dart';
+import 'widgets/challenge_rewards.dart';
 import 'widgets/challenge_widgets.dart';
 
 /// One challenge: what it is, who runs it, how far along you are, rewards,
@@ -186,17 +187,11 @@ class _MemberChallengePageState extends State<MemberChallengePage> {
             ],
           ),
         ),
-        if (c.rewards.isNotEmpty) ...[
+        if (c.joined)
+          ChallengeEarnedRewards(key: ValueKey('earned-${c.id}'), challenge: c),
+        if (c.rewardItems.isNotEmpty) ...[
           FFSectionTitle(context.tr('challenge.rewards')),
-          FFCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (final r in c.rewards)
-                  _Line(Icons.emoji_events_outlined, r),
-              ],
-            ),
-          ),
+          ChallengeRewardsOffered(challenge: c),
         ],
         if (c.joined && c.phase != ChallengePhase.cancelled)
           ChallengeLeaderboardSection(

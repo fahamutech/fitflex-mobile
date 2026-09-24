@@ -6,6 +6,9 @@ library;
 
 import 'activity.dart';
 import 'activity_summary.dart';
+import 'challenge_reward.dart';
+
+export 'challenge_reward.dart';
 
 enum ChallengeType {
   steps('steps'),
@@ -107,6 +110,10 @@ class Challenge {
   final String? creatorName;
   final List<String> rewards;
 
+  /// The rewards in full: type, value and who earns them. Older servers
+  /// send labels only, which read as rewards for everyone who finishes.
+  final List<ChallengeRewardItem> rewardItems;
+
   /// `public` or `audience` (the creator's clients, members or staff).
   final String visibility;
   final ChallengePhase phase;
@@ -131,6 +138,7 @@ class Challenge {
     this.creatorId,
     this.creatorName,
     this.rewards = const [],
+    this.rewardItems = const [],
     this.visibility = 'audience',
     this.phase = ChallengePhase.active,
     this.participantCount = 0,
@@ -160,6 +168,7 @@ class Challenge {
     creatorId: creatorId,
     creatorName: creatorName,
     rewards: rewards,
+    rewardItems: rewardItems,
     visibility: visibility,
     phase: phase,
     participantCount: participantCount ?? this.participantCount,
@@ -184,6 +193,13 @@ class Challenge {
     final end = _date(json['endDate']);
     if (type == null || start == null || end == null) return null;
     final creator = json['creator'] is Map ? json['creator'] as Map : const {};
+    final labels = [
+      for (final r in (json['rewards'] as List? ?? const [])) r.toString(),
+    ];
+    final items = [
+      for (final r in (json['rewardItems'] as List? ?? const []))
+        ?ChallengeRewardItem.tryParse(r),
+    ];
     return Challenge(
       id: json['id'] as String? ?? '',
       name: json['name'] as String? ?? '',
@@ -195,9 +211,10 @@ class Challenge {
       creatorType: ChallengeCreator.fromWire(json['creatorType'] as String?),
       creatorId: json['creatorId'] as String?,
       creatorName: creator['name'] as String?,
-      rewards: [
-        for (final r in (json['rewards'] as List? ?? const [])) r.toString(),
-      ],
+      rewards: labels,
+      rewardItems: json['rewardItems'] is List
+          ? items
+          : [for (final l in labels) ChallengeRewardItem(id: l, label: l)],
       visibility: json['visibility'] as String? ?? 'audience',
       phase: ChallengePhase.fromWire(json['phase'] as String?),
       participantCount: (json['participantCount'] as num?)?.toInt() ?? 0,
