@@ -12,8 +12,10 @@ import '../../shared/activity/goal.dart';
 import '../../shared/activity/gym_sharing.dart';
 import '../../shared/activity/trainer_connection.dart';
 import '../../shared/activity/workout.dart';
+import '../../shared/api_error_message.dart';
 import '../../shared/auth_state.dart';
 import '../../shared/components/theme_toggle_button.dart';
+import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
 import '../../shared/root_back_navigation.dart';
@@ -80,6 +82,10 @@ class MemberData extends ChangeNotifier {
   String? qrToken;
   String selectedTier = 'pro';
   bool loading = false;
+
+  /// The last refresh couldn't reach FitFlex. Screens keep showing what was
+  /// loaded before; the shell says so.
+  bool offline = false;
 
   bool get hasActivePass => me?.hasActivePass == true;
   bool get needsOnboarding => me?.needsOnboarding == true;
@@ -202,12 +208,15 @@ class MemberShellState extends State<MemberShell> {
     try {
       final res = await AppScope.of(context).api.me();
       _data.update(
-        (d) => d.me = MemberMeResponse.fromJson(
-          Map<String, dynamic>.from(res as Map),
-        ),
+        (d) => d
+          ..me = MemberMeResponse.fromJson(
+            Map<String, dynamic>.from(res as Map),
+          )
+          ..offline = false,
       );
-    } catch (_) {
-      // ignore
+    } catch (error) {
+      // The profile call is the connectivity check for the whole shell.
+      if (isNetworkError(error)) _data.update((d) => d.offline = true);
     }
   }
 
@@ -476,7 +485,22 @@ class MemberShellState extends State<MemberShell> {
             title: Text(context.tr('app.title')),
             actions: const [ThemeToggleButton()],
           ),
-          body: RefreshIndicator(onRefresh: _refreshAll, child: widget.child),
+          body: Column(
+            children: [
+              ListenableBuilder(
+                listenable: _data,
+                builder: (context, _) => _data.offline
+                    ? _OfflineBanner(onRetry: _refreshAll)
+                    : const SizedBox.shrink(),
+              ),
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: _refreshAll,
+                  child: widget.child,
+                ),
+              ),
+            ],
+          ),
           bottomNavigationBar: NavigationBar(
             selectedIndex: _tabIndex,
             onDestinationSelected: _onTab,
@@ -511,6 +535,53 @@ class MemberShellState extends State<MemberShell> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Slim notice under the app bar while FitFlex can't be reached.
+class _OfflineBanner extends StatelessWidget {
+  const _OfflineBanner({required this.onRetry});
+
+  final Future<void> Function() onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Material(
+      key: const Key('member-offline-banner'),
+      color: FFTokens.warning500.withValues(alpha: 0.14),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          FFTokens.spacingMd,
+          FFTokens.spacingXs,
+          FFTokens.spacingXs,
+          FFTokens.spacingXs,
+        ),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.cloud_off_outlined,
+              size: FFTokens.iconSm,
+              color: FFTokens.warning500,
+            ),
+            const SizedBox(width: FFTokens.spacingSm),
+            Expanded(
+              child: Text(
+                context.tr('offline.banner'),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+            ),
+            TextButton(
+              key: const Key('member-offline-retry'),
+              onPressed: onRetry,
+              child: Text(context.tr('home.retry')),
+            ),
+          ],
         ),
       ),
     );

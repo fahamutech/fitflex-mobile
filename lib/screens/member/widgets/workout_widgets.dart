@@ -92,10 +92,7 @@ class TodayWorkoutCard extends StatelessWidget {
         children: [
           Text(
             context.tr('workout.today').toUpperCase(),
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              letterSpacing: 0.6,
-            ),
+            style: FFTokens.monoLabel(theme.colorScheme.onSurfaceVariant),
           ),
           const SizedBox(height: FFTokens.spacingXs),
           Text(

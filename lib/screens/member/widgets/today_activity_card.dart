@@ -34,6 +34,13 @@ class TodayActivityCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!data.activityLoaded) return const SizedBox.shrink();
+    // Nothing recorded yet: a way in beats a card of zeros.
+    if (data.activities.isEmpty && !data.activityIsSample) {
+      return const Padding(
+        padding: EdgeInsets.only(top: FFTokens.spacingMd),
+        child: ActivityGetStartedCard(),
+      );
+    }
     final theme = Theme.of(context);
     final today = now ?? DateTime.now();
     final summary = summarizeDay(data.activities, today);
@@ -58,10 +65,7 @@ class TodayActivityCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   context.tr('activity.today').toUpperCase(),
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                    letterSpacing: 0.6,
-                  ),
+                  style: FFTokens.monoLabel(theme.colorScheme.onSurfaceVariant),
                 ),
               ),
               if (data.activityIsSample) const ActivitySampleBadge(),
@@ -88,6 +92,7 @@ class TodayActivityCard extends StatelessWidget {
           ),
           const SizedBox(height: FFTokens.spacingSm),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _MiniStat(
                 value: '${summary.activeMinutes}',
@@ -189,9 +194,10 @@ class _MiniStat extends StatelessWidget {
               ),
             ],
           ),
+          // Two lines so longer Swahili labels aren't cut off.
           Text(
             label,
-            maxLines: 1,
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: theme.textTheme.bodySmall,
           ),

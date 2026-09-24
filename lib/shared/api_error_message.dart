@@ -9,14 +9,18 @@ import 'i18n.dart';
 /// `e.toString()`, which shows raw text like "ApiException(400, {...})".
 String errorMessage(FFLocale locale, Object error) {
   if (error is ApiException) return apiErrorMessage(locale, error);
-  if (error is TimeoutException || error is http.ClientException) {
-    return locale.t('error.network');
-  }
-  final text = error.toString();
-  if (text.contains('SocketException') || text.contains('Failed host lookup')) {
-    return locale.t('error.network');
-  }
+  if (isNetworkError(error)) return locale.t('error.network');
   return locale.t('error.requestFailed');
+}
+
+/// The request never reached the server (offline, DNS, timeout), as
+/// opposed to the server answering with an error.
+bool isNetworkError(Object error) {
+  if (error is ApiException) return false;
+  if (error is TimeoutException || error is http.ClientException) return true;
+  final text = error.toString();
+  return text.contains('SocketException') ||
+      text.contains('Failed host lookup');
 }
 
 /// Converts API failures into user-facing copy. Backend validation/decline

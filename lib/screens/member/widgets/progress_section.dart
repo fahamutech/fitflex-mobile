@@ -21,6 +21,14 @@ List<Widget> buildProgressSection(
   DateTime now,
 ) {
   final acts = data.activities;
+  // Nothing recorded yet: goals, then one way in, not eight blocks of zeros.
+  if (acts.isEmpty && !data.activityIsSample) {
+    return [
+      GoalsBlock(data: data, now: now),
+      const SizedBox(height: FFTokens.spacingMd),
+      const ActivityGetStartedCard(),
+    ];
+  }
   return [
     GoalsBlock(data: data, now: now),
     _WeeklyBlock(activities: acts, now: now),
@@ -407,8 +415,13 @@ class _DayCell extends StatelessWidget {
                 : qualifies
                 ? cs.primary
                 : cs.surfaceContainerHighest,
+            // Days still to come are faint, so the grid reads "up to today".
             border: Border.all(
-              color: qualifies ? cs.primary : cs.outlineVariant,
+              color: qualifies
+                  ? cs.primary
+                  : future
+                  ? cs.outlineVariant.withValues(alpha: 0.35)
+                  : cs.outlineVariant,
             ),
             borderRadius: BorderRadius.circular(FFTokens.radiusSm),
           ),

@@ -112,6 +112,33 @@ flutter:
     - assets/brand/fitflex-logo.png
     - assets/brand/fitflex-icon.png
 
+  # FitFlex Africa design system type: Inter (UI + display) and JetBrains
+  # Mono (uppercase data labels). Bundled so they work offline. SIL OFL,
+  # licences in assets/fonts/.
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-400.ttf
+          weight: 400
+        - asset: assets/fonts/Inter-500.ttf
+          weight: 500
+        - asset: assets/fonts/Inter-600.ttf
+          weight: 600
+        - asset: assets/fonts/Inter-700.ttf
+          weight: 700
+        - asset: assets/fonts/Inter-800.ttf
+          weight: 800
+        - asset: assets/fonts/Inter-900.ttf
+          weight: 900
+    - family: JetBrains Mono
+      fonts:
+        - asset: assets/fonts/JetBrainsMono-400.ttf
+          weight: 400
+        - asset: assets/fonts/JetBrainsMono-500.ttf
+          weight: 500
+        - asset: assets/fonts/JetBrainsMono-700.ttf
+          weight: 700
+
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg

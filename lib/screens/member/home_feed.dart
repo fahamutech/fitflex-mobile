@@ -114,10 +114,11 @@ List<HomeCardPick> pickHomeCards(
     ?_challenge(d, now),
     ?_goal(d, now),
     if (d.activityLoaded)
-      const HomeCardPick(
+      HomeCardPick(
         HomeCardKind.todayActivity,
         HomeReason.todayActivity,
-        60,
+        // With no history it's a "get started" card: useful, not urgent.
+        d.activities.isEmpty && !d.activityIsSample ? 35 : 60,
       ),
     ?_recommendation(d, now, lat: lat, lng: lng),
   ].where((p) => p.score >= minScore).toList();

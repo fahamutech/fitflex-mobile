@@ -15,6 +15,17 @@ class PassSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Until the profile arrives we don't know the pass, so don't flash
+    // "Choose a pass" at a member who already has one.
+    if (data.me == null && !data.offline) {
+      return const FFCard(
+        key: Key('pass-summary-loading'),
+        child: SizedBox(
+          height: 120,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
     final sub = data.subscription;
     final pending = data.pendingPayment;
     final visitsUsed = data.me?.visitsUsed ?? 0;
@@ -35,17 +46,18 @@ class PassSummaryCard extends StatelessWidget {
         : context.tr('pass.${sub.tier}');
     final status = pending != null
         ? context.tr('pass.pending')
-        : sub?.status ?? context.tr('home.subscribe');
+        : sub == null
+        ? context.tr('home.subscribe')
+        : _statusLabel(context, sub.status);
 
     return FFCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            context.tr('member.yourPass'),
-            style: TextStyle(
-              color: Theme.of(context).textTheme.bodySmall?.color,
-              fontSize: 12,
+            context.tr('member.yourPass').toUpperCase(),
+            style: FFTokens.monoLabel(
+              Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
           const SizedBox(height: 4),
@@ -95,7 +107,6 @@ class PassSummaryCard extends StatelessWidget {
                 LinearProgressIndicator(
                   value: directProgress,
                   color: Theme.of(context).colorScheme.primary,
-                  backgroundColor: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(FFTokens.radiusFull),
                 ),
               ],
@@ -130,7 +141,6 @@ class PassSummaryCard extends StatelessWidget {
               LinearProgressIndicator(
                 value: visitProgress,
                 color: Theme.of(context).colorScheme.primary,
-                backgroundColor: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(FFTokens.radiusFull),
               ),
             ],
@@ -153,10 +163,15 @@ class PassSummaryCard extends StatelessWidget {
                       context.go(AppRoutes.memberPasses);
                     }
                   },
-                  child: Text(
-                    data.hasActivePass
-                        ? context.tr('member.showQr')
-                        : context.tr('member.subscribe'),
+                  // One line in every language: shrink rather than wrap.
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      data.hasActivePass
+                          ? context.tr('member.showQr')
+                          : context.tr('member.subscribe'),
+                      maxLines: 1,
+                    ),
                   ),
                 ),
               ),
@@ -172,7 +187,10 @@ class PassSummaryCard extends StatelessWidget {
                     if (!context.mounted) return;
                     context.go(AppRoutes.memberPasses);
                   },
-                  child: Text(context.tr('member.upgradePlan')),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(context.tr('member.upgradePlan'), maxLines: 1),
+                  ),
                 ),
               ),
             ],
@@ -180,6 +198,13 @@ class PassSummaryCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  /// Translated status, falling back to the raw value for new ones.
+  static String _statusLabel(BuildContext context, String status) {
+    final key = 'member.status_$status';
+    final label = context.tr(key);
+    return label == key ? status : label;
   }
 
   static int? _durationDays(Subscription? sub) {

@@ -131,9 +131,15 @@ HomeReason? _reason(List<HomeCardPick> p, HomeCardKind k) =>
 
 void main() {
   test('a quiet day gives a short Home', () {
-    final p = pickHomeCards(_base(), _morning);
+    final p = pickHomeCards(_base()..activities = _runs([20]), _morning);
     expect(_kinds(p), ['todayActivity', 'passport', 'recommendation']);
+    expect(
+      _kinds(pickHomeCards(_base(), _morning)).take(2),
+      ['passport', 'todayActivity'],
+      reason: 'with no history, today\'s card is a get-started card',
+    );
     final direct = _base()
+      ..activities = _runs([20])
       ..me = MemberMeResponse.fromJson({
         'user': {'id': 'u1', 'onboardingCompleted': true},
         'subscription': {

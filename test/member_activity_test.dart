@@ -240,4 +240,19 @@ void main() {
     expect(find.text('No activity logged yet.'), findsOneWidget);
     expect(find.text('Start a streak today.'), findsOneWidget);
   });
+
+  testWidgets('no activity yet: a get-started card, not a card of zeros', (
+    tester,
+  ) async {
+    final data = MemberData()..activityLoaded = true;
+    await tester.pumpWidget(_wrap(TodayActivityCard(data: data), data));
+    expect(find.byKey(const Key('activity-get-started')), findsOneWidget);
+    expect(find.byKey(const Key('activity-get-started-plan')), findsOneWidget);
+    expect(find.byKey(const Key('today-activity-steps')), findsNothing);
+
+    // Sample mode always has history to show.
+    data.activityIsSample = true;
+    await tester.pumpWidget(_wrap(TodayActivityCard(data: data), data));
+    expect(find.byKey(const Key('activity-get-started')), findsNothing);
+  });
 }

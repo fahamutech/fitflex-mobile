@@ -403,7 +403,6 @@ class _Row extends StatelessWidget {
                   child: LinearProgressIndicator(
                     value: fraction.clamp(0.0, 1.0),
                     minHeight: 6,
-                    backgroundColor: theme.colorScheme.surfaceContainerHighest,
                   ),
                 ),
               ],
