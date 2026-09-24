@@ -9,6 +9,7 @@ import 'screens/auth_screen.dart';
 import 'screens/sign_up_screen.dart';
 import 'screens/email_auth_screen.dart';
 import 'screens/member/member_shell.dart';
+import 'shared/activity/activity.dart';
 import 'screens/member/member_shop_tab.dart';
 import 'screens/member/member_onboarding_page.dart';
 import 'screens/member/member_privacy_page.dart';
@@ -63,6 +64,7 @@ abstract class AppRoutes {
   static const memberOnboarding = '/member/onboarding';
   static const memberHome = '/member';
   static const memberActivity = '/member/activity';
+  static const memberActivityLog = '/member/activity/log';
   static const memberProgress = '/member/activity/progress';
   static const memberWorkout = '/member/activity/workouts/:workoutId';
   static const memberChallenge = '/member/activity/challenges/:challengeId';
@@ -422,6 +424,15 @@ GoRouter buildRouter(AuthState auth) {
                 name: 'memberProgress',
                 builder: (context, state) =>
                     const MemberActivityTab(initialSection: 'progress'),
+              ),
+              GoRoute(
+                path: 'log',
+                name: 'memberActivityLog',
+                builder: (context, state) => MemberLogActivityPage(
+                  initialType: ActivityType.values
+                      .where((t) => t.wire == state.uri.queryParameters['type'])
+                      .firstOrNull,
+                ),
               ),
               GoRoute(
                 path: 'challenges/:challengeId',

@@ -5,6 +5,7 @@ import '../api_client.dart';
 import 'activity_provider.dart';
 import 'api_activity_provider.dart';
 import 'goal_repository.dart';
+import 'manual_activity_log.dart';
 import 'mock/mock_activity_provider.dart';
 import 'sample_activity_log.dart';
 import 'workout_repository.dart';
@@ -35,10 +36,14 @@ class ActivityBackend {
   final GoalRepository goals;
   final WorkoutRepository workouts;
 
+  /// Where hand-logged activity is saved.
+  final ManualActivityLog manualLog;
+
   const ActivityBackend({
     required this.activity,
     required this.goals,
     required this.workouts,
+    required this.manualLog,
   });
 
   factory ActivityBackend.sample() {
@@ -47,6 +52,7 @@ class ActivityBackend {
       activity: MockActivityProvider(days: activityHistoryDays, log: log),
       goals: LocalGoalRepository(),
       workouts: LocalWorkoutRepository(log: log),
+      manualLog: LocalManualActivityLog(sampleLog: log),
     );
   }
 
@@ -54,6 +60,7 @@ class ActivityBackend {
     activity: ApiActivityProvider(api),
     goals: ApiGoalRepository(api),
     workouts: ApiWorkoutRepository(api),
+    manualLog: ApiManualActivityLog(api),
   );
 
   factory ActivityBackend.create(ApiClient api, {required bool sample}) =>

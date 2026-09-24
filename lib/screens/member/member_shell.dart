@@ -24,6 +24,7 @@ export 'member_home_tab.dart';
 export 'member_activity_tab.dart';
 export 'member_workout_page.dart';
 export 'member_challenge_page.dart';
+export 'member_log_activity_page.dart';
 export 'member_gyms_tab.dart';
 export 'member_gym_detail_page.dart';
 export 'member_trainers_tab.dart';

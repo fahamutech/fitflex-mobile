@@ -6,6 +6,7 @@ import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
 import '../../../shared/i18n.dart';
 import '../home_feed.dart';
+import '../member_log_activity_page.dart' show openLogActivity;
 import 'gym_card.dart';
 import 'trainer_card.dart';
 
@@ -64,7 +65,13 @@ class HomeStreakCard extends StatelessWidget {
           IconButton(
             key: const Key('home-streak-open'),
             tooltip: context.tr('activity.view'),
-            onPressed: () => context.go(AppRoutes.memberActivity),
+            // At risk or just ended: straight to logging, which is what
+            // keeps (or restarts) it.
+            onPressed: () =>
+                pick.reason == HomeReason.streakAtRisk ||
+                    pick.reason == HomeReason.streakEnded
+                ? openLogActivity(context)
+                : context.go(AppRoutes.memberActivity),
             icon: const Icon(Icons.chevron_right),
           ),
         ],

@@ -189,81 +189,96 @@ ThemeData buildDarkTheme() {
     // ── Text ──────────────────────────────────────────────────────────────────
     textTheme: const TextTheme(
       displayLarge: TextStyle(
+        fontFamily: FFTokens.fontSans,
         color: onSurface,
         fontSize: 57,
         fontWeight: FontWeight.w400,
       ),
       displayMedium: TextStyle(
+        fontFamily: FFTokens.fontSans,
         color: onSurface,
         fontSize: 45,
         fontWeight: FontWeight.w400,
       ),
       displaySmall: TextStyle(
+        fontFamily: FFTokens.fontSans,
         color: onSurface,
         fontSize: 36,
         fontWeight: FontWeight.w400,
       ),
       headlineLarge: TextStyle(
+        fontFamily: FFTokens.fontSans,
         color: onSurface,
         fontSize: 40,
         fontWeight: FontWeight.w800,
         letterSpacing: -1.0,
       ),
       headlineMedium: TextStyle(
+        fontFamily: FFTokens.fontSans,
         color: onSurface,
         fontSize: 32,
         fontWeight: FontWeight.w800,
         letterSpacing: -0.8,
       ),
       headlineSmall: TextStyle(
+        fontFamily: FFTokens.fontSans,
         color: onSurface,
         fontSize: 24,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.5,
       ),
       titleLarge: TextStyle(
+        fontFamily: FFTokens.fontSans,
         color: onSurface,
         fontSize: 22,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.4,
       ),
       titleMedium: TextStyle(
+        fontFamily: FFTokens.fontSans,
         color: onSurface,
         fontSize: 17,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.2,
       ),
       titleSmall: TextStyle(
+        fontFamily: FFTokens.fontSans,
         color: onSurface,
         fontSize: 14,
         fontWeight: FontWeight.w600,
       ),
       bodyLarge: TextStyle(
+        fontFamily: FFTokens.fontSans,
         color: onSurface,
         fontSize: 16,
         fontWeight: FontWeight.w400,
       ),
       bodyMedium: TextStyle(
+        fontFamily: FFTokens.fontSans,
         color: onSurface,
         fontSize: 15,
         fontWeight: FontWeight.w400,
       ),
       bodySmall: TextStyle(
+        fontFamily: FFTokens.fontSans,
         color: FFTokens.darkFgMuted,
         fontSize: 13,
         fontWeight: FontWeight.w400,
       ),
       labelLarge: TextStyle(
+        fontFamily: FFTokens.fontSans,
         color: onSurface,
         fontSize: 14,
         fontWeight: FontWeight.w500,
       ),
       labelMedium: TextStyle(
+        fontFamily: FFTokens.fontSans,
         color: FFTokens.darkFgMuted,
         fontSize: 12,
         fontWeight: FontWeight.w500,
       ),
       labelSmall: TextStyle(
+        fontFamily: FFTokens.fontSans,
         color: FFTokens.darkFgMuted,
         fontSize: 11,
         fontWeight: FontWeight.w500,
@@ -276,6 +291,7 @@ ThemeData buildDarkTheme() {
       elevation: 0,
       surfaceTintColor: Colors.transparent,
       titleTextStyle: TextStyle(
+        fontFamily: FFTokens.fontSans,
         color: onSurface,
         fontSize: 18,
         fontWeight: FontWeight.w600,
@@ -297,12 +313,17 @@ ThemeData buildDarkTheme() {
       labelTextStyle: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
           return const TextStyle(
+            fontFamily: FFTokens.fontSans,
             color: primary,
             fontSize: 11,
             fontWeight: FontWeight.w600,
           );
         }
-        return const TextStyle(color: FFTokens.darkFgMuted, fontSize: 11);
+        return const TextStyle(
+          fontFamily: FFTokens.fontSans,
+          color: FFTokens.darkFgMuted,
+          fontSize: 11,
+        );
       }),
     ),
     // ── Card ──────────────────────────────────────────────────────────────────
@@ -351,8 +372,15 @@ ThemeData buildDarkTheme() {
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: surface,
-      labelStyle: const TextStyle(color: FFTokens.darkFgMuted, fontSize: 14),
-      hintStyle: const TextStyle(color: FFTokens.darkFgMuted),
+      labelStyle: const TextStyle(
+        fontFamily: FFTokens.fontSans,
+        color: FFTokens.darkFgMuted,
+        fontSize: 14,
+      ),
+      hintStyle: const TextStyle(
+        fontFamily: FFTokens.fontSans,
+        color: FFTokens.darkFgMuted,
+      ),
       suffixIconColor: FFTokens.darkFgMuted,
       prefixIconColor: FFTokens.darkFgMuted,
       border: OutlineInputBorder(
@@ -394,12 +422,18 @@ ThemeData buildDarkTheme() {
       backgroundColor: surface,
       selectedColor: primary.withValues(alpha: 0.18),
       side: const BorderSide(color: bord),
-      labelStyle: const TextStyle(color: onSurface),
+      labelStyle: const TextStyle(
+        fontFamily: FFTokens.fontSans,
+        color: onSurface,
+      ),
       checkmarkColor: primary,
     ),
     snackBarTheme: SnackBarThemeData(
       backgroundColor: surface,
-      contentTextStyle: const TextStyle(color: onSurface),
+      contentTextStyle: const TextStyle(
+        fontFamily: FFTokens.fontSans,
+        color: onSurface,
+      ),
       actionTextColor: primary,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(FFTokens.radiusMd),
@@ -422,11 +456,13 @@ ThemeData buildDarkTheme() {
         borderRadius: BorderRadius.circular(FFTokens.radiusXl),
       ),
       titleTextStyle: const TextStyle(
+        fontFamily: FFTokens.fontSans,
         color: onSurface,
         fontSize: 18,
         fontWeight: FontWeight.w600,
       ),
       contentTextStyle: const TextStyle(
+        fontFamily: FFTokens.fontSans,
         color: FFTokens.darkFgSecondary,
         fontSize: 14,
       ),
@@ -491,81 +527,96 @@ ThemeData buildTheme() {
     // ── Text ──────────────────────────────────────────────────────────────────
     textTheme: const TextTheme(
       displayLarge: TextStyle(
+        fontFamily: FFTokens.fontSans,
         color: onSurface,
         fontSize: 57,
         fontWeight: FontWeight.w400,
       ),
       displayMedium: TextStyle(
+        fontFamily: FFTokens.fontSans,
         color: onSurface,
         fontSize: 45,
         fontWeight: FontWeight.w400,
       ),
       displaySmall: TextStyle(
+        fontFamily: FFTokens.fontSans,
         color: onSurface,
         fontSize: 36,
         fontWeight: FontWeight.w400,
       ),
       headlineLarge: TextStyle(
+        fontFamily: FFTokens.fontSans,
         color: onSurface,
         fontSize: 40,
         fontWeight: FontWeight.w800,
         letterSpacing: -1.0,
       ),
       headlineMedium: TextStyle(
+        fontFamily: FFTokens.fontSans,
         color: onSurface,
         fontSize: 32,
         fontWeight: FontWeight.w800,
         letterSpacing: -0.8,
       ),
       headlineSmall: TextStyle(
+        fontFamily: FFTokens.fontSans,
         color: onSurface,
         fontSize: 24,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.5,
       ),
       titleLarge: TextStyle(
+        fontFamily: FFTokens.fontSans,
         color: onSurface,
         fontSize: 22,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.4,
       ),
       titleMedium: TextStyle(
+        fontFamily: FFTokens.fontSans,
         color: onSurface,
         fontSize: 17,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.2,
       ),
       titleSmall: TextStyle(
+        fontFamily: FFTokens.fontSans,
         color: onSurface,
         fontSize: 14,
         fontWeight: FontWeight.w600,
       ),
       bodyLarge: TextStyle(
+        fontFamily: FFTokens.fontSans,
         color: onSurface,
         fontSize: 16,
         fontWeight: FontWeight.w400,
       ),
       bodyMedium: TextStyle(
+        fontFamily: FFTokens.fontSans,
         color: onSurface,
         fontSize: 15,
         fontWeight: FontWeight.w400,
       ),
       bodySmall: TextStyle(
+        fontFamily: FFTokens.fontSans,
         color: muted,
         fontSize: 13,
         fontWeight: FontWeight.w400,
       ),
       labelLarge: TextStyle(
+        fontFamily: FFTokens.fontSans,
         color: onSurface,
         fontSize: 14,
         fontWeight: FontWeight.w500,
       ),
       labelMedium: TextStyle(
+        fontFamily: FFTokens.fontSans,
         color: muted,
         fontSize: 12,
         fontWeight: FontWeight.w500,
       ),
       labelSmall: TextStyle(
+        fontFamily: FFTokens.fontSans,
         color: muted,
         fontSize: 11,
         fontWeight: FontWeight.w500,
@@ -578,6 +629,7 @@ ThemeData buildTheme() {
       elevation: 0,
       surfaceTintColor: Colors.transparent,
       titleTextStyle: TextStyle(
+        fontFamily: FFTokens.fontSans,
         color: onSurface,
         fontSize: 18,
         fontWeight: FontWeight.w600,
@@ -599,12 +651,17 @@ ThemeData buildTheme() {
       labelTextStyle: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
           return const TextStyle(
+            fontFamily: FFTokens.fontSans,
             color: primary,
             fontSize: 11,
             fontWeight: FontWeight.w600,
           );
         }
-        return const TextStyle(color: muted, fontSize: 11);
+        return const TextStyle(
+          fontFamily: FFTokens.fontSans,
+          color: muted,
+          fontSize: 11,
+        );
       }),
     ),
     // ── Card ──────────────────────────────────────────────────────────────────
@@ -654,8 +711,12 @@ ThemeData buildTheme() {
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: surface,
-      labelStyle: const TextStyle(color: muted, fontSize: 14),
-      hintStyle: const TextStyle(color: muted),
+      labelStyle: const TextStyle(
+        fontFamily: FFTokens.fontSans,
+        color: muted,
+        fontSize: 14,
+      ),
+      hintStyle: const TextStyle(fontFamily: FFTokens.fontSans, color: muted),
       suffixIconColor: muted,
       prefixIconColor: muted,
       border: OutlineInputBorder(
@@ -697,12 +758,18 @@ ThemeData buildTheme() {
       backgroundColor: surface,
       selectedColor: FFTokens.brand50,
       side: const BorderSide(color: bord),
-      labelStyle: const TextStyle(color: onSurface),
+      labelStyle: const TextStyle(
+        fontFamily: FFTokens.fontSans,
+        color: onSurface,
+      ),
       checkmarkColor: primary,
     ),
     snackBarTheme: SnackBarThemeData(
       backgroundColor: onSurface,
-      contentTextStyle: const TextStyle(color: Colors.white),
+      contentTextStyle: const TextStyle(
+        fontFamily: FFTokens.fontSans,
+        color: Colors.white,
+      ),
       actionTextColor: FFTokens.brand200,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(FFTokens.radiusMd),
@@ -725,11 +792,16 @@ ThemeData buildTheme() {
         borderRadius: BorderRadius.circular(FFTokens.radiusXl),
       ),
       titleTextStyle: const TextStyle(
+        fontFamily: FFTokens.fontSans,
         color: onSurface,
         fontSize: 18,
         fontWeight: FontWeight.w600,
       ),
-      contentTextStyle: const TextStyle(color: muted, fontSize: 14),
+      contentTextStyle: const TextStyle(
+        fontFamily: FFTokens.fontSans,
+        color: muted,
+        fontSize: 14,
+      ),
     ),
     checkboxTheme: CheckboxThemeData(
       fillColor: WidgetStateProperty.resolveWith((states) {
