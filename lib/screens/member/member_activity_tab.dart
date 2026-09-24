@@ -161,7 +161,17 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
       StreakCard(key: const Key('activity-streak'), streak: streak),
       FFSectionTitle(context.tr('activity.currentChallenge')),
       currentChallengeBlock(context, data, today),
-      FFSectionTitle(context.tr('activity.recent')),
+      Row(
+        children: [
+          Expanded(child: FFSectionTitle(context.tr('activity.recent'))),
+          TextButton.icon(
+            key: const Key('data-origins-info'),
+            onPressed: () => showDataOriginsSheet(context),
+            icon: const Icon(Icons.info_outline, size: 18),
+            label: Text(context.tr('origin.link')),
+          ),
+        ],
+      ),
       if (recent.isEmpty)
         FFEmptyState(title: context.tr('activity.noActivity'))
       else

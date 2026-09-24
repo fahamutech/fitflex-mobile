@@ -230,6 +230,8 @@ class LocalWorkoutRepository implements WorkoutRepository {
       userId: workout.userId,
       type: workout.activityType,
       source: ActivitySource.fitflex,
+      // Local workouts only run in sample mode.
+      isSample: true,
       startedAt: start,
       durationMinutes: minutes,
       activeMinutes: minutes,

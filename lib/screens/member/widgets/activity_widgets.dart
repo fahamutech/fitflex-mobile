@@ -67,6 +67,19 @@ class ActivityTimelineTile extends StatelessWidget {
     ];
     final workoutId = a.workoutId;
     return FFActionTile(
+      key: Key('activity-${a.id}'),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ActivityOriginLabel(activity: a),
+          if (workoutId != null)
+            Icon(
+              Icons.chevron_right,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              size: FFTokens.iconMd,
+            ),
+        ],
+      ),
       icon: activityTypeIcon(a.type),
       // A finished workout is recorded under its own name.
       title: workoutId != null && (a.notes ?? '').isNotEmpty
@@ -84,6 +97,138 @@ class ActivityTimelineTile extends StatelessWidget {
     );
   }
 }
+
+/// "Device · Apple Health", "FitFlex", "Manual", "By trainer", "Sample":
+/// where one activity record came from.
+class ActivityOriginLabel extends StatelessWidget {
+  const ActivityOriginLabel({super.key, required this.activity});
+
+  final Activity activity;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final a = activity;
+    final (IconData icon, String label, String? detail) = a.isSample
+        ? (Icons.science_outlined, context.tr('origin.sample'), null)
+        : switch (a.origin) {
+            DataOrigin.device => (
+              Icons.watch_outlined,
+              context.tr('origin.device'),
+              a.deviceName ??
+                  context.tr('origin.platform.${a.devicePlatform!.wire}'),
+            ),
+            DataOrigin.fitflex => (
+              Icons.bolt_outlined,
+              context.tr('origin.fitflex'),
+              null,
+            ),
+            DataOrigin.manual => (
+              Icons.edit_outlined,
+              context.tr(switch (a.source) {
+                ActivitySource.trainer => 'origin.byTrainer',
+                ActivitySource.gym => 'origin.byGym',
+                _ => 'origin.manual',
+              }),
+              null,
+            ),
+          };
+    final muted = theme.colorScheme.onSurfaceVariant;
+    return Semantics(
+      label: [label, ?detail].join(', '),
+      excludeSemantics: true,
+      child: Column(
+        key: Key('activity-origin-${a.id}'),
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: FFTokens.iconSm, color: muted),
+              const SizedBox(width: FFTokens.spacing2xs),
+              Text(
+                label,
+                style: theme.textTheme.labelSmall?.copyWith(color: muted),
+              ),
+            ],
+          ),
+          if (detail != null)
+            Text(
+              detail,
+              style: theme.textTheme.labelSmall?.copyWith(color: muted),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Explains device, FitFlex and manual data, and that device data only
+/// ever comes from a connected device.
+Future<void> showDataOriginsSheet(BuildContext context) =>
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        final theme = Theme.of(context);
+        Widget row(IconData icon, String title, String body) => Padding(
+          padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, color: theme.colorScheme.primary),
+              const SizedBox(width: FFTokens.spacingMd),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: theme.textTheme.titleSmall),
+                    Text(body, style: theme.textTheme.bodySmall),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+        return SafeArea(
+          child: Padding(
+            key: const Key('data-origins-sheet'),
+            padding: const EdgeInsets.all(FFTokens.spacingLg),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.tr('origin.title'),
+                  style: theme.textTheme.titleLarge,
+                ),
+                const SizedBox(height: FFTokens.spacingMd),
+                row(
+                  Icons.watch_outlined,
+                  context.tr('origin.device'),
+                  context.tr('origin.deviceBody'),
+                ),
+                row(
+                  Icons.bolt_outlined,
+                  context.tr('origin.fitflex'),
+                  context.tr('origin.fitflexBody'),
+                ),
+                row(
+                  Icons.edit_outlined,
+                  context.tr('origin.manual'),
+                  context.tr('origin.manualBody'),
+                ),
+                Text(
+                  context.tr('origin.noDevicesYet'),
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
 
 /// Labelled progress bar toward the daily step goal.
 class ActivityGoalBar extends StatelessWidget {

@@ -145,4 +145,20 @@ mixin ActivityTotalsFromSessions implements ActivityProvider {
   }
 }
 
+/// The records a device provider is allowed to hand to the app: device
+/// source, the provider's own [platform], a platform record id, and not
+/// sample data. Anything else is dropped rather than shown as device data,
+/// so a bug in a provider can't fabricate "measured" activity.
+List<Activity> genuineDeviceRecords(
+  Iterable<Activity> records,
+  DevicePlatform platform,
+) => [
+  for (final a in records)
+    if (a.source == ActivitySource.device &&
+        a.devicePlatform == platform &&
+        (a.externalId ?? '').isNotEmpty &&
+        !a.isSample)
+      a,
+];
+
 DateTime _nextDay(DateTime d) => DateTime(d.year, d.month, d.day + 1);

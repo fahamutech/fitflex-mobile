@@ -201,6 +201,7 @@ class _DayBuilder {
     activities.add(
       Activity(
         id: 'mock_act_${ymd}_${activities.length}',
+        isSample: true,
         userId: userId,
         type: type,
         source: source,

@@ -1,3 +1,4 @@
+import '../activity.dart';
 import '../activity_provider.dart';
 import 'planned_activity_provider.dart';
 
@@ -9,10 +10,14 @@ import 'planned_activity_provider.dart';
 class WearableProvider extends PlannedActivityProvider {
   const WearableProvider({
     required this.vendor,
+    this.platform = DevicePlatform.other,
     this.supports = const {ActivityDataType.steps, ActivityDataType.workouts},
   });
 
   final String vendor;
+
+  @override
+  final DevicePlatform platform;
 
   @override
   final Set<ActivityDataType> supports;
