@@ -125,9 +125,10 @@ class MemberShell extends StatefulWidget {
   MemberShellState createState() => MemberShellState();
 }
 
-class MemberShellState extends State<MemberShell> {
+class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
   final MemberData _data = MemberData();
   Timer? _qrTimer;
+  Timer? _stepsTimer;
   bool _started = false;
   AuthState? _auth;
   String? _lastToken;
@@ -158,7 +159,13 @@ class MemberShellState extends State<MemberShell> {
     }
     if (_started) return;
     _started = true;
+    WidgetsBinding.instance.addObserver(this);
     _refreshAll();
+    // Phone step counting: read while the app is open.
+    _stepsTimer = Timer.periodic(
+      const Duration(minutes: 1),
+      (_) => syncPhoneSteps(),
+    );
     _qrTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (_data.hasActivePass) _refreshQr();
     });
@@ -178,13 +185,32 @@ class MemberShellState extends State<MemberShell> {
   void dispose() {
     _auth?.removeListener(_onAuthChanged);
     _qrTimer?.cancel();
+    _stepsTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     _data.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) syncPhoneSteps();
+  }
+
+  /// Reads this phone's step counter (when counting is on) and, if the
+  /// server got new steps, reloads activity so Home and challenges show them.
+  Future<void> syncPhoneSteps() async {
+    if (!mounted) return;
+    final scope = AppScope.of(context);
+    final steps = scope.phoneSteps;
+    if (steps == null || !steps.enabled || _auth?.token == null) return;
+    if (await steps.sync(scope.api) && mounted) await _refreshActivity();
   }
 
   Future<void> _refreshAll() async {
     _data.update((d) => d.loading = true);
     try {
+      // Doesn't hold up the rest: it reloads activity itself if it sent steps.
+      unawaited(syncPhoneSteps());
       await Future.wait([
         _refreshMe(),
         _refreshGyms(),

@@ -9,6 +9,7 @@ import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import 'member_shell.dart';
+import 'widgets/phone_steps_card.dart';
 
 /// Settings → Privacy & data.
 class MemberPrivacyPage extends StatelessWidget {
@@ -52,6 +53,7 @@ class MemberPrivacyPage extends StatelessWidget {
           ].join(' · '),
           onTap: () => context.go(AppRoutes.memberActivitySharing),
         ),
+        const PhoneStepsSwitch(),
       ],
     );
   }

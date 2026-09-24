@@ -7,6 +7,7 @@ import '../../shared/i18n.dart';
 import '../../shared/models.dart';
 import 'member_shell.dart';
 import 'home_feed.dart';
+import 'widgets/phone_steps_card.dart';
 import 'widgets/challenge_widgets.dart';
 import 'widgets/goal_widgets.dart';
 import 'widgets/home_cards.dart';
@@ -124,11 +125,17 @@ class _MemberHomeTabState extends State<MemberHomeTab> {
       case HomeCardKind.todayActivity:
         return Padding(
           padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
-          child: TodayActivityCard(
-            data: data,
-            now: now,
-            showWorkout: !has(HomeCardKind.todayWorkout),
-            showStreak: !has(HomeCardKind.streak),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TodayActivityCard(
+                data: data,
+                now: now,
+                showWorkout: !has(HomeCardKind.todayWorkout),
+                showStreak: !has(HomeCardKind.streak),
+              ),
+              const PhoneStepsCard(dismissible: true),
+            ],
           ),
         );
       case HomeCardKind.todayWorkout:

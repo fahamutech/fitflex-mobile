@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import 'app_scope.dart';
 import 'shared/activity/activity_config.dart';
+import 'shared/activity/phone_steps.dart';
 import 'router.dart';
 import 'shared/api_client.dart';
 import 'shared/auth_state.dart';
@@ -38,6 +39,10 @@ Future<void> main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+  }
+  // Phone step counting runs a background reading on Android.
+  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android && !mockAuth) {
+    await initPhoneStepsBackground();
   }
   final api = ApiClient();
   final auth = AuthState(api, push: mockAuth ? null : PushService(api));
@@ -78,19 +83,34 @@ class FitFlexApp extends StatefulWidget {
 class _FitFlexAppState extends State<FitFlexApp> {
   late final GoRouter _router;
   late final ActivityBackend _activity;
+  PhoneSteps? _phoneSteps;
+  String? _lastToken;
 
   @override
   void initState() {
     super.initState();
     _router = buildRouter(widget.auth);
-    _activity = ActivityBackend.create(
-      widget.api,
-      sample: activitySampleDataEnabled(),
-    );
+    final sample = activitySampleDataEnabled();
+    _activity = ActivityBackend.create(widget.api, sample: sample);
+    // Real steps go to the server, so the phone counter only runs with real
+    // activity data (not sample mode).
+    if (!sample && phoneStepsSupported()) {
+      _phoneSteps = createPhoneSteps()..load();
+      _lastToken = widget.auth.token;
+      widget.auth.addListener(_onAuth);
+    }
+  }
+
+  void _onAuth() {
+    final token = widget.auth.token;
+    // Signed out: this phone's steps aren't the next person's.
+    if (_lastToken != null && token == null) _phoneSteps?.forget();
+    _lastToken = token;
   }
 
   @override
   void dispose() {
+    widget.auth.removeListener(_onAuth);
     _router.dispose();
     super.dispose();
   }
@@ -104,6 +124,7 @@ class _FitFlexAppState extends State<FitFlexApp> {
       goalRepository: _activity.goals,
       workoutRepository: _activity.workouts,
       manualActivityLog: _activity.manualLog,
+      phoneSteps: _phoneSteps,
       child: ThemeScope(
         notifier: widget.themeNotifier,
         child: FFLocaleScope(

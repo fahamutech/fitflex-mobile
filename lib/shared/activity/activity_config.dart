@@ -1,5 +1,8 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:workmanager/workmanager.dart';
 
 import '../api_client.dart';
 import 'activity_provider.dart';
@@ -7,6 +10,8 @@ import 'api_activity_provider.dart';
 import 'goal_repository.dart';
 import 'manual_activity_log.dart';
 import 'mock/mock_activity_provider.dart';
+import 'phone_steps.dart';
+import 'providers/phone_step_counter.dart';
 import 'sample_activity_log.dart';
 import 'workout_repository.dart';
 
@@ -65,4 +70,48 @@ class ActivityBackend {
 
   factory ActivityBackend.create(ApiClient api, {required bool sample}) =>
       sample ? ActivityBackend.sample() : ActivityBackend.api(api);
+}
+
+// ── Counting steps with this phone ─────────────────────────────────────────
+
+/// Whether this platform can count steps with the phone (Android for now).
+bool phoneStepsSupported() => const SensorPhoneStepCounter().isSupported;
+
+PhoneSteps createPhoneSteps() =>
+    PhoneSteps(counter: const SensorPhoneStepCounter());
+
+/// Starts the background task runner. Call once from `main()` on Android.
+Future<void> initPhoneStepsBackground() async {
+  try {
+    await Workmanager().initialize(phoneStepsCallbackDispatcher);
+  } catch (e) {
+    debugPrint('[PhoneSteps] background runner unavailable: $e');
+  }
+}
+
+/// Runs in a background isolate about every 15 minutes while counting is on.
+@pragma('vm:entry-point')
+void phoneStepsCallbackDispatcher() {
+  Workmanager().executeTask((task, _) async {
+    WidgetsFlutterBinding.ensureInitialized();
+    try {
+      await dotenv.load(fileName: '.env');
+    } catch (_) {
+      // Defaults apply.
+    }
+    final token = (await SharedPreferences.getInstance()).getString('token');
+    // Signed out: nothing to count for (sign-out also turns counting off).
+    if (token == null) return true;
+    try {
+      await PhoneSteps.syncOnce(
+        counter: const SensorPhoneStepCounter(),
+        store: PrefsStepStore(),
+        api: ApiClient()..setToken(token),
+        now: DateTime.now(),
+      );
+    } catch (e) {
+      debugPrint('[PhoneSteps] background pass failed: $e');
+    }
+    return true;
+  });
 }

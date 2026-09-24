@@ -569,6 +569,15 @@ class ApiClient {
     ),
   );
 
+  /// Daily step totals (or other readings) from this phone or a health
+  /// platform. Upserted by (devicePlatform, externalId); a day only goes up.
+  Future<Map<String, dynamic>> syncDeviceActivities(
+    List<Map<String, dynamic>> records,
+  ) async => Map<String, dynamic>.from(
+    await _request('POST', '/me/device-activities', body: {'records': records})
+        as Map,
+  );
+
   /// Rewards the member earned from challenges, and where each stands.
   Future<List<dynamic>> myRewards() async {
     final res = await _request('GET', '/me/rewards');
