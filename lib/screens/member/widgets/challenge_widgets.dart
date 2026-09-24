@@ -162,7 +162,6 @@ class ChallengeCard extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: fraction.clamp(0.0, 1.0),
                 minHeight: 8,
-                backgroundColor: theme.colorScheme.surfaceContainerHighest,
               ),
             ),
           ] else

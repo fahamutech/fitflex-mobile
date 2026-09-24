@@ -146,7 +146,6 @@ class GoalCard extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: p.fraction.clamp(0.0, 1.0),
                 minHeight: 8,
-                backgroundColor: theme.colorScheme.surfaceContainerHighest,
               ),
             ),
             const SizedBox(height: FFTokens.spacingXs),

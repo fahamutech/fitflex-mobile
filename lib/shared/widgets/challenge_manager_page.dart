@@ -335,8 +335,6 @@ class _ParticipantsPageState extends State<_ParticipantsPage> {
                                     ? 0
                                     : (v / c.target).clamp(0.0, 1.0).toDouble(),
                                 minHeight: 6,
-                                backgroundColor:
-                                    theme.colorScheme.surfaceContainerHighest,
                               ),
                             ),
                             Text(
@@ -672,7 +670,6 @@ class SharedChallengesList extends StatelessWidget {
                         ? 0
                         : (c.progress / c.target).clamp(0.0, 1.0).toDouble(),
                     minHeight: 6,
-                    backgroundColor: theme.colorScheme.surfaceContainerHighest,
                   ),
                 ),
               ],

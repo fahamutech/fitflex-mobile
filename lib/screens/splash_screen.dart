@@ -96,7 +96,8 @@ class _SplashScreenState extends State<SplashScreen>
             );
           },
           child: Image.asset(
-            'assets/brand/fitflex-logo.png',
+            // Transparent mark: the full logo PNG has an opaque navy square.
+            'assets/brand/fitflex-icon.png',
             width: FFTokens.spacingXl * 6,
             fit: BoxFit.contain,
           ),

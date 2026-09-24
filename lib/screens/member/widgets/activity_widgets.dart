@@ -8,6 +8,7 @@ import '../../../shared/design_tokens.dart';
 import '../../../shared/formatters.dart';
 import '../../../router.dart';
 import '../../../shared/i18n.dart';
+import 'workout_widgets.dart' show showPlanWorkoutSheet;
 
 IconData activityTypeIcon(ActivityType type) => switch (type) {
   ActivityType.walking => Icons.directions_walk,
@@ -230,6 +231,30 @@ Future<void> showDataOriginsSheet(BuildContext context) =>
       },
     );
 
+/// Shown instead of a grid of zeros to a member with no activity yet.
+class ActivityGetStartedCard extends StatelessWidget {
+  const ActivityGetStartedCard({super.key, this.showAction = true});
+
+  /// Off where a "Plan a workout" button is already on screen.
+  final bool showAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return FFEmptyState(
+      key: const Key('activity-get-started'),
+      title: context.tr('activity.getStarted.title'),
+      body: context.tr('activity.getStarted.body'),
+      action: showAction
+          ? FilledButton.tonal(
+              key: const Key('activity-get-started-plan'),
+              onPressed: () => showPlanWorkoutSheet(context),
+              child: Text(context.tr('workout.plan')),
+            )
+          : null,
+    );
+  }
+}
+
 /// Labelled progress bar toward the daily step goal.
 class ActivityGoalBar extends StatelessWidget {
   const ActivityGoalBar({
@@ -256,7 +281,6 @@ class ActivityGoalBar extends StatelessWidget {
           child: LinearProgressIndicator(
             value: progress.clamp(0.0, 1.0),
             minHeight: dense ? 6 : 8,
-            backgroundColor: theme.colorScheme.surfaceContainerHighest,
           ),
         ),
         const SizedBox(height: FFTokens.spacingXs),

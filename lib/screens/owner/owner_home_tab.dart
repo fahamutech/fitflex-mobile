@@ -700,19 +700,26 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
             ],
           ),
           const SizedBox(height: 4),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
+          // In narrow tiles (and longer languages) the trend badge drops
+          // under the number instead of overflowing; big numbers shrink.
+          Wrap(
+            spacing: 6,
+            runSpacing: 2,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Text(
-                value,
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  height: 1.0,
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  value,
+                  maxLines: 1,
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    height: 1.0,
+                  ),
                 ),
               ),
               if (trendPct != null) ...[
-                const SizedBox(width: 6),
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 4,
@@ -727,12 +734,18 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
                     children: [
                       Icon(badgeIcon, size: 8, color: badgeFg),
                       const SizedBox(width: 1),
-                      Text(
-                        trendPct,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: badgeFg,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 8,
+                      // The label is a phrase ("vs prev period"), long in
+                      // Swahili: wrap rather than overflow the tile.
+                      Flexible(
+                        child: Text(
+                          trendPct,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: badgeFg,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 8,
+                          ),
                         ),
                       ),
                     ],

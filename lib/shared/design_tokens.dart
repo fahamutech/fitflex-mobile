@@ -19,7 +19,7 @@ class FFTokens {
   static const Color brandLight = brand50;
 
   // ── Semantic colors ──
-  static const Color accent = Color(0xFFF59E0B);
+  static const Color accent = Color(0xFFFF9800);
 
   static const Color error50 = Color(0xFFFEF3F2);
   static const Color error200 = Color(0xFFFECDCA);
@@ -37,33 +37,33 @@ class FFTokens {
 
   static const Color warning50 = Color(0xFFFFFBEB);
   static const Color warning200 = Color(0xFFFEDF89);
-  static const Color warning500 = Color(0xFFF59E0B);
+  static const Color warning500 = Color(0xFFFF9800);
   static const Color warning700 = Color(0xFFB54708);
 
   // ── Foreground / text ── (dark-mode values)
-  static const Color fgPrimary = Color(0xFFFFFFFF);
-  static const Color fgSecondary = Color(0xFFCDD5DF);
+  static const Color fgPrimary = Color(0xFFF1F5F9);
+  static const Color fgSecondary = Color(0xFFCBD5E1);
   static const Color fgTertiary = Color(0xFFAAB4C4);
-  static const Color fgQuaternary = Color(0xFF8899AA);
+  static const Color fgQuaternary = Color(0xFF94A3B8);
   static const Color fgDisabled = Color(0xFF55677A);
-  static const Color fgBrand = Color(0xFF2CC97A);
+  static const Color fgBrand = Color(0xFF00B67A);
 
   // Legacy aliases
   static const Color text = fgPrimary;
   static const Color textMuted = fgQuaternary;
 
   // ── Background / surface ── (dark-mode values)
-  static const Color bgPrimary = Color(0xFF0D1B2A);
-  static const Color bgSecondary = Color(0xFF162438);
-  static const Color bgTertiary = Color(0xFF162438);
+  static const Color bgPrimary = Color(0xFF020617);
+  static const Color bgSecondary = Color(0xFF0F172A);
+  static const Color bgTertiary = Color(0xFF0F172A);
 
   // Legacy aliases
   static const Color surface = bgPrimary;
   static const Color surface2 = bgSecondary;
 
   // ── Borders ── (dark-mode values)
-  static const Color borderPrimary = Color(0xFF1F3350);
-  static const Color borderSecondary = Color(0xFF1F3350);
+  static const Color borderPrimary = Color(0xFF1E293B);
+  static const Color borderSecondary = Color(0xFF1E293B);
 
   // Legacy alias
   static const Color border = borderSecondary;
@@ -75,11 +75,11 @@ class FFTokens {
   static const Color gray700 = Color(0xFFCDD5DF);
 
   // ── Radii ──
-  static const double radiusXs = 4;
-  static const double radiusSm = 6;
-  static const double radiusMd = 8;
-  static const double radiusLg = 12;
-  static const double radiusXl = 16;
+  static const double radiusXs = 6;
+  static const double radiusSm = 8;
+  static const double radiusMd = 12;
+  static const double radiusLg = 16;
+  static const double radiusXl = 24;
   static const double radiusFull = 999;
 
   // ── Spacing ──
@@ -100,6 +100,20 @@ class FFTokens {
 
   /// Standard square container that wraps a leading icon.
   static const double iconBox = 40;
+
+  // ── Type families (bundled in assets/fonts) ──
+  static const String fontSans = 'Inter';
+  static const String fontMono = 'JetBrains Mono';
+
+  /// UPPERCASE, wide-tracked "telemetry" label: section eyebrows, data
+  /// tags, field labels. Never for sentences.
+  static TextStyle monoLabel(Color color, {double size = 11}) => TextStyle(
+    fontFamily: fontMono,
+    fontSize: size,
+    fontWeight: FontWeight.w500,
+    letterSpacing: size * 0.12,
+    color: color,
+  );
 
   // ── Motion (durations + curves) ──
   static const Duration motionFast = Duration(milliseconds: 100);
@@ -126,21 +140,23 @@ class FFTokens {
   ];
 
   // ── Dark mode surfaces (login-flow screens) ──
-  static const Color darkBg = Color(0xFF0D1B2A);
-  static const Color darkSurface = Color(0xFF162438);
-  static const Color darkBorder = Color(0xFF1F3350);
+  // FitFlex Africa design system: slate-950 canvas, slate-900 cards,
+  // slate-800 hairline borders.
+  static const Color darkBg = Color(0xFF020617);
+  static const Color darkSurface = Color(0xFF0F172A);
+  static const Color darkBorder = Color(0xFF1E293B);
 
   // ── Vibrant brand green (dark-mode CTA + selection state) ──
-  static const Color brandVibrant = Color(0xFF2CC97A);
+  static const Color brandVibrant = Color(0xFF00B67A);
 
   // ── On-dark text ──
-  static const Color darkFgPrimary = Color(0xFFFFFFFF);
-  static const Color darkFgSecondary = Color(0xFFCDD5DF);
-  static const Color darkFgMuted = Color(0xFF8899AA);
+  static const Color darkFgPrimary = Color(0xFFF1F5F9); // slate-100
+  static const Color darkFgSecondary = Color(0xFFCBD5E1); // slate-300
+  static const Color darkFgMuted = Color(0xFF94A3B8); // slate-400
 
   // ── Role-card accent icon colors ──
-  static const Color iconAccentGreen = Color(0xFF2CC97A);
-  static const Color accentOrange = Color(0xFFF59E0B);
+  static const Color iconAccentGreen = Color(0xFF00B67A);
+  static const Color accentOrange = Color(0xFFFF9800);
   static const Color accentIndigo = Color(0xFF6366F1);
 }
 
@@ -153,6 +169,7 @@ ThemeData buildDarkTheme() {
 
   return ThemeData(
     useMaterial3: true,
+    fontFamily: FFTokens.fontSans,
     brightness: Brightness.dark,
     scaffoldBackgroundColor: bg,
     colorScheme: const ColorScheme.dark(
@@ -164,7 +181,7 @@ ThemeData buildDarkTheme() {
       onSurface: onSurface,
       surfaceContainerHighest: surface,
       surfaceContainerLow: Color(0xFF0F1E2E),
-      outlineVariant: Color(0xFF253B55),
+      outlineVariant: Color(0xFF1E293B),
       outline: bord,
       error: FFTokens.danger,
       onError: Colors.white,
@@ -190,26 +207,31 @@ ThemeData buildDarkTheme() {
         color: onSurface,
         fontSize: 40,
         fontWeight: FontWeight.w800,
+        letterSpacing: -1.0,
       ),
       headlineMedium: TextStyle(
         color: onSurface,
         fontSize: 32,
         fontWeight: FontWeight.w800,
+        letterSpacing: -0.8,
       ),
       headlineSmall: TextStyle(
         color: onSurface,
         fontSize: 24,
         fontWeight: FontWeight.w700,
+        letterSpacing: -0.5,
       ),
       titleLarge: TextStyle(
         color: onSurface,
         fontSize: 22,
         fontWeight: FontWeight.w700,
+        letterSpacing: -0.4,
       ),
       titleMedium: TextStyle(
         color: onSurface,
         fontSize: 17,
         fontWeight: FontWeight.w700,
+        letterSpacing: -0.2,
       ),
       titleSmall: TextStyle(
         color: onSurface,
@@ -301,11 +323,12 @@ ThemeData buildDarkTheme() {
         disabledBackgroundColor: surface,
         disabledForegroundColor: FFTokens.darkFgMuted,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(FFTokens.radiusFull),
+          borderRadius: BorderRadius.circular(FFTokens.radiusMd),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         textStyle: const TextStyle(
-          fontWeight: FontWeight.w700,
+          fontFamily: FFTokens.fontSans,
+          fontWeight: FontWeight.w800,
           fontSize: 15,
           letterSpacing: 0.5,
         ),
@@ -316,7 +339,7 @@ ThemeData buildDarkTheme() {
         foregroundColor: FFTokens.darkFgSecondary,
         side: const BorderSide(color: bord),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(FFTokens.radiusFull),
+          borderRadius: BorderRadius.circular(FFTokens.radiusMd),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       ),
@@ -355,7 +378,12 @@ ThemeData buildDarkTheme() {
     ),
     // ── Misc ──────────────────────────────────────────────────────────────────
     dividerTheme: const DividerThemeData(color: bord, thickness: 1),
-    progressIndicatorTheme: const ProgressIndicatorThemeData(color: primary),
+    // Tracks must contrast with cards (surfaceContainerHighest is the card
+    // colour), so an empty bar still reads as a bar.
+    progressIndicatorTheme: const ProgressIndicatorThemeData(
+      color: primary,
+      linearTrackColor: Color(0xFF334155),
+    ),
     iconTheme: const IconThemeData(color: FFTokens.darkFgMuted),
     listTileTheme: const ListTileThemeData(
       textColor: onSurface,
@@ -432,16 +460,18 @@ ThemeData buildDarkTheme() {
 
 ThemeData buildTheme() {
   // ── Light-mode palette ──
-  const bg = Color(0xFFF9FAFB);
+  const bg = Color(0xFFEEF2F7);
   const surface = Colors.white;
-  const onSurface = Color(0xFF101828);
-  const primary = Color(0xFF1A6B32);
+  const onSurface = Color(0xFF0F172A);
+  // Deep emerald keeps contrast on white.
+  const primary = Color(0xFF009366);
   const onPrimary = Colors.white;
-  const bord = Color(0xFFE4E7EC);
-  const muted = Color(0xFF667085);
+  const bord = Color(0xFFE2E8F0);
+  const muted = Color(0xFF64748B);
 
   return ThemeData(
     useMaterial3: true,
+    fontFamily: FFTokens.fontSans,
     brightness: Brightness.light,
     scaffoldBackgroundColor: bg,
     colorScheme: const ColorScheme.light(
@@ -453,7 +483,7 @@ ThemeData buildTheme() {
       onSurface: onSurface,
       surfaceContainerHighest: surface,
       surfaceContainerLow: Color(0xFFF2F4F7),
-      outlineVariant: Color(0xFFD0D5DD),
+      outlineVariant: Color(0xFFE2E8F0),
       outline: bord,
       error: FFTokens.danger,
       onError: Colors.white,
@@ -479,26 +509,31 @@ ThemeData buildTheme() {
         color: onSurface,
         fontSize: 40,
         fontWeight: FontWeight.w800,
+        letterSpacing: -1.0,
       ),
       headlineMedium: TextStyle(
         color: onSurface,
         fontSize: 32,
         fontWeight: FontWeight.w800,
+        letterSpacing: -0.8,
       ),
       headlineSmall: TextStyle(
         color: onSurface,
         fontSize: 24,
         fontWeight: FontWeight.w700,
+        letterSpacing: -0.5,
       ),
       titleLarge: TextStyle(
         color: onSurface,
         fontSize: 22,
         fontWeight: FontWeight.w700,
+        letterSpacing: -0.4,
       ),
       titleMedium: TextStyle(
         color: onSurface,
         fontSize: 17,
         fontWeight: FontWeight.w700,
+        letterSpacing: -0.2,
       ),
       titleSmall: TextStyle(
         color: onSurface,
@@ -590,11 +625,12 @@ ThemeData buildTheme() {
         disabledBackgroundColor: const Color(0xFFE4E7EC),
         disabledForegroundColor: muted,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(FFTokens.radiusFull),
+          borderRadius: BorderRadius.circular(FFTokens.radiusMd),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         textStyle: const TextStyle(
-          fontWeight: FontWeight.w700,
+          fontFamily: FFTokens.fontSans,
+          fontWeight: FontWeight.w800,
           fontSize: 15,
           letterSpacing: 0.5,
           color: onPrimary,
@@ -606,7 +642,7 @@ ThemeData buildTheme() {
         foregroundColor: onSurface,
         side: const BorderSide(color: bord),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(FFTokens.radiusFull),
+          borderRadius: BorderRadius.circular(FFTokens.radiusMd),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       ),
@@ -645,7 +681,12 @@ ThemeData buildTheme() {
     ),
     // ── Misc ──────────────────────────────────────────────────────────────────
     dividerTheme: const DividerThemeData(color: bord, thickness: 1),
-    progressIndicatorTheme: const ProgressIndicatorThemeData(color: primary),
+    // Tracks must contrast with cards (surfaceContainerHighest is the card
+    // colour), so an empty bar still reads as a bar.
+    progressIndicatorTheme: const ProgressIndicatorThemeData(
+      color: primary,
+      linearTrackColor: Color(0xFFCBD5E1),
+    ),
     iconTheme: const IconThemeData(color: muted),
     listTileTheme: const ListTileThemeData(
       textColor: onSurface,

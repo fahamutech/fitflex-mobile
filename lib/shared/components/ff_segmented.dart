@@ -37,12 +37,13 @@ class FFSegmented extends StatelessWidget {
                   horizontal: FFTokens.spacingSm,
                   vertical: FFTokens.spacingXs + 2,
                 ),
+                // Same tint as the selected bottom-nav tab. The track is the
+                // card colour, so a card-coloured pill wouldn't show.
                 decoration: BoxDecoration(
                   color: selected
-                      ? theme.colorScheme.surface
+                      ? theme.colorScheme.primary.withValues(alpha: 0.18)
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(FFTokens.radiusMd),
-                  boxShadow: selected ? FFTokens.shadowXs : null,
                 ),
                 // Shrink a long label to one line rather than breaking it
                 // mid-word when options share a narrow row.
@@ -56,6 +57,7 @@ class FFSegmented extends StatelessWidget {
                       color: selected
                           ? theme.colorScheme.onSurface
                           : theme.colorScheme.onSurfaceVariant,
+                      fontWeight: selected ? FontWeight.w700 : null,
                     ),
                   ),
                 ),

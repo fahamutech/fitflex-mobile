@@ -97,44 +97,51 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
     final recent = activities.take(8).toList();
     final data = MemberDataScope.of(context);
     return [
-      TodayWorkoutCard(data: data, now: today),
+      // Planning lives on the Workouts tab; Overview only surfaces a
+      // workout that's actually on for today.
+      if (todaysWorkouts(data.workouts, today).isNotEmpty)
+        TodayWorkoutCard(data: data, now: today),
       FFSectionTitle(context.tr('activity.today')),
-      _TileRow(
-        left: FFStatTile(
-          icon: Icons.directions_walk,
-          value: formatSteps(s.steps),
-          label: context.tr('activity.steps'),
+      if (activities.isEmpty)
+        const ActivityGetStartedCard()
+      else ...[
+        _TileRow(
+          left: FFStatTile(
+            icon: Icons.directions_walk,
+            value: formatSteps(s.steps),
+            label: context.tr('activity.steps'),
+          ),
+          right: FFStatTile(
+            icon: Icons.straighten,
+            value: formatKm(s.distanceKm),
+            label: context.tr('activity.distance'),
+          ),
         ),
-        right: FFStatTile(
-          icon: Icons.straighten,
-          value: formatKm(s.distanceKm),
-          label: context.tr('activity.distance'),
+        _TileRow(
+          left: FFStatTile(
+            icon: Icons.timer_outlined,
+            value: '${s.activeMinutes}',
+            label: context.tr('activity.activeMinutes'),
+          ),
+          right: FFStatTile(
+            icon: Icons.local_fire_department_outlined,
+            value: s.calories == null ? '—' : formatSteps(s.calories!),
+            label: context.tr('activity.calories'),
+          ),
         ),
-      ),
-      _TileRow(
-        left: FFStatTile(
-          icon: Icons.timer_outlined,
-          value: '${s.activeMinutes}',
-          label: context.tr('activity.activeMinutes'),
+        _TileRow(
+          left: FFStatTile(
+            icon: Icons.timeline,
+            value: '${s.activityCount}',
+            label: context.tr('activity.activities'),
+          ),
+          right: FFStatTile(
+            icon: Icons.fitness_center,
+            value: '${s.workoutCount}',
+            label: context.tr('activity.workoutCount'),
+          ),
         ),
-        right: FFStatTile(
-          icon: Icons.local_fire_department_outlined,
-          value: s.calories == null ? '—' : formatSteps(s.calories!),
-          label: context.tr('activity.calories'),
-        ),
-      ),
-      _TileRow(
-        left: FFStatTile(
-          icon: Icons.timeline,
-          value: '${s.activityCount}',
-          label: context.tr('activity.activities'),
-        ),
-        right: FFStatTile(
-          icon: Icons.fitness_center,
-          value: '${s.workoutCount}',
-          label: context.tr('activity.workoutCount'),
-        ),
-      ),
+      ],
       const SizedBox(height: FFTokens.spacingSm),
       if (stepGoal != null)
         FFCard(

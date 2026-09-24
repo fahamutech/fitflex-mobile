@@ -1118,6 +1118,10 @@ class FFLocale extends ChangeNotifier {
       'home.paidGyms': 'Paid visit gyms',
       'home.signout': 'Sign out',
       'home.seeAll': 'See all',
+      'offline.banner': "You're offline. Showing what was last loaded.",
+      'activity.getStarted.title': 'Your activity will show here',
+      'activity.getStarted.body':
+          'Finish a workout in FitFlex and it counts toward your goals, streaks and challenges. Connecting Apple Health and Health Connect is coming.',
       'origin.link': 'Data sources',
       'origin.title': 'Where your activity data comes from',
       'origin.device': 'Device',
@@ -2745,6 +2749,10 @@ class FFLocale extends ChangeNotifier {
       'home.back': 'Rudi',
       'home.signout': 'Toka',
       'home.seeAll': 'Tazama zote',
+      'offline.banner': 'Huna mtandao. Unaona kilichopakiwa mara ya mwisho.',
+      'activity.getStarted.title': 'Shughuli zako zitaonekana hapa',
+      'activity.getStarted.body':
+          'Maliza mazoezi ndani ya FitFlex na yatahesabiwa kwenye malengo, mfululizo na changamoto zako. Kuunganisha Apple Health na Health Connect kunakuja.',
       'origin.link': 'Vyanzo vya data',
       'origin.title': 'Data yako ya shughuli inatoka wapi',
       'origin.device': 'Kifaa',
