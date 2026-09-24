@@ -101,7 +101,18 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
       // workout that's actually on for today.
       if (todaysWorkouts(data.workouts, today).isNotEmpty)
         TodayWorkoutCard(data: data, now: today),
-      FFSectionTitle(context.tr('activity.today')),
+      Row(
+        children: [
+          Expanded(child: FFSectionTitle(context.tr('activity.today'))),
+          if (activities.isNotEmpty)
+            TextButton.icon(
+              key: const Key('activity-log-open'),
+              onPressed: () => openLogActivity(context),
+              icon: const Icon(Icons.add, size: 18),
+              label: Text(context.tr('logActivity.open')),
+            ),
+        ],
+      ),
       if (activities.isEmpty)
         const ActivityGetStartedCard()
       else ...[
@@ -226,7 +237,17 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
         FFSectionTitle(context.tr('workout.completedList')),
         for (final w in done) WorkoutTile(workout: w),
       ],
-      FFSectionTitle(context.tr('workout.otherActivity')),
+      Row(
+        children: [
+          Expanded(child: FFSectionTitle(context.tr('workout.otherActivity'))),
+          TextButton.icon(
+            key: const Key('workouts-log-open'),
+            onPressed: () => openLogActivity(context),
+            icon: const Icon(Icons.add, size: 18),
+            label: Text(context.tr('logActivity.open')),
+          ),
+        ],
+      ),
       if (other.isEmpty)
         FFEmptyState(title: context.tr('activity.noWorkouts'))
       else

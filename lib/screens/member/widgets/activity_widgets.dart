@@ -8,6 +8,8 @@ import '../../../shared/design_tokens.dart';
 import '../../../shared/formatters.dart';
 import '../../../router.dart';
 import '../../../shared/i18n.dart';
+import '../../../shared/activity/manual_activity_log.dart';
+import '../member_log_activity_page.dart' show openLogActivity;
 import 'workout_widgets.dart' show showPlanWorkoutSheet;
 
 IconData activityTypeIcon(ActivityType type) => switch (type) {
@@ -82,10 +84,11 @@ class ActivityTimelineTile extends StatelessWidget {
         ],
       ),
       icon: activityTypeIcon(a.type),
-      // A finished workout is recorded under its own name.
+      // A finished workout is recorded under its own name; a logged
+      // session under the name the member gave it.
       title: workoutId != null && (a.notes ?? '').isNotEmpty
           ? a.notes!
-          : activityTypeLabel(context, a.type),
+          : manualActivityName(a) ?? activityTypeLabel(context, a.type),
       subtitle: parts.join(' · '),
       onTap: workoutId == null
           ? () {}
@@ -245,10 +248,22 @@ class ActivityGetStartedCard extends StatelessWidget {
       title: context.tr('activity.getStarted.title'),
       body: context.tr('activity.getStarted.body'),
       action: showAction
-          ? FilledButton.tonal(
-              key: const Key('activity-get-started-plan'),
-              onPressed: () => showPlanWorkoutSheet(context),
-              child: Text(context.tr('workout.plan')),
+          ? Wrap(
+              alignment: WrapAlignment.center,
+              spacing: FFTokens.spacingSm,
+              runSpacing: FFTokens.spacingSm,
+              children: [
+                FilledButton.tonal(
+                  key: const Key('activity-get-started-log'),
+                  onPressed: () => openLogActivity(context),
+                  child: Text(context.tr('logActivity.open')),
+                ),
+                OutlinedButton(
+                  key: const Key('activity-get-started-plan'),
+                  onPressed: () => showPlanWorkoutSheet(context),
+                  child: Text(context.tr('workout.plan')),
+                ),
+              ],
             )
           : null,
     );

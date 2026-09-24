@@ -103,6 +103,7 @@ class _FitFlexAppState extends State<FitFlexApp> {
       activityProvider: _activity.activity,
       goalRepository: _activity.goals,
       workoutRepository: _activity.workouts,
+      manualActivityLog: _activity.manualLog,
       child: ThemeScope(
         notifier: widget.themeNotifier,
         child: FFLocaleScope(

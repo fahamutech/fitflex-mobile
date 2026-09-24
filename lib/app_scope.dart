@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'shared/activity/activity_config.dart';
 import 'shared/activity/activity_provider.dart';
 import 'shared/activity/goal_repository.dart';
+import 'shared/activity/manual_activity_log.dart';
 import 'shared/activity/workout_repository.dart';
 import 'shared/api_client.dart';
 import 'shared/auth_state.dart';
@@ -15,6 +16,7 @@ class AppScope extends InheritedWidget {
     this.activityProvider,
     this.goalRepository,
     this.workoutRepository,
+    this.manualActivityLog,
     required super.child,
   });
 
@@ -26,12 +28,14 @@ class AppScope extends InheritedWidget {
   final ActivityProvider? activityProvider;
   final GoalRepository? goalRepository;
   final WorkoutRepository? workoutRepository;
+  final ManualActivityLog? manualActivityLog;
 
   static final ActivityBackend _sample = ActivityBackend.sample();
 
   ActivityProvider get activity => activityProvider ?? _sample.activity;
   GoalRepository get goals => goalRepository ?? _sample.goals;
   WorkoutRepository get workouts => workoutRepository ?? _sample.workouts;
+  ManualActivityLog get manualLog => manualActivityLog ?? _sample.manualLog;
 
   static AppScope of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<AppScope>();
@@ -45,5 +49,6 @@ class AppScope extends InheritedWidget {
       auth != oldWidget.auth ||
       activityProvider != oldWidget.activityProvider ||
       goalRepository != oldWidget.goalRepository ||
-      workoutRepository != oldWidget.workoutRepository;
+      workoutRepository != oldWidget.workoutRepository ||
+      manualActivityLog != oldWidget.manualActivityLog;
 }
