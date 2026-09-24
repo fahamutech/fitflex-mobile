@@ -224,6 +224,11 @@ void main() {
       expect(done.activity.workoutId, planned.id);
       expect(done.activity.isWorkout, isTrue);
       expect(log.items.single.id, done.activity.id);
+      expect(
+        done.activity.isSample,
+        isTrue,
+        reason: 'a sample-mode workout is sample data, not FitFlex data',
+      );
 
       // The sample provider now serves it, so goals and streaks move.
       final provider = MockActivityProvider(

@@ -6,11 +6,17 @@ import '../activity_provider.dart';
 /// shows an empty history rather than crashing or inventing numbers.
 ///
 /// Building one for real means overriding every method with platform
-/// reads. That work waits until the internal Activity Engine is stable;
+/// reads, stamping each record `source: device` with [platform] and the
+/// platform's record id, and passing results through
+/// [genuineDeviceRecords]. A provider must never fill gaps with estimates
+/// or sample data: no reading means no record. That work waits until the internal Activity Engine is stable;
 /// only files in `lib/shared/activity/providers/` may import a health
 /// platform package (enforced by `test/device_data_architecture_test.dart`).
 abstract class PlannedActivityProvider implements ActivityProvider {
   const PlannedActivityProvider();
+
+  /// The platform every record from this provider names.
+  DevicePlatform get platform;
 
   @override
   Future<bool> isAvailable() async => false;

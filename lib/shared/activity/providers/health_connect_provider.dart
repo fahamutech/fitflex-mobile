@@ -1,3 +1,4 @@
+import '../activity.dart';
 import '../activity_provider.dart';
 import 'planned_activity_provider.dart';
 
@@ -12,6 +13,9 @@ class HealthConnectProvider extends PlannedActivityProvider {
 
   @override
   String get id => 'health_connect';
+
+  @override
+  DevicePlatform get platform => DevicePlatform.healthConnect;
 
   @override
   ActivityProviderKind get kind => ActivityProviderKind.healthConnect;
