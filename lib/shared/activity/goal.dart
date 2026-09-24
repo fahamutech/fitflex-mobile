@@ -6,7 +6,11 @@ enum GoalType {
   steps('steps'),
   workouts('workouts'),
   activeMinutes('active_minutes'),
-  distanceKm('distance_km');
+  distanceKm('distance_km'),
+
+  /// A trainer's coaching goal ("Stretch after every session"): counted
+  /// from the times the member marks it done, not from activity.
+  custom('custom');
 
   const GoalType(this.wire);
 
@@ -60,6 +64,29 @@ enum GoalSource {
       this == GoalSource.member || this == GoalSource.defaults;
 }
 
+/// Who created a goal: the member, their trainer, or FitFlex (defaults and
+/// challenges). Kept for the audit trail and "Assigned by Sarah".
+enum GoalCreatorType {
+  member('member'),
+  trainer('trainer'),
+  system('system');
+
+  const GoalCreatorType(this.wire);
+
+  final String wire;
+
+  static GoalCreatorType fromWire(String? value, GoalSource source) {
+    for (final t in values) {
+      if (t.wire == value) return t;
+    }
+    return switch (source) {
+      GoalSource.member => GoalCreatorType.member,
+      GoalSource.trainer => GoalCreatorType.trainer,
+      _ => GoalCreatorType.system,
+    };
+  }
+}
+
 enum GoalStatus {
   active('active'),
   paused('paused'),
@@ -91,6 +118,18 @@ class Goal {
   final String? challengeId;
   final GoalStatus status;
 
+  final GoalCreatorType createdByType;
+  final String? createdById;
+
+  /// The trainer's name for "Assigned by Sarah".
+  final String? createdByName;
+
+  /// A coaching goal's text, or a challenge goal's challenge name.
+  final String? title;
+
+  /// When the member marked a coaching goal done.
+  final List<DateTime> completions;
+
   /// Progress within the current period. Never stored on the server — the
   /// progress engine derives it from activity history (see [withProgress]).
   final num? currentProgress;
@@ -107,25 +146,25 @@ class Goal {
     this.trainerId,
     this.challengeId,
     this.status = GoalStatus.active,
+    this.createdByType = GoalCreatorType.member,
+    this.createdById,
+    this.createdByName,
+    this.title,
+    this.completions = const [],
     this.currentProgress,
   });
 
-  Goal withProgress(num progress) => Goal(
-    id: id,
-    userId: userId,
-    type: type,
-    target: target,
-    period: period,
-    startDate: startDate,
-    endDate: endDate,
-    source: source,
-    trainerId: trainerId,
-    challengeId: challengeId,
-    status: status,
-    currentProgress: progress,
-  );
+  bool get isFromTrainer => createdByType == GoalCreatorType.trainer;
+  bool get isCoaching => type == GoalType.custom;
 
-  Goal copyWith({num? target, GoalStatus? status}) => Goal(
+  Goal withProgress(num progress) => copyWith(currentProgress: progress);
+
+  Goal copyWith({
+    num? target,
+    GoalStatus? status,
+    List<DateTime>? completions,
+    num? currentProgress,
+  }) => Goal(
     id: id,
     userId: userId,
     type: type,
@@ -137,7 +176,12 @@ class Goal {
     trainerId: trainerId,
     challengeId: challengeId,
     status: status ?? this.status,
-    currentProgress: currentProgress,
+    createdByType: createdByType,
+    createdById: createdById,
+    createdByName: createdByName,
+    title: title,
+    completions: completions ?? this.completions,
+    currentProgress: currentProgress ?? this.currentProgress,
   );
 
   /// Returns null for goals this app version doesn't understand, so a newer
@@ -150,6 +194,8 @@ class Goal {
     if (type == null || period == null || start == null || target == null) {
       return null;
     }
+    final source = GoalSource.fromWire(json['source'] as String?);
+    final by = json['createdBy'];
     return Goal(
       id: json['id'] as String? ?? '',
       userId: json['userId'] as String? ?? '',
@@ -158,10 +204,21 @@ class Goal {
       period: period,
       startDate: start,
       endDate: _parseDate(json['endDate']),
-      source: GoalSource.fromWire(json['source'] as String?),
+      source: source,
       trainerId: json['trainerId'] as String?,
       challengeId: json['challengeId'] as String?,
       status: GoalStatus.fromWire(json['status'] as String?),
+      createdByType: GoalCreatorType.fromWire(
+        json['createdByType'] as String?,
+        source,
+      ),
+      createdById: json['createdById'] as String?,
+      createdByName: by is Map ? by['name'] as String? : null,
+      title: json['title'] as String?,
+      completions: [
+        for (final c in (json['completions'] as List? ?? const []))
+          ?DateTime.tryParse(c.toString()),
+      ],
     );
   }
 
@@ -177,6 +234,11 @@ class Goal {
     'trainerId': ?trainerId,
     'challengeId': ?challengeId,
     'status': status.wire,
+    'createdByType': createdByType.wire,
+    'createdById': ?createdById,
+    'title': ?title,
+    if (completions.isNotEmpty)
+      'completions': [for (final c in completions) c.toUtc().toIso8601String()],
   };
 }
 

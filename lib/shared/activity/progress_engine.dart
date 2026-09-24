@@ -53,15 +53,21 @@ PeriodWindow goalWindow(Goal goal, DateTime now) => switch (goal.period) {
   ),
 };
 
-num measureGoal(GoalType type, Iterable<Activity> activities, PeriodWindow w) {
+/// A goal's progress in [w]: measured from activity, or for a coaching
+/// goal the times the member marked it done (same rule as the server).
+num measureGoal(Goal goal, Iterable<Activity> activities, PeriodWindow w) {
+  if (goal.type == GoalType.custom) {
+    return goal.completions.where((c) => w.contains(c.toLocal())).length;
+  }
   num total = 0;
   for (final a in activities) {
     if (!w.contains(a.startedAt.toLocal())) continue;
-    total += switch (type) {
+    total += switch (goal.type) {
       GoalType.steps => a.steps ?? 0,
       GoalType.workouts => a.isWorkout ? 1 : 0,
       GoalType.activeMinutes => a.activeMinutes ?? a.durationMinutes ?? 0,
       GoalType.distanceKm => a.distanceKm ?? 0,
+      GoalType.custom => 0,
     };
   }
   return total;
@@ -100,7 +106,7 @@ GoalProgress evaluateGoal(
   DateTime now,
 ) {
   final w = goalWindow(goal, now);
-  final value = measureGoal(goal.type, activities, w);
+  final value = measureGoal(goal, activities, w);
   return GoalProgress(
     goal: goal.withProgress(value),
     window: w,

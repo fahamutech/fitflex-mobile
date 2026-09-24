@@ -209,4 +209,8 @@ class _RecordingRepo implements GoalRepository {
   @override
   Future<Goal> update(String id, {num? target, GoalStatus? status}) =>
       throw UnimplementedError();
+
+  @override
+  Future<Goal> checkIn(String id, {bool undo = false}) =>
+      throw UnimplementedError();
 }

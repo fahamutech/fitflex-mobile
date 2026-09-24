@@ -106,7 +106,7 @@ StreakStatus? computeStreak(
           final live = daily.where((g) => !dayOf(g.startDate).isAfter(d));
           if (live.isEmpty) return false;
           final w = dayWindow(d);
-          return live.every((g) => measureGoal(g.type, acts, w) >= g.target);
+          return live.every((g) => measureGoal(g, acts, w) >= g.target);
         },
       );
     case StreakKind.gymAttendance:

@@ -15,6 +15,9 @@ abstract class GoalRepository {
   });
 
   Future<Goal> update(String id, {num? target, GoalStatus? status});
+
+  /// Coaching goals: mark done now, or undo this period's latest mark.
+  Future<Goal> checkIn(String id, {bool undo = false});
 }
 
 /// Goals stored on the FitFlex backend (`/me/goals`).
@@ -58,6 +61,10 @@ class ApiGoalRepository implements GoalRepository {
     });
     return _parse(res);
   }
+
+  @override
+  Future<Goal> checkIn(String id, {bool undo = false}) async =>
+      _parse(await api.goalCheckIn(id, undo: undo));
 
   Goal _parse(Map<String, dynamic> res) {
     final goal = Goal.tryParse(
@@ -142,5 +149,18 @@ class LocalGoalRepository implements GoalRepository {
     final i = _store.indexWhere((g) => g.id == id);
     if (i < 0) throw StateError('Unknown goal $id');
     return _store[i] = _store[i].copyWith(target: target, status: status);
+  }
+
+  @override
+  Future<Goal> checkIn(String id, {bool undo = false}) async {
+    final i = _store.indexWhere((g) => g.id == id);
+    if (i < 0) throw StateError('Unknown goal $id');
+    final done = [..._store[i].completions];
+    if (undo) {
+      if (done.isNotEmpty) done.removeLast();
+    } else {
+      done.add(_clock());
+    }
+    return _store[i] = _store[i].copyWith(completions: done);
   }
 }

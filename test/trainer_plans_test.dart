@@ -304,7 +304,8 @@ void main() {
     testWidgets(
       'Client page shows only shared data and assigns on chosen days',
       (tester) async {
-        tester.view.physicalSize = const Size(1080, 3000);
+        // Tall enough for the goals section and the workout list below it.
+        tester.view.physicalSize = const Size(1080, 4800);
         tester.view.devicePixelRatio = 3;
         addTearDown(tester.view.reset);
 

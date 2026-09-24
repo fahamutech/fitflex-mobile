@@ -421,19 +421,89 @@ class ClientWorkout {
 }
 
 class ClientGoal {
+  final String id;
   final GoalType type;
   final GoalPeriod period;
   final num target;
   final num current;
   final bool completed;
+  final String? title;
 
   const ClientGoal({
+    this.id = '',
     required this.type,
     required this.period,
     required this.target,
     required this.current,
     required this.completed,
+    this.title,
   });
+}
+
+/// A goal this trainer set for the client. The definition is always
+/// visible to them; [current]/[completed] only when the client shares
+/// goals.
+class AssignedGoal {
+  final Goal goal;
+  final num? current;
+  final bool? completed;
+
+  const AssignedGoal({required this.goal, this.current, this.completed});
+
+  bool get progressShared => current != null;
+
+  static AssignedGoal? tryParse(Object? json) {
+    if (json is! Map) return null;
+    final m = Map<String, dynamic>.from(json);
+    final goal = Goal.tryParse({
+      ...m,
+      'source': 'trainer',
+      'createdByType': 'trainer',
+    });
+    if (goal == null) return null;
+    final p = m['progress'];
+    return AssignedGoal(
+      goal: goal,
+      current: p is Map ? p['current'] as num? : null,
+      completed: p is Map ? p['completed'] == true : null,
+    );
+  }
+}
+
+/// One of the trainer's own challenges the client joined: something a
+/// challenge goal can be tied to.
+class GoalChallenge {
+  final String id;
+  final String name;
+  final GoalType type;
+  final num target;
+  final DateTime startDate;
+  final DateTime endDate;
+
+  const GoalChallenge({
+    required this.id,
+    required this.name,
+    required this.type,
+    required this.target,
+    required this.startDate,
+    required this.endDate,
+  });
+
+  static GoalChallenge? tryParse(Object? json) {
+    if (json is! Map) return null;
+    final type = GoalType.fromWire(json['type'] as String?);
+    final start = DateTime.tryParse(json['startDate'] as String? ?? '');
+    final end = DateTime.tryParse(json['endDate'] as String? ?? '');
+    if (type == null || start == null || end == null) return null;
+    return GoalChallenge(
+      id: json['id'] as String? ?? '',
+      name: json['name'] as String? ?? '',
+      type: type,
+      target: json['target'] as num? ?? 0,
+      startDate: start,
+      endDate: end,
+    );
+  }
 }
 
 class ClientStreak {
@@ -472,10 +542,18 @@ class ClientOverview {
   /// Null unless the member shares challenge data with this trainer.
   final List<SharedChallengeProgress>? challenges;
 
+  /// Goals this trainer set (always visible to them).
+  final List<AssignedGoal> assignedGoals;
+
+  /// Challenges a goal can be tied to; null unless challenges are shared.
+  final List<GoalChallenge>? goalChallenges;
+
   const ClientOverview({
     required this.client,
     this.summary,
     this.challenges,
+    this.assignedGoals = const [],
+    this.goalChallenges,
     this.activity,
     this.workouts = const [],
     this.goals,
@@ -505,11 +583,13 @@ class ClientOverview {
                 if (GoalPeriod.fromWire(g['period'] as String?)
                     case final period?)
                   ClientGoal(
+                    id: g['id'] as String? ?? '',
                     type: type,
                     period: period,
                     target: g['target'] as num? ?? 0,
                     current: g['current'] as num? ?? 0,
                     completed: g['completed'] == true,
+                    title: g['title'] as String?,
                   ),
           ]
         : null;
@@ -533,6 +613,16 @@ class ClientOverview {
       streaks: streaks,
       summary: ClientSummary.tryParse(json['summary']),
       challenges: SharedChallengeProgress.parseList(json['challenges']),
+      assignedGoals: [
+        for (final g in (json['assignedGoals'] as List? ?? const []))
+          ?AssignedGoal.tryParse(g),
+      ],
+      goalChallenges: json['goalChallenges'] is List
+          ? [
+              for (final c in json['goalChallenges'] as List)
+                ?GoalChallenge.tryParse(c),
+            ]
+          : null,
     );
   }
 }
