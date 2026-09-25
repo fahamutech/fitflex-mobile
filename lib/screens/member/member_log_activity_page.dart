@@ -12,6 +12,8 @@ import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import 'member_shell.dart';
+import '../../shared/social.dart';
+import 'widgets/share_picker.dart';
 import 'widgets/activity_widgets.dart';
 
 /// Activity → Log activity: a session the member did without FitFlex
@@ -73,7 +75,12 @@ class _MemberLogActivityPageState extends State<MemberLogActivityPage> {
     intensity: _intensity,
     name: _name.text,
     notes: _notes.text,
+    shareWith: _share?.toJson(),
+    shareChosen: _shareChosen,
   );
+
+  ShareWith? _share;
+  bool _shareChosen = false;
 
   Future<void> _pickDay() async {
     final now = _now;
@@ -288,6 +295,26 @@ class _MemberLogActivityPageState extends State<MemberLogActivityPage> {
         Text(
           context.tr('logActivity.manualNote'),
           style: theme.textTheme.bodySmall,
+        ),
+        const SizedBox(height: FFTokens.spacingMd),
+        FFActionTile(
+          key: const Key('log-share'),
+          icon: _shareChosen && _share == null
+              ? Icons.lock_outline
+              : Icons.people_outline,
+          title: context.tr('audience.whoCanSee'),
+          subtitle: _shareChosen
+              ? shareLabel(context, _share)
+              : context.tr('audience.useDefault'),
+          onTap: () async {
+            final r = await pickShare(context, initial: _share);
+            if (!r.cancelled) {
+              setState(() {
+                _share = r.share;
+                _shareChosen = true;
+              });
+            }
+          },
         ),
         if (_submitError case final e?) ...[
           const SizedBox(height: FFTokens.spacingMd),

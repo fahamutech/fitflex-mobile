@@ -507,6 +507,13 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
           onTap: _openGoalsDialog,
         ),
         FFActionTile(
+          key: const Key('profile-community'),
+          icon: Icons.people_outline,
+          title: context.tr('community.title'),
+          subtitle: context.tr('community.profileHint'),
+          onTap: () => context.push(AppRoutes.memberCommunity),
+        ),
+        FFActionTile(
           key: const Key('profile-privacy'),
           icon: Icons.privacy_tip_outlined,
           title: context.tr('privacy.title'),

@@ -87,6 +87,11 @@ class ManualActivityDraft {
   final String? name;
   final String? notes;
 
+  /// Who can see it, when the member chose while logging (`null` =
+  /// private). Left unset, the member's default applies.
+  final Map<String, dynamic>? shareWith;
+  final bool shareChosen;
+
   const ManualActivityDraft({
     required this.type,
     required this.startedAt,
@@ -96,6 +101,8 @@ class ManualActivityDraft {
     this.intensity,
     this.name,
     this.notes,
+    this.shareWith,
+    this.shareChosen = false,
   });
 
   String? get _name {
@@ -126,6 +133,7 @@ class ManualActivityDraft {
       if (f.steps) 'steps': ?steps,
       if (f.intensity) 'intensity': ?intensity?.wire,
       'notes': ?notesForBackend,
+      if (shareChosen) 'shareWith': shareWith,
     };
   }
 }
