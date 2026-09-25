@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../shared/activity/activity.dart';
 import '../../../shared/activity/run_metrics.dart' show formatPace;
+import 'share_picker.dart' show editActivitySharing;
 import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
 import '../../../shared/formatters.dart';
@@ -102,7 +103,9 @@ class ActivityTimelineTile extends StatelessWidget {
               ),
             )
           : workoutId == null
-          ? () {}
+          ? (a.isDailyStepTotal || a.isSample || a.origin != DataOrigin.manual
+                ? () {}
+                : () => editActivitySharing(context, a))
           : () => context.go(
               AppRoutes.memberWorkout.replaceFirst(
                 ':workoutId',

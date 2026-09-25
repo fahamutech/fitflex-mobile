@@ -10,7 +10,9 @@ import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import 'member_shell.dart';
+import '../../shared/social.dart';
 import 'widgets/run_widgets.dart';
+import 'widgets/share_picker.dart';
 
 /// Record a run with GPS: Start, Pause/Resume, Finish, then save or discard.
 /// Everything is measured automatically; the route is private.
@@ -24,6 +26,8 @@ class MemberRecordRunPage extends StatefulWidget {
 class _MemberRecordRunPageState extends State<MemberRecordRunPage> {
   bool _saving = false;
   final _notes = TextEditingController();
+  ShareWith? _share;
+  bool _shareChosen = false;
 
   @override
   void dispose() {
@@ -72,7 +76,12 @@ class _MemberRecordRunPageState extends State<MemberRecordRunPage> {
     final tooShort = context.tr('run.tooShort');
     setState(() => _saving = true);
     try {
-      await r.save(scope.api, notes: _notes.text);
+      await r.save(
+        scope.api,
+        notes: _notes.text,
+        shareWith: _share?.toJson(),
+        shareChosen: _shareChosen,
+      );
       await shell?.refreshAfterWorkout();
       messenger.showSnackBar(SnackBar(content: Text(saved)));
       if (mounted) context.go(AppRoutes.memberActivity);
@@ -175,6 +184,25 @@ class _MemberRecordRunPageState extends State<MemberRecordRunPage> {
                     labelText: context.tr('run.notes'),
                     hintText: context.tr('run.notesHint'),
                   ),
+                ),
+                FFActionTile(
+                  key: const Key('run-share'),
+                  icon: _shareChosen && _share == null
+                      ? Icons.lock_outline
+                      : Icons.people_outline,
+                  title: context.tr('audience.whoCanSee'),
+                  subtitle: _shareChosen
+                      ? shareLabel(context, _share)
+                      : context.tr('audience.useDefault'),
+                  onTap: () async {
+                    final res = await pickShare(context, initial: _share);
+                    if (!res.cancelled) {
+                      setState(() {
+                        _share = res.share;
+                        _shareChosen = true;
+                      });
+                    }
+                  },
                 ),
                 Text(
                   context.tr('run.privateNote'),

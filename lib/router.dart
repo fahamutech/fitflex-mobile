@@ -13,6 +13,9 @@ import 'shared/activity/activity.dart';
 import 'screens/member/member_shop_tab.dart';
 import 'screens/member/member_onboarding_page.dart';
 import 'screens/member/member_privacy_page.dart';
+import 'screens/member/member_community_page.dart';
+import 'screens/member/member_group_page.dart';
+import 'screens/member/member_shared_activity_page.dart';
 import 'screens/member/member_record_run_page.dart';
 import 'screens/member/member_run_detail_page.dart';
 import 'screens/trainer/trainer_registration_page.dart';
@@ -82,6 +85,10 @@ abstract class AppRoutes {
   static const memberPasses = '/member/passes';
   static const memberPayment = '/member/payment';
   static const memberPrivacy = '/member/privacy';
+  static const memberCommunity = '/member/community';
+  static const memberSharedActivity =
+      '/member/community/activities/:activityId';
+  static const memberGroup = '/member/community/groups/:groupId';
   static const memberActivitySharing = '/member/privacy/activity-sharing';
 }
 
@@ -515,6 +522,29 @@ GoRouter buildRouter(AuthState auth) {
             path: AppRoutes.memberPasses,
             name: 'memberPasses',
             builder: (context, state) => const MemberPassesPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.memberCommunity,
+            name: 'memberCommunity',
+            builder: (context, state) => MemberCommunityPage(
+              initialTab:
+                  int.tryParse(state.uri.queryParameters['tab'] ?? '') ?? 0,
+            ),
+            routes: [
+              GoRoute(
+                path: 'activities/:activityId',
+                name: 'memberSharedActivity',
+                builder: (context, state) => MemberSharedActivityPage(
+                  activityId: state.pathParameters['activityId']!,
+                ),
+              ),
+              GoRoute(
+                path: 'groups/:groupId',
+                name: 'memberGroup',
+                builder: (context, state) =>
+                    GroupPage(groupId: state.pathParameters['groupId']!),
+              ),
+            ],
           ),
           GoRoute(
             path: AppRoutes.memberPrivacy,

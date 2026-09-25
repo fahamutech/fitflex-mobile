@@ -594,6 +594,130 @@ class ApiClient {
             as Map,
       );
 
+  // ── Sharing between members ──────────────────────────────────────────
+  Future<Map<String, dynamic>> _map(
+    String method,
+    String path, {
+    Object? body,
+  }) async => Map<String, dynamic>.from(
+    await _request(method, path, body: body) as Map,
+  );
+  String _e(String v) => Uri.encodeComponent(v);
+
+  Future<Map<String, dynamic>> socialSettings() =>
+      _map('GET', '/me/social/settings');
+  Future<Map<String, dynamic>> updateSocialSettings(Object? defaultShare) =>
+      _map('PUT', '/me/social/settings', body: {'defaultShare': defaultShare});
+  Future<Map<String, dynamic>> connections() => _map('GET', '/me/connections');
+  Future<Map<String, dynamic>> findPeople({String? q, String? code}) => _map(
+    'GET',
+    '/social/people?${Uri(queryParameters: {'q': ?q, 'code': ?code}).query}',
+  );
+  Future<Map<String, dynamic>> follow(String userId) =>
+      _map('POST', '/me/follows', body: {'userId': userId});
+  Future<Map<String, dynamic>> unfollow(String userId) =>
+      _map('DELETE', '/me/follows/${_e(userId)}');
+  Future<Map<String, dynamic>> removeFollower(String userId) =>
+      _map('DELETE', '/me/followers/${_e(userId)}');
+  Future<Map<String, dynamic>> block(String userId) =>
+      _map('POST', '/me/blocks', body: {'userId': userId});
+  Future<Map<String, dynamic>> unblock(String userId) =>
+      _map('DELETE', '/me/blocks/${_e(userId)}');
+  Future<Map<String, dynamic>> shareActivity(
+    String activityId,
+    Object? shareWith,
+  ) => _map(
+    'PUT',
+    '/me/activities/${_e(activityId)}/sharing',
+    body: {'shareWith': shareWith},
+  );
+  Future<Map<String, dynamic>> feed({String? before}) => _map(
+    'GET',
+    before == null
+        ? '/me/feed'
+        : '/me/feed?${Uri(queryParameters: {'before': before}).query}',
+  );
+  Future<Map<String, dynamic>> sharedActivity(String id) =>
+      _map('GET', '/social/activities/${_e(id)}');
+  Future<Map<String, dynamic>> kudos(String id, bool on) =>
+      _map(on ? 'POST' : 'DELETE', '/social/activities/${_e(id)}/kudos');
+  Future<Map<String, dynamic>> addComment(String id, String text) => _map(
+    'POST',
+    '/social/activities/${_e(id)}/comments',
+    body: {'text': text},
+  );
+  Future<Map<String, dynamic>> deleteComment(String commentId) =>
+      _map('DELETE', '/social/comments/${_e(commentId)}');
+  Future<Map<String, dynamic>> report(
+    String targetType,
+    String targetId, {
+    String? reason,
+  }) => _map(
+    'POST',
+    '/social/reports',
+    body: {'targetType': targetType, 'targetId': targetId, 'reason': ?reason},
+  );
+
+  Future<Map<String, dynamic>> myGroups() => _map('GET', '/me/groups');
+  Future<Map<String, dynamic>> createMyGroup(Map<String, dynamic> body) =>
+      _map('POST', '/me/groups', body: body);
+  Future<Map<String, dynamic>> discoverGroups({String q = ''}) =>
+      _map('GET', '/social/groups?${Uri(queryParameters: {'q': q}).query}');
+  Future<Map<String, dynamic>> joinGroup({
+    String? groupId,
+    String? inviteCode,
+  }) => _map(
+    'POST',
+    '/social/groups/join',
+    body: {'groupId': ?groupId, 'inviteCode': ?inviteCode},
+  );
+  Future<Map<String, dynamic>> leaveGroup(String id) =>
+      _map('POST', '/social/groups/${_e(id)}/leave');
+
+  /// Group pages: members use `/social/groups`; trainers and gyms their own
+  /// prefix ([scope] `trainer` or `owner`, with [gymId] for gyms).
+  String _groupBase(String? scope) =>
+      scope == null ? '/social/groups' : '/$scope/groups';
+  String _gymQ(String? gymId) =>
+      gymId == null ? '' : '?${Uri(queryParameters: {'gymId': gymId}).query}';
+  Future<Map<String, dynamic>> groupDetail(
+    String id, {
+    String? scope,
+    String? gymId,
+  }) => _map('GET', '${_groupBase(scope)}/${_e(id)}${_gymQ(gymId)}');
+  Future<Map<String, dynamic>> updateGroup(
+    String id,
+    Map<String, dynamic> body, {
+    String? scope,
+    String? gymId,
+  }) => _map(
+    'PATCH',
+    '${_groupBase(scope)}/${_e(id)}${_gymQ(gymId)}',
+    body: body,
+  );
+  Future<Map<String, dynamic>> archiveGroup(
+    String id, {
+    String? scope,
+    String? gymId,
+  }) => _map('POST', '${_groupBase(scope)}/${_e(id)}/archive${_gymQ(gymId)}');
+  Future<Map<String, dynamic>> groupMemberAction(
+    String id,
+    String userId,
+    String action, {
+    String? scope,
+    String? gymId,
+  }) => _map(
+    'POST',
+    '${_groupBase(scope)}/${_e(id)}/members/${_e(userId)}/$action${_gymQ(gymId)}',
+  );
+  Future<Map<String, dynamic>> ownedGroups(String scope, {String? gymId}) =>
+      _map('GET', '/$scope/groups${_gymQ(gymId)}');
+  Future<Map<String, dynamic>> createOwnedGroup(
+    String scope,
+    Map<String, dynamic> body, {
+    String? gymId,
+  }) => _map('POST', '/$scope/groups${_gymQ(gymId)}', body: body);
+
   /// Rewards the member earned from challenges, and where each stands.
   Future<List<dynamic>> myRewards() async {
     final res = await _request('GET', '/me/rewards');

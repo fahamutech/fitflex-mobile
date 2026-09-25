@@ -10,6 +10,7 @@ import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import 'member_shell.dart';
 import 'widgets/phone_steps_card.dart';
+import 'widgets/share_picker.dart' show SocialPrivacySection;
 
 /// Settings → Privacy & data.
 class MemberPrivacyPage extends StatelessWidget {
@@ -54,6 +55,7 @@ class MemberPrivacyPage extends StatelessWidget {
           onTap: () => context.go(AppRoutes.memberActivitySharing),
         ),
         const PhoneStepsSwitch(),
+        const SocialPrivacySection(),
       ],
     );
   }

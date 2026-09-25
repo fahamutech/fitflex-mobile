@@ -168,6 +168,9 @@ class Activity {
   /// Whether the member can open this run's (private) route.
   final bool hasRoute;
 
+  /// Who else can see it (`{followers, groups, company}`); null = private.
+  final Map<String, dynamic>? shareWith;
+
   /// Generated demo data. Never sent to the server and never shown as
   /// device, FitFlex or manual data.
   final bool isSample;
@@ -195,6 +198,7 @@ class Activity {
     this.elevationGainM,
     this.splits = const [],
     this.hasRoute = false,
+    this.shareWith,
     this.isSample = false,
   });
 
@@ -257,6 +261,9 @@ class Activity {
           if (s is num) s.toInt(),
       ],
       hasRoute: json['hasRoute'] == true,
+      shareWith: json['shareWith'] is Map
+          ? Map<String, dynamic>.from(json['shareWith'] as Map)
+          : null,
     );
   }
 
@@ -283,5 +290,6 @@ class Activity {
     'elevationGainM': ?elevationGainM,
     if (splits.isNotEmpty) 'splits': splits,
     if (hasRoute) 'hasRoute': true,
+    'shareWith': ?shareWith,
   };
 }

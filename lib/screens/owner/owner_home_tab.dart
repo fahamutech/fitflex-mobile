@@ -6,6 +6,7 @@ import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import 'owner_shell.dart';
 import '../../shared/widgets/challenge_manager_page.dart';
+import '../member/member_group_page.dart' show openGroupManager;
 import 'widgets/gym_engagement_widgets.dart';
 
 /// Owner dashboard home tab — shows stats, quick actions, and gym summary.
@@ -323,6 +324,17 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
           title: context.tr('challenge.manageTitle'),
           subtitle: context.tr('challenge.manageBody.owner'),
           onTap: () => openChallengeManager(
+            context,
+            scope: 'owner',
+            gymId: data.activeGymId,
+          ),
+        ),
+        FFActionTile(
+          key: const Key('owner-groups'),
+          icon: Icons.groups_outlined,
+          title: context.tr('community.yourGroups'),
+          subtitle: context.tr('community.ownerTile.owner'),
+          onTap: () => openGroupManager(
             context,
             scope: 'owner',
             gymId: data.activeGymId,

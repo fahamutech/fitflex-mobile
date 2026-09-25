@@ -164,8 +164,15 @@ class RunRecorder extends ChangeNotifier {
 
   /// Saves the finished run. Returns the saved activity; throws on failure
   /// (the run stays so the member can try again).
-  Future<Activity> save(ApiClient api, {String? notes}) async {
+  Future<Activity> save(
+    ApiClient api, {
+    String? notes,
+    Map<String, dynamic>? shareWith,
+    bool shareChosen = false,
+  }) async {
     final res = await api.recordRun({
+      // Left out, the member's default audience applies.
+      if (shareChosen) 'shareWith': shareWith,
       'type': 'running',
       'segments': [
         for (final seg in _segments) [for (final p in seg) p.toWire()],

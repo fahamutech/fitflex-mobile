@@ -9,7 +9,9 @@ import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import 'member_shell.dart';
+import '../../shared/social.dart';
 import 'widgets/run_widgets.dart';
+import 'widgets/share_picker.dart';
 
 /// A saved run: numbers, splits and the route (which only the member sees).
 class MemberRunDetailPage extends StatefulWidget {
@@ -111,6 +113,19 @@ class _MemberRunDetailPageState extends State<MemberRunDetailPage> {
                       ],
                     ),
                   ),
+                const SizedBox(height: FFTokens.spacingSm),
+                FFActionTile(
+                  key: const Key('run-detail-share'),
+                  icon: a.shareWith == null
+                      ? Icons.lock_outline
+                      : Icons.people_outline,
+                  title: context.tr('audience.whoCanSee'),
+                  subtitle: shareLabel(
+                    context,
+                    ShareWith.fromJson(a.shareWith),
+                  ),
+                  onTap: () => editActivitySharing(context, a),
+                ),
                 const SizedBox(height: FFTokens.spacingMd),
                 RunSummaryGrid(
                   distanceKm: a.distanceKm ?? 0,

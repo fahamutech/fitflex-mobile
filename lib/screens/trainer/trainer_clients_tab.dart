@@ -7,6 +7,7 @@ import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import '../member/widgets/trainer_sharing.dart' show sharedSummary;
 import '../../shared/widgets/challenge_manager_page.dart';
+import '../member/member_group_page.dart' show openGroupManager;
 import 'trainer_client_page.dart';
 import 'trainer_plan_editor_page.dart';
 import 'widgets/client_summary_card.dart';
@@ -210,6 +211,13 @@ class _TrainerClientsTabState extends State<TrainerClientsTab> {
             title: context.tr('challenge.manageTitle'),
             subtitle: context.tr('challenge.manageBody.trainer'),
             onTap: () => openChallengeManager(context, scope: 'trainer'),
+          ),
+          FFActionTile(
+            key: const Key('trainer-groups'),
+            icon: Icons.groups_outlined,
+            title: context.tr('community.yourGroups'),
+            subtitle: context.tr('community.ownerTile.trainer'),
+            onTap: () => openGroupManager(context, scope: 'trainer'),
           ),
           Row(
             children: [
