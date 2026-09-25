@@ -608,6 +608,23 @@ class ApiClient {
       _map('GET', '/me/social/settings');
   Future<Map<String, dynamic>> updateSocialSettings(Object? defaultShare) =>
       _map('PUT', '/me/social/settings', body: {'defaultShare': defaultShare});
+  Future<Map<String, dynamic>> setPublicProfile(bool on) =>
+      _map('PUT', '/me/social/settings', body: {'publicProfile': on});
+  Future<Map<String, dynamic>> explore({String? before}) => _map(
+    'GET',
+    before == null
+        ? '/social/explore'
+        : '/social/explore?${Uri(queryParameters: {'before': before}).query}',
+  );
+  Future<Map<String, dynamic>> personProfile(
+    String userId, {
+    String? before,
+  }) => _map(
+    'GET',
+    '/social/people/${_e(userId)}${before == null ? '' : '?${Uri(queryParameters: {'before': before}).query}'}',
+  );
+  Future<Map<String, dynamic>> postEngagement(String activityId) =>
+      _map('GET', '/social/activities/${_e(activityId)}/engagement');
   Future<Map<String, dynamic>> connections() => _map('GET', '/me/connections');
   Future<Map<String, dynamic>> findPeople({String? q, String? code}) => _map(
     'GET',

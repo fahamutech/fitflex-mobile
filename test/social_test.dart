@@ -1,6 +1,7 @@
 import 'package:fitflexmobile/app_scope.dart';
 import 'package:fitflexmobile/screens/member/member_community_page.dart';
 import 'package:fitflexmobile/screens/member/member_group_page.dart';
+import 'package:fitflexmobile/screens/member/member_person_page.dart';
 import 'package:fitflexmobile/screens/member/member_shell.dart';
 import 'package:fitflexmobile/screens/member/member_shared_activity_page.dart';
 import 'package:fitflexmobile/screens/member/widgets/share_picker.dart';
@@ -69,6 +70,45 @@ class _Api extends ApiClient {
     return {'kudos': on ? 1 : 0, 'youKudoed': on, 'comments': 1};
   }
 
+  bool publicProfile = false;
+  Map<String, dynamic>? profileResponse;
+
+  @override
+  Future<Map<String, dynamic>> explore({String? before}) async => {
+    'items': [_item(id: 'pub1', owner: 'ben', rel: 'none')],
+    'next': null,
+  };
+
+  @override
+  Future<Map<String, dynamic>> personProfile(
+    String userId, {
+    String? before,
+  }) async =>
+      profileResponse ??
+      {
+        'person': {
+          'id': userId,
+          'displayName': 'Ben Mushi',
+          'relationship': 'none',
+          'publicProfile': true,
+          'followers': 1200,
+          'following': 80,
+        },
+        'items': [_item(id: 'pub1', owner: userId, rel: 'none')],
+        'next': null,
+      };
+
+  @override
+  Future<Map<String, dynamic>> postEngagement(String activityId) async => {
+    'views': 42,
+    'kudos': [
+      {'id': 'fan', 'displayName': 'Juma Fan', 'relationship': 'follows_you'},
+    ],
+    'commenters': [
+      {'id': 'ana', 'displayName': 'Ana', 'relationship': 'friends'},
+    ],
+  };
+
   @override
   Future<Map<String, dynamic>> connections() async => conn;
   @override
@@ -76,6 +116,7 @@ class _Api extends ApiClient {
     'defaultShare': null,
     'inviteCode': 'AB12CD34',
     'hasCompany': true,
+    'publicProfile': publicProfile,
     'blocked': [],
   };
   @override
@@ -133,7 +174,9 @@ class _Api extends ApiClient {
 
   @override
   Future<Map<String, dynamic>> sharedActivity(String id) async => {
-    'item': _item(id: id),
+    'item': id == 'mine'
+        ? {..._item(id: id, owner: 'me', mine: true), 'views': 42}
+        : _item(id: id),
     'comments': [
       {
         'id': 'c1',
@@ -238,8 +281,16 @@ void main() {
       'company': false,
     })!;
     expect(s.groups, ['g1']);
+    expect(
+      s.followers,
+      isTrue,
+      reason: 'stored followers now means everyone who follows',
+    );
     expect(ShareWith.wire(s), {
+      'v': 2,
+      'friends': false,
       'followers': true,
+      'public': false,
       'groups': ['g1'],
       'company': false,
     });
@@ -305,7 +356,7 @@ void main() {
     _tall(tester);
     final api = _Api();
     await tester.pumpWidget(
-      _app(api, const MemberCommunityPage(initialTab: 1)),
+      _app(api, const MemberCommunityPage(initialTab: 2)),
     );
     await tester.pumpAndSettle();
     expect(find.text('AB12CD34'), findsOneWidget);
@@ -330,7 +381,7 @@ void main() {
     _tall(tester);
     final api = _Api();
     await tester.pumpWidget(
-      _app(api, const MemberCommunityPage(initialTab: 2)),
+      _app(api, const MemberCommunityPage(initialTab: 3)),
     );
     await tester.pumpAndSettle();
     expect(find.text('Dar Runners'), findsOneWidget);
@@ -411,6 +462,13 @@ void main() {
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
     expect(find.textContaining('never shared'), findsOneWidget);
+    // Public needs a public profile first.
+    expect(
+      tester
+          .widget<CheckboxListTile>(find.byKey(const Key('share-public')))
+          .onChanged,
+      isNull,
+    );
     await tester.tap(find.byKey(const Key('share-friends')));
     await tester.tap(find.byKey(const Key('share-group-g1')));
     await tester.tap(find.byKey(const Key('share-company')));
@@ -418,9 +476,95 @@ void main() {
     await tester.pumpAndSettle();
     expect(result!.cancelled, isFalse);
     expect(result!.share!.toJson(), {
-      'followers': true,
+      'v': 2,
+      'friends': true,
+      'followers': false,
+      'public': false,
       'groups': ['g1'],
       'company': true,
     });
+  });
+
+  testWidgets('Explore shows public posts from people you don\'t follow', (
+    tester,
+  ) async {
+    _tall(tester);
+    final api = _Api();
+    await tester.pumpWidget(
+      _app(api, const MemberCommunityPage(initialTab: 1)),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('feed-pub1')), findsOneWidget);
+    expect(find.text('Not following'), findsOneWidget);
+  });
+
+  testWidgets(
+    'a public profile: counts, public posts, Follow — no follow-back needed',
+    (tester) async {
+      _tall(tester);
+      final api = _Api();
+      await tester.pumpWidget(_app(api, const MemberPersonPage(userId: 'ben')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('1200 followers'), findsOneWidget);
+      expect(find.byKey(const Key('feed-pub1')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('person-follow')));
+      await tester.pumpAndSettle();
+      expect(api.calls, contains('follow:ben'));
+    },
+  );
+
+  testWidgets(
+    'your own post: views (anonymous) and who engaged, with Follow back',
+    (tester) async {
+      _tall(tester);
+      final api = _Api();
+      api.feedItems = [];
+      await tester.pumpWidget(
+        _app(api, const MemberSharedActivityPage(activityId: 'mine')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('engagement')), findsOneWidget);
+      expect(find.text('42 views'), findsWidgets);
+      expect(find.textContaining('Viewers stay anonymous'), findsOneWidget);
+      expect(find.text('Juma Fan'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('follow-back-fan')));
+      await tester.pumpAndSettle();
+      expect(api.calls, contains('follow:fan'));
+      expect(
+        find.byKey(const Key('follow-back-ana')),
+        findsNothing,
+        reason: 'already friends',
+      );
+    },
+  );
+
+  testWidgets('public posting is available once the profile is public', (
+    tester,
+  ) async {
+    _tall(tester);
+    final api = _Api()..publicProfile = true;
+    ({ShareWith? share, bool cancelled})? result;
+    await tester.pumpWidget(
+      _app(
+        api,
+        Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () async => result = await pickShare(context),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('share-public')));
+    await tester.tap(find.byKey(const Key('share-followers')));
+    await tester.tap(find.byKey(const Key('share-done')));
+    await tester.pumpAndSettle();
+    expect(result!.share!.public, isTrue);
+    expect(result!.share!.followers, isTrue);
+    expect(result!.share!.friends, isFalse);
   });
 }

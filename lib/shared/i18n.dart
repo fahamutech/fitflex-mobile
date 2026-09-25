@@ -1118,10 +1118,49 @@ class FFLocale extends ChangeNotifier {
       'home.paidGyms': 'Paid visit gyms',
       'home.signout': 'Sign out',
       'home.seeAll': 'See all',
+      'audience.body':
+          'Choose who sees it. Friends are people you follow who follow you back; followers are everyone who follows you.',
+      'audience.followers': 'Followers',
+      'audience.followersHint':
+          'Everyone who follows you. You don\'t need to follow them back.',
+      'audience.public': 'Public',
+      'audience.publicHint':
+          'Anyone on FitFlex. Shows on your profile and in Explore.',
+      'audience.publicNeedsProfile':
+          'Turn on Public profile in Privacy & data to post publicly.',
+      'audience.publicProfile': 'Public profile',
+      'audience.publicProfileHint':
+          'Anyone on FitFlex can find you by name, see your public posts and follow you. Off: only people in your groups or company, or with your invite code, can find you.',
+      'community.explore': 'Explore',
+      'community.exploreEmptyTitle': 'No public posts yet',
+      'community.exploreEmptyBody':
+          'Public posts from people with a public profile show here. Open someone to see their posts and decide whether to follow.',
+      'community.feedEmptyBody':
+          'Posts from people you follow, friends, groups and colleagues show here. Follow people, or try Explore.',
+      'community.notFollowing': 'Not following',
+      'community.views': '{n} views',
+      'community.viewsPrivate': 'Only you see this. Viewers stay anonymous.',
+      'community.kudosFrom': 'Kudos from',
+      'community.commentedBy': 'Commented',
+      'community.followingLabel': 'Following',
+      'community.noFriends':
+          'No friends yet. Friends are people you follow who follow you back.',
+      'community.profile': 'Profile',
+      'community.profileGone': 'Profile not available',
+      'community.profileGoneBody':
+          'This profile is private. Ask them for their invite code.',
+      'community.followerCount': '{n} followers',
+      'community.followingCount': '{n} following',
+      'community.publicBadge': 'Public profile',
+      'community.followsYouNote': 'Follows you',
+      'community.friendsUnfollow': 'Friends · Unfollow',
+      'community.followingUnfollow': 'Following · Unfollow',
+      'community.posts': 'Posts',
+      'community.noPostsYet': 'Nothing shared with you yet.',
+      'community.noPublicPosts':
+          'No public posts. Follow them to see what they share with followers.',
       'phoneSteps.title': 'Count your steps with this phone',
       'audience.title': 'Who can see this',
-      'audience.body':
-          'Only people you choose see it. Friends are people you follow who follow you back.',
       'audience.private': 'Only you',
       'audience.privateHint': 'Not shared with anyone.',
       'audience.friends': 'Friends',
@@ -1148,8 +1187,6 @@ class FFLocale extends ChangeNotifier {
       'community.groups': 'Groups',
       'community.you': 'You',
       'community.feedEmptyTitle': 'Nothing shared yet',
-      'community.feedEmptyBody':
-          'When friends, group-mates or colleagues share an activity with you, it shows here. Follow people and join groups to get started.',
       'community.more': 'Show more',
       'community.activity': 'Activity',
       'community.activityGone':
@@ -1170,9 +1207,7 @@ class FFLocale extends ChangeNotifier {
       'community.noResults': 'No one found. Try their invite code.',
       'community.followsYou': 'Follow you',
       'community.friends': 'Friends',
-      'community.noFriends':
-          'No friends yet. Follow someone and ask them to follow back.',
-      'community.waitingTitle': 'Waiting for them to follow back',
+      'community.waitingTitle': 'Following',
       'community.waiting': 'Waiting',
       'community.follow': 'Follow',
       'community.followBack': 'Follow back',
@@ -3051,10 +3086,49 @@ class FFLocale extends ChangeNotifier {
       'home.back': 'Rudi',
       'home.signout': 'Toka',
       'home.seeAll': 'Tazama zote',
+      'audience.body':
+          'Chagua nani aone. Marafiki ni watu unaowafuata na wanaokufuata pia; wafuasi ni wote wanaokufuata.',
+      'audience.followers': 'Wafuasi',
+      'audience.followersHint': 'Wote wanaokufuata. Huhitaji kuwafuata pia.',
+      'audience.public': 'Hadharani',
+      'audience.publicHint':
+          'Yeyote kwenye FitFlex. Inaonekana kwenye wasifu wako na Gundua.',
+      'audience.publicNeedsProfile':
+          'Washa Wasifu wa hadharani kwenye Faragha na data ili kuchapisha hadharani.',
+      'audience.publicProfile': 'Wasifu wa hadharani',
+      'audience.publicProfileHint':
+          'Yeyote kwenye FitFlex anaweza kukutafuta kwa jina, kuona machapisho yako ya hadharani na kukufuata. Ukizima: ni watu wa vikundi vyako au kampuni, au wenye namba yako ya mwaliko tu wanaoweza kukupata.',
+      'community.explore': 'Gundua',
+      'community.exploreEmptyTitle': 'Bado hakuna machapisho ya hadharani',
+      'community.exploreEmptyBody':
+          'Machapisho ya hadharani ya watu wenye wasifu wa hadharani huonekana hapa. Fungua mtu kuona machapisho yake na uamue kama umfuate.',
+      'community.feedEmptyBody':
+          'Machapisho ya watu unaowafuata, marafiki, vikundi na wafanyakazi wenzako huonekana hapa. Fuata watu, au jaribu Gundua.',
+      'community.notFollowing': 'Haumfuati',
+      'community.views': 'Waliotazama {n}',
+      'community.viewsPrivate':
+          'Ni wewe tu unayeona hii. Waliotazama hawatajwi.',
+      'community.kudosFrom': 'Pongezi kutoka',
+      'community.commentedBy': 'Walitoa maoni',
+      'community.followingLabel': 'Unafuata',
+      'community.noFriends':
+          'Bado huna marafiki. Marafiki ni watu unaowafuata na wanaokufuata pia.',
+      'community.profile': 'Wasifu',
+      'community.profileGone': 'Wasifu haupatikani',
+      'community.profileGoneBody':
+          'Wasifu huu ni wa faragha. Mwombe namba yake ya mwaliko.',
+      'community.followerCount': 'Wafuasi {n}',
+      'community.followingCount': 'Anafuata {n}',
+      'community.publicBadge': 'Wasifu wa hadharani',
+      'community.followsYouNote': 'Anakufuata',
+      'community.friendsUnfollow': 'Marafiki · Acha kufuata',
+      'community.followingUnfollow': 'Unafuata · Acha kufuata',
+      'community.posts': 'Machapisho',
+      'community.noPostsYet': 'Bado hakuna kilichoshirikiwa nawe.',
+      'community.noPublicPosts':
+          'Hakuna machapisho ya hadharani. Mfuate kuona anachoshiriki na wafuasi.',
       'phoneSteps.title': 'Hesabu hatua zako kwa simu hii',
       'audience.title': 'Nani anaweza kuona hii',
-      'audience.body':
-          'Ni watu unaowachagua tu wanaoiona. Marafiki ni watu unaowafuata na wanaokufuata pia.',
       'audience.private': 'Wewe tu',
       'audience.privateHint': 'Haishirikiwi na mtu yeyote.',
       'audience.friends': 'Marafiki',
@@ -3081,8 +3155,6 @@ class FFLocale extends ChangeNotifier {
       'community.groups': 'Vikundi',
       'community.you': 'Wewe',
       'community.feedEmptyTitle': 'Bado hakuna kilichoshirikiwa',
-      'community.feedEmptyBody':
-          'Marafiki, wanakikundi au wafanyakazi wenzako wakishiriki shughuli nawe, itaonekana hapa. Fuata watu na ujiunge na vikundi kuanza.',
       'community.more': 'Onyesha zaidi',
       'community.activity': 'Shughuli',
       'community.activityGone': 'Shughuli hii haishirikiwi nawe tena.',
@@ -3103,9 +3175,7 @@ class FFLocale extends ChangeNotifier {
           'Hakuna aliyepatikana. Jaribu namba yao ya mwaliko.',
       'community.followsYou': 'Wanakufuata',
       'community.friends': 'Marafiki',
-      'community.noFriends':
-          'Bado huna marafiki. Mfuate mtu na umwombe akufuate pia.',
-      'community.waitingTitle': 'Unasubiri wakufuate pia',
+      'community.waitingTitle': 'Unaowafuata',
       'community.waiting': 'Inasubiri',
       'community.follow': 'Fuata',
       'community.followBack': 'Fuata pia',

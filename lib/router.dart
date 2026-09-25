@@ -15,6 +15,7 @@ import 'screens/member/member_onboarding_page.dart';
 import 'screens/member/member_privacy_page.dart';
 import 'screens/member/member_community_page.dart';
 import 'screens/member/member_group_page.dart';
+import 'screens/member/member_person_page.dart';
 import 'screens/member/member_shared_activity_page.dart';
 import 'screens/member/member_record_run_page.dart';
 import 'screens/member/member_run_detail_page.dart';
@@ -89,6 +90,7 @@ abstract class AppRoutes {
   static const memberSharedActivity =
       '/member/community/activities/:activityId';
   static const memberGroup = '/member/community/groups/:groupId';
+  static const memberPerson = '/member/community/people/:userId';
   static const memberActivitySharing = '/member/privacy/activity-sharing';
 }
 
@@ -537,6 +539,12 @@ GoRouter buildRouter(AuthState auth) {
                 builder: (context, state) => MemberSharedActivityPage(
                   activityId: state.pathParameters['activityId']!,
                 ),
+              ),
+              GoRoute(
+                path: 'people/:userId',
+                name: 'memberPerson',
+                builder: (context, state) =>
+                    MemberPersonPage(userId: state.pathParameters['userId']!),
               ),
               GoRoute(
                 path: 'groups/:groupId',
