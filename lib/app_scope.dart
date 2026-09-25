@@ -3,6 +3,7 @@ import 'shared/activity/activity_config.dart';
 import 'shared/activity/activity_provider.dart';
 import 'shared/activity/goal_repository.dart';
 import 'shared/activity/manual_activity_log.dart';
+import 'shared/activity/phone_steps.dart';
 import 'shared/activity/workout_repository.dart';
 import 'shared/api_client.dart';
 import 'shared/auth_state.dart';
@@ -17,6 +18,7 @@ class AppScope extends InheritedWidget {
     this.goalRepository,
     this.workoutRepository,
     this.manualActivityLog,
+    this.phoneSteps,
     required super.child,
   });
 
@@ -29,6 +31,10 @@ class AppScope extends InheritedWidget {
   final GoalRepository? goalRepository;
   final WorkoutRepository? workoutRepository;
   final ManualActivityLog? manualActivityLog;
+
+  /// Counting steps with this phone. Null where it isn't offered (sample
+  /// data, web, widget tests), which hides the feature.
+  final PhoneSteps? phoneSteps;
 
   static final ActivityBackend _sample = ActivityBackend.sample();
 
@@ -50,5 +56,6 @@ class AppScope extends InheritedWidget {
       activityProvider != oldWidget.activityProvider ||
       goalRepository != oldWidget.goalRepository ||
       workoutRepository != oldWidget.workoutRepository ||
-      manualActivityLog != oldWidget.manualActivityLog;
+      manualActivityLog != oldWidget.manualActivityLog ||
+      phoneSteps != oldWidget.phoneSteps;
 }

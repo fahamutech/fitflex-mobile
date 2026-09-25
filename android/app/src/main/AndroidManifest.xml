@@ -6,6 +6,10 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <!-- Internet (map tiles, API) -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Step counting with the phone's own step sensor (Android 10+; the
+         gms one covers Android 9 and below). -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+    <uses-permission android:name="com.google.android.gms.permission.ACTIVITY_RECOGNITION" />
 
     <application
         android:label="FitFlex Af"

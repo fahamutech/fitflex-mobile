@@ -1,7 +1,29 @@
 # Device integration: preparation notes
 
-Status: **not built**. No health platform package, permission or
-entitlement is in the app yet. This page is the checklist for when it is.
+Status: **phone step counting is built (Android)**. Health Connect,
+Apple Health and wearables are still to do; this page is the checklist
+for them.
+
+## Android: the phone's own step counter (built)
+
+- `pedometer` reads Android's hardware step counter (`TYPE_STEP_COUNTER`,
+  steps since the phone last started); `permission_handler` asks for
+  `ACTIVITY_RECOGNITION` ("Physical activity"). Both are imported only in
+  `lib/shared/activity/providers/phone_step_counter.dart`.
+- Off until the member turns it on (Home, Activity tab, or Privacy & data).
+  Counting starts then — steps from before aren't credited.
+- `StepLedger` turns readings into daily totals: the difference between
+  two readings goes to the day of the later one; a lower reading means the
+  phone restarted; jumps over 100,000 are ignored; a day is capped at
+  100,000.
+- Readings: when the app opens or resumes, every minute while it's open,
+  and about every 15 minutes in the background (`workmanager`).
+- Each day is synced to `POST /me/device-activities` as
+  `source: device`, `devicePlatform: phone_sensor`,
+  `externalId: steps:yyyy-mm-dd`, dated at local midnight. The server keeps
+  the higher total, so a day only goes up.
+- Sign-out turns counting off and forgets the phone's days.
+- Web and iPhone: not offered (no step sensor access / no iOS build yet).
 
 ## Three kinds of activity data
 

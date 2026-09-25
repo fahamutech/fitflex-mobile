@@ -88,6 +88,8 @@ enum DataOrigin { device, fitflex, manual }
 
 /// The health platform or wearable a device record came from.
 enum DevicePlatform {
+  /// The phone's own step counter, read by FitFlex.
+  phoneSensor('phone_sensor'),
   appleHealth('apple_health'),
   healthConnect('health_connect'),
   fitbit('fitbit'),

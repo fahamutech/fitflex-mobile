@@ -1118,6 +1118,23 @@ class FFLocale extends ChangeNotifier {
       'home.paidGyms': 'Paid visit gyms',
       'home.signout': 'Sign out',
       'home.seeAll': 'See all',
+      'phoneSteps.title': 'Count your steps with this phone',
+      'phoneSteps.body':
+          'FitFlex reads your phone\'s own step counter as you move, no other app needed. Counting starts from when you turn it on, and each day\'s steps count toward your goals and challenges.',
+      'phoneSteps.enable': 'Turn on step counting',
+      'phoneSteps.notNow': 'Not now',
+      'phoneSteps.needsSettings':
+          'Allow "Physical activity" for FitFlex in your phone\'s settings to count steps.',
+      'phoneSteps.openSettings': 'Open settings',
+      'phoneSteps.onToast':
+          'Counting steps. Walk a little and they\'ll show within a minute.',
+      'phoneSteps.deniedToast':
+          'Step counting needs the Physical activity permission.',
+      'phoneSteps.counting': 'Counting steps on this phone · {n} today',
+      'phoneSteps.switchTitle': 'Count steps with this phone',
+      'phoneSteps.switchBody':
+          'Reads this phone\'s step counter and adds each day\'s steps to your activity. Turning it off stops counting; days already added stay.',
+      'origin.platform.phone_sensor': 'This phone',
       'reward.yours': 'Your rewards',
       'reward.why.finished': 'Challenge completed',
       'reward.why.top': 'You placed #{n}',
@@ -1130,7 +1147,8 @@ class FFLocale extends ChangeNotifier {
       'reward.earnedOn': 'Earned {date}',
       'reward.issuedOn': 'Issued {date}',
       'reward.reference': 'Reference: {ref}',
-      'reward.pendingHelp': 'It will be checked, then handed out. We\'ll let you know.',
+      'reward.pendingHelp':
+          'It will be checked, then handed out. We\'ll let you know.',
       'reward.rule.finishers': 'Everyone who finishes',
       'reward.rule.top': 'Top {n}',
       'reward.rule.team': 'Winning team',
@@ -2852,6 +2870,23 @@ class FFLocale extends ChangeNotifier {
       'home.back': 'Rudi',
       'home.signout': 'Toka',
       'home.seeAll': 'Tazama zote',
+      'phoneSteps.title': 'Hesabu hatua zako kwa simu hii',
+      'phoneSteps.body':
+          'FitFlex inasoma kihesabu hatua cha simu yako unapotembea, bila programu nyingine. Kuhesabu kunaanza unapowasha, na hatua za kila siku zinahesabiwa kwenye malengo na changamoto zako.',
+      'phoneSteps.enable': 'Washa kuhesabu hatua',
+      'phoneSteps.notNow': 'Si sasa',
+      'phoneSteps.needsSettings':
+          'Ruhusu "Shughuli za mwili" kwa FitFlex kwenye mipangilio ya simu yako ili kuhesabu hatua.',
+      'phoneSteps.openSettings': 'Fungua mipangilio',
+      'phoneSteps.onToast':
+          'Tunahesabu hatua. Tembea kidogo na zitaonekana ndani ya dakika moja.',
+      'phoneSteps.deniedToast':
+          'Kuhesabu hatua kunahitaji ruhusa ya Shughuli za mwili.',
+      'phoneSteps.counting': 'Tunahesabu hatua kwenye simu hii · {n} leo',
+      'phoneSteps.switchTitle': 'Hesabu hatua kwa simu hii',
+      'phoneSteps.switchBody':
+          'Inasoma kihesabu hatua cha simu hii na kuongeza hatua za kila siku kwenye shughuli zako. Ukizima, kuhesabu kunasimama; siku zilizokwisha ongezwa zinabaki.',
+      'origin.platform.phone_sensor': 'Simu hii',
       'reward.yours': 'Zawadi zako',
       'reward.why.finished': 'Changamoto imekamilika',
       'reward.why.top': 'Umeshika nafasi ya {n}',

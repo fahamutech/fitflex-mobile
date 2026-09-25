@@ -215,6 +215,7 @@ void main() {
       'package:fitbit',
       'package:garmin',
       'package:wear',
+      'package:pedometer',
     ];
 
     test('only providers/ may use a health platform package', () {

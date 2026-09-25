@@ -51,6 +51,8 @@
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>FitFlex needs your location to set your gym's position on the map.</string>
 	<!-- Camera permission -->
+	<key>NSMotionUsageDescription</key>
+	<string>FitFlex counts your steps to track your activity goals and challenges.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>FitFlex needs camera access to scan member QR codes and take gym photos.</string>
 	<!-- Photo library permission -->
