@@ -21,7 +21,7 @@ class MemberCommunityPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => DefaultTabController(
-    length: 3,
+    length: 4,
     initialIndex: initialTab,
     child: Scaffold(
       appBar: AppBar(
@@ -38,6 +38,10 @@ class MemberCommunityPage extends StatelessWidget {
               text: context.tr('community.feed'),
             ),
             Tab(
+              key: const Key('community-tab-explore'),
+              text: context.tr('community.explore'),
+            ),
+            Tab(
               key: const Key('community-tab-people'),
               text: context.tr('community.people'),
             ),
@@ -48,7 +52,9 @@ class MemberCommunityPage extends StatelessWidget {
           ],
         ),
       ),
-      body: const TabBarView(children: [FeedTab(), PeopleTab(), GroupsTab()]),
+      body: const TabBarView(
+        children: [FeedTab(), FeedTab(explore: true), PeopleTab(), GroupsTab()],
+      ),
     ),
   );
 }
@@ -81,8 +87,12 @@ void _toast(BuildContext context, String text) =>
 
 // ── Feed ─────────────────────────────────────────────────────────────────
 
+/// Your feed (people you follow, friends, groups, company), or with
+/// [explore] recent public posts from public profiles.
 class FeedTab extends StatefulWidget {
-  const FeedTab({super.key});
+  const FeedTab({super.key, this.explore = false});
+
+  final bool explore;
 
   @override
   State<FeedTab> createState() => _FeedTabState();
@@ -106,7 +116,10 @@ class _FeedTabState extends State<FeedTab> {
     final api = AppScope.of(context).api;
     try {
       if (more) setState(() => _loadingMore = true);
-      final res = await api.feed(before: more ? _next : null);
+      final before = more ? _next : null;
+      final res = widget.explore
+          ? await api.explore(before: before)
+          : await api.feed(before: before);
       final items = [
         for (final i in (res['items'] as List? ?? const []))
           if (i is Map) FeedItem.fromJson(i),
@@ -157,9 +170,17 @@ class _FeedTabState extends State<FeedTab> {
         children: [
           if (items.isEmpty)
             FFEmptyState(
-              key: const Key('feed-empty'),
-              title: context.tr('community.feedEmptyTitle'),
-              body: context.tr('community.feedEmptyBody'),
+              key: Key(widget.explore ? 'explore-empty' : 'feed-empty'),
+              title: context.tr(
+                widget.explore
+                    ? 'community.exploreEmptyTitle'
+                    : 'community.feedEmptyTitle',
+              ),
+              body: context.tr(
+                widget.explore
+                    ? 'community.exploreEmptyBody'
+                    : 'community.feedEmptyBody',
+              ),
             ),
           for (final (i, item) in items.indexed)
             FeedCard(
@@ -241,26 +262,36 @@ class FeedCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                FFAvatar(name: item.owner.name, size: FFAvatarSize.sm),
-                const SizedBox(width: FFTokens.spacingSm),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        you ? context.tr('community.you') : item.owner.name,
-                        style: theme.textTheme.titleSmall,
-                      ),
-                      Text(
-                        DateFormat('EEE d MMM · HH:mm').format(a.startedAt),
-                        style: theme.textTheme.bodySmall,
-                      ),
-                    ],
+            InkWell(
+              key: Key('feed-owner-${a.id}'),
+              // The poster's profile, to follow them or see more.
+              onTap: you ? null : () => openPerson(context, item.owner.id),
+              child: Row(
+                children: [
+                  FFAvatar(name: item.owner.name, size: FFAvatarSize.sm),
+                  const SizedBox(width: FFTokens.spacingSm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          you ? context.tr('community.you') : item.owner.name,
+                          style: theme.textTheme.titleSmall,
+                        ),
+                        Text(
+                          DateFormat('EEE d MMM · HH:mm').format(a.startedAt),
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                  if (!you && item.owner.relationship == Relationship.none)
+                    Text(
+                      context.tr('community.notFollowing'),
+                      style: theme.textTheme.bodySmall,
+                    ),
+                ],
+              ),
             ),
             const SizedBox(height: FFTokens.spacingSm),
             Row(
@@ -300,6 +331,22 @@ class FeedCard extends StatelessWidget {
                   icon: const Icon(Icons.chat_bubble_outline, size: 18),
                   label: Text('${item.comments}'),
                 ),
+                if (you && item.views != null) ...[
+                  const Spacer(),
+                  Icon(
+                    Icons.visibility_outlined,
+                    size: 16,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: FFTokens.spacingXs),
+                  Text(
+                    context
+                        .tr('community.views')
+                        .replaceAll('{n}', '${item.views}'),
+                    key: Key('views-${a.id}'),
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ],
               ],
             ),
           ],
@@ -399,7 +446,7 @@ class _PeopleTabState extends State<PeopleTab> {
     final t = context.tr;
     final (label, action) = switch (p.relationship) {
       Relationship.friends => (t('community.friends'), null),
-      Relationship.following => (t('community.waiting'), null),
+      Relationship.following => (t('community.followingLabel'), null),
       Relationship.followsYou => (
         t('community.followBack'),
         () => _act(() => api.follow(p.id), t('community.followedToast')),
@@ -417,7 +464,13 @@ class _PeopleTabState extends State<PeopleTab> {
           FFAvatar(name: p.name, size: FFAvatarSize.sm),
           const SizedBox(width: FFTokens.spacingSm),
           Expanded(
-            child: Text(p.name, style: Theme.of(context).textTheme.titleSmall),
+            child: InkWell(
+              onTap: () => openPerson(context, p.id),
+              child: Text(
+                p.name,
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+            ),
           ),
           if (action != null)
             FilledButton.tonal(
@@ -781,6 +834,10 @@ class _GroupsTabState extends State<GroupsTab> {
     );
   }
 }
+
+Future<void> openPerson(BuildContext context, String userId) => context.push(
+  AppRoutes.memberPerson.replaceFirst(':userId', Uri.encodeComponent(userId)),
+);
 
 Future<void> openGroup(BuildContext context, String id) => context.push(
   AppRoutes.memberGroup.replaceFirst(':groupId', Uri.encodeComponent(id)),

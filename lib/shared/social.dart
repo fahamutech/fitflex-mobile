@@ -1,28 +1,41 @@
 /// Sharing activities between members: people, the feed, comments, groups.
 ///
-/// Who sees a shared activity: mutual followers ("friends"), members of the
-/// groups it's shared with, and (if chosen) colleagues at the same company.
-/// Everything is private until the member shares it.
+/// Who sees a shared activity: friends (you follow each other), followers
+/// (anyone who follows you), everyone (public, with a public profile),
+/// members of chosen groups, and colleagues at the same company. Everything
+/// is private until the member shares it.
 library;
 
 /// Who one activity is shared with. `null` everywhere means private.
 class ShareWith {
   const ShareWith({
+    this.friends = false,
     this.followers = false,
+    this.public = false,
     this.groups = const [],
     this.company = false,
   });
 
+  /// You follow each other.
+  final bool friends;
+
+  /// Anyone who follows you (no follow-back needed).
   final bool followers;
+
+  /// Any member (needs a public profile).
+  final bool public;
   final List<String> groups;
   final bool company;
 
-  bool get isPrivate => !followers && groups.isEmpty && !company;
+  bool get isPrivate =>
+      !friends && !followers && !public && groups.isEmpty && !company;
 
   static ShareWith? fromJson(Object? v) {
     if (v is! Map) return null;
     final s = ShareWith(
+      friends: v['friends'] == true,
       followers: v['followers'] == true,
+      public: v['public'] == true,
       groups: [
         for (final g in (v['groups'] as List? ?? const [])) g.toString(),
       ],
@@ -31,8 +44,13 @@ class ShareWith {
     return s.isPrivate ? null : s;
   }
 
+  /// `v: 2` tells the server `followers` means everyone who follows you
+  /// (older app builds used it for friends).
   Map<String, dynamic> toJson() => {
+    'v': 2,
+    'friends': friends,
     'followers': followers,
+    'public': public,
     'groups': groups,
     'company': company,
   };
@@ -130,6 +148,7 @@ class FeedItem {
     this.kudos = 0,
     this.youKudoed = false,
     this.comments = 0,
+    this.views,
     this.sharedWith,
   });
 
@@ -138,6 +157,9 @@ class FeedItem {
   final int kudos;
   final bool youKudoed;
   final int comments;
+
+  /// How many people opened it — only on your own items.
+  final int? views;
 
   /// Only on your own items.
   final ShareWith? sharedWith;
@@ -148,6 +170,7 @@ class FeedItem {
     kudos: kudos ?? this.kudos,
     youKudoed: youKudoed ?? this.youKudoed,
     comments: comments ?? this.comments,
+    views: views,
     sharedWith: sharedWith,
   );
 
@@ -157,6 +180,7 @@ class FeedItem {
     kudos: (json['kudos'] as num?)?.toInt() ?? 0,
     youKudoed: json['youKudoed'] == true,
     comments: (json['comments'] as num?)?.toInt() ?? 0,
+    views: (json['views'] as num?)?.toInt(),
     sharedWith: ShareWith.fromJson(json['sharedWith']),
   );
 }
@@ -276,23 +300,89 @@ class GroupMember {
 class SocialSettings {
   const SocialSettings({
     this.defaultShare,
+    this.publicProfile = false,
     this.inviteCode = '',
     this.hasCompany = false,
     this.blocked = const [],
   });
 
   final ShareWith? defaultShare;
+
+  /// Findable by name by anyone, with a profile of public posts and a
+  /// place in Explore. Off by default.
+  final bool publicProfile;
   final String inviteCode;
   final bool hasCompany;
   final List<SocialPerson> blocked;
 
   factory SocialSettings.fromJson(Map json) => SocialSettings(
     defaultShare: ShareWith.fromJson(json['defaultShare']),
+    publicProfile: json['publicProfile'] == true,
     inviteCode: json['inviteCode'] as String? ?? '',
     hasCompany: json['hasCompany'] == true,
     blocked: [
       for (final b in (json['blocked'] as List? ?? const []))
         if (b is Map) SocialPerson.fromJson(b),
+    ],
+  );
+}
+
+/// Someone's profile as you see it.
+class SocialProfile {
+  const SocialProfile({
+    required this.person,
+    this.publicProfile = false,
+    this.followers = 0,
+    this.following = 0,
+    this.items = const [],
+    this.next,
+  });
+
+  final SocialPerson person;
+  final bool publicProfile;
+  final int followers;
+  final int following;
+  final List<FeedItem> items;
+  final String? next;
+
+  factory SocialProfile.fromJson(Map json) {
+    final p = json['person'] as Map? ?? const {};
+    return SocialProfile(
+      person: SocialPerson.fromJson(p),
+      publicProfile: p['publicProfile'] == true,
+      followers: (p['followers'] as num?)?.toInt() ?? 0,
+      following: (p['following'] as num?)?.toInt() ?? 0,
+      items: [
+        for (final i in (json['items'] as List? ?? const []))
+          if (i is Map) FeedItem.fromJson(i),
+      ],
+      next: json['next'] as String?,
+    );
+  }
+}
+
+/// Who engaged with your post: a view count (viewers stay anonymous), and
+/// the people who gave kudos or commented.
+class Engagement {
+  const Engagement({
+    this.views = 0,
+    this.kudos = const [],
+    this.commenters = const [],
+  });
+
+  final int views;
+  final List<SocialPerson> kudos;
+  final List<SocialPerson> commenters;
+
+  factory Engagement.fromJson(Map json) => Engagement(
+    views: (json['views'] as num?)?.toInt() ?? 0,
+    kudos: [
+      for (final p in (json['kudos'] as List? ?? const []))
+        if (p is Map) SocialPerson.fromJson(p),
+    ],
+    commenters: [
+      for (final p in (json['commenters'] as List? ?? const []))
+        if (p is Map) SocialPerson.fromJson(p),
     ],
   );
 }

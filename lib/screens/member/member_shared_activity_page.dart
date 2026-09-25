@@ -148,6 +148,8 @@ class _MemberSharedActivityPageState extends State<MemberSharedActivityPage> {
                     padding: const EdgeInsets.all(FFTokens.spacingLg),
                     children: [
                       FeedCard(item: item, onKudos: _kudos, onOpen: () {}),
+                      if (item.owner.relationship == Relationship.you)
+                        _EngagementSection(activityId: item.activity.id),
                       RunSplits(splits: item.activity.splits),
                       FFSectionTitle(context.tr('community.comments')),
                       if (_comments.isEmpty)
@@ -241,6 +243,122 @@ class _MemberSharedActivityPageState extends State<MemberSharedActivityPage> {
                 ),
               ],
             ),
+    );
+  }
+}
+
+/// On your own post: how many viewed it (viewers stay anonymous) and who
+/// gave kudos or commented, with Follow back.
+class _EngagementSection extends StatefulWidget {
+  const _EngagementSection({required this.activityId});
+
+  final String activityId;
+
+  @override
+  State<_EngagementSection> createState() => _EngagementSectionState();
+}
+
+class _EngagementSectionState extends State<_EngagementSection> {
+  Engagement? _e;
+  bool _started = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_started) return;
+    _started = true;
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final r = await AppScope.of(
+        context,
+      ).api.postEngagement(widget.activityId);
+      if (mounted) setState(() => _e = Engagement.fromJson(r));
+    } catch (_) {}
+  }
+
+  Widget _row(SocialPerson p) {
+    final t = context.tr;
+    final canFollow =
+        p.relationship == Relationship.none ||
+        p.relationship == Relationship.followsYou;
+    return Padding(
+      key: Key('engaged-${p.id}'),
+      padding: const EdgeInsets.only(bottom: FFTokens.spacingXs),
+      child: Row(
+        children: [
+          FFAvatar(name: p.name, size: FFAvatarSize.sm),
+          const SizedBox(width: FFTokens.spacingSm),
+          Expanded(
+            child: InkWell(
+              onTap: () => openPerson(context, p.id),
+              child: Text(
+                p.name,
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+            ),
+          ),
+          if (canFollow)
+            FilledButton.tonal(
+              key: Key('follow-back-${p.id}'),
+              style: compactButton,
+              onPressed: () async {
+                await AppScope.of(context).api.follow(p.id);
+                await _load();
+              },
+              child: Text(t('community.followBack')),
+            )
+          else
+            Text(
+              t(
+                p.relationship == Relationship.friends
+                    ? 'community.friends'
+                    : 'community.followingLabel',
+              ),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final e = _e;
+    if (e == null) return const SizedBox.shrink();
+    final t = context.tr;
+    final theme = Theme.of(context);
+    return FFCard(
+      key: const Key('engagement'),
+      margin: const EdgeInsets.only(bottom: FFTokens.spacingSm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.visibility_outlined, size: 18),
+              const SizedBox(width: FFTokens.spacingXs),
+              Text(
+                t('community.views').replaceAll('{n}', '${e.views}'),
+                style: theme.textTheme.titleSmall,
+              ),
+            ],
+          ),
+          Text(t('community.viewsPrivate'), style: theme.textTheme.bodySmall),
+          if (e.kudos.isNotEmpty) ...[
+            const SizedBox(height: FFTokens.spacingSm),
+            Text(t('community.kudosFrom'), style: theme.textTheme.titleSmall),
+            for (final p in e.kudos) _row(p),
+          ],
+          if (e.commenters.isNotEmpty) ...[
+            const SizedBox(height: FFTokens.spacingSm),
+            Text(t('community.commentedBy'), style: theme.textTheme.titleSmall),
+            for (final p in e.commenters) _row(p),
+          ],
+        ],
+      ),
     );
   }
 }

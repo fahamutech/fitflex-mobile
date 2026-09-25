@@ -16,7 +16,9 @@ String shareLabel(
 }) {
   if (s == null || s.isPrivate) return context.tr('audience.private');
   return [
-    if (s.followers) context.tr('audience.friends'),
+    if (s.public) context.tr('audience.public'),
+    if (s.followers) context.tr('audience.followers'),
+    if (s.friends) context.tr('audience.friends'),
     for (final g in s.groups) groupNames[g] ?? context.tr('audience.aGroup'),
     if (s.company) context.tr('audience.company'),
   ].join(' · ');
@@ -50,7 +52,10 @@ class _SharePicker extends StatefulWidget {
 }
 
 class _SharePickerState extends State<_SharePicker> {
-  late bool _friends = widget.initial?.followers ?? false;
+  late bool _friends = widget.initial?.friends ?? false;
+  late bool _followers = widget.initial?.followers ?? false;
+  late bool _public = widget.initial?.public ?? false;
+  bool _publicProfile = false;
   late final Set<String> _groups = {...?widget.initial?.groups};
   late bool _company = widget.initial?.company ?? false;
   List<SocialGroup>? _mine;
@@ -77,6 +82,8 @@ class _SharePickerState extends State<_SharePicker> {
               SocialGroup.fromJson(g),
         ];
         _hasCompany = r[1]['hasCompany'] == true;
+        _publicProfile = r[1]['publicProfile'] == true;
+        if (!_publicProfile) _public = false;
       });
     } catch (_) {
       if (mounted) setState(() => _mine = const []);
@@ -85,7 +92,9 @@ class _SharePickerState extends State<_SharePicker> {
 
   ShareWith? get _choice {
     final s = ShareWith(
-      followers: _friends,
+      friends: _friends,
+      followers: _followers,
+      public: _public,
       groups: _groups.toList(),
       company: _company,
     );
@@ -126,11 +135,37 @@ class _SharePickerState extends State<_SharePicker> {
               ),
               onTap: () => setState(() {
                 _friends = false;
+                _followers = false;
+                _public = false;
                 _groups.clear();
                 _company = false;
               }),
               title: Text(context.tr('audience.private')),
               subtitle: Text(context.tr('audience.privateHint')),
+            ),
+            CheckboxListTile(
+              key: const Key('share-public'),
+              contentPadding: EdgeInsets.zero,
+              value: _public,
+              onChanged: _publicProfile
+                  ? (v) => setState(() => _public = v ?? false)
+                  : null,
+              title: Text(context.tr('audience.public')),
+              subtitle: Text(
+                context.tr(
+                  _publicProfile
+                      ? 'audience.publicHint'
+                      : 'audience.publicNeedsProfile',
+                ),
+              ),
+            ),
+            CheckboxListTile(
+              key: const Key('share-followers'),
+              contentPadding: EdgeInsets.zero,
+              value: _followers,
+              onChanged: (v) => setState(() => _followers = v ?? false),
+              title: Text(context.tr('audience.followers')),
+              subtitle: Text(context.tr('audience.followersHint')),
             ),
             CheckboxListTile(
               key: const Key('share-friends'),
@@ -293,6 +328,20 @@ class _SocialPrivacySectionState extends State<SocialPrivacySection> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         FFSectionTitle(t('audience.sectionTitle')),
+        FFCard(
+          margin: const EdgeInsets.only(bottom: FFTokens.spacingSm),
+          child: SwitchListTile(
+            key: const Key('privacy-public-profile'),
+            contentPadding: EdgeInsets.zero,
+            value: s.publicProfile,
+            title: Text(t('audience.publicProfile')),
+            subtitle: Text(t('audience.publicProfileHint')),
+            onChanged: (on) async {
+              await api.setPublicProfile(on);
+              await _load();
+            },
+          ),
+        ),
         FFActionTile(
           key: const Key('privacy-default-share'),
           icon: s.defaultShare == null
