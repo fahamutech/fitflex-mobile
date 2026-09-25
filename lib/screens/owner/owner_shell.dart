@@ -23,6 +23,7 @@ const List<String> kGymStaffAclScopes = [
   'trainers',
   'gyms',
   'shop',
+  'communications',
 ];
 
 /// Shared owner data that all owner tabs can access.

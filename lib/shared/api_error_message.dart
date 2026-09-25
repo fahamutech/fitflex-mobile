@@ -98,6 +98,16 @@ String? _knownReason(FFLocale locale, String reason) {
     'invalid_credentials': 'error.reason.invalidCredentials',
     'account_suspended': 'error.reason.accountSuspended',
     'active_subscription_required': 'error.reason.activeSubscriptionRequired',
+    // Communications.
+    'confirm_large_send': 'error.reason.confirmLargeSend',
+    'nobody_reachable': 'error.reason.nobodyReachable',
+    'empty_audience': 'error.reason.emptyAudience',
+    'invalid_state': 'error.reason.campaignChanged',
+    'not_editable': 'error.reason.campaignChanged',
+    'channel_unavailable': 'error.reason.channelUnavailable',
+    'schedule_too_soon': 'error.reason.scheduleTooSoon',
+    'invalid_content': 'error.reason.invalidContent',
+    'invalid_audience': 'error.reason.invalidAudience',
   };
   final key = keys[reason.trim().toLowerCase()];
   return key == null ? null : locale.t(key);

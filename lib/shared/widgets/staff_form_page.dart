@@ -128,6 +128,8 @@ class _StaffFormPageState extends State<StaffFormPage> {
         return context.tr('owner.manageGyms');
       case 'shop':
         return context.tr('owner.shop');
+      case 'communications':
+        return context.tr('comms.title');
       default:
         return scope;
     }
