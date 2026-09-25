@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../shared/activity/activity.dart';
+import '../../../shared/activity/run_metrics.dart' show formatPace;
 import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
 import '../../../shared/formatters.dart';
@@ -67,15 +68,18 @@ class ActivityTimelineTile extends StatelessWidget {
       if (a.distanceKm != null && a.distanceKm! > 0) formatKm(a.distanceKm!),
       if (a.steps != null && a.type == ActivityType.walking)
         '${formatSteps(a.steps!)} ${context.tr('activity.steps').toLowerCase()}',
+      if (a.isRecordedRun && (a.distanceKm ?? 0) > 0)
+        '${formatPace((a.movingSeconds! / a.distanceKm!).round())} /km',
     ];
     final workoutId = a.workoutId;
+    final opensRun = a.isRecordedRun;
     return FFActionTile(
       key: Key('activity-${a.id}'),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           ActivityOriginLabel(activity: a),
-          if (workoutId != null)
+          if (workoutId != null || opensRun)
             Icon(
               Icons.chevron_right,
               color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -90,7 +94,14 @@ class ActivityTimelineTile extends StatelessWidget {
           ? a.notes!
           : manualActivityName(a) ?? activityTypeLabel(context, a.type),
       subtitle: parts.join(' · '),
-      onTap: workoutId == null
+      onTap: opensRun
+          ? () => context.go(
+              AppRoutes.memberRunDetail.replaceFirst(
+                ':activityId',
+                Uri.encodeComponent(a.id),
+              ),
+            )
+          : workoutId == null
           ? () {}
           : () => context.go(
               AppRoutes.memberWorkout.replaceFirst(

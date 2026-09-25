@@ -120,3 +120,22 @@ expects every declared health permission to be used, and App Review
 questions a HealthKit entitlement the app doesn't use. So the permissions,
 entitlement and usage strings get added in the same change as the provider
 that needs them.
+
+## Recording runs with GPS (built, Android)
+
+- Activity tab → **Record a run**: Start, Pause/Resume, Finish, then Save
+  or Discard. `geolocator` runs as a location foreground service with an
+  ongoing notification, so it keeps recording with the screen off; only
+  "while in use" location permission is needed (the member starts it).
+- Live numbers (`run_metrics.dart`) and the saved ones (the server's
+  `run-metrics.mjs`, worked out from the uploaded track) use the same rules:
+  points with accuracy worse than 30 m or implying more than 12 m/s are
+  dropped; time and distance count only between pauses; climb is smoothed
+  with a 3 m threshold; calories are estimated from weight (ACSM), none
+  without a weight.
+- A run in progress is saved on the phone as it goes and comes back paused
+  if the app is closed.
+- Saved as `type: running, source: fitflex` with `movingSeconds`,
+  `elevationGainM`, `splits`; no steps (they're in the phone's daily count).
+- The route (`ActivityRoute`) is private to the member: only
+  `GET /me/activities/:id/route` returns it.

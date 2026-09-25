@@ -11,6 +11,7 @@ import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import 'member_shell.dart';
 import 'widgets/phone_steps_card.dart';
+import 'widgets/run_widgets.dart';
 import 'widgets/activity_widgets.dart';
 import 'widgets/challenge_widgets.dart';
 import 'widgets/goal_widgets.dart';
@@ -115,6 +116,7 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
         ],
       ),
       const PhoneStepsCard(),
+      const RecordRunButton(),
       if (activities.isEmpty)
         const ActivityGetStartedCard()
       else ...[

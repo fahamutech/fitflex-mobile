@@ -4,6 +4,7 @@ import 'shared/activity/activity_provider.dart';
 import 'shared/activity/goal_repository.dart';
 import 'shared/activity/manual_activity_log.dart';
 import 'shared/activity/phone_steps.dart';
+import 'shared/activity/run_recorder.dart';
 import 'shared/activity/workout_repository.dart';
 import 'shared/api_client.dart';
 import 'shared/auth_state.dart';
@@ -19,6 +20,7 @@ class AppScope extends InheritedWidget {
     this.workoutRepository,
     this.manualActivityLog,
     this.phoneSteps,
+    this.runRecorder,
     required super.child,
   });
 
@@ -35,6 +37,10 @@ class AppScope extends InheritedWidget {
   /// Counting steps with this phone. Null where it isn't offered (sample
   /// data, web, widget tests), which hides the feature.
   final PhoneSteps? phoneSteps;
+
+  /// Recording runs with GPS. Null where it isn't offered (sample data,
+  /// web, widget tests), which hides "Record a run".
+  final RunRecorder? runRecorder;
 
   static final ActivityBackend _sample = ActivityBackend.sample();
 
@@ -57,5 +63,6 @@ class AppScope extends InheritedWidget {
       goalRepository != oldWidget.goalRepository ||
       workoutRepository != oldWidget.workoutRepository ||
       manualActivityLog != oldWidget.manualActivityLog ||
-      phoneSteps != oldWidget.phoneSteps;
+      phoneSteps != oldWidget.phoneSteps ||
+      runRecorder != oldWidget.runRecorder;
 }
