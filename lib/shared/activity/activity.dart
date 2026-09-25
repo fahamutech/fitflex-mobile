@@ -194,6 +194,11 @@ class Activity {
     _ => DataOrigin.manual,
   };
 
+  /// A whole day's steps counted by the phone, not a session.
+  bool get isDailyStepTotal =>
+      source == ActivitySource.device &&
+      devicePlatform == DevicePlatform.phoneSensor;
+
   /// End time, when the duration is known.
   DateTime? get endedAt => durationMinutes == null
       ? null

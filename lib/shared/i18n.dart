@@ -1119,6 +1119,7 @@ class FFLocale extends ChangeNotifier {
       'home.signout': 'Sign out',
       'home.seeAll': 'See all',
       'phoneSteps.title': 'Count your steps with this phone',
+      'activity.distanceEstimated': 'Distance · estimated from steps',
       'phoneSteps.body':
           'FitFlex reads your phone\'s own step counter as you move, no other app needed. Counting starts from when you turn it on, and each day\'s steps count toward your goals and challenges.',
       'phoneSteps.enable': 'Turn on step counting',
@@ -2871,6 +2872,7 @@ class FFLocale extends ChangeNotifier {
       'home.signout': 'Toka',
       'home.seeAll': 'Tazama zote',
       'phoneSteps.title': 'Hesabu hatua zako kwa simu hii',
+      'activity.distanceEstimated': 'Umbali · makadirio kwa hatua',
       'phoneSteps.body':
           'FitFlex inasoma kihesabu hatua cha simu yako unapotembea, bila programu nyingine. Kuhesabu kunaanza unapowasha, na hatua za kila siku zinahesabiwa kwenye malengo na changamoto zako.',
       'phoneSteps.enable': 'Washa kuhesabu hatua',
