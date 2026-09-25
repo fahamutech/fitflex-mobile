@@ -345,9 +345,6 @@ class OwnerShellState extends State<OwnerShell> {
             subtitleLabel: _title,
             onGymSelected: (gymId) => setActiveGym(gymId),
             onAvatarTap: () => context.push('/owner/profile'),
-            onNotificationTap: () => ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(context.tr('owner.noNotifications'))),
-            ),
           ),
           body: RefreshIndicator(onRefresh: refreshAll, child: widget.child),
           bottomNavigationBar: NavigationBar(

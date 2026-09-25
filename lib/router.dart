@@ -32,6 +32,8 @@ import 'screens/owner/members/member_history_page.dart';
 import 'screens/owner/communications/campaign_composer_page.dart';
 import 'screens/owner/communications/campaign_detail_page.dart';
 import 'screens/owner/communications/communication_center_page.dart';
+import 'screens/member/member_message_settings_page.dart';
+import 'shared/inbox/inbox_pages.dart';
 import 'screens/vendor/vendor_home_page.dart';
 
 /// Route path constants.
@@ -62,6 +64,9 @@ abstract class AppRoutes {
   static const ownerMemberDetail = '/owner/members/:memberId';
   static const ownerMemberCheckins = '/owner/members/:memberId/checkins';
   static const ownerMemberPayments = '/owner/members/:memberId/payments';
+  static const inbox = '/inbox';
+  static const inboxMessage = '/inbox/:messageId';
+  static const memberMessageSettings = '/member/message-settings';
   static const ownerCommunications = '/owner/communications';
   static const ownerCampaignNew = '/owner/communications/new';
   static const ownerCampaignDetail =
@@ -398,6 +403,23 @@ GoRouter buildRouter(AuthState auth) {
           memberId: state.pathParameters['memberId']!,
           kind: MemberHistoryKind.payments,
         ),
+      ),
+      // Inbox — every signed-in role's messages.
+      GoRoute(
+        path: AppRoutes.inbox,
+        name: 'inbox',
+        builder: (context, state) => const InboxPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.inboxMessage,
+        name: 'inboxMessage',
+        builder: (context, state) =>
+            InboxMessagePage(messageId: state.pathParameters['messageId']!),
+      ),
+      GoRoute(
+        path: AppRoutes.memberMessageSettings,
+        name: 'memberMessageSettings',
+        builder: (context, state) => const MemberMessageSettingsPage(),
       ),
       // Communication Center — messages to the gym's direct members.
       GoRoute(

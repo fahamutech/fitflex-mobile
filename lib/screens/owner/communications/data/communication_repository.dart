@@ -54,10 +54,15 @@ class CommunicationRepository {
 
   Future<void> delete(String id) => _api.ownerDeleteCampaign(id);
 
-  Future<Campaign> schedule(String id, DateTime at) async => Campaign.fromJson(
+  Future<Campaign> schedule(
+    String id,
+    DateTime at, {
+    bool confirmLargeSend = false,
+  }) async => Campaign.fromJson(
     ((await _api.ownerScheduleCampaign(
               id,
               at.toUtc().toIso8601String(),
+              confirmLargeSend: confirmLargeSend,
             ))['campaign']
             as Map)
         .cast(),

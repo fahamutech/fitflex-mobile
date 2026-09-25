@@ -112,7 +112,11 @@ class _FakeRepo extends CommunicationRepository {
   }
 
   @override
-  Future<Campaign> schedule(String id, DateTime at) async {
+  Future<Campaign> schedule(
+    String id,
+    DateTime at, {
+    bool confirmLargeSend = false,
+  }) async {
     schedules.add(at);
     return _c('scheduled');
   }

@@ -8,6 +8,7 @@ import 'shared/activity/run_recorder.dart';
 import 'shared/activity/workout_repository.dart';
 import 'shared/api_client.dart';
 import 'shared/auth_state.dart';
+import 'shared/inbox/inbox_controller.dart';
 
 /// Simple DI: an InheritedWidget exposing the singleton API client + auth state.
 class AppScope extends InheritedWidget {
@@ -21,6 +22,7 @@ class AppScope extends InheritedWidget {
     this.manualActivityLog,
     this.phoneSteps,
     this.runRecorder,
+    this.inbox,
     required super.child,
   });
 
@@ -41,6 +43,10 @@ class AppScope extends InheritedWidget {
   /// Recording runs with GPS. Null where it isn't offered (sample data,
   /// web, widget tests), which hides "Record a run".
   final RunRecorder? runRecorder;
+
+  /// The signed-in user's messages (bell badge, inbox, push taps). Null in
+  /// widget tests that don't need it, which hides the bell.
+  final InboxController? inbox;
 
   static final ActivityBackend _sample = ActivityBackend.sample();
 
@@ -64,5 +70,6 @@ class AppScope extends InheritedWidget {
       workoutRepository != oldWidget.workoutRepository ||
       manualActivityLog != oldWidget.manualActivityLog ||
       phoneSteps != oldWidget.phoneSteps ||
-      runRecorder != oldWidget.runRecorder;
+      runRecorder != oldWidget.runRecorder ||
+      inbox != oldWidget.inbox;
 }

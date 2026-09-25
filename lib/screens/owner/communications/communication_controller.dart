@@ -505,7 +505,11 @@ class CampaignComposerController extends ChangeNotifier {
     try {
       final id = await saveDraft();
       final result = _scheduleLater
-          ? await _repo.schedule(id, _scheduledAt!)
+          ? await _repo.schedule(
+              id,
+              _scheduledAt!,
+              confirmLargeSend: _confirmLargeSend,
+            )
           : await _repo.send(
               id,
               sendRequestId: sendRequestId,

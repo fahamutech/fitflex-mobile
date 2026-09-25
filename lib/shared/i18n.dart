@@ -2168,6 +2168,47 @@ class FFLocale extends ChangeNotifier {
       'error.reason.scheduleTooSoon': 'Pick a later time',
       'error.reason.invalidContent': 'Check the message and try again',
       'error.reason.invalidAudience': 'Check the audience and try again',
+      // Inbox and message preferences.
+      'inbox.title': 'Messages',
+      'inbox.markAllRead': 'Mark all read',
+      'inbox.loadFailed': 'Couldn\'t load your messages',
+      'inbox.filter.all': 'All',
+      'inbox.filter.membership': 'Membership',
+      'inbox.filter.payments': 'Payments',
+      'inbox.filter.offers': 'Offers',
+      'inbox.filter.announcements': 'News',
+      'inbox.empty.title': 'No messages yet',
+      'inbox.empty.body':
+          'Reminders, payment updates and news from your gym will show up here.',
+      'inbox.from.fitflex': 'FitFlex',
+      'inbox.message': 'Message',
+      'inbox.notFound': 'This message is no longer available.',
+      'inbox.open.membership': 'View membership',
+      'inbox.open.renewal': 'Renew membership',
+      'inbox.open.payment': 'Go to payments',
+      'inbox.open.gym': 'View gym',
+      'inbox.open.message': 'Open',
+      'inbox.offersNote':
+          'You can turn off offers in Privacy & data → Messages & offers.',
+      'msgPrefs.title': 'Messages & offers',
+      'msgPrefs.tile': 'Choose which offers you get from your gym and FitFlex',
+      'msgPrefs.intro':
+          'Your gym and FitFlex can send you offers and news. Choose how you want to get offers.',
+      'msgPrefs.inAppOffers': 'Offers in the app',
+      'msgPrefs.inAppOffers.body': 'Discounts and promotions in your Messages.',
+      'msgPrefs.pushOffers': 'Offer notifications',
+      'msgPrefs.pushOffers.body': 'Offers that pop up on your phone.',
+      'msgPrefs.whatsappOffers': 'Offers on WhatsApp',
+      'msgPrefs.whatsappOffers.body':
+          'Get offers from your gym and FitFlex on WhatsApp.',
+      'msgPrefs.whatsappOffers.soon':
+          'WhatsApp messages are coming soon. If you agree now, we\'ll use this when they start.',
+      'msgPrefs.whatsappConsent.title': 'Get offers on WhatsApp?',
+      'msgPrefs.whatsappConsent.body':
+          'Your gym and FitFlex may send offers to your WhatsApp number. You can turn this off here at any time, or reply STOP.',
+      'msgPrefs.whatsappConsent.agree': 'Yes, send me offers',
+      'msgPrefs.alwaysOn':
+          'Messages about your membership, renewals, payments and gym announcements always come to your Messages, so you never miss something important.',
     },
     'sw': {
       'app.title': 'FitFlex',
@@ -4326,6 +4367,47 @@ class FFLocale extends ChangeNotifier {
       'error.reason.scheduleTooSoon': 'Chagua muda wa baadaye',
       'error.reason.invalidContent': 'Kagua ujumbe kisha ujaribu tena',
       'error.reason.invalidAudience': 'Kagua hadhira kisha ujaribu tena',
+      // Inbox and message preferences.
+      'inbox.title': 'Ujumbe',
+      'inbox.markAllRead': 'Soma zote',
+      'inbox.loadFailed': 'Imeshindikana kupakia ujumbe wako',
+      'inbox.filter.all': 'Zote',
+      'inbox.filter.membership': 'Uanachama',
+      'inbox.filter.payments': 'Malipo',
+      'inbox.filter.offers': 'Ofa',
+      'inbox.filter.announcements': 'Habari',
+      'inbox.empty.title': 'Bado huna ujumbe',
+      'inbox.empty.body':
+          'Vikumbusho, taarifa za malipo na habari kutoka jimu yako vitaonekana hapa.',
+      'inbox.from.fitflex': 'FitFlex',
+      'inbox.message': 'Ujumbe',
+      'inbox.notFound': 'Ujumbe huu haupatikani tena.',
+      'inbox.open.membership': 'Angalia uanachama',
+      'inbox.open.renewal': 'Huisha uanachama',
+      'inbox.open.payment': 'Nenda kwenye malipo',
+      'inbox.open.gym': 'Angalia jimu',
+      'inbox.open.message': 'Fungua',
+      'inbox.offersNote':
+          'Unaweza kuzima ofa kwenye Faragha na data → Ujumbe na ofa.',
+      'msgPrefs.title': 'Ujumbe na ofa',
+      'msgPrefs.tile': 'Chagua ofa unazopokea kutoka jimu yako na FitFlex',
+      'msgPrefs.intro':
+          'Jimu yako na FitFlex zinaweza kukutumia ofa na habari. Chagua jinsi unavyotaka kupokea ofa.',
+      'msgPrefs.inAppOffers': 'Ofa ndani ya programu',
+      'msgPrefs.inAppOffers.body': 'Punguzo na ofa kwenye Ujumbe wako.',
+      'msgPrefs.pushOffers': 'Arifa za ofa',
+      'msgPrefs.pushOffers.body': 'Ofa zinazojitokeza kwenye simu yako.',
+      'msgPrefs.whatsappOffers': 'Ofa kwa WhatsApp',
+      'msgPrefs.whatsappOffers.body':
+          'Pokea ofa kutoka jimu yako na FitFlex kwa WhatsApp.',
+      'msgPrefs.whatsappOffers.soon':
+          'Ujumbe wa WhatsApp unakuja hivi karibuni. Ukikubali sasa, tutatumia chaguo hili utakapoanza.',
+      'msgPrefs.whatsappConsent.title': 'Upokee ofa kwa WhatsApp?',
+      'msgPrefs.whatsappConsent.body':
+          'Jimu yako na FitFlex zinaweza kutuma ofa kwenye namba yako ya WhatsApp. Unaweza kuzima hili hapa wakati wowote, au kujibu STOP.',
+      'msgPrefs.whatsappConsent.agree': 'Ndiyo, nitumie ofa',
+      'msgPrefs.alwaysOn':
+          'Ujumbe kuhusu uanachama wako, kuhuisha, malipo na matangazo ya jimu huja kwenye Ujumbe wako kila wakati, ili usikose jambo muhimu.',
     },
   };
 }

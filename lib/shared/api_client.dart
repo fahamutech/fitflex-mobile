@@ -807,6 +807,24 @@ class ApiClient {
   Future<void> markNotificationRead(String id) async =>
       await _request('POST', '/me/notifications/$id/read');
 
+  /// The member tapped the message's button — in the inbox or on a push.
+  Future<void> clickNotification(String id, {String via = 'inbox'}) async =>
+      await _request('POST', '/me/notifications/$id/click', body: {'via': via});
+
+  /// A campaign push with no inbox copy was opened.
+  Future<void> pushMessageOpened(String messageId) async =>
+      await _request('POST', '/me/communications/messages/$messageId/opened');
+
+  Future<Map<String, dynamic>> communicationPreferences() async =>
+      await _request('GET', '/me/communication-preferences')
+          as Map<String, dynamic>;
+
+  Future<Map<String, dynamic>> updateCommunicationPreferences(
+    Map<String, dynamic> changes,
+  ) async =>
+      await _request('PUT', '/me/communication-preferences', body: changes)
+          as Map<String, dynamic>;
+
   /// Price one or more slots (Pass discount applied) without booking them.
   Future<Map<String, dynamic>> quoteTrainerBooking({
     required String trainerId,
@@ -1371,11 +1389,15 @@ class ApiClient {
 
   Future<Map<String, dynamic>> ownerScheduleCampaign(
     String id,
-    String scheduledAtIso,
-  ) async => await _request(
+    String scheduledAtIso, {
+    bool confirmLargeSend = false,
+  }) async => await _request(
     'POST',
     '/owner/communications/campaigns/$id/schedule',
-    body: {'scheduledAt': scheduledAtIso},
+    body: {
+      'scheduledAt': scheduledAtIso,
+      if (confirmLargeSend) 'confirmLargeSend': true,
+    },
   );
 
   Future<Map<String, dynamic>> ownerUnscheduleCampaign(String id) async =>
