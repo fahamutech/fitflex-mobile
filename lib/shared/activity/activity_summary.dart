@@ -54,7 +54,8 @@ DaySummary summarizeDay(Iterable<Activity> activities, DateTime day) {
   int? calories;
   for (final a in activities) {
     if (dayOf(a.startedAt.toLocal()) != d) continue;
-    count++;
+    // A day's step total from the phone isn't a session.
+    if (!a.isDailyStepTotal) count++;
     if (a.isWorkout) workouts++;
     steps += a.steps ?? 0;
     distance += a.distanceKm ?? 0;

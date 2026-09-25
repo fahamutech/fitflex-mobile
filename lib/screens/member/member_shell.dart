@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app_scope.dart';
 import '../../router.dart';
+import '../../shared/activity/phone_steps.dart';
 import '../../shared/activity/activity.dart';
 import '../../shared/activity/activity_config.dart';
 import '../../shared/activity/activity_provider.dart';
@@ -157,6 +158,12 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
       _lastToken = auth.token;
       auth.addListener(_onAuthChanged);
     }
+    // This phone's step counts show as soon as they're read.
+    final steps = AppScope.of(context).phoneSteps;
+    if (!identical(_steps, steps)) {
+      _steps?.removeListener(_showActivities);
+      _steps = steps?..addListener(_showActivities);
+    }
     if (_started) return;
     _started = true;
     WidgetsBinding.instance.addObserver(this);
@@ -186,6 +193,7 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
     _auth?.removeListener(_onAuthChanged);
     _qrTimer?.cancel();
     _stepsTimer?.cancel();
+    _steps?.removeListener(_showActivities);
     WidgetsBinding.instance.removeObserver(this);
     _data.dispose();
     super.dispose();
@@ -241,6 +249,8 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
           )
           ..offline = false,
       );
+      // Distance from phone steps uses the member's height.
+      if (_data.activityLoaded) _showActivities();
     } catch (error) {
       // The profile call is the connectivity check for the whole shell.
       if (isNetworkError(error)) _data.update((d) => d.offline = true);
@@ -291,6 +301,26 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
     }
   }
 
+  /// Activities as the server returned them; [_showActivities] lays this
+  /// phone's step counts over them.
+  List<Activity> _serverActivities = const [];
+  PhoneSteps? _steps;
+
+  void _showActivities() {
+    final steps = _steps;
+    final local = steps != null && steps.enabled
+        ? steps.localDays
+        : const <String, int>{};
+    _data.update(
+      (d) => d.activities = withPhoneSteps(
+        _serverActivities,
+        local,
+        heightCm: d.me?.user.memberProfile?.heightCm,
+        userId: _auth?.user?['id']?.toString() ?? '',
+      ),
+    );
+  }
+
   Future<void> _refreshActivity() async {
     final provider = AppScope.of(context).activity;
     final userId = _auth?.user?['id']?.toString() ?? '';
@@ -301,11 +331,12 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
         from: DateTime(now.year, now.month, now.day - activityHistoryDays + 1),
         to: now.add(const Duration(days: 1)),
       );
+      _serverActivities = activities;
       _data.update((d) {
-        d.activities = activities;
         d.activityIsSample = provider.kind == ActivityProviderKind.sample;
         d.activityLoaded = true;
       });
+      _showActivities();
     } catch (error) {
       debugPrint('[MemberShell] Could not load activity: $error');
       _data.update((d) => d.activityLoaded = true);

@@ -29,6 +29,18 @@ const ledgerDays = 34;
 /// glitch and not credited.
 const _maxJump = maxDailySteps;
 
+/// Walking distance from a step count — an estimate, for sources that
+/// count steps only (the phone's step sensor). A walking step is about 41%
+/// of height; without a height, 0.70 m. Same rule as the server
+/// (`estimateWalkKm` in fitflex-functions activity-service.mjs).
+double stepLengthM(num? heightCm) {
+  final h = heightCm?.toDouble();
+  return h != null && h >= 100 && h <= 230 ? (h * 0.414).round() / 100 : 0.7;
+}
+
+double estimateWalkKm(int steps, num? heightCm) =>
+    (steps * stepLengthM(heightCm) / 10).round() / 100;
+
 String dayKey(DateTime d) {
   final l = d.toLocal();
   String two(int n) => n.toString().padLeft(2, '0');

@@ -1,5 +1,7 @@
 import 'package:fitflexmobile/app_scope.dart';
 import 'package:fitflexmobile/screens/member/widgets/phone_steps_card.dart';
+import 'package:fitflexmobile/shared/activity/activity.dart';
+import 'package:fitflexmobile/shared/activity/activity_summary.dart';
 import 'package:fitflexmobile/shared/activity/phone_steps.dart';
 import 'package:fitflexmobile/shared/activity/phone_step_counter.dart';
 import 'package:fitflexmobile/shared/activity/step_ledger.dart';
@@ -273,6 +275,64 @@ void main() {
       await s.load();
       expect(s.supported, isFalse);
       expect(await s.enable(), isFalse);
+    });
+  });
+
+  group('dashboard', () {
+    Activity server({int steps = 1000, double? km}) => Activity(
+      id: 'act_1',
+      userId: 'm1',
+      type: ActivityType.walking,
+      source: ActivitySource.device,
+      startedAt: DateTime(2026, 9, 24),
+      steps: steps,
+      distanceKm: km,
+      devicePlatform: DevicePlatform.phoneSensor,
+      externalId: 'steps:2026-09-24',
+    );
+
+    test('distance is estimated from steps, with height when known', () {
+      expect(stepLengthM(null), 0.7);
+      expect(stepLengthM(183), 0.76);
+      expect(stepLengthM(40), 0.7);
+      expect(estimateWalkKm(3640, null), 2.55);
+      expect(estimateWalkKm(5000, 183), 3.8);
+    });
+
+    test('the phone\'s count shows before it reaches the server', () {
+      final shown = withPhoneSteps([], {'2026-09-24': 3640});
+      final today = summarizeDay(shown, at(15));
+      expect(today.steps, 3640);
+      expect(today.distanceKm, 2.55);
+      expect(today.activityCount, 0, reason: 'a day total is not a session');
+      expect(shown.single.devicePlatform, DevicePlatform.phoneSensor);
+      expect(shown.single.origin, DataOrigin.device);
+    });
+
+    test('never double-counts; the higher of phone and server wins', () {
+      final ahead = withPhoneSteps(
+        [server(steps: 3000, km: 2.1)],
+        {'2026-09-24': 3640},
+        heightCm: 183,
+      );
+      expect(ahead, hasLength(1));
+      expect(ahead.single.steps, 3640);
+      expect(ahead.single.id, 'act_1');
+      expect(ahead.single.distanceKm, estimateWalkKm(3640, 183));
+
+      final behind = withPhoneSteps(
+        [server(steps: 5000, km: 3.5)],
+        {'2026-09-24': 300},
+      );
+      expect(behind.single.steps, 5000);
+      expect(behind.single.distanceKm, 3.5);
+
+      final old = withPhoneSteps([server(steps: 2000)], const {});
+      expect(
+        old.single.distanceKm,
+        1.4,
+        reason: 'filled for records saved before distances',
+      );
     });
   });
 

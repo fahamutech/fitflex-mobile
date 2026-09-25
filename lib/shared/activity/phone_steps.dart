@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
 
 import '../api_client.dart';
+import 'activity.dart';
 import 'phone_step_counter.dart';
 import 'step_ledger.dart';
 
@@ -46,6 +47,11 @@ class PhoneSteps extends ChangeNotifier {
   int _today = 0;
   bool _syncing = false;
   bool _promptDismissed = false;
+  Map<String, int> _days = const {};
+
+  /// Steps this phone counted per local day (`yyyy-mm-dd`), including ones
+  /// the server doesn't have yet — so screens can show them straight away.
+  Map<String, int> get localDays => _days;
 
   /// The member chose "Not now" on Home (the switch in Privacy stays).
   bool get promptDismissed => _promptDismissed;
@@ -75,7 +81,9 @@ class PhoneSteps extends ChangeNotifier {
       await store.write(enabledKey, 'false');
       await background.cancel();
     }
-    _today = (await _ledger()).stepsOn(_now());
+    final ledger = await _ledger();
+    _today = ledger.stepsOn(_now());
+    _days = Map.unmodifiable(ledger.days);
     _loaded = true;
     notifyListeners();
   }
@@ -101,6 +109,7 @@ class PhoneSteps extends ChangeNotifier {
     final reading = await counter.readSinceBoot();
     if (reading != null) ledger.record(reading, _now());
     await _save(ledger);
+    _days = Map.unmodifiable(ledger.days);
     await background.schedule();
     notifyListeners();
     return true;
@@ -121,6 +130,7 @@ class PhoneSteps extends ChangeNotifier {
   Future<void> forget() async {
     _enabled = false;
     _today = 0;
+    _days = const {};
     await store.write(enabledKey, 'false');
     await store.write(_ledgerKey, jsonEncode(StepLedger().toJson()));
     await background.cancel();
@@ -147,7 +157,9 @@ class PhoneSteps extends ChangeNotifier {
         api: api,
         now: _now(),
       );
-      _today = (await _ledger()).stepsOn(_now());
+      final ledger = await _ledger();
+      _today = ledger.stepsOn(_now());
+      _days = Map.unmodifiable(ledger.days);
       notifyListeners();
       return changed;
     } finally {
@@ -263,4 +275,59 @@ class WorkmanagerStepBackground implements StepBackground {
       debugPrint('[PhoneSteps] could not cancel background reading: $e');
     }
   }
+}
+
+/// The member's activities with this phone's step counts laid over them.
+///
+/// Each day the phone counted becomes (or updates) that day's phone-sensor
+/// record — the same record the server keeps once it's uploaded — so Home
+/// and the Activity tab show the steps straight away, even offline or
+/// before the upload lands. A day uses whichever is higher, the phone's
+/// count or the server's. Distance is estimated from steps (see
+/// [estimateWalkKm]); the phone sensor measures nothing else.
+List<Activity> withPhoneSteps(
+  List<Activity> activities,
+  Map<String, int> localDays, {
+  num? heightCm,
+  String userId = '',
+}) {
+  final out = [...activities];
+  bool isPhoneDay(Activity a, String key) =>
+      a.source == ActivitySource.device &&
+      a.devicePlatform == DevicePlatform.phoneSensor &&
+      (a.externalId == 'steps:$key' || dayKey(a.startedAt) == key);
+
+  Activity dayRecord(Activity? base, String key, int steps) => Activity(
+    id: base?.id ?? 'phone_steps_$key',
+    userId: base?.userId ?? userId,
+    type: ActivityType.walking,
+    source: ActivitySource.device,
+    startedAt: base?.startedAt ?? dayFromKey(key),
+    steps: steps,
+    distanceKm: estimateWalkKm(steps, heightCm),
+    devicePlatform: DevicePlatform.phoneSensor,
+    externalId: base?.externalId ?? 'steps:$key',
+    deviceName: base?.deviceName ?? 'This phone',
+  );
+
+  // Server phone records saved before distances existed.
+  for (var i = 0; i < out.length; i++) {
+    final a = out[i];
+    if (a.source == ActivitySource.device &&
+        a.devicePlatform == DevicePlatform.phoneSensor &&
+        a.distanceKm == null &&
+        a.steps != null) {
+      out[i] = dayRecord(a, dayKey(a.startedAt), a.steps!);
+    }
+  }
+  for (final e in localDays.entries) {
+    if (e.value <= 0) continue;
+    final i = out.indexWhere((a) => isPhoneDay(a, e.key));
+    if (i < 0) {
+      out.add(dayRecord(null, e.key, e.value));
+    } else if (e.value > (out[i].steps ?? 0)) {
+      out[i] = dayRecord(out[i], e.key, e.value);
+    }
+  }
+  return out..sort((a, b) => b.startedAt.compareTo(a.startedAt));
 }

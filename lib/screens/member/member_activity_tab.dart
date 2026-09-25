@@ -127,7 +127,17 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
           right: FFStatTile(
             icon: Icons.straighten,
             value: formatKm(s.distanceKm),
-            label: context.tr('activity.distance'),
+            // The phone counts steps only; its distance is estimated.
+            label: context.tr(
+              activities.any(
+                    (a) =>
+                        a.devicePlatform == DevicePlatform.phoneSensor &&
+                        (a.distanceKm ?? 0) > 0 &&
+                        dayOf(a.startedAt) == dayOf(today),
+                  )
+                  ? 'activity.distanceEstimated'
+                  : 'activity.distance',
+            ),
           ),
         ),
         _TileRow(
