@@ -11,7 +11,9 @@ import 'goal_repository.dart';
 import 'manual_activity_log.dart';
 import 'mock/mock_activity_provider.dart';
 import 'phone_steps.dart';
+import 'providers/geolocator_gps_source.dart';
 import 'providers/phone_step_counter.dart';
+import 'run_recorder.dart';
 import 'sample_activity_log.dart';
 import 'workout_repository.dart';
 
@@ -71,6 +73,14 @@ class ActivityBackend {
   factory ActivityBackend.create(ApiClient api, {required bool sample}) =>
       sample ? ActivityBackend.sample() : ActivityBackend.api(api);
 }
+
+// ── Recording runs with GPS ────────────────────────────────────────────────
+
+/// Whether runs can be recorded here (Android for now).
+bool runRecordingSupported() => const GeolocatorGpsSource().isSupported;
+
+RunRecorder createRunRecorder() =>
+    RunRecorder(gps: const GeolocatorGpsSource(), store: PrefsStepStore());
 
 // ── Counting steps with this phone ─────────────────────────────────────────
 

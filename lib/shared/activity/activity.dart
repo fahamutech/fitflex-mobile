@@ -158,6 +158,16 @@ class Activity {
   /// e.g. "Apple Watch"; display only.
   final String? deviceName;
 
+  // Runs recorded in the app (GPS).
+  final int? movingSeconds;
+  final double? elevationGainM;
+
+  /// Seconds for each whole km.
+  final List<int> splits;
+
+  /// Whether the member can open this run's (private) route.
+  final bool hasRoute;
+
   /// Generated demo data. Never sent to the server and never shown as
   /// device, FitFlex or manual data.
   final bool isSample;
@@ -181,8 +191,16 @@ class Activity {
     this.devicePlatform,
     this.externalId,
     this.deviceName,
+    this.movingSeconds,
+    this.elevationGainM,
+    this.splits = const [],
+    this.hasRoute = false,
     this.isSample = false,
   });
+
+  /// A run recorded with GPS in the app.
+  bool get isRecordedRun =>
+      source == ActivitySource.fitflex && movingSeconds != null;
 
   /// Which of the three kinds of data this is. Trainer and gym records are
   /// manual: a person entered them. A "device" record that doesn't name
@@ -232,6 +250,13 @@ class Activity {
       ),
       externalId: json['externalId'] as String?,
       deviceName: json['deviceName'] as String?,
+      movingSeconds: (json['movingSeconds'] as num?)?.toInt(),
+      elevationGainM: (json['elevationGainM'] as num?)?.toDouble(),
+      splits: [
+        for (final s in (json['splits'] as List? ?? const []))
+          if (s is num) s.toInt(),
+      ],
+      hasRoute: json['hasRoute'] == true,
     );
   }
 
@@ -254,5 +279,9 @@ class Activity {
     'devicePlatform': ?devicePlatform?.wire,
     'externalId': ?externalId,
     'deviceName': ?deviceName,
+    'movingSeconds': ?movingSeconds,
+    'elevationGainM': ?elevationGainM,
+    if (splits.isNotEmpty) 'splits': splits,
+    if (hasRoute) 'hasRoute': true,
   };
 }

@@ -13,6 +13,8 @@ import 'shared/activity/activity.dart';
 import 'screens/member/member_shop_tab.dart';
 import 'screens/member/member_onboarding_page.dart';
 import 'screens/member/member_privacy_page.dart';
+import 'screens/member/member_record_run_page.dart';
+import 'screens/member/member_run_detail_page.dart';
 import 'screens/trainer/trainer_registration_page.dart';
 import 'screens/trainer/trainer_home_page.dart';
 import 'screens/owner/owner_registration_page.dart';
@@ -65,6 +67,8 @@ abstract class AppRoutes {
   static const memberHome = '/member';
   static const memberActivity = '/member/activity';
   static const memberActivityLog = '/member/activity/log';
+  static const memberRecordRun = '/member/activity/run';
+  static const memberRunDetail = '/member/activity/runs/:activityId';
   static const memberProgress = '/member/activity/progress';
   static const memberWorkout = '/member/activity/workouts/:workoutId';
   static const memberChallenge = '/member/activity/challenges/:challengeId';
@@ -424,6 +428,18 @@ GoRouter buildRouter(AuthState auth) {
                 name: 'memberProgress',
                 builder: (context, state) =>
                     const MemberActivityTab(initialSection: 'progress'),
+              ),
+              GoRoute(
+                path: 'run',
+                name: 'memberRecordRun',
+                builder: (context, state) => const MemberRecordRunPage(),
+              ),
+              GoRoute(
+                path: 'runs/:activityId',
+                name: 'memberRunDetail',
+                builder: (context, state) => MemberRunDetailPage(
+                  activityId: state.pathParameters['activityId']!,
+                ),
               ),
               GoRoute(
                 path: 'log',

@@ -578,6 +578,22 @@ class ApiClient {
         as Map,
   );
 
+  /// Save a GPS-recorded run; the server works out the numbers.
+  Future<Map<String, dynamic>> recordRun(Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(
+        await _request('POST', '/me/activities/runs', body: body) as Map,
+      );
+
+  /// The private route of one of the member's own runs.
+  Future<Map<String, dynamic>> runRoute(String activityId) async =>
+      Map<String, dynamic>.from(
+        await _request(
+              'GET',
+              '/me/activities/${Uri.encodeComponent(activityId)}/route',
+            )
+            as Map,
+      );
+
   /// Rewards the member earned from challenges, and where each stands.
   Future<List<dynamic>> myRewards() async {
     final res = await _request('GET', '/me/rewards');

@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'app_scope.dart';
 import 'shared/activity/activity_config.dart';
 import 'shared/activity/phone_steps.dart';
+import 'shared/activity/run_recorder.dart';
 import 'router.dart';
 import 'shared/api_client.dart';
 import 'shared/auth_state.dart';
@@ -84,6 +85,7 @@ class _FitFlexAppState extends State<FitFlexApp> {
   late final GoRouter _router;
   late final ActivityBackend _activity;
   PhoneSteps? _phoneSteps;
+  RunRecorder? _runs;
   String? _lastToken;
 
   @override
@@ -96,15 +98,22 @@ class _FitFlexAppState extends State<FitFlexApp> {
     // activity data (not sample mode).
     if (!sample && phoneStepsSupported()) {
       _phoneSteps = createPhoneSteps()..load();
-      _lastToken = widget.auth.token;
-      widget.auth.addListener(_onAuth);
     }
+    // Runs are saved to the server, so recording needs real activity data.
+    if (!sample && runRecordingSupported()) {
+      _runs = createRunRecorder()..restore();
+    }
+    _lastToken = widget.auth.token;
+    widget.auth.addListener(_onAuth);
   }
 
   void _onAuth() {
     final token = widget.auth.token;
     // Signed out: this phone's steps aren't the next person's.
-    if (_lastToken != null && token == null) _phoneSteps?.forget();
+    if (_lastToken != null && token == null) {
+      _phoneSteps?.forget();
+      _runs?.discard();
+    }
     _lastToken = token;
   }
 
@@ -125,6 +134,7 @@ class _FitFlexAppState extends State<FitFlexApp> {
       workoutRepository: _activity.workouts,
       manualActivityLog: _activity.manualLog,
       phoneSteps: _phoneSteps,
+      runRecorder: _runs,
       child: ThemeScope(
         notifier: widget.themeNotifier,
         child: FFLocaleScope(
