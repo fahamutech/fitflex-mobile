@@ -1419,4 +1419,59 @@ class ApiClient {
       if (confirmLargeSend) 'confirmLargeSend': true,
     },
   );
+
+  // ── Owner message templates ─────────────────────────────────────────────
+
+  Future<Map<String, dynamic>> ownerTemplates({
+    String? gymId,
+    String? group,
+  }) async => await _request(
+    'GET',
+    _withQuery('/owner/communications/templates', {
+      if (gymId != null && gymId.isNotEmpty) 'gymId': gymId,
+      if (group != null && group.isNotEmpty) 'group': group,
+    }),
+  );
+
+  Future<Map<String, dynamic>> ownerTemplate(String id) async =>
+      await _request('GET', '/owner/communications/templates/$id');
+
+  /// How a template looks on each channel in each language.
+  Future<Map<String, dynamic>> ownerTemplatePreview(
+    String id, {
+    String? gymId,
+    Map<String, dynamic>? values,
+  }) async => await _request(
+    'POST',
+    '/owner/communications/templates/$id/preview',
+    body: {'gymId': ?gymId, 'values': ?values},
+  );
+
+  Future<Map<String, dynamic>> ownerCreateTemplate(
+    Map<String, dynamic> body,
+  ) async =>
+      await _request('POST', '/owner/communications/templates', body: body);
+
+  Future<Map<String, dynamic>> ownerUpdateTemplate(
+    String id,
+    Map<String, dynamic> body,
+  ) async => await _request(
+    'PATCH',
+    '/owner/communications/templates/$id',
+    body: body,
+  );
+
+  /// Copies a template (e.g. a FitFlex one) into the gym's own to adapt it.
+  Future<Map<String, dynamic>> ownerDuplicateTemplate(
+    String id, {
+    String? gymId,
+    String? name,
+  }) async => await _request(
+    'POST',
+    '/owner/communications/templates/$id/duplicate',
+    body: {'gymId': ?gymId, 'name': ?name},
+  );
+
+  Future<void> ownerArchiveTemplate(String id) async =>
+      await _request('POST', '/owner/communications/templates/$id/archive');
 }

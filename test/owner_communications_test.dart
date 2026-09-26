@@ -437,14 +437,14 @@ void main() {
 
       await tester.enterText(
         find.descendant(
-          of: find.byKey(const Key('msg-title')),
+          of: find.byKey(const Key('msg-title-en')),
           matching: find.byType(TextField),
         ),
         'Your plan ends soon',
       );
       await tester.enterText(
         find.descendant(
-          of: find.byKey(const Key('msg-body')),
+          of: find.byKey(const Key('msg-body-en')),
           matching: find.byType(TextField),
         ),
         'Hi ',

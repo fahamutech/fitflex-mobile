@@ -89,6 +89,7 @@ class _FitFlexAppState extends State<FitFlexApp> {
   PhoneSteps? _phoneSteps;
   RunRecorder? _runs;
   String? _lastToken;
+  String? _syncedLocale;
 
   @override
   void initState() {
@@ -111,6 +112,22 @@ class _FitFlexAppState extends State<FitFlexApp> {
     if (widget.auth.token != null) _inbox.load();
     _lastToken = widget.auth.token;
     widget.auth.addListener(_onAuth);
+    widget.locale.addListener(_syncLocale);
+    _syncLocale();
+  }
+
+  /// Gym messages go out in each member's app language, so the server keeps
+  /// a copy of it. Sent on sign-in and whenever the language changes.
+  Future<void> _syncLocale() async {
+    final lang = widget.locale.locale.languageCode;
+    if (widget.auth.token == null || lang == _syncedLocale) return;
+    _syncedLocale = lang;
+    try {
+      await widget.api.updateCommunicationPreferences({'locale': lang});
+    } catch (_) {
+      // Retried on the next sign-in or language change.
+      if (_syncedLocale == lang) _syncedLocale = null;
+    }
   }
 
   /// A tapped push opens its message, or the screen it links to.
@@ -142,14 +159,19 @@ class _FitFlexAppState extends State<FitFlexApp> {
       _phoneSteps?.forget();
       _runs?.discard();
       _inbox.clear();
+      _syncedLocale = null;
     }
-    if (token != null && token != _lastToken) _inbox.load();
+    if (token != null && token != _lastToken) {
+      _inbox.load();
+      _syncLocale();
+    }
     _lastToken = token;
   }
 
   @override
   void dispose() {
     widget.auth.removeListener(_onAuth);
+    widget.locale.removeListener(_syncLocale);
     widget.auth.push?.onOpen = null;
     widget.auth.push?.onForeground = null;
     _inbox.dispose();

@@ -19,12 +19,14 @@ import 'widgets/campaign_preview.dart';
 import 'widgets/channel_selector.dart';
 import 'widgets/comms_format.dart';
 import 'widgets/message_composer.dart';
+import 'widgets/template_selector.dart';
 
 class CampaignComposerPage extends StatefulWidget {
   const CampaignComposerPage({
     super.key,
     this.gymId,
     this.campaignId,
+    this.templateId,
     this.repository,
   });
 
@@ -32,6 +34,9 @@ class CampaignComposerPage extends StatefulWidget {
 
   /// Set when editing an existing draft.
   final String? campaignId;
+
+  /// Start a new message from this template.
+  final String? templateId;
 
   final CommunicationRepository? repository;
 
@@ -41,6 +46,7 @@ class CampaignComposerPage extends StatefulWidget {
 
 class _CampaignComposerPageState extends State<CampaignComposerPage> {
   CampaignComposerController? _controller;
+  CommunicationRepository? _repo;
   Object? _loadError;
   bool _started = false;
 
@@ -55,7 +61,13 @@ class _CampaignComposerPageState extends State<CampaignComposerPage> {
   Future<void> _start() async {
     final repo =
         widget.repository ?? CommunicationRepository(AppScope.of(context).api);
+    // New messages and templates start in the owner's app language.
+    final lang = FFLocaleScope.of(context).locale.languageCode;
+    _repo = repo;
     try {
+      final template = widget.templateId == null
+          ? null
+          : await repo.template(widget.templateId!);
       final existing = widget.campaignId == null
           ? null
           : (await repo.campaign(widget.campaignId!)).campaign;
@@ -69,6 +81,8 @@ class _CampaignComposerPageState extends State<CampaignComposerPage> {
           gymId: widget.gymId ?? existing?.gymId,
           channelsAvailable: overview.channels,
           existing: existing,
+          template: template,
+          writingLocale: lang,
         );
       });
     } catch (e) {
@@ -80,6 +94,16 @@ class _CampaignComposerPageState extends State<CampaignComposerPage> {
   void dispose() {
     _controller?.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickTemplate(CampaignComposerController c) async {
+    final t = await pickTemplate(
+      context,
+      repository: _repo!,
+      gymId: c.gymId,
+      purpose: c.purpose,
+    );
+    if (t != null) c.applyTemplate(t);
   }
 
   Future<void> _submit() async {
@@ -222,7 +246,11 @@ class _CampaignComposerPageState extends State<CampaignComposerPage> {
       switch (c.step) {
         ComposerStep.purpose => _PurposeStep(controller: c),
         ComposerStep.audience => AudienceSelector(controller: c),
-        ComposerStep.message => MessageComposer(controller: c),
+        ComposerStep.message => MessageComposer(
+          key: ValueKey(c.contentRevision),
+          controller: c,
+          onPickTemplate: () => _pickTemplate(c),
+        ),
         ComposerStep.channels => ChannelSelector(controller: c),
         ComposerStep.schedule => _ScheduleStep(controller: c),
         ComposerStep.preview => _PreviewStep(controller: c),

@@ -32,6 +32,7 @@ import 'screens/owner/members/member_history_page.dart';
 import 'screens/owner/communications/campaign_composer_page.dart';
 import 'screens/owner/communications/campaign_detail_page.dart';
 import 'screens/owner/communications/communication_center_page.dart';
+import 'screens/owner/communications/template_pages.dart';
 import 'screens/member/member_message_settings_page.dart';
 import 'shared/inbox/inbox_pages.dart';
 import 'screens/vendor/vendor_home_page.dart';
@@ -71,6 +72,11 @@ abstract class AppRoutes {
   static const ownerCampaignNew = '/owner/communications/new';
   static const ownerCampaignDetail =
       '/owner/communications/campaigns/:campaignId';
+  static const ownerTemplateNew = '/owner/communications/templates/new';
+  static const ownerTemplateDetail =
+      '/owner/communications/templates/:templateId';
+  static const ownerTemplateEdit =
+      '/owner/communications/templates/:templateId/edit';
   static const ownerCampaignEdit =
       '/owner/communications/campaigns/:campaignId/edit';
   static const ownerTrainers = '/owner/trainers';
@@ -421,6 +427,29 @@ GoRouter buildRouter(AuthState auth) {
         name: 'memberMessageSettings',
         builder: (context, state) => const MemberMessageSettingsPage(),
       ),
+      // Message templates. "new" comes before ":templateId" so it wins.
+      GoRoute(
+        path: AppRoutes.ownerTemplateNew,
+        name: 'ownerTemplateNew',
+        builder: (context, state) =>
+            TemplateEditorPage(gymId: state.uri.queryParameters['gymId']),
+      ),
+      GoRoute(
+        path: AppRoutes.ownerTemplateDetail,
+        name: 'ownerTemplateDetail',
+        builder: (context, state) => TemplateDetailPage(
+          templateId: state.pathParameters['templateId']!,
+          gymId: state.uri.queryParameters['gymId'],
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.ownerTemplateEdit,
+        name: 'ownerTemplateEdit',
+        builder: (context, state) => TemplateEditorPage(
+          templateId: state.pathParameters['templateId'],
+          gymId: state.uri.queryParameters['gymId'],
+        ),
+      ),
       // Communication Center — messages to the gym's direct members.
       GoRoute(
         path: AppRoutes.ownerCommunications,
@@ -431,8 +460,10 @@ GoRouter buildRouter(AuthState auth) {
       GoRoute(
         path: AppRoutes.ownerCampaignNew,
         name: 'ownerCampaignNew',
-        builder: (context, state) =>
-            CampaignComposerPage(gymId: state.uri.queryParameters['gymId']),
+        builder: (context, state) => CampaignComposerPage(
+          gymId: state.uri.queryParameters['gymId'],
+          templateId: state.uri.queryParameters['templateId'],
+        ),
       ),
       GoRoute(
         path: AppRoutes.ownerCampaignDetail,

@@ -51,6 +51,28 @@ class CommunicationCenterController extends ChangeNotifier {
     }
   }
 
+  List<CommTemplate> _templates = const [];
+  bool _templatesLoading = false;
+  Object? _templatesError;
+
+  List<CommTemplate> get templates => _templates;
+  bool get templatesLoading => _templatesLoading;
+  Object? get templatesError => _templatesError;
+
+  Future<void> loadTemplates() async {
+    _templatesLoading = true;
+    _templatesError = null;
+    notifyListeners();
+    try {
+      _templates = await _repo.templates(gymId: gymId);
+    } catch (e) {
+      _templatesError = e;
+    } finally {
+      _templatesLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> setStatusFilter(CampaignStatus? status) async {
     if (status == _statusFilter) return;
     _statusFilter = status;
@@ -217,12 +239,19 @@ class CampaignComposerController extends ChangeNotifier {
     this.gymId,
     this.channelsAvailable = const ChannelAvailability(),
     Campaign? existing,
+    CommTemplate? template,
+    this.writingLocale = 'en',
     Duration countDebounce = const Duration(milliseconds: 400),
     DateTime Function()? clock,
   }) : _countDebounce = countDebounce,
        _now = clock ?? DateTime.now {
+    _content = CampaignContent(locale: writingLocale);
     if (existing != null) _loadExisting(existing);
+    if (template != null) applyTemplate(template);
   }
+
+  /// The owner's app language: new messages and templates start in it.
+  final String writingLocale;
 
   final CommunicationRepository _repo;
   final String? gymId;
@@ -242,7 +271,9 @@ class CampaignComposerController extends ChangeNotifier {
   String? _preset = 'active';
   AudienceRefinements _refine = const AudienceRefinements();
   Map<String, dynamic>? _customFilter; // a filter this app can't edit
-  CampaignContent _content = const CampaignContent();
+  late CampaignContent _content;
+  String? _templateId;
+  int _contentRevision = 0;
   Set<CommChannel> _channels = {CommChannel.inApp};
   bool _scheduleLater = false;
   DateTime? _scheduledAt;
@@ -272,6 +303,11 @@ class CampaignComposerController extends ChangeNotifier {
   AudienceRefinements get refinements => _refine;
   bool get hasCustomFilter => _customFilter != null;
   CampaignContent get content => _content;
+  String? get templateId => _templateId;
+
+  /// Changes when the whole text is replaced (template applied or cleared),
+  /// so the message fields reload.
+  int get contentRevision => _contentRevision;
   Set<CommChannel> get channels => _channels;
   bool get scheduleLater => _scheduleLater;
   DateTime? get scheduledAt => _scheduledAt;
@@ -310,6 +346,16 @@ class CampaignComposerController extends ChangeNotifier {
   List<String> get unknownVariables =>
       _content.variables.where((v) => !kMessageVariables.contains(v)).toList();
 
+  /// A translation is either left empty or has a title and body in limits.
+  bool get translationsValid => _content.translations.values.every(
+    (t) =>
+        t.isEmpty ||
+        (t.title.trim().isNotEmpty &&
+            t.body.trim().isNotEmpty &&
+            t.title.length <= 65 &&
+            t.body.length <= 1000),
+  );
+
   bool canContinue(ComposerStep s) => switch (s) {
     ComposerStep.purpose => _purpose != null,
     ComposerStep.audience => (_count?.count ?? 0) > 0 && !_countLoading,
@@ -319,7 +365,8 @@ class CampaignComposerController extends ChangeNotifier {
           _content.title.length <= 65 &&
           _content.body.length <= 1000 &&
           missingSenderValues.isEmpty &&
-          unknownVariables.isEmpty,
+          unknownVariables.isEmpty &&
+          translationsValid,
     ComposerStep.channels => _channels.isNotEmpty,
     ComposerStep.schedule =>
       !_scheduleLater ||
@@ -375,6 +422,47 @@ class CampaignComposerController extends ChangeNotifier {
 
   void setContent(CampaignContent c) {
     _content = c;
+    _invalidatePreview();
+    notifyListeners();
+  }
+
+  /// Starts the message from [t]: its text in the owner's language (or one
+  /// it has), the other language as a translation, and its purpose. Offer
+  /// values already typed in are kept.
+  void applyTemplate(CommTemplate t) {
+    _templateId = t.id;
+    _content = t.toContent(writingLocale, keepValuesFrom: _content);
+    if (t.purpose != null) _purpose = t.purpose;
+    _contentRevision++;
+    _invalidatePreview();
+    notifyListeners();
+  }
+
+  /// Back to a blank message.
+  void clearTemplate() {
+    _templateId = null;
+    _content = CampaignContent(
+      locale: writingLocale,
+      offerName: _content.offerName,
+      discount: _content.discount,
+      amountTzs: _content.amountTzs,
+    );
+    _contentRevision++;
+    _invalidatePreview();
+    notifyListeners();
+  }
+
+  /// Sets the text in one language — the main one or the translation.
+  void setText(String lang, MessageText text) {
+    _content = _content.withText(lang, text);
+    _invalidatePreview();
+    notifyListeners();
+  }
+
+  void removeTranslation(String lang) {
+    _content = _content.copyWith(
+      translations: {..._content.translations}..remove(lang),
+    );
     _invalidatePreview();
     notifyListeners();
   }
@@ -451,6 +539,7 @@ class CampaignComposerController extends ChangeNotifier {
             min(80, _content.title.trim().length),
           ),
     'purpose': _purpose?.name,
+    'templateId': _templateId,
     'audience': audience.toJson(),
     'content': _content.toJson(),
     'channels': (channels ?? _channels).map((c) => c.wire).toList(),
@@ -540,6 +629,7 @@ class CampaignComposerController extends ChangeNotifier {
       _refine = parsed;
     }
     _content = c.content;
+    _templateId = c.templateId;
     if (c.channels.isNotEmpty) _channels = c.channels.toSet();
     if (c.scheduledAt != null) {
       _scheduleLater = true;

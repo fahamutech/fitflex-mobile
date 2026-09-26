@@ -92,6 +92,43 @@ const kMessageVariables = [
   'amount',
 ];
 
+/// A message's title, body and button text in one language.
+class MessageText {
+  const MessageText({this.title = '', this.body = '', this.ctaLabel});
+
+  final String title;
+  final String body;
+  final String? ctaLabel;
+
+  bool get isEmpty => title.trim().isEmpty && body.trim().isEmpty;
+
+  MessageText copyWith({
+    String? title,
+    String? body,
+    String? Function()? ctaLabel,
+  }) => MessageText(
+    title: title ?? this.title,
+    body: body ?? this.body,
+    ctaLabel: ctaLabel != null ? ctaLabel() : this.ctaLabel,
+  );
+
+  factory MessageText.fromJson(Map<String, dynamic>? j) => MessageText(
+    title: j?['title']?.toString() ?? '',
+    body: j?['body']?.toString() ?? '',
+    ctaLabel: j?['ctaLabel']?.toString(),
+  );
+
+  Map<String, dynamic> toJson() => {
+    'title': title.trim(),
+    'body': body.trim(),
+    if (ctaLabel != null && ctaLabel!.trim().isNotEmpty)
+      'ctaLabel': ctaLabel!.trim(),
+  };
+}
+
+/// Languages a message can be written in.
+const kMessageLocales = ['en', 'sw'];
+
 class CampaignContent {
   const CampaignContent({
     this.title = '',
@@ -101,6 +138,8 @@ class CampaignContent {
     this.offerName,
     this.discount,
     this.amountTzs,
+    this.locale = 'en',
+    this.translations = const {},
   });
 
   final String title;
@@ -111,6 +150,19 @@ class CampaignContent {
   final String? discount;
   final int? amountTzs;
 
+  /// The language the main text is written in.
+  final String locale;
+
+  /// The same message in the other app language, e.g. {'sw': …}. Members
+  /// get the version in their app language when there is one.
+  final Map<String, MessageText> translations;
+
+  MessageText get main =>
+      MessageText(title: title, body: body, ctaLabel: ctaLabel);
+
+  /// The other app language (the one a translation would be in).
+  String get otherLocale => kMessageLocales.firstWhere((l) => l != locale);
+
   CampaignContent copyWith({
     String? title,
     String? body,
@@ -119,6 +171,8 @@ class CampaignContent {
     String? Function()? offerName,
     String? Function()? discount,
     int? Function()? amountTzs,
+    String? locale,
+    Map<String, MessageText>? translations,
   }) => CampaignContent(
     title: title ?? this.title,
     body: body ?? this.body,
@@ -127,7 +181,18 @@ class CampaignContent {
     offerName: offerName != null ? offerName() : this.offerName,
     discount: discount != null ? discount() : this.discount,
     amountTzs: amountTzs != null ? amountTzs() : this.amountTzs,
+    locale: locale ?? this.locale,
+    translations: translations ?? this.translations,
   );
+
+  /// The same content with one language's text replaced (main or translation).
+  CampaignContent withText(String lang, MessageText text) => lang == locale
+      ? copyWith(
+          title: text.title,
+          body: text.body,
+          ctaLabel: () => text.ctaLabel,
+        )
+      : copyWith(translations: {...translations, lang: text});
 
   factory CampaignContent.fromJson(Map<String, dynamic>? j) {
     if (j == null) return const CampaignContent();
@@ -139,26 +204,191 @@ class CampaignContent {
       offerName: j['offerName']?.toString(),
       discount: j['discount']?.toString(),
       amountTzs: (j['amountTzs'] as num?)?.toInt(),
+      locale: j['locale']?.toString() ?? 'en',
+      translations: {
+        for (final e in ((j['translations'] as Map?) ?? const {}).entries)
+          e.key.toString(): MessageText.fromJson((e.value as Map).cast()),
+      },
     );
   }
 
-  Map<String, dynamic> toJson() => {
-    'title': title.trim(),
-    'body': body.trim(),
-    if (ctaLabel != null && ctaLabel!.trim().isNotEmpty)
-      'ctaLabel': ctaLabel!.trim(),
-    'deepLink': deepLink.name,
-    if (offerName != null && offerName!.trim().isNotEmpty)
-      'offerName': offerName!.trim(),
-    if (discount != null && discount!.trim().isNotEmpty)
-      'discount': discount!.trim(),
-    if (amountTzs != null) 'amountTzs': amountTzs,
-  };
+  Map<String, dynamic> toJson() {
+    final tr = {
+      for (final e in translations.entries)
+        if (!e.value.isEmpty && e.key != locale) e.key: e.value.toJson(),
+    };
+    return {
+      'title': title.trim(),
+      'body': body.trim(),
+      if (ctaLabel != null && ctaLabel!.trim().isNotEmpty)
+        'ctaLabel': ctaLabel!.trim(),
+      'deepLink': deepLink.name,
+      'locale': locale,
+      if (tr.isNotEmpty) 'translations': tr,
+      if (offerName != null && offerName!.trim().isNotEmpty)
+        'offerName': offerName!.trim(),
+      if (discount != null && discount!.trim().isNotEmpty)
+        'discount': discount!.trim(),
+      if (amountTzs != null) 'amountTzs': amountTzs,
+    };
+  }
 
-  /// Variable names used in the title and body.
-  Set<String> get variables => RegExp(
-    r'\{\{\s*([a-z_]+)\s*\}\}',
-  ).allMatches('$title $body').map((m) => m.group(1)!).toSet();
+  /// Variable names used in the title and body, in every language.
+  Set<String> get variables => RegExp(r'\{\{\s*([a-z_]+)\s*\}\}')
+      .allMatches(
+        [
+          '$title $body',
+          for (final t in translations.values) '${t.title} ${t.body}',
+        ].join(' '),
+      )
+      .map((m) => m.group(1)!)
+      .toSet();
+}
+
+/// Groups templates are browsed by.
+const kTemplateGroups = [
+  'membership',
+  'payment',
+  'marketing',
+  'engagement',
+  'general',
+];
+
+/// A message template: FitFlex's (system) or the gym's own.
+class CommTemplate {
+  const CommTemplate({
+    required this.id,
+    required this.key,
+    required this.name,
+    required this.system,
+    this.group = 'general',
+    this.purpose,
+    this.deepLink = DeepLink.message,
+    this.bodies = const {},
+    this.variables = const [],
+    this.basedOn,
+  });
+
+  final String id;
+  final String key;
+  final String name;
+  final bool system;
+  final String group;
+  final CampaignPurpose? purpose;
+  final DeepLink deepLink;
+  final Map<String, MessageText> bodies;
+  final List<String> variables;
+  final String? basedOn;
+
+  /// The text in [lang], or in any language the template has.
+  MessageText textIn(String lang) =>
+      bodies[lang] ?? bodies.values.firstOrNull ?? const MessageText();
+
+  /// Offer values the sender types in once for the whole campaign.
+  List<String> get senderVariables => variables
+      .where((v) => const {'offer_name', 'discount', 'amount'}.contains(v))
+      .toList();
+
+  factory CommTemplate.fromJson(Map<String, dynamic> j) => CommTemplate(
+    id: j['id'].toString(),
+    key: j['key']?.toString() ?? '',
+    name: j['name']?.toString() ?? '',
+    system: j['system'] == true,
+    group: j['group']?.toString() ?? 'general',
+    purpose: CampaignPurpose.parse(j['purpose']?.toString()),
+    deepLink: DeepLink.parse(j['deepLink']?.toString()),
+    bodies: {
+      for (final e in ((j['bodies'] as Map?) ?? const {}).entries)
+        e.key.toString(): MessageText.fromJson((e.value as Map).cast()),
+    },
+    variables: ((j['variables'] as List?) ?? const [])
+        .map((v) => v.toString())
+        .toList(),
+    basedOn: j['basedOn']?.toString(),
+  );
+
+  /// Campaign content from this template: the main text in [lang] (falling
+  /// back to a language it has), the other language as a translation.
+  CampaignContent toContent(String lang, {CampaignContent? keepValuesFrom}) {
+    final main = bodies.containsKey(lang)
+        ? lang
+        : (bodies.keys.firstOrNull ?? 'en');
+    final text = bodies[main] ?? const MessageText();
+    final prev = keepValuesFrom;
+    return CampaignContent(
+      title: text.title,
+      body: text.body,
+      ctaLabel: text.ctaLabel,
+      deepLink: deepLink,
+      locale: main,
+      translations: {
+        for (final e in bodies.entries)
+          if (e.key != main) e.key: e.value,
+      },
+      offerName: prev?.offerName,
+      discount: prev?.discount,
+      amountTzs: prev?.amountTzs,
+    );
+  }
+}
+
+/// How a template looks on each channel in one language.
+class TemplateChannelPreview {
+  const TemplateChannelPreview({
+    required this.inApp,
+    required this.pushTitle,
+    required this.pushBody,
+    this.pushTruncated = false,
+  });
+
+  final RenderedMessage inApp;
+  final String pushTitle;
+  final String pushBody;
+  final bool pushTruncated;
+}
+
+class TemplatePreview {
+  const TemplatePreview({
+    required this.senderName,
+    required this.byLocale,
+    this.whatsappReady = const {},
+    this.needsValues = const [],
+  });
+
+  final String senderName;
+  final Map<String, TemplateChannelPreview> byLocale;
+
+  /// Per language: can this template go out on WhatsApp yet.
+  final Map<String, bool> whatsappReady;
+  final List<String> needsValues;
+
+  factory TemplatePreview.fromJson(Map<String, dynamic> j) => TemplatePreview(
+    senderName: j['senderName']?.toString() ?? '',
+    byLocale: {
+      for (final e in ((j['byLocale'] as Map?) ?? const {}).entries)
+        e.key.toString(): () {
+          final v = (e.value as Map).cast<String, dynamic>();
+          final inApp = (v['in_app'] as Map).cast<String, dynamic>();
+          final push = (v['push'] as Map).cast<String, dynamic>();
+          return TemplateChannelPreview(
+            inApp: RenderedMessage.fromJson(inApp),
+            pushTitle: push['title']?.toString() ?? '',
+            pushBody: push['body']?.toString() ?? '',
+            pushTruncated: push['truncated'] == true,
+          );
+        }(),
+    },
+    whatsappReady: {
+      for (final e
+          in ((((j['whatsapp'] as Map?) ?? const {})['byLocale'] as Map?) ??
+                  const {})
+              .entries)
+        e.key.toString(): (e.value as Map)['ready'] == true,
+    },
+    needsValues: ((j['needsValues'] as List?) ?? const [])
+        .map((v) => v.toString())
+        .toList(),
+  );
 }
 
 /// An audience: a preset and optional extra conditions (AND-ed).
@@ -196,6 +426,7 @@ class Campaign {
     this.createdAt,
     this.counts,
     this.title,
+    this.templateId,
   });
 
   final String id;
@@ -213,6 +444,9 @@ class Campaign {
 
   /// List rows carry the title instead of the full content.
   final String? title;
+
+  /// The template the message was started from, if any.
+  final String? templateId;
 
   String get displayTitle => title ?? content.title;
 
@@ -237,6 +471,7 @@ class Campaign {
         ? CampaignCounts.fromJson((j['counts'] as Map).cast())
         : null,
     title: j['title']?.toString(),
+    templateId: j['templateId']?.toString(),
   );
 }
 
