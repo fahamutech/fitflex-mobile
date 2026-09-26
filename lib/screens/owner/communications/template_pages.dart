@@ -389,6 +389,7 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
 
   bool get _valid =>
       _name.text.trim().isNotEmpty &&
+      _name.text.trim().length <= 60 &&
       kMessageLocales.any(
         (l) =>
             _title[l]!.text.trim().isNotEmpty &&
@@ -481,6 +482,11 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
                   controller: _name,
                   label: context.tr('comms.tpl.name'),
                   onChanged: (_) => setState(() {}),
+                  errorText: _name.text.trim().length > 60
+                      ? context
+                            .tr('comms.msg.tooLong')
+                            .replaceFirst('{n}', '60')
+                      : null,
                 ),
                 const SizedBox(height: FFTokens.spacingSm),
                 FFDropdownField<String>(
