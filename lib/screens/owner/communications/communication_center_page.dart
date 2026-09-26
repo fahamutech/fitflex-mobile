@@ -15,6 +15,7 @@ import 'data/communication_models.dart';
 import 'data/communication_repository.dart';
 import 'widgets/campaign_status.dart';
 import 'widgets/comms_format.dart';
+import 'widgets/template_selector.dart';
 
 class CommunicationCenterPage extends StatefulWidget {
   const CommunicationCenterPage({super.key, this.gymId, this.repository});
@@ -93,8 +94,14 @@ class _CommunicationCenterPageState extends State<CommunicationCenterPage> {
                 options: [
                   ('overview', context.tr('comms.tab.overview')),
                   ('campaigns', context.tr('comms.tab.campaigns')),
+                  ('templates', context.tr('comms.tab.templates')),
                 ],
-                onChanged: (v) => setState(() => _tab = v),
+                onChanged: (v) {
+                  setState(() => _tab = v);
+                  if (v == 'templates' && c.templates.isEmpty) {
+                    c.loadTemplates();
+                  }
+                },
               ),
               const SizedBox(height: FFTokens.spacingMd),
               if (c.loading && c.overview == null)
@@ -113,6 +120,8 @@ class _CommunicationCenterPageState extends State<CommunicationCenterPage> {
                 )
               else if (_tab == 'overview')
                 ..._overview(context, c)
+              else if (_tab == 'templates')
+                ..._templates(context, c)
               else
                 ..._campaigns(context, c),
             ],
@@ -204,6 +213,86 @@ class _CommunicationCenterPageState extends State<CommunicationCenterPage> {
       else
         for (final campaign in o.recent)
           CampaignTile(campaign: campaign, onTap: () => _open(campaign)),
+    ];
+  }
+
+  String? _templateGroup;
+
+  List<Widget> _templates(
+    BuildContext context,
+    CommunicationCenterController c,
+  ) {
+    if (c.templatesLoading && c.templates.isEmpty) {
+      return const [
+        Padding(
+          padding: EdgeInsets.all(FFTokens.spacingXl),
+          child: Center(child: FFSpinner()),
+        ),
+      ];
+    }
+    if (c.templatesError != null && c.templates.isEmpty) {
+      return [
+        FFEmptyState(
+          title: context.tr('comms.loadFailed'),
+          body: errorMessage(FFLocaleScope.of(context), c.templatesError!),
+          action: FilledButton(
+            onPressed: c.loadTemplates,
+            child: Text(context.tr('comms.retry')),
+          ),
+        ),
+      ];
+    }
+    final shown = c.templates.where(
+      (t) => _templateGroup == null || t.group == _templateGroup,
+    );
+    return [
+      Text(
+        context.tr('comms.tpl.intro'),
+        style: Theme.of(context).textTheme.bodySmall,
+      ),
+      const SizedBox(height: FFTokens.spacingSm),
+      SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            for (final g in [null, ...kTemplateGroups])
+              Padding(
+                padding: const EdgeInsets.only(right: FFTokens.spacingXs),
+                child: FFPill(
+                  key: Key('tpl-filter-${g ?? 'all'}'),
+                  label: context.tr(
+                    g == null ? 'comms.filter.all' : 'comms.group.$g',
+                  ),
+                  filled: _templateGroup == g,
+                  onTap: () => setState(() => _templateGroup = g),
+                ),
+              ),
+          ],
+        ),
+      ),
+      const SizedBox(height: FFTokens.spacingSm),
+      OutlinedButton.icon(
+        key: const Key('tpl-new'),
+        onPressed: () async {
+          await context.push(
+            '/owner/communications/templates/new${_gymQuery()}',
+          );
+          if (mounted) await c.loadTemplates();
+        },
+        icon: const Icon(Icons.add),
+        label: Text(context.tr('comms.tpl.new')),
+      ),
+      const SizedBox(height: FFTokens.spacingSm),
+      for (final t in shown)
+        TemplateTile(
+          template: t,
+          onTap: () async {
+            await context.push(
+              '/owner/communications/templates/${t.id}${_gymQuery()}',
+            );
+            if (mounted) await c.loadTemplates();
+          },
+        ),
     ];
   }
 
