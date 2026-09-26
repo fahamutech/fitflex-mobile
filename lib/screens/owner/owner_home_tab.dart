@@ -318,6 +318,18 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
           gymId: data.activeGymId,
           onOpenMember: (id) => context.push('/owner/members/$id'),
         ),
+        if (data.canAccess('communications'))
+          FFActionTile(
+            key: const Key('owner-communications'),
+            icon: Icons.campaign_outlined,
+            title: context.tr('comms.title'),
+            subtitle: context.tr('comms.homeTile'),
+            onTap: () => context.push(
+              data.activeGymId == null
+                  ? '/owner/communications'
+                  : '/owner/communications?gymId=${data.activeGymId}',
+            ),
+          ),
         FFActionTile(
           key: const Key('owner-challenges'),
           icon: Icons.emoji_events_outlined,

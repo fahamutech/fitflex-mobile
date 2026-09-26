@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../design_tokens.dart';
 import 'theme_toggle_button.dart';
+import '../inbox/inbox_pages.dart';
 
 /// Shared top action bar for the owner dashboard home tab.
 ///
@@ -18,7 +19,6 @@ class FFOwnerDashboardBar extends StatelessWidget
     required this.subtitleLabel,
     this.onGymSelected,
     this.onAvatarTap,
-    this.onNotificationTap,
     this.showBackButton = false,
   });
 
@@ -41,9 +41,6 @@ class FFOwnerDashboardBar extends StatelessWidget
 
   /// Called when the avatar circle is tapped (navigate to profile).
   final VoidCallback? onAvatarTap;
-
-  /// Called when the notification bell is tapped.
-  final VoidCallback? onNotificationTap;
 
   /// Shows a back button instead of the brand mark — for pushed screens
   /// (e.g. Earnings) reached from an owner tab rather than the bottom nav.
@@ -126,27 +123,8 @@ class FFOwnerDashboardBar extends StatelessWidget
         ],
       ),
       actions: [
-        // Notification bell with indicator dot
-        Stack(
-          children: [
-            IconButton(
-              icon: const Icon(Icons.notifications_none, size: 22),
-              onPressed: onNotificationTap,
-            ),
-            Positioned(
-              right: 8,
-              top: 8,
-              child: Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  color: FFTokens.brandVibrant,
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-          ],
-        ),
+        // The inbox bell, with a real unread count.
+        const InboxBellButton(),
         const ThemeToggleButton(),
         const SizedBox(width: 4),
         // Avatar

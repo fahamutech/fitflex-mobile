@@ -36,6 +36,13 @@ class MemberPrivacyPage extends StatelessWidget {
           description: context.tr('privacy.body'),
         ),
         FFActionTile(
+          key: const Key('privacy-messages'),
+          icon: Icons.mark_email_unread_outlined,
+          title: context.tr('msgPrefs.title'),
+          subtitle: context.tr('msgPrefs.tile'),
+          onTap: () => context.push(AppRoutes.memberMessageSettings),
+        ),
+        FFActionTile(
           key: const Key('privacy-activity-sharing'),
           icon: Icons.share_outlined,
           title: context.tr('sharing.title'),

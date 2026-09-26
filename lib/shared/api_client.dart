@@ -807,6 +807,24 @@ class ApiClient {
   Future<void> markNotificationRead(String id) async =>
       await _request('POST', '/me/notifications/$id/read');
 
+  /// The member tapped the message's button — in the inbox or on a push.
+  Future<void> clickNotification(String id, {String via = 'inbox'}) async =>
+      await _request('POST', '/me/notifications/$id/click', body: {'via': via});
+
+  /// A campaign push with no inbox copy was opened.
+  Future<void> pushMessageOpened(String messageId) async =>
+      await _request('POST', '/me/communications/messages/$messageId/opened');
+
+  Future<Map<String, dynamic>> communicationPreferences() async =>
+      await _request('GET', '/me/communication-preferences')
+          as Map<String, dynamic>;
+
+  Future<Map<String, dynamic>> updateCommunicationPreferences(
+    Map<String, dynamic> changes,
+  ) async =>
+      await _request('PUT', '/me/communication-preferences', body: changes)
+          as Map<String, dynamic>;
+
   /// Price one or more slots (Pass discount applied) without booking them.
   Future<Map<String, dynamic>> quoteTrainerBooking({
     required String trainerId,
@@ -1305,4 +1323,100 @@ class ApiClient {
 
   Future<void> ownerRemoveStaff(String id) async =>
       await _request('POST', '/owner/staff/$id/remove');
+
+  // ── Owner communications (messages to the gym's direct members) ─────────
+
+  static String _withQuery(String path, Map<String, String> query) =>
+      query.isEmpty ? path : '$path?${Uri(queryParameters: query).query}';
+
+  Future<Map<String, dynamic>> ownerCommunicationOverview({
+    String? gymId,
+  }) async => await _request(
+    'GET',
+    _withQuery('/owner/communications/overview', {
+      if (gymId != null && gymId.isNotEmpty) 'gymId': gymId,
+    }),
+  );
+
+  Future<Map<String, dynamic>> ownerCampaigns({
+    String? gymId,
+    String? status,
+  }) async => await _request(
+    'GET',
+    _withQuery('/owner/communications/campaigns', {
+      if (gymId != null && gymId.isNotEmpty) 'gymId': gymId,
+      if (status != null && status.isNotEmpty) 'status': status,
+    }),
+  );
+
+  Future<Map<String, dynamic>> ownerCampaign(String id) async =>
+      await _request('GET', '/owner/communications/campaigns/$id');
+
+  /// Audience count and a few names. POST { gymId?, preset?, filter?, purpose? }
+  Future<Map<String, dynamic>> ownerAudiencePreview(
+    Map<String, dynamic> body,
+  ) async => await _request(
+    'POST',
+    '/owner/communications/audience/preview',
+    body: body,
+  );
+
+  /// Reach per channel, a real member's message and warnings, unsaved.
+  Future<Map<String, dynamic>> ownerPreviewCampaignDraft(
+    Map<String, dynamic> body,
+  ) async => await _request(
+    'POST',
+    '/owner/communications/campaigns/preview',
+    body: body,
+  );
+
+  Future<Map<String, dynamic>> ownerCreateCampaign(
+    Map<String, dynamic> body,
+  ) async =>
+      await _request('POST', '/owner/communications/campaigns', body: body);
+
+  Future<Map<String, dynamic>> ownerUpdateCampaign(
+    String id,
+    Map<String, dynamic> body,
+  ) async => await _request(
+    'PATCH',
+    '/owner/communications/campaigns/$id',
+    body: body,
+  );
+
+  Future<void> ownerDeleteCampaign(String id) async =>
+      await _request('DELETE', '/owner/communications/campaigns/$id');
+
+  Future<Map<String, dynamic>> ownerScheduleCampaign(
+    String id,
+    String scheduledAtIso, {
+    bool confirmLargeSend = false,
+  }) async => await _request(
+    'POST',
+    '/owner/communications/campaigns/$id/schedule',
+    body: {
+      'scheduledAt': scheduledAtIso,
+      if (confirmLargeSend) 'confirmLargeSend': true,
+    },
+  );
+
+  Future<Map<String, dynamic>> ownerUnscheduleCampaign(String id) async =>
+      await _request('POST', '/owner/communications/campaigns/$id/unschedule');
+
+  Future<Map<String, dynamic>> ownerCancelCampaign(String id) async =>
+      await _request('POST', '/owner/communications/campaigns/$id/cancel');
+
+  /// Send now. Repeating the same [sendRequestId] never sends twice.
+  Future<Map<String, dynamic>> ownerSendCampaign(
+    String id, {
+    required String sendRequestId,
+    bool confirmLargeSend = false,
+  }) async => await _request(
+    'POST',
+    '/owner/communications/campaigns/$id/send',
+    body: {
+      'sendRequestId': sendRequestId,
+      if (confirmLargeSend) 'confirmLargeSend': true,
+    },
+  );
 }

@@ -12,6 +12,7 @@ import 'shared/activity/run_recorder.dart';
 import 'router.dart';
 import 'shared/api_client.dart';
 import 'shared/auth_state.dart';
+import 'shared/inbox/inbox_controller.dart';
 import 'shared/push_service.dart';
 import 'shared/design_tokens.dart';
 import 'shared/i18n.dart';
@@ -84,6 +85,7 @@ class FitFlexApp extends StatefulWidget {
 class _FitFlexAppState extends State<FitFlexApp> {
   late final GoRouter _router;
   late final ActivityBackend _activity;
+  late final InboxController _inbox;
   PhoneSteps? _phoneSteps;
   RunRecorder? _runs;
   String? _lastToken;
@@ -103,8 +105,34 @@ class _FitFlexAppState extends State<FitFlexApp> {
     if (!sample && runRecordingSupported()) {
       _runs = createRunRecorder()..restore();
     }
+    _inbox = InboxController(widget.api);
+    widget.auth.push?.onOpen = _openFromPush;
+    widget.auth.push?.onForeground = (_) => _inbox.load();
+    if (widget.auth.token != null) _inbox.load();
     _lastToken = widget.auth.token;
     widget.auth.addListener(_onAuth);
+  }
+
+  /// A tapped push opens its message, or the screen it links to.
+  Future<void> _openFromPush(Map<String, dynamic> data) async {
+    final message = await _inbox.openFromPush(data);
+    if (message != null) {
+      _router.push('/inbox/${message.id}');
+      return;
+    }
+    final role = widget.auth.user?['userType']?.toString() ?? widget.auth.role;
+    final route = role == 'member'
+        ? memberRouteFor(
+            deepLink: data['deepLink']?.toString() ?? '',
+            type: data['type']?.toString() ?? '',
+            gymId: data['gymId']?.toString(),
+          )
+        : null;
+    if (route != null) {
+      _router.go(route);
+    } else {
+      _router.push('/inbox');
+    }
   }
 
   void _onAuth() {
@@ -113,13 +141,18 @@ class _FitFlexAppState extends State<FitFlexApp> {
     if (_lastToken != null && token == null) {
       _phoneSteps?.forget();
       _runs?.discard();
+      _inbox.clear();
     }
+    if (token != null && token != _lastToken) _inbox.load();
     _lastToken = token;
   }
 
   @override
   void dispose() {
     widget.auth.removeListener(_onAuth);
+    widget.auth.push?.onOpen = null;
+    widget.auth.push?.onForeground = null;
+    _inbox.dispose();
     _router.dispose();
     super.dispose();
   }
@@ -135,6 +168,7 @@ class _FitFlexAppState extends State<FitFlexApp> {
       manualActivityLog: _activity.manualLog,
       phoneSteps: _phoneSteps,
       runRecorder: _runs,
+      inbox: _inbox,
       child: ThemeScope(
         notifier: widget.themeNotifier,
         child: FFLocaleScope(

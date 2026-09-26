@@ -18,6 +18,15 @@ class PushService {
   final ApiClient api;
   final FirebaseMessaging? _messaging;
   StreamSubscription<String>? _refreshSub;
+  StreamSubscription<RemoteMessage>? _openSub;
+  StreamSubscription<RemoteMessage>? _foregroundSub;
+  bool _checkedInitial = false;
+
+  /// A notification was tapped (app in background, or opened from it).
+  void Function(Map<String, dynamic> data)? onOpen;
+
+  /// A notification arrived while the app was open.
+  void Function(Map<String, dynamic> data)? onForeground;
   String? _registeredToken;
 
   static bool get supported =>
@@ -33,6 +42,18 @@ class PushService {
       final token = await _fm.getToken();
       if (token != null) await _send(token);
       _refreshSub ??= _fm.onTokenRefresh.listen(_send);
+      _openSub ??= FirebaseMessaging.onMessageOpenedApp.listen(
+        (m) => onOpen?.call(m.data),
+      );
+      _foregroundSub ??= FirebaseMessaging.onMessage.listen(
+        (m) => onForeground?.call(m.data),
+      );
+      // The app was started by tapping a notification.
+      if (!_checkedInitial) {
+        _checkedInitial = true;
+        final initial = await _fm.getInitialMessage();
+        if (initial != null) onOpen?.call(initial.data);
+      }
     } catch (e) {
       debugPrint('[push] register failed: $e');
     }

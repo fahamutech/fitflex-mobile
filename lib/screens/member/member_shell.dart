@@ -20,6 +20,7 @@ import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
 import '../../shared/root_back_navigation.dart';
+import '../../shared/inbox/inbox_pages.dart';
 
 export 'member_home_tab.dart';
 export 'member_activity_tab.dart';
@@ -541,7 +542,7 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
           appBar: AppBar(
             automaticallyImplyLeading: false,
             title: Text(context.tr('app.title')),
-            actions: const [ThemeToggleButton()],
+            actions: const [InboxBellButton(), ThemeToggleButton()],
           ),
           body: Column(
             children: [

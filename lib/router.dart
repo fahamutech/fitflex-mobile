@@ -29,6 +29,11 @@ import 'screens/owner/owner_shell.dart';
 import 'screens/owner/members/members_list_page.dart';
 import 'screens/owner/members/member_detail_page.dart';
 import 'screens/owner/members/member_history_page.dart';
+import 'screens/owner/communications/campaign_composer_page.dart';
+import 'screens/owner/communications/campaign_detail_page.dart';
+import 'screens/owner/communications/communication_center_page.dart';
+import 'screens/member/member_message_settings_page.dart';
+import 'shared/inbox/inbox_pages.dart';
 import 'screens/vendor/vendor_home_page.dart';
 
 /// Route path constants.
@@ -59,6 +64,15 @@ abstract class AppRoutes {
   static const ownerMemberDetail = '/owner/members/:memberId';
   static const ownerMemberCheckins = '/owner/members/:memberId/checkins';
   static const ownerMemberPayments = '/owner/members/:memberId/payments';
+  static const inbox = '/inbox';
+  static const inboxMessage = '/inbox/:messageId';
+  static const memberMessageSettings = '/member/message-settings';
+  static const ownerCommunications = '/owner/communications';
+  static const ownerCampaignNew = '/owner/communications/new';
+  static const ownerCampaignDetail =
+      '/owner/communications/campaigns/:campaignId';
+  static const ownerCampaignEdit =
+      '/owner/communications/campaigns/:campaignId/edit';
   static const ownerTrainers = '/owner/trainers';
   static const ownerProfile = '/owner/profile';
   static const ownerQrScanner = '/owner/scan';
@@ -388,6 +402,49 @@ GoRouter buildRouter(AuthState auth) {
         builder: (context, state) => MemberHistoryPage(
           memberId: state.pathParameters['memberId']!,
           kind: MemberHistoryKind.payments,
+        ),
+      ),
+      // Inbox — every signed-in role's messages.
+      GoRoute(
+        path: AppRoutes.inbox,
+        name: 'inbox',
+        builder: (context, state) => const InboxPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.inboxMessage,
+        name: 'inboxMessage',
+        builder: (context, state) =>
+            InboxMessagePage(messageId: state.pathParameters['messageId']!),
+      ),
+      GoRoute(
+        path: AppRoutes.memberMessageSettings,
+        name: 'memberMessageSettings',
+        builder: (context, state) => const MemberMessageSettingsPage(),
+      ),
+      // Communication Center — messages to the gym's direct members.
+      GoRoute(
+        path: AppRoutes.ownerCommunications,
+        name: 'ownerCommunications',
+        builder: (context, state) =>
+            CommunicationCenterPage(gymId: state.uri.queryParameters['gymId']),
+      ),
+      GoRoute(
+        path: AppRoutes.ownerCampaignNew,
+        name: 'ownerCampaignNew',
+        builder: (context, state) =>
+            CampaignComposerPage(gymId: state.uri.queryParameters['gymId']),
+      ),
+      GoRoute(
+        path: AppRoutes.ownerCampaignDetail,
+        name: 'ownerCampaignDetail',
+        builder: (context, state) =>
+            CampaignDetailPage(campaignId: state.pathParameters['campaignId']!),
+      ),
+      GoRoute(
+        path: AppRoutes.ownerCampaignEdit,
+        name: 'ownerCampaignEdit',
+        builder: (context, state) => CampaignComposerPage(
+          campaignId: state.pathParameters['campaignId']!,
         ),
       ),
       // Owner shell with bottom nav
