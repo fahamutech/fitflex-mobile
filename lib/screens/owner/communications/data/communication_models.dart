@@ -267,6 +267,7 @@ class CommTemplate {
     this.bodies = const {},
     this.variables = const [],
     this.basedOn,
+    this.whatsappReady = false,
   });
 
   final String id;
@@ -279,6 +280,10 @@ class CommTemplate {
   final Map<String, MessageText> bodies;
   final List<String> variables;
   final String? basedOn;
+
+  /// Approved for WhatsApp in at least one language (only known when the
+  /// template was fetched on its own).
+  final bool whatsappReady;
 
   /// The text in [lang], or in any language the template has.
   MessageText textIn(String lang) =>
@@ -305,6 +310,7 @@ class CommTemplate {
         .map((v) => v.toString())
         .toList(),
     basedOn: j['basedOn']?.toString(),
+    whatsappReady: (j['whatsapp'] as Map?)?['ready'] == true,
   );
 
   /// Campaign content from this template: the main text in [lang] (falling

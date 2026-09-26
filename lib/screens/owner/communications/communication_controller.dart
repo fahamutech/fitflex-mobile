@@ -273,6 +273,7 @@ class CampaignComposerController extends ChangeNotifier {
   Map<String, dynamic>? _customFilter; // a filter this app can't edit
   late CampaignContent _content;
   String? _templateId;
+  bool _whatsappReady = false;
   int _contentRevision = 0;
   Set<CommChannel> _channels = {CommChannel.inApp};
   bool _scheduleLater = false;
@@ -304,6 +305,24 @@ class CampaignComposerController extends ChangeNotifier {
   bool get hasCustomFilter => _customFilter != null;
   CampaignContent get content => _content;
   String? get templateId => _templateId;
+
+  /// WhatsApp only carries provider-approved templates: it can be picked
+  /// only when WhatsApp is set up and the message started from a template
+  /// approved for it.
+  bool get whatsappReady => _whatsappReady;
+
+  bool channelUsable(CommChannel c) =>
+      channelsAvailable.of(c) &&
+      (c != CommChannel.whatsapp || (_templateId != null && _whatsappReady));
+
+  /// Whether the template allows WhatsApp, learnt after loading a draft.
+  void setWhatsappReady(bool ready) {
+    _whatsappReady = ready;
+    if (!channelUsable(CommChannel.whatsapp)) {
+      _channels = {..._channels}..remove(CommChannel.whatsapp);
+    }
+    notifyListeners();
+  }
 
   /// Changes when the whole text is replaced (template applied or cleared),
   /// so the message fields reload.
@@ -431,6 +450,10 @@ class CampaignComposerController extends ChangeNotifier {
   /// values already typed in are kept.
   void applyTemplate(CommTemplate t) {
     _templateId = t.id;
+    _whatsappReady = t.whatsappReady;
+    if (!_whatsappReady) {
+      _channels = {..._channels}..remove(CommChannel.whatsapp);
+    }
     _content = t.toContent(writingLocale, keepValuesFrom: _content);
     if (t.purpose != null) _purpose = t.purpose;
     _contentRevision++;
@@ -441,6 +464,8 @@ class CampaignComposerController extends ChangeNotifier {
   /// Back to a blank message.
   void clearTemplate() {
     _templateId = null;
+    _whatsappReady = false;
+    _channels = {..._channels}..remove(CommChannel.whatsapp);
     _content = CampaignContent(
       locale: writingLocale,
       offerName: _content.offerName,
@@ -468,7 +493,7 @@ class CampaignComposerController extends ChangeNotifier {
   }
 
   void toggleChannel(CommChannel c, bool on) {
-    if (!channelsAvailable.of(c)) return;
+    if (!channelUsable(c)) return;
     _channels = {..._channels};
     on ? _channels.add(c) : _channels.remove(c);
     _invalidatePreview();
@@ -547,7 +572,7 @@ class CampaignComposerController extends ChangeNotifier {
 
   /// Reach on every available channel, for the channel step.
   Future<void> loadReach() async {
-    final all = CommChannel.values.where(channelsAvailable.of).toSet();
+    final all = CommChannel.values.where(channelUsable).toSet();
     try {
       _reach = await _repo.preview(draftJson(channels: all));
     } catch (_) {

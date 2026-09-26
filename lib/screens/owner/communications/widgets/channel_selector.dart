@@ -22,7 +22,9 @@ class ChannelSelector extends StatelessWidget {
         for (final ch in CommChannel.values)
           _ChannelTile(
             channel: ch,
-            available: c.channelsAvailable.of(ch),
+            available: c.channelUsable(ch),
+            needsTemplate:
+                ch == CommChannel.whatsapp && c.channelsAvailable.of(ch),
             selected: c.channels.contains(ch),
             reached: reach?.byChannel[ch]?.queued,
             targeted: reach?.targeted,
@@ -50,6 +52,7 @@ class _ChannelTile extends StatelessWidget {
     required this.available,
     required this.selected,
     required this.onChanged,
+    this.needsTemplate = false,
     this.reached,
     this.targeted,
   });
@@ -57,6 +60,9 @@ class _ChannelTile extends StatelessWidget {
   final CommChannel channel;
   final bool available;
   final bool selected;
+
+  /// Set up, but this message didn't start from an approved template.
+  final bool needsTemplate;
   final int? reached;
   final int? targeted;
   final ValueChanged<bool> onChanged;
@@ -67,9 +73,11 @@ class _ChannelTile extends StatelessWidget {
     final String subtitle;
     if (!available) {
       subtitle = context.tr(
-        channel == CommChannel.whatsapp
-            ? 'comms.channel.whatsappSoon'
-            : 'comms.channel.pushOff',
+        channel != CommChannel.whatsapp
+            ? 'comms.channel.pushOff'
+            : needsTemplate
+            ? 'comms.channel.whatsappNeedsTemplate'
+            : 'comms.channel.whatsappSoon',
       );
     } else if (reached != null && targeted != null) {
       subtitle = context
