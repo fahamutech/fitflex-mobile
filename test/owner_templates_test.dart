@@ -142,8 +142,12 @@ class _FakeRepo extends CommunicationRepository {
   }
 
   @override
-  Future<CommTemplate> duplicateTemplate(String id, {String? gymId}) async {
-    duplicated.add(id);
+  Future<CommTemplate> duplicateTemplate(
+    String id, {
+    String? gymId,
+    String? name,
+  }) async {
+    duplicated.add('$id:$name');
     return _own;
   }
 
@@ -435,7 +439,7 @@ void main() {
 
       await tester.tap(find.byKey(const Key('tpl-copy')));
       await tester.pumpAndSettle();
-      expect(repo.duplicated, [_renewal.id]);
+      expect(repo.duplicated, ['${_renewal.id}:Renewal reminder']);
       expect(find.text('edit tpl_gym_1'), findsOneWidget);
     });
 

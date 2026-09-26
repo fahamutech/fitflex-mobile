@@ -123,12 +123,19 @@ class CommunicationRepository {
     ((await _api.ownerUpdateTemplate(id, body))['template'] as Map).cast(),
   );
 
-  Future<CommTemplate> duplicateTemplate(String id, {String? gymId}) async =>
-      CommTemplate.fromJson(
-        ((await _api.ownerDuplicateTemplate(id, gymId: gymId))['template']
-                as Map)
-            .cast(),
-      );
+  Future<CommTemplate> duplicateTemplate(
+    String id, {
+    String? gymId,
+    String? name,
+  }) async => CommTemplate.fromJson(
+    ((await _api.ownerDuplicateTemplate(
+              id,
+              gymId: gymId,
+              name: name,
+            ))['template']
+            as Map)
+        .cast(),
+  );
 
   Future<void> archiveTemplate(String id) => _api.ownerArchiveTemplate(id);
 }

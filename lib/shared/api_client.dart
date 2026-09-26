@@ -1465,10 +1465,11 @@ class ApiClient {
   Future<Map<String, dynamic>> ownerDuplicateTemplate(
     String id, {
     String? gymId,
+    String? name,
   }) async => await _request(
     'POST',
     '/owner/communications/templates/$id/duplicate',
-    body: {'gymId': ?gymId},
+    body: {'gymId': ?gymId, 'name': ?name},
   );
 
   Future<void> ownerArchiveTemplate(String id) async =>

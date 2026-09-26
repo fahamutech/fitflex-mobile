@@ -84,6 +84,7 @@ class _TemplateDetailPageState extends State<TemplateDetailPage> {
       final copy = await _repo.duplicateTemplate(
         widget.templateId,
         gymId: widget.gymId,
+        name: templateName(context, _template!),
       );
       if (!mounted) return;
       messenger.showSnackBar(
