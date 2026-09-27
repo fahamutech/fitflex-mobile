@@ -54,6 +54,38 @@ class _FakeApi extends ApiClient {
   }
 
   @override
+  Future<List<dynamic>> trainerGyms() async => [
+    {
+      'id': 'gym_home',
+      'name': 'Home Gym',
+      'tier': 'standard',
+      'location': 'Masaki',
+      'status': 'active',
+      'trainerAccess': {'access': 'home', 'options': []},
+    },
+    {
+      'id': 'gym_pass',
+      'name': 'Pass Gym',
+      'tier': 'premium',
+      'location': 'Mikocheni',
+      'status': 'active',
+      'amenities': ['Sauna'],
+      'trainerAccess': {
+        'access': 'trainer_pass',
+        'options': [
+          {'kind': 'trainer_pass', 'period': 'daily', 'feeTzs': 8000},
+        ],
+      },
+    },
+  ];
+
+  @override
+  Future<Map<String, dynamic>> trainerMe() async => {
+    'id': 'trn_1',
+    'pendingGymIds': <String>[],
+  };
+
+  @override
   Future<Map<String, dynamic>> trainerBuyMemberPlan(
     String gymId,
     String plan,
@@ -396,4 +428,87 @@ void main() {
     expect(en.length, greaterThan(100));
     expect(en.where((k) => !sw.contains(k)), isEmpty);
   });
+
+  group('trainer gym section (browsed like members do)', () {
+    testWidgets('grid shows every gym with how the trainer gets in', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_wrapPlain(const TrainerGymsTab()));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('trainer-gym-gym_home')), findsOneWidget);
+      expect(find.byKey(const Key('trainer-gym-gym_pass')), findsOneWidget);
+      expect(find.text('Free for me'), findsWidgets);
+      expect(find.text('Pass · TZS 8,000'), findsOneWidget);
+
+      // Member-style chips: "Free for me" keeps only linked gyms.
+      await tester.tap(find.byKey(const Key('trainer-gym-filter-free')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('trainer-gym-gym_pass')), findsNothing);
+      // Tier chips work as for members.
+      await tester.tap(find.byKey(const Key('trainer-gym-filter-all')));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('trainer-gym-search')),
+        'mikoch',
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('trainer-gym-gym_home')), findsNothing);
+      expect(find.byKey(const Key('trainer-gym-gym_pass')), findsOneWidget);
+    });
+
+    testWidgets('a gym opens the trainer gym page with the pass to buy', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_wrapPlain(const TrainerGymsTab()));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('trainer-gym-gym_pass')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('trainer-gym-detail')), findsOneWidget);
+      expect(find.text('Pass Gym'), findsWidgets);
+      expect(find.byKey(const Key('trainer-gym-access')), findsOneWidget);
+      final detailScroll = find
+          .descendant(
+            of: find.byKey(const Key('trainer-gym-detail')),
+            matching: find.byType(Scrollable),
+          )
+          .first;
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('trainer-pass-buy')),
+        200,
+        scrollable: detailScroll,
+      );
+      expect(find.byKey(const Key('trainer-pass-buy')), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('trainer-gym-directions')),
+        200,
+        scrollable: detailScroll,
+      );
+      expect(find.byKey(const Key('trainer-gym-directions')), findsOneWidget);
+    });
+  });
+}
+
+/// Like [_wrap] but without an outer scroll view (for full-height tabs).
+Widget _wrapPlain(Widget child) {
+  final client = _FakeApi();
+  return AppScope(
+    api: client,
+    auth: AuthState(client),
+    child: ThemeScope(
+      notifier: ThemeNotifier(),
+      child: FFLocaleScope(
+        notifier: FFLocale(),
+        child: MaterialApp(
+          theme: buildTheme(),
+          supportedLocales: const [Locale('en'), Locale('sw')],
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          home: Scaffold(body: child),
+        ),
+      ),
+    ),
+  );
 }

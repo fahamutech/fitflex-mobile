@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 
 import '../../app_scope.dart';
 import '../../shared/api_client.dart';
@@ -6,6 +7,11 @@ import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
+import '../../shared/models.dart';
+import '../member/member_gym_detail_page.dart';
+import '../member/member_gyms_tab.dart';
+import '../member/widgets/gym_card.dart';
+import '../member/widgets/gym_filters.dart';
 import 'trainer_passes_page.dart';
 
 /// Friendly text for trainer pass / plan API errors.
@@ -30,9 +36,10 @@ String trainerPassErrorText(BuildContext context, Object error) {
       : context.tr('owner.errorGeneric');
 }
 
-/// Trainer › Gyms: every active gym with how this trainer can train there —
-/// free (linked gym), a trainer pass the owner sells, or the gym's member
-/// plans — plus gym join requests and the trainer's passes.
+/// Trainer › Gyms: browse every gym the way members do — search, tier and
+/// "nearest" chips, price / amenity / verified filters, a photo grid — with
+/// how this trainer can train at each gym (linked gym free / trainer pass /
+/// member plans) on every card. A gym opens the trainer gym page.
 class TrainerGymsTab extends StatefulWidget {
   const TrainerGymsTab({super.key, this.onProfileChanged});
 
@@ -44,13 +51,40 @@ class TrainerGymsTab extends StatefulWidget {
 }
 
 class TrainerGymsTabState extends State<TrainerGymsTab> {
-  List<Map<String, dynamic>> _gyms = [];
+  final _searchCtrl = TextEditingController();
+  List<Map<String, dynamic>> _rows = [];
+  Map<String, Gym> _gymById = {};
   Set<String> _pendingGymIds = {};
   bool _loading = true;
   bool _started = false;
   String? _error;
+  String _search = '';
   String _filter = 'all';
-  String _query = '';
+  String _priceFilter = 'any';
+  final Set<String> _amenityFilter = {};
+  bool _verifiedOnly = false;
+  bool _showFilters = false;
+  double? _userLat;
+  double? _userLng;
+
+  static const _filters = [
+    'all',
+    'nearest',
+    'free',
+    'pass',
+    'plan',
+    'standard',
+    'midtier',
+    'premium',
+  ];
+  static const _priceFilters = [
+    'any',
+    '<60k',
+    '<150k',
+    '<200k',
+    '<350k',
+    '350k+',
+  ];
 
   @override
   void didChangeDependencies() {
@@ -60,14 +94,24 @@ class TrainerGymsTabState extends State<TrainerGymsTab> {
     refresh();
   }
 
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
   Future<void> refresh() async {
     final api = AppScope.of(context).api;
     try {
       final results = await Future.wait([api.trainerGyms(), api.trainerMe()]);
       if (!mounted) return;
       final me = results[1] as Map<String, dynamic>;
+      final rows = (results[0] as List)
+          .whereType<Map<String, dynamic>>()
+          .toList();
       setState(() {
-        _gyms = (results[0] as List).whereType<Map<String, dynamic>>().toList();
+        _rows = rows;
+        _gymById = {for (final r in rows) r['id'].toString(): Gym.fromJson(r)};
         _pendingGymIds = ((me['pendingGymIds'] as List?) ?? const [])
             .map((id) => id.toString())
             .toSet();
@@ -83,23 +127,66 @@ class TrainerGymsTabState extends State<TrainerGymsTab> {
     }
   }
 
+  Future<void> _fetchLocation() async {
+    if (_userLat != null) return;
+    try {
+      var perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+      }
+      if (perm == LocationPermission.denied ||
+          perm == LocationPermission.deniedForever) {
+        return;
+      }
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+        ),
+      );
+      if (!mounted) return;
+      setState(() {
+        _userLat = position.latitude;
+        _userLng = position.longitude;
+      });
+    } catch (_) {
+      // Location is optional; "nearest" then keeps the default order.
+    }
+  }
+
   static String accessOf(Map<String, dynamic> gym) =>
       (gym['trainerAccess'] as Map?)?['access']?.toString() ?? 'unavailable';
 
   List<Map<String, dynamic>> get _visible {
-    final q = _query.trim().toLowerCase();
-    return _gyms.where((g) {
-      final access = accessOf(g);
-      final matchesFilter = switch (_filter) {
+    final byAccess = _rows.where((r) {
+      final access = accessOf(r);
+      return switch (_filter) {
         'free' => access == 'home',
         'pass' => access == 'trainer_pass',
         'plan' => access == 'member_plan',
         _ => true,
       };
-      if (!matchesFilter) return false;
-      if (q.isEmpty) return true;
-      return '${g['name']} ${g['location']}'.toLowerCase().contains(q);
-    }).toList()..sort((a, b) {
+    }).toList();
+    final tier = const {'standard', 'midtier', 'premium'}.contains(_filter)
+        ? _filter
+        : 'all';
+    final kept = applyGymFilter(
+      byAccess.map((r) => _gymById[r['id'].toString()]!).toList(),
+      GymFilter(
+        search: _search,
+        tier: tier,
+        price: _priceFilter,
+        amenities: _amenityFilter,
+        verifiedOnly: _verifiedOnly,
+      ),
+    ).map((g) => g.id).toSet();
+    final out = byAccess
+        .where((r) => kept.contains(r['id'].toString()))
+        .toList();
+    if (_filter == 'nearest' && _userLat != null && _userLng != null) {
+      double km(Map<String, dynamic> r) =>
+          gymDistanceKm(_gymById[r['id'].toString()]!, _userLat!, _userLng!);
+      out.sort((a, b) => km(a).compareTo(km(b)));
+    } else {
       // Home gyms first, then gyms the trainer can get into.
       int rank(Map<String, dynamic> g) => switch (accessOf(g)) {
         'home' => 0,
@@ -107,11 +194,12 @@ class TrainerGymsTabState extends State<TrainerGymsTab> {
         'member_plan' => 2,
         _ => 3,
       };
-      return rank(a).compareTo(rank(b));
-    });
+      out.sort((a, b) => rank(a).compareTo(rank(b)));
+    }
+    return out;
   }
 
-  int get _openPassCount => _gyms.where((g) => g['currentPass'] is Map).length;
+  int get _openPassCount => _rows.where((g) => g['currentPass'] is Map).length;
 
   Future<void> _openPasses() async {
     await Navigator.of(
@@ -120,14 +208,14 @@ class TrainerGymsTabState extends State<TrainerGymsTab> {
     if (mounted) refresh();
   }
 
-  Future<void> _openGym(Map<String, dynamic> gym) async {
-    final changed = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (_) => TrainerGymSheet(
-        gym: gym,
-        joinPending: _pendingGymIds.contains(gym['id']?.toString()),
+  Future<void> _openGym(Map<String, dynamic> row) async {
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => TrainerGymDetailPage(
+          row: row,
+          gym: _gymById[row['id'].toString()]!,
+          joinPending: _pendingGymIds.contains(row['id']?.toString()),
+        ),
       ),
     );
     if (changed == true && mounted) {
@@ -136,76 +224,328 @@ class TrainerGymsTabState extends State<TrainerGymsTab> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final visible = _visible;
-    return ListView(
-      padding: const EdgeInsets.all(FFTokens.spacingLg),
-      children: [
-        Row(
+  int _crossAxisCount(double width) {
+    if (width >= 900) return 4;
+    if (width >= 600) return 3;
+    return 2;
+  }
+
+  Widget _chip(
+    String key,
+    String label,
+    bool selected,
+    VoidCallback onTap, {
+    IconData? icon,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    return GestureDetector(
+      key: Key('trainer-gym-filter-$key'),
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 100),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? cs.primary : cs.surface,
+          border: Border.all(color: selected ? cs.primary : cs.outline),
+          borderRadius: BorderRadius.circular(FFTokens.radiusXl),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
-              child: Text(
-                context.tr('trainer.gyms'),
-                style: Theme.of(context).textTheme.headlineSmall,
+            if (icon != null) ...[
+              Icon(
+                icon,
+                size: 14,
+                color: selected ? cs.onPrimary : cs.onSurface,
               ),
-            ),
-            Badge(
-              isLabelVisible: _openPassCount > 0,
-              label: Text('$_openPassCount'),
-              child: OutlinedButton.icon(
-                key: const Key('trainer-my-passes'),
-                onPressed: _openPasses,
-                icon: const Icon(Icons.confirmation_number_outlined, size: 18),
-                label: Text(context.tr('trainerPass.myPasses')),
+              const SizedBox(width: 4),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: selected ? cs.onPrimary : cs.onSurface,
               ),
             ),
           ],
         ),
-        const SizedBox(height: FFTokens.spacingMd),
-        FFTextField(
-          key: const Key('trainer-gym-search'),
-          hint: context.tr('member.searchGyms'),
-          prefixIcon: const Icon(Icons.search),
-          onChanged: (v) => setState(() => _query = v),
-        ),
-        const SizedBox(height: FFTokens.spacingSm),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: FFSegmented(
-            key: const Key('trainer-gym-filter'),
-            value: _filter,
-            options: [
-              ('all', context.tr('trainerPass.filterAll')),
-              ('free', context.tr('trainerPass.filterFree')),
-              ('pass', context.tr('trainerPass.filterPass')),
-              ('plan', context.tr('trainerPass.filterPlan')),
-            ],
-            onChanged: (v) => setState(() => _filter = v),
-          ),
-        ),
-        const SizedBox(height: FFTokens.spacingMd),
-        if (_loading)
-          const Padding(
-            padding: EdgeInsets.all(32),
-            child: Center(child: FFSpinner(size: 28)),
-          )
-        else if (_error != null)
-          FFAlert(message: _error!, tone: FFAlertTone.error)
-        else if (visible.isEmpty)
-          FFEmptyState(title: context.tr('member.noData'))
-        else
-          ...visible.map(
-            (g) => Padding(
-              padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
-              child: _GymCard(
-                gym: g,
-                joinPending: _pendingGymIds.contains(g['id']?.toString()),
-                onTap: () => _openGym(g),
+      ),
+    );
+  }
+
+  /// Short badge for the narrow grid card; scales down rather than overflow.
+  Widget _cardBadge(Map<String, dynamic> row) {
+    final current = row['currentPass'] as Map?;
+    final active = current?['status'] == 'active';
+    final (label, tone) = current == null
+        ? trainerAccessBadge(context, row, compact: true)
+        : (
+            context.tr(
+              active ? 'trainerPass.statusActive' : 'trainerPass.statusPending',
+            ),
+            active ? FFBadgeTone.success : FFBadgeTone.warning,
+          );
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerLeft,
+      child: FFBadge(label: label, tone: tone),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final visible = _visible;
+    final labels = {
+      'all': context.tr('member.all'),
+      'nearest': context.tr('member.nearest'),
+      'free': context.tr('trainerPass.filterFree'),
+      'pass': context.tr('trainerPass.filterPass'),
+      'plan': context.tr('trainerPass.filterPlan'),
+      'standard': 'Standard',
+      'midtier': 'Mid-Range',
+      'premium': 'Premium',
+    };
+    return LayoutBuilder(
+      builder: (context, constraints) => CustomScrollView(
+        key: const Key('trainer-gym-scroll'),
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                FFTokens.spacingLg,
+                FFTokens.spacingLg,
+                FFTokens.spacingLg,
+                0,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  FFPageHeader(
+                    title: context.tr('member.discoverGyms'),
+                    actions: Badge(
+                      isLabelVisible: _openPassCount > 0,
+                      label: Text('$_openPassCount'),
+                      child: TextButton.icon(
+                        key: const Key('trainer-my-passes'),
+                        onPressed: _openPasses,
+                        icon: const Icon(
+                          Icons.confirmation_number_outlined,
+                          size: 18,
+                        ),
+                        label: Text(context.tr('trainerPass.myPasses')),
+                      ),
+                    ),
+                  ),
+                  TextField(
+                    key: const Key('trainer-gym-search'),
+                    controller: _searchCtrl,
+                    decoration: InputDecoration(
+                      hintText: context.tr('member.searchGyms'),
+                      prefixIcon: const Icon(Icons.search, size: 20),
+                      suffixIcon: _search.isEmpty
+                          ? null
+                          : IconButton(
+                              icon: const Icon(Icons.close, size: 18),
+                              onPressed: () {
+                                _searchCtrl.clear();
+                                setState(() => _search = '');
+                              },
+                            ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(FFTokens.radiusLg),
+                      ),
+                    ),
+                    onChanged: (v) => setState(() => _search = v),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 38,
+                    child: ListView.separated(
+                      key: const Key('trainer-gym-filter-scroll'),
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _filters.length + 1,
+                      separatorBuilder: (_, _) => const SizedBox(width: 8),
+                      itemBuilder: (_, i) {
+                        if (i == _filters.length) {
+                          return _chip(
+                            'more',
+                            context.tr('member.otherFilters'),
+                            _showFilters,
+                            () => setState(() => _showFilters = !_showFilters),
+                            icon: Icons.tune,
+                          );
+                        }
+                        final f = _filters[i];
+                        return _chip(f, labels[f]!, _filter == f, () {
+                          setState(() => _filter = f);
+                          if (f == 'nearest') _fetchLocation();
+                        });
+                      },
+                    ),
+                  ),
+                  if (_showFilters) ...[
+                    const SizedBox(height: 12),
+                    FFCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            context.tr('member.priceRange'),
+                            style: tt.labelMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: _priceFilters
+                                .map(
+                                  (p) => ChoiceChip(
+                                    label: Text(
+                                      p == 'any'
+                                          ? context.tr('member.anyPrice')
+                                          : p,
+                                      style: const TextStyle(fontSize: 12),
+                                    ),
+                                    selected: _priceFilter == p,
+                                    onSelected: (_) =>
+                                        setState(() => _priceFilter = p),
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            context.tr('gym.amenities'),
+                            style: tt.labelMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children:
+                                availableAmenityOptions(
+                                  _gymById.values.toList(),
+                                ).map((amenity) {
+                                  return FilterChip(
+                                    label: Text(
+                                      amenity,
+                                      style: const TextStyle(fontSize: 12),
+                                    ),
+                                    selected: _amenityFilter.contains(amenity),
+                                    onSelected: (v) => setState(() {
+                                      if (v) {
+                                        _amenityFilter.add(amenity);
+                                      } else {
+                                        _amenityFilter.remove(amenity);
+                                      }
+                                    }),
+                                  );
+                                }).toList(),
+                          ),
+                          Material(
+                            color: Colors.transparent,
+                            child: SwitchListTile(
+                              key: const Key('trainer-gym-filter-verified'),
+                              contentPadding: EdgeInsets.zero,
+                              dense: true,
+                              title: Text(
+                                context.tr('member.verifiedOnly'),
+                                style: tt.labelMedium,
+                              ),
+                              value: _verifiedOnly,
+                              onChanged: (v) =>
+                                  setState(() => _verifiedOnly = v),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
           ),
-      ],
+          SliverToBoxAdapter(
+            child: Container(
+              margin: const EdgeInsets.only(top: 20),
+              padding: const EdgeInsets.symmetric(
+                horizontal: FFTokens.spacingLg,
+                vertical: 10,
+              ),
+              color: cs.surfaceContainerLow,
+              child: Row(
+                children: [
+                  Text(
+                    context.tr('trainer.gyms'),
+                    style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  const Spacer(),
+                  if (visible.isNotEmpty)
+                    Text(
+                      '${visible.length}',
+                      style: tt.bodySmall?.copyWith(color: cs.primary),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          if (_loading)
+            const SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(child: FFSpinner(size: 28)),
+            )
+          else if (_error != null)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(FFTokens.spacingLg),
+                child: FFAlert(message: _error!, tone: FFAlertTone.error),
+              ),
+            )
+          else if (visible.isEmpty)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Padding(
+                padding: const EdgeInsets.all(FFTokens.spacingLg),
+                child: FFEmptyState(title: context.tr('member.noData')),
+              ),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.all(FFTokens.spacingLg),
+              sliver: SliverGrid(
+                delegate: SliverChildBuilderDelegate((context, i) {
+                  final row = visible[i];
+                  final gym = _gymById[row['id'].toString()]!;
+                  return GymGridCard(
+                    key: Key('trainer-gym-${gym.id}'),
+                    gym: gym,
+                    distanceKm: gymDisplayDistanceKm(
+                      gym,
+                      userLat: _userLat,
+                      userLng: _userLng,
+                      activeFilter: _filter,
+                    ),
+                    extraBadge: _cardBadge(row),
+                    onTap: () => _openGym(row),
+                  );
+                }, childCount: visible.length),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: _crossAxisCount(constraints.maxWidth),
+                  crossAxisSpacing: FFTokens.spacingMd,
+                  mainAxisSpacing: FFTokens.spacingMd,
+                  childAspectRatio: 0.72,
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -213,8 +553,9 @@ class TrainerGymsTabState extends State<TrainerGymsTab> {
 /// The badge text + tone for how a trainer gets into a gym.
 (String, FFBadgeTone) trainerAccessBadge(
   BuildContext context,
-  Map<String, dynamic> gym,
-) {
+  Map<String, dynamic> gym, {
+  bool compact = false,
+}) {
   final access = TrainerGymsTabState.accessOf(gym);
   final options = ((gym['trainerAccess'] as Map?)?['options'] as List? ?? [])
       .whereType<Map>()
@@ -225,6 +566,20 @@ class TrainerGymsTabState extends State<TrainerGymsTab> {
             .map((o) => (o['feeTzs'] as num?) ?? 0)
             .reduce((a, b) => a < b ? a : b);
   final from = cheapest == null ? '' : formatCurrency(cheapest);
+  if (compact) {
+    return switch (access) {
+      'home' => (context.tr('trainerPass.filterFree'), FFBadgeTone.success),
+      'trainer_pass' => (
+        context.tr('trainerPass.cardPass').replaceAll('{price}', from),
+        FFBadgeTone.brand,
+      ),
+      'member_plan' => (
+        context.tr('trainerPass.cardPlan').replaceAll('{price}', from),
+        FFBadgeTone.warning,
+      ),
+      _ => (context.tr('trainerPass.badgeUnavailable'), FFBadgeTone.gray),
+    };
+  }
   return switch (access) {
     'home' => (context.tr('trainerPass.badgeHome'), FFBadgeTone.success),
     'trainer_pass' => (
@@ -239,109 +594,142 @@ class TrainerGymsTabState extends State<TrainerGymsTab> {
   };
 }
 
-class _GymCard extends StatelessWidget {
-  const _GymCard({
+/// A gym, the way members see it (gallery, verification, ratings,
+/// directions, equipment, amenities), with the trainer's own section: how
+/// they can train here and the pass or plan to buy. Pops `true` when
+/// something changed.
+class TrainerGymDetailPage extends StatefulWidget {
+  const TrainerGymDetailPage({
+    super.key,
+    required this.row,
     required this.gym,
-    required this.joinPending,
-    required this.onTap,
+    this.joinPending = false,
   });
 
-  final Map<String, dynamic> gym;
+  final Map<String, dynamic> row;
+  final Gym gym;
   final bool joinPending;
-  final VoidCallback onTap;
+
+  @override
+  State<TrainerGymDetailPage> createState() => _TrainerGymDetailPageState();
+}
+
+class _TrainerGymDetailPageState extends State<TrainerGymDetailPage> {
+  bool _openingDirections = false;
+
+  Future<void> _directions() async {
+    setState(() => _openingDirections = true);
+    try {
+      await openMapDirections(widget.gym);
+    } finally {
+      if (mounted) setState(() => _openingDirections = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final (label, tone) = trainerAccessBadge(context, gym);
-    final current = gym['currentPass'] as Map?;
-    final thumb =
-        (gym['thumbnails'] as List?)?.whereType<String>().firstOrNull ??
-        (gym['images'] as List?)?.whereType<String>().firstOrNull;
-    return InkWell(
-      key: Key('trainer-gym-${gym['id']}'),
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: FFCard(
-        child: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: SizedBox(
-                width: 56,
-                height: 56,
-                child: thumb == null
-                    ? const ColoredBox(
-                        color: FFTokens.brand50,
-                        child: Icon(
-                          Icons.fitness_center,
-                          color: FFTokens.brand500,
-                        ),
-                      )
-                    : FFRemoteImage(src: thumb, fit: BoxFit.cover),
+    final gym = widget.gym;
+    final tt = Theme.of(context).textTheme;
+    final primary = Theme.of(context).colorScheme.primary;
+    return Scaffold(
+      appBar: AppBar(title: Text(context.tr('member.gymDetail'))),
+      body: ListView(
+        key: const Key('trainer-gym-detail'),
+        padding: const EdgeInsets.all(FFTokens.spacingLg),
+        children: [
+          GymGallery(gym: gym),
+          Text(
+            gym.name,
+            style: tt.headlineSmall?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 4),
+          Text(gym.location, style: tt.bodySmall?.copyWith(fontSize: 14)),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              FFBadge(
+                label: gymIsVerified(gym)
+                    ? context.tr('gym.verified')
+                    : context.tr('gym.unverified'),
+                tone: gymIsVerified(gym)
+                    ? FFBadgeTone.success
+                    : FFBadgeTone.gray,
+                dot: true,
               ),
+              FFBadge(
+                label: gym.tier.replaceAll('_', ' '),
+                tone: FFBadgeTone.brand,
+              ),
+            ],
+          ),
+          GymRatingsRow(gym: gym),
+          FFSectionTitle(context.tr('trainerPass.trainHere')),
+          FFCard(
+            child: TrainerGymSheet(
+              key: const Key('trainer-gym-access'),
+              gym: widget.row,
+              joinPending: widget.joinPending,
+              embedded: true,
+              onChanged: () => Navigator.of(context).pop(true),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          ),
+          const SizedBox(height: 12),
+          InkWell(
+            key: const Key('trainer-gym-directions'),
+            onTap: _openingDirections ? null : _directions,
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
+                  _openingDirections
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Icon(Icons.map_outlined, size: 18, color: primary),
+                  const SizedBox(width: 6),
                   Text(
-                    gym['name']?.toString() ?? '',
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  if ((gym['location']?.toString() ?? '').isNotEmpty)
-                    Text(
-                      gym['location'].toString(),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall,
+                    context.tr('gym.getDirections'),
+                    style: TextStyle(
+                      color: primary,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 13,
                     ),
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 4,
-                    children: [
-                      FFBadge(label: label, tone: tone),
-                      if (current != null)
-                        FFBadge(
-                          label: context.tr(
-                            current['status'] == 'active'
-                                ? 'trainerPass.statusActive'
-                                : 'trainerPass.statusPending',
-                          ),
-                          tone: current['status'] == 'active'
-                              ? FFBadgeTone.success
-                              : FFBadgeTone.warning,
-                        ),
-                      if (joinPending)
-                        FFBadge(
-                          label: context.tr('trainer.pendingApprovalAtGym'),
-                          tone: FFBadgeTone.gray,
-                        ),
-                    ],
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right),
-          ],
-        ),
+          ),
+          GymFacilities(gym: gym),
+          const SizedBox(height: 20),
+        ],
       ),
     );
   }
 }
 
-/// Gym detail for a trainer: how they can train here, and the pass / plan
-/// options to buy. Pops `true` when something changed.
+/// How a trainer can train at a gym, and the pass / plan options to buy.
+/// As a bottom sheet it pops `true` when something changed; [embedded] in the
+/// trainer gym page it calls [onChanged] instead and leaves the gym's name
+/// to the page.
 class TrainerGymSheet extends StatefulWidget {
   const TrainerGymSheet({
     super.key,
     required this.gym,
     this.joinPending = false,
+    this.embedded = false,
+    this.onChanged,
   });
 
   final Map<String, dynamic> gym;
   final bool joinPending;
+  final bool embedded;
+  final VoidCallback? onChanged;
 
   @override
   State<TrainerGymSheet> createState() => _TrainerGymSheetState();
@@ -376,7 +764,11 @@ class _TrainerGymSheetState extends State<TrainerGymSheet> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(context.tr(doneKey))));
-      Navigator.of(context).pop(true);
+      if (widget.onChanged != null) {
+        widget.onChanged!();
+      } else {
+        Navigator.of(context).pop(true);
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = trainerPassErrorText(context, e));
@@ -452,6 +844,59 @@ class _TrainerGymSheetState extends State<TrainerGymSheet> {
     final current = gym['currentPass'] as Map?;
     final (label, tone) = trainerAccessBadge(context, gym);
     final textTheme = Theme.of(context).textTheme;
+    final body = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (!widget.embedded) ...[
+          Text(
+            gym['name']?.toString() ?? '',
+            style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          if ((gym['location']?.toString() ?? '').isNotEmpty)
+            Text(gym['location'].toString(), style: textTheme.bodySmall),
+          const SizedBox(height: 8),
+        ],
+        FFBadge(label: label, tone: tone),
+        const SizedBox(height: 12),
+        Text(
+          context.tr('trainerPass.explain.$_access'),
+          style: textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 12),
+        if (current != null)
+          _currentPassCard(context, current)
+        else if (_options.isNotEmpty)
+          ..._optionPicker(context),
+        if (_error != null) ...[
+          const SizedBox(height: 8),
+          FFAlert(message: _error!, tone: FFAlertTone.error),
+        ],
+        if (_access != 'home') ...[
+          const Divider(height: 32),
+          Text(
+            context.tr('trainerPass.joinTitle'),
+            style: textTheme.titleSmall,
+          ),
+          const SizedBox(height: 4),
+          Text(context.tr('trainerPass.joinBody'), style: textTheme.bodySmall),
+          const SizedBox(height: 8),
+          if (widget.joinPending)
+            OutlinedButton(
+              key: const Key('trainer-gym-cancel-join'),
+              onPressed: _busy ? null : _cancelJoin,
+              child: Text(context.tr('trainerPass.cancelJoin')),
+            )
+          else
+            OutlinedButton.icon(
+              key: const Key('trainer-gym-apply'),
+              onPressed: _busy ? null : _applyToJoin,
+              icon: const Icon(Icons.handshake_outlined, size: 18),
+              label: Text(context.tr('trainer.apply')),
+            ),
+        ],
+      ],
+    );
+    if (widget.embedded) return body;
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(
@@ -460,61 +905,7 @@ class _TrainerGymSheetState extends State<TrainerGymSheet> {
           FFTokens.spacingLg,
           FFTokens.spacingLg,
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              gym['name']?.toString() ?? '',
-              style: textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            if ((gym['location']?.toString() ?? '').isNotEmpty)
-              Text(gym['location'].toString(), style: textTheme.bodySmall),
-            const SizedBox(height: 8),
-            FFBadge(label: label, tone: tone),
-            const SizedBox(height: 12),
-            Text(
-              context.tr('trainerPass.explain.$_access'),
-              style: textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 12),
-            if (current != null)
-              _currentPassCard(context, current)
-            else if (_options.isNotEmpty)
-              ..._optionPicker(context),
-            if (_error != null) ...[
-              const SizedBox(height: 8),
-              FFAlert(message: _error!, tone: FFAlertTone.error),
-            ],
-            if (_access != 'home') ...[
-              const Divider(height: 32),
-              Text(
-                context.tr('trainerPass.joinTitle'),
-                style: textTheme.titleSmall,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                context.tr('trainerPass.joinBody'),
-                style: textTheme.bodySmall,
-              ),
-              const SizedBox(height: 8),
-              if (widget.joinPending)
-                OutlinedButton(
-                  key: const Key('trainer-gym-cancel-join'),
-                  onPressed: _busy ? null : _cancelJoin,
-                  child: Text(context.tr('trainerPass.cancelJoin')),
-                )
-              else
-                OutlinedButton.icon(
-                  key: const Key('trainer-gym-apply'),
-                  onPressed: _busy ? null : _applyToJoin,
-                  icon: const Icon(Icons.handshake_outlined, size: 18),
-                  label: Text(context.tr('trainer.apply')),
-                ),
-            ],
-          ],
-        ),
+        child: body,
       ),
     );
   }

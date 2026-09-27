@@ -6,6 +6,7 @@ import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
 import '../../shared/widgets/availability_calendar.dart';
+import 'widgets/trainer_sheets.dart';
 
 const _weekdays = [
   'monday',
@@ -21,6 +22,38 @@ const _weekdays = [
 final editorHours = [
   for (var h = 5; h <= 22; h++) '${h.toString().padLeft(2, '0')}:00',
 ];
+
+/// Trainer › Home › My schedule: the calendar with who booked each slot,
+/// the weekly-hours editor, today's sessions and earnings.
+class TrainerSessionsPage extends StatelessWidget {
+  const TrainerSessionsPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(context.tr('trainer.sessions'))),
+      body: ListView(
+        padding: const EdgeInsets.all(FFTokens.spacingLg),
+        children: [
+          const TrainerScheduleCard(),
+          const SizedBox(height: 16),
+          FFActionTile(
+            key: const Key('trainer-sessions-today'),
+            icon: Icons.today_outlined,
+            title: context.tr('trainer.todaySessions'),
+            onTap: () => showTrainerSessionsSheet(context),
+          ),
+          FFActionTile(
+            key: const Key('trainer-earnings'),
+            icon: Icons.account_balance_wallet_outlined,
+            title: context.tr('trainer.earnings'),
+            onTap: () => showTrainerEarningsSheet(context),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 /// Trainer › Sessions: the trainer's own 21-day calendar with who booked
 /// each taken slot, and the weekly-hours editor.

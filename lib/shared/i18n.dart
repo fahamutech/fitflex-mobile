@@ -2285,6 +2285,10 @@ class FFLocale extends ChangeNotifier {
       'msgPrefs.alwaysOn':
           'Messages about your membership, renewals, payments and gym announcements always come to your Messages, so you never miss something important.',
       // Trainer interface: calendar, weekly hours, socials, trainer passes.
+      'trainerPass.cardPass': 'Pass · {price}',
+      'trainerPass.cardPlan': 'Plan · {price}',
+      'trainerPass.trainHere': 'Train your clients here',
+      'trainer.scheduleTileHint': 'Calendar, weekly hours and who booked',
       'cal.day.monday': 'Mon',
       'cal.day.tuesday': 'Tue',
       'cal.day.wednesday': 'Wed',
@@ -4715,6 +4719,10 @@ class FFLocale extends ChangeNotifier {
       'msgPrefs.alwaysOn':
           'Ujumbe kuhusu uanachama wako, kuhuisha, malipo na matangazo ya jimu huja kwenye Ujumbe wako kila wakati, ili usikose jambo muhimu.',
       // Trainer interface: calendar, weekly hours, socials, trainer passes.
+      'trainerPass.cardPass': 'Pasi · {price}',
+      'trainerPass.cardPlan': 'Mpango · {price}',
+      'trainerPass.trainHere': 'Fundisha wateja wako hapa',
+      'trainer.scheduleTileHint': 'Kalenda, saa za wiki na waliohifadhi nafasi',
       'cal.day.monday': 'Jtt',
       'cal.day.tuesday': 'Jnn',
       'cal.day.wednesday': 'Jtn',

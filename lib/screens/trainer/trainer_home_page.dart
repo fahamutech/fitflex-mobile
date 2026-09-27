@@ -7,6 +7,7 @@ import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
+import '../../shared/inbox/inbox_pages.dart';
 import '../../shared/models.dart';
 import '../../shared/root_back_navigation.dart';
 import '../../shared/widgets/profile_form_page.dart';
@@ -14,6 +15,7 @@ import '../../shared/widgets/shop_browse_page.dart';
 import '../../shared/widgets/social_links.dart';
 import '../../shared/widgets/trainer_form_page.dart';
 import '../language_screen.dart';
+import '../member/member_message_settings_page.dart';
 import 'trainer_clients_tab.dart';
 import 'trainer_gyms_tab.dart';
 import 'trainer_schedule.dart';
@@ -37,7 +39,6 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
   bool _started = false;
   int _tabIndex = 0;
   final _gymsTabKey = GlobalKey<TrainerGymsTabState>();
-  final _scheduleKey = GlobalKey<TrainerScheduleCardState>();
 
   @override
   void didChangeDependencies() {
@@ -53,8 +54,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
       _refreshTrainers(),
       _refreshProfile(),
       if (_gymsTabKey.currentState != null) _gymsTabKey.currentState!.refresh(),
-      if (_scheduleKey.currentState != null)
-        _scheduleKey.currentState!.refresh(),
+      AppScope.of(context).inbox?.load() ?? Future<void>.value(),
     ]);
   }
 
@@ -309,7 +309,8 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
         appBar: AppBar(
           automaticallyImplyLeading: false,
           title: Text(context.tr('trainer.dashboard')),
-          actions: const [ThemeToggleButton()],
+          // Bookings, pass approvals, and FitFlex promotions and news.
+          actions: const [InboxBellButton(), ThemeToggleButton()],
         ),
         body: RefreshIndicator(
           onRefresh: _refreshAll,
@@ -318,7 +319,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
             children: [
               _dashboardTab(),
               const TrainerClientsTab(),
-              _sessionsTab(),
+              const ShopBrowseBody(),
               TrainerGymsTab(
                 key: _gymsTabKey,
                 onProfileChanged: _refreshProfile,
@@ -344,10 +345,10 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
               label: context.tr('clients.title'),
             ),
             NavigationDestination(
-              key: const Key('trainer-nav-sessions'),
-              icon: const Icon(Icons.calendar_month_outlined),
-              selectedIcon: const Icon(Icons.calendar_month),
-              label: context.tr('trainer.sessions'),
+              key: const Key('trainer-nav-shop'),
+              icon: const Icon(Icons.storefront_outlined),
+              selectedIcon: const Icon(Icons.storefront),
+              label: context.tr('member.shop'),
             ),
             NavigationDestination(
               key: const Key('trainer-nav-gyms'),
@@ -453,35 +454,16 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
         onTap: _showEngagementInbox,
       ),
       FFActionTile(
-        key: const Key('trainer-tile-shop'),
-        icon: Icons.storefront_outlined,
-        title: context.tr('member.shop'),
-        onTap: () => openShopBrowsePage(context),
+        key: const Key('trainer-tile-schedule'),
+        icon: Icons.calendar_month_outlined,
+        title: context.tr('cal.mySchedule'),
+        subtitle: context.tr('trainer.scheduleTileHint'),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const TrainerSessionsPage()),
+        ),
       ),
     ]);
   }
-
-  Widget _sessionsTab() => _tabScroll([
-    Text(
-      context.tr('trainer.sessions'),
-      style: Theme.of(context).textTheme.headlineSmall,
-    ),
-    const SizedBox(height: 16),
-    TrainerScheduleCard(key: _scheduleKey),
-    const SizedBox(height: 16),
-    FFActionTile(
-      key: const Key('trainer-sessions-today'),
-      icon: Icons.today_outlined,
-      title: context.tr('trainer.todaySessions'),
-      onTap: () => showTrainerSessionsSheet(context),
-    ),
-    FFActionTile(
-      key: const Key('trainer-earnings'),
-      icon: Icons.account_balance_wallet_outlined,
-      title: context.tr('trainer.earnings'),
-      onTap: () => showTrainerEarningsSheet(context),
-    ),
-  ]);
 
   Widget _profileTab() => _tabScroll([
     Text(
@@ -500,6 +482,16 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
       icon: Icons.workspace_premium_outlined,
       title: context.tr('trainer.editProfessional'),
       onTap: _editProfessionalProfile,
+    ),
+    FFActionTile(
+      key: const Key('trainer-message-settings'),
+      icon: Icons.notifications_outlined,
+      title: context.tr('msgPrefs.title'),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => const MemberMessageSettingsPage(),
+        ),
+      ),
     ),
     FFActionTile(
       key: const Key('trainer-help'),
