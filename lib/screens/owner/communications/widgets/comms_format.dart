@@ -8,6 +8,9 @@ import '../data/communication_models.dart';
 String formatWhen(BuildContext context, DateTime at) =>
     DateFormat('d MMM, HH:mm').format(at);
 
+/// "5 Oct" — a day, for date-range filters.
+String formatDay(DateTime at) => DateFormat('d MMM').format(at);
+
 /// Localised name for a reason a member was skipped on a channel.
 String skipReasonLabel(BuildContext context, String reason) {
   const known = {

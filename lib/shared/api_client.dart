@@ -1352,6 +1352,28 @@ class ApiClient {
   Future<Map<String, dynamic>> ownerCampaign(String id) async =>
       await _request('GET', '/owner/communications/campaigns/$id');
 
+  /// Who a campaign went to, one row per member (history).
+  Future<Map<String, dynamic>> ownerCampaignRecipients(
+    String id, {
+    Map<String, String> query = const {},
+  }) async => await _request(
+    'GET',
+    _withQuery('/owner/communications/campaigns/$id/recipients', query),
+  );
+
+  /// A member's communications from the owner's gyms, newest first.
+  Future<Map<String, dynamic>> ownerMemberCommunications(
+    String memberId, {
+    Map<String, String> query = const {},
+  }) async => await _request(
+    'GET',
+    _withQuery('/owner/members/$memberId/communications', query),
+  );
+
+  /// One message in full: status, times, failure, provider reference.
+  Future<Map<String, dynamic>> ownerCommunicationMessage(String id) async =>
+      await _request('GET', '/owner/communications/messages/$id');
+
   /// Audience count and a few names. POST { gymId?, preset?, filter?, purpose? }
   Future<Map<String, dynamic>> ownerAudiencePreview(
     Map<String, dynamic> body,

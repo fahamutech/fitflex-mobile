@@ -2,6 +2,8 @@
 // members). Parsing is lenient: unknown values map to a safe default so a
 // newer backend never crashes an older app.
 
+import 'history_models.dart';
+
 enum CampaignPurpose {
   promotion,
   renewal,
@@ -433,11 +435,27 @@ class Campaign {
     this.counts,
     this.title,
     this.templateId,
+    this.createdByName,
+    this.stats,
+    this.templateName,
+    this.templateKey,
+    this.templateSystem = false,
   });
 
   final String id;
   final String name;
   final CampaignStatus status;
+
+  /// Who created it (history).
+  final String? createdByName;
+
+  /// Live delivery numbers from the ledger (history).
+  final CampaignStats? stats;
+
+  /// On a single campaign: the template it started from.
+  final String? templateName;
+  final String? templateKey;
+  final bool templateSystem;
   final String? gymId;
   final CampaignPurpose? purpose;
   final CampaignAudience audience;
@@ -478,6 +496,11 @@ class Campaign {
         : null,
     title: j['title']?.toString(),
     templateId: j['templateId']?.toString(),
+    createdByName: j['createdByName']?.toString(),
+    stats: CampaignStats.fromJson(j['stats']),
+    templateName: (j['template'] as Map?)?['name']?.toString(),
+    templateKey: (j['template'] as Map?)?['key']?.toString(),
+    templateSystem: (j['template'] as Map?)?['system'] == true,
   );
 }
 
@@ -512,15 +535,23 @@ class CampaignCounts {
 }
 
 class CampaignDetail {
-  const CampaignDetail({required this.campaign, this.progress = const {}});
+  const CampaignDetail({
+    required this.campaign,
+    this.progress = const {},
+    this.stats,
+  });
 
   final Campaign campaign;
+
+  /// Targeted, sent, delivered, opened, clicked, failed, skipped.
+  final CampaignStats? stats;
 
   /// Ledger counts per channel and message status (queued, sent, skipped…).
   final Map<CommChannel, Map<String, int>> progress;
 
   factory CampaignDetail.fromJson(Map<String, dynamic> j) => CampaignDetail(
     campaign: Campaign.fromJson((j['campaign'] as Map).cast()),
+    stats: CampaignStats.fromJson(j['stats']),
     progress: {
       for (final e in ((j['progress'] as Map?) ?? const {}).entries)
         if (CommChannel.parse(e.key.toString()) != null)
