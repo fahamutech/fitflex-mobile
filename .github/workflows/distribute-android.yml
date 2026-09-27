@@ -15,6 +15,8 @@ concurrency:
 
 permissions:
   contents: read
+  # To delete older APK artifacts, so only the latest build is stored.
+  actions: write
 
 env:
   FIREBASE_ANDROID_APP_ID: '1:318978253903:android:be3d05f90368b60545f63a'
@@ -29,6 +31,7 @@ jobs:
       # Comma-separated App Distribution group aliases (Firebase console →
       # App Distribution → Testers & Groups).
       TESTER_GROUPS: ${{ vars.FIREBASE_TESTER_GROUPS || 'testers' }}
+      APK: build/app/outputs/flutter-apk/app-release.apk
 
     steps:
       - name: Checkout repository
@@ -42,31 +45,32 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Write build-time config files
+      # One setup step:
+      # - .env (bundled asset) and google-services.json are gitignored.
+      # - Every distributed build must be signed with the same key, or testers
+      #   cannot install a new build over the previous one (the runner's debug
+      #   key is random per run). This is the App Distribution-only key from
+      #   scripts/create_distribution_keystore.sh, NOT the Play upload key.
+      # - android/gradle.properties asks for an 8 GB heap; runners have ~7 GB,
+      #   so R8 swaps for 30+ minutes. User-level gradle.properties overrides
+      #   the project value on CI only.
+      - name: Prepare build (config, signing key, Gradle memory)
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
-        run: |
-          echo "API_BASE=$API_BASE" > .env
-          if [ -z "$GOOGLE_SERVICES_JSON" ]; then
-            echo "::error::Secret GOOGLE_SERVICES_JSON is not set."
-            exit 1
-          fi
-          printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
-
-      # Every distributed build must be signed with the same key, or testers
-      # cannot install a new build over the previous one (the runner's debug
-      # key is random per run). This is the App Distribution-only key from
-      # scripts/create_distribution_keystore.sh, NOT the Play upload key.
-      - name: Restore distribution keystore
-        env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_DIST_KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_DIST_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_DIST_KEY_ALIAS || 'fitflex-distribution' }}
         run: |
+          if [ -z "$GOOGLE_SERVICES_JSON" ]; then
+            echo "::error::Secret GOOGLE_SERVICES_JSON is not set."
+            exit 1
+          fi
           if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEYSTORE_PASSWORD" ]; then
             echo "::error::Run scripts/create_distribution_keystore.sh to create the ANDROID_DIST_* signing secrets."
             exit 1
           fi
+          echo "API_BASE=$API_BASE" > .env
+          printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
           echo "$KEYSTORE_BASE64" | base64 --decode > android/fitflex-distribution.jks
           {
             echo "storePassword=$KEYSTORE_PASSWORD"
@@ -74,33 +78,19 @@ jobs:
             echo "keyAlias=$KEY_ALIAS"
             echo "storeFile=../fitflex-distribution.jks"
           } > android/key.properties
-
-      # android/gradle.properties asks for an 8 GB heap; private-repo runners
-      # have ~7 GB of RAM, so R8 in release builds swaps for 30+ minutes.
-      # User-level gradle.properties overrides the project value on CI only.
-      - name: Fit Gradle to the runner
-        run: |
           mkdir -p ~/.gradle
           echo "org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError" >> ~/.gradle/gradle.properties
-
-      - name: Get Flutter dependencies
-        run: flutter pub get
 
       # versionCode must increase with every build testers install; offset the
       # run number past the pubspec build number (+2).
       - name: Build release APK
         run: |
+          flutter pub get
           flutter build apk --release \
             --build-number=$((100 + ${{ github.run_number }})) \
             --dart-define=API_BASE="$API_BASE"
 
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: fitflex-release-apk-${{ github.run_number }}
-          path: build/app/outputs/flutter-apk/app-release.apk
-          retention-days: 30
-
+      # Testers first: nothing after this may stop a build reaching them.
       - name: Distribute to testers
         env:
           FIREBASE_SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_FITFLEX_AF_PILOT }}
@@ -108,9 +98,33 @@ jobs:
         run: |
           printf '%s' "$FIREBASE_SA" > "$RUNNER_TEMP/sa.json"
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
-          npx --yes firebase-tools@latest appdistribution:distribute \
-            build/app/outputs/flutter-apk/app-release.apk \
+          npx --yes firebase-tools@latest appdistribution:distribute "$APK" \
             --app "$FIREBASE_ANDROID_APP_ID" \
             --groups "$TESTER_GROUPS" \
             --release-notes "$(printf '%s' "$NOTES" | head -c 2000) (build ${{ github.run_number }}, ${GITHUB_SHA::7})"
           rm -f "$RUNNER_TEMP/sa.json"
+
+      # Keep one APK in GitHub storage: delete every older APK artifact
+      # (release or debug, from any run) before storing this build's. This is
+      # what keeps the repository under its artifact storage quota.
+      - name: Delete older APK artifacts
+        if: always()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --paginate "repos/${{ github.repository }}/actions/artifacts?per_page=100" \
+            --jq '.artifacts[] | select(.name | test("apk"; "i")) | .id' |
+          while read -r id; do
+            gh api -X DELETE "repos/${{ github.repository }}/actions/artifacts/$id" && echo "deleted artifact $id"
+          done
+
+      # The latest build, downloadable from this run for a few days. Never
+      # blocks the release: testers already have it from App Distribution.
+      - name: Keep this APK (latest only)
+        uses: actions/upload-artifact@v4
+        continue-on-error: true
+        with:
+          name: fitflex-release-apk
+          path: ${{ env.APK }}
+          retention-days: 7
