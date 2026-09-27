@@ -1,17 +1,22 @@
 name: Build Flutter APK
 
+# PR check: analyze, test and build a debug APK. Merges to main are built and
+# sent to testers by distribute-android.yml, so main isn't built twice. The
+# debug APK is not stored (it filled the artifact quota); tagged releases are.
 on:
-  push:
-    branches: [main]
-    tags: ['v*']
   pull_request:
     branches: [main]
+  push:
+    tags: ['v*']
   workflow_dispatch:
 
 jobs:
   build-android:
     name: Build Android APK
     runs-on: ubuntu-latest
+
+    env:
+      API_BASE: ${{ vars.API_BASE || 'https://fitflex-faas.bfast.smartstock.co.tz' }}
 
     steps:
       - name: Checkout repository
@@ -25,33 +30,24 @@ jobs:
           channel: stable
           cache: true
 
-      # .env is a bundled asset (pubspec.yaml) and google-services.json is
-      # required by the Android Gradle plugin; both are gitignored.
-      - name: Write build-time config files
+      # - .env is a bundled asset (pubspec.yaml) and google-services.json is
+      #   required by the Android Gradle plugin; both are gitignored.
+      # - android/gradle.properties asks for an 8 GB heap; runners have ~7 GB,
+      #   so R8 in release builds swaps for 30+ minutes. User-level
+      #   gradle.properties overrides the project value on CI only.
+      - name: Prepare build (config, Gradle memory)
         env:
-          API_BASE: ${{ vars.API_BASE || 'https://fitflex-faas.bfast.smartstock.co.tz' }}
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
-          echo "API_BASE=$API_BASE" > .env
           if [ -z "$GOOGLE_SERVICES_JSON" ]; then
             echo "::error::Secret GOOGLE_SERVICES_JSON is not set (contents of android/app/google-services.json)."
             exit 1
           fi
+          echo "API_BASE=$API_BASE" > .env
           printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
-
-      # android/gradle.properties asks for an 8 GB heap; private-repo runners
-      # have ~7 GB of RAM, so R8 in release builds swaps for 30+ minutes.
-      # User-level gradle.properties overrides the project value on CI only.
-      - name: Fit Gradle to the runner
-        run: |
           mkdir -p ~/.gradle
           echo "org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError" >> ~/.gradle/gradle.properties
-
-      - name: Get Flutter dependencies
-        run: flutter pub get
-
-      - name: Verify Flutter installation
-        run: flutter doctor -v
+          flutter pub get
 
       - name: Analyze Dart code
         run: flutter analyze
@@ -62,27 +58,18 @@ jobs:
         continue-on-error: true
 
       - name: Build debug APK
+        if: "!startsWith(github.ref, 'refs/tags/v')"
         run: flutter build apk --debug --dart-define=API_BASE="$API_BASE"
-        env:
-          API_BASE: ${{ vars.API_BASE || 'https://fitflex-faas.bfast.smartstock.co.tz' }}
 
-      - name: Upload debug APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: fitflex-debug-apk
-          path: build/app/outputs/flutter-apk/app-debug.apk
-          retention-days: 30
-
-      - name: Build release APK (on tags only)
+      - name: Build release APK (tags only)
         if: startsWith(github.ref, 'refs/tags/v')
         run: flutter build apk --release --dart-define=API_BASE="$API_BASE"
-        env:
-          API_BASE: ${{ vars.API_BASE || 'https://fitflex-faas.bfast.smartstock.co.tz' }}
 
-      - name: Upload release APK (on tags only)
+      - name: Keep release APK (tags only)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
-          name: fitflex-release-apk
+          name: fitflex-release-apk-${{ github.ref_name }}
           path: build/app/outputs/flutter-apk/app-release.apk
-          retention-days: 90
+          retention-days: 30
