@@ -3,6 +3,7 @@
 
 import '../../../../shared/api_client.dart';
 import 'communication_models.dart';
+import 'automation_models.dart';
 import 'history_models.dart';
 
 class CommunicationRepository {
@@ -69,6 +70,39 @@ class CommunicationRepository {
       res['nextCursor']?.toString(),
     );
   }
+
+  Future<List<Automation>> automations({String? gymId}) async {
+    final res = await _api.ownerAutomations(gymId: gymId);
+    return ((res['automations'] as List?) ?? const [])
+        .map((a) => Automation.fromJson((a as Map).cast()))
+        .toList();
+  }
+
+  Future<Automation> updateAutomation(
+    String id, {
+    bool? enabled,
+    List<CommChannel>? channels,
+    String? templateId,
+  }) async => Automation.fromJson(
+    ((await _api.ownerUpdateAutomation(id, {
+              if (enabled != null) 'status': enabled ? 'enabled' : 'disabled',
+              if (channels != null)
+                'channels': channels.map((c) => c.wire).toList(),
+              'templateId': ?templateId,
+            }))['automation']
+            as Map)
+        .cast(),
+  );
+
+  Future<List<AutomationFiring>> automationRuns(String id) async {
+    final res = await _api.ownerAutomationRuns(id);
+    return ((res['runs'] as List?) ?? const [])
+        .map((r) => AutomationFiring.fromJson((r as Map).cast()))
+        .toList();
+  }
+
+  Future<TemplatePreview> automationPreview(String id) async =>
+      TemplatePreview.fromJson(await _api.ownerAutomationPreview(id));
 
   Future<CommMessage> message(String id) async => CommMessage.fromJson(
     ((await _api.ownerCommunicationMessage(id))['message'] as Map).cast(),
