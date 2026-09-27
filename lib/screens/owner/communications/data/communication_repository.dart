@@ -3,6 +3,7 @@
 
 import '../../../../shared/api_client.dart';
 import 'communication_models.dart';
+import 'history_models.dart';
 
 class CommunicationRepository {
   CommunicationRepository(this._api);
@@ -26,6 +27,52 @@ class CommunicationRepository {
 
   Future<CampaignDetail> campaign(String id) async =>
       CampaignDetail.fromJson(await _api.ownerCampaign(id));
+
+  static Map<String, String> _page(
+    HistoryFilter filter,
+    String? cursor,
+    int limit,
+  ) => {...filter.toQuery(), 'limit': '$limit', 'cursor': ?cursor};
+
+  Future<HistoryPage<Recipient>> recipients(
+    String campaignId, {
+    HistoryFilter filter = const HistoryFilter(),
+    String? cursor,
+    int limit = 20,
+  }) async {
+    final res = await _api.ownerCampaignRecipients(
+      campaignId,
+      query: _page(filter, cursor, limit),
+    );
+    return HistoryPage(
+      ((res['recipients'] as List?) ?? const [])
+          .map((r) => Recipient.fromJson((r as Map).cast()))
+          .toList(),
+      res['nextCursor']?.toString(),
+    );
+  }
+
+  Future<HistoryPage<CommunicationItem>> memberCommunications(
+    String memberId, {
+    HistoryFilter filter = const HistoryFilter(),
+    String? cursor,
+    int limit = 20,
+  }) async {
+    final res = await _api.ownerMemberCommunications(
+      memberId,
+      query: _page(filter, cursor, limit),
+    );
+    return HistoryPage(
+      ((res['items'] as List?) ?? const [])
+          .map((r) => CommunicationItem.fromJson((r as Map).cast()))
+          .toList(),
+      res['nextCursor']?.toString(),
+    );
+  }
+
+  Future<CommMessage> message(String id) async => CommMessage.fromJson(
+    ((await _api.ownerCommunicationMessage(id))['message'] as Map).cast(),
+  );
 
   Future<AudienceCount> audienceCount({
     String? gymId,
