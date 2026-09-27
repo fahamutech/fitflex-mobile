@@ -137,6 +137,8 @@ class FFLocale extends ChangeNotifier {
       'error.network':
           'No connection to FitFlex. Check your internet and try again.',
       'error.reason.gymClosed': 'This gym is closed right now',
+      'error.reason.whatsappTemplateRequired':
+          "WhatsApp needs a template approved for WhatsApp",
       'error.reason.basicDailyLimit':
           'Basic Pass allows one gym per day. Upgrade to visit more gyms today',
       'error.reason.qrExpired': 'QR code expired. Ask the member to refresh it',
@@ -2226,6 +2228,12 @@ class FFLocale extends ChangeNotifier {
       'comms.skip.push_disabled': 'Push notifications are off',
       'comms.skip.whatsapp_not_configured': 'WhatsApp not set up yet',
       'comms.skip.marketing_cap': 'Already got this week\'s offers',
+      'comms.channel.whatsappNeedsTemplate':
+          "To use WhatsApp, start from a FitFlex template approved for WhatsApp",
+      'comms.skip.whatsapp_disabled': "WhatsApp paused by FitFlex",
+      'comms.skip.whatsapp_template_not_approved':
+          "Template not approved for WhatsApp",
+      'comms.skip.invalid_phone': "Phone number can't be used",
       'error.reason.confirmLargeSend': 'Confirm the large send first',
       'error.reason.nobodyReachable': 'Nobody in this audience can receive it',
       'error.reason.emptyAudience': 'No members match this audience',
@@ -2543,6 +2551,8 @@ class FFLocale extends ChangeNotifier {
       'error.network':
           'Hakuna muunganisho na FitFlex. Angalia intaneti yako kisha ujaribu tena.',
       'error.reason.gymClosed': 'Gym hii imefungwa kwa sasa',
+      'error.reason.whatsappTemplateRequired':
+          "Anza na kiolezo kilichoidhinishwa kwa WhatsApp",
       'error.reason.basicDailyLimit':
           'Pasi ya Basic inaruhusu gym moja kwa siku. Panda daraja kutembelea gym zaidi leo',
       'error.reason.qrExpired': 'QR imeisha muda. Mwambie mwanachama aisasishe',
@@ -4645,6 +4655,12 @@ class FFLocale extends ChangeNotifier {
       'comms.skip.push_disabled': 'Arifa kwenye simu zimezimwa',
       'comms.skip.whatsapp_not_configured': 'WhatsApp bado haijaandaliwa',
       'comms.skip.marketing_cap': 'Tayari wamepata ofa za wiki hii',
+      'comms.channel.whatsappNeedsTemplate':
+          "Ili kutumia WhatsApp, anza na kiolezo cha FitFlex kilichoidhinishwa kwa WhatsApp",
+      'comms.skip.whatsapp_disabled': "WhatsApp imesimamishwa na FitFlex",
+      'comms.skip.whatsapp_template_not_approved':
+          "Kiolezo hakijaidhinishwa kwa WhatsApp",
+      'comms.skip.invalid_phone': "Namba ya simu haitumiki",
       'error.reason.confirmLargeSend':
           'Thibitisha kwanza kutuma kwa wanachama wengi',
       'error.reason.nobodyReachable':

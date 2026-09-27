@@ -74,6 +74,15 @@ class _CampaignComposerPageState extends State<CampaignComposerPage> {
       final overview = await repo.overview(
         gymId: widget.gymId ?? existing?.gymId,
       );
+      // A draft started from a template: may it still go on WhatsApp?
+      CommTemplate? draftTemplate;
+      if (template == null && existing?.templateId != null) {
+        try {
+          draftTemplate = await repo.template(existing!.templateId!);
+        } catch (_) {
+          // Archived or gone: the draft simply can't use WhatsApp.
+        }
+      }
       if (!mounted) return;
       setState(() {
         _controller = CampaignComposerController(
@@ -84,6 +93,9 @@ class _CampaignComposerPageState extends State<CampaignComposerPage> {
           template: template,
           writingLocale: lang,
         );
+        if (draftTemplate != null) {
+          _controller!.setWhatsappReady(draftTemplate.whatsappReady);
+        }
       });
     } catch (e) {
       if (mounted) setState(() => _loadError = e);
@@ -103,7 +115,14 @@ class _CampaignComposerPageState extends State<CampaignComposerPage> {
       gymId: c.gymId,
       purpose: c.purpose,
     );
-    if (t != null) c.applyTemplate(t);
+    if (t == null) return;
+    // The list doesn't say whether a template is approved for WhatsApp;
+    // the template on its own does.
+    CommTemplate full = t;
+    try {
+      full = await _repo!.template(t.id);
+    } catch (_) {}
+    if (mounted) c.applyTemplate(full);
   }
 
   Future<void> _submit() async {
