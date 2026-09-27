@@ -397,6 +397,26 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
     }
   }
 
+  Widget _checkIcon(BuildContext context) => _checking
+      ? SizedBox(
+          height: 16,
+          width: 16,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            // On the filled button the spinner sits on the primary colour.
+            color: _isPartner
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.onPrimary,
+          ),
+        )
+      : const Icon(Icons.refresh);
+
+  /// Gym owners, trainers and vendors complete KYC before approval.
+  bool get _isPartner {
+    final type = AppScope.of(context).auth.user?['userType']?.toString();
+    return type == 'gym_operator' || type == 'trainer' || type == 'vendor';
+  }
+
   Future<void> _backToRoles() async {
     _polling = false;
     final auth = AppScope.of(context).auth;
@@ -439,20 +459,35 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              FilledButton.icon(
-                onPressed: _checking ? null : () => _checkApproval(),
-                icon: _checking
-                    ? SizedBox(
-                        height: 16,
-                        width: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Theme.of(context).colorScheme.onPrimary,
-                        ),
-                      )
-                    : const Icon(Icons.refresh),
-                label: Text(context.tr('auth.checkApproval')),
-              ),
+              if (_isPartner) ...[
+                FilledButton.icon(
+                  key: const Key('pending-verification'),
+                  onPressed: () => context.push(AppRoutes.verification),
+                  icon: const Icon(Icons.verified_user_outlined),
+                  label: Text(context.tr('kyc.pending.cta')),
+                ),
+                const SizedBox(height: FFTokens.spacingSm),
+                Text(
+                  context.tr('kyc.pending.hint'),
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: FFTokens.spacingMd),
+              ],
+              if (_isPartner)
+                OutlinedButton.icon(
+                  onPressed: _checking ? null : () => _checkApproval(),
+                  icon: _checkIcon(context),
+                  label: Text(context.tr('auth.checkApproval')),
+                )
+              else
+                FilledButton.icon(
+                  onPressed: _checking ? null : () => _checkApproval(),
+                  icon: _checkIcon(context),
+                  label: Text(context.tr('auth.checkApproval')),
+                ),
               const Spacer(),
               OutlinedButton(
                 onPressed: _backToRoles,

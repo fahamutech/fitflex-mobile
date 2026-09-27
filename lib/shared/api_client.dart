@@ -1577,4 +1577,75 @@ class ApiClient {
 
   Future<void> ownerArchiveTemplate(String id) async =>
       await _request('POST', '/owner/communications/templates/$id/archive');
+
+  // ── Partner verification (KYC / KYB) ─────────────────────────────────────
+
+  Future<Map<String, dynamic>> myKyc() async =>
+      await _request('GET', '/me/kyc');
+
+  Future<Map<String, dynamic>> updateMyKycBusiness(
+    Map<String, dynamic> body,
+  ) async => await _request('PUT', '/me/kyc/business', body: body);
+
+  Future<Map<String, dynamic>> updateMyKycPerson(
+    String role,
+    Map<String, dynamic> body,
+  ) async => await _request(
+    'PUT',
+    '/me/kyc/people/${Uri.encodeComponent(role)}',
+    body: body,
+  );
+
+  Future<Map<String, dynamic>> updateMyKycDocument(
+    String requirementKey,
+    Map<String, dynamic> body,
+  ) async => await _request(
+    'PUT',
+    '/me/kyc/documents/${Uri.encodeComponent(requirementKey)}',
+    body: body,
+  );
+
+  /// Uploads a document's file (PDF, JPEG, PNG or WebP, up to 10 MB).
+  Future<Map<String, dynamic>> uploadMyKycDocumentFile(
+    String requirementKey, {
+    required List<int> bytes,
+    required String filename,
+    String? docType,
+  }) async {
+    final uri = Uri.parse(
+      '$baseUrl/me/kyc/documents/${Uri.encodeComponent(requirementKey)}/file',
+    );
+    final request = http.MultipartRequest('POST', uri)
+      ..files.add(
+        http.MultipartFile.fromBytes('file', bytes, filename: filename),
+      );
+    if (_token != null) request.headers['authorization'] = 'Bearer $_token';
+    if (docType != null) request.fields['docType'] = docType;
+    debugPrint('[REST] --> POST $uri (multipart, ${bytes.length} bytes)');
+    // Documents can be a few MB on a slow connection: allow longer than JSON calls.
+    final streamed = await request.send().timeout(const Duration(seconds: 90));
+    final res = await http.Response.fromStream(streamed);
+    _logResponse('POST', uri, res);
+    final decoded = res.body.isEmpty ? null : jsonDecode(res.body);
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      return (decoded as Map).cast<String, dynamic>();
+    }
+    if (res.statusCode == 401 && onUnauthorized != null) onUnauthorized!();
+    throw ApiException(res.statusCode, decoded);
+  }
+
+  Future<Map<String, dynamic>> addMyKycSettlementAccount(
+    Map<String, dynamic> body,
+  ) async => await _request('POST', '/me/kyc/settlement-accounts', body: body);
+
+  Future<void> removeMyKycSettlementAccount(String id) async => await _request(
+    'DELETE',
+    '/me/kyc/settlement-accounts/${Uri.encodeComponent(id)}',
+  );
+
+  Future<Map<String, dynamic>> submitMyKyc() async =>
+      await _request('POST', '/me/kyc/submit');
+
+  Future<Map<String, dynamic>> withdrawMyKyc() async =>
+      await _request('POST', '/me/kyc/withdraw');
 }

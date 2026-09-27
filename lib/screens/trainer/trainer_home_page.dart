@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../app_scope.dart';
@@ -482,6 +483,13 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
       icon: Icons.workspace_premium_outlined,
       title: context.tr('trainer.editProfessional'),
       onTap: _editProfessionalProfile,
+    ),
+    FFActionTile(
+      key: const Key('trainer-verification'),
+      icon: Icons.verified_user_outlined,
+      title: context.tr('kyc.entry.title'),
+      subtitle: context.tr('kyc.entry.subtitle'),
+      onTap: () => context.push('/verification'),
     ),
     FFActionTile(
       key: const Key('trainer-message-settings'),

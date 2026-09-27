@@ -613,11 +613,23 @@ class _VendorHomePageState extends State<VendorHomePage> {
               Text(_profile['description']?.toString() ?? ''),
               const SizedBox(height: FFTokens.spacingSm),
               if (AppScope.of(context).auth.user?['userType'] != 'vendor_staff')
-                FilledButton.tonalIcon(
-                  key: const Key('vendor-edit-profile'),
-                  onPressed: _editProfile,
-                  icon: const Icon(Icons.edit_outlined),
-                  label: Text(context.tr('vendor.editProfile')),
+                Wrap(
+                  spacing: FFTokens.spacingSm,
+                  runSpacing: FFTokens.spacingSm,
+                  children: [
+                    FilledButton.tonalIcon(
+                      key: const Key('vendor-edit-profile'),
+                      onPressed: _editProfile,
+                      icon: const Icon(Icons.edit_outlined),
+                      label: Text(context.tr('vendor.editProfile')),
+                    ),
+                    OutlinedButton.icon(
+                      key: const Key('vendor-verification'),
+                      onPressed: () => context.push('/verification'),
+                      icon: const Icon(Icons.verified_user_outlined),
+                      label: Text(context.tr('kyc.entry.title')),
+                    ),
+                  ],
                 ),
             ],
           ),
