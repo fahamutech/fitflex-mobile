@@ -898,9 +898,52 @@ class ApiClient {
     body: {'type': type, 'message': ?message, 'gymId': ?gymId},
   );
 
-  /// A4: trainer inbox for member enquiries and expressions of interest.
+  /// A4: trainer inbox for member enquiries and expressions of interest —
+  /// each with its conversation (`messages`), `status` and `unread`.
   Future<List<dynamic>> trainerEngagements() async =>
       await _request('GET', '/trainer/engagements');
+
+  /// Trainer replies to an enquiry or interest; the member is notified.
+  Future<Map<String, dynamic>> trainerReplyEngagement(
+    String id,
+    String message,
+  ) async => await _request(
+    'POST',
+    '/trainer/engagements/${Uri.encodeComponent(id)}/reply',
+    body: {'message': message},
+  );
+
+  Future<Map<String, dynamic>> trainerReadEngagement(String id) async =>
+      await _request(
+        'POST',
+        '/trainer/engagements/${Uri.encodeComponent(id)}/read',
+      );
+
+  Future<Map<String, dynamic>> trainerCloseEngagement(String id) async =>
+      await _request(
+        'POST',
+        '/trainer/engagements/${Uri.encodeComponent(id)}/close',
+      );
+
+  /// The member's enquiries and interests, with each conversation.
+  Future<List<dynamic>> myTrainerEngagements() async =>
+      await _request('GET', '/me/trainer-engagements');
+
+  /// The member follows up; the trainer is notified.
+  Future<Map<String, dynamic>> memberReplyEngagement(
+    String id,
+    String message,
+  ) async => await _request(
+    'POST',
+    '/me/trainer-engagements/${Uri.encodeComponent(id)}/reply',
+    body: {'message': message},
+  );
+
+  Future<Map<String, dynamic>> memberReadEngagement(String id) async =>
+      await _request(
+        'POST',
+        '/me/trainer-engagements/${Uri.encodeComponent(id)}/read',
+      );
 
   /// C4: trainer buys one of a gym's trainer passes ('daily' | 'weekly' |
   /// 'monthly'). Pending until an admin approves the payment.

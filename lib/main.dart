@@ -143,6 +143,7 @@ class _FitFlexAppState extends State<FitFlexApp> {
             deepLink: data['deepLink']?.toString() ?? '',
             type: data['type']?.toString() ?? '',
             gymId: data['gymId']?.toString(),
+            trainerId: data['trainerId']?.toString(),
           )
         : null;
     if (route != null) {

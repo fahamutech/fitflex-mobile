@@ -8,6 +8,7 @@ import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
+import '../member/member_scan_gym_page.dart';
 import 'trainer_gyms_tab.dart';
 
 /// Trainer › My passes: trainer passes and gym member plans — active ones
@@ -292,6 +293,23 @@ class _TrainerQrPageState extends State<TrainerQrPage> {
                 ),
               ],
             ),
+          ),
+          const SizedBox(height: 12),
+          // No reception scanner? Scan the QR posted at the entrance instead.
+          OutlinedButton.icon(
+            key: const Key('trainer-qr-scan-gym'),
+            onPressed: () async {
+              final checkedIn = await Navigator.of(context).push<bool>(
+                MaterialPageRoute(builder: (_) => const MemberScanGymPage()),
+              );
+              if (checkedIn == true && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(context.tr('checkin.done'))),
+                );
+              }
+            },
+            icon: const Icon(Icons.qr_code_scanner),
+            label: Text(context.tr('checkin.scanInstead')),
           ),
         ],
       ),

@@ -66,7 +66,8 @@ class FFLocale extends ChangeNotifier {
           'To protect your account, confirm {email} before signing in. We sent you a verification link. Open it, then come back and tap Continue.',
       'auth.verifyEmailContinue': "I've verified — continue",
       'auth.verifyEmailResend': 'Resend the link',
-      'auth.verifyEmailSent': 'Verification link sent. Check your inbox and spam folder.',
+      'auth.verifyEmailSent':
+          'Verification link sent. Check your inbox and spam folder.',
       'auth.verifyEmailNotYet':
           'That email is not verified yet. Open the link we sent, then try again.',
       'auth.verifyEmailSendFailed':
@@ -2565,6 +2566,38 @@ class FFLocale extends ChangeNotifier {
       'error.reason.slotInPast': 'That session time has already passed.',
       'member.slotInPast':
           'That time has already passed. Please pick another slot.',
+      // Trainer quick check-in and enquiry conversations.
+      'checkin.title': 'Gym check-in',
+      'checkin.body':
+          'Show your QR at reception, or scan the QR at the gym entrance.',
+      'checkin.showQr': 'Show my QR',
+      'checkin.scan': 'Scan gym QR',
+      'checkin.scanInstead': 'Scan the gym\'s QR instead',
+      'checkin.done': 'Checked in — have a good session!',
+      'enquiry.tabOpen': 'Open',
+      'enquiry.tabClosed': 'Closed',
+      'enquiry.you': 'You',
+      'enquiry.kindEnquiry': 'Enquiry',
+      'enquiry.kindInterest': 'Interested',
+      'enquiry.interestBody':
+          '{name} is interested in training with you. Say hello and tell them how you work.',
+      'enquiry.closedNote':
+          'You closed this conversation. If the member writes again, it reopens.',
+      'enquiry.close': 'Close',
+      'enquiry.closed': 'Conversation closed',
+      'enquiry.call': 'Call',
+      'enquiry.email': 'Email',
+      'enquiry.quick1':
+          'Thanks for reaching out! When would you like to start?',
+      'enquiry.quick2':
+          'Yes — you can book a session on my calendar in the app.',
+      'enquiry.quick3': 'Which gym suits you best? I train at several.',
+      'enquiry.replyHint': 'Write a reply…',
+      'enquiry.followUpHint': 'Write to the trainer…',
+      'enquiry.conversationWith': 'Your conversation with {name}',
+      'enquiry.waitingForTrainer':
+          'Sent — the trainer will reply here and you\'ll get a notification.',
+      'enquiry.unreadCount': '{n} waiting for your reply',
     },
     'sw': {
       'app.title': 'FitFlex',
@@ -2604,7 +2637,8 @@ class FFLocale extends ChangeNotifier {
           'Ili kulinda akaunti yako, thibitisha {email} kabla ya kuingia. Tumekutumia kiungo cha uthibitisho. Kifungue, kisha rudi hapa ubonyeze Endelea.',
       'auth.verifyEmailContinue': 'Nimethibitisha — endelea',
       'auth.verifyEmailResend': 'Tuma kiungo tena',
-      'auth.verifyEmailSent': 'Kiungo cha uthibitisho kimetumwa. Angalia sanduku la barua na folda ya spam.',
+      'auth.verifyEmailSent':
+          'Kiungo cha uthibitisho kimetumwa. Angalia sanduku la barua na folda ya spam.',
       'auth.verifyEmailNotYet':
           'Barua pepe hiyo bado haijathibitishwa. Fungua kiungo tulichotuma, kisha jaribu tena.',
       'auth.verifyEmailSendFailed':
@@ -5121,6 +5155,38 @@ class FFLocale extends ChangeNotifier {
       'error.reason.slotInPast': 'Muda wa kipindi hicho umeshapita.',
       'member.slotInPast':
           'Muda huo umeshapita. Tafadhali chagua nafasi nyingine.',
+      // Trainer quick check-in and enquiry conversations.
+      'checkin.title': 'Kuingia gym',
+      'checkin.body':
+          'Onyesha QR yako mapokezi, au changanua QR iliyo mlangoni mwa gym.',
+      'checkin.showQr': 'Onyesha QR yangu',
+      'checkin.scan': 'Changanua QR ya gym',
+      'checkin.scanInstead': 'Changanua QR ya gym badala yake',
+      'checkin.done': 'Umeingia — mazoezi mema!',
+      'enquiry.tabOpen': 'Wazi',
+      'enquiry.tabClosed': 'Zilizofungwa',
+      'enquiry.you': 'Wewe',
+      'enquiry.kindEnquiry': 'Swali',
+      'enquiry.kindInterest': 'Anavutiwa',
+      'enquiry.interestBody':
+          '{name} anavutiwa kufanya mazoezi nawe. Msalimie na umweleze unavyofanya kazi.',
+      'enquiry.closedNote':
+          'Umefunga mazungumzo haya. Mwanachama akiandika tena, yatafunguka.',
+      'enquiry.close': 'Funga',
+      'enquiry.closed': 'Mazungumzo yamefungwa',
+      'enquiry.call': 'Piga simu',
+      'enquiry.email': 'Barua pepe',
+      'enquiry.quick1': 'Asante kwa kuwasiliana! Ungependa kuanza lini?',
+      'enquiry.quick2':
+          'Ndiyo — unaweza kuweka nafasi kwenye kalenda yangu ndani ya programu.',
+      'enquiry.quick3':
+          'Gym ipi inakufaa zaidi? Ninafundisha kwenye gym kadhaa.',
+      'enquiry.replyHint': 'Andika jibu…',
+      'enquiry.followUpHint': 'Mwandikie kocha…',
+      'enquiry.conversationWith': 'Mazungumzo yako na {name}',
+      'enquiry.waitingForTrainer':
+          'Imetumwa — kocha atajibu hapa na utapata taarifa.',
+      'enquiry.unreadCount': '{n} yanasubiri jibu lako',
     },
   };
 }
