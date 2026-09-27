@@ -95,14 +95,9 @@ class _SignUpScreenState extends State<SignUpScreen>
   }
 
   Future<void> _handleSessionApiError(ApiException e) async {
-    final body = e.body is Map ? e.body as Map : const {};
-    final code = body['error']?.toString();
-    if (code == 'email_already_used_for_different_role') {
+    if (requiresEmailVerification(e.body)) {
       final auth = AppScope.of(context).auth;
-      final message = context.tr('auth.roleConflict');
-      await _authService.signOut();
-      await auth.signOut();
-      _showErrorDialog(message);
+      context.go(AppRoutes.verifyEmailFor(auth.role));
       return;
     }
     _showErrorDialog(apiErrorMessage(FFLocaleScope.of(context), e));

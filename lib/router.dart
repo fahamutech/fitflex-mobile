@@ -8,6 +8,7 @@ import 'screens/role_screen.dart';
 import 'screens/auth_screen.dart';
 import 'screens/sign_up_screen.dart';
 import 'screens/email_auth_screen.dart';
+import 'screens/verify_email_screen.dart';
 import 'screens/member/member_shell.dart';
 import 'shared/activity/activity.dart';
 import 'screens/member/member_shop_tab.dart';
@@ -47,6 +48,13 @@ abstract class AppRoutes {
   static const auth = '/auth';
   static const signUp = '/auth/signup';
   static const emailAuth = '/auth/email';
+  static const verifyEmail = '/auth/verify-email';
+
+  /// Verify-email step, carrying the role to retry with (sign-up only).
+  static String verifyEmailFor(String? requestedRole) =>
+      requestedRole == null || requestedRole.isEmpty
+      ? verifyEmail
+      : '$verifyEmail?role=${Uri.encodeQueryComponent(requestedRole)}';
   static const googleWebCallback = '/auth/google-web-callback';
   static const pending = '/pending';
   static const home = '/home';
@@ -190,6 +198,7 @@ GoRouter buildRouter(AuthState auth) {
         AppRoutes.auth,
         AppRoutes.signUp,
         AppRoutes.emailAuth,
+        AppRoutes.verifyEmail,
         AppRoutes.googleWebCallback,
       ];
 
@@ -324,6 +333,12 @@ GoRouter buildRouter(AuthState auth) {
             );
           },
         ),
+      ),
+      GoRoute(
+        path: AppRoutes.verifyEmail,
+        name: 'verifyEmail',
+        builder: (context, state) =>
+            VerifyEmailScreen(requestedRole: state.uri.queryParameters['role']),
       ),
       GoRoute(
         path: AppRoutes.googleWebCallback,

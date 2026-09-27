@@ -8,7 +8,7 @@ class FirebaseAuthService {
   FirebaseAuthService({
     FirebaseAuth? auth,
     this.operationTimeout = const Duration(seconds: 20),
-  }) : _auth = auth ?? FirebaseAuth.instance;
+  }) : _authOverride = auth;
 
   static const _defaultServerClientId = String.fromEnvironment(
     'GOOGLE_SIGN_IN_SERVER_CLIENT_ID',
@@ -16,7 +16,9 @@ class FirebaseAuthService {
         '318978253903-u6du2v8thfbdbmortdh49k1g06uv91v7.apps.googleusercontent.com',
   );
 
-  final FirebaseAuth _auth;
+  // Resolved lazily so a test double can subclass this without Firebase.
+  final FirebaseAuth? _authOverride;
+  FirebaseAuth get _auth => _authOverride ?? FirebaseAuth.instance;
   final Duration operationTimeout;
   Future<void>? _googleInit;
 
@@ -95,6 +97,39 @@ class FirebaseAuthService {
   Future<String?> idTokenFor(User? user) {
     if (user == null) return Future.value();
     return _withTimeout(user.getIdToken());
+  }
+
+  /// Email of the signed-in Firebase user, if any.
+  String? get currentEmail => _auth.currentUser?.email;
+
+  /// Sends Firebase's verification link to the signed-in user's email.
+  Future<void> sendEmailVerification() async {
+    await _withTimeout(_requireUser().sendEmailVerification());
+  }
+
+  /// Reloads the signed-in user from Firebase and reports whether their
+  /// email is now verified (the link is opened outside the app).
+  Future<bool> reloadEmailVerified() async {
+    await _withTimeout(_requireUser().reload());
+    return _auth.currentUser?.emailVerified ?? false;
+  }
+
+  /// A newly minted ID token, so claims such as `email_verified` are current.
+  Future<String?> freshIdToken() {
+    final user = _auth.currentUser;
+    if (user == null) return Future.value();
+    return _withTimeout(user.getIdToken(true));
+  }
+
+  User _requireUser() {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw FirebaseAuthException(
+        code: 'no-current-user',
+        message: 'No signed-in Firebase user is available.',
+      );
+    }
+    return user;
   }
 
   Future<void> signOut() async {

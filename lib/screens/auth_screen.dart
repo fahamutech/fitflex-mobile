@@ -121,14 +121,8 @@ class _AuthScreenState extends State<AuthScreen>
   }
 
   Future<void> _handleSessionApiError(ApiException e) async {
-    final body = e.body is Map ? e.body as Map : const {};
-    final code = body['error']?.toString();
-    if (code == 'email_already_used_for_different_role') {
-      final auth = AppScope.of(context).auth;
-      final message = context.tr('auth.roleConflict');
-      await _authService.signOut();
-      await auth.signOut();
-      _showErrorDialog(message);
+    if (requiresEmailVerification(e.body)) {
+      context.go(AppRoutes.verifyEmail);
       return;
     }
     _showErrorDialog(apiErrorMessage(FFLocaleScope.of(context), e));
@@ -503,14 +497,8 @@ class _GoogleWebCallbackScreenState extends State<GoogleWebCallbackScreen> {
       if (!mounted) return;
       context.go(routeForSignedInUser(auth));
     } on ApiException catch (e) {
-      final body = e.body is Map ? e.body as Map : const {};
-      final code = body['error']?.toString();
-      if (code == 'email_already_used_for_different_role') {
-        final auth = AppScope.of(context).auth;
-        final message = context.tr('auth.roleConflict');
-        await _firebaseAuth.signOut();
-        await auth.signOut();
-        if (mounted) setState(() => _error = message);
+      if (requiresEmailVerification(e.body)) {
+        if (mounted) context.go(AppRoutes.verifyEmail);
         return;
       }
       if (mounted) {

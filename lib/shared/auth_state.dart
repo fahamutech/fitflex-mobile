@@ -155,6 +155,12 @@ String? preferredAutomaticRole(Object? errorBody) {
   return operationalRoles.length == 1 ? operationalRoles.single : null;
 }
 
+/// True when the backend refused a sign-in until Firebase verifies the
+/// account's email (an unverified email can't claim an existing profile).
+bool requiresEmailVerification(Object? errorBody) =>
+    errorBody is Map &&
+    errorBody['error']?.toString() == 'email_verification_required';
+
 class AdminMobileSignInException implements Exception {
   const AdminMobileSignInException();
 }
