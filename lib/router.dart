@@ -39,6 +39,7 @@ import 'screens/owner/communications/automation_pages.dart';
 import 'screens/member/member_message_settings_page.dart';
 import 'shared/inbox/inbox_pages.dart';
 import 'screens/vendor/vendor_home_page.dart';
+import 'screens/partner/verification/verification_center_page.dart';
 
 /// Route path constants.
 abstract class AppRoutes {
@@ -57,6 +58,9 @@ abstract class AppRoutes {
       : '$verifyEmail?role=${Uri.encodeQueryComponent(requestedRole)}';
   static const googleWebCallback = '/auth/google-web-callback';
   static const pending = '/pending';
+
+  /// Partner KYC / KYB — open to partners while they wait for approval.
+  static const verification = '/verification';
   static const home = '/home';
 
   // Trainer
@@ -221,6 +225,7 @@ GoRouter buildRouter(AuthState auth) {
           return AppRoutes.ownerRegistration;
         }
         if (loc != AppRoutes.pending &&
+            loc != AppRoutes.verification &&
             loc != AppRoutes.trainerRegistration &&
             loc != AppRoutes.ownerRegistration &&
             loc != AppRoutes.ownerProfile) {
@@ -349,6 +354,11 @@ GoRouter buildRouter(AuthState auth) {
         path: AppRoutes.pending,
         name: 'pending',
         builder: (context, state) => const PendingApprovalScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.verification,
+        name: 'verification',
+        builder: (context, state) => const VerificationCenterPage(),
       ),
       GoRoute(
         path: AppRoutes.memberOnboarding,

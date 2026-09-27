@@ -149,6 +149,14 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
           ),
           if (ownerData?.isStaff != true)
             FFActionTile(
+              key: const Key('owner-verification'),
+              icon: Icons.verified_user_outlined,
+              title: context.tr('kyc.entry.title'),
+              subtitle: context.tr('kyc.entry.subtitle'),
+              onTap: () => context.push('/verification'),
+            ),
+          if (ownerData?.isStaff != true)
+            FFActionTile(
               icon: Icons.badge_outlined,
               title: context.tr('staff.title'),
               onTap: () => context.push('/owner/staff'),
