@@ -90,9 +90,11 @@ String? _knownReason(FFLocale locale, String reason) {
     'invalid_gym_qr': 'error.reason.invalidGymQr',
     'not_your_gym': 'error.reason.notYourGym',
     'gym_required': 'error.reason.gymRequired',
+    'wrong_gym': 'error.reason.wrongGym',
     // Trainer booking.
     'slot_already_booked': 'error.reason.slotUnavailable',
     'slot_not_available': 'error.reason.slotUnavailable',
+    'slot_in_past': 'error.reason.slotInPast',
     // Accounts.
     'email_already_used': 'error.reason.emailAlreadyUsed',
     'invalid_credentials': 'error.reason.invalidCredentials',

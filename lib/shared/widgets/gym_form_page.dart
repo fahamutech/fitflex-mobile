@@ -38,10 +38,15 @@ class _GymFormPageState extends State<GymFormPage> {
   late final TextEditingController _rateDayCtrl;
   late final TextEditingController _rateWeekCtrl;
   late final TextEditingController _rateMonthCtrl;
-  late final TextEditingController _trainerPassFeeCtrl;
+
+  /// Owner-set trainer-pass fee per period (empty = not sold).
+  final Map<String, TextEditingController> _trainerPassFees = {
+    for (final p in _passPeriods) p: TextEditingController(),
+  };
   String _tier = 'standard';
-  String _trainerPassPeriod = 'monthly';
   bool _trainerPassEnabled = false;
+
+  static const _passPeriods = ['daily', 'weekly', 'monthly'];
   final List<Map<String, dynamic>> _classes = [];
   double? _lat;
   double? _lng;
@@ -84,12 +89,20 @@ class _GymFormPageState extends State<GymFormPage> {
     final trainerPass = g['trainerPass'];
     if (trainerPass is Map) {
       _trainerPassEnabled = trainerPass['enabled'] == true;
-      _trainerPassFeeCtrl = TextEditingController(
-        text: _numText(trainerPass['feeTzs']),
-      );
-      _trainerPassPeriod = trainerPass['period']?.toString() ?? 'monthly';
-    } else {
-      _trainerPassFeeCtrl = TextEditingController();
+      final options = trainerPass['options'];
+      if (options is Map) {
+        for (final p in _passPeriods) {
+          final fee = options[p];
+          if (fee is num && fee > 0) _trainerPassFees[p]!.text = _numText(fee);
+        }
+      } else {
+        // Older single-fee shape: { feeTzs, period }.
+        final period = trainerPass['period']?.toString();
+        final fee = trainerPass['feeTzs'];
+        if (_passPeriods.contains(period) && fee is num && fee > 0) {
+          _trainerPassFees[period]!.text = _numText(fee);
+        }
+      }
     }
     final classes = g['classes'];
     if (classes is List) {
@@ -146,7 +159,9 @@ class _GymFormPageState extends State<GymFormPage> {
     _rateDayCtrl.dispose();
     _rateWeekCtrl.dispose();
     _rateMonthCtrl.dispose();
-    _trainerPassFeeCtrl.dispose();
+    for (final c in _trainerPassFees.values) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -286,8 +301,10 @@ class _GymFormPageState extends State<GymFormPage> {
         'classes': _classes,
         'trainerPass': {
           'enabled': _trainerPassEnabled,
-          'feeTzs': num.tryParse(_trainerPassFeeCtrl.text) ?? 0,
-          'period': _trainerPassPeriod,
+          'options': {
+            for (final p in _passPeriods)
+              p: num.tryParse(_trainerPassFees[p]!.text.trim()) ?? 0,
+          },
         },
       };
       if (!mounted) return;
@@ -305,6 +322,13 @@ class _GymFormPageState extends State<GymFormPage> {
   String? _required(String? v) => (v == null || v.trim().isEmpty)
       ? context.tr('onboarding.required')
       : null;
+
+  String? _optionalFee(String? v) {
+    final t = v?.trim() ?? '';
+    if (t.isEmpty) return null;
+    final n = num.tryParse(t);
+    return n == null || n < 0 ? context.tr('onboarding.required') : null;
+  }
 
   String? _requiredNumber(String? v) {
     if (v == null || v.trim().isEmpty) {
@@ -556,31 +580,42 @@ class _GymFormPageState extends State<GymFormPage> {
                 onChanged: (value) =>
                     setState(() => _trainerPassEnabled = value),
               ),
+              Text(
+                context.tr('ownerReg.trainerPassHint'),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
               if (_trainerPassEnabled) ...[
-                FFTextField(
-                  key: const Key('gym-trainer-pass-fee'),
-                  controller: _trainerPassFeeCtrl,
-                  keyboardType: TextInputType.number,
-                  label: context.tr('ownerReg.trainerPassFee'),
-                  validator: _requiredNumber,
-                ),
                 const SizedBox(height: FFTokens.spacingSm),
-                DropdownButtonFormField<String>(
-                  key: const Key('gym-trainer-pass-period'),
-                  initialValue: _trainerPassPeriod,
-                  decoration: InputDecoration(
-                    labelText: context.tr('ownerReg.trainerPassPeriod'),
+                for (final p in _passPeriods) ...[
+                  FFTextField(
+                    key: Key('gym-trainer-pass-fee-$p'),
+                    controller: _trainerPassFees[p],
+                    keyboardType: TextInputType.number,
+                    label: context.tr('ownerReg.trainerPassFee_$p'),
+                    hint: context.tr('ownerReg.trainerPassFeeOptional'),
+                    validator: _optionalFee,
                   ),
-                  items: const ['daily', 'weekly', 'monthly']
-                      .map(
-                        (period) => DropdownMenuItem(
-                          value: period,
-                          child: Text(period),
-                        ),
+                  const SizedBox(height: FFTokens.spacingSm),
+                ],
+                FormField<void>(
+                  validator: (_) =>
+                      _passPeriods.any(
+                        (p) =>
+                            (num.tryParse(_trainerPassFees[p]!.text.trim()) ??
+                                0) >
+                            0,
                       )
-                      .toList(),
-                  onChanged: (value) =>
-                      setState(() => _trainerPassPeriod = value ?? 'monthly'),
+                      ? null
+                      : context.tr('ownerReg.trainerPassNeedsFee'),
+                  builder: (field) => field.hasError
+                      ? Text(
+                          field.errorText!,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                            fontSize: 12,
+                          ),
+                        )
+                      : const SizedBox.shrink(),
                 ),
               ],
               const SizedBox(height: FFTokens.spacingMd),

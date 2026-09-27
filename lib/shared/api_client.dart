@@ -902,9 +902,67 @@ class ApiClient {
   Future<List<dynamic>> trainerEngagements() async =>
       await _request('GET', '/trainer/engagements');
 
-  /// C4: trainer purchases a gym's trainer pass.
-  Future<Map<String, dynamic>> trainerBuyPass(String gymId) async =>
-      await _request('POST', '/trainer/gyms/$gymId/trainer-pass');
+  /// C4: trainer buys one of a gym's trainer passes ('daily' | 'weekly' |
+  /// 'monthly'). Pending until an admin approves the payment.
+  Future<Map<String, dynamic>> trainerBuyPass(
+    String gymId, {
+    String? period,
+  }) async => await _request(
+    'POST',
+    '/trainer/gyms/$gymId/trainer-pass',
+    body: {'period': ?period},
+  );
+
+  /// At a gym that sells no trainer pass, the trainer buys its member plan.
+  Future<Map<String, dynamic>> trainerBuyMemberPlan(
+    String gymId,
+    String plan,
+  ) async => await _request(
+    'POST',
+    '/trainer/gyms/$gymId/member-plan',
+    body: {'plan': plan},
+  );
+
+  /// Active gyms, each with `trainerAccess` { access, options } and the
+  /// trainer's `currentPass` there.
+  Future<List<dynamic>> trainerGyms() async =>
+      await _request('GET', '/trainer/gyms') as List<dynamic>;
+
+  /// The trainer's trainer passes and gym member plans, newest first.
+  Future<List<dynamic>> trainerPasses() async =>
+      await _request('GET', '/trainer/passes') as List<dynamic>;
+
+  /// Withdraw a pass/plan request that is still awaiting payment.
+  Future<Map<String, dynamic>> trainerCancelPass(String subscriptionId) async =>
+      await _request('POST', '/trainer/passes/$subscriptionId/cancel');
+
+  /// The trainer's own profile (linked + pending gyms).
+  Future<Map<String, dynamic>> trainerMe() async =>
+      await _request('GET', '/trainer/me') as Map<String, dynamic>;
+
+  /// A trainer's bookable calendar (public; booked slots show as taken).
+  Future<Map<String, dynamic>> trainerSchedule(
+    String trainerId, {
+    String? from,
+    int? days,
+    String? gymId,
+  }) async => await _request(
+    'GET',
+    _withQuery('/trainers/${Uri.encodeComponent(trainerId)}/schedule', {
+      'from': ?from,
+      'days': ?days?.toString(),
+      'gymId': ?gymId,
+    }),
+  );
+
+  /// The trainer's own calendar, with who booked each taken slot.
+  Future<Map<String, dynamic>> trainerMySchedule({
+    String? from,
+    int? days,
+  }) async => await _request(
+    'GET',
+    _withQuery('/trainer/schedule', {'from': ?from, 'days': ?days?.toString()}),
+  );
 
   // Shop (D1)
   Future<List<dynamic>> listShopProducts({

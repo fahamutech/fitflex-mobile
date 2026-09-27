@@ -7,12 +7,16 @@ import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
+import '../../shared/models.dart';
 import '../../shared/root_back_navigation.dart';
 import '../../shared/widgets/profile_form_page.dart';
 import '../../shared/widgets/shop_browse_page.dart';
+import '../../shared/widgets/social_links.dart';
 import '../../shared/widgets/trainer_form_page.dart';
 import '../language_screen.dart';
 import 'trainer_clients_tab.dart';
+import 'trainer_gyms_tab.dart';
+import 'trainer_schedule.dart';
 import 'widgets/clients_digest.dart';
 import 'widgets/trainer_sheets.dart';
 
@@ -27,10 +31,13 @@ class TrainerHomePage extends StatefulWidget {
 class _TrainerHomePageState extends State<TrainerHomePage> {
   Map<String, dynamic>? _me;
   List<Map<String, dynamic>> _trainers = [];
-  List<Map<String, dynamic>> _gyms = [];
+
+  /// The trainer's own profile from /trainer/me (works before approval too).
+  Map<String, dynamic>? _profile;
   bool _started = false;
-  bool _applyBusy = false;
   int _tabIndex = 0;
+  final _gymsTabKey = GlobalKey<TrainerGymsTabState>();
+  final _scheduleKey = GlobalKey<TrainerScheduleCardState>();
 
   @override
   void didChangeDependencies() {
@@ -41,7 +48,23 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
   }
 
   Future<void> _refreshAll() async {
-    await Future.wait([_refreshMe(), _refreshTrainers(), _refreshGyms()]);
+    await Future.wait([
+      _refreshMe(),
+      _refreshTrainers(),
+      _refreshProfile(),
+      if (_gymsTabKey.currentState != null) _gymsTabKey.currentState!.refresh(),
+      if (_scheduleKey.currentState != null)
+        _scheduleKey.currentState!.refresh(),
+    ]);
+  }
+
+  Future<void> _refreshProfile() async {
+    try {
+      final res = await AppScope.of(context).api.trainerMe();
+      if (mounted) setState(() => _profile = res);
+    } on ApiException {
+      // ignore — falls back to the public trainer list
+    }
   }
 
   Future<void> _refreshMe() async {
@@ -64,157 +87,6 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
     }
   }
 
-  Future<void> _refreshGyms() async {
-    try {
-      final res = await AppScope.of(context).api.listGyms();
-      if (mounted) setState(() => _gyms = res.cast<Map<String, dynamic>>());
-    } on ApiException {
-      // ignore
-    }
-  }
-
-  List<Map<String, dynamic>> get _pendingGyms =>
-      (_myProfile?['pendingGyms'] as List?)
-          ?.whereType<Map<String, dynamic>>()
-          .toList() ??
-      const [];
-
-  List<Map<String, dynamic>> get _availableGymsToApply {
-    final trainer = _myProfile;
-    final linkedIds = (trainer?['gyms'] as List? ?? [])
-        .whereType<Map>()
-        .map((g) => g['id']?.toString())
-        .toSet();
-    final pendingIds = _pendingGyms.map((g) => g['id']?.toString()).toSet();
-    return _gyms
-        .where(
-          (g) =>
-              !linkedIds.contains(g['id']?.toString()) &&
-              !pendingIds.contains(g['id']?.toString()),
-        )
-        .toList();
-  }
-
-  Future<void> _applyToGym(String gymId) async {
-    setState(() => _applyBusy = true);
-    try {
-      await AppScope.of(context).api.trainerApplyToGym(gymId);
-      if (!mounted) return;
-      await _refreshTrainers();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('trainer.applicationSent'))),
-      );
-    } on ApiException {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(context.tr('owner.errorGeneric'))));
-    } finally {
-      if (mounted) setState(() => _applyBusy = false);
-    }
-  }
-
-  Future<void> _cancelApplication(String gymId) async {
-    setState(() => _applyBusy = true);
-    try {
-      await AppScope.of(context).api.trainerCancelGymApplication(gymId);
-      if (!mounted) return;
-      await _refreshTrainers();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('trainer.applicationCancelled'))),
-      );
-    } on ApiException {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(context.tr('owner.errorGeneric'))));
-    } finally {
-      if (mounted) setState(() => _applyBusy = false);
-    }
-  }
-
-  Future<void> _showApplyGymSheet() async {
-    final available = _availableGymsToApply;
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(FFTokens.spacingLg),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                context.tr('trainer.applyToGym'),
-                style: Theme.of(ctx).textTheme.titleMedium,
-              ),
-              const SizedBox(height: FFTokens.spacingMd),
-              if (available.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 24),
-                  child: Text(context.tr('trainer.noGymsToApply')),
-                )
-              else
-                Flexible(
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: available.length,
-                    itemBuilder: (context, i) {
-                      final gym = available[i];
-                      // C4: show the gym's trainer-pass fee when offered.
-                      final trainerPass = gym['trainerPass'] as Map?;
-                      final passEnabled = trainerPass?['enabled'] == true;
-                      final passFee = trainerPass?['feeTzs'] as num? ?? 0;
-                      return ListTile(
-                        title: Text(gym['name']?.toString() ?? ''),
-                        subtitle: Text(
-                          [
-                            gym['location']?.toString() ?? '',
-                            if (passEnabled && passFee > 0)
-                              '${context.tr('trainer.passFee')}: ${formatCurrency(passFee)}/${trainerPass?['period'] ?? 'monthly'}',
-                          ].where((s) => s.isNotEmpty).join('\n'),
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            FilledButton(
-                              onPressed: _applyBusy
-                                  ? null
-                                  : () {
-                                      Navigator.of(ctx).pop();
-                                      _applyToGym(gym['id'].toString());
-                                    },
-                              child: Text(context.tr('trainer.apply')),
-                            ),
-                            if (passEnabled && passFee > 0)
-                              IconButton(
-                                tooltip: context.tr('trainer.buyPass'),
-                                onPressed: _applyBusy
-                                    ? null
-                                    : () {
-                                        Navigator.of(ctx).pop();
-                                        _buyTrainerPass(gym['id'].toString());
-                                      },
-                                icon: const Icon(
-                                  Icons.card_membership_outlined,
-                                ),
-                              ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   String get _displayName {
     final user = (_me?['user'] as Map?) ?? AppScope.of(context).auth.user;
     return (user?['displayName'] ??
@@ -225,6 +97,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
   }
 
   Map<String, dynamic>? get _myProfile {
+    if (_profile != null) return _profile;
     final email = AppScope.of(context).auth.user?['email']?.toString();
     return _trainers.where((t) => t['email']?.toString() == email).firstOrNull;
   }
@@ -302,6 +175,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
       final updated = result['trainer'] ?? result;
       if (updated is Map<String, dynamic>) {
         setState(() {
+          _profile = updated;
           _trainers = _trainers
               .map((item) => item['id'] == updated['id'] ? updated : item)
               .toList();
@@ -310,27 +184,20 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.tr('member.profileUpdated'))),
       );
-    } on ApiException {
+    } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(context.tr('owner.errorGeneric'))));
-    }
-  }
-
-  /// C4 — pay a gym's trainer pass fee.
-  Future<void> _buyTrainerPass(String gymId) async {
-    try {
-      await AppScope.of(context).api.trainerBuyPass(gymId);
-      if (!mounted) return;
+      final body = e.body;
+      final invalidSocial =
+          body is Map && body['error'] == 'invalid_social_handle';
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('trainer.passRequested'))),
+        SnackBar(
+          content: Text(
+            context.tr(
+              invalidSocial ? 'social.invalidHandle' : 'owner.errorGeneric',
+            ),
+          ),
+        ),
       );
-    } on ApiException {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(context.tr('owner.errorGeneric'))));
     }
   }
 
@@ -452,7 +319,10 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
               _dashboardTab(),
               const TrainerClientsTab(),
               _sessionsTab(),
-              _gymsTab(),
+              TrainerGymsTab(
+                key: _gymsTabKey,
+                onProfileChanged: _refreshProfile,
+              ),
               _profileTab(),
             ],
           ),
@@ -504,6 +374,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
 
   Widget _dashboardTab() {
     final trainer = _myProfile;
+    final socials = SocialLinks.fromJson(trainer?['socialLinks']);
     final gyms = (trainer?['gyms'] as List?)?.whereType<Map>().toList() ?? [];
     return _tabScroll([
       Text(
@@ -535,11 +406,24 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
               ),
             ),
             const SizedBox(height: 12),
-            FFPill(
-              key: const Key('trainer-rate-per-session'),
-              label:
-                  '${formatCurrency(trainer?['hourlyRateTzs'] as num? ?? 0, currency: trainer?['sessionRateCurrency'] as String? ?? 'TZS')}${context.tr('trainerReg.perSession')}',
+            Row(
+              children: [
+                FFPill(
+                  key: const Key('trainer-rate-per-session'),
+                  label:
+                      '${formatCurrency(trainer?['hourlyRateTzs'] as num? ?? 0, currency: trainer?['sessionRateCurrency'] as String? ?? 'TZS')}${context.tr('trainerReg.perSession')}',
+                ),
+                const Spacer(),
+                SocialLinksRow(links: socials, compact: true),
+              ],
             ),
+            if (trainer != null && socials.isEmpty)
+              TextButton.icon(
+                key: const Key('trainer-add-socials'),
+                onPressed: _editProfessionalProfile,
+                icon: const Icon(Icons.add_link, size: 18),
+                label: Text(context.tr('social.addPrompt')),
+              ),
           ],
         ),
       ),
@@ -582,11 +466,8 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
       context.tr('trainer.sessions'),
       style: Theme.of(context).textTheme.headlineSmall,
     ),
-    const SizedBox(height: 8),
-    Text(
-      context.tr('trainer.dashboardBody'),
-      style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color),
-    ),
+    const SizedBox(height: 16),
+    TrainerScheduleCard(key: _scheduleKey),
     const SizedBox(height: 16),
     FFActionTile(
       key: const Key('trainer-sessions-today'),
@@ -601,49 +482,6 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
       onTap: () => showTrainerEarningsSheet(context),
     ),
   ]);
-
-  Widget _gymsTab() {
-    final gyms =
-        (_myProfile?['gyms'] as List?)?.whereType<Map>().toList() ?? [];
-    return _tabScroll([
-      Text(
-        context.tr('trainer.gyms'),
-        style: Theme.of(context).textTheme.headlineSmall,
-      ),
-      const SizedBox(height: 12),
-      if (gyms.isEmpty && _pendingGyms.isEmpty)
-        FFEmptyState(title: context.tr('member.noData')),
-      ...gyms.map(
-        (g) => FFActionTile(
-          icon: Icons.fitness_center,
-          title: g['name']?.toString() ?? '',
-          subtitle: g['location']?.toString(),
-          onTap: () {},
-        ),
-      ),
-      ..._pendingGyms.map(
-        (g) => FFActionTile(
-          icon: Icons.hourglass_top,
-          title: g['name']?.toString() ?? '',
-          subtitle: context.tr('trainer.pendingApprovalAtGym'),
-          trailing: TextButton(
-            onPressed: _applyBusy
-                ? null
-                : () => _cancelApplication(g['id'].toString()),
-            child: Text(context.tr('trainer.cancel')),
-          ),
-          onTap: () {},
-        ),
-      ),
-      const SizedBox(height: FFTokens.spacingSm),
-      OutlinedButton.icon(
-        key: const Key('trainer-apply-gym'),
-        onPressed: _applyBusy ? null : _showApplyGymSheet,
-        icon: const Icon(Icons.add),
-        label: Text(context.tr('trainer.applyToGym')),
-      ),
-    ]);
-  }
 
   Widget _profileTab() => _tabScroll([
     Text(

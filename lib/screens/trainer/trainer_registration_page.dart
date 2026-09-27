@@ -8,7 +8,9 @@ import '../../shared/api_error_message.dart';
 import '../../shared/components/theme_toggle_button.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
+import '../../shared/models.dart';
 import '../../shared/widgets/ff_photo_picker_field.dart';
+import '../../shared/widgets/social_links.dart';
 
 class TrainerRegistrationPage extends StatefulWidget {
   const TrainerRegistrationPage({super.key});
@@ -32,6 +34,7 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
   // Step 1 — Professional
   final _sessionRateCtrl = TextEditingController();
   final List<String> _specialties = [];
+  final _socials = SocialHandleFields.controllersFor(const SocialLinks());
 
   static const _specialtyOptions = [
     'weight_training',
@@ -49,6 +52,9 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
     _nameCtrl.dispose();
     _bioCtrl.dispose();
     _sessionRateCtrl.dispose();
+    for (final c in _socials.values) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -64,6 +70,7 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
         'bio': _bioCtrl.text.trim(),
         'hourlyRateTzs': num.tryParse(_sessionRateCtrl.text) ?? 0,
         'specialties': _specialties,
+        'socialLinks': SocialHandleFields.valuesOf(_socials),
       });
       if (!mounted) return;
       // Re-hydrate auth to reflect onboarding completion
@@ -323,6 +330,18 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
             );
           }).toList(),
         ),
+        const SizedBox(height: 20),
+        Text(
+          context.tr('social.title'),
+          style: Theme.of(context).textTheme.titleSmall,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          context.tr('social.optionalHint'),
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(height: 8),
+        SocialHandleFields(controllers: _socials),
       ],
     );
   }

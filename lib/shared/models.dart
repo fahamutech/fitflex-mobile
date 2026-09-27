@@ -136,6 +136,7 @@ class TrainerProfile {
   final String? approvalStatus;
   final bool isVerified;
   final List<TrainerAvailability> availability;
+  final SocialLinks socialLinks;
 
   TrainerProfile({
     required this.id,
@@ -156,6 +157,7 @@ class TrainerProfile {
     this.approvalStatus,
     this.isVerified = false,
     this.availability = const [],
+    this.socialLinks = const SocialLinks(),
   });
 
   factory TrainerProfile.fromJson(Map<String, dynamic> json) => TrainerProfile(
@@ -183,7 +185,113 @@ class TrainerProfile {
     approvalStatus: json['approvalStatus'] as String?,
     isVerified: _boolValue(json['isVerified'] ?? json['verified']),
     availability: _trainerAvailabilityFromJson(json['availability']),
+    socialLinks: SocialLinks.fromJson(json['socialLinks']),
   );
+}
+
+/// A trainer's social profiles, stored as bare handles (no URL, no '@').
+class SocialLinks {
+  final String? instagram;
+  final String? facebook;
+  final String? twitter;
+
+  const SocialLinks({this.instagram, this.facebook, this.twitter});
+
+  factory SocialLinks.fromJson(Object? json) {
+    if (json is! Map) return const SocialLinks();
+    String? handle(String key) {
+      final v = json[key]?.toString().trim() ?? '';
+      return v.isEmpty ? null : v;
+    }
+
+    return SocialLinks(
+      instagram: handle('instagram'),
+      facebook: handle('facebook'),
+      twitter: handle('twitter'),
+    );
+  }
+
+  bool get isEmpty => instagram == null && facebook == null && twitter == null;
+
+  Map<String, String> toJson() => {
+    'instagram': instagram ?? '',
+    'facebook': facebook ?? '',
+    'twitter': twitter ?? '',
+  };
+}
+
+/// One hourly slot in a trainer's dated calendar (GET /trainers/:id/schedule).
+class ScheduleSlot {
+  final String slot;
+
+  /// 'available' | 'booked' | 'past'
+  final String status;
+  final List<String> gymIds;
+
+  /// Only in the trainer's own view: who booked it.
+  final String? bookingId;
+  final String? memberName;
+  final String? bookingStatus;
+
+  const ScheduleSlot({
+    required this.slot,
+    required this.status,
+    this.gymIds = const [],
+    this.bookingId,
+    this.memberName,
+    this.bookingStatus,
+  });
+
+  bool get isAvailable => status == 'available';
+  bool get isBooked => status == 'booked';
+
+  factory ScheduleSlot.fromJson(Map<String, dynamic> json) {
+    final booking = json['booking'] is Map ? json['booking'] as Map : null;
+    final member = booking?['member'] is Map ? booking!['member'] as Map : null;
+    return ScheduleSlot(
+      slot: json['slot']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'past',
+      gymIds: (json['gymIds'] as List?)?.whereType<String>().toList() ?? [],
+      bookingId: booking?['id']?.toString(),
+      memberName: member?['displayName']?.toString(),
+      bookingStatus: booking?['status']?.toString(),
+    );
+  }
+}
+
+/// One calendar day (EAT) of a trainer's schedule.
+class ScheduleDay {
+  final String date; // YYYY-MM-DD
+  final String weekday; // 'monday'…
+  final List<ScheduleSlot> slots;
+
+  const ScheduleDay({
+    required this.date,
+    required this.weekday,
+    this.slots = const [],
+  });
+
+  int get openCount => slots.where((s) => s.isAvailable).length;
+
+  factory ScheduleDay.fromJson(Map<String, dynamic> json) => ScheduleDay(
+    date: json['date']?.toString() ?? '',
+    weekday: json['weekday']?.toString() ?? '',
+    slots:
+        (json['slots'] as List?)
+            ?.whereType<Map>()
+            .map((s) => ScheduleSlot.fromJson(Map<String, dynamic>.from(s)))
+            .toList() ??
+        [],
+  );
+
+  static List<ScheduleDay> listFromResponse(Object? response) {
+    final days = response is Map ? response['days'] : null;
+    if (days is! List) return const [];
+    return days
+        .whereType<Map>()
+        .map((d) => ScheduleDay.fromJson(Map<String, dynamic>.from(d)))
+        .toList();
+  }
 }
 
 List<TrainerAvailability> _trainerAvailabilityFromJson(Object? value) {
