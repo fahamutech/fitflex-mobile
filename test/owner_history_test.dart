@@ -149,26 +149,32 @@ class _FakeRepo extends CommunicationRepository {
   }
 
   @override
-  Future<CommMessage> message(String id) async => CommMessage.fromJson({
-    ..._msg(
-      id,
-      'whatsapp',
-      'failed',
-      failure: 'invalid_recipient',
-      provider: {
-        'name': 'whatsapp',
-        'messageId': 'wamid.HBgM',
-        'templateName': 'fitflex_renewal_reminder',
-        'language': 'sw',
-      },
-    ),
-    'template': {
-      'id': 'tpl_sys_renewal_reminder',
-      'key': 'renewal_reminder',
-      'name': 'renewal_reminder',
-      'system': true,
-    },
-  });
+  Future<CommMessage> message(String id) async => id == 'm_retry'
+      ? CommMessage.fromJson({
+          ..._msg(id, 'push', 'queued', failure: 'push_failed'),
+          'failurePermanent': false,
+          'nextAttemptAt': '2026-09-20T08:06:00.000Z',
+        })
+      : CommMessage.fromJson({
+          ..._msg(
+            id,
+            'whatsapp',
+            'failed',
+            failure: 'invalid_recipient',
+            provider: {
+              'name': 'whatsapp',
+              'messageId': 'wamid.HBgM',
+              'templateName': 'fitflex_renewal_reminder',
+              'language': 'sw',
+            },
+          ),
+          'template': {
+            'id': 'tpl_sys_renewal_reminder',
+            'key': 'renewal_reminder',
+            'name': 'renewal_reminder',
+            'system': true,
+          },
+        });
 
   @override
   Future<CampaignDetail> campaign(String id) async => CampaignDetail.fromJson({
@@ -427,6 +433,33 @@ void main() {
       expect(repo.recipientCalls.last.$1.search, 'jum');
       expect(find.byKey(const Key('recipient-usr_n')), findsNothing);
     });
+  });
+
+  testWidgets('a message waiting to retry says why the last try failed', (
+    tester,
+  ) async {
+    _tall(tester);
+    late BuildContext ctx;
+    await tester.pumpWidget(
+      _app(
+        _router(
+          Builder(
+            builder: (c) {
+              ctx = c;
+              return const Scaffold();
+            },
+          ),
+        ),
+      ),
+    );
+    showMessageDetail(ctx, repository: _FakeRepo(), messageId: 'm_retry');
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('message-retrying')), findsOneWidget);
+    expect(
+      find.textContaining('The phone didn’t accept the notification'),
+      findsOneWidget,
+    );
+    expect(find.text('Next try'), findsOneWidget);
   });
 
   test('every history string has a Swahili translation', () {

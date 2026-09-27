@@ -2228,6 +2228,8 @@ class FFLocale extends ChangeNotifier {
       'comms.skip.push_disabled': 'Push notifications are off',
       'comms.skip.whatsapp_not_configured': 'WhatsApp not set up yet',
       'comms.skip.marketing_cap': 'Already got this week\'s offers',
+      'comms.history.lastTryFailed':
+          "The last try didn’t work ({reason}). It will be tried again.",
       'comms.filter.allChannels': "All channels",
       'comms.filter.allTypes': "All types",
       'comms.outcome.reached': "Reached",
@@ -4569,6 +4571,8 @@ class FFLocale extends ChangeNotifier {
       'comms.skip.push_disabled': 'Arifa kwenye simu zimezimwa',
       'comms.skip.whatsapp_not_configured': 'WhatsApp bado haijaandaliwa',
       'comms.skip.marketing_cap': 'Tayari wamepata ofa za wiki hii',
+      'comms.history.lastTryFailed':
+          "Jaribio la mwisho halikufaulu ({reason}). Litajaribiwa tena.",
       'comms.filter.allChannels': "Njia zote",
       'comms.filter.allTypes': "Aina zote",
       'comms.outcome.reached': "Umewafikia",

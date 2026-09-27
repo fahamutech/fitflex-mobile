@@ -385,6 +385,17 @@ class _MessageDetailState extends State<_MessageDetail> {
         if (m.campaignName != null)
           Text(m.campaignName!, style: theme.textTheme.bodySmall),
         const SizedBox(height: FFTokens.spacingMd),
+        if (m.status == 'queued' && m.failureReason != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
+            child: FFAlert(
+              key: const Key('message-retrying'),
+              tone: FFAlertTone.warning,
+              message: context
+                  .tr('comms.history.lastTryFailed')
+                  .replaceFirst('{reason}', _whyNot(context, m)),
+            ),
+          ),
         if (m.isFailed || m.isSkipped)
           Padding(
             padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
