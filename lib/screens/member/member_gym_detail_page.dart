@@ -956,3 +956,55 @@ class _SaveGymButtonState extends State<_SaveGymButton> {
     );
   }
 }
+
+// ── Shared with the trainer gym page ─────────────────────────────────────────
+
+/// The gym's scrollable photo gallery (tap for full screen).
+class GymGallery extends StatelessWidget {
+  const GymGallery({super.key, required this.gym});
+
+  final Gym gym;
+
+  @override
+  Widget build(BuildContext context) => _GymHero(gym: gym);
+}
+
+/// The gym's ratings summary row.
+class GymRatingsRow extends StatelessWidget {
+  const GymRatingsRow({super.key, required this.gym});
+
+  final Gym gym;
+
+  @override
+  Widget build(BuildContext context) => _GymRatings(gym: gym);
+}
+
+/// Equipment and amenities, grouped into categories, with section titles.
+class GymFacilities extends StatelessWidget {
+  const GymFacilities({super.key, required this.gym});
+
+  final Gym gym;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      if (gym.equipment.isNotEmpty) ...[
+        FFSectionTitle(context.tr('gym.equipment')),
+        _CategorizedItems(
+          items: gym.equipment,
+          categories: _equipmentCategories,
+          tone: FFBadgeTone.gray,
+        ),
+      ],
+      if (gym.amenities.isNotEmpty) ...[
+        FFSectionTitle(context.tr('gym.amenities')),
+        _CategorizedItems(
+          items: gym.amenities,
+          categories: _amenityCategories,
+          tone: FFBadgeTone.brand,
+        ),
+      ],
+    ],
+  );
+}

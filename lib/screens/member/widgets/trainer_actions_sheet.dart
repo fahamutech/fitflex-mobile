@@ -37,22 +37,36 @@ String _dateOnly(DateTime d) =>
     '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
 /// A4 — bottom sheet to book a trainer session on an AVAILABLE slot only.
+/// With [slots] + [gymId] (picked on the trainer's calendar) it opens
+/// straight on the priced summary.
 Future<bool?> showTrainerBookingSheet(
   BuildContext context,
-  TrainerProfile trainer,
-) {
+  TrainerProfile trainer, {
+  List<({String date, String slot})> slots = const [],
+  String? gymId,
+}) {
   return showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
-    builder: (ctx) => TrainerBookingSheet(trainer: trainer),
+    builder: (ctx) =>
+        TrainerBookingSheet(trainer: trainer, slots: slots, gymId: gymId),
   );
 }
 
 class TrainerBookingSheet extends StatefulWidget {
-  const TrainerBookingSheet({super.key, required this.trainer});
+  const TrainerBookingSheet({
+    super.key,
+    required this.trainer,
+    this.slots = const [],
+    this.gymId,
+  });
 
   final TrainerProfile trainer;
+
+  /// Slots already picked on the calendar (skips the pick step).
+  final List<({String date, String slot})> slots;
+  final String? gymId;
 
   @override
   State<TrainerBookingSheet> createState() => _TrainerBookingSheetState();
@@ -61,7 +75,7 @@ class TrainerBookingSheet extends StatefulWidget {
 /// One selectable slot: availability entry + time, resolved to a date.
 class _PickedSlot {
   _PickedSlot(this.entry, this.slot, this.date);
-  final TrainerAvailability entry;
+  final TrainerAvailability? entry;
   final String slot;
   final String date;
 
@@ -78,6 +92,22 @@ class _TrainerBookingSheetState extends State<TrainerBookingSheet> {
   Map<String, dynamic>? _summary; // non-null = summary step
   bool _busy = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    final gymId = widget.gymId;
+    if (widget.slots.isNotEmpty && gymId != null) {
+      _pickedGymId = gymId;
+      for (final s in widget.slots) {
+        final pick = _PickedSlot(null, s.slot, s.date);
+        _picked[pick.key] = pick;
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _quote();
+      });
+    }
+  }
 
   String? _gymFor(TrainerAvailability entry) {
     final entryGym = entry.gymId;
@@ -120,6 +150,7 @@ class _TrainerBookingSheetState extends State<TrainerBookingSheet> {
     return switch (code) {
       'slot_already_booked' => context.tr('member.slotAlreadyBooked'),
       'slot_not_available' => context.tr('member.slotNotAvailable'),
+      'slot_in_past' => context.tr('member.slotInPast'),
       'too_many_slots' => context.tr('member.tooManySlots'),
       'trainer_rate_not_set' => context.tr('member.trainerRateNotSet'),
       _ => context.tr('member.bookingFailed'),
@@ -199,7 +230,12 @@ class _TrainerBookingSheetState extends State<TrainerBookingSheet> {
               ),
             ),
             const SizedBox(height: 14),
-            if (summary != null) ..._summaryStep(summary) else ..._pickStep(),
+            if (summary != null)
+              ..._summaryStep(summary)
+            else if (widget.slots.isNotEmpty)
+              ..._quotingStep()
+            else
+              ..._pickStep(),
           ],
         ),
       ),
@@ -294,6 +330,26 @@ class _TrainerBookingSheetState extends State<TrainerBookingSheet> {
     ];
   }
 
+  /// Calendar-picked slots: pricing them, or why it failed.
+  List<Widget> _quotingStep() => [
+    if (_error == null)
+      const Padding(
+        padding: EdgeInsets.all(24),
+        child: Center(child: CircularProgressIndicator()),
+      )
+    else ...[
+      FFAlert(message: _error!, tone: FFAlertTone.error),
+      const SizedBox(height: 12),
+      SizedBox(
+        width: double.infinity,
+        child: OutlinedButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: Text(context.tr('member.back')),
+        ),
+      ),
+    ],
+  ];
+
   List<Widget> _summaryStep(Map<String, dynamic> summary) {
     final currency = summary['currency']?.toString() ?? 'TZS';
     num n(String k) => (summary[k] as num?) ?? 0;
@@ -363,7 +419,11 @@ class _TrainerBookingSheetState extends State<TrainerBookingSheet> {
           Expanded(
             child: OutlinedButton(
               key: const Key('trainer-book-back'),
-              onPressed: _busy ? null : () => setState(() => _summary = null),
+              onPressed: _busy
+                  ? null
+                  : () => widget.slots.isNotEmpty
+                        ? Navigator.pop(context, false)
+                        : setState(() => _summary = null),
               child: Text(context.tr('member.back')),
             ),
           ),

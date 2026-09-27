@@ -6,6 +6,9 @@ import '../../router.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
+import '../../shared/models.dart';
+import '../../shared/widgets/availability_calendar.dart';
+import '../../shared/widgets/social_links.dart';
 import 'member_shell.dart';
 import 'widgets/trainer_actions_sheet.dart';
 import 'widgets/trainer_sharing.dart';
@@ -21,19 +24,103 @@ class MemberTrainerDetailPage extends StatefulWidget {
 }
 
 class _MemberTrainerDetailPageState extends State<MemberTrainerDetailPage> {
+  static const _maxSlots = 12;
+
   bool _interestBusy = false;
+  bool _started = false;
+
+  // Live calendar (GET /trainers/:id/schedule).
+  List<ScheduleDay>? _days;
+  bool _scheduleFailed = false;
+  String? _gymFilter;
+  final Map<String, ({String date, String slot})> _picked = {};
+  String? _pickedGymId;
 
   String get trainerId => widget.trainerId;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_started) return;
+    _started = true;
+    _loadSchedule();
+  }
+
+  Future<void> _loadSchedule() async {
+    try {
+      final res = await AppScope.of(
+        context,
+      ).api.trainerSchedule(trainerId, days: 21, gymId: _gymFilter);
+      if (!mounted) return;
+      setState(() {
+        _days = ScheduleDay.listFromResponse(res);
+        _scheduleFailed = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _scheduleFailed = true);
+    }
+  }
+
+  void _setGymFilter(String? gymId) {
+    setState(() {
+      _gymFilter = gymId;
+      _days = null;
+      _picked.clear();
+      _pickedGymId = null;
+    });
+    _loadSchedule();
+  }
+
+  /// The gym a picked slot is booked at: the filter, the slot's own gym, or
+  /// the trainer's first gym.
+  String? _gymForSlot(TrainerProfile trainer, ScheduleSlot slot) =>
+      _gymFilter ??
+      slot.gymIds.firstOrNull ??
+      trainer.gymIds.firstOrNull ??
+      trainer.gyms.firstOrNull?.id;
+
+  void _toggleSlot(TrainerProfile trainer, ScheduleDay day, ScheduleSlot slot) {
+    final gymId = _gymForSlot(trainer, slot);
+    if (gymId == null) return;
+    final key = scheduleSlotKey(day.date, slot.slot);
+    setState(() {
+      // One booking is at one gym: a slot elsewhere starts a new selection.
+      if (_pickedGymId != null && _pickedGymId != gymId) _picked.clear();
+      _pickedGymId = gymId;
+      if (_picked.remove(key) == null) {
+        if (_picked.length >= _maxSlots) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(context.tr('member.tooManySlots'))),
+          );
+          return;
+        }
+        _picked[key] = (date: day.date, slot: slot.slot);
+      }
+      if (_picked.isEmpty) _pickedGymId = null;
+    });
+  }
 
   Future<void> _book() async {
     final data = MemberDataScope.of(context);
     final trainer = data.trainers.where((t) => t.id == trainerId).firstOrNull;
     if (trainer == null) return;
-    final booked = await showTrainerBookingSheet(context, trainer);
+    final slots = _picked.values.toList()
+      ..sort((a, b) => '${a.date} ${a.slot}'.compareTo('${b.date} ${b.slot}'));
+    final booked = await showTrainerBookingSheet(
+      context,
+      trainer,
+      slots: slots,
+      gymId: _pickedGymId,
+    );
     if (booked == true && mounted) {
+      setState(() {
+        _picked.clear();
+        _pickedGymId = null;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.tr('member.bookingRequested'))),
       );
+      _loadSchedule();
     }
   }
 
@@ -100,7 +187,13 @@ class _MemberTrainerDetailPageState extends State<MemberTrainerDetailPage> {
                   icon: const Icon(Icons.event_available, size: 18),
                   label: FittedBox(
                     fit: BoxFit.scaleDown,
-                    child: Text(context.tr('member.bookSession')),
+                    child: Text(
+                      _picked.isEmpty
+                          ? context.tr('member.bookSession')
+                          : context
+                                .tr('member.bookSlots')
+                                .replaceAll('{n}', '${_picked.length}'),
+                    ),
                   ),
                 ),
               ),
@@ -179,6 +272,10 @@ class _MemberTrainerDetailPageState extends State<MemberTrainerDetailPage> {
               ),
             ],
           ),
+          if (!trainer.socialLinks.isEmpty) ...[
+            const SizedBox(height: 12),
+            SocialLinksRow(links: trainer.socialLinks),
+          ],
           const SizedBox(height: 12),
           // A5 — standardized profile facts: rate, experience, rating.
           Wrap(
@@ -236,48 +333,47 @@ class _MemberTrainerDetailPageState extends State<MemberTrainerDetailPage> {
               ),
             ),
 
-          // Availability
+          // Live calendar: booked slots show as taken; pick, then Book.
           FFSectionTitle(context.tr('member.availability')),
-          if (trainer.availability.isEmpty)
-            FFEmptyState(title: context.tr('member.noData'))
-          else
-            ...trainer.availability.map(
-              (a) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: FFCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            a.dayLabel,
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                              color: Theme.of(context).colorScheme.onSurface,
-                            ),
-                          ),
-                          if (a.gymName != null) ...[
-                            const SizedBox(width: 8),
-                            FFBadge(label: a.gymName!, tone: FFBadgeTone.brand),
-                          ],
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 4,
-                        children: a.slots
-                            .map(
-                              (s) => FFBadge(label: s, tone: FFBadgeTone.gray),
-                            )
-                            .toList(),
-                      ),
-                    ],
+          if (trainer.gyms.length > 1)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  ChoiceChip(
+                    key: const Key('trainer-schedule-gym-all'),
+                    label: Text(context.tr('trainerPass.filterAll')),
+                    selected: _gymFilter == null,
+                    onSelected: (_) => _setGymFilter(null),
                   ),
-                ),
+                  ...trainer.gyms.map(
+                    (g) => ChoiceChip(
+                      key: Key('trainer-schedule-gym-${g.id}'),
+                      label: Text(g.name),
+                      selected: _gymFilter == g.id,
+                      onSelected: (_) => _setGymFilter(g.id),
+                    ),
+                  ),
+                ],
               ),
+            ),
+          if (_scheduleFailed)
+            FFAlert(
+              message: context.tr('cal.loadFailed'),
+              tone: FFAlertTone.error,
+            )
+          else if (_days == null)
+            const Padding(
+              padding: EdgeInsets.all(24),
+              child: Center(child: FFSpinner(size: 28)),
+            )
+          else
+            AvailabilityCalendar(
+              days: _days!,
+              selected: _picked.keys.toSet(),
+              onSlotTap: (day, slot) => _toggleSlot(trainer, day, slot),
             ),
 
           const SizedBox(height: 20),

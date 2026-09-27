@@ -95,17 +95,29 @@ String _formatDistance(double km) {
 /// Portrait card used inside a responsive grid.
 /// Uses a surface-shade background instead of elevation for separation.
 class GymGridCard extends StatelessWidget {
-  const GymGridCard({super.key, required this.gym, this.distanceKm});
+  const GymGridCard({
+    super.key,
+    required this.gym,
+    this.distanceKm,
+    this.onTap,
+    this.extraBadge,
+  });
 
   final Gym gym;
   final double? distanceKm;
+
+  /// Defaults to the member gym page.
+  final VoidCallback? onTap;
+
+  /// An extra badge under the tier (e.g. how a trainer gets in).
+  final Widget? extraBadge;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     return GestureDetector(
-      onTap: () => context.go('/member/gyms/${gym.id}'),
+      onTap: onTap ?? () => context.go('/member/gyms/${gym.id}'),
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: cs.surface,
@@ -200,6 +212,7 @@ class GymGridCard extends StatelessWidget {
                               label: _formatDistance(distanceKm!),
                               tone: FFBadgeTone.gray,
                             ),
+                          ?extraBadge,
                         ],
                       ),
                     ],

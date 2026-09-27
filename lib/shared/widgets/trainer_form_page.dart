@@ -5,7 +5,9 @@ import '../api_client.dart';
 import '../components/components.dart';
 import '../design_tokens.dart';
 import '../i18n.dart';
+import '../models.dart';
 import 'ff_photo_picker_field.dart';
+import 'social_links.dart';
 
 /// Fullscreen form for adding/editing a trainer (used by gym owners).
 /// Returns the payload Map on save, or null on cancel.
@@ -35,6 +37,7 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
   late final TextEditingController _rate;
   late final TextEditingController _bio;
   late final TextEditingController _initialPin;
+  late final Map<String, TextEditingController> _socials;
   String _photo = '';
   String _currency = 'TZS';
   List<String> _selectedSpecialties = [];
@@ -55,6 +58,9 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
     );
     _bio = TextEditingController(text: t['bio']?.toString() ?? '');
     _initialPin = TextEditingController();
+    _socials = SocialHandleFields.controllersFor(
+      SocialLinks.fromJson(t['socialLinks']),
+    );
     _photo = t['photoUrl']?.toString() ?? '';
     _currency = t['sessionRateCurrency']?.toString() ?? 'TZS';
     _selectedSpecialties =
@@ -71,6 +77,14 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!_specialtiesLoaded) _loadSpecialties();
+  }
+
+  @override
+  void dispose() {
+    for (final c in _socials.values) {
+      c.dispose();
+    }
+    super.dispose();
   }
 
   Future<void> _loadSpecialties() async {
@@ -116,6 +130,7 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
         'bio': _bio.text.trim(),
         'photoUrl': _photo,
         'availability': _availability,
+        'socialLinks': SocialHandleFields.valuesOf(_socials),
         if (widget.requireInitialPin) 'initialPin': _initialPin.text.trim(),
         if (widget.initial == null && widget.defaultGymIds.isNotEmpty)
           'gymIds': widget.defaultGymIds,
@@ -278,6 +293,9 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
                 label: context.tr('trainerReg.bio'),
               ),
               const SizedBox(height: FFTokens.spacingMd),
+              FFFieldLabel(context.tr('social.title')),
+              SocialHandleFields(controllers: _socials),
+              const SizedBox(height: FFTokens.spacingSm),
               FFFieldLabel(context.tr('trainer.availability')),
               Text(
                 context.tr('trainer.availabilityHint'),
