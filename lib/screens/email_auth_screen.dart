@@ -123,14 +123,13 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
   }
 
   Future<void> _handleSessionApiError(ApiException e) async {
-    final body = e.body is Map ? e.body as Map : const {};
-    final code = body['error']?.toString();
-    if (code == 'email_already_used_for_different_role') {
+    if (requiresEmailVerification(e.body)) {
+      // Keep the Firebase session: the verify step retries with it.
       final auth = AppScope.of(context).auth;
-      final message = context.tr('auth.roleConflict');
-      await _authService.signOut();
-      await auth.signOut();
-      _showErrorDialog(message);
+      final role = widget.initialMode == EmailAuthMode.signUp
+          ? auth.role
+          : null;
+      context.go(AppRoutes.verifyEmailFor(role));
       return;
     }
     _showErrorDialog(apiErrorMessage(FFLocaleScope.of(context), e));

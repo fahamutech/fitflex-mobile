@@ -61,8 +61,17 @@ class FFLocale extends ChangeNotifier {
       'auth.checkApproval': 'Check approval status',
       'auth.stillPending': 'Still pending approval. Please wait.',
       'auth.checkFailed': 'Could not check status. Try again.',
-      'auth.roleConflict':
-          'This email is already used for another FitFlex role. Use a different email for this role.',
+      'auth.verifyEmailTitle': 'Verify your email',
+      'auth.verifyEmailBody':
+          'To protect your account, confirm {email} before signing in. We sent you a verification link. Open it, then come back and tap Continue.',
+      'auth.verifyEmailContinue': "I've verified — continue",
+      'auth.verifyEmailResend': 'Resend the link',
+      'auth.verifyEmailSent': 'Verification link sent. Check your inbox and spam folder.',
+      'auth.verifyEmailNotYet':
+          'That email is not verified yet. Open the link we sent, then try again.',
+      'auth.verifyEmailSendFailed':
+          'We could not send the link right now. Wait a moment and tap Resend.',
+      'auth.verifyEmailOtherAccount': 'Use a different account',
       'auth.adminPortalOnly':
           'Admin accounts can only sign in through the FitFlex portal.',
       'auth.backToRoles': 'Choose another role',
@@ -2590,8 +2599,17 @@ class FFLocale extends ChangeNotifier {
       'auth.checkApproval': 'Angalia hali ya idhini',
       'auth.stillPending': 'Bado inasubiri idhini. Tafadhali subiri.',
       'auth.checkFailed': 'Imeshindwa kuangalia hali. Jaribu tena.',
-      'auth.roleConflict':
-          'Barua pepe hii tayari inatumika kwa nafasi nyingine ya FitFlex. Tumia barua pepe nyingine.',
+      'auth.verifyEmailTitle': 'Thibitisha barua pepe yako',
+      'auth.verifyEmailBody':
+          'Ili kulinda akaunti yako, thibitisha {email} kabla ya kuingia. Tumekutumia kiungo cha uthibitisho. Kifungue, kisha rudi hapa ubonyeze Endelea.',
+      'auth.verifyEmailContinue': 'Nimethibitisha — endelea',
+      'auth.verifyEmailResend': 'Tuma kiungo tena',
+      'auth.verifyEmailSent': 'Kiungo cha uthibitisho kimetumwa. Angalia sanduku la barua na folda ya spam.',
+      'auth.verifyEmailNotYet':
+          'Barua pepe hiyo bado haijathibitishwa. Fungua kiungo tulichotuma, kisha jaribu tena.',
+      'auth.verifyEmailSendFailed':
+          'Hatukuweza kutuma kiungo sasa hivi. Subiri kidogo kisha bonyeza Tuma tena.',
+      'auth.verifyEmailOtherAccount': 'Tumia akaunti nyingine',
       'auth.adminPortalOnly':
           'Akaunti za admin zinaweza kuingia kupitia portal ya FitFlex pekee.',
       'auth.backToRoles': 'Chagua nafasi nyingine',
