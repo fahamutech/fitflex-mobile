@@ -16,6 +16,7 @@ import 'data/communication_repository.dart';
 import 'widgets/campaign_status.dart';
 import 'widgets/comms_format.dart';
 import 'widgets/template_selector.dart';
+import 'automation_pages.dart';
 
 class CommunicationCenterPage extends StatefulWidget {
   const CommunicationCenterPage({super.key, this.gymId, this.repository});
@@ -95,6 +96,7 @@ class _CommunicationCenterPageState extends State<CommunicationCenterPage> {
                   ('overview', context.tr('comms.tab.overview')),
                   ('campaigns', context.tr('comms.tab.campaigns')),
                   ('templates', context.tr('comms.tab.templates')),
+                  ('automations', context.tr('comms.tab.automations')),
                 ],
                 onChanged: (v) {
                   setState(() => _tab = v);
@@ -122,6 +124,11 @@ class _CommunicationCenterPageState extends State<CommunicationCenterPage> {
                 ..._overview(context, c)
               else if (_tab == 'templates')
                 ..._templates(context, c)
+              else if (_tab == 'automations')
+                AutomationsTab(
+                  gymId: widget.gymId,
+                  repository: widget.repository,
+                )
               else
                 ..._campaigns(context, c),
             ],

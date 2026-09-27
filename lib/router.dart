@@ -34,6 +34,7 @@ import 'screens/owner/communications/campaign_detail_page.dart';
 import 'screens/owner/communications/communication_center_page.dart';
 import 'screens/owner/communications/template_pages.dart';
 import 'screens/owner/communications/history_pages.dart';
+import 'screens/owner/communications/automation_pages.dart';
 import 'screens/member/member_message_settings_page.dart';
 import 'shared/inbox/inbox_pages.dart';
 import 'screens/vendor/vendor_home_page.dart';
@@ -83,6 +84,8 @@ abstract class AppRoutes {
   static const ownerCampaignRecipients =
       '/owner/communications/campaigns/:campaignId/recipients';
   static const ownerMemberMessages = '/owner/members/:memberId/messages';
+  static const ownerAutomation =
+      '/owner/communications/automations/:automationId';
   static const ownerTrainers = '/owner/trainers';
   static const ownerProfile = '/owner/profile';
   static const ownerQrScanner = '/owner/scan';
@@ -488,6 +491,14 @@ GoRouter buildRouter(AuthState auth) {
         name: 'ownerCampaignEdit',
         builder: (context, state) => CampaignComposerPage(
           campaignId: state.pathParameters['campaignId']!,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.ownerAutomation,
+        name: 'ownerAutomation',
+        builder: (context, state) => AutomationDetailPage(
+          automationId: state.pathParameters['automationId']!,
+          gymId: state.uri.queryParameters['gymId'],
         ),
       ),
       GoRoute(

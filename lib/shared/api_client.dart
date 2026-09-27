@@ -1370,6 +1370,29 @@ class ApiClient {
     _withQuery('/owner/members/$memberId/communications', query),
   );
 
+  /// The gym's lifecycle automations (created switched off on first look).
+  Future<Map<String, dynamic>> ownerAutomations({String? gymId}) async =>
+      await _request(
+        'GET',
+        _withQuery('/owner/communications/automations', {'gymId': ?gymId}),
+      );
+
+  /// Switch on/off, channels or template. PATCH { status?, channels?, templateId? }
+  Future<Map<String, dynamic>> ownerUpdateAutomation(
+    String id,
+    Map<String, dynamic> body,
+  ) async => await _request(
+    'PATCH',
+    '/owner/communications/automations/$id',
+    body: body,
+  );
+
+  Future<Map<String, dynamic>> ownerAutomationRuns(String id) async =>
+      await _request('GET', '/owner/communications/automations/$id/runs');
+
+  Future<Map<String, dynamic>> ownerAutomationPreview(String id) async =>
+      await _request('POST', '/owner/communications/automations/$id/preview');
+
   /// One message in full: status, times, failure, provider reference.
   Future<Map<String, dynamic>> ownerCommunicationMessage(String id) async =>
       await _request('GET', '/owner/communications/messages/$id');
