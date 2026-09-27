@@ -51,7 +51,8 @@ class CampaignTile extends StatelessWidget {
       _ when c.createdAt != null => formatWhen(context, c.createdAt!),
       _ => '',
     };
-    final reached = c.counts?.targeted;
+    final reached = c.stats?.targeted ?? c.counts?.targeted;
+    final totals = c.stats?.totals;
     return FFCard(
       margin: const EdgeInsets.only(bottom: FFTokens.spacingSm),
       child: InkWell(
@@ -85,6 +86,24 @@ class CampaignTile extends StatelessWidget {
                     ].join(' · '),
                     style: theme.textTheme.bodySmall,
                   ),
+                  // Delivery at a glance, once it went out.
+                  if (totals != null && (totals.sent + totals.failed) > 0)
+                    Text(
+                      [
+                        context
+                            .tr('comms.history.sentN')
+                            .replaceFirst('{n}', '${totals.sent}'),
+                        context
+                            .tr('comms.history.openedN')
+                            .replaceFirst('{n}', '${totals.opened}'),
+                        if (totals.failed > 0)
+                          context
+                              .tr('comms.history.failedN')
+                              .replaceFirst('{n}', '${totals.failed}'),
+                      ].join(' · '),
+                      key: Key('campaign-stats-${c.id}'),
+                      style: theme.textTheme.bodySmall,
+                    ),
                 ],
               ),
             ),

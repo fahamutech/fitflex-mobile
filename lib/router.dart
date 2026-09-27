@@ -33,6 +33,7 @@ import 'screens/owner/communications/campaign_composer_page.dart';
 import 'screens/owner/communications/campaign_detail_page.dart';
 import 'screens/owner/communications/communication_center_page.dart';
 import 'screens/owner/communications/template_pages.dart';
+import 'screens/owner/communications/history_pages.dart';
 import 'screens/member/member_message_settings_page.dart';
 import 'shared/inbox/inbox_pages.dart';
 import 'screens/vendor/vendor_home_page.dart';
@@ -79,6 +80,9 @@ abstract class AppRoutes {
       '/owner/communications/templates/:templateId/edit';
   static const ownerCampaignEdit =
       '/owner/communications/campaigns/:campaignId/edit';
+  static const ownerCampaignRecipients =
+      '/owner/communications/campaigns/:campaignId/recipients';
+  static const ownerMemberMessages = '/owner/members/:memberId/messages';
   static const ownerTrainers = '/owner/trainers';
   static const ownerProfile = '/owner/profile';
   static const ownerQrScanner = '/owner/scan';
@@ -410,6 +414,14 @@ GoRouter buildRouter(AuthState auth) {
           kind: MemberHistoryKind.payments,
         ),
       ),
+      // The member's messages from this gym (communication history).
+      GoRoute(
+        path: AppRoutes.ownerMemberMessages,
+        name: 'ownerMemberMessages',
+        builder: (context, state) => MemberCommunicationsPage(
+          memberId: state.pathParameters['memberId']!,
+        ),
+      ),
       // Inbox — every signed-in role's messages.
       GoRoute(
         path: AppRoutes.inbox,
@@ -475,6 +487,13 @@ GoRouter buildRouter(AuthState auth) {
         path: AppRoutes.ownerCampaignEdit,
         name: 'ownerCampaignEdit',
         builder: (context, state) => CampaignComposerPage(
+          campaignId: state.pathParameters['campaignId']!,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.ownerCampaignRecipients,
+        name: 'ownerCampaignRecipients',
+        builder: (context, state) => CampaignRecipientsPage(
           campaignId: state.pathParameters['campaignId']!,
         ),
       ),

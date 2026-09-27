@@ -17,6 +17,7 @@ import 'widgets/campaign_preview.dart';
 import 'widgets/campaign_status.dart';
 import 'widgets/comms_format.dart';
 import 'widgets/delivery_stats.dart';
+import 'widgets/history_widgets.dart';
 
 class CampaignDetailPage extends StatefulWidget {
   const CampaignDetailPage({
@@ -183,6 +184,26 @@ class _CampaignDetailPageState extends State<CampaignDetailPage> {
           ].join(' · '),
           style: theme.textTheme.bodySmall,
         ),
+        if (c.createdByName != null || c.templateName != null)
+          Text(
+            [
+              if (c.createdByName != null)
+                context
+                    .tr('comms.history.createdBy')
+                    .replaceFirst('{name}', c.createdByName!),
+              if (c.templateName != null)
+                context
+                    .tr('comms.history.fromTemplate')
+                    .replaceFirst(
+                      '{name}',
+                      c.templateSystem && c.templateKey != null
+                          ? context.tr('comms.tpl.${c.templateKey}')
+                          : c.templateName!,
+                    ),
+            ].join(' · '),
+            key: const Key('detail-origin'),
+            style: theme.textTheme.bodySmall,
+          ),
         if (c.status == CampaignStatus.sending) ...[
           const SizedBox(height: FFTokens.spacingSm),
           FFAlert(
@@ -243,11 +264,27 @@ class _CampaignDetailPageState extends State<CampaignDetailPage> {
             c.status != CampaignStatus.scheduled &&
             c.status != CampaignStatus.cancelled) ...[
           FFSectionTitle(context.tr('comms.detail.delivery')),
+          if (d.stats != null) ...[
+            FFCard(
+              key: const Key('detail-stats'),
+              child: CampaignStatsGrid(stats: d.stats!),
+            ),
+            const SizedBox(height: FFTokens.spacingSm),
+          ],
           FFCard(
             child: DeliveryStats(
               progress: d.progress,
               skipped: c.counts?.skipped ?? const {},
             ),
+          ),
+          const SizedBox(height: FFTokens.spacingSm),
+          OutlinedButton.icon(
+            key: const Key('detail-recipients'),
+            onPressed: () => context.push(
+              '/owner/communications/campaigns/${c.id}/recipients',
+            ),
+            icon: const Icon(Icons.people_outline),
+            label: Text(context.tr('comms.history.seeRecipients')),
           ),
         ],
         const SizedBox(height: FFTokens.spacingLg),

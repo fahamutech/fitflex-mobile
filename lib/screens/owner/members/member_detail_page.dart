@@ -19,6 +19,7 @@ import 'widgets/member_format.dart';
 import 'widgets/member_presentation.dart';
 import 'widgets/renew_member_sheet.dart';
 import '../widgets/gym_engagement_widgets.dart';
+import '../communications/widgets/history_widgets.dart';
 
 class MemberDetailPage extends StatefulWidget {
   const MemberDetailPage({super.key, required this.memberId});
@@ -241,6 +242,8 @@ class _DetailBody extends StatelessWidget {
           payments: detail.paymentHistory,
           onViewAll: onViewPayments,
         ),
+        // Messages this gym sent them (hidden without the permission).
+        MemberMessagesCard(memberId: detail.id),
       ],
     );
   }
