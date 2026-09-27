@@ -10,6 +10,7 @@ import '../../shared/design_tokens.dart';
 import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
+import '../../shared/widgets/reviews_section.dart';
 import 'member_shell.dart';
 import 'widgets/gym_card.dart';
 import 'widgets/gym_plans_sheet.dart';
@@ -247,7 +248,16 @@ class _MemberGymDetailPageState extends State<MemberGymDetailPage> {
             context.tr('gym.reviews'),
             key: const Key('gym-section-reviews'),
           ),
-          FFEmptyState(title: context.tr('gym.noReviews')),
+          ReviewsSection(
+            subject: ReviewSubject.gym,
+            subjectId: gym.id,
+            onRatingChanged: (average, count) => data.update(
+              (d) => d.gyms = [
+                for (final g in d.gyms)
+                  g.id == gym.id ? g.withRating(average, count) : g,
+              ],
+            ),
+          ),
 
           // 13. Actions
           const SizedBox(height: 16),
@@ -338,29 +348,15 @@ Uri gymDirectionsUri(Gym gym, {double? originLat, double? originLng}) {
   return Uri.https('www.google.com', '/maps/dir/', query);
 }
 
-/// A8 — ratings summary row. Uses the gym's environment rating entries
-/// (stored inside amenities as e.g. "cleanliness 4.5") when present.
+/// A8 — ratings summary row: members' average star rating and review count.
 class _GymRatings extends StatelessWidget {
   const _GymRatings({super.key, required this.gym});
 
   final Gym gym;
 
-  double? get _averageRating {
-    final values = <double>[];
-    for (final item in gym.amenities) {
-      final match = RegExp(r'([0-5](?:\.\d)?)').firstMatch(item);
-      if (match != null) {
-        final v = double.tryParse(match.group(1)!);
-        if (v != null) values.add(v.clamp(0, 5).toDouble());
-      }
-    }
-    if (values.isEmpty) return null;
-    return values.reduce((a, b) => a + b) / values.length;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final rating = _averageRating;
+    final rated = gym.reviewCount > 0;
     return Padding(
       padding: const EdgeInsets.only(top: 10),
       child: Row(
@@ -368,13 +364,18 @@ class _GymRatings extends StatelessWidget {
           const Icon(Icons.star, color: FFTokens.warning500, size: 18),
           const SizedBox(width: 4),
           Text(
-            rating == null
-                ? context.tr('gym.noRatings')
-                : rating.toStringAsFixed(1),
+            rated ? gym.rating.toStringAsFixed(1) : context.tr('gym.noRatings'),
             style: Theme.of(
               context,
             ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600),
           ),
+          if (rated) ...[
+            const SizedBox(width: 6),
+            Text(
+              reviewCountLabel(context, gym.reviewCount),
+              style: Theme.of(context).textTheme.labelMedium,
+            ),
+          ],
         ],
       ),
     );

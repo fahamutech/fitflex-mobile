@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
+import 'models.dart';
+
 class ApiException implements Exception {
   final int status;
   final dynamic body;
@@ -1648,4 +1650,81 @@ class ApiClient {
 
   Future<Map<String, dynamic>> withdrawMyKyc() async =>
       await _request('POST', '/me/kyc/withdraw');
+
+  // ── Gym and trainer reviews ──────────────────────────────────────────
+  Future<ReviewSummary> reviewSummary(ReviewSubject subject, String id) async =>
+      ReviewSummary.fromJson(
+        await _map('GET', '/${subject.path}/${_e(id)}/rating'),
+      );
+
+  Future<List<Review>> reviews(ReviewSubject subject, String id) async =>
+      Review.listFrom(
+        await _request('GET', '/${subject.path}/${_e(id)}/reviews?limit=50'),
+      );
+
+  /// Whether the member may review [id], plus their existing review if any.
+  Future<MyReviewState> myReviewState(ReviewSubject subject, String id) async {
+    final base = '/me/${subject.path}/${_e(id)}';
+    final can = await _map('GET', '$base/can-review');
+    Map<String, dynamic>? mine;
+    if (can['hasExistingReview'] == true) {
+      mine = await _map('GET', '$base/review');
+    }
+    return MyReviewState(
+      eligible: can['eligible'] == true,
+      reason: can['reason']?.toString(),
+      rating: (mine?['rating'] as num?)?.toInt(),
+      text: mine?['text'] as String?,
+    );
+  }
+
+  /// Creates or replaces the member's review. Returns the new average and count.
+  Future<({num average, int count})> submitReview(
+    ReviewSubject subject,
+    String id, {
+    required int rating,
+    String? text,
+  }) async {
+    final res = await _map(
+      'POST',
+      '/me/${subject.path}/${_e(id)}/review',
+      body: {
+        'rating': rating,
+        'text': (text ?? '').trim().isEmpty ? null : text!.trim(),
+      },
+    );
+    return _ratingFrom(res, subject);
+  }
+
+  Future<({num average, int count})> deleteMyReview(
+    ReviewSubject subject,
+    String id,
+  ) async => _ratingFrom(
+    await _map('DELETE', '/me/${subject.path}/${_e(id)}/review'),
+    subject,
+  );
+
+  ({num average, int count}) _ratingFrom(
+    Map<String, dynamic> res,
+    ReviewSubject subject,
+  ) {
+    final r = res[subject == ReviewSubject.gym ? 'gymRating' : 'trainerRating'];
+    final m = r is Map ? r : const {};
+    return (
+      average: (m['averageRating'] as num?) ?? 0,
+      count: (m['reviewCount'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  /// Trainer: the summary and reviews on their own profile.
+  Future<({ReviewSummary summary, List<Review> reviews})>
+  myTrainerReviews() async {
+    final res = await _map('GET', '/trainer/reviews');
+    return (
+      summary: ReviewSummary.fromJson(
+        Map<String, dynamic>.from(res['summary'] as Map? ?? const {}),
+      ),
+      reviews: Review.listFrom(res['reviews']),
+    );
+  }
 }
