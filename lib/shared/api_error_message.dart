@@ -85,6 +85,7 @@ String? _knownReason(FFLocale locale, String reason) {
     'tier_not_covered': 'error.reason.gymTierNotCovered',
     'visits_exhausted': 'error.reason.visitCapReached',
     'gym_closed': 'error.reason.gymClosed',
+    'whatsapp_template_required': 'error.reason.whatsappTemplateRequired',
     'basic_daily_limit': 'error.reason.basicDailyLimit',
     'invalid_or_expired_qr': 'error.reason.qrExpired',
     'invalid_gym_qr': 'error.reason.invalidGymQr',
