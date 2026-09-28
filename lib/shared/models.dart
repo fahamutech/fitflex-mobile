@@ -25,6 +25,10 @@ class Gym {
   final List<String> amenities;
   final List<String> equipment;
 
+  /// Members' average star rating (0 when unrated) and published review count.
+  final num rating;
+  final int reviewCount;
+
   Gym({
     required this.id,
     required this.name,
@@ -46,6 +50,8 @@ class Gym {
     this.thumbnails = const [],
     this.amenities = const [],
     this.equipment = const [],
+    this.rating = 0,
+    this.reviewCount = 0,
   });
 
   factory Gym.fromJson(Map<String, dynamic> json) {
@@ -91,8 +97,36 @@ class Gym {
           (json['amenities'] as List?)?.whereType<String>().toList() ?? [],
       equipment:
           (json['equipment'] as List?)?.whereType<String>().toList() ?? [],
+      rating: _numValue(json['rating']) ?? 0,
+      reviewCount: (_numValue(json['reviewCount']) ?? 0).toInt(),
     );
   }
+
+  /// This gym with a new rating — after the member reviews it.
+  Gym withRating(num rating, int reviewCount) => Gym(
+    id: id,
+    name: name,
+    tier: tier,
+    location: location,
+    perVisitRate: perVisitRate,
+    ratePerDay: ratePerDay,
+    ratePerWeek: ratePerWeek,
+    ratePerMonth: ratePerMonth,
+    commissionRate: commissionRate,
+    status: status,
+    accessMode: accessMode,
+    venueType: venueType,
+    isVerified: isVerified,
+    verificationStatus: verificationStatus,
+    latitude: latitude,
+    longitude: longitude,
+    images: images,
+    thumbnails: thumbnails,
+    amenities: amenities,
+    equipment: equipment,
+    rating: rating,
+    reviewCount: reviewCount,
+  );
 
   bool get isFreeOnline => accessMode == 'free_online';
   bool get isPaidVisit => accessMode == 'paid_visit';
@@ -107,6 +141,13 @@ class Gym {
 double? _coordinateValue(Object? value) {
   if (value is num) return value.toDouble();
   if (value is String) return double.tryParse(value);
+  return null;
+}
+
+/// Numbers that may arrive as strings (older API builds sent decimals as "4.50").
+num? _numValue(Object? value) {
+  if (value is num) return value;
+  if (value is String) return num.tryParse(value);
   return null;
 }
 
@@ -169,8 +210,8 @@ class TrainerProfile {
     specialties:
         (json['specialties'] as List?)?.whereType<String>().toList() ?? [],
     bio: json['bio'] as String?,
-    rating: json['rating'] as num?,
-    reviewCount: json['reviewCount'] as int?,
+    rating: _numValue(json['rating']),
+    reviewCount: _numValue(json['reviewCount'])?.toInt(),
     hourlyRateTzs: json['hourlyRateTzs'] as num? ?? 0,
     sessionRateCurrency: json['sessionRateCurrency'] as String? ?? 'TZS',
     experienceYears: json['experienceYears'] as int?,
@@ -186,6 +227,29 @@ class TrainerProfile {
     isVerified: _boolValue(json['isVerified'] ?? json['verified']),
     availability: _trainerAvailabilityFromJson(json['availability']),
     socialLinks: SocialLinks.fromJson(json['socialLinks']),
+  );
+
+  /// This trainer with a new rating — after the member reviews them.
+  TrainerProfile withRating(num rating, int reviewCount) => TrainerProfile(
+    id: id,
+    userId: userId,
+    email: email,
+    displayName: displayName,
+    photoUrl: photoUrl,
+    specialties: specialties,
+    bio: bio,
+    rating: rating,
+    reviewCount: reviewCount,
+    hourlyRateTzs: hourlyRateTzs,
+    sessionRateCurrency: sessionRateCurrency,
+    experienceYears: experienceYears,
+    gymIds: gymIds,
+    gyms: gyms,
+    status: status,
+    approvalStatus: approvalStatus,
+    isVerified: isVerified,
+    availability: availability,
+    socialLinks: socialLinks,
   );
 }
 
@@ -704,4 +768,94 @@ class PassTier {
         return gymAccess ?? '';
     }
   }
+}
+
+// ── Reviews ────────────────────────────────────────────────────────────────
+
+/// What a member can review: a gym (after a visit or direct subscription) or a
+/// trainer (after a completed session). [path] is the API collection.
+enum ReviewSubject {
+  gym('gyms'),
+  trainer('trainers');
+
+  const ReviewSubject(this.path);
+  final String path;
+}
+
+/// One published review as the public sees it — the reviewer's first name and
+/// initial, never their id.
+class Review {
+  final String id;
+  final int rating;
+  final String? text;
+  final String memberName;
+  final String? memberPhotoUrl;
+  final DateTime? createdAt;
+
+  const Review({
+    required this.id,
+    required this.rating,
+    this.text,
+    required this.memberName,
+    this.memberPhotoUrl,
+    this.createdAt,
+  });
+
+  factory Review.fromJson(Map<String, dynamic> json) => Review(
+    id: json['id'] as String? ?? '',
+    rating: (_numValue(json['rating']) ?? 0).toInt(),
+    text: json['text'] as String?,
+    memberName: json['memberName'] as String? ?? '',
+    memberPhotoUrl: json['memberPhotoUrl'] as String?,
+    createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? ''),
+  );
+
+  static List<Review> listFrom(Object? json) => (json is List ? json : const [])
+      .whereType<Map>()
+      .map((r) => Review.fromJson(Map<String, dynamic>.from(r)))
+      .toList();
+}
+
+/// Average (null when there are no reviews), count and 1–5 star distribution.
+class ReviewSummary {
+  final double? average;
+  final int count;
+  final Map<int, int> distribution;
+
+  const ReviewSummary({
+    this.average,
+    this.count = 0,
+    this.distribution = const {},
+  });
+
+  factory ReviewSummary.fromJson(Map<String, dynamic> json) {
+    final dist = json['distribution'];
+    return ReviewSummary(
+      average: _numValue(json['averageRating'])?.toDouble(),
+      count: (_numValue(json['reviewCount']) ?? 0).toInt(),
+      distribution: {
+        for (var star = 1; star <= 5; star++)
+          star: dist is Map ? (_numValue(dist['$star']) ?? 0).toInt() : 0,
+      },
+    );
+  }
+}
+
+/// The signed-in member's own review, and whether they may write one.
+class MyReviewState {
+  final bool eligible;
+
+  /// Why the member can't review yet, e.g. 'no_completed_booking'.
+  final String? reason;
+  final int? rating;
+  final String? text;
+
+  const MyReviewState({
+    required this.eligible,
+    this.reason,
+    this.rating,
+    this.text,
+  });
+
+  bool get hasReview => rating != null;
 }

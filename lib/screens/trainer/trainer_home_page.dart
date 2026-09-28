@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../app_scope.dart';
@@ -21,6 +22,7 @@ import 'trainer_clients_tab.dart';
 import 'trainer_enquiries_page.dart';
 import 'trainer_gyms_tab.dart';
 import 'trainer_passes_page.dart';
+import 'trainer_reviews_page.dart';
 import 'trainer_schedule.dart';
 import 'widgets/clients_digest.dart';
 import 'widgets/trainer_sheets.dart';
@@ -498,6 +500,22 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
       icon: Icons.workspace_premium_outlined,
       title: context.tr('trainer.editProfessional'),
       onTap: _editProfessionalProfile,
+    ),
+    FFActionTile(
+      key: const Key('trainer-reviews'),
+      icon: Icons.star_outline,
+      title: context.tr('reviews.myReviews'),
+      subtitle: context.tr('reviews.myReviewsHint'),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => const TrainerReviewsPage()),
+      ),
+    ),
+    FFActionTile(
+      key: const Key('trainer-verification'),
+      icon: Icons.verified_user_outlined,
+      title: context.tr('kyc.entry.title'),
+      subtitle: context.tr('kyc.entry.subtitle'),
+      onTap: () => context.push('/verification'),
     ),
     FFActionTile(
       key: const Key('trainer-message-settings'),

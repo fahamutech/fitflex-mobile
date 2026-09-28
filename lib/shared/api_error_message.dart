@@ -111,6 +111,12 @@ String? _knownReason(FFLocale locale, String reason) {
     'schedule_too_soon': 'error.reason.scheduleTooSoon',
     'invalid_content': 'error.reason.invalidContent',
     'invalid_audience': 'error.reason.invalidAudience',
+    // Reviews.
+    'no_completed_booking': 'error.reason.noCompletedBooking',
+    'no_checkin_or_direct_subscription': 'error.reason.noGymVisit',
+    'rating_must_be_integer_1_to_5': 'error.reason.invalidRating',
+    'text_too_short': 'error.reason.reviewTextTooShort',
+    'text_too_long': 'error.reason.reviewTextTooLong',
   };
   final key = keys[reason.trim().toLowerCase()];
   return key == null ? null : locale.t(key);

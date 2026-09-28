@@ -10,6 +10,7 @@ import '../../shared/models.dart';
 import '../../shared/api_error_message.dart';
 import '../../shared/widgets/availability_calendar.dart';
 import '../../shared/widgets/enquiry_thread.dart';
+import '../../shared/widgets/reviews_section.dart';
 import '../../shared/widgets/social_links.dart';
 import 'member_shell.dart';
 import 'widgets/trainer_actions_sheet.dart';
@@ -343,9 +344,11 @@ class _MemberTrainerDetailPageState extends State<MemberTrainerDetailPage> {
                       '${trainer.experienceYears} ${context.tr('member.yearsExp')}',
                   tone: FFBadgeTone.gray,
                 ),
-              if ((trainer.rating ?? 0) > 0)
+              if ((trainer.reviewCount ?? 0) > 0)
                 FFBadge(
-                  label: '★ ${trainer.rating}',
+                  key: const Key('trainer-rating-badge'),
+                  label:
+                      '★ ${(trainer.rating ?? 0).toStringAsFixed(1)} · ${reviewCountLabel(context, trainer.reviewCount!)}',
                   tone: FFBadgeTone.success,
                 ),
             ],
@@ -458,6 +461,22 @@ class _MemberTrainerDetailPageState extends State<MemberTrainerDetailPage> {
               selected: _picked.keys.toSet(),
               onSlotTap: (day, slot) => _toggleSlot(trainer, day, slot),
             ),
+
+          // Reviews — members rate a trainer after a completed session.
+          FFSectionTitle(
+            context.tr('reviews.title'),
+            key: const Key('trainer-section-reviews'),
+          ),
+          ReviewsSection(
+            subject: ReviewSubject.trainer,
+            subjectId: trainer.id,
+            onRatingChanged: (average, count) => data.update(
+              (d) => d.trainers = [
+                for (final t in d.trainers)
+                  t.id == trainer.id ? t.withRating(average, count) : t,
+              ],
+            ),
+          ),
 
           const SizedBox(height: 20),
         ],

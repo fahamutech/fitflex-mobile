@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
+import 'models.dart';
+
 class ApiException implements Exception {
   final int status;
   final dynamic body;
@@ -1620,4 +1622,152 @@ class ApiClient {
 
   Future<void> ownerArchiveTemplate(String id) async =>
       await _request('POST', '/owner/communications/templates/$id/archive');
+
+  // ── Partner verification (KYC / KYB) ─────────────────────────────────────
+
+  Future<Map<String, dynamic>> myKyc() async =>
+      await _request('GET', '/me/kyc');
+
+  Future<Map<String, dynamic>> updateMyKycBusiness(
+    Map<String, dynamic> body,
+  ) async => await _request('PUT', '/me/kyc/business', body: body);
+
+  Future<Map<String, dynamic>> updateMyKycPerson(
+    String role,
+    Map<String, dynamic> body,
+  ) async => await _request(
+    'PUT',
+    '/me/kyc/people/${Uri.encodeComponent(role)}',
+    body: body,
+  );
+
+  Future<Map<String, dynamic>> updateMyKycDocument(
+    String requirementKey,
+    Map<String, dynamic> body,
+  ) async => await _request(
+    'PUT',
+    '/me/kyc/documents/${Uri.encodeComponent(requirementKey)}',
+    body: body,
+  );
+
+  /// Uploads a document's file (PDF, JPEG, PNG or WebP, up to 10 MB).
+  Future<Map<String, dynamic>> uploadMyKycDocumentFile(
+    String requirementKey, {
+    required List<int> bytes,
+    required String filename,
+    String? docType,
+  }) async {
+    final uri = Uri.parse(
+      '$baseUrl/me/kyc/documents/${Uri.encodeComponent(requirementKey)}/file',
+    );
+    final request = http.MultipartRequest('POST', uri)
+      ..files.add(
+        http.MultipartFile.fromBytes('file', bytes, filename: filename),
+      );
+    if (_token != null) request.headers['authorization'] = 'Bearer $_token';
+    if (docType != null) request.fields['docType'] = docType;
+    debugPrint('[REST] --> POST $uri (multipart, ${bytes.length} bytes)');
+    // Documents can be a few MB on a slow connection: allow longer than JSON calls.
+    final streamed = await request.send().timeout(const Duration(seconds: 90));
+    final res = await http.Response.fromStream(streamed);
+    _logResponse('POST', uri, res);
+    final decoded = res.body.isEmpty ? null : jsonDecode(res.body);
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      return (decoded as Map).cast<String, dynamic>();
+    }
+    if (res.statusCode == 401 && onUnauthorized != null) onUnauthorized!();
+    throw ApiException(res.statusCode, decoded);
+  }
+
+  Future<Map<String, dynamic>> addMyKycSettlementAccount(
+    Map<String, dynamic> body,
+  ) async => await _request('POST', '/me/kyc/settlement-accounts', body: body);
+
+  Future<void> removeMyKycSettlementAccount(String id) async => await _request(
+    'DELETE',
+    '/me/kyc/settlement-accounts/${Uri.encodeComponent(id)}',
+  );
+
+  Future<Map<String, dynamic>> submitMyKyc() async =>
+      await _request('POST', '/me/kyc/submit');
+
+  Future<Map<String, dynamic>> withdrawMyKyc() async =>
+      await _request('POST', '/me/kyc/withdraw');
+
+  // ── Gym and trainer reviews ──────────────────────────────────────────
+  Future<ReviewSummary> reviewSummary(ReviewSubject subject, String id) async =>
+      ReviewSummary.fromJson(
+        await _map('GET', '/${subject.path}/${_e(id)}/rating'),
+      );
+
+  Future<List<Review>> reviews(ReviewSubject subject, String id) async =>
+      Review.listFrom(
+        await _request('GET', '/${subject.path}/${_e(id)}/reviews?limit=50'),
+      );
+
+  /// Whether the member may review [id], plus their existing review if any.
+  Future<MyReviewState> myReviewState(ReviewSubject subject, String id) async {
+    final base = '/me/${subject.path}/${_e(id)}';
+    final can = await _map('GET', '$base/can-review');
+    Map<String, dynamic>? mine;
+    if (can['hasExistingReview'] == true) {
+      mine = await _map('GET', '$base/review');
+    }
+    return MyReviewState(
+      eligible: can['eligible'] == true,
+      reason: can['reason']?.toString(),
+      rating: (mine?['rating'] as num?)?.toInt(),
+      text: mine?['text'] as String?,
+    );
+  }
+
+  /// Creates or replaces the member's review. Returns the new average and count.
+  Future<({num average, int count})> submitReview(
+    ReviewSubject subject,
+    String id, {
+    required int rating,
+    String? text,
+  }) async {
+    final res = await _map(
+      'POST',
+      '/me/${subject.path}/${_e(id)}/review',
+      body: {
+        'rating': rating,
+        'text': (text ?? '').trim().isEmpty ? null : text!.trim(),
+      },
+    );
+    return _ratingFrom(res, subject);
+  }
+
+  Future<({num average, int count})> deleteMyReview(
+    ReviewSubject subject,
+    String id,
+  ) async => _ratingFrom(
+    await _map('DELETE', '/me/${subject.path}/${_e(id)}/review'),
+    subject,
+  );
+
+  ({num average, int count}) _ratingFrom(
+    Map<String, dynamic> res,
+    ReviewSubject subject,
+  ) {
+    final r = res[subject == ReviewSubject.gym ? 'gymRating' : 'trainerRating'];
+    final m = r is Map ? r : const {};
+    return (
+      average: (m['averageRating'] as num?) ?? 0,
+      count: (m['reviewCount'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  /// Trainer: the summary and reviews on their own profile.
+  Future<({ReviewSummary summary, List<Review> reviews})>
+  myTrainerReviews() async {
+    final res = await _map('GET', '/trainer/reviews');
+    return (
+      summary: ReviewSummary.fromJson(
+        Map<String, dynamic>.from(res['summary'] as Map? ?? const {}),
+      ),
+      reviews: Review.listFrom(res['reviews']),
+    );
+  }
 }
