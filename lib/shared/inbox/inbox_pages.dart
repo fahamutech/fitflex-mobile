@@ -54,7 +54,12 @@ String? routeForMessage(BuildContext context, InboxMessage m) {
       AppScope.of(context).auth.user?['userType']?.toString() ??
       AppScope.of(context).auth.role;
   if (role != 'member') return null;
-  return memberRouteFor(deepLink: m.deepLink, type: m.type, gymId: m.gymId);
+  return memberRouteFor(
+    deepLink: m.deepLink,
+    type: m.type,
+    gymId: m.gymId,
+    trainerId: m.data['trainerId']?.toString(),
+  );
 }
 
 class InboxPage extends StatefulWidget {

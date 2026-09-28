@@ -17,8 +17,11 @@ import '../../shared/widgets/social_links.dart';
 import '../../shared/widgets/trainer_form_page.dart';
 import '../language_screen.dart';
 import '../member/member_message_settings_page.dart';
+import '../member/member_scan_gym_page.dart';
 import 'trainer_clients_tab.dart';
+import 'trainer_enquiries_page.dart';
 import 'trainer_gyms_tab.dart';
+import 'trainer_passes_page.dart';
 import 'trainer_reviews_page.dart';
 import 'trainer_schedule.dart';
 import 'widgets/clients_digest.dart';
@@ -42,6 +45,9 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
   int _tabIndex = 0;
   final _gymsTabKey = GlobalKey<TrainerGymsTabState>();
 
+  /// Enquiries waiting for the trainer (badge on the Home tile).
+  int _unreadEnquiries = 0;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -55,9 +61,43 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
       _refreshMe(),
       _refreshTrainers(),
       _refreshProfile(),
+      _refreshEnquiries(),
       if (_gymsTabKey.currentState != null) _gymsTabKey.currentState!.refresh(),
       AppScope.of(context).inbox?.load() ?? Future<void>.value(),
     ]);
+  }
+
+  Future<void> _refreshEnquiries() async {
+    try {
+      final rows = await AppScope.of(context).api.trainerEngagements();
+      final unread = rows.whereType<Map>().where((r) => r['unread'] == true);
+      if (mounted) setState(() => _unreadEnquiries = unread.length);
+    } on ApiException {
+      // ignore — the badge just stays as it was
+    }
+  }
+
+  Future<void> _openEnquiries() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const TrainerEnquiriesPage()),
+    );
+    if (mounted) _refreshEnquiries();
+  }
+
+  void _showMyQr() => Navigator.of(
+    context,
+  ).push(MaterialPageRoute<void>(builder: (_) => const TrainerQrPage()));
+
+  /// Scan the QR at the gym entrance (same check-in as a staff scan).
+  Future<void> _scanGymQr() async {
+    final checkedIn = await Navigator.of(
+      context,
+    ).push<bool>(MaterialPageRoute(builder: (_) => const MemberScanGymPage()));
+    if (checkedIn == true && mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.tr('checkin.done'))));
+    }
   }
 
   Future<void> _refreshProfile() async {
@@ -203,103 +243,6 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
     }
   }
 
-  Future<void> _showEngagementInbox() async {
-    try {
-      final rows = await AppScope.of(context).api.trainerEngagements();
-      if (!mounted) return;
-      await showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        builder: (sheetContext) => SafeArea(
-          child: SizedBox(
-            height: MediaQuery.sizeOf(sheetContext).height * .7,
-            child: ListView(
-              padding: const EdgeInsets.all(FFTokens.spacingLg),
-              children: [
-                Text(
-                  sheetContext.tr('trainer.enquiries'),
-                  style: Theme.of(sheetContext).textTheme.titleLarge,
-                ),
-                const SizedBox(height: FFTokens.spacingMd),
-                if (rows.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 32),
-                    child: Text(sheetContext.tr('trainer.noEnquiries')),
-                  )
-                else
-                  ...rows.whereType<Map>().map((row) {
-                    final member = row['member'] as Map?;
-                    final isInterest = row['type'] == 'interest';
-                    final email = member?['email']?.toString().trim() ?? '';
-                    final phone = member?['phone']?.toString().trim() ?? '';
-                    final contact = [
-                      if (email.isNotEmpty) email,
-                      if (phone.isNotEmpty) phone,
-                    ].join(' · ');
-                    final replyUri = email.isNotEmpty
-                        ? Uri(scheme: 'mailto', path: email)
-                        : phone.isNotEmpty
-                        ? Uri(scheme: 'tel', path: phone)
-                        : null;
-                    return Card(
-                      child: ListTile(
-                        leading: Icon(
-                          isInterest
-                              ? Icons.favorite_outline
-                              : Icons.chat_bubble_outline,
-                        ),
-                        title: Text(
-                          member?['displayName']?.toString() ??
-                              sheetContext.tr('trainer.member'),
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              row['message']?.toString() ??
-                                  (isInterest
-                                      ? sheetContext.tr('trainer.interested')
-                                      : ''),
-                            ),
-                            if (contact.isNotEmpty) ...[
-                              const SizedBox(height: 4),
-                              Text(
-                                '${sheetContext.tr('trainer.contact')}: $contact',
-                              ),
-                            ],
-                          ],
-                        ),
-                        trailing: replyUri == null
-                            ? null
-                            : IconButton(
-                                key: Key('trainer-reply-${row['id']}'),
-                                tooltip: sheetContext.tr('trainer.reply'),
-                                onPressed: () => launchUrl(
-                                  replyUri,
-                                  mode: LaunchMode.externalApplication,
-                                ),
-                                icon: Icon(
-                                  email.isNotEmpty
-                                      ? Icons.email_outlined
-                                      : Icons.phone_outlined,
-                                ),
-                              ),
-                      ),
-                    );
-                  }),
-              ],
-            ),
-          ),
-        ),
-      );
-    } on ApiException {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(context.tr('owner.errorGeneric'))));
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -312,7 +255,16 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
           automaticallyImplyLeading: false,
           title: Text(context.tr('trainer.dashboard')),
           // Bookings, pass approvals, and FitFlex promotions and news.
-          actions: const [InboxBellButton(), ThemeToggleButton()],
+          actions: [
+            IconButton(
+              key: const Key('trainer-appbar-qr'),
+              tooltip: context.tr('checkin.showQr'),
+              onPressed: _showMyQr,
+              icon: const Icon(Icons.qr_code_2),
+            ),
+            const InboxBellButton(),
+            const ThemeToggleButton(),
+          ],
         ),
         body: RefreshIndicator(
           onRefresh: _refreshAll,
@@ -380,6 +332,59 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
     final socials = SocialLinks.fromJson(trainer?['socialLinks']);
     final gyms = (trainer?['gyms'] as List?)?.whereType<Map>().toList() ?? [];
     return _tabScroll([
+      // Quick gym access: show the check-in QR, or scan the gym's QR.
+      FFCard(
+        key: const Key('trainer-checkin-card'),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.door_front_door_outlined, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  context.tr('checkin.title'),
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              context.tr('checkin.body'),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    key: const Key('trainer-checkin-qr'),
+                    onPressed: _showMyQr,
+                    icon: const Icon(Icons.qr_code_2, size: 18),
+                    label: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(context.tr('checkin.showQr')),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    key: const Key('trainer-checkin-scan'),
+                    onPressed: _scanGymQr,
+                    icon: const Icon(Icons.qr_code_scanner, size: 18),
+                    label: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(context.tr('checkin.scan')),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 14),
       Text(
         context.tr('trainer.dashboardBody'),
         style: TextStyle(
@@ -453,7 +458,18 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
         key: const Key('trainer-engagement-inbox'),
         icon: Icons.mark_email_unread_outlined,
         title: context.tr('trainer.enquiries'),
-        onTap: _showEngagementInbox,
+        subtitle: _unreadEnquiries > 0
+            ? context
+                  .tr('enquiry.unreadCount')
+                  .replaceAll('{n}', '$_unreadEnquiries')
+            : null,
+        trailing: _unreadEnquiries > 0
+            ? Badge(
+                key: const Key('trainer-enquiries-badge'),
+                label: Text('$_unreadEnquiries'),
+              )
+            : null,
+        onTap: _openEnquiries,
       ),
       FFActionTile(
         key: const Key('trainer-tile-schedule'),

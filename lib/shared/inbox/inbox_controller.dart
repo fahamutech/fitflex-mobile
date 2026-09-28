@@ -97,20 +97,27 @@ String? memberRouteFor({
   required String deepLink,
   required String type,
   String? gymId,
+  String? trainerId,
 }) {
   final link = deepLink.isNotEmpty
       ? deepLink
       : switch (type) {
           'subscription_renewal' || 'subscription_activated' => 'membership',
+          // A trainer answered the member's enquiry: open that trainer.
+          'trainer_enquiry_reply' => 'trainer',
           _ => '',
         };
   return switch (link) {
     'membership' || 'renewal' => '/member/passes',
     'payment' => '/member/payment',
     'gym' when gymId != null && gymId.isNotEmpty => '/member/gyms/$gymId',
+    'trainer' when trainerId != null && _safeId.hasMatch(trainerId) =>
+      '/member/trainers/$trainerId',
     _ => null,
   };
 }
+
+final _safeId = RegExp(r'^[A-Za-z0-9_-]{1,64}$');
 
 class InboxController extends ChangeNotifier {
   InboxController(this._api);

@@ -66,7 +66,8 @@ class FFLocale extends ChangeNotifier {
           'To protect your account, confirm {email} before signing in. We sent you a verification link. Open it, then come back and tap Continue.',
       'auth.verifyEmailContinue': "I've verified — continue",
       'auth.verifyEmailResend': 'Resend the link',
-      'auth.verifyEmailSent': 'Verification link sent. Check your inbox and spam folder.',
+      'auth.verifyEmailSent':
+          'Verification link sent. Check your inbox and spam folder.',
       'auth.verifyEmailNotYet':
           'That email is not verified yet. Open the link we sent, then try again.',
       'auth.verifyEmailSendFailed':
@@ -2565,6 +2566,38 @@ class FFLocale extends ChangeNotifier {
       'error.reason.slotInPast': 'That session time has already passed.',
       'member.slotInPast':
           'That time has already passed. Please pick another slot.',
+      // Trainer quick check-in and enquiry conversations.
+      'checkin.title': 'Gym check-in',
+      'checkin.body':
+          'Show your QR at reception, or scan the QR at the gym entrance.',
+      'checkin.showQr': 'Show my QR',
+      'checkin.scan': 'Scan gym QR',
+      'checkin.scanInstead': 'Scan the gym\'s QR instead',
+      'checkin.done': 'Checked in — have a good session!',
+      'enquiry.tabOpen': 'Open',
+      'enquiry.tabClosed': 'Closed',
+      'enquiry.you': 'You',
+      'enquiry.kindEnquiry': 'Enquiry',
+      'enquiry.kindInterest': 'Interested',
+      'enquiry.interestBody':
+          '{name} is interested in training with you. Say hello and tell them how you work.',
+      'enquiry.closedNote':
+          'You closed this conversation. If the member writes again, it reopens.',
+      'enquiry.close': 'Close',
+      'enquiry.closed': 'Conversation closed',
+      'enquiry.call': 'Call',
+      'enquiry.email': 'Email',
+      'enquiry.quick1':
+          'Thanks for reaching out! When would you like to start?',
+      'enquiry.quick2':
+          'Yes — you can book a session on my calendar in the app.',
+      'enquiry.quick3': 'Which gym suits you best? I train at several.',
+      'enquiry.replyHint': 'Write a reply…',
+      'enquiry.followUpHint': 'Write to the trainer…',
+      'enquiry.conversationWith': 'Your conversation with {name}',
+      'enquiry.waitingForTrainer':
+          'Sent — the trainer will reply here and you\'ll get a notification.',
+      'enquiry.unreadCount': '{n} waiting for your reply',
       // Partner verification (KYC / KYB).
       'kyc.title': 'Verification',
       'kyc.privacy':
@@ -2788,7 +2821,8 @@ class FFLocale extends ChangeNotifier {
       'reviews.cancel': 'Cancel',
       'reviews.retry': 'Try again',
       'reviews.deleteConfirmTitle': 'Delete your review?',
-      'reviews.deleteConfirmBody': 'Your rating will be removed from the average.',
+      'reviews.deleteConfirmBody':
+          'Your rating will be removed from the average.',
       'reviews.sheetTitleGym': 'Rate this gym',
       'reviews.sheetTitleTrainer': 'Rate this trainer',
       'reviews.pickRating': 'Tap a star to rate',
@@ -2801,14 +2835,18 @@ class FFLocale extends ChangeNotifier {
       'reviews.deleted': 'Review deleted.',
       'reviews.loadFailed': 'Couldn\'t load reviews.',
       'reviews.gymHint': 'Check in at this gym to leave a review.',
-      'reviews.trainerHint': 'You can review this trainer after a completed session.',
+      'reviews.trainerHint':
+          'You can review this trainer after a completed session.',
       'reviews.myReviews': 'My reviews',
       'reviews.myReviewsHint': 'What members say about your sessions',
-      'reviews.trainerNone': 'Members can review you after a completed session.',
-      'error.reason.noCompletedBooking': 'you can review a trainer after a completed session',
+      'reviews.trainerNone':
+          'Members can review you after a completed session.',
+      'error.reason.noCompletedBooking':
+          'you can review a trainer after a completed session',
       'error.reason.noGymVisit': 'you can review a gym after checking in there',
       'error.reason.invalidRating': 'choose between 1 and 5 stars',
-      'error.reason.reviewTextTooShort': 'the review needs at least 3 characters',
+      'error.reason.reviewTextTooShort':
+          'the review needs at least 3 characters',
       'error.reason.reviewTextTooLong': 'the review is over 1000 characters',
     },
     'sw': {
@@ -2849,7 +2887,8 @@ class FFLocale extends ChangeNotifier {
           'Ili kulinda akaunti yako, thibitisha {email} kabla ya kuingia. Tumekutumia kiungo cha uthibitisho. Kifungue, kisha rudi hapa ubonyeze Endelea.',
       'auth.verifyEmailContinue': 'Nimethibitisha — endelea',
       'auth.verifyEmailResend': 'Tuma kiungo tena',
-      'auth.verifyEmailSent': 'Kiungo cha uthibitisho kimetumwa. Angalia sanduku la barua na folda ya spam.',
+      'auth.verifyEmailSent':
+          'Kiungo cha uthibitisho kimetumwa. Angalia sanduku la barua na folda ya spam.',
       'auth.verifyEmailNotYet':
           'Barua pepe hiyo bado haijathibitishwa. Fungua kiungo tulichotuma, kisha jaribu tena.',
       'auth.verifyEmailSendFailed':
@@ -5366,6 +5405,38 @@ class FFLocale extends ChangeNotifier {
       'error.reason.slotInPast': 'Muda wa kipindi hicho umeshapita.',
       'member.slotInPast':
           'Muda huo umeshapita. Tafadhali chagua nafasi nyingine.',
+      // Trainer quick check-in and enquiry conversations.
+      'checkin.title': 'Kuingia gym',
+      'checkin.body':
+          'Onyesha QR yako mapokezi, au changanua QR iliyo mlangoni mwa gym.',
+      'checkin.showQr': 'Onyesha QR yangu',
+      'checkin.scan': 'Changanua QR ya gym',
+      'checkin.scanInstead': 'Changanua QR ya gym badala yake',
+      'checkin.done': 'Umeingia — mazoezi mema!',
+      'enquiry.tabOpen': 'Wazi',
+      'enquiry.tabClosed': 'Zilizofungwa',
+      'enquiry.you': 'Wewe',
+      'enquiry.kindEnquiry': 'Swali',
+      'enquiry.kindInterest': 'Anavutiwa',
+      'enquiry.interestBody':
+          '{name} anavutiwa kufanya mazoezi nawe. Msalimie na umweleze unavyofanya kazi.',
+      'enquiry.closedNote':
+          'Umefunga mazungumzo haya. Mwanachama akiandika tena, yatafunguka.',
+      'enquiry.close': 'Funga',
+      'enquiry.closed': 'Mazungumzo yamefungwa',
+      'enquiry.call': 'Piga simu',
+      'enquiry.email': 'Barua pepe',
+      'enquiry.quick1': 'Asante kwa kuwasiliana! Ungependa kuanza lini?',
+      'enquiry.quick2':
+          'Ndiyo — unaweza kuweka nafasi kwenye kalenda yangu ndani ya programu.',
+      'enquiry.quick3':
+          'Gym ipi inakufaa zaidi? Ninafundisha kwenye gym kadhaa.',
+      'enquiry.replyHint': 'Andika jibu…',
+      'enquiry.followUpHint': 'Mwandikie kocha…',
+      'enquiry.conversationWith': 'Mazungumzo yako na {name}',
+      'enquiry.waitingForTrainer':
+          'Imetumwa — kocha atajibu hapa na utapata taarifa.',
+      'enquiry.unreadCount': '{n} yanasubiri jibu lako',
       // Partner verification (KYC / KYB).
       'kyc.title': 'Uthibitisho',
       'kyc.privacy':
@@ -5595,7 +5666,8 @@ class FFLocale extends ChangeNotifier {
       'reviews.cancel': 'Ghairi',
       'reviews.retry': 'Jaribu tena',
       'reviews.deleteConfirmTitle': 'Futa maoni yako?',
-      'reviews.deleteConfirmBody': 'Ukadiriaji wako utaondolewa kwenye wastani.',
+      'reviews.deleteConfirmBody':
+          'Ukadiriaji wako utaondolewa kwenye wastani.',
       'reviews.sheetTitleGym': 'Kadiria gym hii',
       'reviews.sheetTitleTrainer': 'Kadiria mkufunzi huyu',
       'reviews.pickRating': 'Gusa nyota ili ukadirie',
@@ -5608,12 +5680,16 @@ class FFLocale extends ChangeNotifier {
       'reviews.deleted': 'Maoni yamefutwa.',
       'reviews.loadFailed': 'Imeshindikana kupakia maoni.',
       'reviews.gymHint': 'Ingia kwenye gym hii kwanza ili uweze kutoa maoni.',
-      'reviews.trainerHint': 'Unaweza kumpa mkufunzi huyu maoni baada ya kipindi kukamilika.',
+      'reviews.trainerHint':
+          'Unaweza kumpa mkufunzi huyu maoni baada ya kipindi kukamilika.',
       'reviews.myReviews': 'Maoni yangu',
       'reviews.myReviewsHint': 'Wanachama wanasemaje kuhusu vipindi vyako',
-      'reviews.trainerNone': 'Wanachama wanaweza kukupa maoni baada ya kipindi kukamilika.',
-      'error.reason.noCompletedBooking': 'unaweza kumpa mkufunzi maoni baada ya kipindi kukamilika',
-      'error.reason.noGymVisit': 'unaweza kutoa maoni kuhusu gym baada ya kuingia humo',
+      'reviews.trainerNone':
+          'Wanachama wanaweza kukupa maoni baada ya kipindi kukamilika.',
+      'error.reason.noCompletedBooking':
+          'unaweza kumpa mkufunzi maoni baada ya kipindi kukamilika',
+      'error.reason.noGymVisit':
+          'unaweza kutoa maoni kuhusu gym baada ya kuingia humo',
       'error.reason.invalidRating': 'chagua nyota kati ya 1 na 5',
       'error.reason.reviewTextTooShort': 'maoni yanahitaji angalau herufi 3',
       'error.reason.reviewTextTooLong': 'maoni yamezidi herufi 1000',

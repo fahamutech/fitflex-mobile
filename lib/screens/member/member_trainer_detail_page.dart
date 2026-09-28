@@ -7,7 +7,9 @@ import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
+import '../../shared/api_error_message.dart';
 import '../../shared/widgets/availability_calendar.dart';
+import '../../shared/widgets/enquiry_thread.dart';
 import '../../shared/widgets/reviews_section.dart';
 import '../../shared/widgets/social_links.dart';
 import 'member_shell.dart';
@@ -37,6 +39,9 @@ class _MemberTrainerDetailPageState extends State<MemberTrainerDetailPage> {
   final Map<String, ({String date, String slot})> _picked = {};
   String? _pickedGymId;
 
+  // The member's latest conversation with this trainer, if any.
+  Map<String, dynamic>? _conversation;
+
   String get trainerId => widget.trainerId;
 
   @override
@@ -45,6 +50,50 @@ class _MemberTrainerDetailPageState extends State<MemberTrainerDetailPage> {
     if (_started) return;
     _started = true;
     _loadSchedule();
+    _loadConversation();
+  }
+
+  Future<void> _loadConversation() async {
+    try {
+      final rows = await AppScope.of(context).api.myTrainerEngagements();
+      final mine = rows
+          .whereType<Map<String, dynamic>>()
+          .where(
+            (e) =>
+                e['trainerId'] == trainerId &&
+                EnquiryMessage.listFrom(e).isNotEmpty,
+          )
+          .firstOrNull; // newest activity first
+      if (!mounted) return;
+      setState(() => _conversation = mine);
+      if (mine != null && mine['unread'] == true) {
+        final read = await AppScope.of(
+          context,
+        ).api.memberReadEngagement(mine['id'].toString());
+        if (mounted) setState(() => _conversation = read);
+      }
+    } catch (_) {
+      // The page works without it; the conversation just isn't shown.
+    }
+  }
+
+  Future<bool> _followUp(String text) async {
+    final id = _conversation?['id']?.toString();
+    if (id == null) return false;
+    try {
+      final updated = await AppScope.of(
+        context,
+      ).api.memberReplyEngagement(id, text);
+      if (mounted) setState(() => _conversation = updated);
+      return true;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage(FFLocaleScope.of(context), e))),
+        );
+      }
+      return false;
+    }
   }
 
   Future<void> _loadSchedule() async {
@@ -134,6 +183,7 @@ class _MemberTrainerDetailPageState extends State<MemberTrainerDetailPage> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(context.tr('member.enquirySent'))));
+      _loadConversation();
     }
   }
 
@@ -303,6 +353,39 @@ class _MemberTrainerDetailPageState extends State<MemberTrainerDetailPage> {
                 ),
             ],
           ),
+
+          // The member's conversation with the trainer (enquiry + replies).
+          if (_conversation != null) ...[
+            FFSectionTitle(
+              context
+                  .tr('enquiry.conversationWith')
+                  .replaceAll('{name}', trainer.displayName),
+              key: const Key('trainer-conversation'),
+            ),
+            FFCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  EnquiryThread(
+                    messages: EnquiryMessage.listFrom(_conversation),
+                    me: 'member',
+                  ),
+                  if (_conversation!['lastMessageFrom'] == 'member')
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        context.tr('enquiry.waitingForTrainer'),
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                  EnquiryReplyBox(
+                    onSend: _followUp,
+                    hintKey: 'enquiry.followUpHint',
+                  ),
+                ],
+              ),
+            ),
+          ],
 
           // Connect for a trainer plan — the member chooses what's shared.
           TrainerConnectCard(
