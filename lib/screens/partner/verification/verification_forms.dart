@@ -365,8 +365,7 @@ class _PersonFormPageState extends State<PersonFormPage> {
           required: true,
           hintKey: _idType == 'nida' ? 'kyc.hint.nida' : null,
         ),
-        if (_fields.contains('position'))
-          _text(context, 'position', _position, required: vendor),
+        if (_fields.contains('position')) _text(context, 'position', _position),
         if (_fields.contains('relationship'))
           _choice(
             context,
@@ -383,7 +382,6 @@ class _PersonFormPageState extends State<PersonFormPage> {
             _authority,
             authorities,
             (v) => setState(() => _authority = v),
-            required: true,
           ),
         if (_fields.contains('phone'))
           _text(
@@ -471,6 +469,9 @@ class _BusinessFormPageState extends State<BusinessFormPage> {
     }
   }
 
+  // Vendors only have to give the TIN; the rest is collected if they have it.
+  bool get _strict => widget.overview.partnerType != 'vendor';
+
   @override
   Widget build(BuildContext context) => _FormScaffold(
     title: context.tr('kyc.form.business'),
@@ -480,21 +481,21 @@ class _BusinessFormPageState extends State<BusinessFormPage> {
     children: [
       Text(context.tr('kyc.form.businessIntro')),
       _gap(),
-      _text(context, 'legalName', _legalName, required: true),
-      _text(context, 'tradingName', _tradingName, required: true),
+      _text(context, 'legalName', _legalName, required: _strict),
+      _text(context, 'tradingName', _tradingName, required: _strict),
       _choice(
         context,
         'entityType',
         _entityType,
         entityTypes,
         (v) => setState(() => _entityType = v),
-        required: true,
+        required: _strict,
       ),
       _text(
         context,
         'registrationNumber',
         _registration,
-        required: true,
+        required: _strict,
         hintKey: 'kyc.hint.brela',
       ),
       _text(
@@ -505,7 +506,7 @@ class _BusinessFormPageState extends State<BusinessFormPage> {
         keyboard: TextInputType.number,
       ),
       FFSectionTitle(context.tr('kyc.field.registeredAddress')),
-      ..._address.build(context, 'address'),
+      ..._address.build(context, 'address', required: _strict),
     ],
   );
 }

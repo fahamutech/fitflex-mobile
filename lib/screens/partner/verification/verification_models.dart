@@ -249,6 +249,7 @@ class KycItem {
     required this.key,
     required this.status,
     this.byReviewer = false,
+    this.optional = false,
     this.gymId,
     this.gymName,
     this.requirementKey,
@@ -260,6 +261,9 @@ class KycItem {
   final String
   status; // complete | submitted | missing | incomplete | file_missing | rejected | expired | failed | mismatch
   final bool byReviewer;
+
+  /// Collected if given, never required (e.g. a vendor's business licence).
+  final bool optional;
   final String? gymId;
   final String? gymName;
   final String? requirementKey;
@@ -270,6 +274,7 @@ class KycItem {
     key: j['key'] as String,
     status: j['status'] as String? ?? 'missing',
     byReviewer: j['by'] == 'reviewer',
+    optional: j['optional'] == true,
     gymId: j['gymId'] as String?,
     gymName: j['gymName'] as String?,
     requirementKey: j['requirementKey'] as String?,
