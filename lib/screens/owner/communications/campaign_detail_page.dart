@@ -18,6 +18,7 @@ import 'widgets/campaign_status.dart';
 import 'widgets/comms_format.dart';
 import 'widgets/delivery_stats.dart';
 import 'widgets/history_widgets.dart';
+import 'widgets/results_card.dart';
 
 class CampaignDetailPage extends StatefulWidget {
   const CampaignDetailPage({
@@ -285,6 +286,12 @@ class _CampaignDetailPageState extends State<CampaignDetailPage> {
             ),
             icon: const Icon(Icons.people_outline),
             label: Text(context.tr('comms.history.seeRecipients')),
+          ),
+          FFSectionTitle(context.tr('comms.results.title')),
+          ResultsCard(
+            titleKey: 'comms.results.campaignTitle',
+            repository: widget.repository,
+            load: (repo) => repo.campaignResults(c.id),
           ),
         ],
         const SizedBox(height: FFTokens.spacingLg),
