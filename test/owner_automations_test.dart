@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:fitflexmobile/screens/owner/communications/automation_pages.dart';
+import 'package:fitflexmobile/screens/owner/communications/data/analytics_models.dart';
 import 'package:fitflexmobile/screens/owner/communications/data/automation_models.dart';
 import 'package:fitflexmobile/screens/owner/communications/data/communication_models.dart';
 import 'package:fitflexmobile/screens/owner/communications/data/communication_repository.dart';
@@ -102,6 +103,13 @@ class _FakeRepo extends CommunicationRepository {
     };
     return Automation.fromJson(rows[i]);
   }
+
+  @override
+  Future<CommsResults> automationResults(String id, {int days = 30}) async =>
+      CommsResults.fromJson({
+        'members': {'recipients': 4, 'sent': 4, 'clicked': 2, 'renewed': 1},
+        'revenue': {'attributedTzs': 50000},
+      });
 
   @override
   Future<List<AutomationFiring>> automationRuns(String id) async => [
@@ -276,11 +284,17 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Your plan ends soon'), findsWidgets);
+      expect(
+        find.byKey(const Key('results-comms.results.last30')),
+        findsOneWidget,
+      );
+      await tester.scrollUntilVisible(find.textContaining('Neema Mushi'), 300);
       expect(find.textContaining('Neema Mushi'), findsOneWidget);
       expect(find.textContaining('WhatsApp not set up yet'), findsOneWidget);
 
-      await tester.ensureVisible(
+      await tester.scrollUntilVisible(
         find.byKey(const Key('automation-channel-push')),
+        -300,
       );
       await tester.tap(find.byKey(const Key('automation-channel-push')));
       await tester.pumpAndSettle();
