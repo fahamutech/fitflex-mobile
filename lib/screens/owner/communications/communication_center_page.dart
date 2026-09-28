@@ -17,6 +17,8 @@ import 'widgets/campaign_status.dart';
 import 'widgets/comms_format.dart';
 import 'widgets/template_selector.dart';
 import 'automation_pages.dart';
+import 'data/automation_models.dart';
+import 'widgets/results_card.dart';
 
 class CommunicationCenterPage extends StatefulWidget {
   const CommunicationCenterPage({super.key, this.gymId, this.repository});
@@ -209,6 +211,27 @@ class _CommunicationCenterPageState extends State<CommunicationCenterPage> {
                 ),
               ),
           ],
+        ),
+      ),
+      FFSectionTitle(context.tr('comms.results.title')),
+      ResultsCard(
+        key: ValueKey('overview-results-${widget.gymId}'),
+        titleKey: 'comms.results.last30',
+        repository: widget.repository,
+        load: (repo) => repo.results(gymId: widget.gymId),
+        builder: (context, r) => OverviewResults(
+          results: r,
+          sourceName: (s) => s.type == 'automation'
+              ? automationTitle(
+                  context,
+                  Automation(
+                    id: s.id,
+                    trigger: s.trigger ?? '',
+                    status: 'enabled',
+                    offsetDays: s.offsetDays ?? 0,
+                  ),
+                )
+              : (s.name ?? context.tr('comms.untitled')),
         ),
       ),
       FFSectionTitle(context.tr('comms.overview.recent')),
