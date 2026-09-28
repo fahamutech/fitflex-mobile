@@ -1526,6 +1526,7 @@ class FFLocale extends ChangeNotifier {
       'gym.free': 'Free',
       'gym.paid': 'Paid',
       'gym.unverified': 'Unverified',
+      'gym.profileComplete': 'Profile complete',
       'gym.reviews': 'Reviews',
       'gym.noReviews': 'No reviews yet.',
       'gym.noRatings': 'No ratings yet',
@@ -2618,6 +2619,10 @@ class FFLocale extends ChangeNotifier {
       'kyc.byFitflex': 'Done by FitFlex',
       'kyc.locked':
           'Your details are with FitFlex for review and can’t be changed right now.',
+      'kyc.lockedApproved':
+          'You’re verified, so these details are locked. Contact FitFlex to change them. You can upload renewed documents any time.',
+      'kyc.renewHint':
+          'Documents: upload a renewed one any time, even before it expires. FitFlex will review it.',
       'kyc.status.draft': 'Complete each item below, then submit for review.',
       'kyc.status.submitted':
           'Submitted. FitFlex will review your details soon.',
@@ -4399,6 +4404,7 @@ class FFLocale extends ChangeNotifier {
       'gym.free': 'Bure',
       'gym.paid': 'Malipo',
       'gym.unverified': 'Haijathibitishwa',
+      'gym.profileComplete': 'Wasifu umekamilika',
       'gym.reviews': 'Maoni',
       'gym.noReviews': 'Hakuna maoni bado.',
       'gym.noRatings': 'Hakuna makadirio bado',
@@ -5458,6 +5464,10 @@ class FFLocale extends ChangeNotifier {
       'kyc.byFitflex': 'Hufanywa na FitFlex',
       'kyc.locked':
           'Taarifa zako ziko kwa FitFlex kwa ukaguzi na haziwezi kubadilishwa sasa.',
+      'kyc.lockedApproved':
+          'Umethibitishwa, hivyo taarifa hizi zimefungwa. Wasiliana na FitFlex kuzibadilisha. Unaweza kupakia nyaraka zilizohuishwa wakati wowote.',
+      'kyc.renewHint':
+          'Nyaraka: pakia iliyohuishwa wakati wowote, hata kabla haijaisha muda. FitFlex wataikagua.',
       'kyc.status.draft':
           'Kamilisha kila kipengele hapa chini, kisha tuma kwa ukaguzi.',
       'kyc.status.submitted':

@@ -26,6 +26,9 @@ enum KycStatus {
 
   /// The partner can still change their details.
   bool get editable => this == none || this == draft || this == infoRequested;
+
+  /// Verified partners can still upload renewed documents (e.g. a new licence).
+  bool get renewable => this == approved || this == suspended;
 }
 
 class KycAddress {
@@ -354,6 +357,7 @@ class KycOverview {
 
   KycStatus get status => kycCase?.status ?? KycStatus.none;
   bool get editable => status.editable;
+  bool get documentsEditable => status.editable || status.renewable;
 
   KycPerson? personFor(String role) {
     for (final p in people) {

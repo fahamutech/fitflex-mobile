@@ -329,6 +329,32 @@ void main() {
       expect(find.textContaining('can’t be changed right now'), findsOneWidget);
     });
 
+    testWidgets('a verified partner can renew documents but not details', (
+      tester,
+    ) async {
+      _tall(tester);
+      final repo = _FakeRepo(_trainer(status: 'approved', ready: true));
+      await tester.pumpWidget(_app(VerificationCenterPage(repository: repo)));
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('upload a renewed one any time'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const Key('kyc-item-identity.fullName')));
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('Contact FitFlex to change them'),
+        findsOneWidget,
+      );
+
+      await tester.tap(
+        find.byKey(const Key('kyc-item-professional.certification')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(DocumentPage), findsOneWidget);
+    });
+
     testWidgets('a request for more information shows FitFlex\'s note', (
       tester,
     ) async {

@@ -122,11 +122,16 @@ class _MemberGymDetailPageState extends State<MemberGymDetailPage> {
             key: const Key('gym-section-verification'),
             children: [
               FFBadge(
+                key: const Key('gym-verification-badge'),
                 label: gymIsVerified(gym)
                     ? context.tr('gym.verified')
+                    : gym.profileComplete
+                    ? context.tr('gym.profileComplete')
                     : context.tr('gym.unverified'),
                 tone: gymIsVerified(gym)
                     ? FFBadgeTone.success
+                    : gym.profileComplete
+                    ? FFBadgeTone.brand
                     : FFBadgeTone.gray,
                 dot: true,
               ),
