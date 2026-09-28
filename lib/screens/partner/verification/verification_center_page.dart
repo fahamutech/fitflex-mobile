@@ -315,7 +315,12 @@ class _ItemTile extends StatelessWidget {
       ),
       title: Text(label),
       subtitle: subtitle.isEmpty ? null : Text(subtitle),
-      trailing: FFBadge(label: context.tr(statusKey), tone: tone),
+      trailing: item.optional && !item.done
+          ? FFBadge(
+              label: context.tr('kyc.itemStatus.optional'),
+              tone: FFBadgeTone.gray,
+            )
+          : FFBadge(label: context.tr(statusKey), tone: tone),
       onTap: onTap,
     );
   }

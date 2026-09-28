@@ -145,6 +145,13 @@ class _FakeRepo extends VerificationRepository {
   }
 
   @override
+  Future<KycOverview> updateBusiness(Map<String, dynamic> body) async {
+    calls.add('business');
+    bodies.add(body);
+    return _now;
+  }
+
+  @override
   Future<KycOverview> updateDocument(
     String requirementKey,
     Map<String, dynamic> body,
@@ -557,6 +564,80 @@ void main() {
         expect(find.byTooltip('Remove'), findsOneWidget);
       },
     );
+  });
+
+  group('optional items (vendors)', () {
+    Map<String, dynamic> vendor() => {
+      'partnerType': 'vendor',
+      'case': {'id': 'kyc_v', 'status': 'draft'},
+      'people': [],
+      'documents': [],
+      'settlementAccounts': [],
+      'checklist': {
+        'sections': [
+          {
+            'key': 'business',
+            'items': [
+              _item('business.tin', 'missing'),
+              {
+                ..._item(
+                  'business.licence',
+                  'missing',
+                  requirementKey: 'business_licence',
+                ),
+                'optional': true,
+              },
+              {..._item('business.legalName', 'missing'), 'optional': true},
+            ],
+          },
+        ],
+        'missing': ['business.tin'],
+        'readyToSubmit': false,
+        'complete': false,
+      },
+    };
+
+    testWidgets('optional items say so instead of "To do"', (tester) async {
+      _tall(tester);
+      await tester.pumpWidget(
+        _app(VerificationCenterPage(repository: _FakeRepo(vendor()))),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Optional'), findsNWidgets(2));
+      expect(find.text('To do'), findsOneWidget); // the TIN
+      expect(find.text('1 items left to complete'), findsOneWidget);
+      expect(
+        KycOverview.fromJson(vendor()).sections.first.items[1].optional,
+        isTrue,
+      );
+    });
+
+    testWidgets('a vendor can save business details with just the TIN', (
+      tester,
+    ) async {
+      _tall(tester);
+      final repo = _FakeRepo(vendor());
+      await tester.pumpWidget(
+        _app(
+          BusinessFormPage(
+            repository: repo,
+            overview: KycOverview.fromJson(vendor()),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('kyc-form-save')));
+      await tester.pumpAndSettle();
+      expect(find.text('Required'), findsOneWidget); // only the TIN
+      await tester.enterText(
+        find.byKey(const Key('kyc-field-tin')),
+        '123-456-789',
+      );
+      await tester.tap(find.byKey(const Key('kyc-form-save')));
+      await tester.pumpAndSettle();
+      expect(repo.calls, ['business']);
+      expect(repo.bodies.single['tin'], '123-456-789');
+    });
   });
 
   group('strings', () {
