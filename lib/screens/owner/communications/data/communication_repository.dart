@@ -3,6 +3,7 @@
 
 import '../../../../shared/api_client.dart';
 import 'communication_models.dart';
+import 'analytics_models.dart';
 import 'automation_models.dart';
 import 'history_models.dart';
 
@@ -70,6 +71,19 @@ class CommunicationRepository {
       res['nextCursor']?.toString(),
     );
   }
+
+  Future<CommsResults> results({int days = 30, String? gymId}) async =>
+      CommsResults.fromJson(
+        await _api.ownerCommunicationAnalytics(days: days, gymId: gymId),
+      );
+
+  Future<CommsResults> campaignResults(String id) async =>
+      CommsResults.fromJson(await _api.ownerCampaignAnalytics(id));
+
+  Future<CommsResults> automationResults(String id, {int days = 30}) async =>
+      CommsResults.fromJson(
+        await _api.ownerAutomationAnalytics(id, days: days),
+      );
 
   Future<List<Automation>> automations({String? gymId}) async {
     final res = await _api.ownerAutomations(gymId: gymId);

@@ -19,6 +19,7 @@ import 'data/communication_repository.dart';
 import 'widgets/campaign_preview.dart';
 import 'widgets/comms_format.dart';
 import 'widgets/history_widgets.dart';
+import 'widgets/results_card.dart';
 import 'widgets/template_selector.dart';
 
 String _n(String s, int n) => s.replaceFirst('{n}', '$n');
@@ -445,6 +446,12 @@ class _AutomationDetailPageState extends State<AutomationDetailPage> {
           )
         else
           const Center(child: FFSpinner()),
+        FFSectionTitle(context.tr('comms.results.title')),
+        ResultsCard(
+          titleKey: 'comms.results.last30',
+          repository: widget.repository,
+          load: (repo) => repo.automationResults(a.id),
+        ),
         FFSectionTitle(context.tr('comms.auto.recent')),
         if (_runs == null)
           const Center(child: FFSpinner())

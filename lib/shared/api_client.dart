@@ -1473,6 +1473,31 @@ class ApiClient {
     _withQuery('/owner/members/$memberId/communications', query),
   );
 
+  /// Results over the last [days]: totals and each campaign / automation.
+  Future<Map<String, dynamic>> ownerCommunicationAnalytics({
+    int days = 30,
+    String? gymId,
+  }) async => await _request(
+    'GET',
+    _withQuery('/owner/communications/analytics', {
+      'days': '$days',
+      'gymId': ?gymId,
+    }),
+  );
+
+  Future<Map<String, dynamic>> ownerCampaignAnalytics(String id) async =>
+      await _request('GET', '/owner/communications/campaigns/$id/analytics');
+
+  Future<Map<String, dynamic>> ownerAutomationAnalytics(
+    String id, {
+    int days = 30,
+  }) async => await _request(
+    'GET',
+    _withQuery('/owner/communications/automations/$id/analytics', {
+      'days': '$days',
+    }),
+  );
+
   /// The gym's lifecycle automations (created switched off on first look).
   Future<Map<String, dynamic>> ownerAutomations({String? gymId}) async =>
       await _request(
