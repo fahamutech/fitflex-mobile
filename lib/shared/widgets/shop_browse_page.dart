@@ -651,6 +651,12 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
               Text(
                 '${formatCurrency(order['totalTzs'] as num? ?? 0)} · $status',
               ),
+              if (order['paymentStatus'] == 'pending')
+                Text(
+                  context.tr('shop.awaitingPayment'),
+                  key: Key('order-awaiting-payment-${order['id']}'),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
               const SizedBox(height: 6),
               Wrap(
                 spacing: 4,
