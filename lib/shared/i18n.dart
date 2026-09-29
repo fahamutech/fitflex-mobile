@@ -1911,6 +1911,8 @@ class FFLocale extends ChangeNotifier {
           'Pause this member’s plan at your gym? They won’t be able to check in here until you reactivate it.',
       'members.directOnly':
           'Only your own gym members can be changed here. FitFlex Pass members are managed by FitFlex.',
+      'members.planPaused':
+          'This member\'s plan at your gym is paused. Reactivate it to check them in.',
       'members.ownDetails':
           'This member signs in to FitFlex and manages their own name and phone number.',
       'members.fitflexManaged':
@@ -4804,6 +4806,8 @@ class FFLocale extends ChangeNotifier {
           'Simamisha mpango wa mwanachama huyu kwenye gym yako? Hataweza kuingia hapa mpaka umrejeshe.',
       'members.directOnly':
           'Unaweza kubadilisha wanachama wa gym yako tu. Wanachama wa FitFlex Pass wanasimamiwa na FitFlex.',
+      'members.planPaused':
+          'Mpango wa mwanachama huyu kwenye gym yako umesitishwa. Uwezeshe tena ili aingie.',
       'members.ownDetails':
           'Mwanachama huyu anaingia FitFlex mwenyewe na anasimamia jina na namba yake ya simu.',
       'members.fitflexManaged':

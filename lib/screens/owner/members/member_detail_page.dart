@@ -72,6 +72,7 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
         final updated = _controller!.detail ?? detail;
         return updated.checkInSummary.lastCheckinAt ?? DateTime.now();
       },
+      failureMessage: () => context.tr(_failureKey()),
     );
   }
 
@@ -79,6 +80,8 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
   String _failureKey() => switch (_controller?.errorCode) {
     'direct_membership_required' => 'members.directOnly',
     'member_manages_own_details' => 'members.ownDetails',
+    'membership_expired' => 'error.reason.membershipExpired',
+    'member_suspended' => 'members.planPaused',
     _ => 'owner.errorGeneric',
   };
 
