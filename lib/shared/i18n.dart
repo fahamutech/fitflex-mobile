@@ -154,6 +154,8 @@ class FFLocale extends ChangeNotifier {
       'error.reason.qrExpired': 'QR code expired. Ask the member to refresh it',
       'error.reason.invalidGymQr': 'That is not a FitFlex gym QR code',
       'error.reason.notYourGym': 'That gym is not one you manage',
+      'error.reason.noPermission':
+          'Your account doesn\'t have permission for this. Ask the gym owner.',
       'error.reason.gymRequired': 'Choose a gym first',
       'error.reason.emailAlreadyUsed': 'That email is already registered',
       'error.reason.invalidCredentials': 'Wrong email or PIN',
@@ -2381,6 +2383,9 @@ class FFLocale extends ChangeNotifier {
       'comms.skip.whatsapp_template_not_approved':
           "Template not approved for WhatsApp",
       'comms.skip.invalid_phone': "Phone number can't be used",
+      'comms.skip.account_suspended': 'Account suspended',
+      'comms.skip.member_not_found': 'Account no longer exists',
+      'comms.skip.not_gym_member': 'Not a member of this gym',
       'error.reason.confirmLargeSend': 'Confirm the large send first',
       'error.reason.nobodyReachable': 'Nobody in this audience can receive it',
       'error.reason.emptyAudience': 'No members match this audience',
@@ -3006,6 +3011,8 @@ class FFLocale extends ChangeNotifier {
       'error.reason.qrExpired': 'QR imeisha muda. Mwambie mwanachama aisasishe',
       'error.reason.invalidGymQr': 'Hiyo si QR ya gym ya FitFlex',
       'error.reason.notYourGym': 'Gym hiyo si unayoisimamia',
+      'error.reason.noPermission':
+          'Akaunti yako haina ruhusa ya hili. Muulize mmiliki wa gym.',
       'error.reason.gymRequired': 'Chagua gym kwanza',
       'error.reason.emailAlreadyUsed': 'Barua pepe hiyo tayari imesajiliwa',
       'error.reason.invalidCredentials': 'Barua pepe au PIN si sahihi',
@@ -5249,6 +5256,9 @@ class FFLocale extends ChangeNotifier {
       'comms.skip.whatsapp_template_not_approved':
           "Kiolezo hakijaidhinishwa kwa WhatsApp",
       'comms.skip.invalid_phone': "Namba ya simu haitumiki",
+      'comms.skip.account_suspended': 'Akaunti imesimamishwa',
+      'comms.skip.member_not_found': 'Akaunti haipo tena',
+      'comms.skip.not_gym_member': 'Si mwanachama wa gym hii',
       'error.reason.confirmLargeSend':
           'Thibitisha kwanza kutuma kwa wanachama wengi',
       'error.reason.nobodyReachable':

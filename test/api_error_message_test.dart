@@ -43,4 +43,24 @@ void main() {
       'Ombi limekataliwa: Uanachama umeisha',
     );
   });
+
+  test('a permission taken away explains itself (communications M11)', () {
+    expect(
+      apiErrorMessage(
+        FFLocale(),
+        ApiException(403, {
+          'error': 'acl_forbidden',
+          'requiredScope': 'communications',
+        }),
+      ),
+      "Request declined: Your account doesn't have permission for this. Ask the gym owner.",
+    );
+    expect(
+      apiErrorMessage(
+        FFLocale(),
+        ApiException(403, {'error': 'account_suspended'}),
+      ),
+      contains(FFLocale().t('error.reason.accountSuspended')),
+    );
+  });
 }

@@ -100,6 +100,7 @@ String? _knownReason(FFLocale locale, String reason) {
     'email_already_used': 'error.reason.emailAlreadyUsed',
     'invalid_credentials': 'error.reason.invalidCredentials',
     'account_suspended': 'error.reason.accountSuspended',
+    'acl_forbidden': 'error.reason.noPermission',
     'active_subscription_required': 'error.reason.activeSubscriptionRequired',
     // Communications.
     'confirm_large_send': 'error.reason.confirmLargeSend',

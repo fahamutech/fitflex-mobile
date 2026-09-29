@@ -27,6 +27,9 @@ String skipReasonLabel(BuildContext context, String reason) {
     'whatsapp_template_not_approved',
     'invalid_phone',
     'marketing_cap',
+    'account_suspended',
+    'member_not_found',
+    'not_gym_member',
   };
   return known.contains(reason) ? context.tr('comms.skip.$reason') : reason;
 }
