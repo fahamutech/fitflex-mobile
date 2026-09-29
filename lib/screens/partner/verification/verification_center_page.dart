@@ -131,7 +131,14 @@ class _VerificationCenterPageState extends State<VerificationCenterPage> {
 
     final external = _externalHint(item);
     if (external != null) return _show(context.tr(external));
-    if (!data.editable) return _show(context.tr('kyc.locked'));
+    final canEdit = item.requirementKey != null
+        ? data.documentsEditable
+        : data.editable;
+    if (!canEdit) {
+      return _show(
+        context.tr(data.status.renewable ? 'kyc.lockedApproved' : 'kyc.locked'),
+      );
+    }
 
     Widget? page;
     if (item.requirementKey != null) {
@@ -280,6 +287,7 @@ class _StatusCard extends StatelessWidget {
     final message = [
       context.tr(key),
       if (note != null && note.isNotEmpty) note,
+      if (data.status.renewable) context.tr('kyc.renewHint'),
     ].join('\n\n');
     return FFAlert(key: const Key('kyc-status'), message: message, tone: tone);
   }
@@ -315,7 +323,12 @@ class _ItemTile extends StatelessWidget {
       ),
       title: Text(label),
       subtitle: subtitle.isEmpty ? null : Text(subtitle),
-      trailing: FFBadge(label: context.tr(statusKey), tone: tone),
+      trailing: item.optional && !item.done
+          ? FFBadge(
+              label: context.tr('kyc.itemStatus.optional'),
+              tone: FFBadgeTone.gray,
+            )
+          : FFBadge(label: context.tr(statusKey), tone: tone),
       onTap: onTap,
     );
   }

@@ -15,6 +15,10 @@ class Gym {
   final String? accessMode;
   final String? venueType;
   final bool isVerified;
+
+  /// The gym's listing is filled in (photos, hours, rates…). Separate from
+  /// [isVerified], which follows the owner's KYC.
+  final bool profileComplete;
   final String? verificationStatus;
   final double? latitude;
   final double? longitude;
@@ -43,6 +47,7 @@ class Gym {
     this.accessMode,
     this.venueType,
     this.isVerified = false,
+    this.profileComplete = false,
     this.verificationStatus,
     this.latitude,
     this.longitude,
@@ -87,6 +92,7 @@ class Gym {
       accessMode: json['accessMode'] as String?,
       venueType: json['venueType'] as String?,
       isVerified: _boolValue(json['isVerified'] ?? json['verified']),
+      profileComplete: _boolValue(json['profileComplete']),
       verificationStatus: json['verificationStatus'] as String?,
       latitude: lat,
       longitude: lng,
@@ -117,6 +123,7 @@ class Gym {
     accessMode: accessMode,
     venueType: venueType,
     isVerified: isVerified,
+    profileComplete: profileComplete,
     verificationStatus: verificationStatus,
     latitude: latitude,
     longitude: longitude,

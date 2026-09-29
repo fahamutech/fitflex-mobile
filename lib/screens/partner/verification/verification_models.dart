@@ -26,6 +26,9 @@ enum KycStatus {
 
   /// The partner can still change their details.
   bool get editable => this == none || this == draft || this == infoRequested;
+
+  /// Verified partners can still upload renewed documents (e.g. a new licence).
+  bool get renewable => this == approved || this == suspended;
 }
 
 class KycAddress {
@@ -249,6 +252,7 @@ class KycItem {
     required this.key,
     required this.status,
     this.byReviewer = false,
+    this.optional = false,
     this.gymId,
     this.gymName,
     this.requirementKey,
@@ -260,6 +264,9 @@ class KycItem {
   final String
   status; // complete | submitted | missing | incomplete | file_missing | rejected | expired | failed | mismatch
   final bool byReviewer;
+
+  /// Collected if given, never required (e.g. a vendor's business licence).
+  final bool optional;
   final String? gymId;
   final String? gymName;
   final String? requirementKey;
@@ -270,6 +277,7 @@ class KycItem {
     key: j['key'] as String,
     status: j['status'] as String? ?? 'missing',
     byReviewer: j['by'] == 'reviewer',
+    optional: j['optional'] == true,
     gymId: j['gymId'] as String?,
     gymName: j['gymName'] as String?,
     requirementKey: j['requirementKey'] as String?,
@@ -349,6 +357,7 @@ class KycOverview {
 
   KycStatus get status => kycCase?.status ?? KycStatus.none;
   bool get editable => status.editable;
+  bool get documentsEditable => status.editable || status.renewable;
 
   KycPerson? personFor(String role) {
     for (final p in people) {

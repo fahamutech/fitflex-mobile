@@ -41,6 +41,22 @@ void main() {
     expect(gym.hasCoordinates, true);
   });
 
+  test('profile complete is separate from the KYC-backed verified badge', () {
+    final gym = Gym.fromJson({
+      'id': 'gym2',
+      'name': 'Kilimani Fit',
+      'tier': 'standard',
+      'location': 'Sinza',
+      'verified': false,
+      'profileComplete': true,
+    });
+
+    expect(gym.profileComplete, true);
+    expect(gym.isVerified, false);
+    expect(gymIsVerified(gym), false);
+    expect(gym.withRating(4, 1).profileComplete, true);
+  });
+
   test(
     'gym verified rule follows explicit backend verification fields only',
     () {
