@@ -2200,6 +2200,8 @@ class FFLocale extends ChangeNotifier {
       'comms.done.draft': 'Draft saved.',
       'comms.done.deleted': 'Draft deleted.',
       'comms.done.cancelled': 'Message cancelled.',
+      'comms.done.duplicated': 'Copied as a new draft. Check it, then send.',
+      'comms.detail.duplicate': 'Use again as a new message',
       'comms.done.unscheduled': 'Moved back to drafts.',
       'comms.detail.title': 'Message',
       'comms.detail.sending':
@@ -5069,6 +5071,9 @@ class FFLocale extends ChangeNotifier {
       'comms.done.draft': 'Rasimu imehifadhiwa.',
       'comms.done.deleted': 'Rasimu imefutwa.',
       'comms.done.cancelled': 'Ujumbe umeghairiwa.',
+      'comms.done.duplicated':
+          'Umenakiliwa kama rasimu mpya. Uangalie, kisha utume.',
+      'comms.detail.duplicate': 'Tumia tena kama ujumbe mpya',
       'comms.done.unscheduled': 'Umerudishwa kwenye rasimu.',
       'comms.detail.title': 'Ujumbe',
       'comms.detail.sending':

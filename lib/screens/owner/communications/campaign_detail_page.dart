@@ -1,6 +1,7 @@
 // One campaign: status, the message, who it was for, and delivery per
 // channel. Drafts can be edited or deleted; scheduled campaigns can be
-// taken back to draft or cancelled.
+// taken back to draft or cancelled. Any campaign can be used again: it is
+// copied into a new draft that opens in the composer.
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -119,6 +120,17 @@ class _CampaignDetailPageState extends State<CampaignDetailPage> {
     if (!ok || !mounted) return;
     await _act(() async => await _repo.cancel(c.id), 'comms.done.cancelled');
     await _load();
+  }
+
+  Future<void> _duplicate(Campaign c) async {
+    Campaign? copy;
+    await _act(() async {
+      copy = await _repo.duplicate(c.id);
+    }, 'comms.done.duplicated');
+    final created = copy;
+    if (created == null || !mounted) return;
+    await context.push('/owner/communications/campaigns/${created.id}/edit');
+    if (mounted) await _load();
   }
 
   Future<void> _unschedule(Campaign c) async {
@@ -322,6 +334,13 @@ class _CampaignDetailPageState extends State<CampaignDetailPage> {
             child: Text(context.tr('comms.detail.cancel')),
           ),
         ],
+        const SizedBox(height: FFTokens.spacingSm),
+        TextButton.icon(
+          key: const Key('detail-duplicate'),
+          onPressed: _busy ? null : () => _duplicate(c),
+          icon: const Icon(Icons.copy_outlined),
+          label: Text(context.tr('comms.detail.duplicate')),
+        ),
       ],
     );
   }

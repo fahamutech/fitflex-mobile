@@ -1579,6 +1579,11 @@ class ApiClient {
   Future<Map<String, dynamic>> ownerCancelCampaign(String id) async =>
       await _request('POST', '/owner/communications/campaigns/$id/cancel');
 
+  /// Copies any campaign into a new draft (same audience, message and
+  /// channels); the audience is worked out again when the copy is sent.
+  Future<Map<String, dynamic>> ownerDuplicateCampaign(String id) async =>
+      await _request('POST', '/owner/communications/campaigns/$id/duplicate');
+
   /// Send now. Repeating the same [sendRequestId] never sends twice.
   Future<Map<String, dynamic>> ownerSendCampaign(
     String id, {
