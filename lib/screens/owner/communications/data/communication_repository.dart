@@ -171,6 +171,11 @@ class CommunicationRepository {
     ((await _api.ownerCancelCampaign(id))['campaign'] as Map).cast(),
   );
 
+  /// A new draft copied from [id], to send again.
+  Future<Campaign> duplicate(String id) async => Campaign.fromJson(
+    ((await _api.ownerDuplicateCampaign(id))['campaign'] as Map).cast(),
+  );
+
   Future<Campaign> send(
     String id, {
     required String sendRequestId,

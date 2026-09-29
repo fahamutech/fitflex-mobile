@@ -75,6 +75,17 @@ class _FakeRepo extends CommunicationRepository {
   final timelineCalls = <(HistoryFilter, String?)>[];
   final recipientCalls = <(HistoryFilter, String?)>[];
   Object? timelineError;
+  final duplicated = <String>[];
+
+  @override
+  Future<Campaign> duplicate(String id) async {
+    duplicated.add(id);
+    return Campaign(
+      id: 'cmp_copy',
+      name: 'Renewal reminder (copy)',
+      status: CampaignStatus.draft,
+    );
+  }
 
   @override
   Future<HistoryPage<CommunicationItem>> memberCommunications(
@@ -373,6 +384,36 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('member-messages')), findsNothing);
     });
+
+    testWidgets(
+      'a sent campaign can be used again: copied, then opened to edit',
+      (tester) async {
+        _tall(tester);
+        final repo = _FakeRepo();
+        final router = _router(
+          CampaignDetailPage(campaignId: 'cmp_1', repository: repo),
+          extra: [
+            GoRoute(
+              path: '/owner/communications/campaigns/:id/edit',
+              builder: (_, s) =>
+                  Scaffold(body: Text('editing ${s.pathParameters['id']}')),
+            ),
+          ],
+        );
+        await tester.pumpWidget(_app(router));
+        await tester.pumpAndSettle();
+        await tester.scrollUntilVisible(
+          find.byKey(const Key('detail-duplicate')),
+          300,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('detail-duplicate')));
+        await tester.pumpAndSettle();
+        expect(repo.duplicated, ['cmp_1']);
+        expect(find.text('editing cmp_copy'), findsOneWidget);
+      },
+    );
 
     testWidgets('a campaign shows its numbers, who made it, and who got it', (
       tester,
