@@ -21,6 +21,7 @@ class _FakeRepo extends MemberRepository {
   bool renewCalled = false;
   bool suspendLastValue = false;
   bool shouldThrow = false;
+  ApiException? apiError;
 
   void setResult(MembersResult r) => _result = r;
 
@@ -127,6 +128,7 @@ class _FakeRepo extends MemberRepository {
 
   @override
   Future<void> setSuspended(String memberId, {required bool suspend}) async {
+    if (apiError != null) throw apiError!;
     if (shouldThrow) throw Exception('network error');
     suspendLastValue = suspend;
   }
@@ -316,6 +318,21 @@ void main() {
       await detailCtrl.toggleSuspend(suspend: false);
       expect(repo.suspendLastValue, isFalse);
     });
+
+    test(
+      'a refused action keeps the API reason; the next action clears it',
+      () async {
+        await detailCtrl.load();
+        repo.apiError = ApiException(409, {
+          'error': 'direct_membership_required',
+        });
+        expect(await detailCtrl.toggleSuspend(suspend: true), isFalse);
+        expect(detailCtrl.errorCode, 'direct_membership_required');
+        repo.apiError = null;
+        expect(await detailCtrl.toggleSuspend(suspend: true), isTrue);
+        expect(detailCtrl.errorCode, isNull);
+      },
+    );
 
     test('renew calls repo and reloads', () async {
       await detailCtrl.load();

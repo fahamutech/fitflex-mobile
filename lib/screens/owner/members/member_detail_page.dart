@@ -75,6 +75,13 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
     );
   }
 
+  /// Why an action on this member failed, in words the owner can act on.
+  String _failureKey() => switch (_controller?.errorCode) {
+    'direct_membership_required' => 'members.directOnly',
+    'member_manages_own_details' => 'members.ownDetails',
+    _ => 'owner.errorGeneric',
+  };
+
   Future<void> _edit(MemberDetail detail) async {
     final payload = await openEditMemberSheet(context, member: detail);
     if (payload == null || !mounted) return;
@@ -83,9 +90,7 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
     if (!mounted) return;
     messenger.showSnackBar(
       SnackBar(
-        content: Text(
-          context.tr(ok ? 'members.memberUpdated' : 'owner.errorGeneric'),
-        ),
+        content: Text(context.tr(ok ? 'members.memberUpdated' : _failureKey())),
       ),
     );
   }
@@ -139,7 +144,7 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
         content: Text(
           context.tr(
             !ok
-                ? 'owner.errorGeneric'
+                ? _failureKey()
                 : (suspend ? 'members.suspended' : 'members.reactivated'),
           ),
         ),
@@ -189,14 +194,25 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
                         ),
                       ),
                     ),
-                    _ActionBar(
-                      detail: detail,
-                      busy: controller.busy,
-                      onCheckIn: () => _checkIn(detail),
-                      onRenew: () => _renew(detail),
-                      onEdit: () => _edit(detail),
-                      onSuspend: () => _toggleSuspend(detail),
-                    ),
+                    // A FitFlex Pass visitor is FitFlex's member, not the gym's:
+                    // the gym sees their visits but can't edit or suspend them.
+                    if (detail.memberType == OwnerMemberType.fitflex)
+                      Padding(
+                        key: const Key('member-fitflex-note'),
+                        padding: const EdgeInsets.all(FFTokens.spacingMd),
+                        child: FFAlert(
+                          message: context.tr('members.fitflexManaged'),
+                        ),
+                      )
+                    else
+                      _ActionBar(
+                        detail: detail,
+                        busy: controller.busy,
+                        onCheckIn: () => _checkIn(detail),
+                        onRenew: () => _renew(detail),
+                        onEdit: () => _edit(detail),
+                        onSuspend: () => _toggleSuspend(detail),
+                      ),
                   ],
                 );
               },
