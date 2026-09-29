@@ -1024,3 +1024,146 @@ class _AddAccountPageState extends State<_AddAccountPage> {
     ],
   );
 }
+
+/// One agreement (partner terms or verification consent) to read and accept.
+/// Returns the refreshed overview once accepted.
+class AgreementPage extends StatefulWidget {
+  const AgreementPage({
+    super.key,
+    required this.repository,
+    required this.agreementType,
+  });
+
+  final VerificationRepository repository;
+  final String agreementType;
+
+  @override
+  State<AgreementPage> createState() => _AgreementPageState();
+}
+
+class _AgreementPageState extends State<AgreementPage> {
+  KycAgreement? _agreement;
+  Object? _loadError;
+  bool _agreed = false;
+  bool _busy = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_agreement == null && _loadError == null) _load();
+  }
+
+  Future<void> _load() async {
+    final lang = FFLocaleScope.of(context).locale.languageCode;
+    try {
+      final list = await widget.repository.agreements(lang);
+      final match = list.where((a) => a.agreementType == widget.agreementType);
+      if (!mounted) return;
+      setState(() {
+        _agreement = match.isEmpty ? null : match.first;
+        _loadError = match.isEmpty ? StateError('not_found') : null;
+      });
+    } catch (e) {
+      if (mounted) setState(() => _loadError = e);
+    }
+  }
+
+  Future<void> _accept() async {
+    setState(() => _busy = true);
+    try {
+      final updated = await widget.repository.acceptAgreement(_agreement!);
+      if (!mounted) return;
+      _snack(context, context.tr('kyc.agreement.done'));
+      Navigator.of(context).pop(updated);
+    } catch (e) {
+      if (mounted) _snack(context, _errorText(context, e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final a = _agreement;
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(a?.title ?? context.tr('kyc.agreement.title')),
+      ),
+      body: a == null
+          ? Center(
+              child: _loadError == null
+                  ? const CircularProgressIndicator()
+                  : Padding(
+                      padding: const EdgeInsets.all(FFTokens.spacingLg),
+                      child: Text(context.tr('kyc.agreement.loadFailed')),
+                    ),
+            )
+          : ListView(
+              key: const Key('kyc-agreement-text'),
+              padding: const EdgeInsets.all(FFTokens.spacingLg),
+              children: [
+                Text(
+                  [
+                    ?a.reference,
+                    context
+                        .tr('kyc.agreement.version')
+                        .replaceFirst('{v}', a.version),
+                  ].join(' · '),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                for (final s in a.sections) ...[
+                  _gap(),
+                  Text(
+                    s.heading,
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: FFTokens.spacingXs),
+                  Text(s.text),
+                ],
+                _gap(),
+                if (a.accepted)
+                  FFAlert(
+                    key: const Key('kyc-agreement-accepted'),
+                    tone: FFAlertTone.success,
+                    message: context
+                        .tr('kyc.agreement.accepted')
+                        .replaceFirst(
+                          '{date}',
+                          a.acceptedAt!.toLocal().toIso8601String().substring(
+                            0,
+                            10,
+                          ),
+                        ),
+                  )
+                else
+                  CheckboxListTile(
+                    key: const Key('kyc-agreement-check'),
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    value: _agreed,
+                    onChanged: _busy
+                        ? null
+                        : (v) => setState(() => _agreed = v ?? false),
+                    title: Text(context.tr('kyc.agreement.confirm')),
+                  ),
+              ],
+            ),
+      bottomNavigationBar: a == null || a.accepted
+          ? null
+          : SafeArea(
+              minimum: const EdgeInsets.all(FFTokens.spacingLg),
+              child: FilledButton(
+                key: const Key('kyc-agreement-accept'),
+                onPressed: _busy || !_agreed ? null : _accept,
+                child: _busy
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(context.tr('kyc.agreement.accept')),
+              ),
+            ),
+    );
+  }
+}

@@ -51,4 +51,20 @@ class VerificationRepository {
 
   Future<KycOverview> withdraw() async =>
       KycOverview.fromJson(await _api.withdrawMyKyc());
+
+  Future<List<KycAgreement>> agreements(String lang) async {
+    final json = await _api.myKycAgreements(lang);
+    return [
+      for (final a in (json['agreements'] as List? ?? const []))
+        if (a is Map<String, dynamic>) KycAgreement.fromJson(a),
+    ];
+  }
+
+  Future<KycOverview> acceptAgreement(KycAgreement agreement) async =>
+      KycOverview.fromJson(
+        await _api.acceptMyKycAgreement(
+          agreement.agreementType,
+          agreement.version,
+        ),
+      );
 }

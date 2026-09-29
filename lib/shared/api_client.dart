@@ -1724,6 +1724,19 @@ class ApiClient {
   Future<Map<String, dynamic>> withdrawMyKyc() async =>
       await _request('POST', '/me/kyc/withdraw');
 
+  /// The partner terms and verification consent to accept, in [lang] (en or sw).
+  Future<Map<String, dynamic>> myKycAgreements(String lang) async =>
+      await _request('GET', '/me/kyc/agreements?lang=$lang');
+
+  Future<Map<String, dynamic>> acceptMyKycAgreement(
+    String agreementType,
+    String version,
+  ) async => await _request(
+    'POST',
+    '/me/kyc/agreements',
+    body: {'agreementType': agreementType, 'version': version},
+  );
+
   // ── Gym and trainer reviews ──────────────────────────────────────────
   Future<ReviewSummary> reviewSummary(ReviewSubject subject, String id) async =>
       ReviewSummary.fromJson(

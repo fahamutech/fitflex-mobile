@@ -502,3 +502,48 @@ const countries = <String, String>{
   'US': 'United States',
   'IN': 'India',
 };
+
+/// A text the partner accepts in the app: their partner terms or the
+/// verification consent. Versioned; a new version must be accepted again.
+class KycAgreement {
+  const KycAgreement({
+    required this.agreementType,
+    required this.version,
+    required this.title,
+    this.reference,
+    this.sections = const [],
+    this.acceptedAt,
+  });
+
+  final String agreementType; // partner_agreement | kyc_consent
+  final String version;
+  final String title;
+  final String? reference;
+  final List<({String heading, String text})> sections;
+  final DateTime? acceptedAt;
+
+  bool get accepted => acceptedAt != null;
+
+  factory KycAgreement.fromJson(Map<String, dynamic> json) => KycAgreement(
+    agreementType: json['agreementType'] as String? ?? '',
+    version: json['version'] as String? ?? '',
+    title: json['title'] as String? ?? '',
+    reference: json['reference'] as String?,
+    sections: [
+      for (final s in (json['sections'] as List? ?? const []))
+        if (s is Map)
+          (
+            heading: s['heading'] as String? ?? '',
+            text: s['text'] as String? ?? '',
+          ),
+    ],
+    acceptedAt: DateTime.tryParse(json['acceptedAt'] as String? ?? ''),
+  );
+
+  /// The checklist item that opens this agreement.
+  static String? typeForItem(String itemKey) => switch (itemKey) {
+    'agreements.partner_terms' => 'partner_agreement',
+    'agreements.kyc_consent' => 'kyc_consent',
+    _ => null,
+  };
+}

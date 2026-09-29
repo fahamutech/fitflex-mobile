@@ -129,6 +129,19 @@ class _VerificationCenterPageState extends State<VerificationCenterPage> {
       return _load();
     }
 
+    // Agreements can be read and accepted at any stage, even once submitted.
+    final agreementType = KycAgreement.typeForItem(item.key);
+    if (agreementType != null) {
+      final updated = await Navigator.of(context).push<KycOverview>(
+        MaterialPageRoute(
+          builder: (_) =>
+              AgreementPage(repository: _repo!, agreementType: agreementType),
+        ),
+      );
+      if (mounted && updated != null) setState(() => _data = updated);
+      return;
+    }
+
     final external = _externalHint(item);
     if (external != null) return _show(context.tr(external));
     final canEdit = item.requirementKey != null
