@@ -154,8 +154,6 @@ class FFLocale extends ChangeNotifier {
       'error.reason.qrExpired': 'QR code expired. Ask the member to refresh it',
       'error.reason.invalidGymQr': 'That is not a FitFlex gym QR code',
       'error.reason.notYourGym': 'That gym is not one you manage',
-      'error.reason.directMembershipRequired':
-          'This member has a FitFlex pass. Scan their QR code to check them in.',
       'error.reason.noPermission':
           'Your account doesn\'t have permission for this. Ask the gym owner.',
       'error.reason.gymRequired': 'Choose a gym first',
@@ -912,7 +910,11 @@ class FFLocale extends ChangeNotifier {
       'shop.inStock': 'in stock',
       'shop.outOfStock': 'Out of stock',
       'shop.placeOrder': 'Place order',
-      'shop.orderPlaced': 'Order placed — the vendor will confirm it.',
+      'shop.orderPlaced':
+          'Order placed. It goes to the vendor once FitFlex confirms your payment.',
+      'shop.awaitingPayment': 'Awaiting payment confirmation',
+      'vendor.awaitingPayment':
+          'Awaiting payment confirmation — you can fulfil it once it’s paid.',
       'shop.orderFailed': 'Could not place the order. Try again.',
       'shop.browse': 'Browse',
       'shop.myOrders': 'My orders',
@@ -1906,7 +1908,15 @@ class FFLocale extends ChangeNotifier {
       'members.suspend': 'Suspend',
       'members.reactivate': 'Reactivate',
       'members.suspendConfirm':
-          'Suspend this member? They will not be able to check in.',
+          'Pause this member’s plan at your gym? They won’t be able to check in here until you reactivate it.',
+      'members.directOnly':
+          'Only your own gym members can be changed here. FitFlex Pass members are managed by FitFlex.',
+      'members.planPaused':
+          'This member\'s plan at your gym is paused. Reactivate it to check them in.',
+      'members.ownDetails':
+          'This member signs in to FitFlex and manages their own name and phone number.',
+      'members.fitflexManaged':
+          'FitFlex Pass member. You can see their visits to your gym; FitFlex manages their membership.',
       'members.suspended': 'Member suspended',
       'members.reactivated': 'Member reactivated',
       'members.checkInSuccess': 'Check-in Successful!',
@@ -3027,8 +3037,6 @@ class FFLocale extends ChangeNotifier {
       'error.reason.qrExpired': 'QR imeisha muda. Mwambie mwanachama aisasishe',
       'error.reason.invalidGymQr': 'Hiyo si QR ya gym ya FitFlex',
       'error.reason.notYourGym': 'Gym hiyo si unayoisimamia',
-      'error.reason.directMembershipRequired':
-          'Mwanachama huyu ana pasi ya FitFlex. Changanua QR yake ili kumwingiza.',
       'error.reason.noPermission':
           'Akaunti yako haina ruhusa ya hili. Muulize mmiliki wa gym.',
       'error.reason.gymRequired': 'Chagua gym kwanza',
@@ -3826,7 +3834,11 @@ class FFLocale extends ChangeNotifier {
       'shop.inStock': 'zipo stoo',
       'shop.outOfStock': 'Imeisha stoo',
       'shop.placeOrder': 'Weka oda',
-      'shop.orderPlaced': 'Oda imewekwa — muuzaji ataithibitisha.',
+      'shop.orderPlaced':
+          'Oda imewekwa. Itamfikia muuzaji baada ya FitFlex kuthibitisha malipo yako.',
+      'shop.awaitingPayment': 'Inasubiri uthibitisho wa malipo',
+      'vendor.awaitingPayment':
+          'Inasubiri uthibitisho wa malipo — utaweza kuitekeleza ikishalipwa.',
       'shop.orderFailed': 'Imeshindikana kuweka oda. Jaribu tena.',
       'shop.browse': 'Vinjari',
       'shop.myOrders': 'Oda zangu',
@@ -4790,7 +4802,16 @@ class FFLocale extends ChangeNotifier {
       'members.editComingSoon': 'Kuhariri wanachama kunakuja hivi karibuni.',
       'members.suspend': 'Simamisha',
       'members.reactivate': 'Rejesha',
-      'members.suspendConfirm': 'Simamisha mwanachama huyu? Hataweza kuingia.',
+      'members.suspendConfirm':
+          'Simamisha mpango wa mwanachama huyu kwenye gym yako? Hataweza kuingia hapa mpaka umrejeshe.',
+      'members.directOnly':
+          'Unaweza kubadilisha wanachama wa gym yako tu. Wanachama wa FitFlex Pass wanasimamiwa na FitFlex.',
+      'members.planPaused':
+          'Mpango wa mwanachama huyu kwenye gym yako umesitishwa. Uwezeshe tena ili aingie.',
+      'members.ownDetails':
+          'Mwanachama huyu anaingia FitFlex mwenyewe na anasimamia jina na namba yake ya simu.',
+      'members.fitflexManaged':
+          'Mwanachama wa FitFlex Pass. Unaona matembeleo yake kwenye gym yako; FitFlex inasimamia uanachama wake.',
       'members.suspended': 'Mwanachama amesimamishwa',
       'members.reactivated': 'Mwanachama amerejeshwa',
       'members.checkInSuccess': 'Mahudhurio Yamefanikiwa!',

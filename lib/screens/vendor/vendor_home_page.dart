@@ -393,6 +393,11 @@ class _VendorHomePageState extends State<VendorHomePage> {
                       ? '${context.tr('vendor.pickupGym')}: ${order['pickupGymId'] ?? '-'}'
                       : '${context.tr('vendor.deliveryAddress')}: ${order['deliveryAddress'] ?? '-'}',
                 ),
+                if (order['paymentStatus'] == 'pending')
+                  Text(
+                    context.tr('vendor.awaitingPayment'),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                 if (!['delivered', 'cancelled'].contains(status)) ...[
                   const SizedBox(height: FFTokens.spacingSm),
                   Wrap(
@@ -400,7 +405,8 @@ class _VendorHomePageState extends State<VendorHomePage> {
                     children: [
                       FilledButton.tonal(
                         key: Key('vendor-next-${order['id']}'),
-                        onPressed: _busy
+                        // Only paid orders can be fulfilled.
+                        onPressed: _busy || order['paymentStatus'] == 'pending'
                             ? null
                             : () => _updateOrder(
                                 order['id'].toString(),

@@ -59,4 +59,11 @@ void main() {
     await _openSheet(tester);
     expect(find.text(FFLocale().t('owner.errorGeneric')), findsOneWidget);
   });
+
+  test('a paused plan explains itself in English and Swahili', () {
+    for (final lang in ['en', 'sw']) {
+      final locale = FFLocale()..set(Locale(lang));
+      expect(locale.t('members.planPaused'), isNot('members.planPaused'));
+    }
+  });
 }

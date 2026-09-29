@@ -21,6 +21,7 @@ class _FakeRepo extends MemberRepository {
   bool renewCalled = false;
   bool suspendLastValue = false;
   bool shouldThrow = false;
+  ApiException? apiError;
 
   void setResult(MembersResult r) => _result = r;
 
@@ -127,6 +128,7 @@ class _FakeRepo extends MemberRepository {
 
   @override
   Future<void> setSuspended(String memberId, {required bool suspend}) async {
+    if (apiError != null) throw apiError!;
     if (shouldThrow) throw Exception('network error');
     suspendLastValue = suspend;
   }
@@ -304,19 +306,6 @@ void main() {
       expect(ok, isFalse);
     });
 
-    test(
-      'a failed check-in keeps its error for the sheet; a later success clears it',
-      () async {
-        repo.shouldThrow = true;
-        await detailCtrl.checkIn();
-        expect(detailCtrl.lastFailure, isA<Exception>());
-        repo.shouldThrow = false;
-        await detailCtrl.load();
-        expect(await detailCtrl.checkIn(), isTrue);
-        expect(detailCtrl.lastFailure, isNull);
-      },
-    );
-
     test('toggleSuspend passes suspend=true to repo', () async {
       await detailCtrl.load();
       repo.shouldThrow = false;
@@ -329,6 +318,21 @@ void main() {
       await detailCtrl.toggleSuspend(suspend: false);
       expect(repo.suspendLastValue, isFalse);
     });
+
+    test(
+      'a refused action keeps the API reason; the next action clears it',
+      () async {
+        await detailCtrl.load();
+        repo.apiError = ApiException(409, {
+          'error': 'direct_membership_required',
+        });
+        expect(await detailCtrl.toggleSuspend(suspend: true), isFalse);
+        expect(detailCtrl.errorCode, 'direct_membership_required');
+        repo.apiError = null;
+        expect(await detailCtrl.toggleSuspend(suspend: true), isTrue);
+        expect(detailCtrl.errorCode, isNull);
+      },
+    );
 
     test('renew calls repo and reloads', () async {
       await detailCtrl.load();

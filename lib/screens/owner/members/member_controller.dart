@@ -4,6 +4,7 @@
 
 import 'package:flutter/foundation.dart';
 
+import '../../../shared/api_client.dart';
 import 'data/member_models.dart';
 import 'data/member_repository.dart';
 
@@ -128,6 +129,7 @@ class MemberDetailController extends ChangeNotifier {
   bool _loading = false;
   bool _busy = false;
   String? _error;
+  String? _errorCode;
   MemberDetail? _detail;
 
   // Check-in summary period selector state.
@@ -141,10 +143,8 @@ class MemberDetailController extends ChangeNotifier {
   bool get busy => _busy;
   String? get error => _error;
 
-  /// The error from the last action (check-in, renew, …) that failed, for
-  /// explaining it with [errorMessage]; null after one that succeeded.
-  Object? get lastFailure => _lastFailure;
-  Object? _lastFailure;
+  /// The API's reason for the last failed action, e.g. 'direct_membership_required'.
+  String? get errorCode => _errorCode;
   MemberDetail? get detail => _detail;
 
   CheckInPeriod get period => _period;
@@ -216,8 +216,8 @@ class MemberDetailController extends ChangeNotifier {
   }
 
   Future<bool> _run(Future<void> Function() action) async {
+    _errorCode = null;
     _busy = true;
-    _lastFailure = null;
     notifyListeners();
     var ok = false;
     try {
@@ -225,8 +225,8 @@ class MemberDetailController extends ChangeNotifier {
       await load();
       ok = true;
     } catch (e) {
+      _errorCode = e is ApiException ? e.code : null;
       _error = e.toString();
-      _lastFailure = e;
     } finally {
       _busy = false;
       notifyListeners();
