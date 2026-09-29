@@ -63,4 +63,16 @@ void main() {
       contains(FFLocale().t('error.reason.accountSuspended')),
     );
   });
+
+  test('manual check-in of a pass member tells the owner to scan the QR', () {
+    final error = ApiException(409, {'error': 'direct_membership_required'});
+    expect(
+      apiErrorMessage(FFLocale(), error),
+      'Request declined: This member has a FitFlex pass. Scan their QR code to check them in.',
+    );
+    expect(
+      apiErrorMessage(FFLocale()..set(const Locale('sw')), error),
+      'Ombi limekataliwa: Mwanachama huyu ana pasi ya FitFlex. Changanua QR yake ili kumwingiza.',
+    );
+  });
 }

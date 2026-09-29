@@ -18,6 +18,7 @@ Future<void> showCheckInMemberSheet(
   required MemberDetail member,
   required String checkedInBy,
   required Future<DateTime?> Function() onConfirm,
+  String? Function()? failureMessage,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -27,6 +28,7 @@ Future<void> showCheckInMemberSheet(
       member: member,
       checkedInBy: checkedInBy,
       onConfirm: onConfirm,
+      failureMessage: failureMessage,
     ),
   );
 }
@@ -36,11 +38,16 @@ class _CheckInMemberSheet extends StatefulWidget {
     required this.member,
     required this.checkedInBy,
     required this.onConfirm,
+    this.failureMessage,
   });
 
   final MemberDetail member;
   final String checkedInBy;
   final Future<DateTime?> Function() onConfirm;
+
+  /// Why the check-in failed, when the caller knows (e.g. a FitFlex pass
+  /// member who must scan their QR instead); otherwise a generic error.
+  final String? Function()? failureMessage;
 
   @override
   State<_CheckInMemberSheet> createState() => _CheckInMemberSheetState();
@@ -63,7 +70,8 @@ class _CheckInMemberSheetState extends State<_CheckInMemberSheet> {
       if (time != null) {
         _checkInTime = time;
       } else {
-        _error = context.tr('owner.errorGeneric');
+        _error =
+            widget.failureMessage?.call() ?? context.tr('owner.errorGeneric');
       }
     });
   }

@@ -140,6 +140,11 @@ class MemberDetailController extends ChangeNotifier {
   bool get loading => _loading;
   bool get busy => _busy;
   String? get error => _error;
+
+  /// The error from the last action (check-in, renew, …) that failed, for
+  /// explaining it with [errorMessage]; null after one that succeeded.
+  Object? get lastFailure => _lastFailure;
+  Object? _lastFailure;
   MemberDetail? get detail => _detail;
 
   CheckInPeriod get period => _period;
@@ -212,6 +217,7 @@ class MemberDetailController extends ChangeNotifier {
 
   Future<bool> _run(Future<void> Function() action) async {
     _busy = true;
+    _lastFailure = null;
     notifyListeners();
     var ok = false;
     try {
@@ -220,6 +226,7 @@ class MemberDetailController extends ChangeNotifier {
       ok = true;
     } catch (e) {
       _error = e.toString();
+      _lastFailure = e;
     } finally {
       _busy = false;
       notifyListeners();

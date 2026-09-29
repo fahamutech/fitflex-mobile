@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app_scope.dart';
 import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
+import '../../../shared/api_error_message.dart';
 import '../../../shared/formatters.dart';
 import '../../../shared/i18n.dart';
 import '../owner_shell.dart';
@@ -71,6 +72,12 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
         if (!ok) return null;
         final updated = _controller!.detail ?? detail;
         return updated.checkInSummary.lastCheckinAt ?? DateTime.now();
+      },
+      failureMessage: () {
+        final failure = _controller?.lastFailure;
+        return failure == null
+            ? null
+            : errorMessage(FFLocaleScope.of(context), failure);
       },
     );
   }

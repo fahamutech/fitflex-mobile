@@ -304,6 +304,19 @@ void main() {
       expect(ok, isFalse);
     });
 
+    test(
+      'a failed check-in keeps its error for the sheet; a later success clears it',
+      () async {
+        repo.shouldThrow = true;
+        await detailCtrl.checkIn();
+        expect(detailCtrl.lastFailure, isA<Exception>());
+        repo.shouldThrow = false;
+        await detailCtrl.load();
+        expect(await detailCtrl.checkIn(), isTrue);
+        expect(detailCtrl.lastFailure, isNull);
+      },
+    );
+
     test('toggleSuspend passes suspend=true to repo', () async {
       await detailCtrl.load();
       repo.shouldThrow = false;

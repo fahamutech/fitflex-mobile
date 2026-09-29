@@ -154,6 +154,8 @@ class FFLocale extends ChangeNotifier {
       'error.reason.qrExpired': 'QR code expired. Ask the member to refresh it',
       'error.reason.invalidGymQr': 'That is not a FitFlex gym QR code',
       'error.reason.notYourGym': 'That gym is not one you manage',
+      'error.reason.directMembershipRequired':
+          'This member has a FitFlex pass. Scan their QR code to check them in.',
       'error.reason.noPermission':
           'Your account doesn\'t have permission for this. Ask the gym owner.',
       'error.reason.gymRequired': 'Choose a gym first',
@@ -3025,6 +3027,8 @@ class FFLocale extends ChangeNotifier {
       'error.reason.qrExpired': 'QR imeisha muda. Mwambie mwanachama aisasishe',
       'error.reason.invalidGymQr': 'Hiyo si QR ya gym ya FitFlex',
       'error.reason.notYourGym': 'Gym hiyo si unayoisimamia',
+      'error.reason.directMembershipRequired':
+          'Mwanachama huyu ana pasi ya FitFlex. Changanua QR yake ili kumwingiza.',
       'error.reason.noPermission':
           'Akaunti yako haina ruhusa ya hili. Muulize mmiliki wa gym.',
       'error.reason.gymRequired': 'Chagua gym kwanza',
