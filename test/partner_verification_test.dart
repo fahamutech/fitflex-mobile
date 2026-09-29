@@ -223,6 +223,42 @@ class _FakeRepo extends VerificationRepository {
     json = _trainer(ready: true);
     return _now;
   }
+
+  String? agreementsLang;
+  DateTime? termsAcceptedAt;
+
+  @override
+  Future<List<KycAgreement>> agreements(String lang) async {
+    agreementsLang = lang;
+    return [
+      KycAgreement(
+        agreementType: 'partner_agreement',
+        version: '2026-09-29',
+        reference: 'FFA-TPT-001 (online) v1.0',
+        title: lang == 'sw'
+            ? 'Masharti ya Wakufunzi Washirika wa FitFlex'
+            : 'FitFlex Trainer Partner Terms',
+        sections: const [
+          (
+            heading: 'Independent contractor',
+            text: 'You offer your services as an independent contractor.',
+          ),
+        ],
+        acceptedAt: termsAcceptedAt,
+      ),
+      const KycAgreement(
+        agreementType: 'kyc_consent',
+        version: '2026-09-29',
+        title: 'Consent to verification and use of your details',
+      ),
+    ];
+  }
+
+  @override
+  Future<KycOverview> acceptAgreement(KycAgreement agreement) async {
+    calls.add('accept:${agreement.agreementType}:${agreement.version}');
+    return _now;
+  }
 }
 
 Widget _app(Widget home, {String lang = 'en'}) {
@@ -353,6 +389,64 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.byType(DocumentPage), findsOneWidget);
+    });
+
+    testWidgets('partner terms: read, tick to agree, then accept', (
+      tester,
+    ) async {
+      _tall(tester);
+      final json = _trainer(status: 'submitted', ready: true);
+      (json['checklist']['sections'] as List).add({
+        'key': 'agreements',
+        'items': [
+          _item('agreements.partner_terms', 'missing'),
+          _item('agreements.kyc_consent', 'missing'),
+        ],
+      });
+      final repo = _FakeRepo(json);
+      await tester.pumpWidget(
+        _app(VerificationCenterPage(repository: repo), lang: 'sw'),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Makubaliano'), findsOneWidget);
+
+      // Open even though the case is submitted: agreements aren't locked.
+      await tester.tap(
+        find.byKey(const Key('kyc-item-agreements.partner_terms')),
+      );
+      await tester.pumpAndSettle();
+      expect(repo.agreementsLang, 'sw');
+      expect(
+        find.text('Masharti ya Wakufunzi Washirika wa FitFlex'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('independent contractor'), findsOneWidget);
+
+      final accept = find.byKey(const Key('kyc-agreement-accept'));
+      expect(tester.widget<FilledButton>(accept).onPressed, isNull);
+      await tester.tap(find.byKey(const Key('kyc-agreement-check')));
+      await tester.pump();
+      await tester.tap(accept);
+      await tester.pumpAndSettle();
+      expect(repo.calls, ['accept:partner_agreement:2026-09-29']);
+      expect(find.byType(AgreementPage), findsNothing);
+    });
+
+    testWidgets('an accepted agreement says when, with nothing to accept', (
+      tester,
+    ) async {
+      _tall(tester);
+      final repo = _FakeRepo(_trainer())
+        ..termsAcceptedAt = DateTime.utc(2026, 9, 29, 8);
+      await tester.pumpWidget(
+        _app(
+          AgreementPage(repository: repo, agreementType: 'partner_agreement'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('kyc-agreement-accepted')), findsOneWidget);
+      expect(find.text('You accepted this on 2026-09-29.'), findsOneWidget);
+      expect(find.byKey(const Key('kyc-agreement-accept')), findsNothing);
     });
 
     testWidgets('a request for more information shows FitFlex\'s note', (
@@ -686,6 +780,7 @@ void main() {
         'professional',
         'representative',
         'marketplace',
+        'agreements',
       ]) {
         keys.add('kyc.section.$s');
       }
@@ -708,6 +803,8 @@ void main() {
         'tin_certificate',
         'licence',
         'gym_location',
+        'partner_terms',
+        'kyc_consent',
         'gym_profile',
         'rate_card',
         'site_verification',
