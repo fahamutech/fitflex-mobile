@@ -33,6 +33,9 @@ class ApiException implements Exception {
 /// Production backend. Used whenever API_BASE is not provided.
 const kLiveApiBase = 'https://fitflex-faas.bfast.smartstock.co.tz';
 
+/// Sent on every request; see [ApiClient._request].
+const kIdentityV2Client = 'identity-v2';
+
 class ApiClient {
   ApiClient({String? baseUrl}) : baseUrl = baseUrl ?? _resolveBaseUrl();
 
@@ -74,6 +77,9 @@ class ApiClient {
     final uri = Uri.parse('$baseUrl$path');
     final headers = <String, String>{
       'content-type': 'application/json',
+      // Identity V2 (decision C3b): this build understands persons and
+      // personas. The backend ignores it unless its V2 flags are on.
+      'x-fitflex-client': kIdentityV2Client,
       if (_token != null) 'authorization': 'Bearer $_token',
     };
     late http.Response res;
@@ -212,6 +218,21 @@ class ApiClient {
       'POST',
       '/auth/firebase/session',
       body: {'idToken': idToken, 'requestedRole': ?requestedRole},
+    );
+  }
+
+  /// Identity V2: the signed-in Person and their personas (User rows).
+  /// Answers 404 while the backend's V2 flags are off.
+  Future<Map<String, dynamic>> myPersonas() async {
+    return await _request('GET', '/me/personas');
+  }
+
+  /// Identity V2: a session for another persona of the same Person.
+  Future<Map<String, dynamic>> switchPersona(String personaId) async {
+    return await _request(
+      'POST',
+      '/auth/switch-persona',
+      body: {'personaId': personaId},
     );
   }
 

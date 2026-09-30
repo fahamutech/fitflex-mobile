@@ -19,6 +19,23 @@ String _baseUrl(HttpServer server) =>
     'http://${server.address.host}:${server.port}';
 
 void main() {
+  test('every request says it understands Identity V2', () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    String? seen;
+    server.listen((request) async {
+      seen = request.headers.value('x-fitflex-client');
+      request.response.headers.contentType = ContentType.json;
+      request.response.write(jsonEncode({'personas': []}));
+      await request.response.close();
+    });
+    try {
+      await ApiClient(baseUrl: _baseUrl(server)).myPersonas();
+      expect(seen, kIdentityV2Client);
+    } finally {
+      await server.close(force: true);
+    }
+  });
+
   test('any 401 clears the auth session, including a QR failure', () async {
     final server = await _jsonServer(401, {
       'ok': false,

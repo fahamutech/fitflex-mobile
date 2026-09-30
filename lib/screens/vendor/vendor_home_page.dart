@@ -10,6 +10,7 @@ import '../../shared/design_tokens.dart';
 import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
 import '../../shared/widgets/ff_photo_picker_field.dart';
+import '../../shared/widgets/persona_switcher.dart';
 
 class VendorHomePage extends StatefulWidget {
   const VendorHomePage({super.key});
@@ -215,6 +216,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
       appBar: AppBar(
         title: Text(context.tr('vendor.title')),
         actions: [
+          const PersonaSwitchButton(),
           IconButton(
             key: const Key('vendor-sign-out'),
             tooltip: context.tr('home.signout'),

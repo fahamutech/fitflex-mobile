@@ -61,6 +61,13 @@ class FFLocale extends ChangeNotifier {
       'auth.checkApproval': 'Check approval status',
       'auth.stillPending': 'Still pending approval. Please wait.',
       'auth.checkFailed': 'Could not check status. Try again.',
+      'persona.switch': 'Switch role',
+      'persona.switchTitle': 'Continue as',
+      'persona.pickTitle': 'How do you want to continue?',
+      'persona.pickBody':
+          'Your FitFlex account has more than one role. Choose one; you can switch any time from your profile.',
+      'persona.pending': 'Waiting for approval',
+      'persona.switchFailed': 'Could not switch role.',
       'auth.verifyEmailTitle': 'Verify your email',
       'auth.verifyEmailBody':
           'To protect your account, confirm {email} before signing in. We sent you a verification link. Open it, then come back and tap Continue.',
@@ -2944,6 +2951,13 @@ class FFLocale extends ChangeNotifier {
       'auth.checkApproval': 'Angalia hali ya idhini',
       'auth.stillPending': 'Bado inasubiri idhini. Tafadhali subiri.',
       'auth.checkFailed': 'Imeshindwa kuangalia hali. Jaribu tena.',
+      'persona.switch': 'Badilisha nafasi',
+      'persona.switchTitle': 'Endelea kama',
+      'persona.pickTitle': 'Ungependa kuendelea vipi?',
+      'persona.pickBody':
+          'Akaunti yako ya FitFlex ina nafasi zaidi ya moja. Chagua moja; unaweza kubadilisha wakati wowote kwenye wasifu wako.',
+      'persona.pending': 'Inasubiri idhini',
+      'persona.switchFailed': 'Imeshindikana kubadilisha nafasi.',
       'auth.verifyEmailTitle': 'Thibitisha barua pepe yako',
       'auth.verifyEmailBody':
           'Ili kulinda akaunti yako, thibitisha {email} kabla ya kuingia. Tumekutumia kiungo cha uthibitisho. Kifungue, kisha rudi hapa ubonyeze Endelea.',
