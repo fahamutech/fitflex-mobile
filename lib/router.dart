@@ -9,6 +9,7 @@ import 'screens/auth_screen.dart';
 import 'screens/sign_up_screen.dart';
 import 'screens/email_auth_screen.dart';
 import 'screens/verify_email_screen.dart';
+import 'shared/widgets/persona_switcher.dart';
 import 'screens/member/member_shell.dart';
 import 'shared/activity/activity.dart';
 import 'screens/member/member_shop_tab.dart';
@@ -50,6 +51,7 @@ abstract class AppRoutes {
   static const signUp = '/auth/signup';
   static const emailAuth = '/auth/email';
   static const verifyEmail = '/auth/verify-email';
+  static const personaPicker = '/personas';
 
   /// Verify-email step, carrying the role to retry with (sign-up only).
   static String verifyEmailFor(String? requestedRole) =>
@@ -210,6 +212,14 @@ GoRouter buildRouter(AuthState auth) {
         return AppRoutes.language;
       }
 
+      // Identity V2: several personas and none used last — ask first.
+      if (loggedIn && auth.personaChoiceRequired) {
+        return loc == AppRoutes.personaPicker ? null : AppRoutes.personaPicker;
+      }
+      if (loc == AppRoutes.personaPicker && loggedIn) {
+        return routeForSignedInUser(auth);
+      }
+
       // Trainer/Owner: redirect to registration if onboarding not done, even while pending
       if (loggedIn && isPending) {
         final role = auth.user?['userType']?.toString() ?? auth.role;
@@ -338,6 +348,11 @@ GoRouter buildRouter(AuthState auth) {
             );
           },
         ),
+      ),
+      GoRoute(
+        path: AppRoutes.personaPicker,
+        name: 'personaPicker',
+        builder: (context, state) => const PersonaPickerScreen(),
       ),
       GoRoute(
         path: AppRoutes.verifyEmail,

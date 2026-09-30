@@ -19,6 +19,10 @@ class AuthState extends ChangeNotifier {
   String? _token;
   Map<String, dynamic>? _user;
   String _role = 'member';
+  // Identity V2: the Person's personas (User rows). Empty while the backend's
+  // V2 flags are off, which keeps the app on single-persona behaviour.
+  List<Map<String, dynamic>> _personas = const [];
+  bool _personaChoiceRequired = false;
 
   String? get token => _token;
   Map<String, dynamic>? get user => _user;
@@ -27,12 +31,31 @@ class AuthState extends ChangeNotifier {
   bool get isPendingApproval =>
       _user?['approvalStatus']?.toString() == 'pending_approval';
 
+  /// All live personas of the signed-in Person (empty before Identity V2).
+  List<Map<String, dynamic>> get personas => _personas;
+
+  /// Personas this session can switch to: not the current one, not
+  /// portal-only, not suspended or rejected.
+  List<Map<String, dynamic>> get switchablePersonas => _personas
+      .where(
+        (p) =>
+            p['id'] != _user?['id'] &&
+            p['portalOnly'] != true &&
+            p['accountStatus'] != 'suspended' &&
+            p['approvalStatus'] != 'rejected',
+      )
+      .toList(growable: false);
+
+  /// Set when the backend couldn't pick a persona (several, none used last).
+  bool get personaChoiceRequired => _personaChoiceRequired;
+
   Future<void> hydrate() async {
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString('token');
     final u = prefs.getString('user');
     _user = u == null ? null : jsonDecode(u) as Map<String, dynamic>;
     _role = prefs.getString('role') ?? 'member';
+    _personas = _decodePersonas(prefs.getString('personas'));
     api.setToken(_token);
 
     // If we have a token, refresh user from backend to get latest status
@@ -43,6 +66,7 @@ class AuthState extends ChangeNotifier {
         _user = freshUser;
         await prefs.setString('user', jsonEncode(freshUser));
         unawaited(push?.register());
+        await refreshPersonas();
       } on ApiException catch (e) {
         // Token invalid or user deleted — clear session
         if (e.status == 401 || e.status == 404) {
@@ -125,7 +149,70 @@ class AuthState extends ChangeNotifier {
       throw const AdminMobileSignInException();
     }
     await signInWithFitFlexSession(res['token'] as String, user);
+    await _applyPersonaPayload(res);
     return user;
+  }
+
+  /// Identity V2: move this session onto another persona of the same Person.
+  Future<void> switchPersona(String personaId) async {
+    final res = await api.switchPersona(personaId);
+    final user = Map<String, dynamic>.from(res['user'] as Map);
+    // Push belongs to the persona: drop it for the old one, the new session
+    // registers again in signIn().
+    await push?.unregister();
+    await signIn(res['token'] as String, user);
+    await _applyPersonaPayload(res);
+  }
+
+  /// The user picked the persona they're already in.
+  void keepCurrentPersona() {
+    if (!_personaChoiceRequired) return;
+    _personaChoiceRequired = false;
+    notifyListeners();
+  }
+
+  /// Re-read the personas list; a 404 means Identity V2 is off.
+  Future<void> refreshPersonas() async {
+    if (_token == null) return;
+    try {
+      await _applyPersonaPayload(await api.myPersonas(), keepChoice: true);
+    } on ApiException catch (e) {
+      if (e.status == 404) await _applyPersonaPayload(const {});
+    } catch (_) {
+      // Offline: keep what we have.
+    }
+  }
+
+  Future<void> _applyPersonaPayload(
+    Map<String, dynamic> res, {
+    bool keepChoice = false,
+  }) async {
+    final raw = res['personas'];
+    _personas = raw is List
+        ? raw.whereType<Map>().map((p) => Map<String, dynamic>.from(p)).toList()
+        : const [];
+    if (!keepChoice) {
+      _personaChoiceRequired =
+          res['personaChoiceRequired'] == true && _personas.length > 1;
+    }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('personas', jsonEncode(_personas));
+    notifyListeners();
+  }
+
+  static List<Map<String, dynamic>> _decodePersonas(String? raw) {
+    if (raw == null) return const [];
+    try {
+      final list = jsonDecode(raw);
+      return list is List
+          ? list
+                .whereType<Map>()
+                .map((p) => Map<String, dynamic>.from(p))
+                .toList()
+          : const [];
+    } catch (_) {
+      return const [];
+    }
   }
 
   Future<void> signOut() async {
@@ -133,10 +220,13 @@ class AuthState extends ChangeNotifier {
     await push?.unregister();
     _token = null;
     _user = null;
+    _personas = const [];
+    _personaChoiceRequired = false;
     api.setToken(null);
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('token');
     await prefs.remove('user');
+    await prefs.remove('personas');
     notifyListeners();
   }
 }

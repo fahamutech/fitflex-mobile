@@ -26,6 +26,7 @@ import 'trainer_reviews_page.dart';
 import 'trainer_schedule.dart';
 import 'widgets/clients_digest.dart';
 import 'widgets/trainer_sheets.dart';
+import '../../shared/widgets/persona_switcher.dart';
 
 /// Standalone trainer dashboard shown after trainer is onboarded.
 class TrainerHomePage extends StatefulWidget {
@@ -533,6 +534,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
       title: context.tr('member.help'),
       onTap: _openWhatsAppSupport,
     ),
+    const PersonaSwitcherTile(),
     const SizedBox(height: 16),
     OutlinedButton.icon(
       key: const Key('trainer-sign-out'),
