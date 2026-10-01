@@ -838,6 +838,11 @@ class ApiClient {
   Future<void> pushMessageOpened(String messageId) async =>
       await _request('POST', '/me/communications/messages/$messageId/opened');
 
+  /// The member's B2B wellness benefits today, with used and remaining
+  /// allowance (all worked out by the server).
+  Future<Map<String, dynamic>> myWellnessBenefits() async =>
+      await _request('GET', '/b2b/me/benefits') as Map<String, dynamic>;
+
   Future<Map<String, dynamic>> communicationPreferences() async =>
       await _request('GET', '/me/communication-preferences')
           as Map<String, dynamic>;

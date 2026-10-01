@@ -2438,6 +2438,38 @@ class FFLocale extends ChangeNotifier {
       'inbox.open.message': 'Open',
       'inbox.offersNote':
           'You can turn off offers in Privacy & data → Messages & offers.',
+      'benefits.title': 'My wellness benefits',
+      'benefits.tile': 'From your employer, insurer or club',
+      'benefits.intro':
+          'Benefits are used automatically when you check in at a gym or finish a trainer session. When one runs out, your own pass is used.',
+      'benefits.empty.title': 'No wellness benefits yet',
+      'benefits.empty.body':
+          'When your employer, insurer or club gives you a benefit through FitFlex, it shows here.',
+      'benefits.used': 'Used {used} of {limit} {period}',
+      'benefits.remaining': '{n} left',
+      'benefits.unlimited': 'No limit on how often you use it',
+      'benefits.validUntil': 'Valid until {date}',
+      'benefits.noEnd': 'No end date',
+      'benefits.period.day': 'today',
+      'benefits.period.week': 'this week',
+      'benefits.period.month': 'this month',
+      'benefits.period.quarter': 'this quarter',
+      'benefits.period.program': 'in this programme',
+      'benefits.period.unlimited': '',
+      'benefits.type.gym_access': 'Gym access',
+      'benefits.type.trainer_session': 'Trainer sessions',
+      'benefits.type.challenge': 'Challenges',
+      'benefits.type.marketplace': 'Shop',
+      'benefits.type.wellness_activity': 'Wellness activity',
+      'benefits.type.custom': 'Benefit',
+      'benefits.funding.full': 'Your sponsor pays in full',
+      'benefits.funding.sponsor_fixed':
+          'Your sponsor pays up to {amount}; you pay the rest',
+      'benefits.funding.sponsor_percentage':
+          'Your sponsor pays {pct}%; you pay the rest',
+      'benefits.funding.beneficiary_fixed':
+          'You pay {amount}; your sponsor pays the rest',
+      'benefits.funding.none': 'Nothing to pay',
       'msgPrefs.title': 'Messages & offers',
       'msgPrefs.tile': 'Choose which offers you get from your gym and FitFlex',
       'msgPrefs.intro':
@@ -2612,6 +2644,7 @@ class FFLocale extends ChangeNotifier {
       'ownerReg.trainerPassFeeOptional': 'Optional',
       'ownerReg.trainerPassNeedsFee': 'Set a fee for at least one period.',
       'ownerScan.reason_wrong_gym': 'Pass is for a different gym',
+      'ownerScan.reason_sponsor_benefit': 'Covered by a sponsor benefit',
       'ownerScan.reason_trainer_home_gym':
           'Trainer linked to this gym — free entry',
       'error.reason.wrongGym': 'This pass is for a different gym.',
@@ -5349,6 +5382,38 @@ class FFLocale extends ChangeNotifier {
       'inbox.open.message': 'Fungua',
       'inbox.offersNote':
           'Unaweza kuzima ofa kwenye Faragha na data → Ujumbe na ofa.',
+      'benefits.title': 'Manufaa yangu ya afya',
+      'benefits.tile': 'Kutoka kwa mwajiri, bima au klabu yako',
+      'benefits.intro':
+          'Manufaa hutumika yenyewe unapoingia jimu au unapomaliza kipindi cha mkufunzi. Yakiisha, pasi yako mwenyewe hutumika.',
+      'benefits.empty.title': 'Bado huna manufaa ya afya',
+      'benefits.empty.body':
+          'Mwajiri, bima au klabu yako ikikupa manufaa kupitia FitFlex, yataonekana hapa.',
+      'benefits.used': 'Umetumia {used} kati ya {limit} {period}',
+      'benefits.remaining': 'Zimebaki {n}',
+      'benefits.unlimited': 'Hakuna kikomo cha matumizi',
+      'benefits.validUntil': 'Inatumika hadi {date}',
+      'benefits.noEnd': 'Haina tarehe ya mwisho',
+      'benefits.period.day': 'leo',
+      'benefits.period.week': 'wiki hii',
+      'benefits.period.month': 'mwezi huu',
+      'benefits.period.quarter': 'robo hii ya mwaka',
+      'benefits.period.program': 'katika programu hii',
+      'benefits.period.unlimited': '',
+      'benefits.type.gym_access': 'Kuingia jimu',
+      'benefits.type.trainer_session': 'Vipindi vya mkufunzi',
+      'benefits.type.challenge': 'Changamoto',
+      'benefits.type.marketplace': 'Duka',
+      'benefits.type.wellness_activity': 'Shughuli ya afya',
+      'benefits.type.custom': 'Manufaa',
+      'benefits.funding.full': 'Mdhamini wako analipa yote',
+      'benefits.funding.sponsor_fixed':
+          'Mdhamini wako analipa hadi {amount}; wewe unalipa kilichobaki',
+      'benefits.funding.sponsor_percentage':
+          'Mdhamini wako analipa {pct}%; wewe unalipa kilichobaki',
+      'benefits.funding.beneficiary_fixed':
+          'Unalipa {amount}; mdhamini wako analipa kilichobaki',
+      'benefits.funding.none': 'Hakuna cha kulipa',
       'msgPrefs.title': 'Ujumbe na ofa',
       'msgPrefs.tile': 'Chagua ofa unazopokea kutoka jimu yako na FitFlex',
       'msgPrefs.intro':
@@ -5523,6 +5588,7 @@ class FFLocale extends ChangeNotifier {
       'ownerReg.trainerPassFeeOptional': 'Si lazima',
       'ownerReg.trainerPassNeedsFee': 'Weka ada kwa angalau kipindi kimoja.',
       'ownerScan.reason_wrong_gym': 'Pasi ni ya gym nyingine',
+      'ownerScan.reason_sponsor_benefit': 'Inalipiwa na mdhamini',
       'ownerScan.reason_trainer_home_gym':
           'Kocha ameunganishwa na gym hii — kuingia bure',
       'error.reason.wrongGym': 'Pasi hii ni ya gym nyingine.',
