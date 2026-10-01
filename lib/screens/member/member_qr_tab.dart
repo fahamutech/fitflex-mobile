@@ -32,11 +32,11 @@ class MemberQrTab extends StatelessWidget {
         padding: const EdgeInsets.all(FFTokens.spacingLg),
         children: [
           if (data.pendingPayment != null) _PendingPaymentCard(data: data),
-          if (data.hasActivePass)
+          if (data.canCheckIn)
             _QrCard(data: data)
           else
             _QrLockedCard(data: data),
-          if (data.hasActivePass) ...[
+          if (data.canCheckIn) ...[
             const SizedBox(height: 12),
             // Tech Brief §5: self check-in by scanning the gym's entrance QR.
             OutlinedButton.icon(

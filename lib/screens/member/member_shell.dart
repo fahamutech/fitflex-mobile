@@ -91,6 +91,11 @@ class MemberData extends ChangeNotifier {
   bool offline = false;
 
   bool get hasActivePass => me?.hasActivePass == true;
+
+  /// A sponsor (employer, insurer, club) gives this member gym access through
+  /// a wellness benefit, so they can check in without a pass of their own.
+  bool sponsoredGymAccess = false;
+  bool get canCheckIn => hasActivePass || sponsoredGymAccess;
   bool get needsOnboarding => me?.needsOnboarding == true;
   Subscription? get subscription => me?.subscription;
   PaymentRequest? get pendingPayment => me?.pendingPayment;
@@ -175,7 +180,7 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
       (_) => syncPhoneSteps(),
     );
     _qrTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-      if (_data.hasActivePass) _refreshQr();
+      if (_data.canCheckIn) _refreshQr();
     });
   }
 
@@ -233,8 +238,9 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
         _refreshConnections(),
         _refreshGymSharing(),
         _refreshChallenges(),
+        _refreshBenefits(),
       ]);
-      if (_data.hasActivePass) await _refreshQr();
+      if (_data.canCheckIn) await _refreshQr();
     } finally {
       _data.update((d) => d.loading = false);
     }
@@ -502,7 +508,20 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
   }
 
   Future<void> refreshQr() async {
-    if (_data.hasActivePass) await _refreshQr();
+    if (_data.canCheckIn) await _refreshQr();
+  }
+
+  /// Whether a sponsor's benefit lets the member check in. Left as it was if
+  /// the call fails, so a blip never locks the QR.
+  Future<void> _refreshBenefits() async {
+    try {
+      final res = await AppScope.of(context).api.myWellnessBenefits();
+      final sponsored = ((res['benefits'] as List?) ?? const []).any(
+        (b) =>
+            b is Map && (b['benefit'] as Map?)?['benefitType'] == 'gym_access',
+      );
+      _data.update((d) => d.sponsoredGymAccess = sponsored);
+    } catch (_) {}
   }
 
   Future<void> refreshMe() async {

@@ -37,6 +37,7 @@ import 'screens/owner/communications/communication_center_page.dart';
 import 'screens/owner/communications/template_pages.dart';
 import 'screens/owner/communications/history_pages.dart';
 import 'screens/owner/communications/automation_pages.dart';
+import 'screens/member/member_benefits_page.dart';
 import 'screens/member/member_message_settings_page.dart';
 import 'shared/inbox/inbox_pages.dart';
 import 'screens/vendor/vendor_home_page.dart';
@@ -84,6 +85,7 @@ abstract class AppRoutes {
   static const inbox = '/inbox';
   static const inboxMessage = '/inbox/:messageId';
   static const memberMessageSettings = '/member/message-settings';
+  static const memberBenefits = '/member/benefits';
   static const ownerCommunications = '/owner/communications';
   static const ownerCampaignNew = '/owner/communications/new';
   static const ownerCampaignDetail =
@@ -481,6 +483,11 @@ GoRouter buildRouter(AuthState auth) {
         path: AppRoutes.memberMessageSettings,
         name: 'memberMessageSettings',
         builder: (context, state) => const MemberMessageSettingsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.memberBenefits,
+        name: 'memberBenefits',
+        builder: (context, state) => const MemberBenefitsPage(),
       ),
       // Message templates. "new" comes before ":templateId" so it wins.
       GoRoute(
