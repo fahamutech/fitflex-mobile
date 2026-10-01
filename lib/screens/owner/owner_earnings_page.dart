@@ -7,7 +7,9 @@ import '../../shared/design_tokens.dart';
 import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
 import 'owner_shell.dart';
+import 'owner_statement_page.dart';
 import 'widgets/invoice_utils.dart';
+import 'widgets/statement_models.dart';
 
 class OwnerEarningsPage extends StatefulWidget {
   const OwnerEarningsPage({super.key});
@@ -23,6 +25,7 @@ class _OwnerEarningsPageState extends State<OwnerEarningsPage> {
   num _totalPaid = 0;
   num _totalPending = 0;
   List<OwnerInvoice> _invoices = const [];
+  List<OwnerStatement> _statements = const [];
   String? _loadedForGymId;
 
   static const _earningsTypes = ['all', 'direct', 'fitflex'];
@@ -49,6 +52,21 @@ class _OwnerEarningsPageState extends State<OwnerEarningsPage> {
       });
     } on ApiException {
       // keep previous totals
+    }
+    if (!mounted) return;
+    try {
+      final rows = await api.ownerSettlements(gymId: gymId);
+      if (!mounted) return;
+      setState(() {
+        _statements = rows
+            .whereType<Map<String, dynamic>>()
+            .map(OwnerStatement.fromJson)
+            .toList();
+      });
+    } on ApiException {
+      // Staff without the payments permission, or an older server: no list.
+      if (!mounted) return;
+      setState(() => _statements = const []);
     }
     if (!mounted) return;
     try {
@@ -217,6 +235,35 @@ class _OwnerEarningsPageState extends State<OwnerEarningsPage> {
             ],
           ),
           const SizedBox(height: 24),
+
+          // FitFlex statements: what the settlement engine owes the gym.
+          FFSectionTitle(context.tr('owner.statements')),
+          if (_loadingEarnings)
+            const SizedBox.shrink()
+          else if (_statements.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: FFTokens.spacingLg),
+              child: Text(
+                context.tr('owner.noStatements'),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            )
+          else ...[
+            ..._statements.map(
+              (s) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: OwnerStatementCard(
+                  statement: s,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => OwnerStatementPage(statementId: s.id),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
 
           // Pending Invoices — real data, current month backwards (B1)
           FFSectionTitle(context.tr('owner.pendingInvoices')),

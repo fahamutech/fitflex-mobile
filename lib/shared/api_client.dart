@@ -1343,6 +1343,18 @@ class ApiClient {
   Future<List<dynamic>> ownerInvoices() async =>
       await _request('GET', '/owner/invoices');
 
+  /// The gym's monthly FitFlex statements, newest first.
+  Future<List<dynamic>> ownerSettlements({String? gymId}) async {
+    final path = (gymId != null && gymId.isNotEmpty)
+        ? '/owner/settlements?${Uri(queryParameters: {'gymId': gymId}).query}'
+        : '/owner/settlements';
+    return await _request('GET', path);
+  }
+
+  /// One statement with its member lines and applied adjustments.
+  Future<Map<String, dynamic>> ownerSettlement(String id) async =>
+      await _request('GET', '/owner/settlements/${Uri.encodeComponent(id)}');
+
   Future<List<dynamic>> ownerGymCheckins(String gymId) async =>
       await _request('GET', '/owner/gyms/$gymId/checkins');
 
