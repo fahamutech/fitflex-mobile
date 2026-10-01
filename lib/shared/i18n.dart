@@ -2566,6 +2566,15 @@ class FFLocale extends ChangeNotifier {
       'benefits.type.marketplace': 'Shop',
       'benefits.type.wellness_activity': 'Wellness activity',
       'benefits.type.custom': 'Benefit',
+      'benefits.type.sponsored_pass': 'Sponsored pass',
+      'benefits.pass.active': 'Your pass is running until the end of the month',
+      'benefits.pass.scheduled': 'Your pass starts when the month begins',
+      'benefits.pass.awaitingSponsor': 'Waiting for your sponsor to pay',
+      'benefits.pass.unlockBody':
+          'Pay your share once to use this pass for the month.',
+      'benefits.pass.unlock': 'Unlock for {amount}',
+      'benefits.pass.requested':
+          'Payment requested. Your pass starts when FitFlex confirms it.',
       'benefits.funding.full': 'Your sponsor pays in full',
       'benefits.funding.sponsor_fixed':
           'Your sponsor pays up to {amount}; you pay the rest',
@@ -5617,6 +5626,15 @@ class FFLocale extends ChangeNotifier {
       'benefits.type.marketplace': 'Duka',
       'benefits.type.wellness_activity': 'Shughuli ya afya',
       'benefits.type.custom': 'Manufaa',
+      'benefits.type.sponsored_pass': 'Pasi iliyodhaminiwa',
+      'benefits.pass.active': 'Pasi yako inatumika hadi mwisho wa mwezi',
+      'benefits.pass.scheduled': 'Pasi yako itaanza mwezi ukianza',
+      'benefits.pass.awaitingSponsor': 'Inasubiri malipo ya mdhamini wako',
+      'benefits.pass.unlockBody':
+          'Lipa sehemu yako mara moja ili kutumia pasi hii mwezi huu.',
+      'benefits.pass.unlock': 'Fungua kwa {amount}',
+      'benefits.pass.requested':
+          'Malipo yameombwa. Pasi yako itaanza FitFlex ikithibitisha.',
       'benefits.funding.full': 'Mdhamini wako analipa yote',
       'benefits.funding.sponsor_fixed':
           'Mdhamini wako analipa hadi {amount}; wewe unalipa kilichobaki',

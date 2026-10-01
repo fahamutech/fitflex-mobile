@@ -930,6 +930,13 @@ class ApiClient {
   Future<Map<String, dynamic>> myWellnessBenefits() async =>
       await _request('GET', '/b2b/me/benefits') as Map<String, dynamic>;
 
+  /// Ask to pay the member's share of a sponsored pass for this month.
+  Future<Map<String, dynamic>> unlockSponsoredPass(
+    String entitlementId,
+  ) async =>
+      await _request('POST', '/b2b/me/passes/$entitlementId/unlock')
+          as Map<String, dynamic>;
+
   Future<Map<String, dynamic>> communicationPreferences() async =>
       await _request('GET', '/me/communication-preferences')
           as Map<String, dynamic>;

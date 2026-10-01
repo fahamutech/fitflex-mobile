@@ -22,6 +22,7 @@ class MemberBenefitsPage extends StatefulWidget {
 class _MemberBenefitsPageState extends State<MemberBenefitsPage> {
   List<Map<String, dynamic>>? _benefits;
   Object? _error;
+  String? _unlocking;
   bool _started = false;
 
   @override
@@ -44,6 +45,24 @@ class _MemberBenefitsPageState extends State<MemberBenefitsPage> {
       });
     } catch (e) {
       if (mounted) setState(() => _error = e);
+    }
+  }
+
+  /// Ask to pay the member's share of a sponsored pass. The pass starts when
+  /// FitFlex confirms the payment.
+  Future<void> _unlock(String entitlementId) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final locale = FFLocaleScope.of(context);
+    final requested = context.tr('benefits.pass.requested');
+    setState(() => _unlocking = entitlementId);
+    try {
+      await AppScope.of(context).api.unlockSponsoredPass(entitlementId);
+      await _load();
+      messenger.showSnackBar(SnackBar(content: Text(requested)));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(errorMessage(locale, e))));
+    } finally {
+      if (mounted) setState(() => _unlocking = null);
     }
   }
 
@@ -77,7 +96,11 @@ class _MemberBenefitsPageState extends State<MemberBenefitsPage> {
                 ),
                 const SizedBox(height: FFTokens.spacingMd),
                 for (final row in rows) ...[
-                  _BenefitCard(row: row),
+                  _BenefitCard(
+                    row: row,
+                    busy: _unlocking != null,
+                    onUnlock: _unlock,
+                  ),
                   const SizedBox(height: FFTokens.spacingMd),
                 ],
               ],
@@ -87,9 +110,15 @@ class _MemberBenefitsPageState extends State<MemberBenefitsPage> {
 }
 
 class _BenefitCard extends StatelessWidget {
-  const _BenefitCard({required this.row});
+  const _BenefitCard({
+    required this.row,
+    required this.busy,
+    required this.onUnlock,
+  });
 
   final Map<String, dynamic> row;
+  final bool busy;
+  final ValueChanged<String> onUnlock;
 
   @override
   Widget build(BuildContext context) {
@@ -141,7 +170,9 @@ class _BenefitCard extends StatelessWidget {
                   .replaceAll('{n}', '${remaining ?? 0}'),
               style: theme.textTheme.titleSmall,
             ),
-          ] else
+          ] else if (benefit['benefitType'] == 'sponsored_pass')
+            ..._pass(context, (row['pass'] as Map?)?.cast<String, dynamic>())
+          else
             Text(context.tr('benefits.unlimited')),
           const SizedBox(height: FFTokens.spacingSm),
           Text(_funding(context, benefit)),
@@ -156,6 +187,34 @@ class _BenefitCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  /// A sponsored pass: whether this month's pass is running, or what the
+  /// member pays once to unlock it.
+  List<Widget> _pass(BuildContext context, Map<String, dynamic>? pass) {
+    final status = pass?['status'] as String?;
+    if (status == 'active') return [Text(context.tr('benefits.pass.active'))];
+    if (status == 'scheduled') {
+      return [Text(context.tr('benefits.pass.scheduled'))];
+    }
+    if (status != 'awaiting_member') {
+      return [Text(context.tr('benefits.pass.awaitingSponsor'))];
+    }
+    if (pass?['paymentPending'] == true) {
+      return [Text(context.tr('benefits.pass.requested'))];
+    }
+    final amount = formatCurrency((pass?['memberTzs'] as num?) ?? 0);
+    return [
+      Text(context.tr('benefits.pass.unlockBody')),
+      const SizedBox(height: FFTokens.spacingSm),
+      FilledButton(
+        key: Key('unlock-${pass?['entitlementId']}'),
+        onPressed: busy ? null : () => onUnlock('${pass?['entitlementId']}'),
+        child: Text(
+          context.tr('benefits.pass.unlock').replaceAll('{amount}', amount),
+        ),
+      ),
+    ];
   }
 
   String _funding(BuildContext context, Map<String, dynamic> b) {
