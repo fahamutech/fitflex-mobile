@@ -227,6 +227,12 @@ class ApiClient {
     return await _request('GET', '/me/personas');
   }
 
+  /// Identity V2: add a persona (member, trainer, gym_operator, vendor) to
+  /// the signed-in Person. No new account is created.
+  Future<Map<String, dynamic>> addPersona(String userType) async {
+    return await _request('POST', '/me/personas', body: {'userType': userType});
+  }
+
   /// Identity V2: a session for another persona of the same Person.
   Future<Map<String, dynamic>> switchPersona(String personaId) async {
     return await _request(

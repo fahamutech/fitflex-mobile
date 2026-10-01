@@ -62,6 +62,15 @@ class FFLocale extends ChangeNotifier {
       'auth.stillPending': 'Still pending approval. Please wait.',
       'auth.checkFailed': 'Could not check status. Try again.',
       'persona.switch': 'Switch role',
+      'persona.roles': 'Roles',
+      'persona.addTitle': 'Add a role',
+      'persona.addMember': 'Use FitFlex as a member',
+      'persona.addTrainer': 'Become a trainer',
+      'persona.addOwner': 'Register a gym',
+      'persona.addVendor': 'Open a store',
+      'persona.addFailed': 'Could not add the role.',
+      'persona.addInUse':
+          'This email already has a profile for that role. Sign out and sign in again with your verified email to link it.',
       'persona.switchTitle': 'Continue as',
       'persona.pickTitle': 'How do you want to continue?',
       'persona.pickBody':
@@ -2985,6 +2994,15 @@ class FFLocale extends ChangeNotifier {
       'auth.stillPending': 'Bado inasubiri idhini. Tafadhali subiri.',
       'auth.checkFailed': 'Imeshindwa kuangalia hali. Jaribu tena.',
       'persona.switch': 'Badilisha nafasi',
+      'persona.roles': 'Nafasi',
+      'persona.addTitle': 'Ongeza nafasi',
+      'persona.addMember': 'Tumia FitFlex kama mwanachama',
+      'persona.addTrainer': 'Kuwa mkufunzi',
+      'persona.addOwner': 'Sajili jimu',
+      'persona.addVendor': 'Fungua duka',
+      'persona.addFailed': 'Imeshindikana kuongeza nafasi.',
+      'persona.addInUse':
+          'Barua pepe hii tayari ina wasifu wa nafasi hiyo. Toka kisha ingia tena kwa barua pepe iliyothibitishwa ili kuiunganisha.',
       'persona.switchTitle': 'Endelea kama',
       'persona.pickTitle': 'Ungependa kuendelea vipi?',
       'persona.pickBody':

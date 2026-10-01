@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app_scope.dart';
 import '../../router.dart';
+import '../api_client.dart';
 import '../api_error_message.dart';
 import '../components/ff_action_tile.dart';
 import '../design_tokens.dart';
@@ -62,7 +63,53 @@ Future<void> switchToPersona(BuildContext context, String personaId) async {
   }
 }
 
-/// Bottom sheet listing the personas this session can switch to.
+/// What adding each role is called, e.g. "Become a trainer".
+String addPersonaLabel(BuildContext context, String userType) {
+  switch (userType) {
+    case 'trainer':
+      return context.tr('persona.addTrainer');
+    case 'gym_operator':
+      return context.tr('persona.addOwner');
+    case 'vendor':
+      return context.tr('persona.addVendor');
+    default:
+      return context.tr('persona.addMember');
+  }
+}
+
+/// Add [userType] to this Person and continue as it. The router then sends
+/// the new persona through that role's own registration.
+Future<void> addPersonaAndContinue(
+  BuildContext context,
+  String userType,
+) async {
+  final auth = AppScope.of(context).auth;
+  final messenger = ScaffoldMessenger.of(context);
+  final locale = FFLocaleScope.of(context);
+  final failed = context.tr('persona.addFailed');
+  final inUse = context.tr('persona.addInUse');
+  try {
+    await auth.addPersona(userType);
+    if (context.mounted) context.go(routeForSignedInUser(auth));
+  } on ApiException catch (e) {
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          e.code == 'persona_identifier_in_use'
+              ? inUse
+              : '$failed ${errorMessage(locale, e)}'.trim(),
+        ),
+      ),
+    );
+  } catch (e) {
+    messenger.showSnackBar(
+      SnackBar(content: Text('$failed ${errorMessage(locale, e)}'.trim())),
+    );
+  }
+}
+
+/// Bottom sheet: switch to another persona, or add a role this Person
+/// doesn't have yet.
 Future<void> showPersonaSwitcher(BuildContext context) {
   return showModalBottomSheet<void>(
     context: context,
@@ -70,6 +117,7 @@ Future<void> showPersonaSwitcher(BuildContext context) {
     builder: (sheetContext) {
       final auth = AppScope.of(context).auth;
       final others = auth.switchablePersonas;
+      final addable = auth.addablePersonaTypes;
       return SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(
@@ -82,11 +130,13 @@ Future<void> showPersonaSwitcher(BuildContext context) {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                context.tr('persona.switchTitle'),
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: FFTokens.spacingSm),
+              if (others.isNotEmpty) ...[
+                Text(
+                  context.tr('persona.switchTitle'),
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: FFTokens.spacingSm),
+              ],
               for (final p in others)
                 ListTile(
                   key: Key('persona-${p['id']}'),
@@ -100,6 +150,24 @@ Future<void> showPersonaSwitcher(BuildContext context) {
                     await switchToPersona(context, p['id'].toString());
                   },
                 ),
+              if (addable.isNotEmpty) ...[
+                if (others.isNotEmpty) const Divider(),
+                Text(
+                  context.tr('persona.addTitle'),
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: FFTokens.spacingSm),
+                for (final type in addable)
+                  ListTile(
+                    key: Key('add-persona-$type'),
+                    leading: const Icon(Icons.add_circle_outline),
+                    title: Text(addPersonaLabel(context, type)),
+                    onTap: () async {
+                      Navigator.of(sheetContext).pop();
+                      await addPersonaAndContinue(context, type);
+                    },
+                  ),
+              ],
             ],
           ),
         ),
@@ -109,7 +177,7 @@ Future<void> showPersonaSwitcher(BuildContext context) {
 }
 
 /// "Switch role" tile for profile pages. Renders nothing unless the Person
-/// has another usable persona, so single-persona users see no change.
+/// has another usable persona or can add one, so nothing shows before V2.
 class PersonaSwitcherTile extends StatelessWidget {
   const PersonaSwitcherTile({super.key});
 
@@ -119,14 +187,21 @@ class PersonaSwitcherTile extends StatelessWidget {
     return ListenableBuilder(
       listenable: auth,
       builder: (context, _) {
-        if (auth.switchablePersonas.isEmpty) return const SizedBox.shrink();
+        final others = auth.switchablePersonas;
+        if (others.isEmpty && auth.addablePersonaTypes.isEmpty) {
+          return const SizedBox.shrink();
+        }
         return FFActionTile(
           key: const Key('persona-switch'),
           icon: Icons.swap_horiz,
-          title: context.tr('persona.switch'),
-          subtitle: auth.switchablePersonas
-              .map((p) => personaLabel(context, p['userType']))
-              .join(' · '),
+          title: context.tr(
+            others.isEmpty ? 'persona.roles' : 'persona.switch',
+          ),
+          subtitle: others.isEmpty
+              ? context.tr('persona.addTitle')
+              : others
+                    .map((p) => personaLabel(context, p['userType']))
+                    .join(' · '),
           onTap: () => showPersonaSwitcher(context),
         );
       },
@@ -144,7 +219,10 @@ class PersonaSwitchButton extends StatelessWidget {
     return ListenableBuilder(
       listenable: auth,
       builder: (context, _) {
-        if (auth.switchablePersonas.isEmpty) return const SizedBox.shrink();
+        if (auth.switchablePersonas.isEmpty &&
+            auth.addablePersonaTypes.isEmpty) {
+          return const SizedBox.shrink();
+        }
         return IconButton(
           key: const Key('persona-switch-button'),
           tooltip: context.tr('persona.switch'),

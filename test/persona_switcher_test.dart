@@ -42,6 +42,9 @@ class _FakeApi extends ApiClient {
 
   final int personasStatus;
   final switched = <String>[];
+  final added = <String>[];
+  List<String> addable = const [];
+  bool addConflict = false;
   List<Map<String, dynamic>> personas = [
     _persona('usr_member', 'member'),
     _persona('usr_trainer', 'trainer'),
@@ -59,6 +62,7 @@ class _FakeApi extends ApiClient {
       'user': _user(personaId, p['userType'] as String),
       'personas': personas,
       'activePersonaId': personaId,
+      'addablePersonaTypes': addable,
     };
   }
 
@@ -67,9 +71,35 @@ class _FakeApi extends ApiClient {
     if (personasStatus != 200) {
       throw ApiException(personasStatus, {'error': 'not_found'});
     }
-    return {'personas': personas, 'activePersonaId': 'usr_member'};
+    return {
+      'personas': personas,
+      'activePersonaId': 'usr_member',
+      'addablePersonaTypes': addable,
+    };
+  }
+
+  @override
+  Future<Map<String, dynamic>> addPersona(String userType) async {
+    if (addConflict) {
+      throw ApiException(409, {'error': 'persona_identifier_in_use'});
+    }
+    added.add(userType);
+    final persona = _persona('usr_new_$userType', userType);
+    personas = [...personas, persona];
+    addable = addable.where((t) => t != userType).toList();
+    return {
+      'created': true,
+      'persona': persona,
+      'personas': personas,
+      'addablePersonaTypes': addable,
+    };
   }
 }
+
+/// A Person with only a member persona who may add roles (I3).
+_FakeApi _soloMemberApi() => _FakeApi()
+  ..personas = [_persona('usr_member', 'member')]
+  ..addable = ['trainer', 'gym_operator', 'vendor'];
 
 Future<AuthState> _signedIn(_FakeApi api) async {
   final auth = AuthState(api);
@@ -201,5 +231,57 @@ void main() {
     expect(api.switched, isEmpty);
     expect(auth.personaChoiceRequired, isFalse);
     expect(find.text('member home'), findsOneWidget);
+  });
+
+  test('roles the backend says can be added are exposed', () async {
+    final auth = await _signedIn(_soloMemberApi());
+    expect(auth.switchablePersonas, isEmpty);
+    expect(auth.addablePersonaTypes, ['trainer', 'gym_operator', 'vendor']);
+  });
+
+  testWidgets(
+    'a single-persona user is offered "Add a role" and becomes a trainer',
+    (tester) async {
+      final api = _soloMemberApi();
+      final auth = await _signedIn(api);
+      await tester.pumpWidget(_app(auth, const PersonaSwitcherTile()));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Roles'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('persona-switch')));
+      await tester.pumpAndSettle();
+      expect(find.text('Become a trainer'), findsOneWidget);
+      expect(find.text('Register a gym'), findsOneWidget);
+      expect(find.text('Open a store'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('add-persona-trainer')));
+      await tester.pumpAndSettle();
+      expect(api.added, ['trainer']);
+      expect(api.switched, [
+        'usr_new_trainer',
+      ], reason: 'continues as the new role');
+      expect(auth.user?['userType'], 'trainer');
+      expect(auth.addablePersonaTypes, ['gym_operator', 'vendor']);
+      expect(find.text('trainer home'), findsOneWidget);
+    },
+  );
+
+  testWidgets('an email already used for that role explains how to link it', (
+    tester,
+  ) async {
+    final api = _soloMemberApi()..addConflict = true;
+    final auth = await _signedIn(api);
+    await tester.pumpWidget(_app(auth, const PersonaSwitcherTile()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('persona-switch')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('add-persona-vendor')));
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('already has a profile for that role'),
+      findsOneWidget,
+    );
+    expect(api.switched, isEmpty);
+    expect(auth.user?['userType'], 'member');
   });
 }
