@@ -22,6 +22,7 @@ class AuthState extends ChangeNotifier {
   // Identity V2: the Person's personas (User rows). Empty while the backend's
   // V2 flags are off, which keeps the app on single-persona behaviour.
   List<Map<String, dynamic>> _personas = const [];
+  List<String> _addablePersonaTypes = const [];
   bool _personaChoiceRequired = false;
 
   String? get token => _token;
@@ -45,6 +46,9 @@ class AuthState extends ChangeNotifier {
             p['approvalStatus'] != 'rejected',
       )
       .toList(growable: false);
+
+  /// Roles this Person could still add (empty unless the backend offers it).
+  List<String> get addablePersonaTypes => _addablePersonaTypes;
 
   /// Set when the backend couldn't pick a persona (several, none used last).
   bool get personaChoiceRequired => _personaChoiceRequired;
@@ -164,6 +168,17 @@ class AuthState extends ChangeNotifier {
     await _applyPersonaPayload(res);
   }
 
+  /// Identity V2: add a role to this Person, then continue as it. The new
+  /// persona goes through that role's normal registration and approval.
+  Future<void> addPersona(String userType) async {
+    final res = await api.addPersona(userType);
+    await _applyPersonaPayload(res, keepChoice: true);
+    final persona = res['persona'];
+    if (persona is Map && persona['id'] != null) {
+      await switchPersona(persona['id'].toString());
+    }
+  }
+
   /// The user picked the persona they're already in.
   void keepCurrentPersona() {
     if (!_personaChoiceRequired) return;
@@ -190,6 +205,10 @@ class AuthState extends ChangeNotifier {
     final raw = res['personas'];
     _personas = raw is List
         ? raw.whereType<Map>().map((p) => Map<String, dynamic>.from(p)).toList()
+        : const [];
+    final addable = res['addablePersonaTypes'];
+    _addablePersonaTypes = addable is List
+        ? addable.map((t) => t.toString()).toList(growable: false)
         : const [];
     if (!keepChoice) {
       _personaChoiceRequired =
@@ -221,6 +240,7 @@ class AuthState extends ChangeNotifier {
     _token = null;
     _user = null;
     _personas = const [];
+    _addablePersonaTypes = const [];
     _personaChoiceRequired = false;
     api.setToken(null);
     final prefs = await SharedPreferences.getInstance();
