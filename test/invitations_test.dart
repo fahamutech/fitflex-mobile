@@ -48,6 +48,7 @@ class _FakeApi extends ApiClient {
   final switched = <String>[];
   final created = <Map<String, dynamic>>[];
   final actions = <String>[];
+  final lookups = <String>[];
   String? openError;
   List<Map<String, dynamic>> sent = [];
 
@@ -102,14 +103,22 @@ class _FakeApi extends ApiClient {
     String gymId, {
     String? phone,
     String? email,
-  }) async => {'found': true, 'maskedName': 'N**** A*******'};
+    String orgType = 'gym',
+  }) async {
+    lookups.add('$orgType:$gymId');
+    return {'found': true, 'maskedName': 'N**** A*******'};
+  }
 
   @override
   Future<Map<String, dynamic>> gymCreateInvitation(
     String gymId,
-    Map<String, dynamic> body,
-  ) async {
-    created.add({'gymId': gymId, ...body});
+    Map<String, dynamic> body, {
+    String orgType = 'gym',
+  }) async {
+    created.add({
+      if (orgType == 'gym') 'gymId': gymId else 'vendorId': gymId,
+      ...body,
+    });
     return {
       'created': true,
       'token': 'tok-123',
@@ -121,6 +130,7 @@ class _FakeApi extends ApiClient {
   Future<Map<String, dynamic>> gymInvitations(
     String gymId, {
     bool needsResolution = false,
+    String orgType = 'gym',
   }) async => {'invitations': sent};
 
   @override
@@ -129,8 +139,13 @@ class _FakeApi extends ApiClient {
     String invitationId,
     String action, {
     Map<String, dynamic>? body,
+    String orgType = 'gym',
   }) async {
-    actions.add('$action:$invitationId');
+    actions.add(
+      orgType == 'gym'
+          ? '$action:$invitationId'
+          : '$orgType:$action:$invitationId',
+    );
     sent = [];
     return {};
   }
@@ -249,6 +264,26 @@ void main() {
       expect(
         buildInvitationBody(role: 'trainer', contact: '0713', today: today),
         {'role': 'trainer', 'phone': '0713'},
+      );
+    });
+
+    test('shop staff carry the shop role and permissions, no gym fields', () {
+      expect(
+        buildInvitationBody(
+          role: 'staff',
+          contact: ' desk@shop.co ',
+          aclPermissions: ['members'],
+          today: today,
+          orgType: 'vendor',
+          vendorRole: 'orders_manager',
+          vendorPermissions: ['orders', 'customers'],
+        ),
+        {
+          'role': 'staff',
+          'email': 'desk@shop.co',
+          'vendorRole': 'orders_manager',
+          'permissions': ['orders', 'customers'],
+        },
       );
     });
 
@@ -379,6 +414,84 @@ void main() {
       expect(find.byKey(const Key('invite-send')), findsNothing);
     },
   );
+
+  testWidgets('a shop invites staff with a role and permissions, no password', (
+    tester,
+  ) async {
+    final api = _FakeApi();
+    final auth = await _signedIn(api);
+    await tester.pumpWidget(
+      _app(
+        auth,
+        Builder(
+          builder: (context) => TextButton(
+            onPressed: () => openInvitePersonSheet(
+              context,
+              gymId: 'usr_vendor',
+              role: 'staff',
+              orgType: 'vendor',
+            ),
+            child: const Text('open'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('invite-vendor-role')), findsOneWidget);
+    expect(find.byType(CheckboxListTile), findsNWidgets(6));
+    expect(find.byKey(const Key('invite-scope-members')), findsNothing);
+    expect(find.byKey(const Key('vendor-staff-password')), findsNothing);
+
+    await tester.enterText(
+      find.byKey(const Key('invite-contact')),
+      'desk@shop.co',
+    );
+    await tester.tap(find.byKey(const Key('invite-check')));
+    await tester.pumpAndSettle();
+    expect(api.lookups, ['vendor:usr_vendor']);
+    await tester.tap(find.byKey(const Key('invite-vendor-permission-orders')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('invite-send')));
+    await tester.tap(find.byKey(const Key('invite-send')));
+    await tester.pumpAndSettle();
+
+    expect(api.created.single, {
+      'vendorId': 'usr_vendor',
+      'role': 'staff',
+      'email': 'desk@shop.co',
+      'vendorRole': 'inventory_manager',
+      'permissions': ['products', 'orders'],
+    });
+    expect(find.byKey(const Key('invite-copy-link')), findsOneWidget);
+  });
+
+  testWidgets('a shop\'s sent invitations use the vendor routes', (
+    tester,
+  ) async {
+    final api = _FakeApi()
+      ..sent = [
+        {
+          'id': 'inv_v1',
+          'role': 'staff',
+          'status': 'pending',
+          'identifierValue': 'desk@shop.co',
+        },
+      ];
+    final auth = await _signedIn(api);
+    await tester.pumpWidget(
+      _app(
+        auth,
+        const GymInvitationsPage(gymId: 'usr_vendor', orgType: 'vendor'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('desk@shop.co'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('cancel-inv_v1')));
+    await tester.pumpAndSettle();
+    expect(api.actions, ['vendor:cancel:inv_v1']);
+  });
 
   testWidgets('a paid invitation that lapsed can be sent again', (
     tester,

@@ -10,6 +10,7 @@ import '../../shared/design_tokens.dart';
 import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
 import '../../shared/widgets/ff_photo_picker_field.dart';
+import '../../shared/widgets/invitations.dart';
 import '../../shared/widgets/persona_switcher.dart';
 
 class VendorHomePage extends StatefulWidget {
@@ -650,14 +651,31 @@ class _VendorHomePageState extends State<VendorHomePage> {
               context.tr('vendor.staff'),
               style: Theme.of(context).textTheme.titleMedium,
             ),
-            TextButton.icon(
-              key: const Key('vendor-add-staff'),
-              onPressed: _addStaff,
-              icon: const Icon(Icons.person_add_alt),
-              label: Text(context.tr('vendor.addStaff')),
-            ),
+            // With invitations on, only the vendor itself invites staff.
+            if (!_invites || _isVendor)
+              TextButton.icon(
+                key: const Key('vendor-add-staff'),
+                onPressed: _addStaff,
+                icon: const Icon(Icons.person_add_alt),
+                label: Text(context.tr('vendor.addStaff')),
+              ),
           ],
         ),
+        if (_invites && _isVendor)
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: TextButton.icon(
+              key: const Key('vendor-invitations-sent'),
+              icon: const Icon(Icons.outgoing_mail),
+              label: Text(context.tr('invite.sentTitle')),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) =>
+                      GymInvitationsPage(gymId: _vendorId, orgType: 'vendor'),
+                ),
+              ),
+            ),
+          ),
         for (final staff in _staff)
           FFCard(
             child: ListTile(
@@ -699,7 +717,23 @@ class _VendorHomePageState extends State<VendorHomePage> {
     await _refresh();
   }
 
+  bool get _invites => AppScope.of(context).auth.invitesEnabled;
+  bool get _isVendor => AppScope.of(context).auth.user?['userType'] == 'vendor';
+  String get _vendorId =>
+      AppScope.of(context).auth.user?['id']?.toString() ?? '';
+
   Future<void> _addStaff() async {
+    // Identity V2: staff join with their own account; no password is set here.
+    if (_invites) {
+      await openInvitePersonSheet(
+        context,
+        gymId: _vendorId,
+        role: 'staff',
+        orgType: 'vendor',
+      );
+      if (mounted) await _refresh();
+      return;
+    }
     final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       isScrollControlled: true,
