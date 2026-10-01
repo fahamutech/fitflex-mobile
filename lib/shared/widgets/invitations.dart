@@ -333,12 +333,21 @@ Map<String, dynamic> buildInvitationBody({
   String tier = 'basic',
   num? paidAmount,
   required DateTime today,
+  String orgType = 'gym',
+  String vendorRole = 'inventory_manager',
+  List<String> vendorPermissions = const [],
 }) {
   final value = contact.trim();
   final body = <String, dynamic>{
     'role': role,
     if (value.contains('@')) 'email': value else 'phone': value,
   };
+  if (orgType == 'vendor') {
+    // A shop's staff carry the shop's own role and permissions.
+    body['vendorRole'] = vendorRole;
+    body['permissions'] = vendorPermissions;
+    return body;
+  }
   if (role == 'staff') body['aclPermissions'] = aclPermissions;
   if (role == 'member') {
     final start = DateTime(today.year, today.month, today.day);
@@ -360,27 +369,53 @@ Map<String, dynamic> buildInvitationBody({
   return body;
 }
 
+const _vendorRoles = {
+  'admin': 'vendor.roleAdmin',
+  'inventory_manager': 'vendor.roleInventory',
+  'orders_manager': 'vendor.roleOrders',
+  'sales': 'vendor.roleSales',
+  'customer_care': 'vendor.roleCare',
+};
+
+const _vendorPermissions = [
+  'products',
+  'orders',
+  'customers',
+  'reports',
+  'payments',
+  'staff',
+];
+
 /// Invite a person to [gymId] as [role]. Returns true once an invitation was
 /// sent. Replaces the "create with a PIN" forms when invitations are on.
+/// With [orgType] 'vendor', [gymId] is the vendor's id and the sheet asks for
+/// the shop's staff role and permissions.
 Future<bool> openInvitePersonSheet(
   BuildContext context, {
   required String gymId,
   required String role,
+  String orgType = 'gym',
 }) async {
   final sent = await showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
-    builder: (_) => _InvitePersonSheet(gymId: gymId, role: role),
+    builder: (_) =>
+        _InvitePersonSheet(gymId: gymId, role: role, orgType: orgType),
   );
   return sent == true;
 }
 
 class _InvitePersonSheet extends StatefulWidget {
-  const _InvitePersonSheet({required this.gymId, required this.role});
+  const _InvitePersonSheet({
+    required this.gymId,
+    required this.role,
+    this.orgType = 'gym',
+  });
 
   final String gymId;
   final String role;
+  final String orgType;
 
   @override
   State<_InvitePersonSheet> createState() => _InvitePersonSheetState();
@@ -390,6 +425,8 @@ class _InvitePersonSheetState extends State<_InvitePersonSheet> {
   final _contact = TextEditingController();
   final _amount = TextEditingController();
   final _scopes = <String>{};
+  final _vendorPerms = <String>{'products'};
+  String _vendorRole = 'inventory_manager';
   String _durationUnit = 'M';
   bool _busy = false;
   String? _notice;
@@ -414,6 +451,7 @@ class _InvitePersonSheetState extends State<_InvitePersonSheet> {
         widget.gymId,
         phone: _isEmail ? null : value,
         email: _isEmail ? value : null,
+        orgType: widget.orgType,
       );
       if (!mounted) return;
       setState(() {
@@ -447,7 +485,11 @@ class _InvitePersonSheetState extends State<_InvitePersonSheet> {
           durationUnit: _durationUnit,
           paidAmount: num.tryParse(_amount.text.trim()),
           today: DateTime.now(),
+          orgType: widget.orgType,
+          vendorRole: _vendorRole,
+          vendorPermissions: _vendorPerms.toList(),
         ),
+        orgType: widget.orgType,
       );
       if (!mounted) return;
       setState(() {
@@ -506,7 +548,42 @@ class _InvitePersonSheetState extends State<_InvitePersonSheet> {
                 ),
               ),
             ),
-            if (widget.role == 'staff') ...[
+            if (widget.orgType == 'vendor') ...[
+              const SizedBox(height: FFTokens.spacingMd),
+              DropdownButtonFormField<String>(
+                key: const Key('invite-vendor-role'),
+                initialValue: _vendorRole,
+                decoration: InputDecoration(
+                  labelText: context.tr('vendor.role'),
+                ),
+                items: [
+                  for (final entry in _vendorRoles.entries)
+                    DropdownMenuItem(
+                      value: entry.key,
+                      child: Text(context.tr(entry.value)),
+                    ),
+                ],
+                onChanged: sent
+                    ? null
+                    : (v) => setState(() => _vendorRole = v ?? _vendorRole),
+              ),
+              // An admin holds every permission, so there is nothing to choose.
+              if (_vendorRole != 'admin')
+                for (final permission in _vendorPermissions)
+                  CheckboxListTile(
+                    key: Key('invite-vendor-permission-$permission'),
+                    dense: true,
+                    enabled: !sent,
+                    value: _vendorPerms.contains(permission),
+                    title: Text(context.tr('vendor.permission.$permission')),
+                    onChanged: (on) => setState(
+                      () => on == true
+                          ? _vendorPerms.add(permission)
+                          : _vendorPerms.remove(permission),
+                    ),
+                  ),
+            ],
+            if (widget.orgType == 'gym' && widget.role == 'staff') ...[
               const SizedBox(height: FFTokens.spacingMd),
               Text(context.tr('staff.permissions')),
               Wrap(
@@ -603,9 +680,15 @@ class _InvitePersonSheetState extends State<_InvitePersonSheet> {
 /// Invitations a gym has sent, with the actions for a paid invitation that
 /// expired before the person accepted.
 class GymInvitationsPage extends StatefulWidget {
-  const GymInvitationsPage({super.key, required this.gymId});
+  const GymInvitationsPage({
+    super.key,
+    required this.gymId,
+    this.orgType = 'gym',
+  });
 
+  /// The organisation's id: a gym, or with [orgType] 'vendor' the vendor.
   final String gymId;
+  final String orgType;
 
   @override
   State<GymInvitationsPage> createState() => _GymInvitationsPageState();
@@ -625,7 +708,10 @@ class _GymInvitationsPageState extends State<GymInvitationsPage> {
   Future<void> _load() async {
     final api = AppScope.of(context).api;
     try {
-      final res = await api.gymInvitations(widget.gymId);
+      final res = await api.gymInvitations(
+        widget.gymId,
+        orgType: widget.orgType,
+      );
       final raw = res['invitations'];
       if (!mounted) return;
       setState(() {
@@ -652,7 +738,12 @@ class _GymInvitationsPageState extends State<GymInvitationsPage> {
     final messenger = ScaffoldMessenger.of(context);
     final done = context.tr('invite.actionDone');
     try {
-      await api.gymInvitationAction(widget.gymId, inv['id'].toString(), action);
+      await api.gymInvitationAction(
+        widget.gymId,
+        inv['id'].toString(),
+        action,
+        orgType: widget.orgType,
+      );
       messenger.showSnackBar(SnackBar(content: Text(done)));
       await _load();
     } catch (e) {

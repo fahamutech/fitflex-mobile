@@ -260,14 +260,16 @@ class ApiClient {
 
   /// Does this exact phone or email belong to a FitFlex person? Answers only
   /// `{found, maskedName}`.
+  // [orgType] is 'gym' (the default) or 'vendor'; [gymId] is then the vendor's id.
   Future<Map<String, dynamic>> gymLookupPerson(
     String gymId, {
     String? phone,
     String? email,
+    String orgType = 'gym',
   }) async {
     return await _request(
       'POST',
-      '/orgs/gym/$gymId/people/lookup',
+      '/orgs/$orgType/$gymId/people/lookup',
       body: {'phone': ?phone, 'email': ?email},
     );
   }
@@ -276,18 +278,24 @@ class ApiClient {
   /// credentials are created; returns the link token once.
   Future<Map<String, dynamic>> gymCreateInvitation(
     String gymId,
-    Map<String, dynamic> body,
-  ) async {
-    return await _request('POST', '/orgs/gym/$gymId/invitations', body: body);
+    Map<String, dynamic> body, {
+    String orgType = 'gym',
+  }) async {
+    return await _request(
+      'POST',
+      '/orgs/$orgType/$gymId/invitations',
+      body: body,
+    );
   }
 
   Future<Map<String, dynamic>> gymInvitations(
     String gymId, {
     bool needsResolution = false,
+    String orgType = 'gym',
   }) async {
     return await _request(
       'GET',
-      '/orgs/gym/$gymId/invitations${needsResolution ? '?needsResolution=1' : ''}',
+      '/orgs/$orgType/$gymId/invitations${needsResolution ? '?needsResolution=1' : ''}',
     );
   }
 
@@ -297,10 +305,11 @@ class ApiClient {
     String invitationId,
     String action, {
     Map<String, dynamic>? body,
+    String orgType = 'gym',
   }) async {
     return await _request(
       'POST',
-      '/orgs/gym/$gymId/invitations/$invitationId/$action',
+      '/orgs/$orgType/$gymId/invitations/$invitationId/$action',
       body: body,
     );
   }
