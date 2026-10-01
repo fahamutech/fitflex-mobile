@@ -15,11 +15,24 @@ class _FakeApi extends ApiClient {
 
   final List<Map<String, dynamic>> benefits;
   bool fail = false;
+  final unlocked = <String>[];
 
   @override
   Future<Map<String, dynamic>> myWellnessBenefits() async {
     if (fail) throw ApiException(500, 'server_error');
     return {'benefits': benefits, 'asOf': '2026-10-05'};
+  }
+
+  @override
+  Future<Map<String, dynamic>> unlockSponsoredPass(String entitlementId) async {
+    unlocked.add(entitlementId);
+    for (final b in benefits) {
+      final pass = b['pass'] as Map<String, dynamic>?;
+      if (pass?['entitlementId'] == entitlementId) {
+        pass!['paymentPending'] = true;
+      }
+    }
+    return {};
   }
 }
 
@@ -123,5 +136,55 @@ void main() {
     await tester.tap(find.byType(FilledButton));
     await tester.pumpAndSettle();
     expect(find.text('5 left'), findsOneWidget);
+  });
+
+  testWidgets('a sponsored pass is unlocked by paying the member share once', (
+    tester,
+  ) async {
+    final pass = _benefit(
+      id: 'b2bf_pass',
+      name: 'Pro pass',
+      type: 'sponsored_pass',
+      fundingType: 'sponsor_percentage',
+      funding: {'sponsorShareBps': 7000, 'passTier': 'pro'},
+      usageLimit: null,
+      usagePeriod: 'unlimited',
+      used: 0,
+      remaining: null,
+    );
+    pass['pass'] = <String, dynamic>{
+      'entitlementId': 'b2be_1',
+      'status': 'awaiting_member',
+      'memberTzs': 45000,
+      'canUnlock': true,
+      'paymentPending': false,
+    };
+    final api = _FakeApi([pass]);
+    await tester.pumpWidget(_app(api));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sponsored pass'), findsOneWidget);
+    expect(find.text('Unlock for TZS 45,000'), findsOneWidget);
+    expect(find.text('No limit on how often you use it'), findsNothing);
+
+    await tester.tap(find.byKey(const Key('unlock-b2be_1')));
+    await tester.pumpAndSettle();
+    expect(api.unlocked, ['b2be_1']);
+    expect(find.byKey(const Key('unlock-b2be_1')), findsNothing);
+    expect(
+      find.text(
+        'Payment requested. Your pass starts when FitFlex confirms it.',
+      ),
+      findsWidgets,
+    );
+
+    // Once the payment is confirmed the pass simply shows as running.
+    (pass['pass'] as Map<String, dynamic>)['status'] = 'active';
+    await tester.pumpWidget(_app(_FakeApi([pass])));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Your pass is running until the end of the month'),
+      findsOneWidget,
+    );
   });
 }
