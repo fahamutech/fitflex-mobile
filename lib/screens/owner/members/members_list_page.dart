@@ -19,6 +19,7 @@ import 'member_controller.dart';
 import 'widgets/add_member_sheet.dart';
 import 'widgets/filter_members_sheet.dart';
 import 'widgets/member_list_tile.dart';
+import '../../../shared/widgets/invitations.dart';
 
 class OwnerMembersPage extends StatefulWidget {
   const OwnerMembersPage({super.key});
@@ -79,7 +80,19 @@ class _OwnerMembersPageState extends State<OwnerMembersPage> {
   }
 
   Future<void> _addMember() async {
-    final gyms = OwnerDataScope.of(context).ownerGyms;
+    final owner = OwnerDataScope.of(context);
+    final gyms = owner.ownerGyms;
+    // Identity V2: invite the member; the plan starts when they accept.
+    if (AppScope.of(context).auth.invitesEnabled && gyms.isNotEmpty) {
+      final gymId = owner.activeGymId ?? gyms.first['id'].toString();
+      final sent = await openInvitePersonSheet(
+        context,
+        gymId: gymId,
+        role: 'member',
+      );
+      if (sent && mounted) await _controller!.refresh();
+      return;
+    }
     final payload = await openAddMemberSheet(context, gyms: gyms);
     if (payload == null || !mounted) return;
     final messenger = ScaffoldMessenger.of(context);

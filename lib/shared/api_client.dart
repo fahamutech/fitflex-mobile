@@ -233,6 +233,78 @@ class ApiClient {
     return await _request('POST', '/me/personas', body: {'userType': userType});
   }
 
+  // ── Identity V2 · invitations (404 while the backend flag is off) ─────────
+
+  /// Open invitations addressed to the signed-in Person.
+  Future<Map<String, dynamic>> myInvitations() async {
+    return await _request('GET', '/me/invitations');
+  }
+
+  /// Open an invitation from its link. Fails with `identifier_not_verified`
+  /// unless this Person has verified the phone or email it was sent to.
+  Future<Map<String, dynamic>> openInvitation(String token) async {
+    return await _request(
+      'POST',
+      '/me/invitations/open',
+      body: {'token': token},
+    );
+  }
+
+  Future<Map<String, dynamic>> acceptInvitation(String id) async {
+    return await _request('POST', '/me/invitations/$id/accept');
+  }
+
+  Future<Map<String, dynamic>> declineInvitation(String id) async {
+    return await _request('POST', '/me/invitations/$id/decline');
+  }
+
+  /// Does this exact phone or email belong to a FitFlex person? Answers only
+  /// `{found, maskedName}`.
+  Future<Map<String, dynamic>> gymLookupPerson(
+    String gymId, {
+    String? phone,
+    String? email,
+  }) async {
+    return await _request(
+      'POST',
+      '/orgs/gym/$gymId/people/lookup',
+      body: {'phone': ?phone, 'email': ?email},
+    );
+  }
+
+  /// Invite a person to a gym as member, staff or trainer. No account or
+  /// credentials are created; returns the link token once.
+  Future<Map<String, dynamic>> gymCreateInvitation(
+    String gymId,
+    Map<String, dynamic> body,
+  ) async {
+    return await _request('POST', '/orgs/gym/$gymId/invitations', body: body);
+  }
+
+  Future<Map<String, dynamic>> gymInvitations(
+    String gymId, {
+    bool needsResolution = false,
+  }) async {
+    return await _request(
+      'GET',
+      '/orgs/gym/$gymId/invitations${needsResolution ? '?needsResolution=1' : ''}',
+    );
+  }
+
+  /// [action] is cancel, resend, reissue or refunded.
+  Future<Map<String, dynamic>> gymInvitationAction(
+    String gymId,
+    String invitationId,
+    String action, {
+    Map<String, dynamic>? body,
+  }) async {
+    return await _request(
+      'POST',
+      '/orgs/gym/$gymId/invitations/$invitationId/$action',
+      body: body,
+    );
+  }
+
   /// Identity V2: a session for another persona of the same Person.
   Future<Map<String, dynamic>> switchPersona(String personaId) async {
     return await _request(
