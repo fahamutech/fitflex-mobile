@@ -42,6 +42,7 @@ import 'screens/member/member_message_settings_page.dart';
 import 'shared/inbox/inbox_pages.dart';
 import 'screens/vendor/vendor_home_page.dart';
 import 'screens/partner/verification/verification_center_page.dart';
+import 'shared/widgets/invitations.dart';
 
 /// Route path constants.
 abstract class AppRoutes {
@@ -53,6 +54,7 @@ abstract class AppRoutes {
   static const emailAuth = '/auth/email';
   static const verifyEmail = '/auth/verify-email';
   static const personaPicker = '/personas';
+  static const invitations = '/invitations';
 
   /// Verify-email step, carrying the role to retry with (sign-up only).
   static String verifyEmailFor(String? requestedRole) =>
@@ -350,6 +352,12 @@ GoRouter buildRouter(AuthState auth) {
             );
           },
         ),
+      ),
+      GoRoute(
+        path: AppRoutes.invitations,
+        name: 'invitations',
+        builder: (context, state) =>
+            InvitationsScreen(token: state.uri.queryParameters['token']),
       ),
       GoRoute(
         path: AppRoutes.personaPicker,

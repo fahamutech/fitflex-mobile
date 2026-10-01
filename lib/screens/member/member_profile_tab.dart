@@ -18,6 +18,7 @@ import 'member_shell.dart';
 import 'widgets/checkin_list.dart';
 import 'widgets/membership_card.dart';
 import '../../shared/widgets/persona_switcher.dart';
+import '../../shared/widgets/invitations.dart';
 
 class MemberProfileTab extends StatefulWidget {
   const MemberProfileTab({super.key});
@@ -542,6 +543,7 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
           title: context.tr('member.help'),
           onTap: _openWhatsAppSupport,
         ),
+        const InvitationsTile(),
         const PersonaSwitcherTile(),
         const SizedBox(height: 16),
         OutlinedButton.icon(

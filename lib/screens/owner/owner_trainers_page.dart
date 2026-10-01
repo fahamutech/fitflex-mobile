@@ -7,6 +7,7 @@ import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import '../../shared/widgets/trainer_form_page.dart';
 import 'owner_shell.dart';
+import '../../shared/widgets/invitations.dart';
 
 String _apiErrorMessage(BuildContext context, ApiException e) {
   final code = (e.body is Map) ? (e.body as Map)['error']?.toString() : null;
@@ -142,6 +143,11 @@ class OwnerTrainersPage extends StatelessWidget {
       ),
     );
     if (gymId == null || !context.mounted) return;
+    // Identity V2: a trainer is invited and joins with their own profile.
+    if (AppScope.of(context).auth.invitesEnabled) {
+      await openInvitePersonSheet(context, gymId: gymId, role: 'trainer');
+      return;
+    }
     final payload = await openTrainerForm(
       context,
       title: context.tr('owner.addTrainer'),

@@ -8,6 +8,7 @@ import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import '../../shared/widgets/staff_form_page.dart';
 import 'owner_shell.dart';
+import '../../shared/widgets/invitations.dart';
 
 String _staffApiErrorMessage(BuildContext context, ApiException e) {
   final code = (e.body is Map) ? (e.body as Map)['error']?.toString() : null;
@@ -78,6 +79,14 @@ class _OwnerStaffPageState extends State<OwnerStaffPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.tr('staff.noGymsToAssign'))),
       );
+      return;
+    }
+    // Identity V2: staff are invited and sign in with their own account.
+    if (AppScope.of(context).auth.invitesEnabled) {
+      final gymId =
+          OwnerDataScope.maybeOf(context)?.activeGymId ??
+          _ownerGyms.first['id'].toString();
+      await openInvitePersonSheet(context, gymId: gymId, role: 'staff');
       return;
     }
     final payload = await openStaffForm(

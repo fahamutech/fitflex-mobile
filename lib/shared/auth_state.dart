@@ -24,6 +24,10 @@ class AuthState extends ChangeNotifier {
   List<Map<String, dynamic>> _personas = const [];
   List<String> _addablePersonaTypes = const [];
   bool _personaChoiceRequired = false;
+  // Identity V2 invitations. `_invitesEnabled` follows the backend flag:
+  // while it is off the app keeps the legacy "create" forms.
+  bool _invitesEnabled = false;
+  List<Map<String, dynamic>> _invitations = const [];
 
   String? get token => _token;
   Map<String, dynamic>? get user => _user;
@@ -50,6 +54,12 @@ class AuthState extends ChangeNotifier {
   /// Roles this Person could still add (empty unless the backend offers it).
   List<String> get addablePersonaTypes => _addablePersonaTypes;
 
+  /// True when organisations invite people instead of creating accounts.
+  bool get invitesEnabled => _invitesEnabled;
+
+  /// Open invitations addressed to this Person.
+  List<Map<String, dynamic>> get invitations => _invitations;
+
   /// Set when the backend couldn't pick a persona (several, none used last).
   bool get personaChoiceRequired => _personaChoiceRequired;
 
@@ -71,6 +81,7 @@ class AuthState extends ChangeNotifier {
         await prefs.setString('user', jsonEncode(freshUser));
         unawaited(push?.register());
         await refreshPersonas();
+        await refreshInvitations();
       } on ApiException catch (e) {
         // Token invalid or user deleted — clear session
         if (e.status == 401 || e.status == 404) {
@@ -154,6 +165,7 @@ class AuthState extends ChangeNotifier {
     }
     await signInWithFitFlexSession(res['token'] as String, user);
     await _applyPersonaPayload(res);
+    unawaited(refreshInvitations());
     return user;
   }
 
@@ -183,6 +195,30 @@ class AuthState extends ChangeNotifier {
   void keepCurrentPersona() {
     if (!_personaChoiceRequired) return;
     _personaChoiceRequired = false;
+    notifyListeners();
+  }
+
+  /// Re-read this Person's invitations; a 404 means invitations are off.
+  Future<void> refreshInvitations() async {
+    if (_token == null) return;
+    try {
+      final res = await api.myInvitations();
+      final raw = res['invitations'];
+      _invitesEnabled = true;
+      _invitations = raw is List
+          ? raw
+                .whereType<Map>()
+                .map((i) => Map<String, dynamic>.from(i))
+                .toList()
+          : const [];
+    } on ApiException catch (e) {
+      if (e.status == 404) {
+        _invitesEnabled = false;
+        _invitations = const [];
+      }
+    } catch (_) {
+      // Offline: keep what we have.
+    }
     notifyListeners();
   }
 
@@ -242,6 +278,8 @@ class AuthState extends ChangeNotifier {
     _personas = const [];
     _addablePersonaTypes = const [];
     _personaChoiceRequired = false;
+    _invitesEnabled = false;
+    _invitations = const [];
     api.setToken(null);
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('token');
