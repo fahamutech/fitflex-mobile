@@ -987,6 +987,76 @@ class FFLocale extends ChangeNotifier {
       'shop.orderPlaced':
           'Order placed. It goes to the vendor once FitFlex confirms your payment.',
       'shop.awaitingPayment': 'Awaiting payment confirmation',
+      'shop.cancelOrder': 'Cancel order',
+      'shop.cancelConfirm': 'Cancel this order? Its items go back on sale.',
+      'shop.cancelConfirmPaid':
+          'Cancel this order? You’ll be refunded in full to the account you paid from.',
+      'shop.cancelled': 'Order cancelled.',
+      'shop.cancelledRefund':
+          'Order cancelled. Your refund is on its way; follow it under Sessions & refunds.',
+      'sessions.title': 'Sessions & refunds',
+      'sessions.tile': 'Trainer sessions you booked, cancellations and refunds',
+      'sessions.mine': 'My trainer sessions',
+      'sessions.empty':
+          'No trainer sessions yet. Sessions you book with a trainer show up here.',
+      'sessions.trainer': 'Trainer',
+      'sessions.cancel': 'Cancel session',
+      'sessions.keep': 'Keep it',
+      'sessions.cancelTitle': 'Cancel this session?',
+      'sessions.cancelConfirm':
+          'Nothing has been paid for this session, so there is nothing to refund.',
+      'sessions.cancelConfirmRefund':
+          'You’ll be refunded {amount} in full to the account you paid from.',
+      'sessions.cancelled': 'Session cancelled.',
+      'sessions.cancelledRefund':
+          'Session cancelled. Your refund is approved and on its way.',
+      'sessions.tooLate':
+          'Less than 24 hours to go, so this session can no longer be cancelled.',
+      'sessions.status.confirmed': 'Confirmed',
+      'sessions.status.pending': 'Awaiting payment',
+      'sessions.status.completed': 'Completed',
+      'sessions.status.cancelled': 'Cancelled',
+      'sessions.status.notPaid': 'Not confirmed',
+      'refunds.title': 'My refunds',
+      'refunds.empty': 'No refunds. A refund appears here when one is raised.',
+      'refunds.ask': 'Ask for a pass or plan refund',
+      'refunds.askHint':
+          'For a payment taken twice or a pass that never activated. Trainer sessions and shop orders are refunded when you cancel them.',
+      'refunds.requestSent': 'Request sent. FitFlex will reply soon.',
+      'refunds.status.requested': 'In review',
+      'refunds.status.approved': 'Approved',
+      'refunds.status.paid': 'Paid',
+      'refunds.status.rejected': 'Not approved',
+      'refunds.kind.session': 'Trainer session',
+      'refunds.kind.order': 'Shop order',
+      'refunds.kind.pass': 'Pass or plan',
+      'refunds.paidRef': 'Sent to you. Reference: {ref}',
+      'refunds.approvedHint':
+          'Approved. FitFlex will send it to the account you paid from.',
+      'refunds.requestedHint': 'FitFlex is reviewing your request.',
+      'refunds.noteRequired': 'Tell us what happened.',
+      'refunds.noPayments': 'You have no confirmed pass or plan payments.',
+      'refunds.payment': 'Payment',
+      'refunds.reason': 'Reason',
+      'refunds.reason.charged_twice': 'I was charged twice',
+      'refunds.reason.not_activated': 'My pass never activated',
+      'refunds.reason.other': 'Something else',
+      'refunds.note': 'What happened?',
+      'refunds.send': 'Send request',
+      'trainer.cancelSession': 'Cancel session',
+      'trainer.cancelSessionConfirm':
+          'Cancel this session? The member is told, and anything they paid is refunded in full.',
+      'trainer.sessionCancelled':
+          'Session cancelled. The member has been told.',
+      'error.reason.cancelWindowPassed':
+          'less than 24 hours to go, so this session can no longer be cancelled',
+      'error.reason.sessionStarted': 'this session has already started',
+      'error.reason.bookingNotCancellable': 'this session can’t be cancelled',
+      'error.reason.orderDispatched':
+          'this order is already on its way; ask the vendor about a return',
+      'error.reason.orderCancelled': 'this order is already cancelled',
+      'error.reason.refundAlreadyRequested':
+          'a refund for this payment is already in progress',
       'vendor.awaitingPayment':
           'Awaiting payment confirmation — you can fulfil it once it’s paid.',
       'shop.orderFailed': 'Could not place the order. Try again.',
@@ -4067,6 +4137,79 @@ class FFLocale extends ChangeNotifier {
       'shop.orderPlaced':
           'Oda imewekwa. Itamfikia muuzaji baada ya FitFlex kuthibitisha malipo yako.',
       'shop.awaitingPayment': 'Inasubiri uthibitisho wa malipo',
+      'shop.cancelOrder': 'Ghairi oda',
+      'shop.cancelConfirm': 'Ghairi oda hii? Bidhaa zake zitarudi sokoni.',
+      'shop.cancelConfirmPaid':
+          'Ghairi oda hii? Utarejeshewa fedha zote kwenye akaunti uliyolipia.',
+      'shop.cancelled': 'Oda imeghairiwa.',
+      'shop.cancelledRefund':
+          'Oda imeghairiwa. Fedha zako ziko njiani; fuatilia kwenye Vipindi na marejesho.',
+      'sessions.title': 'Vipindi na marejesho',
+      'sessions.tile':
+          'Vipindi vya wakufunzi ulivyoweka, kughairi na marejesho ya fedha',
+      'sessions.mine': 'Vipindi vyangu vya wakufunzi',
+      'sessions.empty':
+          'Bado huna vipindi vya wakufunzi. Vipindi unavyoweka na mkufunzi vitaonekana hapa.',
+      'sessions.trainer': 'Mkufunzi',
+      'sessions.cancel': 'Ghairi kipindi',
+      'sessions.keep': 'Kibaki',
+      'sessions.cancelTitle': 'Ghairi kipindi hiki?',
+      'sessions.cancelConfirm':
+          'Kipindi hiki hakijalipiwa, hivyo hakuna cha kurejeshwa.',
+      'sessions.cancelConfirmRefund':
+          'Utarejeshewa {amount} zote kwenye akaunti uliyolipia.',
+      'sessions.cancelled': 'Kipindi kimeghairiwa.',
+      'sessions.cancelledRefund':
+          'Kipindi kimeghairiwa. Marejesho yako yameidhinishwa na yako njiani.',
+      'sessions.tooLate':
+          'Zimebaki chini ya saa 24, hivyo kipindi hiki hakiwezi kughairiwa tena.',
+      'sessions.status.confirmed': 'Kimethibitishwa',
+      'sessions.status.pending': 'Kinasubiri malipo',
+      'sessions.status.completed': 'Kimekamilika',
+      'sessions.status.cancelled': 'Kimeghairiwa',
+      'sessions.status.notPaid': 'Hakijathibitishwa',
+      'refunds.title': 'Marejesho yangu',
+      'refunds.empty':
+          'Hakuna marejesho. Marejesho yataonekana hapa yanapoanzishwa.',
+      'refunds.ask': 'Omba marejesho ya kifurushi au mpango',
+      'refunds.askHint':
+          'Kwa malipo yaliyokatwa mara mbili au kifurushi ambacho hakikuwashwa. Vipindi vya wakufunzi na oda za duka hurejeshewa fedha unapovighairi.',
+      'refunds.requestSent': 'Ombi limetumwa. FitFlex itakujibu hivi karibuni.',
+      'refunds.status.requested': 'Linakaguliwa',
+      'refunds.status.approved': 'Yameidhinishwa',
+      'refunds.status.paid': 'Yamelipwa',
+      'refunds.status.rejected': 'Hayakuidhinishwa',
+      'refunds.kind.session': 'Kipindi cha mkufunzi',
+      'refunds.kind.order': 'Oda ya duka',
+      'refunds.kind.pass': 'Kifurushi au mpango',
+      'refunds.paidRef': 'Umetumiwa. Kumbukumbu: {ref}',
+      'refunds.approvedHint':
+          'Yameidhinishwa. FitFlex itatuma kwenye akaunti uliyolipia.',
+      'refunds.requestedHint': 'FitFlex inakagua ombi lako.',
+      'refunds.noteRequired': 'Tueleze kilichotokea.',
+      'refunds.noPayments':
+          'Huna malipo ya kifurushi au mpango yaliyothibitishwa.',
+      'refunds.payment': 'Malipo',
+      'refunds.reason': 'Sababu',
+      'refunds.reason.charged_twice': 'Nilikatwa mara mbili',
+      'refunds.reason.not_activated': 'Kifurushi changu hakikuwashwa',
+      'refunds.reason.other': 'Jambo jingine',
+      'refunds.note': 'Nini kilitokea?',
+      'refunds.send': 'Tuma ombi',
+      'trainer.cancelSession': 'Ghairi kipindi',
+      'trainer.cancelSessionConfirm':
+          'Ghairi kipindi hiki? Mwanachama atajulishwa, na chochote alicholipa kitarejeshwa chote.',
+      'trainer.sessionCancelled':
+          'Kipindi kimeghairiwa. Mwanachama amejulishwa.',
+      'error.reason.cancelWindowPassed':
+          'zimebaki chini ya saa 24, hivyo kipindi hiki hakiwezi kughairiwa tena',
+      'error.reason.sessionStarted': 'kipindi hiki kimeshaanza',
+      'error.reason.bookingNotCancellable': 'kipindi hiki hakiwezi kughairiwa',
+      'error.reason.orderDispatched':
+          'oda hii iko njiani tayari; muulize muuzaji kuhusu kurejesha',
+      'error.reason.orderCancelled': 'oda hii imeshaghairiwa',
+      'error.reason.refundAlreadyRequested':
+          'marejesho ya malipo haya yanashughulikiwa tayari',
       'vendor.awaitingPayment':
           'Inasubiri uthibitisho wa malipo — utaweza kuitekeleza ikishalipwa.',
       'shop.orderFailed': 'Imeshindikana kuweka oda. Jaribu tena.',

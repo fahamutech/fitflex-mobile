@@ -1216,6 +1216,46 @@ class ApiClient {
   Future<List<dynamic>> myShopOrders() async =>
       await _request('GET', '/me/shop-orders');
 
+  /// Cancel my order before it is dispatched. A paid order is refunded in full.
+  Future<Map<String, dynamic>> cancelMyShopOrder(String orderId) async =>
+      await _request('POST', '/me/shop-orders/$orderId/cancel');
+
+  // ── Trainer sessions I booked, cancellations and refunds ─────────────
+
+  /// My trainer bookings; each carries `cancellation` (canCancel, refundable, cancelBy).
+  Future<List<dynamic>> myTrainerBookings() async =>
+      await _request('GET', '/me/trainer-bookings');
+
+  /// Cancel one session: unpaid any time before it starts, paid up to 24
+  /// hours before (refunded in full).
+  Future<Map<String, dynamic>> cancelMyTrainerBooking(String bookingId) async =>
+      await _request('POST', '/me/trainer-bookings/$bookingId/cancel');
+
+  /// Trainer: cancel a session any time before it starts; the member is refunded.
+  Future<Map<String, dynamic>> trainerCancelBooking(String bookingId) async =>
+      await _request('POST', '/trainer/bookings/$bookingId/cancel');
+
+  Future<Map<String, dynamic>> myRefunds() async =>
+      await _request('GET', '/me/refunds');
+
+  Future<List<dynamic>> myPayments() async =>
+      await _request('GET', '/me/payments');
+
+  /// Ask for a pass or plan payment back.
+  Future<Map<String, dynamic>> requestRefund({
+    required String paymentRequestId,
+    required String reasonCode,
+    String? note,
+  }) async => await _request(
+    'POST',
+    '/me/refunds',
+    body: {
+      'paymentRequestId': paymentRequestId,
+      'reasonCode': reasonCode,
+      'note': ?note,
+    },
+  );
+
   Future<List<dynamic>> vendorProducts() async =>
       await _request('GET', '/vendor/products');
 

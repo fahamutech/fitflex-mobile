@@ -5,6 +5,7 @@ import '../file-export.dart';
 
 import '../../app_scope.dart';
 import '../api_client.dart';
+import '../api_error_message.dart';
 import '../components/components.dart';
 import '../design_tokens.dart';
 import '../formatters.dart';
@@ -339,6 +340,42 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
     }
   }
 
+  /// Cancel an order that is not on its way yet; a paid one is refunded.
+  Future<void> _cancelOrder(Map<String, dynamic> order) async {
+    final paid = order['paymentStatus'] == 'paid';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(context.tr('shop.cancelOrder')),
+        content: Text(
+          context.tr(paid ? 'shop.cancelConfirmPaid' : 'shop.cancelConfirm'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(context.tr('sessions.keep')),
+          ),
+          FilledButton(
+            key: const Key('order-cancel-confirm'),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(context.tr('shop.cancelOrder')),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final locale = FFLocaleScope.of(context);
+    final done = context.tr(paid ? 'shop.cancelledRefund' : 'shop.cancelled');
+    try {
+      await AppScope.of(context).api.cancelMyShopOrder(order['id'].toString());
+      await _load();
+      messenger.showSnackBar(SnackBar(content: Text(done)));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(errorMessage(locale, e))));
+    }
+  }
+
   Future<void> _openProduct(ShopProduct product) async {
     var detailedProduct = product;
     try {
@@ -668,6 +705,12 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
               ),
               Wrap(
                 children: [
+                  if (order['canCancel'] == true)
+                    TextButton(
+                      key: Key('order-cancel-${order['id']}'),
+                      onPressed: () => _cancelOrder(order),
+                      child: Text(context.tr('shop.cancelOrder')),
+                    ),
                   TextButton(
                     onPressed: () => _showInvoice(order),
                     child: Text(context.tr('shop.invoice')),
