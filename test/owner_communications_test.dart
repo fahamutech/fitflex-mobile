@@ -142,6 +142,33 @@ void _fillMessage(CampaignComposerController c) {
 }
 
 void main() {
+  test('a blank-placeholder warning says which value, and for how many', () {
+    final some = CampaignWarning.fromJson({
+      'code': 'empty_value',
+      'variable': 'expiry_date',
+      'count': 2,
+      'of': 7,
+    });
+    expect((some.variable, some.count, some.of), ('expiry_date', 2, 7));
+    expect(some.blankForAll, isFalse);
+    final all = CampaignWarning.fromJson({
+      'code': 'empty_value',
+      'variable': 'expiry_date',
+      'count': 7,
+      'of': 7,
+    });
+    expect(all.blankForAll, isTrue);
+    expect(
+      CampaignWarning.fromJson({'code': 'large_send', 'count': 7}).blankForAll,
+      isFalse,
+    );
+    final en = FFLocale();
+    expect(
+      en.t('comms.warn.empty_value_all'),
+      contains('Type it into the message'),
+    );
+    expect(en.t('comms.var.expiry_date'), 'End date');
+  });
   group('audience refinements', () {
     test('build the backend filter and read it back', () {
       const r = AudienceRefinements(

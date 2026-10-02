@@ -403,13 +403,26 @@ class _Warnings extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
           child: FFAlert(
-            key: Key('warning-${w.code}'),
+            key: Key(
+              'warning-${w.code}${w.variable == null ? '' : '-${w.variable}'}',
+            ),
             tone: w.code == 'nobody_reachable'
                 ? FFAlertTone.error
                 : FFAlertTone.warning,
             message: context
-                .tr('comms.warn.${w.code}')
+                .tr(
+                  w.blankForAll
+                      ? 'comms.warn.empty_value_all'
+                      : 'comms.warn.${w.code}',
+                )
                 .replaceFirst('{n}', '${w.count ?? ''}')
+                .replaceFirst('{of}', '${w.of ?? ''}')
+                .replaceFirst(
+                  '{variable}',
+                  w.variable == null
+                      ? ''
+                      : context.tr('comms.var.${w.variable}'),
+                )
                 .replaceFirst(
                   '{channel}',
                   w.channel == null ? '' : channelLabel(context, w.channel!),
