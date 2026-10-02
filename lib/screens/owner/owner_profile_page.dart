@@ -11,6 +11,7 @@ import '../language_screen.dart';
 import 'owner_shell.dart';
 import '../../shared/widgets/persona_switcher.dart';
 import '../../shared/widgets/invitations.dart';
+import '../../shared/widgets/verify_identifier.dart';
 
 /// Owner — profile view with account settings and sign-out.
 /// B9: this route lives OUTSIDE the owner shell, so [OwnerDataScope] is
@@ -169,6 +170,7 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
             onTap: _openWhatsAppSupport,
           ),
           const InvitationsTile(),
+          const ContactDetailsTile(),
           GymInvitationsTile(
             gymId: OwnerDataScope.maybeOf(context)?.activeGymId,
           ),

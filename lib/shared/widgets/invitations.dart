@@ -10,6 +10,7 @@ import '../components/ff_action_tile.dart';
 import '../design_tokens.dart';
 import '../i18n.dart';
 import 'persona_switcher.dart';
+import 'verify_identifier.dart';
 
 /// Where an invitation link opens (the web build of this app).
 const kInviteLinkBase = 'https://fitflex-af-app.web.app';
@@ -93,6 +94,8 @@ class _InvitationsScreenState extends State<InvitationsScreen> {
   bool _loading = true;
   String? _busyId;
   String? _notice;
+  // Set when the link was sent to a mobile number or email not verified here.
+  String? _needsVerified;
 
   @override
   void initState() {
@@ -103,12 +106,18 @@ class _InvitationsScreenState extends State<InvitationsScreen> {
   Future<void> _load() async {
     final scope = AppScope.of(context);
     String? notice;
+    String? needsVerified;
     final token = widget.token;
     if (token != null && token.isNotEmpty) {
       try {
         await scope.api.openInvitation(token);
       } catch (e) {
         if (mounted) notice = inviteErrorMessage(context, e);
+        if (e is ApiException &&
+            e.code == 'identifier_not_verified' &&
+            e.body is Map) {
+          needsVerified = (e.body as Map)['identifierType']?.toString();
+        }
       }
     }
     await scope.auth.refreshInvitations();
@@ -116,7 +125,18 @@ class _InvitationsScreenState extends State<InvitationsScreen> {
     setState(() {
       _loading = false;
       _notice = notice;
+      _needsVerified = needsVerified;
     });
+  }
+
+  Future<void> _verifyThenRetry(String type) async {
+    final verified = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => VerifyIdentifierScreen(type: type)),
+    );
+    if (verified == true && mounted) {
+      setState(() => _loading = true);
+      await _load();
+    }
   }
 
   Future<void> _respond(Map<String, dynamic> invitation, bool accept) async {
@@ -184,6 +204,21 @@ class _InvitationsScreenState extends State<InvitationsScreen> {
                       _notice!,
                       key: const Key('invitations-notice'),
                       style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ),
+                if (_needsVerified != null && auth.identifiersEnabled)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
+                    child: FilledButton(
+                      key: const Key('invitations-verify'),
+                      onPressed: () => _verifyThenRetry(_needsVerified!),
+                      child: Text(
+                        context.tr(
+                          _needsVerified == 'phone'
+                              ? 'verify.phoneTitle'
+                              : 'verify.emailTitle',
+                        ),
+                      ),
                     ),
                   ),
                 if (items.isEmpty)

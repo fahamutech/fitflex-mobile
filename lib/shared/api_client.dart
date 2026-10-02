@@ -235,6 +235,37 @@ class ApiClient {
 
   // ── Identity V2 · invitations (404 while the backend flag is off) ─────────
 
+  /// Identity V2 · I6a: this Person's verified mobile numbers and emails
+  /// (`identifiers`) and profile values not verified yet (`unverified`).
+  Future<Map<String, dynamic>> myIdentifiers() async {
+    return await _request('GET', '/me/identifiers');
+  }
+
+  /// Send a FitFlex code to one mobile number (SMS) or email.
+  Future<Map<String, dynamic>> requestIdentifierCode({
+    String? phone,
+    String? email,
+    String? locale,
+  }) async {
+    return await _request(
+      'POST',
+      '/me/identifiers/verify/request',
+      body: {'phone': ?phone, 'email': ?email, 'locale': ?locale},
+    );
+  }
+
+  Future<Map<String, dynamic>> confirmIdentifierCode({
+    String? phone,
+    String? email,
+    required String code,
+  }) async {
+    return await _request(
+      'POST',
+      '/me/identifiers/verify/confirm',
+      body: {'phone': ?phone, 'email': ?email, 'code': code},
+    );
+  }
+
   /// Open invitations addressed to the signed-in Person.
   Future<Map<String, dynamic>> myInvitations() async {
     return await _request('GET', '/me/invitations');
