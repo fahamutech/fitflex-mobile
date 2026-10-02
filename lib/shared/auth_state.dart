@@ -28,6 +28,10 @@ class AuthState extends ChangeNotifier {
   // while it is off the app keeps the legacy "create" forms.
   bool _invitesEnabled = false;
   List<Map<String, dynamic>> _invitations = const [];
+  // Identity V2 identifiers: what this Person has proved is theirs.
+  bool _identifiersEnabled = false;
+  List<Map<String, dynamic>> _verifiedIdentifiers = const [];
+  List<Map<String, dynamic>> _unverifiedIdentifiers = const [];
 
   String? get token => _token;
   Map<String, dynamic>? get user => _user;
@@ -60,6 +64,16 @@ class AuthState extends ChangeNotifier {
   /// Open invitations addressed to this Person.
   List<Map<String, dynamic>> get invitations => _invitations;
 
+  /// True when the backend lets a person verify a mobile number or email.
+  bool get identifiersEnabled => _identifiersEnabled;
+
+  /// Mobile numbers and emails this Person has verified.
+  List<Map<String, dynamic>> get verifiedIdentifiers => _verifiedIdentifiers;
+
+  /// Profile values (mobile number, email) not verified yet.
+  List<Map<String, dynamic>> get unverifiedIdentifiers =>
+      _unverifiedIdentifiers;
+
   /// Set when the backend couldn't pick a persona (several, none used last).
   bool get personaChoiceRequired => _personaChoiceRequired;
 
@@ -82,6 +96,7 @@ class AuthState extends ChangeNotifier {
         unawaited(push?.register());
         await refreshPersonas();
         await refreshInvitations();
+        await refreshIdentifiers();
       } on ApiException catch (e) {
         // Token invalid or user deleted — clear session
         if (e.status == 401 || e.status == 404) {
@@ -166,6 +181,7 @@ class AuthState extends ChangeNotifier {
     await signInWithFitFlexSession(res['token'] as String, user);
     await _applyPersonaPayload(res);
     unawaited(refreshInvitations());
+    unawaited(refreshIdentifiers());
     return user;
   }
 
@@ -215,6 +231,29 @@ class AuthState extends ChangeNotifier {
       if (e.status == 404) {
         _invitesEnabled = false;
         _invitations = const [];
+      }
+    } catch (_) {
+      // Offline: keep what we have.
+    }
+    notifyListeners();
+  }
+
+  /// Re-read what this Person has verified; a 404 means verification is off.
+  Future<void> refreshIdentifiers() async {
+    if (_token == null) return;
+    List<Map<String, dynamic>> listOf(Object? raw) => raw is List
+        ? raw.whereType<Map>().map((i) => Map<String, dynamic>.from(i)).toList()
+        : const [];
+    try {
+      final res = await api.myIdentifiers();
+      _identifiersEnabled = true;
+      _verifiedIdentifiers = listOf(res['identifiers']);
+      _unverifiedIdentifiers = listOf(res['unverified']);
+    } on ApiException catch (e) {
+      if (e.status == 404) {
+        _identifiersEnabled = false;
+        _verifiedIdentifiers = const [];
+        _unverifiedIdentifiers = const [];
       }
     } catch (_) {
       // Offline: keep what we have.
@@ -280,6 +319,9 @@ class AuthState extends ChangeNotifier {
     _personaChoiceRequired = false;
     _invitesEnabled = false;
     _invitations = const [];
+    _identifiersEnabled = false;
+    _verifiedIdentifiers = const [];
+    _unverifiedIdentifiers = const [];
     api.setToken(null);
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('token');
