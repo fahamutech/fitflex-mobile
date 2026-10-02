@@ -36,7 +36,9 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
   bool _busy = false;
   String _pin = '';
   final int _minPinLength = 4;
-  final int _maxPinLength = 6;
+  // A new PIN is exactly four digits. Signing in still accepts the longer
+  // PINs that could be set before that rule, up to the old limit of eight.
+  int get _maxPinLength => widget.initialMode == EmailAuthMode.signUp ? 4 : 8;
   bool _obscurePin = true;
 
   FirebaseAuthService get _authService =>

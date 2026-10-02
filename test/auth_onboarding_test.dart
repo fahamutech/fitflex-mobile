@@ -141,9 +141,7 @@ void main() {
     );
   });
 
-  testWidgets('email PIN keypad caps credentials at six digits', (
-    tester,
-  ) async {
+  testWidgets('a new PIN is exactly four digits', (tester) async {
     await tester.pumpWidget(
       _wrap(
         const EmailAuthScreen(
@@ -158,6 +156,29 @@ void main() {
       await tester.pump();
     }
 
-    expect(tester.widget<PinInputRow>(find.byType(PinInputRow)).pin, '222222');
+    expect(tester.widget<PinInputRow>(find.byType(PinInputRow)).pin, '2222');
+  });
+
+  testWidgets('signing in still accepts an older PIN of up to eight digits', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _wrap(
+        const EmailAuthScreen(
+          initialEmail: 'member@example.com',
+          initialMode: EmailAuthMode.signIn,
+        ),
+      ),
+    );
+
+    for (var i = 0; i < 10; i++) {
+      await tester.tap(find.text('2'));
+      await tester.pump();
+    }
+
+    expect(
+      tester.widget<PinInputRow>(find.byType(PinInputRow)).pin,
+      '22222222',
+    );
   });
 }
