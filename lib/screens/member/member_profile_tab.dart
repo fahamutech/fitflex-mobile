@@ -523,6 +523,13 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
           onTap: () => context.push(AppRoutes.memberBenefits),
         ),
         FFActionTile(
+          key: const Key('profile-sessions'),
+          icon: Icons.event_repeat_outlined,
+          title: context.tr('sessions.title'),
+          subtitle: context.tr('sessions.tile'),
+          onTap: () => context.push(AppRoutes.memberSessions),
+        ),
+        FFActionTile(
           key: const Key('profile-privacy'),
           icon: Icons.privacy_tip_outlined,
           title: context.tr('privacy.title'),

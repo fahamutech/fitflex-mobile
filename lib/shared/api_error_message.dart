@@ -96,6 +96,14 @@ String? _knownReason(FFLocale locale, String reason) {
     'slot_already_booked': 'error.reason.slotUnavailable',
     'slot_not_available': 'error.reason.slotUnavailable',
     'slot_in_past': 'error.reason.slotInPast',
+    // Cancellations and refunds.
+    'cancellation_window_passed': 'error.reason.cancelWindowPassed',
+    'session_already_started': 'error.reason.sessionStarted',
+    'booking_not_cancellable': 'error.reason.bookingNotCancellable',
+    'order_already_dispatched': 'error.reason.orderDispatched',
+    'order_already_delivered': 'error.reason.orderDispatched',
+    'order_cancelled': 'error.reason.orderCancelled',
+    'refund_already_requested': 'error.reason.refundAlreadyRequested',
     // Accounts.
     'email_already_used': 'error.reason.emailAlreadyUsed',
     'invalid_credentials': 'error.reason.invalidCredentials',

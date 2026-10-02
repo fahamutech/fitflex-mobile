@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../app_scope.dart';
 import '../../../shared/api_client.dart';
+import '../../../shared/api_error_message.dart';
 import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
 import '../../../shared/formatters.dart';
@@ -54,6 +55,49 @@ class _TrainerSessionsSheetState extends State<TrainerSessionsSheet> {
       });
     } on ApiException {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  /// A booked session that has not started yet can still be cancelled.
+  bool _canCancel(Map<String, dynamic> s) {
+    if (s['source'] != 'booking') return false;
+    if (!const ['confirmed', 'payment_pending'].contains(s['status'])) {
+      return false;
+    }
+    final start = DateTime.tryParse('${s['date']}T${s['slot']}:00+03:00');
+    return start != null && start.isAfter(DateTime.now());
+  }
+
+  /// Cancel a session I can't take. A member who paid is refunded in full.
+  Future<void> _cancelBooking(Map<String, dynamic> s) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(context.tr('trainer.cancelSession')),
+        content: Text(context.tr('trainer.cancelSessionConfirm')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(context.tr('sessions.keep')),
+          ),
+          FilledButton(
+            key: const Key('trainer-cancel-confirm'),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(context.tr('trainer.cancelSession')),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final locale = FFLocaleScope.of(context);
+    final done = context.tr('trainer.sessionCancelled');
+    try {
+      await AppScope.of(context).api.trainerCancelBooking(s['id'].toString());
+      await _load();
+      messenger.showSnackBar(SnackBar(content: Text(done)));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(errorMessage(locale, e))));
     }
   }
 
@@ -126,6 +170,9 @@ class _TrainerSessionsSheetState extends State<TrainerSessionsSheet> {
                         context.tr('trainer.walkIn');
                     return ListTile(
                       contentPadding: EdgeInsets.zero,
+                      onLongPress: _canCancel(s)
+                          ? () => _cancelBooking(s)
+                          : null,
                       leading: Icon(
                         s['source'] == 'booking'
                             ? Icons.event_available
@@ -142,10 +189,22 @@ class _TrainerSessionsSheetState extends State<TrainerSessionsSheet> {
                             s['locationLabel'].toString(),
                         ].join(' · '),
                       ),
-                      trailing: Text(
-                        formatCurrency(s['amountTzs'] as num? ?? 0),
-                        style: Theme.of(context).textTheme.labelMedium
-                            ?.copyWith(fontWeight: FontWeight.w600),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            formatCurrency(s['amountTzs'] as num? ?? 0),
+                            style: Theme.of(context).textTheme.labelMedium
+                                ?.copyWith(fontWeight: FontWeight.w600),
+                          ),
+                          if (_canCancel(s))
+                            IconButton(
+                              key: Key('trainer-cancel-${s['id']}'),
+                              tooltip: context.tr('trainer.cancelSession'),
+                              icon: const Icon(Icons.event_busy_outlined),
+                              onPressed: () => _cancelBooking(s),
+                            ),
+                        ],
                       ),
                     );
                   },
