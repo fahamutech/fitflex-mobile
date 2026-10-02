@@ -2417,6 +2417,14 @@ class FFLocale extends ChangeNotifier {
           '{channel} reaches no one in this audience.',
       'comms.warn.nobody_reachable':
           'Nobody in this audience can receive this message. Change the audience or channels.',
+      'comms.warn.empty_value':
+          '“{variable}” is blank for {n} of {of} recipients. That part of the message will be empty for them.',
+      'comms.warn.empty_value_all':
+          '“{variable}” is blank for everyone in this audience. Type it into the message instead.',
+      'comms.warn.gym_name_is_fitflex':
+          '“Gym name” will read “FitFlex”: this message is from FitFlex, not a gym.',
+      'comms.var.renewal_link': 'Renewal link',
+      'push.open': 'Open',
       'comms.confirm.audience': 'Audience',
       'comms.confirm.when': 'When',
       'comms.confirm.type': 'Type',
@@ -5581,6 +5589,14 @@ class FFLocale extends ChangeNotifier {
           '{channel} haimfikii mtu yeyote katika hadhira hii.',
       'comms.warn.nobody_reachable':
           'Hakuna mtu katika hadhira hii anayeweza kupokea ujumbe huu. Badilisha hadhira au njia za kutuma.',
+      'comms.warn.empty_value':
+          '“{variable}” haina taarifa kwa wapokeaji {n} kati ya {of}. Sehemu hiyo ya ujumbe itakuwa tupu kwao.',
+      'comms.warn.empty_value_all':
+          '“{variable}” haina taarifa kwa wapokeaji wote wa hadhira hii. Iandike moja kwa moja kwenye ujumbe.',
+      'comms.warn.gym_name_is_fitflex':
+          '“Jina la jimu” litasomeka “FitFlex”: ujumbe huu unatoka FitFlex, si jimu.',
+      'comms.var.renewal_link': 'Kiungo cha kulipia',
+      'push.open': 'Fungua',
       'comms.confirm.audience': 'Hadhira',
       'comms.confirm.when': 'Lini',
       'comms.confirm.type': 'Aina',

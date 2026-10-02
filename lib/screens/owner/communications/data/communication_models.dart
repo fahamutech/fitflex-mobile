@@ -665,16 +665,32 @@ class RenderedMessage {
 }
 
 class CampaignWarning {
-  const CampaignWarning(this.code, {this.count, this.channel});
+  const CampaignWarning(
+    this.code, {
+    this.count,
+    this.channel,
+    this.variable,
+    this.of,
+  });
 
   final String code;
   final int? count;
   final CommChannel? channel;
 
+  /// `empty_value`: the placeholder that is blank for [count] of [of]
+  /// recipients.
+  final String? variable;
+  final int? of;
+
+  /// Blank for everyone: the owner should type the value in instead.
+  bool get blankForAll => code == 'empty_value' && count != null && count == of;
+
   factory CampaignWarning.fromJson(Map<String, dynamic> j) => CampaignWarning(
     j['code'].toString(),
     count: (j['count'] as num?)?.toInt(),
     channel: CommChannel.parse(j['channel']?.toString()),
+    variable: j['variable']?.toString(),
+    of: (j['of'] as num?)?.toInt(),
   );
 }
 
