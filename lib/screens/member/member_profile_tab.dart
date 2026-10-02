@@ -50,6 +50,15 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
     return null;
   }
 
+  /// A new PIN is exactly four digits (the current one may be older and longer).
+  String? _newPinError(String value) {
+    if (value.trim().isEmpty) return context.tr('onboarding.required');
+    if (!RegExp(r'^\d{4}$').hasMatch(value)) {
+      return context.tr('auth.pinExactlyFour');
+    }
+    return null;
+  }
+
   Future<void> _refreshMemberData(MemberData data) async {
     final res = await AppScope.of(context).api.me();
     if (!mounted) return;
@@ -188,8 +197,8 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
                       controller: newPinCtrl,
                       obscureText: true,
                       keyboardType: TextInputType.number,
-                      maxLength: 8,
-                      validator: (value) => _pinError(value ?? ''),
+                      maxLength: 4,
+                      validator: (value) => _newPinError(value ?? ''),
                       decoration: InputDecoration(
                         labelText: context.tr('member.newPin'),
                         counterText: '',
@@ -200,7 +209,7 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
                       controller: confirmPinCtrl,
                       obscureText: true,
                       keyboardType: TextInputType.number,
-                      maxLength: 8,
+                      maxLength: 4,
                       validator: (value) => value != newPinCtrl.text
                           ? context.tr('auth.pinMismatch')
                           : null,

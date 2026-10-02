@@ -68,8 +68,36 @@ void main() {
     await tester.tap(find.byKey(const Key('add-member-save')));
     await tester.pumpAndSettle();
 
-    expect(find.text('PIN must be 4 to 8 digits.'), findsNothing);
+    expect(find.text('PIN must be exactly 4 digits.'), findsNothing);
     expect(submitted, isNotNull);
     expect(submitted!['initialPassword'], firebasePasswordForPin('2468'));
+  });
+
+  testWidgets('a PIN that is not four digits is refused', (tester) async {
+    Map<String, dynamic>? submitted;
+    await tester.pumpWidget(
+      _testApp(onSubmitted: (payload) => submitted = payload),
+    );
+
+    await tester.tap(find.text('Open form'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('add-member-name')),
+      'Amina Said',
+    );
+    await tester.enterText(
+      find.byKey(const Key('add-member-email')),
+      'amina@example.com',
+    );
+    await tester.enterText(
+      find.byKey(const Key('add-member-initial-password')),
+      '246810',
+    );
+    await tester.ensureVisible(find.byKey(const Key('add-member-save')));
+    await tester.tap(find.byKey(const Key('add-member-save')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('PIN must be exactly 4 digits.'), findsOneWidget);
+    expect(submitted, isNull);
   });
 }

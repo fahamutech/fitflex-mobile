@@ -77,7 +77,7 @@ class _StaffFormPageState extends State<StaffFormPage> {
       );
       return;
     }
-    if (!_isEdit && _pin.length < 4) {
+    if (!_isEdit && _pin.length != 4) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(context.tr('staff.pinRequired'))));
@@ -200,7 +200,7 @@ class _StaffFormPageState extends State<StaffFormPage> {
                   height: 280,
                   child: CustomKeypad(
                     onDigit: (d) {
-                      if (_pin.length < 6) {
+                      if (_pin.length < 4) {
                         setState(() => _pin += d.toString());
                       }
                     },
