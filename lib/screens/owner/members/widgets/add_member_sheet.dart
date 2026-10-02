@@ -244,7 +244,7 @@ class _MemberFormSheetState extends State<_MemberFormSheet> {
                     validator: (v) {
                       if (v != null &&
                           v.isNotEmpty &&
-                          !RegExp(r'^\d{4,8}$').hasMatch(v)) {
+                          !RegExp(r'^\d{4}$').hasMatch(v)) {
                         return context.tr('members.initialPasswordTooShort');
                       }
                       return null;
