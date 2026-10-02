@@ -16,6 +16,7 @@ import 'shared/inbox/inbox_controller.dart';
 import 'shared/push_service.dart';
 import 'shared/design_tokens.dart';
 import 'shared/i18n.dart';
+import 'shared/push_banner.dart';
 import 'shared/theme_notifier.dart';
 import 'firebase_options.dart';
 
@@ -86,6 +87,7 @@ class _FitFlexAppState extends State<FitFlexApp> {
   late final GoRouter _router;
   late final ActivityBackend _activity;
   late final InboxController _inbox;
+  final _messengerKey = GlobalKey<ScaffoldMessengerState>();
   PhoneSteps? _phoneSteps;
   RunRecorder? _runs;
   String? _lastToken;
@@ -108,7 +110,7 @@ class _FitFlexAppState extends State<FitFlexApp> {
     }
     _inbox = InboxController(widget.api);
     widget.auth.push?.onOpen = _openFromPush;
-    widget.auth.push?.onForeground = (_) => _inbox.load();
+    widget.auth.push?.onForeground = _onForegroundPush;
     if (widget.auth.token != null) _inbox.load();
     _lastToken = widget.auth.token;
     widget.auth.addListener(_onAuth);
@@ -128,6 +130,25 @@ class _FitFlexAppState extends State<FitFlexApp> {
       // Retried on the next sign-in or language change.
       if (_syncedLocale == lang) _syncedLocale = null;
     }
+  }
+
+  /// A push arrived while the app is open: the bell updates, and since the
+  /// phone shows nothing for an open app, a banner with a way to open it.
+  void _onForegroundPush(
+    Map<String, dynamic> data,
+    String? title,
+    String? body,
+  ) {
+    _inbox.load();
+    final messenger = _messengerKey.currentState;
+    if (messenger == null) return;
+    showPushBanner(
+      messenger,
+      title: title,
+      body: body,
+      openLabel: widget.locale.t('push.open'),
+      onOpen: () => _openFromPush(data),
+    );
   }
 
   /// A tapped push opens its message, or the screen it links to.
@@ -201,6 +222,7 @@ class _FitFlexAppState extends State<FitFlexApp> {
             builder: (context, _) {
               return MaterialApp.router(
                 title: 'FitFlex',
+                scaffoldMessengerKey: _messengerKey,
                 debugShowCheckedModeBanner: kDebugMode,
                 theme: buildTheme(),
                 darkTheme: buildDarkTheme(),

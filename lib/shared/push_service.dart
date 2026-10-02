@@ -25,8 +25,10 @@ class PushService {
   /// A notification was tapped (app in background, or opened from it).
   void Function(Map<String, dynamic> data)? onOpen;
 
-  /// A notification arrived while the app was open.
-  void Function(Map<String, dynamic> data)? onForeground;
+  /// A notification arrived while the app was open. The phone shows
+  /// nothing for it, so the app is given its title and text to show.
+  void Function(Map<String, dynamic> data, String? title, String? body)?
+  onForeground;
   String? _registeredToken;
 
   static bool get supported =>
@@ -46,7 +48,11 @@ class PushService {
         (m) => onOpen?.call(m.data),
       );
       _foregroundSub ??= FirebaseMessaging.onMessage.listen(
-        (m) => onForeground?.call(m.data),
+        (m) => onForeground?.call(
+          m.data,
+          m.notification?.title,
+          m.notification?.body,
+        ),
       );
       // The app was started by tapping a notification.
       if (!_checkedInitial) {
