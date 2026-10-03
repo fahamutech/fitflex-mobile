@@ -23,6 +23,7 @@ import 'trainer_clients_tab.dart';
 import 'trainer_enquiries_page.dart';
 import 'trainer_gyms_tab.dart';
 import 'trainer_passes_page.dart';
+import 'trainer_payouts_page.dart';
 import 'trainer_reviews_page.dart';
 import 'trainer_schedule.dart';
 import 'widgets/clients_digest.dart';
@@ -458,6 +459,15 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
         icon: Icons.payments_outlined,
         title: context.tr('trainer.earnings'),
         onTap: () => showTrainerEarningsSheet(context),
+      ),
+      FFActionTile(
+        key: const Key('trainer-tile-payouts'),
+        icon: Icons.account_balance_wallet_outlined,
+        title: context.tr('payouts.title'),
+        subtitle: context.tr('payouts.tile'),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const TrainerPayoutsPage()),
+        ),
       ),
       FFActionTile(
         key: const Key('trainer-engagement-inbox'),
