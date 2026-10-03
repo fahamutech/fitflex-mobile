@@ -182,6 +182,6 @@ void main() {
     await tester.pumpWidget(
       _app(AuthState(_FakeApi()), const NotVerifiedLabel()),
     );
-    expect(find.text('Unverified'), findsOneWidget);
+    expect(find.text('Not Verified'), findsOneWidget);
   });
 }

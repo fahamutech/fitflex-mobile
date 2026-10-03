@@ -1711,7 +1711,7 @@ class FFLocale extends ChangeNotifier {
       'gym.empty.paid': 'No paid visit gyms are active yet.',
       'gym.free': 'Free',
       'gym.paid': 'Paid',
-      'gym.unverified': 'Unverified',
+      'gym.unverified': 'Not Verified',
       'gym.profileComplete': 'Profile complete',
       'gym.reviews': 'Reviews',
       'gym.noReviews': 'No reviews yet.',
