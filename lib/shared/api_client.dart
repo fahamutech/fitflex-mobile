@@ -1019,6 +1019,14 @@ class ApiClient {
     return await _request('GET', path);
   }
 
+  /// My weekly payout statements, and whether my payout account is ready.
+  Future<Map<String, dynamic>> trainerStatements() async =>
+      await _request('GET', '/trainer/statements');
+
+  /// One payout statement with the sessions it pays for.
+  Future<Map<String, dynamic>> trainerStatement(String id) async =>
+      await _request('GET', '/trainer/statements/${Uri.encodeComponent(id)}');
+
   /// C3: record a manual session (walk-in client).
   Future<Map<String, dynamic>> trainerCreateSession(
     Map<String, dynamic> data,

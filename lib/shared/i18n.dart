@@ -374,6 +374,30 @@ class FFLocale extends ChangeNotifier {
       'trainer.sessions': 'Sessions',
       'trainer.todaySessions': 'Today sessions',
       'trainer.earnings': 'Earnings',
+      'payouts.title': 'My payouts',
+      'payouts.tile': 'Weekly statements of what FitFlex pays you',
+      'payouts.intro':
+          'FitFlex pays you each week for sessions you completed, and for paid sessions that took place. Each statement is checked and approved before it is paid.',
+      'payouts.empty':
+          'No statements yet. Your first one appears the week after your first paid session.',
+      'payouts.notReady':
+          'You can’t be paid yet. Finish your verification and add a payout account so FitFlex can send your money.',
+      'payouts.openVerification': 'Open verification',
+      'payouts.sessions': '{n} session(s)',
+      'payouts.onHold':
+          'On hold. FitFlex is checking something on this statement.',
+      'payouts.statement': 'Payout statement',
+      'payouts.status.submitted': 'Awaiting approval',
+      'payouts.status.approved': 'Approved',
+      'payouts.status.payable': 'Ready to pay',
+      'payouts.status.paid': 'Paid',
+      'payouts.breakdown':
+          'Sessions at your price: {list}. FitFlex commission: {commission}.',
+      'payouts.paidTo': 'Paid to {account}. Reference: {ref}',
+      'payouts.sessionsTitle': 'Sessions on this statement',
+      'payouts.member': 'Member',
+      'payouts.basis.completed': 'Completed',
+      'payouts.basis.tookPlace': 'Took place',
       'trainer.linkedGymsCount': 'Linked gyms',
       'trainer.noSessions': 'No sessions for this day yet.',
       'trainer.addSession': 'Add manual session',
@@ -3559,6 +3583,30 @@ class FFLocale extends ChangeNotifier {
       'trainer.sessions': 'Sessions',
       'trainer.todaySessions': 'Sessions za leo',
       'trainer.earnings': 'Mapato',
+      'payouts.title': 'Malipo yangu',
+      'payouts.tile': 'Taarifa za kila wiki za kile FitFlex inachokulipa',
+      'payouts.intro':
+          'FitFlex inakulipa kila wiki kwa vipindi ulivyokamilisha, na kwa vipindi vilivyolipiwa vilivyofanyika. Kila taarifa hukaguliwa na kuidhinishwa kabla ya kulipwa.',
+      'payouts.empty':
+          'Bado hakuna taarifa. Ya kwanza itaonekana wiki inayofuata baada ya kipindi chako cha kwanza kilicholipiwa.',
+      'payouts.notReady':
+          'Bado huwezi kulipwa. Kamilisha uthibitishaji wako na uongeze akaunti ya malipo ili FitFlex ikutumie fedha zako.',
+      'payouts.openVerification': 'Fungua uthibitishaji',
+      'payouts.sessions': 'Vipindi {n}',
+      'payouts.onHold':
+          'Imesimamishwa. FitFlex inakagua jambo kwenye taarifa hii.',
+      'payouts.statement': 'Taarifa ya malipo',
+      'payouts.status.submitted': 'Inasubiri idhini',
+      'payouts.status.approved': 'Imeidhinishwa',
+      'payouts.status.payable': 'Tayari kulipwa',
+      'payouts.status.paid': 'Imelipwa',
+      'payouts.breakdown':
+          'Vipindi kwa bei yako: {list}. Kamisheni ya FitFlex: {commission}.',
+      'payouts.paidTo': 'Imelipwa kwa {account}. Kumbukumbu: {ref}',
+      'payouts.sessionsTitle': 'Vipindi kwenye taarifa hii',
+      'payouts.member': 'Mwanachama',
+      'payouts.basis.completed': 'Kimekamilika',
+      'payouts.basis.tookPlace': 'Kilifanyika',
       'trainer.linkedGymsCount': 'Gym zilizounganishwa',
       'trainer.noSessions': 'Hakuna vikao kwa siku hii bado.',
       'trainer.addSession': 'Ongeza kikao',
