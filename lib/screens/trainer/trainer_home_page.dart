@@ -11,6 +11,7 @@ import '../../shared/i18n.dart';
 import '../../shared/inbox/inbox_pages.dart';
 import '../../shared/models.dart';
 import '../../shared/root_back_navigation.dart';
+import '../../shared/widgets/partner_not_verified.dart';
 import '../../shared/widgets/profile_form_page.dart';
 import '../../shared/widgets/shop_browse_page.dart';
 import '../../shared/widgets/social_links.dart';
@@ -335,6 +336,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
     final socials = SocialLinks.fromJson(trainer?['socialLinks']);
     final gyms = (trainer?['gyms'] as List?)?.whereType<Map>().toList() ?? [];
     return _tabScroll([
+      const PartnerNotVerifiedNotice(),
       // Quick gym access: show the check-in QR, or scan the gym's QR.
       FFCard(
         key: const Key('trainer-checkin-card'),

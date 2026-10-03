@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app_scope.dart';
+import '../../../shared/api_client.dart';
 import '../../../router.dart';
 import '../../../shared/activity/trainer_connection.dart';
 import '../../../shared/components/components.dart';
@@ -129,10 +130,14 @@ class TrainerConnectCard extends StatefulWidget {
     super.key,
     required this.trainerId,
     required this.trainerName,
+    this.canConnect = true,
   });
 
   final String trainerId;
   final String trainerName;
+
+  /// False while the trainer is not verified: no new connection can start.
+  final bool canConnect;
 
   @override
   State<TrainerConnectCard> createState() => _TrainerConnectCardState();
@@ -154,11 +159,20 @@ class _TrainerConnectCardState extends State<TrainerConnectCard> {
     final messenger = ScaffoldMessenger.of(context);
     final sent = context.tr('connect.sent');
     final failed = context.tr('connect.failed');
+    final notVerified = context.tr('unverified.trainerPublic');
     setState(() => _busy = true);
     try {
       await api.requestTrainerConnection(widget.trainerId, perms.toJson());
       await shell?.refreshConnections();
       messenger.showSnackBar(SnackBar(content: Text(sent)));
+    } on ApiException catch (e) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            e.code == 'trainer_not_verified' ? notVerified : failed,
+          ),
+        ),
+      );
     } catch (_) {
       messenger.showSnackBar(SnackBar(content: Text(failed)));
     } finally {
@@ -177,10 +191,12 @@ class _TrainerConnectCardState extends State<TrainerConnectCard> {
       title = context
           .tr('connect.title')
           .replaceAll('{name}', widget.trainerName);
-      body = context.tr('connect.body');
+      body = context.tr(
+        widget.canConnect ? 'connect.body' : 'unverified.connectBody',
+      );
       action = FilledButton.tonalIcon(
         key: const Key('trainer-connect'),
-        onPressed: _busy ? null : _connect,
+        onPressed: _busy || !widget.canConnect ? null : _connect,
         icon: const Icon(Icons.link, size: 18),
         label: Text(context.tr('connect.action')),
       );

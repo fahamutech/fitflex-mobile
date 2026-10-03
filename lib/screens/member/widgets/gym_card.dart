@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
 import '../../../shared/models.dart';
+import '../../../shared/widgets/partner_not_verified.dart';
 
 class GymCard extends StatelessWidget {
   const GymCard({super.key, required this.gym, this.distanceKm});
@@ -40,6 +41,9 @@ class GymCard extends StatelessWidget {
                       if (gymIsVerified(gym)) ...[
                         const SizedBox(width: 4),
                         const GymVerifiedIcon(size: 14),
+                      ] else ...[
+                        const SizedBox(width: 6),
+                        const NotVerifiedLabel(),
                       ],
                     ],
                   ),
@@ -188,6 +192,9 @@ class GymGridCard extends StatelessWidget {
                           if (gymIsVerified(gym)) ...[
                             const SizedBox(width: 4),
                             const GymVerifiedIcon(size: 13),
+                          ] else ...[
+                            const SizedBox(width: 6),
+                            const NotVerifiedLabel(),
                           ],
                         ],
                       ),

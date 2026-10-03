@@ -6,6 +6,7 @@ import '../../../shared/design_tokens.dart';
 import '../../../shared/formatters.dart';
 import '../../../shared/i18n.dart';
 import '../../../shared/models.dart';
+import '../../../shared/widgets/partner_not_verified.dart';
 
 /// Portrait card used inside a responsive grid.
 /// Uses a surface-shade background instead of elevation for separation.
@@ -74,6 +75,9 @@ class TrainerGridCard extends StatelessWidget {
                           size: 13,
                           color: FFTokens.success600,
                         ),
+                      ] else ...[
+                        const SizedBox(width: 6),
+                        const NotVerifiedLabel(),
                       ],
                     ],
                   ),
@@ -179,6 +183,9 @@ class TrainerCard extends StatelessWidget {
                           size: 14,
                           color: FFTokens.success600,
                         ),
+                      ] else ...[
+                        const SizedBox(width: 6),
+                        const NotVerifiedLabel(),
                       ],
                     ],
                   ),

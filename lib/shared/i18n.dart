@@ -1711,7 +1711,7 @@ class FFLocale extends ChangeNotifier {
       'gym.empty.paid': 'No paid visit gyms are active yet.',
       'gym.free': 'Free',
       'gym.paid': 'Paid',
-      'gym.unverified': 'Unverified',
+      'gym.unverified': 'Not Verified',
       'gym.profileComplete': 'Profile complete',
       'gym.reviews': 'Reviews',
       'gym.noReviews': 'No reviews yet.',
@@ -2876,6 +2876,18 @@ class FFLocale extends ChangeNotifier {
       'ownerScan.reason_trainer_home_gym':
           'Trainer linked to this gym — free entry',
       'error.reason.wrongGym': 'This pass is for a different gym.',
+      'unverified.title': 'Not verified yet',
+      'unverified.trainerBody':
+          'Your profile is live. Members can see you, but they cannot book you or connect with you, and you cannot apply to a gym, until FitFlex verifies you.',
+      'unverified.ownerBody':
+          'Your gym is live and your own members can check in. FitFlex Pass members cannot check in until FitFlex verifies you.',
+      'unverified.trainerPublic':
+          'This trainer is not verified yet, so they cannot be booked or connected with.',
+      'unverified.connectBody':
+          'You can connect with this trainer once FitFlex has verified them.',
+      'error.reason.gymNotVerified':
+          'This gym is not verified yet, so a FitFlex Pass cannot be used here.',
+      'error.reason.trainerNotVerified': 'This trainer is not verified yet.',
       'error.reason.slotInPast': 'That session time has already passed.',
       'member.slotInPast':
           'That time has already passed. Please pick another slot.',
@@ -6056,6 +6068,18 @@ class FFLocale extends ChangeNotifier {
       'ownerScan.reason_trainer_home_gym':
           'Kocha ameunganishwa na gym hii — kuingia bure',
       'error.reason.wrongGym': 'Pasi hii ni ya gym nyingine.',
+      'unverified.title': 'Bado hujathibitishwa',
+      'unverified.trainerBody':
+          'Wasifu wako uko hewani. Wanachama wanakuona, lakini hawawezi kukuwekea kikao wala kuungana nawe, na huwezi kuomba kujiunga na jimu, hadi FitFlex ikuthibitishe.',
+      'unverified.ownerBody':
+          'Jimu yako iko hewani na wanachama wako wenyewe wanaweza kuingia. Wanachama wa FitFlex Pass hawawezi kuingia hadi FitFlex ikuthibitishe.',
+      'unverified.trainerPublic':
+          'Mkufunzi huyu bado hajathibitishwa, kwa hiyo hawezi kuwekewa kikao wala kuunganishwa naye.',
+      'unverified.connectBody':
+          'Utaweza kuungana na mkufunzi huyu FitFlex ikishamthibitisha.',
+      'error.reason.gymNotVerified':
+          'Jimu hii bado haijathibitishwa, kwa hiyo FitFlex Pass haiwezi kutumika hapa.',
+      'error.reason.trainerNotVerified': 'Mkufunzi huyu bado hajathibitishwa.',
       'error.reason.slotInPast': 'Muda wa kipindi hicho umeshapita.',
       'member.slotInPast':
           'Muda huo umeshapita. Tafadhali chagua nafasi nyingine.',
