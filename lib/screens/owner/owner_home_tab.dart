@@ -6,6 +6,7 @@ import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import 'owner_shell.dart';
 import '../../shared/widgets/challenge_manager_page.dart';
+import '../../shared/widgets/partner_not_verified.dart';
 import '../member/member_group_page.dart' show openGroupManager;
 import 'widgets/gym_engagement_widgets.dart';
 
@@ -168,6 +169,7 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
         vertical: FFTokens.spacingMd,
       ),
       children: [
+        const PartnerNotVerifiedNotice(),
         // 2. Greeting / Overview
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,

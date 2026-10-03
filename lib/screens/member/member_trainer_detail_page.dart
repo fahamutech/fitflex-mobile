@@ -234,7 +234,8 @@ class _MemberTrainerDetailPageState extends State<MemberTrainerDetailPage> {
                 flex: 2,
                 child: FilledButton.icon(
                   key: const Key('trainer-action-book'),
-                  onPressed: _book,
+                  // An unverified trainer is listed but cannot be booked yet.
+                  onPressed: trainer.bookable ? _book : null,
                   icon: const Icon(Icons.event_available, size: 18),
                   label: FittedBox(
                     fit: BoxFit.scaleDown,
@@ -388,9 +389,27 @@ class _MemberTrainerDetailPageState extends State<MemberTrainerDetailPage> {
           ],
 
           // Connect for a trainer plan — the member chooses what's shared.
+          if (!trainer.bookable)
+            Padding(
+              padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
+              child: FFCard(
+                key: const Key('trainer-not-verified-notice'),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.info_outline, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(context.tr('unverified.trainerPublic')),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           TrainerConnectCard(
             trainerId: trainer.id,
             trainerName: trainer.displayName,
+            canConnect: trainer.bookable,
           ),
 
           // About
