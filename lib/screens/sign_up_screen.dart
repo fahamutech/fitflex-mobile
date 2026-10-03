@@ -11,6 +11,7 @@ import '../shared/components/components.dart';
 import '../shared/design_tokens.dart';
 import '../shared/firebase_auth_service.dart';
 import '../shared/i18n.dart';
+import 'pin_flows.dart';
 
 /// Independent account-creation entry point, reached only from the
 /// sign-in screen's "Create account" link. Kept separate from
@@ -156,6 +157,16 @@ class _SignUpScreenState extends State<SignUpScreen>
       return;
     }
     setState(() => _inputError = null);
+    // When FitFlex keeps the PIN: prove the number or email with a code, then
+    // choose the PIN. Otherwise the Firebase email + PIN path, as before.
+    if (AppScope.of(context).auth.pinLoginEnabled) {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => RegisterFlowScreen(contact: _emailCtrl.text.trim()),
+        ),
+      );
+      return;
+    }
     final email = Uri.encodeComponent(_emailCtrl.text.trim());
     context.push('${AppRoutes.emailAuth}?email=$email&mode=signup');
   }

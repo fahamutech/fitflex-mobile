@@ -235,6 +235,133 @@ class ApiClient {
 
   // ── Identity V2 · invitations (404 while the backend flag is off) ─────────
 
+  // ── Identity V2 · I7: a PIN kept by FitFlex ───────────────────────────────
+
+  /// True when the backend answers at [path] (anything but "not found" or
+  /// "not set up"). An empty request is refused before it does anything.
+  Future<bool> _routeAvailable(String path) async {
+    try {
+      await _request('POST', path, body: const <String, dynamic>{});
+      return true;
+    } on ApiException catch (e) {
+      return e.status != 404 && e.code != 'pin_not_configured';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Sign-in and registration with a number or email and a PIN are on.
+  Future<bool> pinLoginAvailable() => _routeAvailable('/auth/pin/login');
+
+  /// Forgot PIN is on.
+  Future<bool> pinResetAvailable() => _routeAvailable('/auth/pin/reset/start');
+
+  /// Sign in with one mobile number or email (`{phone: …}` or `{email: …}`)
+  /// and the PIN. Returns a session, or `setupRequired` for an existing user
+  /// whose PIN is still held by Firebase.
+  Future<Map<String, dynamic>> pinLogin(
+    Map<String, String> contact,
+    String pin, {
+    String? locale,
+  }) async {
+    return await _request(
+      'POST',
+      '/auth/pin/login',
+      body: {...contact, 'pin': pin, 'locale': ?locale},
+    );
+  }
+
+  Future<Map<String, dynamic>> pinSetup({
+    required String setupToken,
+    String? code,
+    required String pin,
+  }) async {
+    return await _request(
+      'POST',
+      '/auth/pin/setup',
+      body: {'setupToken': setupToken, 'code': ?code, 'pin': pin},
+    );
+  }
+
+  Future<Map<String, dynamic>> registerStart(
+    Map<String, String> contact,
+    String? locale,
+  ) async {
+    return await _request(
+      'POST',
+      '/auth/register/start',
+      body: {...contact, 'locale': ?locale},
+    );
+  }
+
+  Future<Map<String, dynamic>> registerConfirm(
+    Map<String, String> contact,
+    String code,
+  ) async {
+    return await _request(
+      'POST',
+      '/auth/register/confirm',
+      body: {...contact, 'code': code},
+    );
+  }
+
+  Future<Map<String, dynamic>> registerComplete({
+    required String registrationToken,
+    required String role,
+    required String pin,
+  }) async {
+    return await _request(
+      'POST',
+      '/auth/register/complete',
+      body: {'registrationToken': registrationToken, 'role': role, 'pin': pin},
+    );
+  }
+
+  Future<Map<String, dynamic>> pinResetStart(
+    Map<String, String> contact,
+    String? locale,
+  ) async {
+    return await _request(
+      'POST',
+      '/auth/pin/reset/start',
+      body: {...contact, 'locale': ?locale},
+    );
+  }
+
+  Future<Map<String, dynamic>> pinResetConfirm(
+    Map<String, String> contact,
+    String code,
+  ) async {
+    return await _request(
+      'POST',
+      '/auth/pin/reset/confirm',
+      body: {...contact, 'code': code},
+    );
+  }
+
+  Future<Map<String, dynamic>> pinResetComplete(
+    String resetToken,
+    String pin,
+  ) async {
+    return await _request(
+      'POST',
+      '/auth/pin/reset/complete',
+      body: {'resetToken': resetToken, 'pin': pin},
+    );
+  }
+
+  /// Change the PIN. The response is a new session: earlier ones are over.
+  Future<Map<String, dynamic>> changePin(
+    String currentPin,
+    String newPin,
+  ) async {
+    return await _request(
+      'POST',
+      '/me/pin',
+      body: {'currentPin': currentPin, 'newPin': newPin},
+    );
+  }
+
   /// Identity V2 · I6a: this Person's verified mobile numbers and emails
   /// (`identifiers`) and profile values not verified yet (`unverified`).
   Future<Map<String, dynamic>> myIdentifiers() async {

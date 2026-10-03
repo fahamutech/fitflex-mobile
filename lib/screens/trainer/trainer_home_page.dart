@@ -30,6 +30,7 @@ import 'widgets/trainer_sheets.dart';
 import '../../shared/widgets/persona_switcher.dart';
 import '../../shared/widgets/invitations.dart';
 import '../../shared/widgets/verify_identifier.dart';
+import '../pin_flows.dart';
 
 /// Standalone trainer dashboard shown after trainer is onboarded.
 class TrainerHomePage extends StatefulWidget {
@@ -540,6 +541,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
     ),
     const InvitationsTile(),
     const ContactDetailsTile(),
+    const ChangePinTile(),
     const PersonaSwitcherTile(),
     const SizedBox(height: 16),
     OutlinedButton.icon(
