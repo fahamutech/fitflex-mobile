@@ -28,6 +28,9 @@ class AuthState extends ChangeNotifier {
   // while it is off the app keeps the legacy "create" forms.
   bool _invitesEnabled = false;
   List<Map<String, dynamic>> _invitations = const [];
+  // A trainer or gym owner: is their own verification approved? Null for
+  // other roles, and for a backend that does not report it.
+  bool? _partnerVerified;
   // Identity V2 identifiers: what this Person has proved is theirs.
   bool _identifiersEnabled = false;
   List<Map<String, dynamic>> _verifiedIdentifiers = const [];
@@ -64,6 +67,9 @@ class AuthState extends ChangeNotifier {
   /// Open invitations addressed to this Person.
   List<Map<String, dynamic>> get invitations => _invitations;
 
+  /// False while a trainer or gym owner is active but not verified yet.
+  bool? get partnerVerified => _partnerVerified;
+
   /// True when the backend lets a person verify a mobile number or email.
   bool get identifiersEnabled => _identifiersEnabled;
 
@@ -92,6 +98,7 @@ class AuthState extends ChangeNotifier {
         final meRes = await api.me();
         final freshUser = Map<String, dynamic>.from(meRes['user'] as Map);
         _user = freshUser;
+        _partnerVerified = meRes['partnerVerified'] as bool?;
         await prefs.setString('user', jsonEncode(freshUser));
         unawaited(push?.register());
         await refreshPersonas();
@@ -179,6 +186,7 @@ class AuthState extends ChangeNotifier {
       throw const AdminMobileSignInException();
     }
     await signInWithFitFlexSession(res['token'] as String, user);
+    _partnerVerified = res['partnerVerified'] as bool?;
     await _applyPersonaPayload(res);
     unawaited(refreshInvitations());
     unawaited(refreshIdentifiers());
@@ -194,6 +202,18 @@ class AuthState extends ChangeNotifier {
     await push?.unregister();
     await signIn(res['token'] as String, user);
     await _applyPersonaPayload(res);
+    await refreshPartnerVerified();
+  }
+
+  /// Re-read whether this trainer or gym owner is verified yet.
+  Future<void> refreshPartnerVerified() async {
+    if (_token == null) return;
+    try {
+      _partnerVerified = (await api.me())['partnerVerified'] as bool?;
+    } catch (_) {
+      _partnerVerified = null;
+    }
+    notifyListeners();
   }
 
   /// Identity V2: add a role to this Person, then continue as it. The new
@@ -322,6 +342,7 @@ class AuthState extends ChangeNotifier {
     _identifiersEnabled = false;
     _verifiedIdentifiers = const [];
     _unverifiedIdentifiers = const [];
+    _partnerVerified = null;
     api.setToken(null);
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('token');

@@ -92,6 +92,8 @@ String? _knownReason(FFLocale locale, String reason) {
     'not_your_gym': 'error.reason.notYourGym',
     'gym_required': 'error.reason.gymRequired',
     'wrong_gym': 'error.reason.wrongGym',
+    'gym_not_verified': 'error.reason.gymNotVerified',
+    'trainer_not_verified': 'error.reason.trainerNotVerified',
     // Trainer booking.
     'slot_already_booked': 'error.reason.slotUnavailable',
     'slot_not_available': 'error.reason.slotUnavailable',

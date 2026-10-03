@@ -183,6 +183,10 @@ class TrainerProfile {
   final String status;
   final String? approvalStatus;
   final bool isVerified;
+
+  /// False while the trainer is not verified yet: they are listed, but cannot
+  /// be booked or connected with.
+  final bool bookable;
   final List<TrainerAvailability> availability;
   final SocialLinks socialLinks;
 
@@ -204,6 +208,7 @@ class TrainerProfile {
     required this.status,
     this.approvalStatus,
     this.isVerified = false,
+    this.bookable = true,
     this.availability = const [],
     this.socialLinks = const SocialLinks(),
   });
@@ -232,6 +237,8 @@ class TrainerProfile {
     status: json['status'] as String? ?? 'active',
     approvalStatus: json['approvalStatus'] as String?,
     isVerified: _boolValue(json['isVerified'] ?? json['verified']),
+    // Older backends don't send it: every listed trainer was bookable.
+    bookable: json['bookable'] == null || _boolValue(json['bookable']),
     availability: _trainerAvailabilityFromJson(json['availability']),
     socialLinks: SocialLinks.fromJson(json['socialLinks']),
   );
@@ -255,6 +262,7 @@ class TrainerProfile {
     status: status,
     approvalStatus: approvalStatus,
     isVerified: isVerified,
+    bookable: bookable,
     availability: availability,
     socialLinks: socialLinks,
   );
