@@ -98,6 +98,12 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
         locale: locale,
       );
       if (!mounted) return;
+      // Invited with a start PIN, or no profile yet: those have their own steps.
+      if (res['startPin'] == true || res['onboarding'] == true) {
+        setState(() => _pin = '');
+        await openSignInStep(context, res);
+        return;
+      }
       if (res['setupRequired'] == true) {
         final pin = _pin;
         setState(() => _pin = '');

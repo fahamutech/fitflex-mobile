@@ -58,7 +58,11 @@ String pinErrorMessage(BuildContext context, Object error) {
     'one_phone_or_email_required' => 'verify.errInvalid',
     'registration_token_invalid' ||
     'reset_token_invalid' ||
-    'setup_token_invalid' => 'pin.errStartAgain',
+    'setup_token_invalid' ||
+    'start_token_invalid' ||
+    'onboarding_token_invalid' => 'pin.errStartAgain',
+    'display_name_required' => 'start.errName',
+    'invitation_not_open' || 'invitation_not_found' => 'invite.errNotOpen',
     'sms_not_configured' ||
     'email_not_configured' ||
     'code_not_sent' ||
@@ -74,12 +78,48 @@ String pinErrorMessage(BuildContext context, Object error) {
 String _locale(BuildContext context) =>
     FFLocaleScope.of(context).locale.languageCode;
 
-/// Finish a flow that returned a session: store it and open the app.
+/// Finish a flow that returned a session: store it and open the app. A
+/// person who has no profile yet gets the onboarding step instead.
 Future<void> _enter(BuildContext context, Map<String, dynamic> session) async {
+  if (session['onboarding'] == true) {
+    await Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(builder: (_) => OnboardingScreen(step: session)),
+    );
+    return;
+  }
   final auth = AppScope.of(context).auth;
   final router = GoRouter.of(context);
   await auth.completeFitFlexSession(session);
   router.go(routeForSignedInUser(auth));
+}
+
+/// What a PIN sign-in answered when it was not a session: the start of an
+/// invitation, or the step for a person with no profile yet. Returns true
+/// when it opened a screen for it.
+Future<bool> openSignInStep(
+  BuildContext context,
+  Map<String, dynamic> res,
+) async {
+  if (res['startPin'] == true) {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => InviteStartScreen(
+          startToken: res['startToken'].toString(),
+          invitation: res['invitation'] is Map
+              ? Map<String, dynamic>.from(res['invitation'] as Map)
+              : const {},
+        ),
+      ),
+    );
+    return true;
+  }
+  if (res['onboarding'] == true) {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => OnboardingScreen(step: res)),
+    );
+    return true;
+  }
+  return false;
 }
 
 // ── Shared steps ────────────────────────────────────────────────────────────
@@ -833,6 +873,277 @@ class ChangePinTile extends StatelessWidget {
           },
         );
       },
+    );
+  }
+}
+
+// ── Invited, and new to FitFlex ─────────────────────────────────────────────
+
+String _startRole(BuildContext context, Object? role) => switch (role) {
+  'trainer' => context.tr('role.trainer'),
+  'member' => context.tr('role.member'),
+  _ => context.tr('start.roleStaff'),
+};
+
+/// After signing in with the start PIN from an invitation: the person gives
+/// their name and chooses their own PIN. Only then does their account exist.
+class InviteStartScreen extends StatefulWidget {
+  const InviteStartScreen({
+    super.key,
+    required this.startToken,
+    this.invitation = const {},
+  });
+
+  final String startToken;
+  final Map<String, dynamic> invitation;
+
+  @override
+  State<InviteStartScreen> createState() => _InviteStartScreenState();
+}
+
+class _InviteStartScreenState extends State<InviteStartScreen> {
+  final _name = TextEditingController();
+  bool _nameDone = false;
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _name.dispose();
+    super.dispose();
+  }
+
+  void _nameEntered() {
+    if (_name.text.trim().length < 2) {
+      setState(() => _error = context.tr('start.errName'));
+      return;
+    }
+    setState(() {
+      _nameDone = true;
+      _error = null;
+    });
+  }
+
+  Future<void> _begin(String pin) async {
+    final api = AppScope.of(context).api;
+    setState(() => _busy = true);
+    try {
+      final step = await api.inviteBegin(
+        startToken: widget.startToken,
+        displayName: _name.text.trim(),
+        pin: pin,
+      );
+      if (mounted) await _enter(context, step);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = pinErrorMessage(context, e);
+        if (e is ApiException && e.code == 'display_name_required') {
+          _nameDone = false;
+        }
+      });
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final role = _startRole(context, widget.invitation['role']);
+    return _flowScaffold(
+      context,
+      title: context.tr('start.title'),
+      child: _nameDone
+          ? ChoosePinStep(onChosen: _begin, busy: _busy, error: _error)
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  context.tr('start.body').replaceAll('{role}', role),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: FFTokens.spacingMd),
+                TextField(
+                  key: const Key('start-name'),
+                  controller: _name,
+                  autofocus: true,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: InputDecoration(
+                    labelText: context.tr('start.name'),
+                  ),
+                  onSubmitted: (_) => _nameEntered(),
+                ),
+                if (_error != null) ...[
+                  const SizedBox(height: FFTokens.spacingSm),
+                  Text(
+                    _error!,
+                    key: const Key('pin-flow-error'),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: FFTokens.spacingMd),
+                FilledButton(
+                  key: const Key('start-name-continue'),
+                  onPressed: _nameEntered,
+                  child: Text(context.tr('start.continue')),
+                ),
+              ],
+            ),
+    );
+  }
+}
+
+// ── A person with no profile yet ────────────────────────────────────────────
+
+/// Accept or decline the invitations waiting for a person who has no profile
+/// yet; with none left, choose how to use FitFlex, as when registering.
+class OnboardingScreen extends StatefulWidget {
+  const OnboardingScreen({super.key, required this.step});
+
+  /// `{onboardingToken, invitations}` as the backend answered it.
+  final Map<String, dynamic> step;
+
+  @override
+  State<OnboardingScreen> createState() => _OnboardingScreenState();
+}
+
+class _OnboardingScreenState extends State<OnboardingScreen> {
+  late Map<String, dynamic> _step = widget.step;
+  bool _busy = false;
+  String? _error;
+
+  String get _token => _step['onboardingToken'].toString();
+  List<Map<String, dynamic>> get _invitations =>
+      (_step['invitations'] as List? ?? const [])
+          .whereType<Map>()
+          .map((i) => Map<String, dynamic>.from(i))
+          .toList();
+
+  Future<void> _run(Future<Map<String, dynamic>> Function() call) async {
+    setState(() => _busy = true);
+    try {
+      final res = await call();
+      if (!mounted) return;
+      if (res['onboarding'] == true) {
+        // Declined: stay here with what is left.
+        setState(() {
+          _step = res;
+          _error = null;
+        });
+      } else {
+        await _enter(context, res);
+      }
+    } catch (e) {
+      if (mounted) setState(() => _error = pinErrorMessage(context, e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Widget _invitation(Map<String, dynamic> inv) {
+    final api = AppScope.of(context).api;
+    final id = inv['id'].toString();
+    final org = inv['orgName']?.toString() ?? context.tr('invite.aGym');
+    return FFCard(
+      key: Key('onboarding-invitation-$id'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(org, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 4),
+          Text(
+            context
+                .tr('invite.asRole')
+                .replaceAll('{role}', _startRole(context, inv['role'])),
+          ),
+          const SizedBox(height: FFTokens.spacingSm),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  key: Key('onboarding-decline-$id'),
+                  onPressed: _busy
+                      ? null
+                      : () => _run(
+                          () => api.onboardingAnswer(_token, id, accept: false),
+                        ),
+                  child: Text(context.tr('invite.decline')),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: FilledButton(
+                  key: Key('onboarding-accept-$id'),
+                  onPressed: _busy
+                      ? null
+                      : () => _run(
+                          () => api.onboardingAnswer(_token, id, accept: true),
+                        ),
+                  child: Text(context.tr('invite.accept')),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _roleChoice(String role, String titleKey, String bodyKey) {
+    final api = AppScope.of(context).api;
+    return FFCard(
+      child: ListTile(
+        key: Key('onboarding-role-$role'),
+        enabled: !_busy,
+        title: Text(context.tr(titleKey)),
+        subtitle: Text(context.tr(bodyKey)),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => _run(() => api.onboardingRole(_token, role)),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final invitations = _invitations;
+    return _flowScaffold(
+      context,
+      title: context.tr(
+        invitations.isEmpty ? 'role.welcomeTitle' : 'invite.inboxTitle',
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (_error != null) ...[
+            Text(
+              _error!,
+              key: const Key('pin-flow-error'),
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+            const SizedBox(height: FFTokens.spacingSm),
+          ],
+          if (invitations.isNotEmpty) ...[
+            Text(context.tr('start.invitedBody'), textAlign: TextAlign.center),
+            const SizedBox(height: FFTokens.spacingMd),
+            for (final inv in invitations) ...[
+              _invitation(inv),
+              const SizedBox(height: FFTokens.spacingSm),
+            ],
+          ] else ...[
+            Text(
+              context.tr('role.welcomeSubtitle'),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: FFTokens.spacingMd),
+            _roleChoice('member', 'role.member', 'role.memberBody'),
+            _roleChoice('trainer', 'role.trainer', 'role.trainerBody'),
+            _roleChoice('gym_owner', 'role.owner', 'role.ownerBody'),
+            _roleChoice('vendor', 'role.vendor', 'role.vendorBody'),
+          ],
+        ],
+      ),
     );
   }
 }
