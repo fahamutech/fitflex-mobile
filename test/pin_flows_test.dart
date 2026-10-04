@@ -502,6 +502,62 @@ void main() {
     );
   });
 
+  testWidgets('the vendor screen\'s change-PIN button opens the same dialog', (
+    tester,
+  ) async {
+    final api = _FakeApi();
+    final auth = await _auth(api);
+    await auth.signIn('jwt-old', {'id': 'usr_1', 'userType': 'vendor_staff'});
+    await tester.pumpWidget(
+      _app(auth, Scaffold(appBar: AppBar(actions: const [ChangePinButton()]))),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('change-pin-button')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('change-pin-current')), '4821');
+    await tester.enterText(find.byKey(const Key('change-pin-new')), '7310');
+    await tester.enterText(find.byKey(const Key('change-pin-again')), '7310');
+    await tester.tap(find.byKey(const Key('change-pin-save')));
+    await tester.pumpAndSettle();
+    expect(api.bodies.last, {'currentPin': '4821', 'newPin': '7310'});
+    expect(auth.token, 'jwt-new');
+    expect(
+      find.text('Your PIN was changed. Other devices were signed out.'),
+      findsOneWidget,
+    );
+
+    // Let the first message finish (messages queue), then: an account with no
+    // FitFlex PIN is told how to set one.
+    ScaffoldMessenger.of(
+      tester.element(find.byKey(const Key('change-pin-button'))),
+    ).clearSnackBars();
+    await tester.pumpAndSettle();
+    api.errors['changePin'] = ApiException(409, {'error': 'pin_not_set'});
+    await tester.tap(find.byKey(const Key('change-pin-button')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('change-pin-current')), '4821');
+    await tester.enterText(find.byKey(const Key('change-pin-new')), '7310');
+    await tester.enterText(find.byKey(const Key('change-pin-again')), '7310');
+    await tester.tap(find.byKey(const Key('change-pin-save')));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('This account has no PIN yet.'), findsOneWidget);
+  });
+
+  testWidgets(
+    'the change-PIN button is hidden while FitFlex does not keep PINs',
+    (tester) async {
+      final auth = await _auth(_FakeApi(pinLoginOn: false));
+      await tester.pumpWidget(
+        _app(
+          auth,
+          Scaffold(appBar: AppBar(actions: const [ChangePinButton()])),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('change-pin-button')), findsNothing);
+    },
+  );
+
   testWidgets('change PIN is hidden while FitFlex does not keep PINs', (
     tester,
   ) async {

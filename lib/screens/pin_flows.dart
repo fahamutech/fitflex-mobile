@@ -861,16 +861,40 @@ class ChangePinTile extends StatelessWidget {
           key: const Key('change-pin-tile'),
           icon: Icons.lock_outline,
           title: context.tr('member.changePin'),
-          onTap: () async {
-            final messenger = ScaffoldMessenger.of(context);
-            final changed = context.tr('pin.changed');
-            final notSet = context.tr('pin.errNotSet');
-            final result = await showChangePinDialog(context);
-            if (result == null) return;
-            messenger.showSnackBar(
-              SnackBar(content: Text(result ? changed : notSet)),
-            );
-          },
+          onTap: () => changePinAndReport(context),
+        );
+      },
+    );
+  }
+}
+
+/// Open the change-PIN dialog and say how it went.
+Future<void> changePinAndReport(BuildContext context) async {
+  final messenger = ScaffoldMessenger.of(context);
+  final changed = context.tr('pin.changed');
+  final notSet = context.tr('pin.errNotSet');
+  final result = await showChangePinDialog(context);
+  if (result == null) return;
+  messenger.showSnackBar(SnackBar(content: Text(result ? changed : notSet)));
+}
+
+/// Change PIN as an app-bar button, for screens with no profile list (the
+/// vendor screen). Hidden while the backend does not keep PINs.
+class ChangePinButton extends StatelessWidget {
+  const ChangePinButton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = AppScope.of(context).auth;
+    return ListenableBuilder(
+      listenable: auth,
+      builder: (context, _) {
+        if (!auth.pinLoginEnabled) return const SizedBox.shrink();
+        return IconButton(
+          key: const Key('change-pin-button'),
+          tooltip: context.tr('member.changePin'),
+          icon: const Icon(Icons.lock_outline),
+          onPressed: () => changePinAndReport(context),
         );
       },
     );

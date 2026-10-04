@@ -12,6 +12,7 @@ import '../../shared/i18n.dart';
 import '../../shared/widgets/ff_photo_picker_field.dart';
 import '../../shared/widgets/invitations.dart';
 import '../../shared/widgets/persona_switcher.dart';
+import '../pin_flows.dart';
 
 class VendorHomePage extends StatefulWidget {
   const VendorHomePage({super.key});
@@ -218,6 +219,8 @@ class _VendorHomePageState extends State<VendorHomePage> {
         title: Text(context.tr('vendor.title')),
         actions: [
           const PersonaSwitchButton(),
+          // The vendor and their staff change their own PIN here.
+          const ChangePinButton(),
           IconButton(
             key: const Key('vendor-sign-out'),
             tooltip: context.tr('home.signout'),
