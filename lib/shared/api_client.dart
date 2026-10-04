@@ -432,6 +432,34 @@ class ApiClient {
     );
   }
 
+  /// Replace the mobile number or email the person signs in with: their PIN
+  /// and the new value. A code goes to the new value.
+  Future<Map<String, dynamic>> requestIdentifierChange({
+    String? phone,
+    String? email,
+    required String pin,
+    String? locale,
+  }) async {
+    return await _request(
+      'POST',
+      '/me/identifiers/change/request',
+      body: {'phone': ?phone, 'email': ?email, 'pin': pin, 'locale': ?locale},
+    );
+  }
+
+  Future<Map<String, dynamic>> confirmIdentifierChange({
+    String? phone,
+    String? email,
+    required String code,
+    String? locale,
+  }) async {
+    return await _request(
+      'POST',
+      '/me/identifiers/change/confirm',
+      body: {'phone': ?phone, 'email': ?email, 'code': code, 'locale': ?locale},
+    );
+  }
+
   /// Open invitations addressed to the signed-in Person.
   Future<Map<String, dynamic>> myInvitations() async {
     return await _request('GET', '/me/invitations');
