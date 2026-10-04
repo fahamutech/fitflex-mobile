@@ -155,6 +155,30 @@ class FFLocale extends ChangeNotifier {
       'verify.errInUse': 'This is already verified on another FitFlex account.',
       'verify.errNotSent':
           'We could not send the code right now. Try again later.',
+      'pin.registerTitle': 'Create your account',
+      'pin.codeSentTo': 'We sent a 6-digit code to {to}. Enter it below.',
+      'pin.chooseTitle': 'Choose a 4-digit PIN',
+      'pin.confirmTitle': 'Type your PIN again',
+      'pin.chooseBody': 'You will use this PIN every time you sign in.',
+      'pin.forgotTitle': 'Reset your PIN',
+      'pin.forgotBody':
+          'Enter the mobile number or email you sign in with. We will send it a code.',
+      'pin.setupTitle': 'One-time check',
+      'pin.setupBody':
+          'FitFlex now keeps your PIN. Confirm it is you, then keep a 4-digit PIN.',
+      'pin.signInInstead': 'Sign in instead',
+      'pin.changed': 'Your PIN was changed. Other devices were signed out.',
+      'pin.errInvalid': 'That mobile number, email or PIN is not right.',
+      'pin.errTooMany': 'Too many wrong tries. Try again in {n} minutes.',
+      'pin.errResetRequired':
+          'Too many wrong tries. Reset your PIN to sign in again.',
+      'pin.errAlreadyRegistered':
+          'An account already uses this mobile number or email.',
+      'pin.errCurrentWrong': 'Your current PIN is not right.',
+      'pin.errUnchanged': 'Choose a PIN different from your current one.',
+      'pin.errNotSet':
+          'This account has no PIN yet. Use "Forgot PIN" on the sign-in screen to set one.',
+      'pin.errStartAgain': 'That took too long. Please start again.',
       'persona.switch': 'Switch role',
       'persona.roles': 'Roles',
       'persona.addTitle': 'Add a role',
@@ -3348,6 +3372,32 @@ class FFLocale extends ChangeNotifier {
           'Hii tayari imethibitishwa kwenye akaunti nyingine ya FitFlex.',
       'verify.errNotSent':
           'Hatukuweza kutuma namba kwa sasa. Jaribu tena baadaye.',
+      'pin.registerTitle': 'Fungua akaunti yako',
+      'pin.codeSentTo':
+          'Tumetuma namba ya tarakimu 6 kwa {to}. Iweke hapa chini.',
+      'pin.chooseTitle': 'Chagua PIN ya tarakimu 4',
+      'pin.confirmTitle': 'Andika PIN yako tena',
+      'pin.chooseBody': 'Utatumia PIN hii kila unapoingia.',
+      'pin.forgotTitle': 'Weka PIN mpya',
+      'pin.forgotBody':
+          'Weka namba ya simu au barua pepe unayotumia kuingia. Tutaituma namba ya uthibitisho.',
+      'pin.setupTitle': 'Uhakiki wa mara moja',
+      'pin.setupBody':
+          'Sasa FitFlex inahifadhi PIN yako. Thibitisha ni wewe, kisha tumia PIN ya tarakimu 4.',
+      'pin.signInInstead': 'Ingia badala yake',
+      'pin.changed': 'PIN yako imebadilishwa. Vifaa vingine vimetolewa.',
+      'pin.errInvalid': 'Namba ya simu, barua pepe au PIN si sahihi.',
+      'pin.errTooMany':
+          'Umekosea mara nyingi mno. Jaribu tena baada ya dakika {n}.',
+      'pin.errResetRequired':
+          'Umekosea mara nyingi mno. Weka PIN mpya ili uingie tena.',
+      'pin.errAlreadyRegistered':
+          'Tayari kuna akaunti inayotumia namba hii ya simu au barua pepe.',
+      'pin.errCurrentWrong': 'PIN yako ya sasa si sahihi.',
+      'pin.errUnchanged': 'Chagua PIN tofauti na ya sasa.',
+      'pin.errNotSet':
+          'Akaunti hii bado haina PIN. Tumia "Umesahau PIN" kwenye skrini ya kuingia ili kuiweka.',
+      'pin.errStartAgain': 'Imechukua muda mrefu. Tafadhali anza tena.',
       'persona.switch': 'Badilisha nafasi',
       'persona.roles': 'Nafasi',
       'persona.addTitle': 'Ongeza nafasi',

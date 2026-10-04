@@ -12,6 +12,7 @@ import 'owner_shell.dart';
 import '../../shared/widgets/persona_switcher.dart';
 import '../../shared/widgets/invitations.dart';
 import '../../shared/widgets/verify_identifier.dart';
+import '../pin_flows.dart';
 
 /// Owner — profile view with account settings and sign-out.
 /// B9: this route lives OUTSIDE the owner shell, so [OwnerDataScope] is
@@ -171,6 +172,7 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
           ),
           const InvitationsTile(),
           const ContactDetailsTile(),
+          const ChangePinTile(),
           GymInvitationsTile(
             gymId: OwnerDataScope.maybeOf(context)?.activeGymId,
           ),

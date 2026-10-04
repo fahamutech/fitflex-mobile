@@ -20,6 +20,7 @@ import 'widgets/membership_card.dart';
 import '../../shared/widgets/persona_switcher.dart';
 import '../../shared/widgets/invitations.dart';
 import '../../shared/widgets/verify_identifier.dart';
+import '../pin_flows.dart';
 
 class MemberProfileTab extends StatefulWidget {
   const MemberProfileTab({super.key});
@@ -161,6 +162,18 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
   }
 
   Future<void> _openChangePinDialog() async {
+    // FitFlex keeps the PIN: change it there. An account whose PIN is still
+    // with Firebase (false) falls through to the old dialog below.
+    if (AppScope.of(context).auth.pinLoginEnabled) {
+      final messenger = ScaffoldMessenger.of(context);
+      final changedText = context.tr('pin.changed');
+      final changed = await showChangePinDialog(context);
+      if (changed == null || !mounted) return;
+      if (changed) {
+        messenger.showSnackBar(SnackBar(content: Text(changedText)));
+        return;
+      }
+    }
     final currentPinCtrl = TextEditingController();
     final newPinCtrl = TextEditingController();
     final confirmPinCtrl = TextEditingController();

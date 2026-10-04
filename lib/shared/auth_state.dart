@@ -31,6 +31,11 @@ class AuthState extends ChangeNotifier {
   // A trainer or gym owner: is their own verification approved? Null for
   // other roles, and for a backend that does not report it.
   bool? _partnerVerified;
+  // Identity V2 · I7: FitFlex keeps the PIN (sign-in and registration with a
+  // number or email + PIN), and forgot PIN. Both follow the backend flags.
+  bool _pinLoginEnabled = false;
+  bool _pinResetEnabled = false;
+  bool _signInOptionsLoaded = false;
   // Identity V2 identifiers: what this Person has proved is theirs.
   bool _identifiersEnabled = false;
   List<Map<String, dynamic>> _verifiedIdentifiers = const [];
@@ -70,6 +75,45 @@ class AuthState extends ChangeNotifier {
   /// False while a trainer or gym owner is active but not verified yet.
   bool? get partnerVerified => _partnerVerified;
 
+  /// True when sign-in and registration use a number or email and a PIN that
+  /// FitFlex keeps. While false the app signs in through Firebase as before.
+  bool get pinLoginEnabled => _pinLoginEnabled;
+
+  /// True when forgot PIN is available.
+  bool get pinResetEnabled => _pinResetEnabled;
+
+  /// Ask the backend which sign-in options are on. Safe to call repeatedly;
+  /// it asks once unless [force] is set. Offline leaves the options off.
+  Future<void> loadSignInOptions({bool force = false}) async {
+    if (_signInOptionsLoaded && !force) return;
+    final results = await Future.wait([
+      api.pinLoginAvailable(),
+      api.pinResetAvailable(),
+    ]);
+    _pinLoginEnabled = results[0];
+    _pinResetEnabled = results[1];
+    _signInOptionsLoaded = true;
+    notifyListeners();
+  }
+
+  /// Store a session that a PIN flow returned (sign-in, registration, PIN
+  /// setup, reset or change) and load what follows a sign-in.
+  Future<Map<String, dynamic>> completeFitFlexSession(
+    Map<String, dynamic> res,
+  ) async {
+    final user = Map<String, dynamic>.from(res['user'] as Map);
+    if (user['userType']?.toString() == 'admin') {
+      await signOut();
+      throw const AdminMobileSignInException();
+    }
+    await signInWithFitFlexSession(res['token'] as String, user);
+    _partnerVerified = res['partnerVerified'] as bool?;
+    await _applyPersonaPayload(res);
+    unawaited(refreshInvitations());
+    unawaited(refreshIdentifiers());
+    return user;
+  }
+
   /// True when the backend lets a person verify a mobile number or email.
   bool get identifiersEnabled => _identifiersEnabled;
 
@@ -91,6 +135,7 @@ class AuthState extends ChangeNotifier {
     _role = prefs.getString('role') ?? 'member';
     _personas = _decodePersonas(prefs.getString('personas'));
     api.setToken(_token);
+    unawaited(loadSignInOptions());
 
     // If we have a token, refresh user from backend to get latest status
     if (_token != null) {
