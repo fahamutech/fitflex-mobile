@@ -527,11 +527,19 @@ class _InvitePersonSheetState extends State<_InvitePersonSheet> {
         orgType: widget.orgType,
       );
       if (!mounted) return;
+      final delivery = res['delivery'] is Map ? res['delivery'] as Map : null;
       setState(() {
         _token = res['token']?.toString();
-        _notice = context.tr(
-          res['created'] == false ? 'invite.alreadySent' : 'invite.sent',
-        );
+        _notice = res['created'] == false
+            ? context.tr('invite.alreadySent')
+            // FitFlex told them itself (and gave someone new a start PIN).
+            : delivery?['sent'] == true
+            ? context.tr(
+                delivery?['startPin'] == true
+                    ? 'invite.sentWithPin'
+                    : 'invite.sentNotice',
+              )
+            : context.tr('invite.sent');
       });
     } catch (e) {
       if (mounted) setState(() => _notice = inviteErrorMessage(context, e));

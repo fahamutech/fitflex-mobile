@@ -179,6 +179,18 @@ class FFLocale extends ChangeNotifier {
       'pin.errNotSet':
           'This account has no PIN yet. Use "Forgot PIN" on the sign-in screen to set one.',
       'pin.errStartAgain': 'That took too long. Please start again.',
+      'start.title': 'Welcome to FitFlex',
+      'start.body':
+          'You were invited to join as {role}. Tell us your name, then choose your own PIN.',
+      'start.name': 'Your full name',
+      'start.continue': 'Continue',
+      'start.errName': 'Enter your name.',
+      'start.roleStaff': 'Staff',
+      'start.invitedBody': 'Accept the invitation to start, or decline it.',
+      'invite.sentWithPin':
+          'Sent. FitFlex gave them a start PIN to sign in with; you do not need to share anything.',
+      'invite.sentNotice':
+          'Sent. FitFlex told them to open the app and accept.',
       'persona.switch': 'Switch role',
       'persona.roles': 'Roles',
       'persona.addTitle': 'Add a role',
@@ -3398,6 +3410,18 @@ class FFLocale extends ChangeNotifier {
       'pin.errNotSet':
           'Akaunti hii bado haina PIN. Tumia "Umesahau PIN" kwenye skrini ya kuingia ili kuiweka.',
       'pin.errStartAgain': 'Imechukua muda mrefu. Tafadhali anza tena.',
+      'start.title': 'Karibu FitFlex',
+      'start.body':
+          'Umealikwa kujiunga kama {role}. Tuambie jina lako, kisha chagua PIN yako mwenyewe.',
+      'start.name': 'Jina lako kamili',
+      'start.continue': 'Endelea',
+      'start.errName': 'Weka jina lako.',
+      'start.roleStaff': 'Mfanyakazi',
+      'start.invitedBody': 'Kubali mwaliko ili uanze, au ukatae.',
+      'invite.sentWithPin':
+          'Umetumwa. FitFlex imempa PIN ya kuanzia ili aingie; huhitaji kumtumia chochote.',
+      'invite.sentNotice':
+          'Umetumwa. FitFlex imemwambia afungue app na akubali.',
       'persona.switch': 'Badilisha nafasi',
       'persona.roles': 'Nafasi',
       'persona.addTitle': 'Ongeza nafasi',

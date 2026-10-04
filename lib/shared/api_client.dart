@@ -350,6 +350,45 @@ class ApiClient {
     );
   }
 
+  /// After signing in with an invitation's start PIN: the person's name and
+  /// their own PIN. Answers the onboarding step (their invitations).
+  Future<Map<String, dynamic>> inviteBegin({
+    required String startToken,
+    required String displayName,
+    required String pin,
+  }) async {
+    return await _request(
+      'POST',
+      '/auth/invite/begin',
+      body: {'startToken': startToken, 'displayName': displayName, 'pin': pin},
+    );
+  }
+
+  /// A person with no profile yet accepts ([accept]) or declines an invitation.
+  Future<Map<String, dynamic>> onboardingAnswer(
+    String onboardingToken,
+    String invitationId, {
+    required bool accept,
+  }) async {
+    return await _request(
+      'POST',
+      '/auth/onboarding/${accept ? 'accept' : 'decline'}',
+      body: {'onboardingToken': onboardingToken, 'invitationId': invitationId},
+    );
+  }
+
+  /// A person with no profile yet chooses how to use FitFlex.
+  Future<Map<String, dynamic>> onboardingRole(
+    String onboardingToken,
+    String role,
+  ) async {
+    return await _request(
+      'POST',
+      '/auth/onboarding/role',
+      body: {'onboardingToken': onboardingToken, 'role': role},
+    );
+  }
+
   /// Change the PIN. The response is a new session: earlier ones are over.
   Future<Map<String, dynamic>> changePin(
     String currentPin,
