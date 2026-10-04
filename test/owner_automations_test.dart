@@ -258,7 +258,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Uanachama unaisha baada ya siku 7'), findsOneWidget);
-    expect(find.text('Hajaja kwa siku 14'), findsOneWidget);
+    expect(find.text('Hajafika kwa siku 14'), findsOneWidget);
   });
 
   testWidgets(
