@@ -10,6 +10,7 @@ import 'shared/activity/activity_config.dart';
 import 'shared/activity/phone_steps.dart';
 import 'shared/activity/run_recorder.dart';
 import 'router.dart';
+import 'screens/account_recovery.dart';
 import 'shared/api_client.dart';
 import 'shared/auth_state.dart';
 import 'shared/inbox/inbox_controller.dart';
@@ -235,6 +236,8 @@ class _FitFlexAppState extends State<FitFlexApp> {
                   GlobalCupertinoLocalizations.delegate,
                 ],
                 routerConfig: _router,
+                builder: (context, child) =>
+                    RecoveryBannerHost(child: child ?? const SizedBox.shrink()),
               );
             },
           ),

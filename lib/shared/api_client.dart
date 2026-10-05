@@ -460,6 +460,80 @@ class ApiClient {
     );
   }
 
+  // ── Identity V2 · account recovery (member path) ───────────────────────────
+
+  /// Step 1: [oldContact] is what the person signed in with before, [newContact]
+  /// the number or email that gets a code. Each is `{phone: …}` or `{email: …}`.
+  Future<Map<String, dynamic>> recoveryStart(
+    Map<String, String> oldContact,
+    Map<String, String> newContact,
+    String? locale,
+  ) async {
+    return await _request(
+      'POST',
+      '/auth/recovery/start',
+      body: {'old': oldContact, 'new': newContact, 'locale': ?locale},
+    );
+  }
+
+  /// Step 2: the code and the name on the account. Returns `requestToken`.
+  Future<Map<String, dynamic>> recoveryConfirm(
+    Map<String, String> oldContact,
+    Map<String, String> newContact,
+    String code,
+    String name,
+    String? locale,
+  ) async {
+    return await _request(
+      'POST',
+      '/auth/recovery/confirm',
+      body: {
+        'old': oldContact,
+        'new': newContact,
+        'code': code,
+        'name': name,
+        'locale': ?locale,
+      },
+    );
+  }
+
+  Future<Map<String, dynamic>> recoveryEvidence(
+    String requestToken,
+    Map<String, String> answers,
+  ) async {
+    return await _request(
+      'POST',
+      '/auth/recovery/evidence',
+      body: {'requestToken': requestToken, 'answers': answers},
+    );
+  }
+
+  Future<Map<String, dynamic>> recoveryStatus(String requestToken) async {
+    return await _request(
+      'POST',
+      '/auth/recovery/status',
+      body: {'requestToken': requestToken},
+    );
+  }
+
+  Future<Map<String, dynamic>> recoveryCancel(String requestToken) async {
+    return await _request(
+      'POST',
+      '/auth/recovery/cancel',
+      body: {'requestToken': requestToken},
+    );
+  }
+
+  /// Is a recovery request open on the signed-in account?
+  Future<Map<String, dynamic>> myRecovery() async {
+    return await _request('GET', '/me/recovery');
+  }
+
+  /// The signed-in owner cancels an open recovery request.
+  Future<Map<String, dynamic>> cancelMyRecovery() async {
+    return await _request('POST', '/me/recovery/cancel', body: const {});
+  }
+
   /// Open invitations addressed to the signed-in Person.
   Future<Map<String, dynamic>> myInvitations() async {
     return await _request('GET', '/me/invitations');

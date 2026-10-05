@@ -12,6 +12,7 @@ import '../shared/design_tokens.dart';
 import '../shared/firebase_auth_service.dart';
 import '../shared/i18n.dart';
 import '../shared/pin_credentials.dart';
+import 'account_recovery.dart';
 import 'pin_flows.dart';
 
 enum EmailAuthMode { signIn, signUp }
@@ -35,6 +36,8 @@ class EmailAuthScreen extends StatefulWidget {
 class _EmailAuthScreenState extends State<EmailAuthScreen> {
   FirebaseAuthService? _firebaseAuth;
   bool _busy = false;
+  // Set while this phone holds an account recovery request to look at.
+  String? _recoveryToken;
   String _pin = '';
   final int _minPinLength = 4;
   // A new PIN is exactly four digits. Signing in still accepts the longer
@@ -80,6 +83,7 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
   @override
   void initState() {
     super.initState();
+    _loadRecoveryToken();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) AppScope.of(context).auth.loadSignInOptions();
     });
@@ -132,6 +136,29 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  Future<void> _recover() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const AccountRecoveryScreen()),
+    );
+    _loadRecoveryToken();
+  }
+
+  Future<void> _checkRecovery() async {
+    final token = _recoveryToken;
+    if (token == null) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => RecoveryStatusScreen(requestToken: token),
+      ),
+    );
+    _loadRecoveryToken();
+  }
+
+  Future<void> _loadRecoveryToken() async {
+    final token = await savedRecoveryToken();
+    if (mounted) setState(() => _recoveryToken = token);
   }
 
   void _forgotPin() {
@@ -320,6 +347,24 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
                         ),
                       ),
                     ),
+                  if (widget.initialMode == EmailAuthMode.signIn &&
+                      AppScope.of(context).auth.pinResetEnabled) ...[
+                    Center(
+                      child: TextButton(
+                        key: const Key('recovery-link'),
+                        onPressed: _busy ? null : _recover,
+                        child: Text(context.tr('rec.link')),
+                      ),
+                    ),
+                    if (_recoveryToken != null)
+                      Center(
+                        child: TextButton(
+                          key: const Key('recovery-check'),
+                          onPressed: _busy ? null : _checkRecovery,
+                          child: Text(context.tr('rec.check')),
+                        ),
+                      ),
+                  ],
                   const SizedBox(height: FFTokens.spacingMd),
                 ],
               ),

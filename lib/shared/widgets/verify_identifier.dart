@@ -64,7 +64,7 @@ class ContactDetailsTile extends StatelessWidget {
       builder: (context, _) {
         if (!auth.identifiersEnabled) return const SizedBox.shrink();
         final pending = auth.unverifiedIdentifiers.length;
-        return FFActionTile(
+        final tile = FFActionTile(
           key: const Key('contact-details-tile'),
           icon: Icons.verified_user_outlined,
           title: context.tr('verify.tileTitle'),
@@ -75,7 +75,67 @@ class ContactDetailsTile extends StatelessWidget {
             MaterialPageRoute(builder: (_) => const ContactDetailsScreen()),
           ),
         );
+        final missing = auth.secondContactReminder;
+        if (missing == null) return tile;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SecondContactCard(missing: missing),
+            tile,
+          ],
+        );
       },
+    );
+  }
+}
+
+/// A gentle reminder to verify a second way in (an email beside a number, or
+/// a number beside an email), so losing one never locks the person out.
+/// Dismissed for the rest of the session with "Not now".
+class SecondContactCard extends StatelessWidget {
+  const SecondContactCard({super.key, required this.missing});
+
+  /// 'email' or 'phone': the kind to add.
+  final String missing;
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = AppScope.of(context).auth;
+    final phone = missing == 'phone';
+    return Card(
+      key: const Key('second-contact-card'),
+      margin: const EdgeInsets.only(bottom: FFTokens.spacingSm),
+      child: Padding(
+        padding: const EdgeInsets.all(FFTokens.spacingMd),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(context.tr(phone ? 'second.phone' : 'second.email')),
+            const SizedBox(height: FFTokens.spacingSm),
+            Wrap(
+              spacing: FFTokens.spacingSm,
+              children: [
+                FilledButton.tonal(
+                  key: const Key('second-contact-add'),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => VerifyIdentifierScreen(type: missing),
+                    ),
+                  ),
+                  child: Text(
+                    context.tr(phone ? 'verify.addPhone' : 'second.addEmail'),
+                  ),
+                ),
+                TextButton(
+                  key: const Key('second-contact-dismiss'),
+                  onPressed: auth.dismissSecondContactReminder,
+                  child: Text(context.tr('second.dismiss')),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
