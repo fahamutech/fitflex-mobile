@@ -40,7 +40,7 @@ void main() {
         locale,
         ApiException(409, {'reason': 'membership_expired'}),
       ),
-      'Ombi limekataliwa: Uanachama umeisha',
+      'Ombi limekataliwa: Uanachama umeisha muda',
     );
   });
 
