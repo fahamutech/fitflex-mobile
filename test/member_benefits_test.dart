@@ -111,6 +111,14 @@ void main() {
     expect(find.text('Your sponsor pays in full'), findsOneWidget);
     expect(find.text('Valid until 2026-10-31'), findsOneWidget);
 
+    // The member is told what the sponsor can and cannot see.
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('benefits-visibility')),
+      200,
+    );
+    expect(find.text('What your sponsor can see'), findsOneWidget);
+    expect(find.textContaining('cannot see your weight, height'), findsOneWidget);
+
     expect(find.text('No limit on how often you use it'), findsOneWidget);
     expect(
       find.text('Your sponsor pays 60%; you pay the rest'),
