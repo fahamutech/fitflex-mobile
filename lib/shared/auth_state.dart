@@ -40,6 +40,10 @@ class AuthState extends ChangeNotifier {
   bool _identifiersEnabled = false;
   List<Map<String, dynamic>> _verifiedIdentifiers = const [];
   List<Map<String, dynamic>> _unverifiedIdentifiers = const [];
+  // Which kind to suggest adding as a second contact ('email' or 'phone'),
+  // and whether the person dismissed the reminder in this session.
+  String? _secondContactMissing;
+  bool _secondContactDismissed = false;
 
   String? get token => _token;
   Map<String, dynamic>? get user => _user;
@@ -123,6 +127,16 @@ class AuthState extends ChangeNotifier {
   /// Profile values (mobile number, email) not verified yet.
   List<Map<String, dynamic>> get unverifiedIdentifiers =>
       _unverifiedIdentifiers;
+
+  /// 'email' or 'phone' when only one kind is verified and the reminder to add
+  /// the other has not been dismissed this session; otherwise null.
+  String? get secondContactReminder =>
+      _secondContactDismissed ? null : _secondContactMissing;
+
+  void dismissSecondContactReminder() {
+    _secondContactDismissed = true;
+    notifyListeners();
+  }
 
   /// Set when the backend couldn't pick a persona (several, none used last).
   bool get personaChoiceRequired => _personaChoiceRequired;
@@ -314,11 +328,17 @@ class AuthState extends ChangeNotifier {
       _identifiersEnabled = true;
       _verifiedIdentifiers = listOf(res['identifiers']);
       _unverifiedIdentifiers = listOf(res['unverified']);
+      final second = res['secondContact'];
+      final missing = second is Map ? second['missing']?.toString() : null;
+      _secondContactMissing = missing == 'email' || missing == 'phone'
+          ? missing
+          : null;
     } on ApiException catch (e) {
       if (e.status == 404) {
         _identifiersEnabled = false;
         _verifiedIdentifiers = const [];
         _unverifiedIdentifiers = const [];
+        _secondContactMissing = null;
       }
     } catch (_) {
       // Offline: keep what we have.
@@ -387,6 +407,8 @@ class AuthState extends ChangeNotifier {
     _identifiersEnabled = false;
     _verifiedIdentifiers = const [];
     _unverifiedIdentifiers = const [];
+    _secondContactMissing = null;
+    _secondContactDismissed = false;
     _partnerVerified = null;
     api.setToken(null);
     final prefs = await SharedPreferences.getInstance();
