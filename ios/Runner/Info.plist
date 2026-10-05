@@ -47,9 +47,9 @@
 	<true/>
 	<!-- Location permissions -->
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>FitFlex needs your location to set your gym's position on the map.</string>
+	<string>FitFlex uses your location to show gyms near you, record your runs, and set your gym's position on the map.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
-	<string>FitFlex needs your location to set your gym's position on the map.</string>
+	<string>FitFlex uses your location to show gyms near you, record your runs, and set your gym's position on the map.</string>
 	<!-- Camera permission -->
 	<key>NSMotionUsageDescription</key>
 	<string>FitFlex counts your steps to track your activity goals and challenges.</string>

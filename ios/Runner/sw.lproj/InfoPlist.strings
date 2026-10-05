@@ -1,0 +1,6 @@
+/* Permission prompts in Swahili. English is in Info.plist. */
+"NSLocationWhenInUseUsageDescription" = "FitFlex inatumia eneo lako kukuonyesha gym zilizo karibu nawe, kurekodi mbio zako, na kuweka gym yako kwenye ramani.";
+"NSLocationAlwaysUsageDescription" = "FitFlex inatumia eneo lako kukuonyesha gym zilizo karibu nawe, kurekodi mbio zako, na kuweka gym yako kwenye ramani.";
+"NSMotionUsageDescription" = "FitFlex inahesabu hatua zako ili kufuatilia malengo yako ya mazoezi na challenge zako.";
+"NSCameraUsageDescription" = "FitFlex inahitaji kamera ili kuskani QR na kupiga picha.";
+"NSPhotoLibraryUsageDescription" = "FitFlex inahitaji kufikia picha zako ili kupakia picha.";
