@@ -9,6 +9,7 @@ import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import '../../shared/widgets/gym_form_page.dart';
 import 'owner_shell.dart';
+import '../../shared/wire_labels.dart';
 
 /// Owner — manage gyms grid view with add / edit / delete.
 class OwnerManageGymsPage extends StatelessWidget {
@@ -278,17 +279,29 @@ class _OwnerGymGridCard extends StatelessWidget {
                     style: tt.bodySmall?.copyWith(fontSize: 11),
                   ),
                   const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 4,
-                    runSpacing: 4,
-                    children: [
-                      FFPill(label: gym['tier']?.toString() ?? ''),
-                      FFPill(
-                        label:
-                            gym['status']?.toString() ??
-                            context.tr('ownerReg.status_active'),
-                      ),
-                    ],
+                  // One line: the card has no room for a second row of pills.
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        FFPill(
+                          label: gymTierLabel(
+                            FFLocaleScope.of(context),
+                            gym['tier']?.toString(),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        FFPill(
+                          label: statusLabel(
+                            FFLocaleScope.of(context),
+                            gym['status']?.toString(),
+                            fallback: context.tr('ownerReg.status_active'),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),

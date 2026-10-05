@@ -5,6 +5,7 @@
 // every booking carries its own `cancellation` answer.
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../app_scope.dart';
 import '../../shared/api_error_message.dart';
@@ -418,11 +419,21 @@ class _RefundRequestSheetState extends State<_RefundRequestSheet> {
 
   String _paymentLabel(Map<String, dynamic> p) {
     final what = (p['tier'] ?? p['plan'] ?? '').toString();
-    final day = (p['decidedAt'] ?? p['requestedAt'] ?? '').toString();
+    final day = DateTime.tryParse(
+      (p['decidedAt'] ?? p['requestedAt'] ?? '').toString(),
+    );
+    // Pass tiers have names ("Premium"); anything else is shown as sent.
+    final isTier = const {
+      'basic',
+      'pro',
+      'premium',
+      'executive',
+    }.contains(what.toLowerCase());
     return [
       formatCurrency(p['amountTzs'] as num? ?? 0),
-      if (what.isNotEmpty) what,
-      if (day.length >= 10) day.substring(0, 10),
+      if (what.isNotEmpty)
+        isTier ? context.tr('pass.${what.toLowerCase()}') : what,
+      if (day != null) DateFormat('d MMM yyyy').format(day.toLocal()),
     ].join(' · ');
   }
 

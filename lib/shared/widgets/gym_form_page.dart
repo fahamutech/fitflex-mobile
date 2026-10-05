@@ -11,6 +11,7 @@ import '../components/components.dart';
 import '../design_tokens.dart';
 import '../i18n.dart';
 import 'location_picker.dart';
+import '../api_error_message.dart';
 
 /// Fullscreen form for creating/editing a gym. Mirrors the fields used during
 /// gym-owner onboarding (registration page) so all gym-creation paths produce
@@ -312,9 +313,9 @@ class _GymFormPageState extends State<GymFormPage> {
     } catch (e) {
       if (mounted) {
         setState(() => _busy = false);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage(FFLocaleScope.of(context), e))),
+        );
       }
     }
   }

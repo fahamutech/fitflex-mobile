@@ -92,15 +92,15 @@ class _LanguageScreenState extends State<LanguageScreen>
                         _LanguageTile(
                           key: const Key('langEnglish'),
                           title: 'English',
-                          subtitle: 'International Standard',
+                          subtitle: 'Kiingereza',
                           selected: _selected == 'en',
                           onTap: () => _select('en'),
                         ),
                         const SizedBox(height: FFTokens.spacingMd),
                         _LanguageTile(
                           key: const Key('langKiswahili'),
-                          title: 'Swahili',
-                          subtitle: 'Lugha ya Kiswahili',
+                          title: 'Kiswahili',
+                          subtitle: 'Swahili',
                           selected: _selected == 'sw',
                           onTap: () => _select('sw'),
                         ),
@@ -114,7 +114,10 @@ class _LanguageScreenState extends State<LanguageScreen>
                     width: double.infinity,
                     child: FilledButton(
                       onPressed: _selected != null ? _continue : null,
-                      child: const Text('Continue'),
+                      // In the language just picked, before it is applied.
+                      child: Text(
+                        FFLocale.textIn(_selected ?? 'en', 'lang.continue'),
+                      ),
                     ),
                   ),
                 ),

@@ -13,6 +13,7 @@ import '../../shared/widgets/ff_photo_picker_field.dart';
 import '../../shared/widgets/invitations.dart';
 import '../../shared/widgets/persona_switcher.dart';
 import '../pin_flows.dart';
+import '../../shared/wire_labels.dart';
 
 class VendorHomePage extends StatefulWidget {
   const VendorHomePage({super.key});
@@ -389,10 +390,10 @@ class _VendorHomePageState extends State<VendorHomePage> {
                 Text(items, style: Theme.of(context).textTheme.titleSmall),
                 const SizedBox(height: 4),
                 Text(
-                  '${formatCurrency(order['totalTzs'] as num? ?? 0)} · ${context.tr('vendor.status')}: $status',
+                  '${formatCurrency(order['totalTzs'] as num? ?? 0)} · ${context.tr('vendor.status')}: ${statusLabel(FFLocaleScope.of(context), status)}',
                 ),
                 Text(
-                  '${context.tr('vendor.payment')}: ${order['paymentStatus'] ?? '-'} · ${order['paymentMethod'] ?? '-'}',
+                  '${context.tr('vendor.payment')}: ${statusLabel(FFLocaleScope.of(context), order['paymentStatus']?.toString(), fallback: '-')} · ${order['paymentMethod'] == null ? '-' : paymentMethodLabel(FFLocaleScope.of(context), order['paymentMethod'].toString())}',
                 ),
                 Text(
                   order['deliveryMethod'] == 'gym_pickup'
@@ -419,7 +420,10 @@ class _VendorHomePageState extends State<VendorHomePage> {
                                 _nextOrderStatus(order),
                               ),
                         child: Text(
-                          '${context.tr('vendor.mark')} ${_nextOrderStatus(order).replaceAll('_', ' ')}',
+                          vendorSetStatusLabel(
+                            FFLocaleScope.of(context),
+                            _nextOrderStatus(order),
+                          ),
                         ),
                       ),
                       TextButton(
@@ -545,7 +549,9 @@ class _VendorHomePageState extends State<VendorHomePage> {
                   messages.isEmpty ? '' : messages.first['message'].toString(),
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
-                Text('${context.tr('vendor.status')}: ${enquiry['status']}'),
+                Text(
+                  '${context.tr('vendor.status')}: ${statusLabel(FFLocaleScope.of(context), enquiry['status']?.toString(), fallback: '-')}',
+                ),
                 if (messages.length > 1)
                   Text(
                     '${context.tr('vendor.reply')}: ${messages.last['message']}',
@@ -620,7 +626,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               Text(
-                '${context.tr('vendor.status')}: ${_profile['status'] ?? 'draft'}',
+                '${context.tr('vendor.status')}: ${statusLabel(FFLocaleScope.of(context), _profile['status']?.toString() ?? 'draft')}',
               ),
               Text(_profile['description']?.toString() ?? ''),
               const SizedBox(height: FFTokens.spacingSm),

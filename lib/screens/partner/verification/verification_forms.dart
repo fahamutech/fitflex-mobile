@@ -345,7 +345,10 @@ class _PersonFormPageState extends State<PersonFormPage> {
             ),
             items: [
               for (final e in countries.entries)
-                DropdownMenuItem(value: e.key, child: Text(e.value)),
+                DropdownMenuItem(
+                  value: e.key,
+                  child: Text(context.tr('kyc.country.${e.key}')),
+                ),
             ],
             onChanged: (v) => setState(() => _nationality = v ?? 'TZ'),
           ),

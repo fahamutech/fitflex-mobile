@@ -5,6 +5,8 @@ import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
 import '../../../shared/models.dart';
 import '../../../shared/widgets/partner_not_verified.dart';
+import '../../../shared/wire_labels.dart';
+import '../../../shared/i18n.dart';
 
 class GymCard extends StatelessWidget {
   const GymCard({super.key, required this.gym, this.distanceKm});
@@ -59,7 +61,11 @@ class GymCard extends StatelessWidget {
                   Row(
                     children: [
                       FFBadge(
-                        label: gym.tier.replaceAll('_', ' '),
+                        label: gymTierLabel(
+                          // Also used on screens with no locale scope above them.
+                          FFLocaleScope.maybeOf(context) ?? FFLocale.active,
+                          gym.tier,
+                        ),
                         tone: FFBadgeTone.brand,
                       ),
                       if (distanceKm != null) ...[
@@ -211,7 +217,11 @@ class GymGridCard extends StatelessWidget {
                         runSpacing: 4,
                         children: [
                           FFBadge(
-                            label: gym.tier.replaceAll('_', ' '),
+                            label: gymTierLabel(
+                              // Also used on screens with no locale scope above them.
+                              FFLocaleScope.maybeOf(context) ?? FFLocale.active,
+                              gym.tier,
+                            ),
                             tone: FFBadgeTone.brand,
                           ),
                           if (distanceKm != null)

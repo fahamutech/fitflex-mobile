@@ -13,6 +13,7 @@ import '../shared/design_tokens.dart';
 import '../shared/firebase_auth_service.dart';
 import '../shared/i18n.dart';
 import 'email_auth_screen.dart';
+import '../shared/auth_error_message.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({
@@ -108,12 +109,12 @@ class _AuthScreenState extends State<AuthScreen>
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Authentication Error'),
+        title: Text(context.tr('auth.errorTitle')),
         content: Text(message),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Close'),
+            child: Text(context.tr('common.close')),
           ),
         ],
       ),
@@ -136,7 +137,7 @@ class _AuthScreenState extends State<AuthScreen>
       case 'network-request-failed':
         return context.tr('auth.networkError');
       default:
-        return e.message ?? e.code;
+        return authErrorMessage(FFLocaleScope.of(context), e.code);
     }
   }
 

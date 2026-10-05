@@ -510,8 +510,8 @@ class MemberSummary {
     onboardingCompleted: json['onboardingCompleted'] as bool?,
   );
 
-  String get resolvedName =>
-      displayName ?? email ?? phone ?? publicId ?? 'Member';
+  /// The best name on record, or null when there is none to show.
+  String? get knownName => displayName ?? email ?? phone ?? publicId;
 }
 
 class Subscription {
@@ -760,21 +760,6 @@ class PassTier {
     label: json['label'] as String?,
     gymAccess: json['gymAccess'] as String?,
   );
-
-  String get gymAccessLabel {
-    switch (gymAccess) {
-      case 'standard':
-        return 'Standard gyms';
-      case 'midtier':
-        return 'Standard + Mid-tier gyms';
-      case 'premium':
-        return 'Standard + Mid-tier + Premium gyms';
-      case 'luxury_executive':
-        return 'All gyms including Luxury/Executive';
-      default:
-        return gymAccess ?? '';
-    }
-  }
 }
 
 // ── Reviews ────────────────────────────────────────────────────────────────

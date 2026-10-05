@@ -168,7 +168,11 @@ class _ProfileFormPageState extends State<ProfileFormPage> {
                 hint: '+255...',
               ),
               const SizedBox(height: FFTokens.spacingSm),
-              FFTextField(initialValue: email, enabled: false, label: 'Email'),
+              FFTextField(
+                initialValue: email,
+                enabled: false,
+                label: context.tr('member.email'),
+              ),
               if (_isMember) ...[
                 const SizedBox(height: FFTokens.spacingSm),
                 FFDropdownField<String>(
@@ -195,7 +199,7 @@ class _ProfileFormPageState extends State<ProfileFormPage> {
                   controller: _dateOfBirth,
                   keyboardType: TextInputType.datetime,
                   label: context.tr('member.dateOfBirth'),
-                  hint: 'YYYY-MM-DD',
+                  hint: context.tr('member.dateOfBirthHint'),
                 ),
                 const SizedBox(height: FFTokens.spacingSm),
                 Row(

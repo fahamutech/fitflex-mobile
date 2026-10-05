@@ -28,10 +28,17 @@ bool isNetworkError(Object error) {
 String apiErrorMessage(FFLocale locale, ApiException exception) {
   final reason = _firstReason(exception.body);
   if (reason != null && reason.isNotEmpty) {
-    final translated = _knownReason(locale, reason) ?? _humanize(reason);
-    return locale
-        .t('error.requestDeclined')
-        .replaceFirst('{reason}', translated);
+    // A reason the app has no translation for is English text from the
+    // server: English readers still see it, Swahili readers get the generic
+    // message for the status instead of English inside a Swahili sentence.
+    final translated =
+        _knownReason(locale, reason) ??
+        (locale.locale.languageCode == 'en' ? _humanize(reason) : null);
+    if (translated != null) {
+      return locale
+          .t('error.requestDeclined')
+          .replaceFirst('{reason}', translated);
+    }
   }
 
   final key = switch (exception.status) {

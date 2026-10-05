@@ -27,6 +27,14 @@ class _MemberTrainersTabState extends State<MemberTrainersTab> {
     'Boxing',
   ];
 
+  // The filter value matches trainers' specialties; the label is translated.
+  static const _specialtyLabels = {
+    'Weights': 'trainer.specialty.weights',
+    'Cardio': 'trainerReg.specialty_cardio',
+    'Yoga': 'trainerReg.specialty_yoga',
+    'Boxing': 'trainerReg.specialty_boxing',
+  };
+
   @override
   void initState() {
     super.initState();
@@ -148,7 +156,9 @@ class _MemberTrainersTabState extends State<MemberTrainersTab> {
                           final selected = _filter == _specialtyFilters[i];
                           final label = _specialtyFilters[i] == 'all'
                               ? context.tr('member.all')
-                              : _specialtyFilters[i];
+                              : context.tr(
+                                  _specialtyLabels[_specialtyFilters[i]]!,
+                                );
                           return GestureDetector(
                             onTap: () =>
                                 setState(() => _filter = _specialtyFilters[i]),

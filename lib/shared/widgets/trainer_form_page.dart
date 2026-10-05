@@ -240,7 +240,7 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
                   FFDropdownField<String>(
                     width: 100,
                     value: _currency,
-                    label: 'Currency',
+                    label: context.tr('common.currency'),
                     items: const [
                       DropdownMenuItem(value: 'TZS', child: Text('TZS')),
                       DropdownMenuItem(value: 'USD', child: Text('USD')),
