@@ -10,6 +10,7 @@ import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import '../../shared/social.dart';
+import '../../shared/ff_datetime.dart';
 
 /// Friends & groups: the feed of what people shared, finding and following
 /// people, and groups. Only mutual followers, group-mates and colleagues
@@ -279,7 +280,7 @@ class FeedCard extends StatelessWidget {
                           style: theme.textTheme.titleSmall,
                         ),
                         Text(
-                          DateFormat('EEE d MMM · HH:mm').format(a.startedAt),
+                          '${DateFormat('EEE d MMM').format(a.startedAt)} · ${formatClock(a.startedAt, english24h: true)}',
                           style: theme.textTheme.bodySmall,
                         ),
                       ],

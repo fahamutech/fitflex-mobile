@@ -12,6 +12,7 @@ import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
+import '../../shared/ff_datetime.dart';
 
 class MemberSessionsPage extends StatefulWidget {
   const MemberSessionsPage({super.key});
@@ -245,7 +246,7 @@ class _SessionCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             [
-              '${booking['date']} · ${booking['slot']}',
+              '${booking['date']} · ${formatClockText('${booking['slot']}')}',
               ?gym,
               formatCurrency(booking['amountTzs'] as num? ?? 0),
             ].join(' · '),

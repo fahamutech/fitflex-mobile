@@ -1,14 +1,22 @@
 import 'package:flutter/material.dart';
 
+import 'ff_datetime.dart';
+
 /// Lightweight i18n provider with English + Swahili.
 /// All user-facing strings live here.
 class FFLocale extends ChangeNotifier {
+  FFLocale() {
+    useDateLanguage(_locale.languageCode);
+  }
+
   Locale _locale = const Locale('en');
   Locale get locale => _locale;
 
   void set(Locale l) {
     if (_supported.contains(l.languageCode)) {
       _locale = l;
+      // Dates and day/month names follow the app language too.
+      useDateLanguage(l.languageCode);
       notifyListeners();
     }
   }

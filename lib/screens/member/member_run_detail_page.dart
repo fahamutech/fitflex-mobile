@@ -12,6 +12,7 @@ import 'member_shell.dart';
 import '../../shared/social.dart';
 import 'widgets/run_widgets.dart';
 import 'widgets/share_picker.dart';
+import '../../shared/ff_datetime.dart';
 
 /// A saved run: numbers, splits and the route (which only the member sees).
 class MemberRunDetailPage extends StatefulWidget {
@@ -76,9 +77,7 @@ class _MemberRunDetailPageState extends State<MemberRunDetailPage> {
                   style: theme.textTheme.titleLarge,
                 ),
                 Text(
-                  DateFormat(
-                    'EEE d MMM y · HH:mm',
-                  ).format(a.startedAt.toLocal()),
+                  '${DateFormat('EEE d MMM y').format(a.startedAt.toLocal())} · ${formatClock(a.startedAt.toLocal(), english24h: true)}',
                   style: theme.textTheme.bodySmall,
                 ),
                 const SizedBox(height: FFTokens.spacingMd),

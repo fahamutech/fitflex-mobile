@@ -13,6 +13,7 @@ import '../../../shared/i18n.dart';
 import '../../../shared/activity/manual_activity_log.dart';
 import '../member_log_activity_page.dart' show openLogActivity;
 import 'workout_widgets.dart' show showPlanWorkoutSheet;
+import '../../../shared/ff_datetime.dart';
 
 IconData activityTypeIcon(ActivityType type) => switch (type) {
   ActivityType.walking => Icons.directions_walk,
@@ -63,7 +64,7 @@ class ActivityTimelineTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final a = activity;
     final parts = <String>[
-      DateFormat('EEE d MMM · HH:mm').format(a.startedAt.toLocal()),
+      '${DateFormat('EEE d MMM').format(a.startedAt.toLocal())} · ${formatClock(a.startedAt.toLocal(), english24h: true)}',
       if (a.durationMinutes != null)
         '${a.durationMinutes} ${context.tr('activity.min')}',
       if (a.distanceKm != null && a.distanceKm! > 0) formatKm(a.distanceKm!),

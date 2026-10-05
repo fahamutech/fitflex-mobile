@@ -1,38 +1,17 @@
-// Lightweight date/relative-time formatting for member screens. No external
-// deps (intl) — keeps formatting consistent with the design copy.
+// Lightweight date/relative-time formatting for member screens, in the app's
+// selected language.
 
+import '../../../../shared/ff_datetime.dart';
 import '../../../../shared/i18n.dart';
 import 'package:flutter/widgets.dart';
 
-const _months = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-];
-
-String _two(int v) => v.toString().padLeft(2, '0');
-
-/// "8:30 AM"
-String formatTime(DateTime dt) {
-  final local = dt.toLocal();
-  final h = local.hour % 12 == 0 ? 12 : local.hour % 12;
-  final ampm = local.hour < 12 ? 'AM' : 'PM';
-  return '$h:${_two(local.minute)} $ampm';
-}
+/// "8:30 AM", or "8:30 asubuhi" in Swahili.
+String formatTime(DateTime dt) => formatClock(dt.toLocal());
 
 /// "12 Jan 2024"
 String formatDate(DateTime dt) {
   final local = dt.toLocal();
-  return '${local.day} ${_months[local.month - 1]} ${local.year}';
+  return '${local.day} ${shortMonthName(local.month)} ${local.year}';
 }
 
 /// "12 Jan 2024, 8:30 AM" — absolute date + time, used by the history tables.

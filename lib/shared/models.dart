@@ -1,6 +1,8 @@
 // Typed data models matching the portal's TypeScript interfaces in api.ts.
 // Keeps the mobile app aligned with the backend/portal data contract.
 
+import 'ff_datetime.dart';
+
 class Gym {
   final String id;
   final String name;
@@ -411,19 +413,9 @@ class TrainerAvailability {
         slots: (json['slots'] as List?)?.whereType<String>().toList() ?? [],
       );
 
-  /// Human-readable label for the day.
+  /// The day's name in the app language ("Monday" / "Jumatatu").
   String get dayLabel {
-    final d = day.toLowerCase();
-    const dayNames = {
-      'monday': 'Monday',
-      'tuesday': 'Tuesday',
-      'wednesday': 'Wednesday',
-      'thursday': 'Thursday',
-      'friday': 'Friday',
-      'saturday': 'Saturday',
-      'sunday': 'Sunday',
-    };
-    return dayNames[d] ?? day;
+    return weekdayName(day) ?? day;
   }
 }
 
