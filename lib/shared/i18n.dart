@@ -1508,7 +1508,7 @@ class FFLocale extends ChangeNotifier {
       'audience.groupHint': 'Members of this group',
       'audience.aGroup': 'A group',
       'audience.company': 'My company',
-      'audience.companyHint': 'Colleagues at your company (never HR).',
+      'audience.companyHint': 'Colleagues at your company.',
       'audience.neverShared':
           'Your route, calories and weight are never shared.',
       'audience.done': 'Done',
@@ -2798,6 +2798,11 @@ class FFLocale extends ChangeNotifier {
       'benefits.tile': 'From your employer, insurer or club',
       'benefits.intro':
           'Benefits are used automatically when you check in at a gym or finish a trainer session. When one runs out, your own pass is used.',
+      'benefits.visibility.title': 'What your sponsor can see',
+      'benefits.visibility.sees':
+          'The employer, insurer or club that gives you these benefits can see your FitFlex activity: gym visits, trainer sessions, the workouts and steps you record, and your progress in its challenges.',
+      'benefits.visibility.hidden':
+          'It cannot see your weight, height, calories, notes or routes, or anything another sponsor gives you.',
       'benefits.empty.title': 'No wellness benefits yet',
       'benefits.empty.body':
           'When your employer, insurer or club gives you a benefit through FitFlex, it shows here.',
@@ -4853,7 +4858,7 @@ class FFLocale extends ChangeNotifier {
       'audience.groupHint': 'Wanachama wa kikundi hiki',
       'audience.aGroup': 'Kikundi',
       'audience.company': 'Kampuni yangu',
-      'audience.companyHint': 'Wafanyakazi wenzako (si HR kamwe).',
+      'audience.companyHint': 'Wafanyakazi wenzako.',
       'audience.neverShared': 'Njia yako, kalori na uzito havishirikiwi kamwe.',
       'audience.done': 'Sawa',
       'audience.whoCanSee': 'Nani anaweza kuona',
@@ -6124,6 +6129,11 @@ class FFLocale extends ChangeNotifier {
       'benefits.tile': 'Kutoka kwa mwajiri, bima au klabu yako',
       'benefits.intro':
           'Benefits hutumika moja kwa moja unapoingia gym au unapomaliza kipindi cha trainer. Zikiisha, pasi yako mwenyewe hutumika.',
+      'benefits.visibility.title': 'Mdhamini wako anaona nini',
+      'benefits.visibility.sees':
+          'Mwajiri, bima au klabu inayokupa benefits hizi inaweza kuona shughuli zako za FitFlex: kuingia gym, vipindi vya trainer, mazoezi na hatua unazorekodi, na maendeleo yako kwenye challenge zake.',
+      'benefits.visibility.hidden':
+          'Haiwezi kuona uzito wako, urefu wako, kalori, maelezo au njia zako, wala chochote unachopewa na mdhamini mwingine.',
       'benefits.empty.title': 'Bado huna benefits za afya',
       'benefits.empty.body':
           'Mwajiri, bima au klabu yako ikikupa benefit kupitia FitFlex, itaonekana hapa.',
