@@ -117,7 +117,10 @@ void main() {
       200,
     );
     expect(find.text('What your sponsor can see'), findsOneWidget);
-    expect(find.textContaining('cannot see your weight, height'), findsOneWidget);
+    expect(
+      find.textContaining('cannot see your weight, height'),
+      findsOneWidget,
+    );
 
     expect(find.text('No limit on how often you use it'), findsOneWidget);
     expect(

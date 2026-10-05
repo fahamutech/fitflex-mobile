@@ -10,6 +10,7 @@ import '../components/components.dart';
 import '../design_tokens.dart';
 import '../formatters.dart';
 import '../i18n.dart';
+import '../wire_labels.dart';
 
 num _shopNumber(dynamic value, [num fallback = 0]) {
   if (value is num) return value;
@@ -686,7 +687,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
                 style: Theme.of(context).textTheme.titleSmall,
               ),
               Text(
-                '${formatCurrency(order['totalTzs'] as num? ?? 0)} · $status',
+                '${formatCurrency(order['totalTzs'] as num? ?? 0)} · ${statusLabel(FFLocaleScope.of(context), status)}',
               ),
               if (order['paymentStatus'] == 'pending')
                 Text(
@@ -1272,15 +1273,20 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
                 decoration: InputDecoration(
                   labelText: context.tr('shop.paymentMethod'),
                 ),
-                items: const [
-                  DropdownMenuItem(value: 'mpesa', child: Text('M-Pesa')),
-                  DropdownMenuItem(
-                    value: 'airtel_money',
-                    child: Text('Airtel Money'),
-                  ),
-                  DropdownMenuItem(value: 'mixx', child: Text('Mixx')),
-                  DropdownMenuItem(value: 'card', child: Text('Card')),
-                  DropdownMenuItem(value: 'bank', child: Text('Bank')),
+                items: [
+                  for (final method in const [
+                    'mpesa',
+                    'airtel_money',
+                    'mixx',
+                    'card',
+                    'bank',
+                  ])
+                    DropdownMenuItem(
+                      value: method,
+                      child: Text(
+                        paymentMethodLabel(FFLocaleScope.of(context), method),
+                      ),
+                    ),
                 ],
                 onChanged: (value) =>
                     setState(() => _payment = value ?? 'mpesa'),

@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../design_tokens.dart';
 import '../i18n.dart';
+import '../ff_datetime.dart';
 
 /// Longest message the backend accepts (ENQUIRY_TEXT_MAX).
 const enquiryTextMax = 1000;
@@ -38,8 +39,8 @@ String _when(DateTime? at) {
   final sameDay =
       at.year == now.year && at.month == now.month && at.day == now.day;
   return sameDay
-      ? DateFormat('HH:mm').format(at)
-      : DateFormat('d MMM, HH:mm').format(at);
+      ? formatClock(at, english24h: true)
+      : '${DateFormat('d MMM').format(at)}, ${formatClock(at, english24h: true)}';
 }
 
 /// The conversation as chat bubbles; [me] ('member' | 'trainer') is on the

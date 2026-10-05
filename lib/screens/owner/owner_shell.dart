@@ -45,7 +45,10 @@ class OwnerData extends ChangeNotifier {
 
   String get displayName {
     final user = me?['user'] as Map?;
-    return (user?['displayName'] ?? user?['email'] ?? user?['phone'] ?? 'Owner')
+    return (user?['displayName'] ??
+            user?['email'] ??
+            user?['phone'] ??
+            FFLocale.text('common.owner'))
         .toString();
   }
 

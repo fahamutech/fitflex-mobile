@@ -12,6 +12,7 @@ import '../shared/design_tokens.dart';
 import '../shared/firebase_auth_service.dart';
 import '../shared/i18n.dart';
 import 'pin_flows.dart';
+import '../shared/auth_error_message.dart';
 
 /// Independent account-creation entry point, reached only from the
 /// sign-in screen's "Create account" link. Kept separate from
@@ -83,12 +84,12 @@ class _SignUpScreenState extends State<SignUpScreen>
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Authentication Error'),
+        title: Text(context.tr('auth.errorTitle')),
         content: Text(message),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Close'),
+            child: Text(context.tr('common.close')),
           ),
         ],
       ),
@@ -112,7 +113,7 @@ class _SignUpScreenState extends State<SignUpScreen>
       case 'network-request-failed':
         return context.tr('auth.networkError');
       default:
-        return e.message ?? e.code;
+        return authErrorMessage(FFLocaleScope.of(context), e.code);
     }
   }
 

@@ -1,6 +1,8 @@
 // Typed data models matching the portal's TypeScript interfaces in api.ts.
 // Keeps the mobile app aligned with the backend/portal data contract.
 
+import 'ff_datetime.dart';
+
 class Gym {
   final String id;
   final String name;
@@ -411,19 +413,9 @@ class TrainerAvailability {
         slots: (json['slots'] as List?)?.whereType<String>().toList() ?? [],
       );
 
-  /// Human-readable label for the day.
+  /// The day's name in the app language ("Monday" / "Jumatatu").
   String get dayLabel {
-    final d = day.toLowerCase();
-    const dayNames = {
-      'monday': 'Monday',
-      'tuesday': 'Tuesday',
-      'wednesday': 'Wednesday',
-      'thursday': 'Thursday',
-      'friday': 'Friday',
-      'saturday': 'Saturday',
-      'sunday': 'Sunday',
-    };
-    return dayNames[d] ?? day;
+    return weekdayName(day) ?? day;
   }
 }
 
@@ -518,8 +510,8 @@ class MemberSummary {
     onboardingCompleted: json['onboardingCompleted'] as bool?,
   );
 
-  String get resolvedName =>
-      displayName ?? email ?? phone ?? publicId ?? 'Member';
+  /// The best name on record, or null when there is none to show.
+  String? get knownName => displayName ?? email ?? phone ?? publicId;
 }
 
 class Subscription {
@@ -768,21 +760,6 @@ class PassTier {
     label: json['label'] as String?,
     gymAccess: json['gymAccess'] as String?,
   );
-
-  String get gymAccessLabel {
-    switch (gymAccess) {
-      case 'standard':
-        return 'Standard gyms';
-      case 'midtier':
-        return 'Standard + Mid-tier gyms';
-      case 'premium':
-        return 'Standard + Mid-tier + Premium gyms';
-      case 'luxury_executive':
-        return 'All gyms including Luxury/Executive';
-      default:
-        return gymAccess ?? '';
-    }
-  }
 }
 
 // ── Reviews ────────────────────────────────────────────────────────────────

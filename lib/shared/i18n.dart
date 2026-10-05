@@ -1,14 +1,33 @@
 import 'package:flutter/material.dart';
 
+import 'ff_datetime.dart';
+
 /// Lightweight i18n provider with English + Swahili.
 /// All user-facing strings live here.
 class FFLocale extends ChangeNotifier {
+  FFLocale() {
+    useDateLanguage(_locale.languageCode);
+    _active = this;
+  }
+
+  static FFLocale? _active;
+
+  /// Text for [key] in the app's language, for code with no BuildContext
+  /// (model fallbacks, platform notification settings). Widgets use
+  /// `context.tr`.
+  static String text(String key) => active.t(key);
+
+  /// The app's locale, for the same context-free code.
+  static FFLocale get active => _active ?? FFLocale();
+
   Locale _locale = const Locale('en');
   Locale get locale => _locale;
 
   void set(Locale l) {
     if (_supported.contains(l.languageCode)) {
       _locale = l;
+      // Dates and day/month names follow the app language too.
+      useDateLanguage(l.languageCode);
       notifyListeners();
     }
   }
@@ -17,8 +36,12 @@ class FFLocale extends ChangeNotifier {
     final lang = _supported.contains(_locale.languageCode)
         ? _locale.languageCode
         : 'en';
-    return (_messages[lang] ?? const {})[key] ?? _messages['en']![key] ?? key;
+    return textIn(lang, key);
   }
+
+  /// Text for [key] in [lang], whatever language the app is in.
+  static String textIn(String lang, String key) =>
+      (_messages[lang] ?? const {})[key] ?? _messages['en']![key] ?? key;
 
   static const _supported = {'en', 'sw'};
 
@@ -3332,6 +3355,81 @@ class FFLocale extends ChangeNotifier {
       'error.reason.reviewTextTooShort':
           'the review needs at least 3 characters',
       'error.reason.reviewTextTooLong': 'the review is over 1000 characters',
+      // Structural localization: server values, native labels, fallbacks.
+      'gym.tier.standard': 'Standard',
+      'gym.tier.midtier': 'Mid-tier',
+      'gym.tier.premium': 'Premium',
+      'gym.tier.luxury_executive': 'Luxury/Executive',
+      'pass.access.standard': 'Standard gyms',
+      'pass.access.midtier': 'Standard + Mid-tier gyms',
+      'pass.access.premium': 'Standard + Mid-tier + Premium gyms',
+      'pass.access.luxury_executive': 'All gyms including Luxury/Executive',
+      'wire.status.pending': 'Pending',
+      'wire.status.confirmed': 'Confirmed',
+      'wire.status.accepted': 'Accepted',
+      'wire.status.processing': 'Processing',
+      'wire.status.packed': 'Packed',
+      'wire.status.ready_for_pickup': 'Ready for pickup',
+      'wire.status.dispatched': 'Dispatched',
+      'wire.status.out_for_delivery': 'Out for delivery',
+      'wire.status.delivered': 'Delivered',
+      'wire.status.cancelled': 'Cancelled',
+      'wire.status.refunded': 'Refunded',
+      'wire.status.paid': 'Paid',
+      'wire.status.unpaid': 'Unpaid',
+      'wire.status.failed': 'Failed',
+      'wire.status.open': 'Open',
+      'wire.status.resolved': 'Resolved',
+      'wire.status.closed': 'Closed',
+      'wire.status.answered': 'Answered',
+      'wire.status.draft': 'Draft',
+      'wire.status.published': 'Published',
+      'wire.status.suspended': 'Suspended',
+      'wire.status.active': 'Active',
+      'wire.status.inactive': 'Inactive',
+      'wire.status.approved': 'Approved',
+      'wire.status.rejected': 'Rejected',
+      'wire.status.expired': 'Expired',
+      'wire.pay.card': 'Card',
+      'wire.pay.bank': 'Bank',
+      'vendor.setStatus.accepted': 'Mark accepted',
+      'vendor.setStatus.processing': 'Mark processing',
+      'vendor.setStatus.packed': 'Mark packed',
+      'vendor.setStatus.ready_for_pickup': 'Mark ready for pickup',
+      'vendor.setStatus.dispatched': 'Mark dispatched',
+      'vendor.setStatus.delivered': 'Mark delivered',
+      'vendor.setStatus.other': 'Update status',
+      'auth.errorTitle': 'Authentication Error',
+      'common.close': 'Close',
+      'auth.tooManyRequests': 'Too many attempts. Wait a moment and try again.',
+      'auth.userDisabled':
+          'This account has been disabled. Contact FitFlex for help.',
+      'auth.signInAgain': 'You are signed out. Sign in again, then retry.',
+      'auth.googleFailed': 'Could not sign in with Google. Try again.',
+      'auth.genericError': 'Something went wrong. Try again.',
+      'common.currency': 'Currency',
+      'common.member': 'Member',
+      'common.owner': 'Owner',
+      'social.memberName': 'FitFlex member',
+      'theme.switchLight': 'Switch to light mode',
+      'theme.switchDark': 'Switch to dark mode',
+      'trainer.specialty.weights': 'Weights',
+      'member.dateOfBirthHint': 'YYYY-MM-DD',
+      'run.channelName': 'Run recording',
+      'kyc.country.TZ': 'Tanzania',
+      'kyc.country.KE': 'Kenya',
+      'kyc.country.UG': 'Uganda',
+      'kyc.country.RW': 'Rwanda',
+      'kyc.country.BI': 'Burundi',
+      'kyc.country.CD': 'DR Congo',
+      'kyc.country.ZM': 'Zambia',
+      'kyc.country.MW': 'Malawi',
+      'kyc.country.MZ': 'Mozambique',
+      'kyc.country.ZA': 'South Africa',
+      'kyc.country.NG': 'Nigeria',
+      'kyc.country.GB': 'United Kingdom',
+      'kyc.country.US': 'United States',
+      'kyc.country.IN': 'India',
     },
     'sw': {
       'app.title': 'FitFlex',
@@ -6665,6 +6763,82 @@ class FFLocale extends ChangeNotifier {
       'error.reason.invalidRating': 'chagua nyota kati ya 1 na 5',
       'error.reason.reviewTextTooShort': 'maoni yanahitaji angalau herufi 3',
       'error.reason.reviewTextTooLong': 'maoni yamezidi herufi 1000',
+      // Structural localization: server values, native labels, fallbacks.
+      'gym.tier.standard': 'Standard',
+      'gym.tier.midtier': 'Mid-tier',
+      'gym.tier.premium': 'Premium',
+      'gym.tier.luxury_executive': 'Luxury/Executive',
+      'pass.access.standard': 'Gym za Standard',
+      'pass.access.midtier': 'Gym za Standard + Mid-tier',
+      'pass.access.premium': 'Gym za Standard + Mid-tier + Premium',
+      'pass.access.luxury_executive': 'Gym zote, zikiwemo Luxury/Executive',
+      'wire.status.pending': 'Inasubiri',
+      'wire.status.confirmed': 'Imethibitishwa',
+      'wire.status.accepted': 'Imekubaliwa',
+      'wire.status.processing': 'Inaandaliwa',
+      'wire.status.packed': 'Imefungashwa',
+      'wire.status.ready_for_pickup': 'Tayari kuchukuliwa',
+      'wire.status.dispatched': 'Imetumwa',
+      'wire.status.out_for_delivery': 'Iko njiani',
+      'wire.status.delivered': 'Imefikishwa',
+      'wire.status.cancelled': 'Imeghairiwa',
+      'wire.status.refunded': 'Pesa imerejeshwa',
+      'wire.status.paid': 'Imelipwa',
+      'wire.status.unpaid': 'Haijalipwa',
+      'wire.status.failed': 'Imeshindikana',
+      'wire.status.open': 'Wazi',
+      'wire.status.resolved': 'Imetatuliwa',
+      'wire.status.closed': 'Imefungwa',
+      'wire.status.answered': 'Imejibiwa',
+      'wire.status.draft': 'Rasimu',
+      'wire.status.published': 'Imechapishwa',
+      'wire.status.suspended': 'Imesimamishwa',
+      'wire.status.active': 'Inatumika',
+      'wire.status.inactive': 'Haitumiki',
+      'wire.status.approved': 'Imeidhinishwa',
+      'wire.status.rejected': 'Imekataliwa',
+      'wire.status.expired': 'Imeisha muda',
+      'wire.pay.card': 'Kadi',
+      'wire.pay.bank': 'Benki',
+      'vendor.setStatus.accepted': 'Weka kuwa imekubaliwa',
+      'vendor.setStatus.processing': 'Weka kuwa inaandaliwa',
+      'vendor.setStatus.packed': 'Weka kuwa imefungashwa',
+      'vendor.setStatus.ready_for_pickup': 'Weka kuwa tayari kuchukuliwa',
+      'vendor.setStatus.dispatched': 'Weka kuwa imetumwa',
+      'vendor.setStatus.delivered': 'Weka kuwa imefikishwa',
+      'vendor.setStatus.other': 'Badilisha hali',
+      'auth.errorTitle': 'Imeshindikana kuingia',
+      'common.close': 'Funga',
+      'auth.tooManyRequests':
+          'Umejaribu mara nyingi. Subiri kidogo kisha ujaribu tena.',
+      'auth.userDisabled':
+          'Akaunti hii imezuiwa. Wasiliana na FitFlex kwa msaada.',
+      'auth.signInAgain': 'Hujaingia. Ingia tena kisha ujaribu.',
+      'auth.googleFailed': 'Imeshindikana kuingia kwa Google. Jaribu tena.',
+      'auth.genericError': 'Imeshindikana. Jaribu tena.',
+      'common.currency': 'Sarafu',
+      'common.member': 'Mwanachama',
+      'common.owner': 'Mmiliki',
+      'social.memberName': 'Mwanachama wa FitFlex',
+      'theme.switchLight': 'Tumia mwonekano wa mwanga',
+      'theme.switchDark': 'Tumia mwonekano wa giza',
+      'trainer.specialty.weights': 'Uzito',
+      'member.dateOfBirthHint': 'MWAKA-MM-SS, mf. 1995-03-24',
+      'run.channelName': 'Kurekodi mbio',
+      'kyc.country.TZ': 'Tanzania',
+      'kyc.country.KE': 'Kenya',
+      'kyc.country.UG': 'Uganda',
+      'kyc.country.RW': 'Rwanda',
+      'kyc.country.BI': 'Burundi',
+      'kyc.country.CD': 'Kongo (DRC)',
+      'kyc.country.ZM': 'Zambia',
+      'kyc.country.MW': 'Malawi',
+      'kyc.country.MZ': 'Msumbiji',
+      'kyc.country.ZA': 'Afrika Kusini',
+      'kyc.country.NG': 'Nigeria',
+      'kyc.country.GB': 'Uingereza',
+      'kyc.country.US': 'Marekani',
+      'kyc.country.IN': 'India',
     },
   };
 }
@@ -6675,6 +6849,9 @@ class FFLocaleScope extends InheritedNotifier<FFLocale> {
     required FFLocale notifier,
     required super.child,
   }) : super(notifier: notifier);
+
+  static FFLocale? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<FFLocaleScope>()?.notifier;
 
   static FFLocale of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<FFLocaleScope>();

@@ -10,6 +10,7 @@ import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
 import 'member_shell.dart';
+import '../../shared/wire_labels.dart';
 
 class MemberPassesPage extends StatelessWidget {
   const MemberPassesPage({super.key});
@@ -307,7 +308,10 @@ class _SelectablePass extends StatelessWidget {
                           children: [
                             Flexible(
                               child: Text(
-                                pass.gymAccessLabel,
+                                passGymAccessLabel(
+                                  FFLocaleScope.of(context),
+                                  pass.gymAccess,
+                                ),
                                 style: Theme.of(context).textTheme.labelSmall
                                     ?.copyWith(
                                       color: Theme.of(

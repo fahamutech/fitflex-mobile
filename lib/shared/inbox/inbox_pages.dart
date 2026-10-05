@@ -12,6 +12,7 @@ import '../components/components.dart';
 import '../design_tokens.dart';
 import '../i18n.dart';
 import 'inbox_controller.dart';
+import '../ff_datetime.dart';
 
 /// The bell with an unread count, opening the inbox.
 class InboxBellButton extends StatelessWidget {
@@ -43,7 +44,7 @@ String _when(DateTime? at) {
   final sameDay =
       at.year == now.year && at.month == now.month && at.day == now.day;
   return sameDay
-      ? DateFormat('HH:mm').format(at)
+      ? formatClock(at, english24h: true)
       : DateFormat('d MMM').format(at);
 }
 
@@ -332,7 +333,7 @@ class _InboxMessagePageState extends State<InboxMessagePage> {
         Text(m.title, style: theme.textTheme.titleLarge),
         if (m.createdAt != null)
           Text(
-            DateFormat('d MMM yyyy, HH:mm').format(m.createdAt!),
+            '${DateFormat('d MMM yyyy').format(m.createdAt!)}, ${formatClock(m.createdAt!, english24h: true)}',
             style: theme.textTheme.bodySmall,
           ),
         const SizedBox(height: FFTokens.spacingMd),

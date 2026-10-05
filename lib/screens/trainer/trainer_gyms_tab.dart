@@ -13,6 +13,7 @@ import '../member/member_gyms_tab.dart';
 import '../member/widgets/gym_card.dart';
 import '../member/widgets/gym_filters.dart';
 import 'trainer_passes_page.dart';
+import '../../shared/wire_labels.dart';
 
 /// Friendly text for trainer pass / plan API errors.
 String trainerPassErrorText(BuildContext context, Object error) {
@@ -304,9 +305,9 @@ class TrainerGymsTabState extends State<TrainerGymsTab> {
       'free': context.tr('trainerPass.filterFree'),
       'pass': context.tr('trainerPass.filterPass'),
       'plan': context.tr('trainerPass.filterPlan'),
-      'standard': 'Standard',
-      'midtier': 'Mid-Range',
-      'premium': 'Premium',
+      'standard': context.tr('gym.tier.standard'),
+      'midtier': context.tr('gym.tier.midtier'),
+      'premium': context.tr('gym.tier.premium'),
     };
     return LayoutBuilder(
       builder: (context, constraints) => CustomScrollView(
@@ -659,7 +660,7 @@ class _TrainerGymDetailPageState extends State<TrainerGymDetailPage> {
                 dot: true,
               ),
               FFBadge(
-                label: gym.tier.replaceAll('_', ' '),
+                label: gymTierLabel(FFLocaleScope.of(context), gym.tier),
                 tone: FFBadgeTone.brand,
               ),
             ],

@@ -14,6 +14,7 @@ import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
+import '../../shared/ff_datetime.dart';
 
 (String, FFBadgeTone) _status(Map<String, dynamic> s) => switch (s['status']) {
   'paid' => ('payouts.status.paid', FFBadgeTone.success),
@@ -301,7 +302,7 @@ class _TrainerPayoutDetailPageState extends State<TrainerPayoutDetailPage> {
                     ),
                     subtitle: Text(
                       [
-                        '${l['date']}${l['slot'] != null ? ' · ${l['slot']}' : ''}',
+                        '${l['date']}${l['slot'] != null ? ' · ${formatClockText('${l['slot']}')}' : ''}',
                         context.tr(
                           l['basis'] == 'completed'
                               ? 'payouts.basis.completed'

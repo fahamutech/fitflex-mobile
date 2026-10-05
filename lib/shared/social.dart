@@ -6,6 +6,8 @@
 /// is private until the member shares it.
 library;
 
+import 'i18n.dart';
+
 /// Who one activity is shared with. `null` everywhere means private.
 class ShareWith {
   const ShareWith({
@@ -86,7 +88,7 @@ class SocialPerson {
   final Relationship relationship;
 
   String get name => (displayName ?? '').trim().isEmpty
-      ? 'FitFlex member'
+      ? FFLocale.text('social.memberName')
       : displayName!.trim();
 
   factory SocialPerson.fromJson(Map json) => SocialPerson(
@@ -286,7 +288,7 @@ class GroupMember {
   final String status;
 
   String get name => (displayName ?? '').trim().isEmpty
-      ? 'FitFlex member'
+      ? FFLocale.text('social.memberName')
       : displayName!.trim();
 
   factory GroupMember.fromJson(Map json) => GroupMember(

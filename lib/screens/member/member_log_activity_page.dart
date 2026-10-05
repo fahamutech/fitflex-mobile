@@ -15,6 +15,7 @@ import 'member_shell.dart';
 import '../../shared/social.dart';
 import 'widgets/share_picker.dart';
 import 'widgets/activity_widgets.dart';
+import '../../shared/ff_datetime.dart';
 
 /// Activity → Log activity: a session the member did without FitFlex
 /// tracking it. Saved through the existing `POST /me/activities` contract
@@ -206,7 +207,12 @@ class _MemberLogActivityPageState extends State<MemberLogActivityPage> {
                 key: const Key('log-time'),
                 onPressed: _pickTime,
                 icon: const Icon(Icons.schedule, size: 18),
-                label: Text(_time.format(context)),
+                label: Text(
+                  // English keeps the device's own clock style.
+                  datesInSwahili
+                      ? formatClockTime(_time.hour, _time.minute)
+                      : _time.format(context),
+                ),
               ),
             ),
           ],

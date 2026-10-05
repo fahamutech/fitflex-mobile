@@ -9,6 +9,7 @@ import '../../shared/i18n.dart';
 import '../../shared/social.dart';
 import 'member_community_page.dart';
 import 'widgets/run_widgets.dart' show RunSplits;
+import '../../shared/ff_datetime.dart';
 
 /// One shared activity: the numbers, kudos and comments. Only people who
 /// can see it (the server checks) get here.
@@ -176,7 +177,7 @@ class _MemberSharedActivityPageState extends State<MemberSharedActivityPage> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      '${c.author.name} · ${DateFormat('d MMM HH:mm').format(c.createdAt)}',
+                                      '${c.author.name} · ${DateFormat('d MMM').format(c.createdAt)} ${formatClock(c.createdAt, english24h: true)}',
                                       style: theme.textTheme.bodySmall,
                                     ),
                                     Text(

@@ -12,6 +12,7 @@ import '../../shared/api_client.dart';
 import '../../shared/api_error_message.dart';
 import '../../shared/models.dart';
 import 'member_shell.dart';
+import '../../shared/wire_labels.dart';
 
 class MemberPaymentPage extends StatelessWidget {
   const MemberPaymentPage({super.key});
@@ -79,7 +80,10 @@ class MemberPaymentPage extends StatelessWidget {
                     'dd MMM yyyy',
                   ).format(DateTime.now().add(const Duration(days: 30))),
                 ),
-                _Row(label: 'Total', value: formatCurrency(price)),
+                _Row(
+                  label: context.tr('shop.total'),
+                  value: formatCurrency(price),
+                ),
               ],
             ),
           ),
@@ -263,7 +267,7 @@ class _AvailableGymsSection extends StatelessWidget {
                         ),
                       ),
                       FFBadge(
-                        label: g.tier.replaceAll('_', ' '),
+                        label: gymTierLabel(FFLocaleScope.of(context), g.tier),
                         tone: FFBadgeTone.gray,
                       ),
                     ],
