@@ -3405,9 +3405,9 @@ class FFLocale extends ChangeNotifier {
           'Weka namba ya simu au barua pepe unayotumia kuingia. Tutatuma msimbo wa uthibitisho huko.',
       'pin.setupTitle': 'Uhakiki wa mara moja',
       'pin.setupBody':
-          'Sasa FitFlex inahifadhi PIN yako. Thibitisha ni wewe, kisha tumia PIN ya tarakimu 4.',
-      'pin.signInInstead': 'Ingia badala yake',
-      'pin.changed': 'PIN yako imebadilishwa. Vifaa vingine vimetolewa.',
+          'Sasa FitFlex inahifadhi PIN yako. Thibitisha kuwa ni wewe, kisha weka PIN ya tarakimu 4.',
+      'pin.signInInstead': 'Ingia kwa akaunti yako',
+      'pin.changed': 'PIN yako imebadilishwa. Umetolewa kwenye vifaa vingine.',
       'pin.errInvalid': 'Namba ya simu, barua pepe au PIN si sahihi.',
       'pin.errTooMany':
           'Umekosea mara nyingi mno. Jaribu tena baada ya dakika {n}.',
@@ -3436,7 +3436,7 @@ class FFLocale extends ChangeNotifier {
       'change.phoneTitle': 'Badilisha namba ya simu',
       'change.emailTitle': 'Badilisha barua pepe',
       'change.body':
-          'Unaingia kwa {current}. Weka mpya pamoja na PIN yako. Tutatuma namba ya uthibitisho kwenye mpya; ukishaithibitisha, ya zamani haitatumika tena.',
+          'Unaingia kwa {current}. Weka mpya pamoja na PIN yako. Tutatuma msimbo wa uthibitisho kwenye hiyo mpya; ukishaithibitisha, ya zamani haitatumika tena.',
       'change.newPhone': 'Namba mpya ya simu',
       'change.newEmail': 'Barua pepe mpya',
       'change.pin': 'PIN yako',
@@ -3690,8 +3690,8 @@ class FFLocale extends ChangeNotifier {
       'payouts.empty':
           'Bado hakuna taarifa. Ya kwanza itaonekana wiki inayofuata baada ya kipindi chako cha kwanza kilicholipiwa.',
       'payouts.notReady':
-          'Bado huwezi kulipwa. Kamilisha uthibitishaji wako na uongeze akaunti ya malipo ili FitFlex ikutumie fedha zako.',
-      'payouts.openVerification': 'Fungua uthibitishaji',
+          'Bado huwezi kulipwa. Kamilisha uthibitisho wako na uongeze akaunti ya malipo ili FitFlex ikutumie fedha zako.',
+      'payouts.openVerification': 'Fungua uthibitisho',
       'payouts.sessions': 'Vipindi {n}',
       'payouts.onHold':
           'Imesitishwa. FitFlex inakagua jambo kwenye taarifa hii.',
@@ -3702,7 +3702,7 @@ class FFLocale extends ChangeNotifier {
       'payouts.status.paid': 'Imelipwa',
       'payouts.breakdown':
           'Vipindi kwa bei yako: {list}. Kamisheni ya FitFlex: {commission}.',
-      'payouts.paidTo': 'Imelipwa kwa {account}. Kumbukumbu: {ref}',
+      'payouts.paidTo': 'Imelipwa kwenye {account}. Kumbukumbu: {ref}',
       'payouts.sessionsTitle': 'Vipindi kwenye taarifa hii',
       'payouts.member': 'Mwanachama',
       'payouts.basis.completed': 'Kimekamilika',
