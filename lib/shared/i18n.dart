@@ -1499,6 +1499,13 @@ class FFLocale extends ChangeNotifier {
       'community.noPostsYet': 'Nothing shared with you yet.',
       'community.noPublicPosts':
           'No public posts. Follow them to see what they share with followers.',
+      'logActivity.delete': 'Delete',
+      'logActivity.deleteTitle': 'Delete this activity?',
+      'logActivity.deleteBody':
+          'It comes out of your totals, goals and challenges, and anyone you shared it with stops seeing it. This can\'t be undone.',
+      'logActivity.deleted': 'Activity deleted.',
+      'logActivity.deleteFailed': 'Couldn\'t delete it. Try again.',
+      'run.delete': 'Delete run',
       'phoneSteps.title': 'Count your steps with this phone',
       'audience.title': 'Who can see this',
       'audience.private': 'Only you',
@@ -4849,6 +4856,13 @@ class FFLocale extends ChangeNotifier {
       'community.noPostsYet': 'Bado hakuna kilichoshirikiwa nawe.',
       'community.noPublicPosts':
           'Hakuna machapisho ya hadharani. Mfuate kuona anachoshiriki na wafuasi.',
+      'logActivity.delete': 'Futa',
+      'logActivity.deleteTitle': 'Futa shughuli hii?',
+      'logActivity.deleteBody':
+          'Itaondolewa kwenye jumla, malengo na challenge zako, na uliowashirikisha hawataiona tena. Haiwezi kurudishwa.',
+      'logActivity.deleted': 'Shughuli imefutwa.',
+      'logActivity.deleteFailed': 'Imeshindwa kufuta. Jaribu tena.',
+      'run.delete': 'Futa mbio',
       'phoneSteps.title': 'Hesabu hatua zako kwa simu hii',
       'audience.title': 'Nani anaweza kuona',
       'audience.private': 'Wewe tu',

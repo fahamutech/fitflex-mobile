@@ -265,6 +265,7 @@ Future<void> editActivitySharing(BuildContext context, Activity a) async {
       .getInheritedWidgetOfExactType<MemberDataScope>()
       ?.notifier;
   final messenger = ScaffoldMessenger.of(context);
+  final shell = context.findAncestorStateOfType<MemberShellState>();
   final done = context.tr('audience.savedToast');
   final failed = context.tr('community.error.generic');
   final r = await pickShare(context, initial: ShareWith.fromJson(a.shareWith));
@@ -283,10 +284,103 @@ Future<void> editActivitySharing(BuildContext context, Activity a) async {
       ],
     );
     messenger.showSnackBar(SnackBar(content: Text(done)));
+    // The shell keeps the server's list; bring it up to date too.
+    await shell?.refreshAfterWorkout();
   } catch (_) {
     messenger.showSnackBar(SnackBar(content: Text(failed)));
   }
 }
+
+/// Whether the member can delete this activity themselves: one they logged
+/// by hand, or a run they recorded. Workouts, trainer or gym entries and the
+/// phone's step totals are not theirs to delete here.
+bool canDeleteActivity(Activity a) =>
+    !a.isSample &&
+    a.workoutId == null &&
+    (a.source == ActivitySource.manual || a.isRecordedRun);
+
+/// Confirms, deletes one of the member's own activities, and refreshes
+/// everything that counts it. Returns whether it was deleted.
+Future<bool> deleteOwnActivity(BuildContext context, Activity a) async {
+  final api = AppScope.of(context).api;
+  final data = context
+      .getInheritedWidgetOfExactType<MemberDataScope>()
+      ?.notifier;
+  final shell = context.findAncestorStateOfType<MemberShellState>();
+  final messenger = ScaffoldMessenger.of(context);
+  final done = context.tr('logActivity.deleted');
+  final failed = context.tr('logActivity.deleteFailed');
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(ctx.tr('logActivity.deleteTitle')),
+      content: Text(ctx.tr('logActivity.deleteBody')),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: Text(ctx.tr('trainer.cancel')),
+        ),
+        FilledButton(
+          key: const Key('activity-delete-confirm'),
+          onPressed: () => Navigator.pop(ctx, true),
+          child: Text(ctx.tr('logActivity.delete')),
+        ),
+      ],
+    ),
+  );
+  if (ok != true) return false;
+  try {
+    await api.deleteActivity(a.id);
+    data?.update(
+      (d) => d.activities = [
+        for (final x in d.activities)
+          if (x.id != a.id) x,
+      ],
+    );
+    messenger.showSnackBar(SnackBar(content: Text(done)));
+    await shell?.refreshAfterWorkout();
+    return true;
+  } catch (_) {
+    messenger.showSnackBar(SnackBar(content: Text(failed)));
+    return false;
+  }
+}
+
+/// What a member can do with one of their own logged activities: choose who
+/// sees it, or delete it.
+Future<void> showActivityActions(BuildContext context, Activity a) =>
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (sheet) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              key: const Key('activity-action-share'),
+              leading: const Icon(Icons.people_outline),
+              title: Text(context.tr('audience.whoCanSee')),
+              subtitle: Text(
+                shareLabel(context, ShareWith.fromJson(a.shareWith)),
+              ),
+              onTap: () {
+                Navigator.pop(sheet);
+                editActivitySharing(context, a);
+              },
+            ),
+            if (canDeleteActivity(a))
+              ListTile(
+                key: const Key('activity-action-delete'),
+                leading: const Icon(Icons.delete_outline),
+                title: Text(context.tr('logActivity.delete')),
+                onTap: () {
+                  Navigator.pop(sheet);
+                  deleteOwnActivity(context, a);
+                },
+              ),
+          ],
+        ),
+      ),
+    );
 
 /// Privacy & data: the default audience for new activities, and blocked
 /// people.

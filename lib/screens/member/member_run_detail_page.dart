@@ -63,6 +63,24 @@ class _MemberRunDetailPageState extends State<MemberRunDetailPage> {
         leading: BackButton(
           onPressed: () => context.go(AppRoutes.memberActivity),
         ),
+        actions: [
+          if (a != null && canDeleteActivity(a))
+            PopupMenuButton<String>(
+              key: const Key('run-detail-menu'),
+              onSelected: (_) async {
+                final router = GoRouter.of(context);
+                if (await deleteOwnActivity(context, a)) {
+                  router.go(AppRoutes.memberActivity);
+                }
+              },
+              itemBuilder: (_) => [
+                PopupMenuItem(
+                  value: 'delete',
+                  child: Text(context.tr('run.delete')),
+                ),
+              ],
+            ),
+        ],
       ),
       body: a == null
           ? FFEmptyState(title: context.tr('run.notFound'))
