@@ -4,6 +4,7 @@ import '../../app_scope.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/discovery_loader.dart';
+import '../../shared/promotion_events.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
 import '../../shared/promotion.dart';
@@ -31,7 +32,9 @@ class _MemberTrainersTabState extends State<MemberTrainersTab> {
   late final DiscoveryLoader<TrainerProfile> _loader =
       DiscoveryLoader<TrainerProfile>(
         fetch: (q) async => DiscoverResult.fromJson<TrainerProfile>(
-          await AppScope.of(context).api.discover('trainers', q),
+          await AppScope.of(
+            context,
+          ).api.discover('trainers', q.withSession(discoverSessionId())),
           TrainerProfile.fromJson,
         ),
         onResult: (r) {

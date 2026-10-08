@@ -8,6 +8,7 @@ class PromotionTag {
     required this.type,
     required this.label,
     this.commercial = false,
+    this.token,
   });
 
   final String id;
@@ -16,6 +17,11 @@ class PromotionTag {
   final String type;
   final String label;
   final bool commercial;
+
+  /// Short-lived proof from the server that this card was served to this app
+  /// session; analytics events must carry it. Null on older servers, or when
+  /// the request had no session.
+  final String? token;
 
   static PromotionTag? fromJson(Object? json) {
     if (json is! Map) return null;
@@ -26,6 +32,10 @@ class PromotionTag {
       type: type,
       label: json['label']?.toString() ?? '',
       commercial: json['commercial'] == true,
+      token: switch (json['token']) {
+        final String t when t.isNotEmpty => t,
+        _ => null,
+      },
     );
   }
 }
@@ -80,6 +90,7 @@ class DiscoverQuery {
     this.filters = const {},
     this.limit,
     this.cursor,
+    this.session,
   });
 
   final String? q;
@@ -89,6 +100,24 @@ class DiscoverQuery {
   final Map<String, String> filters;
   final int? limit;
   final int? cursor;
+
+  /// The app session id, so the server can sign promotion tokens for it.
+  final String? session;
+
+  static final _sessionRe = RegExp(r'^[A-Za-z0-9_-]{8,64}$');
+
+  /// A copy that asks for tokens for [session]; unchanged if it is null or
+  /// not a valid session id (nothing is sent rather than a bad value).
+  DiscoverQuery withSession(String? session) => DiscoverQuery(
+    q: q,
+    lat: lat,
+    lng: lng,
+    sort: sort,
+    filters: filters,
+    limit: limit,
+    cursor: cursor,
+    session: session,
+  );
 
   Map<String, String> toParams() {
     final out = <String, String>{};
@@ -104,6 +133,8 @@ class DiscoverQuery {
     });
     if (limit != null) out['limit'] = '$limit';
     if (cursor != null && cursor! > 0) out['cursor'] = '$cursor';
+    final s = session;
+    if (s != null && _sessionRe.hasMatch(s)) out['session'] = s;
     return out;
   }
 

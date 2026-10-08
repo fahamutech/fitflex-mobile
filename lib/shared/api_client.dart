@@ -663,13 +663,20 @@ class ApiClient {
   /// Ranked discovery with promotion: `/discover/gyms`, `/discover/trainers` or
   /// `/discover/products`. A promotion only ever moves a result that already
   /// matches the search and filters; the answer says which cards are promoted.
-  Future<Map<String, dynamic>> discover(String kind, DiscoverQuery query) async {
-    final out = await _request('GET', '/discover/$kind${query.toQueryString()}');
+  Future<Map<String, dynamic>> discover(
+    String kind,
+    DiscoverQuery query,
+  ) async {
+    final out = await _request(
+      'GET',
+      '/discover/$kind${query.toQueryString()}',
+    );
     return Map<String, dynamic>.from(out as Map);
   }
 
   /// Promotion analytics: `POST /events` (open to anonymous callers). At most
-  /// 50 events per request. Throws [ApiException] on a non-2xx answer.
+  /// 50 events per request. Returns `{accepted, duplicates, rejected:[{index,
+  /// error}]}`; throws [ApiException] on a non-2xx answer.
   Future<Map<String, dynamic>> postEvents(
     List<Map<String, dynamic>> events,
   ) async {

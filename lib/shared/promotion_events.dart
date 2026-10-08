@@ -32,11 +32,17 @@ String _makeSessionId() {
 
 /// Where the tracker sends a batch. [ApiClient.postEvents] in the app.
 typedef PromotionEventSender =
-    Future<void> Function(List<Map<String, dynamic>> events);
+    Future<Object?> Function(List<Map<String, dynamic>> events);
+
+/// The session id to put on a discover request so the server issues promotion
+/// tokens, or null when analytics are switched off (no token is wanted).
+String? discoverSessionId({bool enabled = kPromotionAnalytics}) =>
+    enabled ? _launchSessionId : null;
 
 class _Touch {
-  _Touch(this.promotionId, this.placement, this.at);
+  _Touch(this.promotionId, this.placement, this.at, this.token);
   final String promotionId;
+  final String? token;
   final String? placement;
   final DateTime at;
 }
@@ -119,6 +125,10 @@ class PromotionEvents with WidgetsBindingObserver {
   final Map<String, _Touch> _touches = {};
   Timer? _timer;
   bool _flushing = false;
+  bool _tokensSeen = false;
+
+  /// Events the server rejected in a reply (never retried; for tests).
+  int rejected = 0;
   bool _attached = false;
   DateTime? _pausedUntil;
 
@@ -177,7 +187,14 @@ class PromotionEvents with WidgetsBindingObserver {
       final key = '${tag!.id}|${placement ?? ''}';
       if (_fresh(_seenImpressions, key, _impressionWindow, now)) return;
       _seenImpressions[key] = now;
-      _enqueue('impression', entityType, entityId, tag.id, placement);
+      _enqueue(
+        'impression',
+        entityType,
+        entityId,
+        tag.id,
+        placement,
+        tag.token,
+      );
     } catch (_) {}
   }
 
@@ -191,8 +208,13 @@ class PromotionEvents with WidgetsBindingObserver {
   }) {
     if (!_enabled || !_usable(tag, entityId)) return;
     try {
-      _touches['$entityType:$entityId'] = _Touch(tag!.id, placement, _now());
-      _enqueue('click', entityType, entityId, tag.id, placement);
+      _touches['$entityType:$entityId'] = _Touch(
+        tag!.id,
+        placement,
+        _now(),
+        tag.token,
+      );
+      _enqueue('click', entityType, entityId, tag.id, placement, tag.token);
     } catch (_) {}
   }
 
@@ -214,7 +236,14 @@ class PromotionEvents with WidgetsBindingObserver {
         return;
       }
       if (type == 'detail_view') _seenDetails[touch.promotionId] = now;
-      _enqueue(type, entityType, entityId, touch.promotionId, touch.placement);
+      _enqueue(
+        type,
+        entityType,
+        entityId,
+        touch.promotionId,
+        touch.placement,
+        touch.token,
+      );
     } catch (_) {}
   }
 
@@ -240,13 +269,25 @@ class PromotionEvents with WidgetsBindingObserver {
     String entityId,
     String promotionId,
     String? placement,
+    String? token,
   ) {
+    // The server only counts events that carry the token it issued with the
+    // card. Once this launch has seen any token the server clearly issues
+    // them, so an event without one would only be stored as unverified: skip
+    // it. Before any token is seen we may be talking to an older server that
+    // never issues them, so such events still go out, just without the field.
+    if (token != null && token.isNotEmpty) {
+      _tokensSeen = true;
+    } else if (_tokensSeen) {
+      return;
+    }
     _queue.add({
       'type': type,
       'entityType': entityType,
       'entityId': entityId,
       'promotionId': promotionId,
       'placement': ?placement,
+      'token': ?((token != null && token.isNotEmpty) ? token : null),
       'sessionId': currentSessionId,
       'at': _now().toUtc().toIso8601String(),
     });
@@ -313,7 +354,13 @@ class PromotionEvents with WidgetsBindingObserver {
   Future<_Result> _sendWithRetry(List<Map<String, dynamic>> batch) async {
     for (var attempt = 1; attempt <= 3; attempt++) {
       try {
-        await _sender!(batch);
+        final reply = await _sender!(batch);
+        // 202 {accepted, duplicates, rejected:[{index,error}]}. Rejected
+        // events (invalid_token, token_required, ...) are permanent: they are
+        // already out of the queue and are never re-sent.
+        if (reply is Map && reply['rejected'] is List) {
+          rejected += (reply['rejected'] as List).length;
+        }
         return _Result.sent;
       } on ApiException catch (e) {
         if (e.status == 429) return _Result.rateLimited;
