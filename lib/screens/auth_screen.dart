@@ -12,6 +12,7 @@ import '../shared/components/components.dart';
 import '../shared/design_tokens.dart';
 import '../shared/firebase_auth_service.dart';
 import '../shared/i18n.dart';
+import '../shared/widgets/persona_switcher.dart';
 import 'email_auth_screen.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -424,70 +425,85 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(context.tr('app.title')),
-        actions: const [ThemeToggleButton()],
+        // A person whose other role is already approved (say a member who
+        // applied as a vendor) must not be stuck here while they wait.
+        actions: const [PersonaSwitchButton(), ThemeToggleButton()],
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(FFTokens.spacingLg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Icon(
-                Icons.pending_actions,
-                size: 72,
-                color: Theme.of(context).colorScheme.primary,
+        // Scrolls when the extra role tile does not fit a small screen.
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            padding: const EdgeInsets.all(FFTokens.spacingLg),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: constraints.maxHeight - FFTokens.spacingLg * 2,
               ),
-              const SizedBox(height: 18),
-              Text(
-                context.tr('auth.pendingTitle'),
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: FFTokens.spacingSm),
-              Text(
-                context.tr('auth.pendingBody'),
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  height: 1.4,
+              child: IntrinsicHeight(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Icon(
+                      Icons.pending_actions,
+                      size: 72,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(height: 18),
+                    Text(
+                      context.tr('auth.pendingTitle'),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: FFTokens.spacingSm),
+                    Text(
+                      context.tr('auth.pendingBody'),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    if (_isPartner) ...[
+                      FilledButton.icon(
+                        key: const Key('pending-verification'),
+                        onPressed: () => context.push(AppRoutes.verification),
+                        icon: const Icon(Icons.verified_user_outlined),
+                        label: Text(context.tr('kyc.pending.cta')),
+                      ),
+                      const SizedBox(height: FFTokens.spacingSm),
+                      Text(
+                        context.tr('kyc.pending.hint'),
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: FFTokens.spacingMd),
+                    ],
+                    if (_isPartner)
+                      OutlinedButton.icon(
+                        onPressed: _checking ? null : () => _checkApproval(),
+                        icon: _checkIcon(context),
+                        label: Text(context.tr('auth.checkApproval')),
+                      )
+                    else
+                      FilledButton.icon(
+                        onPressed: _checking ? null : () => _checkApproval(),
+                        icon: _checkIcon(context),
+                        label: Text(context.tr('auth.checkApproval')),
+                      ),
+                    const SizedBox(height: FFTokens.spacingMd),
+                    // Only shows when the person has another role to use meanwhile.
+                    const PersonaSwitcherTile(),
+                    const Spacer(),
+                    OutlinedButton(
+                      onPressed: _backToRoles,
+                      child: Text(context.tr('auth.backToRoles')),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 24),
-              if (_isPartner) ...[
-                FilledButton.icon(
-                  key: const Key('pending-verification'),
-                  onPressed: () => context.push(AppRoutes.verification),
-                  icon: const Icon(Icons.verified_user_outlined),
-                  label: Text(context.tr('kyc.pending.cta')),
-                ),
-                const SizedBox(height: FFTokens.spacingSm),
-                Text(
-                  context.tr('kyc.pending.hint'),
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: FFTokens.spacingMd),
-              ],
-              if (_isPartner)
-                OutlinedButton.icon(
-                  onPressed: _checking ? null : () => _checkApproval(),
-                  icon: _checkIcon(context),
-                  label: Text(context.tr('auth.checkApproval')),
-                )
-              else
-                FilledButton.icon(
-                  onPressed: _checking ? null : () => _checkApproval(),
-                  icon: _checkIcon(context),
-                  label: Text(context.tr('auth.checkApproval')),
-                ),
-              const Spacer(),
-              OutlinedButton(
-                onPressed: _backToRoles,
-                child: Text(context.tr('auth.backToRoles')),
-              ),
-            ],
+            ),
           ),
         ),
       ),
