@@ -1,6 +1,7 @@
 // Messages from gyms and FitFlex: switch offers on or off per channel.
 // Renewal, payment and announcement messages can't be switched off in the
-// app or by push. WhatsApp offers need the member's agreement.
+// app or by push. WhatsApp and SMS offers need the member's agreement; SMS
+// reminders can be switched off.
 
 import 'package:flutter/material.dart';
 
@@ -68,27 +69,35 @@ class _MemberMessageSettingsPageState extends State<MemberMessageSettingsPage> {
     }
   }
 
-  Future<void> _setWhatsappOffers(bool value) async {
-    if (!value) return _set('whatsappMarketing', false);
+  Future<void> _setWhatsappOffers(bool value) =>
+      _setOffers('whatsapp', 'whatsappMarketing', value);
+
+  Future<void> _setSmsOffers(bool value) =>
+      _setOffers('sms', 'smsMarketing', value);
+
+  // Offers on a channel that reaches the member's phone number are only
+  // switched on after they agree.
+  Future<void> _setOffers(String channel, String key, bool value) async {
+    if (!value) return _set(key, false);
     final agreed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(ctx.tr('msgPrefs.whatsappConsent.title')),
-        content: Text(ctx.tr('msgPrefs.whatsappConsent.body')),
+        title: Text(ctx.tr('msgPrefs.${channel}Consent.title')),
+        content: Text(ctx.tr('msgPrefs.${channel}Consent.body')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
             child: Text(ctx.tr('comms.keep')),
           ),
           FilledButton(
-            key: const Key('whatsapp-agree'),
+            key: Key('$channel-agree'),
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text(ctx.tr('msgPrefs.whatsappConsent.agree')),
+            child: Text(ctx.tr('msgPrefs.${channel}Consent.agree')),
           ),
         ],
       ),
     );
-    if (agreed == true) await _set('whatsappMarketing', true);
+    if (agreed == true) await _set(key, true);
   }
 
   @override
@@ -142,6 +151,22 @@ class _MemberMessageSettingsPageState extends State<MemberMessageSettingsPage> {
                             : 'msgPrefs.whatsappOffers.soon',
                         p['whatsappMarketing'] == true,
                         _setWhatsappOffers,
+                      ),
+                      const Divider(height: 1),
+                      _switch(
+                        'prefs-sms-offers',
+                        'msgPrefs.smsOffers',
+                        'msgPrefs.smsOffers.body',
+                        p['smsMarketing'] == true,
+                        _setSmsOffers,
+                      ),
+                      const Divider(height: 1),
+                      _switch(
+                        'prefs-sms-reminders',
+                        'msgPrefs.smsReminders',
+                        'msgPrefs.smsReminders.body',
+                        p['smsTransactional'] != false,
+                        (v) => _set('smsTransactional', v),
                       ),
                     ],
                   ),
