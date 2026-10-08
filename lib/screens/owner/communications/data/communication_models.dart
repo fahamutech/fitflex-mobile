@@ -51,7 +51,8 @@ enum CampaignStatus {
 enum CommChannel {
   inApp('in_app'),
   push('push'),
-  whatsapp('whatsapp');
+  whatsapp('whatsapp'),
+  sms('sms');
 
   const CommChannel(this.wire);
   final String wire;
@@ -565,16 +566,19 @@ class ChannelAvailability {
     this.inApp = true,
     this.push = false,
     this.whatsapp = false,
+    this.sms = false,
   });
 
   final bool inApp;
   final bool push;
   final bool whatsapp;
+  final bool sms;
 
   bool of(CommChannel c) => switch (c) {
     CommChannel.inApp => inApp,
     CommChannel.push => push,
     CommChannel.whatsapp => whatsapp,
+    CommChannel.sms => sms,
   };
 
   factory ChannelAvailability.fromJson(Map<String, dynamic>? j) =>
@@ -582,6 +586,7 @@ class ChannelAvailability {
         inApp: j?['in_app'] != false,
         push: j?['push'] == true,
         whatsapp: j?['whatsapp'] == true,
+        sms: j?['sms'] == true,
       );
 }
 

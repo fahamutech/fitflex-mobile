@@ -2500,6 +2500,14 @@ class FFLocale extends ChangeNotifier {
       'comms.channel.whatsappSoon':
           'Coming soon — FitFlex is setting up WhatsApp.',
       'comms.channel.pushOff': 'Push notifications are switched off for now.',
+      'comms.channel.sms': 'SMS',
+      'comms.channel.sms.body':
+          'Sent as a text message from FitFlex. Only the message text is sent, up to about 300 characters.',
+      'comms.channel.smsOff': 'SMS is switched off for now.',
+      'comms.skip.sms_marketing_not_opted_in': 'Haven\'t agreed to SMS offers',
+      'comms.skip.sms_opted_out': 'Stopped SMS messages',
+      'comms.skip.sms_transactional_off': 'Turned off SMS updates',
+      'comms.skip.sms_not_configured': 'SMS not set up yet',
       'comms.empty.title': 'No messages yet',
       'comms.empty.body':
           'Send a promotion, a renewal reminder or an announcement to your members.',
@@ -2921,6 +2929,16 @@ class FFLocale extends ChangeNotifier {
       'msgPrefs.whatsappConsent.body':
           'Your gym and FitFlex may send offers to your WhatsApp number. You can turn this off here at any time, or reply STOP.',
       'msgPrefs.whatsappConsent.agree': 'Yes, send me offers',
+      'msgPrefs.smsOffers': 'Offers by SMS',
+      'msgPrefs.smsOffers.body':
+          'Get offers from your gym and FitFlex as text messages.',
+      'msgPrefs.smsConsent.title': 'Get offers by SMS?',
+      'msgPrefs.smsConsent.body':
+          'Your gym and FitFlex may send offers to your phone number by SMS. You can turn this off here at any time.',
+      'msgPrefs.smsConsent.agree': 'Yes, send me offers',
+      'msgPrefs.smsReminders': 'Reminders by SMS',
+      'msgPrefs.smsReminders.body':
+          'A text before a trainer session starts and before your pass ends.',
       'msgPrefs.alwaysOn':
           'Messages about your membership, renewals, payments and gym announcements always come to your Messages, so you never miss something important.',
       // Trainer interface: calendar, weekly hours, socials, trainer passes.
@@ -5885,6 +5903,15 @@ class FFLocale extends ChangeNotifier {
       'comms.channel.whatsappSoon':
           'Inakuja hivi karibuni — FitFlex inaandaa WhatsApp.',
       'comms.channel.pushOff': 'Arifa kwenye simu zimezimwa kwa sasa.',
+      'comms.channel.sms': 'SMS',
+      'comms.channel.sms.body':
+          'Unatumwa kama ujumbe mfupi (SMS) kutoka FitFlex. Maandishi ya ujumbe pekee ndiyo hutumwa, hadi herufi 300 hivi.',
+      'comms.channel.smsOff': 'SMS imezimwa kwa sasa.',
+      'comms.skip.sms_marketing_not_opted_in':
+          'Hawajakubali kupokea ofa kwa SMS',
+      'comms.skip.sms_opted_out': 'Wamesitisha ujumbe wa SMS',
+      'comms.skip.sms_transactional_off': 'Wamezima taarifa za SMS',
+      'comms.skip.sms_not_configured': 'SMS bado haijaandaliwa',
       'comms.empty.title': 'Bado hakuna ujumbe',
       'comms.empty.body':
           'Tuma promosheni, kikumbusho cha kulipia tena au tangazo kwa wanachama wako.',
@@ -6315,6 +6342,16 @@ class FFLocale extends ChangeNotifier {
       'msgPrefs.whatsappConsent.body':
           'Gym yako na FitFlex zinaweza kutuma ofa kwenye namba yako ya WhatsApp. Unaweza kuzima hili hapa wakati wowote, au kujibu STOP.',
       'msgPrefs.whatsappConsent.agree': 'Ndiyo, nitumie ofa',
+      'msgPrefs.smsOffers': 'Ofa kwa SMS',
+      'msgPrefs.smsOffers.body':
+          'Pokea ofa kutoka gym yako na FitFlex kwa ujumbe mfupi (SMS).',
+      'msgPrefs.smsConsent.title': 'Upokee ofa kwa SMS?',
+      'msgPrefs.smsConsent.body':
+          'Gym yako na FitFlex zinaweza kutuma ofa kwenye namba yako ya simu kwa SMS. Unaweza kuzima hili hapa wakati wowote.',
+      'msgPrefs.smsConsent.agree': 'Ndiyo, nitumie ofa',
+      'msgPrefs.smsReminders': 'Vikumbusho kwa SMS',
+      'msgPrefs.smsReminders.body':
+          'Ujumbe kabla ya kipindi cha mkufunzi kuanza na kabla ya pass yako kuisha.',
       'msgPrefs.alwaysOn':
           'Ujumbe kuhusu uanachama wako, kulipia tena, malipo na matangazo ya gym huja kwenye Ujumbe wako kila wakati, ili usikose jambo muhimu.',
       // Trainer interface: calendar, weekly hours, socials, trainer passes.

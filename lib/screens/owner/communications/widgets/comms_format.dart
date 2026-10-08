@@ -25,6 +25,10 @@ String skipReasonLabel(BuildContext context, String reason) {
     'whatsapp_not_configured',
     'whatsapp_disabled',
     'whatsapp_template_not_approved',
+    'sms_marketing_not_opted_in',
+    'sms_opted_out',
+    'sms_transactional_off',
+    'sms_not_configured',
     'invalid_phone',
     'marketing_cap',
     'account_suspended',
@@ -41,4 +45,5 @@ IconData channelIcon(CommChannel c) => switch (c) {
   CommChannel.inApp => Icons.inbox_outlined,
   CommChannel.push => Icons.notifications_active_outlined,
   CommChannel.whatsapp => Icons.chat_outlined,
+  CommChannel.sms => Icons.sms_outlined,
 };

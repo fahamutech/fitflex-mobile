@@ -73,7 +73,9 @@ class _ChannelTile extends StatelessWidget {
     final String subtitle;
     if (!available) {
       subtitle = context.tr(
-        channel != CommChannel.whatsapp
+        channel == CommChannel.sms
+            ? 'comms.channel.smsOff'
+            : channel != CommChannel.whatsapp
             ? 'comms.channel.pushOff'
             : needsTemplate
             ? 'comms.channel.whatsappNeedsTemplate'
