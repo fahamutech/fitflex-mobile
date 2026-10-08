@@ -9,6 +9,7 @@ import '../../router.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/discovery_loader.dart';
+import '../../shared/promotion_events.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
 import '../../shared/promotion.dart';
@@ -42,7 +43,9 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
   bool _discoveryLoading = false;
   late final DiscoveryLoader<Gym> _loader = DiscoveryLoader<Gym>(
     fetch: (q) async => DiscoverResult.fromJson<Gym>(
-      await AppScope.of(context).api.discover('gyms', q),
+      await AppScope.of(
+        context,
+      ).api.discover('gyms', q.withSession(discoverSessionId())),
       Gym.fromJson,
     ),
     onResult: (r) {

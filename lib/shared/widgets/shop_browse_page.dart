@@ -288,7 +288,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
       final result = DiscoverResult.fromJson<ShopProduct>(
         await AppScope.of(context).api.discover(
           'products',
-          const DiscoverQuery(limit: 50),
+          DiscoverQuery(limit: 50, session: discoverSessionId()),
         ),
         ShopProduct.fromJson,
       );
@@ -1077,7 +1077,12 @@ class _FeaturedProductCard extends StatelessWidget {
     return FFCard(
       child: InkWell(
         onTap: () {
-          trackPromotionClick('product', product.id, product.promotion, placement: placement);
+          trackPromotionClick(
+            'product',
+            product.id,
+            product.promotion,
+            placement: placement,
+          );
           onOpen();
         },
         child: Column(
@@ -1110,9 +1115,9 @@ class _FeaturedProductCard extends StatelessWidget {
               product.name,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
             ),
             Text(
               formatCurrency(product.effectivePrice),
@@ -1166,7 +1171,12 @@ class _ProductTile extends StatelessWidget {
     return FFCard(
       child: InkWell(
         onTap: () {
-          trackPromotionClick('product', product.id, promotion, placement: placement);
+          trackPromotionClick(
+            'product',
+            product.id,
+            promotion,
+            placement: placement,
+          );
           onOpen();
         },
         child: Row(
