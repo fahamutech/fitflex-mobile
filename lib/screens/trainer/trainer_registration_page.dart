@@ -9,6 +9,7 @@ import '../../shared/components/theme_toggle_button.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
+import '../../shared/widgets/persona_switcher.dart';
 import '../../shared/widgets/ff_photo_picker_field.dart';
 import '../../shared/widgets/social_links.dart';
 
@@ -119,7 +120,7 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
             }
           },
         ),
-        actions: const [ThemeToggleButton()],
+        actions: const [PersonaSwitchButton(), ThemeToggleButton()],
       ),
       body: SafeArea(
         child: Padding(

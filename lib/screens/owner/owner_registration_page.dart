@@ -15,6 +15,7 @@ import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import '../../shared/widgets/location_picker.dart';
+import '../../shared/widgets/persona_switcher.dart';
 
 class OwnerRegistrationPage extends StatefulWidget {
   const OwnerRegistrationPage({super.key});
@@ -235,7 +236,7 @@ class _OwnerRegistrationPageState extends State<OwnerRegistrationPage> {
             }
           },
         ),
-        actions: const [ThemeToggleButton()],
+        actions: const [PersonaSwitchButton(), ThemeToggleButton()],
       ),
       body: SafeArea(
         child: Padding(
