@@ -1,3 +1,4 @@
+import 'promotion.dart';
 // Typed data models matching the portal's TypeScript interfaces in api.ts.
 // Keeps the mobile app aligned with the backend/portal data contract.
 
@@ -33,6 +34,9 @@ class Gym {
   final num rating;
   final int reviewCount;
 
+  /// Set when this gym is promoted for what the customer is looking at.
+  final PromotionTag? promotion;
+
   Gym({
     required this.id,
     required this.name,
@@ -57,6 +61,7 @@ class Gym {
     this.equipment = const [],
     this.rating = 0,
     this.reviewCount = 0,
+    this.promotion,
   });
 
   factory Gym.fromJson(Map<String, dynamic> json) {
@@ -105,6 +110,7 @@ class Gym {
           (json['equipment'] as List?)?.whereType<String>().toList() ?? [],
       rating: _numValue(json['rating']) ?? 0,
       reviewCount: (_numValue(json['reviewCount']) ?? 0).toInt(),
+      promotion: PromotionTag.fromJson(json['promotion']),
     );
   }
 
@@ -133,6 +139,7 @@ class Gym {
     equipment: equipment,
     rating: rating,
     reviewCount: reviewCount,
+    promotion: promotion,
   );
 
   bool get isFreeOnline => accessMode == 'free_online';
@@ -190,6 +197,9 @@ class TrainerProfile {
   final List<TrainerAvailability> availability;
   final SocialLinks socialLinks;
 
+  /// Set when this trainer is promoted for what the customer is looking at.
+  final PromotionTag? promotion;
+
   TrainerProfile({
     required this.id,
     this.userId,
@@ -211,6 +221,7 @@ class TrainerProfile {
     this.bookable = true,
     this.availability = const [],
     this.socialLinks = const SocialLinks(),
+    this.promotion,
   });
 
   factory TrainerProfile.fromJson(Map<String, dynamic> json) => TrainerProfile(
@@ -241,6 +252,7 @@ class TrainerProfile {
     bookable: json['bookable'] == null || _boolValue(json['bookable']),
     availability: _trainerAvailabilityFromJson(json['availability']),
     socialLinks: SocialLinks.fromJson(json['socialLinks']),
+    promotion: PromotionTag.fromJson(json['promotion']),
   );
 
   /// This trainer with a new rating — after the member reviews them.
@@ -265,6 +277,7 @@ class TrainerProfile {
     bookable: bookable,
     availability: availability,
     socialLinks: socialLinks,
+    promotion: promotion,
   );
 }
 

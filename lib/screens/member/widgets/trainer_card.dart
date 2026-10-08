@@ -101,6 +101,10 @@ class TrainerGridCard extends StatelessWidget {
                       color: cs.primary,
                     ),
                   ),
+                  if (trainer.promotion != null) ...[
+                    const SizedBox(height: 6),
+                    FFPromotionBadge(tag: trainer.promotion!),
+                  ],
                 ],
               ),
             ),

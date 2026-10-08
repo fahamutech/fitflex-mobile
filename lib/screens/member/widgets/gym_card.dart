@@ -69,6 +69,10 @@ class GymCard extends StatelessWidget {
                           tone: FFBadgeTone.gray,
                         ),
                       ],
+                      if (gym.promotion != null) ...[
+                        const SizedBox(width: 6),
+                        FFPromotionBadge(tag: gym.promotion!),
+                      ],
                     ],
                   ),
                 ],
@@ -219,6 +223,8 @@ class GymGridCard extends StatelessWidget {
                               label: _formatDistance(distanceKm!),
                               tone: FFBadgeTone.gray,
                             ),
+                          if (gym.promotion != null)
+                            FFPromotionBadge(tag: gym.promotion!),
                           ?extraBadge,
                         ],
                       ),
