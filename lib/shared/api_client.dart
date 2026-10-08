@@ -1178,9 +1178,30 @@ class ApiClient {
     String scope,
     String id, {
     String? gymId,
+  }) => challengeAction(scope, id, 'cancel', gymId: gymId);
+
+  /// Edit a challenge you created. Type and format lock once it starts or
+  /// anyone joins; the start date locks once it starts.
+  Future<Map<String, dynamic>> updateChallenge(
+    String scope,
+    String id,
+    Map<String, dynamic> body, {
+    String? gymId,
+  }) async => await _request(
+    'PATCH',
+    _creatorPath(scope, '/${Uri.encodeComponent(id)}', gymId: gymId),
+    body: body,
+  );
+
+  /// [action]: cancel, close, archive, publish, pause or resume.
+  Future<Map<String, dynamic>> challengeAction(
+    String scope,
+    String id,
+    String action, {
+    String? gymId,
   }) async => await _request(
     'POST',
-    _creatorPath(scope, '/${Uri.encodeComponent(id)}/cancel', gymId: gymId),
+    _creatorPath(scope, '/${Uri.encodeComponent(id)}/$action', gymId: gymId),
   );
 
   Future<Map<String, dynamic>> challengeParticipants(

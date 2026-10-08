@@ -7,6 +7,7 @@ import '../../router.dart';
 import '../../shared/activity/challenge.dart';
 import '../../shared/activity/gym_sharing.dart';
 import '../../shared/activity/trainer_connection.dart';
+import '../../shared/api_client.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
@@ -42,6 +43,7 @@ class _MemberChallengePageState extends State<MemberChallengePage> {
       c.joined ? 'challenge.leftToast' : 'challenge.joinedToast',
     );
     final failed = context.tr('challenge.failed');
+    final pausedText = context.tr('challenge.pausedNoJoin');
     JoinChoice? choice;
     if (!c.joined) {
       choice = await showJoinChallengeSheet(
@@ -82,6 +84,13 @@ class _MemberChallengePageState extends State<MemberChallengePage> {
         );
       }
       messenger.showSnackBar(SnackBar(content: Text(done)));
+    } on ApiException catch (e) {
+      // Paused while it was on screen: say so, and let the list catch up.
+      final paused = e.code == 'challenge_paused';
+      messenger.showSnackBar(
+        SnackBar(content: Text(paused ? pausedText : failed)),
+      );
+      if (paused) await shell?.refreshChallenges();
     } catch (_) {
       messenger.showSnackBar(SnackBar(content: Text(failed)));
     } finally {
