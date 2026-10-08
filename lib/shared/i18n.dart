@@ -124,6 +124,13 @@ class FFLocale extends ChangeNotifier {
       'verify.intro':
           'Verify your mobile number and email once. Invitations and messages sent to them then reach this account.',
       'verify.verified': 'Verified',
+      'auth.phoneSignUpUnavailable':
+          'Sign-up with a mobile number is not available yet. Please use your email or Google.',
+      'pin.emailResetUnavailable':
+          'Resetting a PIN by email is not available yet. Use your mobile number if you have added one.',
+      'rec.newMustBePhone':
+          'The new contact must be a mobile number for now. Email codes are not available yet.',
+      'verify.emailNotYet': 'Email verification is not available yet',
       'verify.notVerified': 'Not verified',
       'verify.verify': 'Verify',
       'verify.addPhone': 'Add a mobile number',
@@ -3481,6 +3488,13 @@ class FFLocale extends ChangeNotifier {
       'verify.intro':
           'Thibitisha namba yako ya simu na barua pepe mara moja. Mialiko na ujumbe utakaotumwa huko utafika kwenye akaunti hii.',
       'verify.verified': 'Imethibitishwa',
+      'auth.phoneSignUpUnavailable':
+          'Kujisajili kwa namba ya simu bado hakupatikani. Tafadhali tumia barua pepe au Google.',
+      'pin.emailResetUnavailable':
+          'Kubadilisha PIN kwa barua pepe bado hakupatikani. Tumia namba yako ya simu ikiwa umeiongeza.',
+      'rec.newMustBePhone':
+          'Kwa sasa mawasiliano mapya lazima yawe namba ya simu. Misimbo kwa barua pepe bado haipatikani.',
+      'verify.emailNotYet': 'Uthibitisho wa barua pepe bado haupatikani',
       'verify.notVerified': 'Haijathibitishwa',
       'verify.verify': 'Thibitisha',
       'verify.addPhone': 'Ongeza namba ya simu',

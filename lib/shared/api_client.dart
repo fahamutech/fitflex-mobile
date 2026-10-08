@@ -250,6 +250,12 @@ class ApiClient {
     }
   }
 
+  /// Which sign-in options the server offers (public). Throws on 404 from an
+  /// older server; callers fall back to the route probes.
+  Future<Map<String, dynamic>> signInOptions() async {
+    return await _request('GET', '/auth/options');
+  }
+
   /// Sign-in and registration with a number or email and a PIN are on.
   Future<bool> pinLoginAvailable() => _routeAvailable('/auth/pin/login');
 

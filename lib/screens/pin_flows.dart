@@ -23,6 +23,13 @@ Map<String, String> contactOf(String raw) {
   return value.contains('@') ? {'email': value} : {'phone': value};
 }
 
+/// True when [contact] signs in and registers with a FitFlex code and PIN:
+/// FitFlex PINs are on and, for an email, FitFlex can send email codes.
+/// Otherwise an email account stays on the Firebase path.
+bool usesFitFlexCodes(AuthState auth, String contact) =>
+    auth.pinLoginEnabled &&
+    (!contact.contains('@') || auth.emailCodesAvailable);
+
 /// Message for a PIN or code failure the person can act on.
 String pinErrorMessage(BuildContext context, Object error) {
   if (error is AdminMobileSignInException) {
@@ -523,6 +530,11 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
   Future<int?> _send() async {
     if (_contact.text.trim().isEmpty) {
       setState(() => _error = context.tr('verify.errInvalid'));
+      return null;
+    }
+    if (_contact.text.contains('@') &&
+        !AppScope.of(context).auth.emailCodesAvailable) {
+      setState(() => _error = context.tr('pin.emailResetUnavailable'));
       return null;
     }
     final api = AppScope.of(context).api;

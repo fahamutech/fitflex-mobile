@@ -35,6 +35,8 @@ class AuthState extends ChangeNotifier {
   // number or email + PIN), and forgot PIN. Both follow the backend flags.
   bool _pinLoginEnabled = false;
   bool _pinResetEnabled = false;
+  bool _emailCodesAvailable = true;
+  bool _smsCodesAvailable = true;
   bool _signInOptionsLoaded = false;
   // Identity V2 identifiers: what this Person has proved is theirs.
   bool _identifiersEnabled = false;
@@ -86,16 +88,38 @@ class AuthState extends ChangeNotifier {
   /// True when forgot PIN is available.
   bool get pinResetEnabled => _pinResetEnabled;
 
+  /// True when FitFlex can send codes to an email. While false, email
+  /// accounts stay on the Firebase path.
+  bool get emailCodesAvailable => _emailCodesAvailable;
+
+  /// True when FitFlex can send codes to a mobile number.
+  bool get smsCodesAvailable => _smsCodesAvailable;
+
   /// Ask the backend which sign-in options are on. Safe to call repeatedly;
   /// it asks once unless [force] is set. Offline leaves the options off.
   Future<void> loadSignInOptions({bool force = false}) async {
     if (_signInOptionsLoaded && !force) return;
-    final results = await Future.wait([
-      api.pinLoginAvailable(),
-      api.pinResetAvailable(),
-    ]);
-    _pinLoginEnabled = results[0];
-    _pinResetEnabled = results[1];
+    Map<String, dynamic>? options;
+    try {
+      options = await api.signInOptions();
+    } catch (_) {
+      options = null; // older server (404) or offline: probe the routes
+    }
+    if (options != null && options['pinLogin'] is bool) {
+      _pinLoginEnabled = options['pinLogin'] == true;
+      _pinResetEnabled = options['pinReset'] == true;
+      _emailCodesAvailable = options['emailCodes'] != false;
+      _smsCodesAvailable = options['smsCodes'] != false;
+    } else {
+      final results = await Future.wait([
+        api.pinLoginAvailable(),
+        api.pinResetAvailable(),
+      ]);
+      _pinLoginEnabled = results[0];
+      _pinResetEnabled = results[1];
+      _emailCodesAvailable = true;
+      _smsCodesAvailable = true;
+    }
     _signInOptionsLoaded = true;
     notifyListeners();
   }

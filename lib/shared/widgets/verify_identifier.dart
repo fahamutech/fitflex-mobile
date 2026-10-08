@@ -76,7 +76,11 @@ class ContactDetailsTile extends StatelessWidget {
           ),
         );
         final missing = auth.secondContactReminder;
-        if (missing == null) return tile;
+        // No email suggestion while FitFlex cannot send email codes.
+        if (missing == null ||
+            (missing == 'email' && !auth.emailCodesAvailable)) {
+          return tile;
+        }
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -180,7 +184,10 @@ class ContactDetailsScreen extends StatelessWidget {
                     title: Text(item['value']?.toString() ?? ''),
                     subtitle: Text(context.tr('verify.verified')),
                     // Replacing one needs the PIN, so it follows the PIN options.
-                    trailing: auth.pinResetEnabled
+                    trailing:
+                        auth.pinResetEnabled &&
+                            (item['type'] == 'phone' ||
+                                auth.emailCodesAvailable)
                         ? TextButton(
                             key: Key('change-${item['value']}'),
                             onPressed: () => Navigator.of(context).push(
@@ -204,16 +211,23 @@ class ContactDetailsScreen extends StatelessWidget {
                           : Icons.mail_outline,
                     ),
                     title: Text(item['value']?.toString() ?? ''),
-                    subtitle: Text(context.tr('verify.notVerified')),
-                    trailing: TextButton(
-                      key: Key('verify-${item['value']}'),
-                      onPressed: () => _verify(
-                        context,
-                        item['type'].toString(),
-                        item['value']?.toString(),
-                      ),
-                      child: Text(context.tr('verify.verify')),
+                    subtitle: Text(
+                      item['type'] == 'email' && !auth.emailCodesAvailable
+                          ? context.tr('verify.emailNotYet')
+                          : context.tr('verify.notVerified'),
                     ),
+                    trailing:
+                        item['type'] == 'email' && !auth.emailCodesAvailable
+                        ? null
+                        : TextButton(
+                            key: Key('verify-${item['value']}'),
+                            onPressed: () => _verify(
+                              context,
+                              item['type'].toString(),
+                              item['value']?.toString(),
+                            ),
+                            child: Text(context.tr('verify.verify')),
+                          ),
                   ),
                 if (!hasPhone) ...[
                   const SizedBox(height: FFTokens.spacingMd),
