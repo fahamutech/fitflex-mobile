@@ -509,6 +509,7 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
                 itemBuilder: (context, i) => GymGridCard(
                   key: Key('gym-featured-${featured[i].id}'),
                   gym: featured[i],
+                  placement: _discovery?.placement,
                   distanceKm: gymDisplayDistanceKm(
                     featured[i],
                     userLat: _userLat,
@@ -564,6 +565,7 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
                     (context, i) => GymGridCard(
                       key: Key('gym-card-${gyms[i].id}'),
                       gym: gyms[i],
+                      placement: _discovery?.placement,
                       distanceKm: gymDisplayDistanceKm(
                         gyms[i],
                         userLat: _userLat,

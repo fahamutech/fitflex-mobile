@@ -12,6 +12,7 @@ import '../formatters.dart';
 import '../discovery_loader.dart';
 import '../i18n.dart';
 import '../promotion.dart';
+import '../promotion_events.dart';
 
 num _shopNumber(dynamic value, [num fallback = 0]) {
   if (value is num) return value;
@@ -184,6 +185,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
   /// their labels. Empty when the server has none or cannot be reached.
   List<ShopProduct> _featured = [];
   Map<String, PromotionTag> _promoTags = {};
+  String? _placement;
   List<Map<String, dynamic>> _orders = [];
   final ShopCart _cart = ShopCart();
   final Set<String> _saved = {};
@@ -293,6 +295,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
       if (!mounted) return;
       setState(() {
         _featured = result.featured;
+        _placement = result.placement;
         _promoTags = {
           for (final p in [...result.featured, ...result.items])
             if (p.promotion != null) p.id: p.promotion!,
@@ -438,6 +441,11 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
       // The cached catalogue record still supports cart actions offline.
     }
     if (!mounted) return;
+    PromotionEvents.instance.recordForTouched(
+      'detail_view',
+      'product',
+      product.id,
+    );
     final buyNow = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -682,6 +690,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
           itemBuilder: (context, i) => _FeaturedProductCard(
             key: Key('shop-featured-${featured[i].id}'),
             product: featured[i],
+            placement: _placement,
             onOpen: () => _openProduct(featured[i]),
           ),
         ),
@@ -695,11 +704,20 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
               key: Key('shop-product-${product.id}'),
               product: product,
               promotion: _promoTags[product.id],
+              placement: _placement,
               qty: _cart.qtyOf(product.id),
               saved: _saved.contains(product.id),
               onOpen: () => _openProduct(product),
               onSave: () => setState(() {
-                if (!_saved.add(product.id)) _saved.remove(product.id);
+                if (_saved.add(product.id)) {
+                  PromotionEvents.instance.recordForTouched(
+                    'save',
+                    'product',
+                    product.id,
+                  );
+                } else {
+                  _saved.remove(product.id);
+                }
                 _cart.remove(product.id);
               }),
               onAdd: product.inStock
@@ -1037,18 +1055,31 @@ class _FeaturedProductCard extends StatelessWidget {
     super.key,
     required this.product,
     required this.onOpen,
+    this.placement,
   });
 
   final ShopProduct product;
   final VoidCallback onOpen;
+  final String? placement;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => PromotionTracked(
+    entityType: 'product',
+    entityId: product.id,
+    promotion: product.promotion,
+    placement: placement,
+    child: _card(context),
+  );
+
+  Widget _card(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final tag = product.promotion;
     return FFCard(
       child: InkWell(
-        onTap: onOpen,
+        onTap: () {
+          trackPromotionClick('product', product.id, product.promotion, placement: placement);
+          onOpen();
+        },
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1103,6 +1134,7 @@ class _ProductTile extends StatelessWidget {
     super.key,
     required this.product,
     this.promotion,
+    this.placement,
     required this.qty,
     required this.saved,
     required this.onOpen,
@@ -1112,6 +1144,7 @@ class _ProductTile extends StatelessWidget {
   });
   final ShopProduct product;
   final PromotionTag? promotion;
+  final String? placement;
   final int qty;
   final bool saved;
   final VoidCallback onOpen;
@@ -1120,11 +1153,22 @@ class _ProductTile extends StatelessWidget {
   final VoidCallback? onRemove;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => PromotionTracked(
+    entityType: 'product',
+    entityId: product.id,
+    promotion: promotion,
+    placement: placement,
+    child: _card(context),
+  );
+
+  Widget _card(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     return FFCard(
       child: InkWell(
-        onTap: onOpen,
+        onTap: () {
+          trackPromotionClick('product', product.id, promotion, placement: placement);
+          onOpen();
+        },
         child: Row(
           children: [
             Container(

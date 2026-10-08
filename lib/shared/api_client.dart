@@ -668,6 +668,19 @@ class ApiClient {
     return Map<String, dynamic>.from(out as Map);
   }
 
+  /// Promotion analytics: `POST /events` (open to anonymous callers). At most
+  /// 50 events per request. Throws [ApiException] on a non-2xx answer.
+  Future<Map<String, dynamic>> postEvents(
+    List<Map<String, dynamic>> events,
+  ) async {
+    final out = await _request(
+      'POST',
+      '/events',
+      body: {'source': 'mobile', 'events': events},
+    );
+    return out is Map ? Map<String, dynamic>.from(out) : <String, dynamic>{};
+  }
+
   Future<List<dynamic>> getSpecialties() async =>
       await _request('GET', '/settings/specialties');
 

@@ -12,6 +12,7 @@ import '../../shared/i18n.dart';
 import '../../shared/models.dart';
 import '../../shared/widgets/reviews_section.dart';
 import 'member_shell.dart';
+import '../../shared/promotion_events.dart';
 import 'widgets/gym_card.dart';
 import 'widgets/gym_plans_sheet.dart';
 import 'widgets/trainer_card.dart';
@@ -28,6 +29,17 @@ class MemberGymDetailPage extends StatefulWidget {
 class _MemberGymDetailPageState extends State<MemberGymDetailPage> {
   bool _openingDirections = false;
 
+  @override
+  void initState() {
+    super.initState();
+    // Only counts when the member arrived from a promoted card (fresh touch).
+    PromotionEvents.instance.recordForTouched(
+      'detail_view',
+      'gym',
+      widget.gymId,
+    );
+  }
+
   Future<void> _handleDirections(Gym gym) async {
     setState(() => _openingDirections = true);
     try {
@@ -40,6 +52,11 @@ class _MemberGymDetailPageState extends State<MemberGymDetailPage> {
   // A7: Subscribe → gym's own Daily/Weekly/Monthly plans.
   Future<void> _openPlans(Gym gym) async {
     final data = MemberDataScope.of(context);
+    PromotionEvents.instance.recordForTouched(
+      'subscription_click',
+      'gym',
+      gym.id,
+    );
     final subscribed = await showGymPlansSheet(context, gym);
     if (subscribed == true && mounted) {
       final res = await AppScope.of(context).api.me();
@@ -930,6 +947,9 @@ class _SaveGymButtonState extends State<_SaveGymButton> {
     final messenger = ScaffoldMessenger.of(context);
     final failed = context.tr('error.requestFailed');
     setState(() => _busy = true);
+    if (!saved) {
+      PromotionEvents.instance.recordForTouched('save', 'gym', widget.gymId);
+    }
     data.update((d) {
       final next = {...d.favoriteGymIds};
       saved ? next.remove(widget.gymId) : next.add(widget.gymId);

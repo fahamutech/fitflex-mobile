@@ -6,23 +6,38 @@ import '../../../shared/design_tokens.dart';
 import '../../../shared/formatters.dart';
 import '../../../shared/i18n.dart';
 import '../../../shared/models.dart';
+import '../../../shared/promotion_events.dart';
 import '../../../shared/widgets/partner_not_verified.dart';
 
 /// Portrait card used inside a responsive grid.
 /// Uses a surface-shade background instead of elevation for separation.
 class TrainerGridCard extends StatelessWidget {
-  const TrainerGridCard({super.key, required this.trainer});
+  const TrainerGridCard({super.key, required this.trainer, this.placement});
 
   final TrainerProfile trainer;
 
+  /// The discovery placement this card was shown in (promotion analytics).
+  final String? placement;
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => PromotionTracked(
+    entityType: 'trainer',
+    entityId: trainer.id,
+    promotion: trainer.promotion,
+    placement: placement,
+    child: _card(context),
+  );
+
+  Widget _card(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final specialties = trainer.specialties.take(2).join(' · ');
 
     return GestureDetector(
-      onTap: () => context.go('/member/trainers/${trainer.id}'),
+      onTap: () {
+          trackPromotionClick('trainer', trainer.id, trainer.promotion, placement: placement);
+          context.go('/member/trainers/${trainer.id}');
+        },
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: cs.surface,
@@ -145,16 +160,30 @@ class _AvatarPlaceholder extends StatelessWidget {
 }
 
 class TrainerCard extends StatelessWidget {
-  const TrainerCard({super.key, required this.trainer});
+  const TrainerCard({super.key, required this.trainer, this.placement});
 
   final TrainerProfile trainer;
 
+  /// The discovery placement this card was shown in (promotion analytics).
+  final String? placement;
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => PromotionTracked(
+    entityType: 'trainer',
+    entityId: trainer.id,
+    promotion: trainer.promotion,
+    placement: placement,
+    child: _card(context),
+  );
+
+  Widget _card(BuildContext context) {
     final specialties = trainer.specialties.join(' / ');
     return FFCard(
       child: InkWell(
-        onTap: () => context.go('/member/trainers/${trainer.id}'),
+        onTap: () {
+          trackPromotionClick('trainer', trainer.id, trainer.promotion, placement: placement);
+          context.go('/member/trainers/${trainer.id}');
+        },
         borderRadius: BorderRadius.circular(FFTokens.radiusXl),
         child: Row(
           children: [

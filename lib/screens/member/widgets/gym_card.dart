@@ -4,19 +4,34 @@ import 'package:go_router/go_router.dart';
 import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
 import '../../../shared/models.dart';
+import '../../../shared/promotion_events.dart';
 import '../../../shared/widgets/partner_not_verified.dart';
 
 class GymCard extends StatelessWidget {
-  const GymCard({super.key, required this.gym, this.distanceKm});
+  const GymCard({super.key, required this.gym, this.distanceKm, this.placement});
 
   final Gym gym;
   final double? distanceKm;
 
+  /// The discovery placement this card was shown in (promotion analytics).
+  final String? placement;
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => PromotionTracked(
+    entityType: 'gym',
+    entityId: gym.id,
+    promotion: gym.promotion,
+    placement: placement,
+    child: _card(context),
+  );
+
+  Widget _card(BuildContext context) {
     return FFCard(
       child: InkWell(
-        onTap: () => context.go('/member/gyms/${gym.id}'),
+        onTap: () {
+          trackPromotionClick('gym', gym.id, gym.promotion, placement: placement);
+          context.go('/member/gyms/${gym.id}');
+        },
         borderRadius: BorderRadius.circular(FFTokens.radiusXl),
         child: Row(
           children: [
@@ -109,10 +124,14 @@ class GymGridCard extends StatelessWidget {
     this.distanceKm,
     this.onTap,
     this.extraBadge,
+    this.placement,
   });
 
   final Gym gym;
   final double? distanceKm;
+
+  /// The discovery placement this card was shown in (promotion analytics).
+  final String? placement;
 
   /// Defaults to the member gym page.
   final VoidCallback? onTap;
@@ -121,11 +140,22 @@ class GymGridCard extends StatelessWidget {
   final Widget? extraBadge;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => PromotionTracked(
+    entityType: 'gym',
+    entityId: gym.id,
+    promotion: gym.promotion,
+    placement: placement,
+    child: _card(context),
+  );
+
+  Widget _card(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     return GestureDetector(
-      onTap: onTap ?? () => context.go('/member/gyms/${gym.id}'),
+      onTap: () {
+        trackPromotionClick('gym', gym.id, gym.promotion, placement: placement);
+        (onTap ?? () => context.go('/member/gyms/${gym.id}'))();
+      },
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: cs.surface,
