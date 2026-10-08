@@ -159,10 +159,18 @@ class _SignUpScreenState extends State<SignUpScreen>
     setState(() => _inputError = null);
     // When FitFlex keeps the PIN: prove the number or email with a code, then
     // choose the PIN. Otherwise the Firebase email + PIN path, as before.
-    if (AppScope.of(context).auth.pinLoginEnabled) {
+    final auth = AppScope.of(context).auth;
+    final contact = _emailCtrl.text.trim();
+    if (auth.pinLoginEnabled &&
+        !contact.contains('@') &&
+        !auth.smsCodesAvailable) {
+      setState(() => _inputError = context.tr('auth.phoneSignUpUnavailable'));
+      return;
+    }
+    if (usesFitFlexCodes(auth, contact)) {
       Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => RegisterFlowScreen(contact: _emailCtrl.text.trim()),
+          builder: (_) => RegisterFlowScreen(contact: contact),
         ),
       );
       return;

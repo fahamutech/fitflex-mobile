@@ -161,6 +161,13 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
     if (mounted) setState(() => _recoveryToken = token);
   }
 
+  /// Forgot PIN by FitFlex code: not for an email while FitFlex cannot send
+  /// email codes.
+  bool _resetOffered(BuildContext context) {
+    final auth = AppScope.of(context).auth;
+    return !widget.initialEmail.contains('@') || auth.emailCodesAvailable;
+  }
+
   void _forgotPin() {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -173,7 +180,7 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
     if (_pin.length < _minPinLength) return;
     // When FitFlex keeps the PIN, sign-in goes to FitFlex, not Firebase.
     if (widget.initialMode == EmailAuthMode.signIn &&
-        AppScope.of(context).auth.pinLoginEnabled) {
+        usesFitFlexCodes(AppScope.of(context).auth, widget.initialEmail)) {
       return _submitWithFitFlexPin();
     }
     setState(() => _busy = true);
@@ -330,7 +337,8 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
                     ),
                   ),
                   const SizedBox(height: FFTokens.spacingLg),
-                  if (widget.initialMode == EmailAuthMode.signIn)
+                  if (widget.initialMode == EmailAuthMode.signIn &&
+                      _resetOffered(context))
                     Center(
                       child: TextButton(
                         key: const Key('forgot-pin'),
@@ -348,6 +356,7 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
                       ),
                     ),
                   if (widget.initialMode == EmailAuthMode.signIn &&
+                      _resetOffered(context) &&
                       AppScope.of(context).auth.pinResetEnabled) ...[
                     Center(
                       child: TextButton(

@@ -142,6 +142,12 @@ class _AccountRecoveryScreenState extends State<AccountRecoveryScreen> {
       setState(() => _error = context.tr('rec.fill'));
       return null;
     }
+    // While FitFlex cannot send email codes, the code goes to a number.
+    if (_new.text.contains('@') &&
+        !AppScope.of(context).auth.emailCodesAvailable) {
+      setState(() => _error = context.tr('rec.newMustBePhone'));
+      return null;
+    }
     final api = AppScope.of(context).api;
     final locale = _locale(context);
     setState(() => _busy = true);
