@@ -6,6 +6,7 @@ import '../../app_scope.dart';
 import '../../screens/member/widgets/challenge_widgets.dart'
     show challengeAmount, challengeTargetText, challengeUnit;
 import '../activity/challenge.dart';
+import '../api_client.dart';
 import '../components/components.dart';
 import '../design_tokens.dart';
 import '../i18n.dart';
@@ -22,7 +23,8 @@ Future<void> openChallengeManager(
   ),
 );
 
-/// Challenges a trainer or gym created: create, cancel, and see who joined.
+/// Challenges a trainer or gym created: create (or save as a draft), edit,
+/// publish, pause, close, cancel, archive, and see who joined.
 class ChallengeManagerPage extends StatefulWidget {
   const ChallengeManagerPage({
     super.key,
@@ -72,9 +74,9 @@ class _ChallengeManagerPageState extends State<ChallengeManagerPage> {
     final created = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => _CreateChallengeSheet(
+      builder: (_) => _ChallengeSheet(
         now: widget.now ?? DateTime.now(),
-        onCreate: (body) => AppScope.of(
+        onSave: (body) => AppScope.of(
           context,
         ).api.createChallenge(widget.scope, body, gymId: widget.gymId),
       ),
@@ -88,7 +90,8 @@ class _ChallengeManagerPageState extends State<ChallengeManagerPage> {
         challenge: c,
         scope: widget.scope,
         gymId: widget.gymId,
-        onCancelled: _load,
+        now: widget.now,
+        onChanged: _load,
       ),
     ),
   );
@@ -133,7 +136,7 @@ class _ChallengeManagerPageState extends State<ChallengeManagerPage> {
                       subtitle: [
                         challengeTargetText(context, c.type, c.target),
                         '${DateFormat('d MMM').format(c.startDate)} – ${DateFormat('d MMM').format(c.endDate)}',
-                        context.tr('challenge.phase.${c.phase.name}'),
+                        challengeStatusLabel(context, c),
                         context
                             .tr('challenge.participants')
                             .replaceAll('{n}', '${c.participantCount}'),
@@ -151,13 +154,17 @@ class _ParticipantsPage extends StatefulWidget {
     required this.challenge,
     required this.scope,
     required this.gymId,
-    required this.onCancelled,
+    required this.onChanged,
+    this.now,
   });
 
   final Challenge challenge;
   final String scope;
   final String? gymId;
-  final Future<void> Function() onCancelled;
+  final DateTime? now;
+
+  /// Reloads the list behind this page after the challenge changes.
+  final Future<void> Function() onChanged;
 
   @override
   State<_ParticipantsPage> createState() => _ParticipantsPageState();
@@ -166,6 +173,8 @@ class _ParticipantsPage extends StatefulWidget {
 class _ParticipantsPageState extends State<_ParticipantsPage> {
   List<Map<String, dynamic>>? _rows;
   ChallengeLeaderboard? _board;
+  late Challenge _c = widget.challenge;
+  bool _busy = false;
 
   @override
   void didChangeDependencies() {
@@ -205,60 +214,180 @@ class _ParticipantsPageState extends State<_ParticipantsPage> {
     }
   }
 
-  Future<void> _cancel() async {
-    final ok = await showDialog<bool>(
+  /// The server's answer, keeping what a short answer leaves out.
+  void _adopt(Map<String, dynamic> res) {
+    final json = res['challenge'];
+    if (json is! Map) return;
+    final next = Challenge.tryParse(Map<String, dynamic>.from(json));
+    if (next == null) return;
+    setState(
+      () => _c = json.containsKey('participantCount')
+          ? next
+          : next.copyWith(participantCount: _c.participantCount),
+    );
+  }
+
+  /// Runs a creator action (cancel, close, archive, publish, pause, resume),
+  /// asking first unless [body] is null. [leave] closes the page after.
+  Future<void> _act(
+    String action, {
+    String? title,
+    String? body,
+    String? confirm,
+    bool leave = false,
+  }) async {
+    if (body != null) {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(title ?? _c.name),
+          content: Text(body),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(ctx.tr('workout.keepGoing')),
+            ),
+            FilledButton(
+              key: Key('challenge-$action-confirm'),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(confirm ?? title ?? ''),
+            ),
+          ],
+        ),
+      );
+      if (ok != true || !mounted) return;
+    }
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final generic = context.tr('owner.errorGeneric');
+    final tr = context.tr;
+    setState(() => _busy = true);
+    try {
+      final res = await AppScope.of(
+        context,
+      ).api.challengeAction(widget.scope, _c.id, action, gymId: widget.gymId);
+      await widget.onChanged();
+      if (leave) {
+        navigator.pop();
+      } else if (mounted) {
+        _adopt(res);
+      }
+    } on ApiException catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(challengeErrorText(tr, e, generic))),
+      );
+    } catch (_) {
+      messenger.showSnackBar(SnackBar(content: Text(generic)));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _edit() async {
+    Map<String, dynamic>? saved;
+    final ok = await showModalBottomSheet<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(ctx.tr('challenge.cancelTitle')),
-        content: Text(ctx.tr('challenge.cancelBody')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(ctx.tr('workout.keepGoing')),
-          ),
-          FilledButton(
-            key: const Key('challenge-cancel-confirm'),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(ctx.tr('challenge.cancel')),
-          ),
-        ],
+      isScrollControlled: true,
+      builder: (_) => _ChallengeSheet(
+        now: widget.now ?? DateTime.now(),
+        existing: _c,
+        onSave: (body) async => saved = await AppScope.of(
+          context,
+        ).api.updateChallenge(widget.scope, _c.id, body, gymId: widget.gymId),
       ),
     );
     if (ok != true || !mounted) return;
-    final navigator = Navigator.of(context);
-    try {
-      await AppScope.of(context).api.cancelChallenge(
-        widget.scope,
-        widget.challenge.id,
-        gymId: widget.gymId,
-      );
-      await widget.onCancelled();
-      navigator.pop();
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.tr('owner.errorGeneric'))),
+    if (saved != null) _adopt(saved!);
+    await widget.onChanged();
+  }
+
+  void _menu(String v) {
+    final tr = context.tr;
+    switch (v) {
+      case 'edit':
+        _edit();
+      case 'publish':
+        _act(
+          'publish',
+          title: tr('challenge.publish'),
+          body: tr('challenge.publishBody'),
         );
-      }
+      case 'pause':
+        _act(
+          'pause',
+          title: tr('challenge.pause'),
+          body: tr('challenge.pauseBody'),
+        );
+      case 'resume':
+        _act('resume');
+      case 'close':
+        _act(
+          'close',
+          title: tr('challenge.closeNow'),
+          body: tr('challenge.closeBody'),
+        );
+      case 'cancel':
+        _act(
+          'cancel',
+          title: tr('challenge.cancelTitle'),
+          body: tr('challenge.cancelBody'),
+          confirm: tr('challenge.cancel'),
+          leave: true,
+        );
+      case 'discard':
+        _act(
+          'cancel',
+          title: tr('challenge.deleteDraft'),
+          body: _c.name,
+          leave: true,
+        );
+      case 'archive':
+        _act(
+          'archive',
+          title: tr('challenge.archive'),
+          body: tr('challenge.archiveBody'),
+          leave: true,
+        );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final c = widget.challenge;
+    final c = _c;
     final rows = _rows;
-    final open =
-        c.phase == ChallengePhase.active || c.phase == ChallengePhase.upcoming;
+    final over =
+        (c.phase == ChallengePhase.ended && c.status != 'archived') ||
+        c.status == 'cancelled';
+    final actions = <(String, String)>[
+      if (c.isLive || c.isDraft) ('edit', 'challenge.edit'),
+      if (c.isDraft) ('publish', 'challenge.publish'),
+      if (c.isLive && !c.isPaused) ('pause', 'challenge.pause'),
+      if (c.isPaused) ('resume', 'challenge.resume'),
+      if (c.isLive && c.phase == ChallengePhase.active)
+        ('close', 'challenge.closeNow'),
+      if (c.isLive) ('cancel', 'challenge.cancel'),
+      if (c.isDraft) ('discard', 'challenge.deleteDraft'),
+      if (over) ('archive', 'challenge.archive'),
+    ];
     return Scaffold(
       appBar: AppBar(
         title: Text(c.name),
         actions: [
-          if (open)
-            TextButton(
-              key: const Key('challenge-cancel'),
-              onPressed: _cancel,
-              child: Text(context.tr('challenge.cancel')),
+          if (actions.isNotEmpty)
+            PopupMenuButton<String>(
+              key: const Key('challenge-actions'),
+              tooltip: context.tr('challenge.actions'),
+              enabled: !_busy,
+              onSelected: _menu,
+              itemBuilder: (_) => [
+                for (final (value, label) in actions)
+                  PopupMenuItem(
+                    key: Key('challenge-$value'),
+                    value: value,
+                    child: Text(context.tr(label)),
+                  ),
+              ],
             ),
         ],
       ),
@@ -267,6 +396,27 @@ class _ParticipantsPageState extends State<_ParticipantsPage> {
           : ListView(
               padding: const EdgeInsets.all(FFTokens.spacingLg),
               children: [
+                Row(
+                  children: [
+                    FFPill(
+                      key: const Key('challenge-status'),
+                      label: challengeStatusLabel(context, c),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: FFTokens.spacingSm),
+                if (c.isDraft || c.isPaused) ...[
+                  Text(
+                    context.tr(
+                      c.isDraft
+                          ? 'challenge.draftNote'
+                          : 'challenge.pausedNote',
+                    ),
+                    key: const Key('challenge-state-note'),
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: FFTokens.spacingSm),
+                ],
                 Text(
                   context.tr('challenge.participantsNote'),
                   style: theme.textTheme.bodySmall,
@@ -364,30 +514,71 @@ const _defaultTargets = {
   ChallengeType.gymAttendance: 8,
 };
 
-class _CreateChallengeSheet extends StatefulWidget {
-  const _CreateChallengeSheet({required this.now, required this.onCreate});
+/// The label for where a challenge stands, as its maker sees it.
+String challengeStatusLabel(BuildContext context, Challenge c) => context.tr(
+  c.isPaused
+      ? 'challenge.status.paused'
+      : c.status == 'archived' || c.status == 'closed'
+      ? 'challenge.status.${c.status}'
+      : 'challenge.phase.${c.phase.name}',
+);
 
-  final DateTime now;
-  final Future<Object?> Function(Map<String, dynamic> body) onCreate;
-
-  @override
-  State<_CreateChallengeSheet> createState() => _CreateChallengeSheetState();
+/// The server's reason in words, where there is a line for it.
+String challengeErrorText(
+  String Function(String) tr,
+  ApiException e,
+  String fallback,
+) {
+  final key = 'challenge.err.${e.code}';
+  final text = tr(key);
+  return text == key ? fallback : text;
 }
 
-class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
+/// Create a challenge, or edit [existing].
+class _ChallengeSheet extends StatefulWidget {
+  const _ChallengeSheet({
+    required this.now,
+    required this.onSave,
+    this.existing,
+  });
+
+  final DateTime now;
+  final Challenge? existing;
+  final Future<Object?> Function(Map<String, dynamic> body) onSave;
+
+  @override
+  State<_ChallengeSheet> createState() => _ChallengeSheetState();
+}
+
+class _ChallengeSheetState extends State<_ChallengeSheet> {
   final _form = GlobalKey<FormState>();
-  final _name = TextEditingController();
-  final _description = TextEditingController();
-  final _rewards = TextEditingController();
+  Challenge? get _existing => widget.existing;
+  DateTime get _today =>
+      DateTime(widget.now.year, widget.now.month, widget.now.day);
+
+  /// A draft hasn't gone out to anyone, so nothing about it is locked.
+  bool get _started =>
+      _existing != null &&
+      !_existing!.isDraft &&
+      _existing!.phase != ChallengePhase.upcoming;
+  bool get _locked =>
+      _existing != null &&
+      !_existing!.isDraft &&
+      (_started || _existing!.participantCount > 0);
+
+  late final _name = TextEditingController(text: _existing?.name);
+  late final _description = TextEditingController(text: _existing?.description);
+  late final _rewardsBefore = (_existing?.rewards ?? const []).join(', ');
+  late final _rewards = TextEditingController(text: _rewardsBefore);
   late final _target = TextEditingController(
-    text: '${_defaultTargets[ChallengeType.steps]}',
+    text: '${_existing?.target ?? _defaultTargets[ChallengeType.steps]}',
   );
-  ChallengeType _type = ChallengeType.steps;
+  late ChallengeType _type = _existing?.type ?? ChallengeType.steps;
   late DateTimeRange _range = DateTimeRange(
-    start: DateTime(widget.now.year, widget.now.month, widget.now.day),
-    end: DateTime(widget.now.year, widget.now.month, widget.now.day + 13),
+    start: _existing?.startDate ?? _today,
+    end: _existing?.endDate ?? _today.add(const Duration(days: 13)),
   );
-  bool _public = false;
+  late bool _public = _existing?.visibility == 'public';
   bool _teams = false;
   final _teamNames = TextEditingController();
   bool _busy = false;
@@ -404,18 +595,33 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
   String _date(DateTime d) => formatChallengeDate(d);
 
   Future<void> _pickDates() async {
-    final today = DateTime(widget.now.year, widget.now.month, widget.now.day);
+    final today = _today;
+    final last = today.add(const Duration(days: 365));
+    if (_started) {
+      // Under way: only the end can move.
+      final end = await showDatePicker(
+        context: context,
+        firstDate: today,
+        lastDate: last,
+        initialDate: _range.end.isBefore(today) ? today : _range.end,
+      );
+      if (end != null) {
+        setState(() => _range = DateTimeRange(start: _range.start, end: end));
+      }
+      return;
+    }
     final picked = await showDateRangePicker(
       context: context,
-      firstDate: today,
-      lastDate: today.add(const Duration(days: 365)),
+      firstDate: _range.start.isBefore(today) ? _range.start : today,
+      lastDate: last,
       initialDateRange: _range,
     );
     if (picked != null) setState(() => _range = picked);
   }
 
-  Future<void> _save() async {
+  Future<void> _save({bool draft = false}) async {
     if (!_form.currentState!.validate()) return;
+    final editing = _existing != null;
     if (_teams) {
       final names = [
         for (final t in _teamNames.text.split(','))
@@ -432,33 +638,50 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
       return;
     }
     final navigator = Navigator.of(context);
-    final failed = context.tr('challenge.createFailed');
+    final failed = context.tr(
+      editing ? 'challenge.saveFailed' : 'challenge.createFailed',
+    );
+    final tr = context.tr;
     setState(() {
       _busy = true;
       _error = null;
     });
+    final description = _description.text.trim();
     try {
-      await widget.onCreate({
+      await widget.onSave({
         'name': _name.text.trim(),
-        if (_description.text.trim().isNotEmpty)
-          'description': _description.text.trim(),
-        'type': _type.wire,
+        if (description.isNotEmpty)
+          'description': description
+        else if (editing)
+          'description': null,
+        // What is locked is left out, so the server keeps it as it is.
+        if (!_locked) 'type': _type.wire,
         'target': num.parse(_target.text.trim()),
-        'startDate': _date(_range.start),
+        if (!_started) 'startDate': _date(_range.start),
         'endDate': _date(_range.end),
-        'rewards': [
-          for (final r in _rewards.text.split(','))
-            if (r.trim().isNotEmpty) r.trim(),
-        ],
+        // Untouched rewards are left alone, so ones already earned stay put.
+        if (!editing || _rewards.text.trim() != _rewardsBefore)
+          'rewards': [
+            for (final r in _rewards.text.split(','))
+              if (r.trim().isNotEmpty) r.trim(),
+          ],
         'visibility': _public ? 'public' : 'audience',
-        'mode': _teams ? 'teams' : 'individual',
-        if (_teams)
+        if (!editing) 'mode': _teams ? 'teams' : 'individual',
+        if (!editing && _teams)
           'teams': [
             for (final t in _teamNames.text.split(','))
               if (t.trim().isNotEmpty) t.trim(),
           ],
+        if (draft) 'draft': true,
       });
       navigator.pop(true);
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _error = challengeErrorText(tr, e, failed);
+        });
+      }
     } catch (_) {
       if (mounted) {
         setState(() {
@@ -486,9 +709,19 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
           shrinkWrap: true,
           children: [
             Text(
-              context.tr('challenge.new'),
+              context.tr(
+                _existing == null ? 'challenge.new' : 'challenge.editTitle',
+              ),
               style: theme.textTheme.titleLarge,
             ),
+            if (_locked) ...[
+              const SizedBox(height: FFTokens.spacingXs),
+              Text(
+                context.tr('challenge.lockedNote'),
+                key: const Key('challenge-locked-note'),
+                style: theme.textTheme.bodySmall,
+              ),
+            ],
             const SizedBox(height: FFTokens.spacingMd),
             TextFormField(
               key: const Key('challenge-name'),
@@ -527,10 +760,12 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
                     key: Key('challenge-type-${t.wire}'),
                     label: Text(context.tr('challenge.type.${t.wire}')),
                     selected: _type == t,
-                    onSelected: (_) => setState(() {
-                      _type = t;
-                      _target.text = '${_defaultTargets[t]}';
-                    }),
+                    onSelected: _locked
+                        ? null
+                        : (_) => setState(() {
+                            _type = t;
+                            _target.text = '${_defaultTargets[t]}';
+                          }),
                   ),
               ],
             ),
@@ -575,14 +810,16 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
                 border: const OutlineInputBorder(),
               ),
             ),
-            SwitchListTile(
-              key: const Key('challenge-teams'),
-              contentPadding: EdgeInsets.zero,
-              value: _teams,
-              onChanged: (v) => setState(() => _teams = v),
-              title: Text(context.tr('leaderboard.teamChallenge')),
-              subtitle: Text(context.tr('leaderboard.teamChallengeHint')),
-            ),
+            // Teams are set up when the challenge is created.
+            if (_existing == null)
+              SwitchListTile(
+                key: const Key('challenge-teams'),
+                contentPadding: EdgeInsets.zero,
+                value: _teams,
+                onChanged: (v) => setState(() => _teams = v),
+                title: Text(context.tr('leaderboard.teamChallenge')),
+                subtitle: Text(context.tr('leaderboard.teamChallengeHint')),
+              ),
             if (_teams)
               TextFormField(
                 key: const Key('challenge-team-names'),
@@ -604,11 +841,24 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
             if (_error != null)
               Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
             const SizedBox(height: FFTokens.spacingSm),
-            FilledButton(
-              key: const Key('challenge-create'),
-              onPressed: _busy ? null : _save,
-              child: Text(context.tr('challenge.create')),
-            ),
+            if (_existing == null) ...[
+              OutlinedButton(
+                key: const Key('challenge-save-draft'),
+                onPressed: _busy ? null : () => _save(draft: true),
+                child: Text(context.tr('challenge.saveDraft')),
+              ),
+              const SizedBox(height: FFTokens.spacingXs),
+              FilledButton(
+                key: const Key('challenge-create'),
+                onPressed: _busy ? null : _save,
+                child: Text(context.tr('challenge.create')),
+              ),
+            ] else
+              FilledButton(
+                key: const Key('challenge-save'),
+                onPressed: _busy ? null : _save,
+                child: Text(context.tr('challenge.saveChanges')),
+              ),
           ],
         ),
       ),

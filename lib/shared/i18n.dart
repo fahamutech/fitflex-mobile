@@ -1506,6 +1506,49 @@ class FFLocale extends ChangeNotifier {
       'logActivity.deleted': 'Activity deleted.',
       'logActivity.deleteFailed': 'Couldn\'t delete it. Try again.',
       'run.delete': 'Delete run',
+      'challenge.phase.draft': "Draft",
+      'challenge.status.paused': "Paused",
+      'challenge.status.archived': "Archived",
+      'challenge.status.closed': "Closed early",
+      'challenge.pausedNoJoin':
+          "This challenge isn't taking new people right now.",
+      'challenge.draftNote':
+          "This is a draft. Nobody can see or join it until you publish it.",
+      'challenge.pausedNote':
+          "Paused: nobody new can join or find it. People already taking part carry on and their activity still counts.",
+      'challenge.saveDraft': "Save as draft",
+      'challenge.saveChanges': "Save changes",
+      'challenge.edit': "Edit",
+      'challenge.editTitle': "Edit challenge",
+      'challenge.publish': "Publish",
+      'challenge.publishBody':
+          "The people it is open to can see and join it straight away.",
+      'challenge.pause': "Pause",
+      'challenge.pauseBody':
+          "Nobody new can join until you resume it. People already taking part carry on. Dates and rewards stay the same.",
+      'challenge.resume': "Resume",
+      'challenge.closeNow': "Close now",
+      'challenge.closeBody':
+          "The challenge ends today. Results so far are kept.",
+      'challenge.archive': "Archive",
+      'challenge.archiveBody':
+          "It is put away. People who took part keep it in their history.",
+      'challenge.deleteDraft': "Delete draft",
+      'challenge.actions': "Challenge actions",
+      'challenge.lockedNote':
+          "The type, format and (once started) the start date can't change now, so nobody's progress changes meaning.",
+      'challenge.saveFailed':
+          "Couldn't save the changes. Check the goal suits the dates and try again.",
+      'challenge.err.reward_locked':
+          "Someone has already earned one of these rewards, so it can't be removed.",
+      'challenge.err.ends_in_past':
+          "The end date has passed. Change the dates first.",
+      'challenge.err.measure_locked':
+          "What it measures can't change once it has started or someone has joined.",
+      'challenge.err.start_locked':
+          "The start date can't change once the challenge has started.",
+      'challenge.err.not_started_cancel_instead':
+          "It hasn't started yet. Cancel it instead.",
       'phoneSteps.title': 'Count your steps with this phone',
       'audience.title': 'Who can see this',
       'audience.private': 'Only you',
@@ -4863,6 +4906,48 @@ class FFLocale extends ChangeNotifier {
       'logActivity.deleted': 'Shughuli imefutwa.',
       'logActivity.deleteFailed': 'Imeshindwa kufuta. Jaribu tena.',
       'run.delete': 'Futa mbio',
+      'challenge.phase.draft': "Rasimu",
+      'challenge.status.paused': "Imesitishwa",
+      'challenge.status.archived': "Imehifadhiwa",
+      'challenge.status.closed': "Imefungwa mapema",
+      'challenge.pausedNoJoin': "Challenge hii haipokei watu wapya kwa sasa.",
+      'challenge.draftNote':
+          "Hii ni rasimu. Hakuna anayeweza kuiona au kujiunga hadi uichapishe.",
+      'challenge.pausedNote':
+          "Imesitishwa: hakuna mtu mpya anayeweza kujiunga au kuiona. Walioshajiunga wanaendelea na mazoezi yao bado yanahesabiwa.",
+      'challenge.saveDraft': "Hifadhi kama rasimu",
+      'challenge.saveChanges': "Hifadhi mabadiliko",
+      'challenge.edit': "Hariri",
+      'challenge.editTitle': "Hariri challenge",
+      'challenge.publish': "Chapisha",
+      'challenge.publishBody':
+          "Walengwa wataweza kuiona na kujiunga mara moja.",
+      'challenge.pause': "Sitisha",
+      'challenge.pauseBody':
+          "Hakuna mtu mpya atakayeweza kujiunga hadi uiendeleze. Walioshajiunga wanaendelea. Tarehe na zawadi hazibadiliki.",
+      'challenge.resume': "Endeleza",
+      'challenge.closeNow': "Funga sasa",
+      'challenge.closeBody':
+          "Challenge inaisha leo. Matokeo ya hadi sasa yanabaki.",
+      'challenge.archive': "Hifadhi kwenye kumbukumbu",
+      'challenge.archiveBody':
+          "Inawekwa kando. Walioshiriki wanabaki nayo kwenye historia yao.",
+      'challenge.deleteDraft': "Futa rasimu",
+      'challenge.actions': "Vitendo vya challenge",
+      'challenge.lockedNote':
+          "Aina, mfumo na (ikishaanza) tarehe ya kuanza haviwezi kubadilika sasa, ili maendeleo ya mtu yasibadilike maana.",
+      'challenge.saveFailed':
+          "Imeshindikana kuhifadhi mabadiliko. Hakikisha lengo linaendana na tarehe kisha ujaribu tena.",
+      'challenge.err.reward_locked':
+          "Mtu ameshapata mojawapo ya zawadi hizi, kwa hiyo haiwezi kuondolewa.",
+      'challenge.err.ends_in_past':
+          "Tarehe ya mwisho imepita. Badilisha tarehe kwanza.",
+      'challenge.err.measure_locked':
+          "Kinachopimwa hakiwezi kubadilika baada ya kuanza au mtu kujiunga.",
+      'challenge.err.start_locked':
+          "Tarehe ya kuanza haiwezi kubadilika baada ya challenge kuanza.",
+      'challenge.err.not_started_cancel_instead':
+          "Bado haijaanza. Ighairi badala yake.",
       'phoneSteps.title': 'Hesabu hatua zako kwa simu hii',
       'audience.title': 'Nani anaweza kuona',
       'audience.private': 'Wewe tu',

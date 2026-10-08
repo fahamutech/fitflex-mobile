@@ -55,6 +55,8 @@ String challengeCreatorLabel(BuildContext context, Challenge c) {
 /// "Ends in 4 days", "Ends today", "Starts in 2 days", "Ended 3 Oct".
 String challengeWhen(BuildContext context, Challenge c, DateTime now) {
   switch (c.phase) {
+    case ChallengePhase.draft:
+      return context.tr('challenge.phase.draft');
     case ChallengePhase.upcoming:
       final d = c.daysUntilStart(now);
       return d <= 1
