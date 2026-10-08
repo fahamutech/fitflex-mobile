@@ -17,6 +17,7 @@ import 'shared/inbox/inbox_controller.dart';
 import 'shared/push_service.dart';
 import 'shared/design_tokens.dart';
 import 'shared/i18n.dart';
+import 'shared/promotion_events.dart';
 import 'shared/push_banner.dart';
 import 'shared/theme_notifier.dart';
 import 'firebase_options.dart';
@@ -49,6 +50,7 @@ Future<void> main() async {
     await initPhoneStepsBackground();
   }
   final api = ApiClient();
+  PromotionEvents.install(api);
   final auth = AuthState(api, push: mockAuth ? null : PushService(api));
   await auth.hydrate();
 

@@ -242,6 +242,7 @@ class _MemberTrainersTabState extends State<MemberTrainersTab> {
                 itemBuilder: (context, i) => TrainerGridCard(
                   key: Key('trainer-featured-${featured[i].id}'),
                   trainer: featured[i],
+                  placement: _discovery?.placement,
                 ),
               ),
             ),
@@ -291,6 +292,7 @@ class _MemberTrainersTabState extends State<MemberTrainersTab> {
                     (context, i) => TrainerGridCard(
                       key: Key('trainer-card-${trainers[i].id}'),
                       trainer: trainers[i],
+                      placement: _discovery?.placement,
                     ),
                     childCount: trainers.length,
                   ),
