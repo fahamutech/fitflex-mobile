@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../../app_scope.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
+import '../../shared/discovery_loader.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
+import '../../shared/promotion.dart';
 import 'member_shell.dart';
 import 'widgets/trainer_card.dart';
 
@@ -18,6 +21,35 @@ class _MemberTrainersTabState extends State<MemberTrainersTab> {
   final TextEditingController _searchCtrl = TextEditingController();
   String _search = '';
   String _filter = 'all';
+
+  /// The server's ranked answer for the current search and specialty: a
+  /// Featured section and the results below it. Null until it arrives, or if
+  /// the server cannot be reached, in which case the plain list is filtered on
+  /// the phone as before.
+  DiscoverResult<TrainerProfile>? _discovery;
+  bool _discoveryLoading = false;
+  late final DiscoveryLoader<TrainerProfile> _loader =
+      DiscoveryLoader<TrainerProfile>(
+        fetch: (q) async => DiscoverResult.fromJson<TrainerProfile>(
+          await AppScope.of(context).api.discover('trainers', q),
+          TrainerProfile.fromJson,
+        ),
+        onResult: (r) {
+          if (mounted) setState(() => _discovery = r);
+        },
+        onLoading: (v) {
+          if (mounted) setState(() => _discoveryLoading = v);
+        },
+      );
+
+  void _requestDiscovery({bool immediate = false}) => _loader.request(
+    DiscoverQuery(
+      q: _search,
+      filters: {if (_filter != 'all') 'specialty': _norm(_filter)},
+      limit: 50,
+    ),
+    immediate: immediate,
+  );
 
   static const _specialtyFilters = [
     'all',
@@ -36,18 +68,25 @@ class _MemberTrainersTabState extends State<MemberTrainersTab> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.findAncestorStateOfType<MemberShellState>()?.refreshTrainers();
+      _requestDiscovery(immediate: true);
     });
   }
 
   @override
   void dispose() {
+    _loader.dispose();
     _searchCtrl.dispose();
     super.dispose();
   }
 
   String _norm(Object? v) => v?.toString().trim().toLowerCase() ?? '';
 
-  List<TrainerProfile> _filtered(List<TrainerProfile> trainers) {
+  /// The server's ranked list when there is one (search and specialty already
+  /// applied), otherwise the full list filtered here.
+  List<TrainerProfile> _filtered(List<TrainerProfile> trainers) =>
+      _discovery?.items ?? _plainFiltered(trainers);
+
+  List<TrainerProfile> _plainFiltered(List<TrainerProfile> trainers) {
     var result = trainers;
     final q = _norm(_search);
     if (q.isNotEmpty) {
@@ -89,6 +128,7 @@ class _MemberTrainersTabState extends State<MemberTrainersTab> {
   Widget build(BuildContext context) {
     final data = MemberDataScope.of(context);
     final trainers = _filtered(data.trainers);
+    final featured = _discovery?.featured ?? const <TrainerProfile>[];
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
@@ -125,6 +165,7 @@ class _MemberTrainersTabState extends State<MemberTrainersTab> {
                                 onPressed: () {
                                   _searchCtrl.clear();
                                   setState(() => _search = '');
+                                  _requestDiscovery(immediate: true);
                                 },
                               ),
                         border: OutlineInputBorder(
@@ -133,8 +174,13 @@ class _MemberTrainersTabState extends State<MemberTrainersTab> {
                           ),
                         ),
                       ),
-                      onChanged: (v) => setState(() => _search = v),
+                      onChanged: (v) {
+                        setState(() => _search = v);
+                        _requestDiscovery();
+                      },
                     ),
+                    if (_discoveryLoading)
+                      const LinearProgressIndicator(minHeight: 2),
                     const SizedBox(height: 12),
                     // ── Specialty filter chips ─────────────────────────
                     SizedBox(
@@ -150,8 +196,10 @@ class _MemberTrainersTabState extends State<MemberTrainersTab> {
                               ? context.tr('member.all')
                               : _specialtyFilters[i];
                           return GestureDetector(
-                            onTap: () =>
-                                setState(() => _filter = _specialtyFilters[i]),
+                            onTap: () {
+                              setState(() => _filter = _specialtyFilters[i]);
+                              _requestDiscovery(immediate: true);
+                            },
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 100),
                               padding: const EdgeInsets.symmetric(
@@ -185,6 +233,19 @@ class _MemberTrainersTabState extends State<MemberTrainersTab> {
               ),
             ),
 
+            // ── Featured (labelled; only trainers that match this search) ──
+            SliverToBoxAdapter(
+              child: FFFeaturedStrip(
+                title: context.tr('member.featuredTrainers'),
+                count: featured.length,
+                height: 270,
+                itemBuilder: (context, i) => TrainerGridCard(
+                  key: Key('trainer-featured-${featured[i].id}'),
+                  trainer: featured[i],
+                ),
+              ),
+            ),
+
             // ── Section header with shade separation ─────────────────────
             SliverToBoxAdapter(
               child: Container(
@@ -214,7 +275,7 @@ class _MemberTrainersTabState extends State<MemberTrainersTab> {
             ),
 
             // ── Grid ──────────────────────────────────────────────────────
-            if (trainers.isEmpty)
+            if (trainers.isEmpty && featured.isEmpty)
               SliverFillRemaining(
                 hasScrollBody: false,
                 child: Padding(
@@ -222,7 +283,7 @@ class _MemberTrainersTabState extends State<MemberTrainersTab> {
                   child: FFEmptyState(title: context.tr('member.noData')),
                 ),
               )
-            else
+            else if (trainers.isNotEmpty)
               SliverPadding(
                 padding: const EdgeInsets.all(FFTokens.spacingLg),
                 sliver: SliverGrid(

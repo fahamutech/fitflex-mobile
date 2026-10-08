@@ -4,6 +4,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 import 'models.dart';
+import 'promotion.dart';
 
 class ApiException implements Exception {
   final int status;
@@ -652,6 +653,14 @@ class ApiClient {
       await _request('GET', '/subscription-tiers');
 
   Future<List<dynamic>> listGyms() async => await _request('GET', '/gyms');
+
+  /// Ranked discovery with promotion: `/discover/gyms`, `/discover/trainers` or
+  /// `/discover/products`. A promotion only ever moves a result that already
+  /// matches the search and filters; the answer says which cards are promoted.
+  Future<Map<String, dynamic>> discover(String kind, DiscoverQuery query) async {
+    final out = await _request('GET', '/discover/$kind${query.toQueryString()}');
+    return Map<String, dynamic>.from(out as Map);
+  }
 
   Future<List<dynamic>> getSpecialties() async =>
       await _request('GET', '/settings/specialties');
