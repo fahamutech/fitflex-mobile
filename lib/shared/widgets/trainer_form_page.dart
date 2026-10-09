@@ -6,10 +6,12 @@ import '../components/components.dart';
 import '../design_tokens.dart';
 import '../i18n.dart';
 import '../models.dart';
-import 'ff_photo_picker_field.dart';
+import 'ff_photo_gallery_field.dart';
 import 'social_links.dart';
 
-/// Fullscreen form for adding/editing a trainer (used by gym owners).
+/// Fullscreen trainer form. A gym owner uses it to add a trainer; a trainer
+/// uses it ([selfEdit]) to edit their own professional details — a trainer's
+/// profile is only ever edited by the trainer.
 /// Returns the payload Map on save, or null on cancel.
 class TrainerFormPage extends StatefulWidget {
   final Map<String, dynamic>? initial;
@@ -17,12 +19,17 @@ class TrainerFormPage extends StatefulWidget {
   final List<String> defaultGymIds;
   final bool requireInitialPin;
 
+  /// The trainer editing their own profile: only the fields they may change
+  /// are sent (never email or status).
+  final bool selfEdit;
+
   const TrainerFormPage({
     super.key,
     this.initial,
     required this.title,
     this.defaultGymIds = const [],
     this.requireInitialPin = false,
+    this.selfEdit = false,
   });
 
   @override
@@ -38,7 +45,10 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
   late final TextEditingController _bio;
   late final TextEditingController _initialPin;
   late final Map<String, TextEditingController> _socials;
-  String _photo = '';
+
+  /// Photos, first = profile picture.
+  List<String> _photos = [];
+  String? _photoError;
   String _currency = 'TZS';
   List<String> _selectedSpecialties = [];
   List<Map<String, dynamic>> _availability = [];
@@ -61,7 +71,14 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
     _socials = SocialHandleFields.controllersFor(
       SocialLinks.fromJson(t['socialLinks']),
     );
-    _photo = t['photoUrl']?.toString() ?? '';
+    final images =
+        (t['images'] as List?)
+            ?.whereType<String>()
+            .where((s) => s.isNotEmpty)
+            .toList() ??
+        const <String>[];
+    final photo = t['photoUrl']?.toString() ?? '';
+    _photos = images.isNotEmpty ? [...images] : (photo.isEmpty ? [] : [photo]);
     _currency = t['sessionRateCurrency']?.toString() ?? 'TZS';
     _selectedSpecialties =
         (t['specialties'] as List?)?.whereType<String>().toList() ?? [];
@@ -117,24 +134,33 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
       : context.tr('onboarding.required');
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
+    final valid = _formKey.currentState!.validate();
+    // A trainer's own profile always keeps at least one photo.
+    final needsPhoto = widget.selfEdit && _photos.isEmpty;
+    setState(
+      () => _photoError = needsPhoto ? context.tr('photos.required') : null,
+    );
+    if (!valid || needsPhoto) return;
     setState(() => _busy = true);
     try {
       final payload = <String, dynamic>{
         'displayName': _name.text.trim(),
-        'email': _email.text.trim(),
         'phone': _phone.text.trim(),
         'specialties': _selectedSpecialties,
         'hourlyRateTzs': num.tryParse(_rate.text.trim()) ?? 0,
         'sessionRateCurrency': _currency,
         'bio': _bio.text.trim(),
-        'photoUrl': _photo,
+        'images': _photos,
+        'photoUrl': _photos.isEmpty ? '' : _photos.first,
         'availability': _availability,
         'socialLinks': SocialHandleFields.valuesOf(_socials),
-        if (widget.requireInitialPin) 'initialPin': _initialPin.text.trim(),
-        if (widget.initial == null && widget.defaultGymIds.isNotEmpty)
-          'gymIds': widget.defaultGymIds,
-        'status': 'active',
+        if (!widget.selfEdit) ...{
+          'email': _email.text.trim(),
+          if (widget.requireInitialPin) 'initialPin': _initialPin.text.trim(),
+          if (widget.initial == null && widget.defaultGymIds.isNotEmpty)
+            'gymIds': widget.defaultGymIds,
+          'status': 'active',
+        },
       };
       Navigator.of(context).pop(payload);
     } finally {
@@ -172,14 +198,27 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
           child: ListView(
             padding: const EdgeInsets.all(FFTokens.spacingLg),
             children: [
-              // Photo
-              Center(
-                child: FFPhotoPickerField(
-                  value: _photo.isEmpty ? null : _photo,
-                  onChanged: (url) => setState(() => _photo = url),
-                  size: 96,
-                ),
+              // Photos (first = profile picture)
+              FFFieldLabel(context.tr('photos.title')),
+              FFPhotoGalleryField(
+                values: _photos,
+                onChanged: (v) => setState(() {
+                  _photos = v;
+                  _photoError = null;
+                }),
               ),
+              if (_photoError != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    _photoError!,
+                    key: const Key('trainerFormPhotoError'),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
               const SizedBox(height: 16),
               // Name
               FFTextField(
@@ -189,16 +228,18 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
                 validator: _required,
               ),
               const SizedBox(height: FFTokens.spacingSm),
-              // Email
-              FFTextField(
-                key: const Key('trainerFormEmail'),
-                controller: _email,
-                keyboardType: TextInputType.emailAddress,
-                enabled: !isEdit,
-                label: context.tr('ownerReg.trainerEmail'),
-                validator: isEdit ? null : _emailValidator,
-              ),
-              const SizedBox(height: FFTokens.spacingSm),
+              // Email — part of the account, not of a trainer's own edit.
+              if (!widget.selfEdit) ...[
+                FFTextField(
+                  key: const Key('trainerFormEmail'),
+                  controller: _email,
+                  keyboardType: TextInputType.emailAddress,
+                  enabled: !isEdit,
+                  label: context.tr('ownerReg.trainerEmail'),
+                  validator: isEdit ? null : _emailValidator,
+                ),
+                const SizedBox(height: FFTokens.spacingSm),
+              ],
               if (widget.requireInitialPin) ...[
                 FFTextField(
                   key: const Key('trainerFormPin'),
@@ -238,7 +279,7 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
                   ),
                   const SizedBox(width: FFTokens.spacingSm),
                   FFDropdownField<String>(
-                    width: 100,
+                    width: 116,
                     value: _currency,
                     label: 'Currency',
                     items: const [
@@ -268,22 +309,29 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
-                  children: _availableSpecialties.map((s) {
-                    final selected = _selectedSpecialties.contains(s);
-                    return FilterChip(
-                      label: Text(s),
-                      selected: selected,
-                      onSelected: (v) => setState(() {
-                        if (v) {
-                          _selectedSpecialties = [..._selectedSpecialties, s];
-                        } else {
-                          _selectedSpecialties = _selectedSpecialties
-                              .where((x) => x != s)
-                              .toList();
-                        }
-                      }),
-                    );
-                  }).toList(),
+                  // Include the trainer's own specialties even if they are no
+                  // longer on the list, so saving never drops them silently.
+                  children: {..._availableSpecialties, ..._selectedSpecialties}
+                      .map((s) {
+                        final selected = _selectedSpecialties.contains(s);
+                        return FilterChip(
+                          label: Text(s),
+                          selected: selected,
+                          onSelected: (v) => setState(() {
+                            if (v) {
+                              _selectedSpecialties = [
+                                ..._selectedSpecialties,
+                                s,
+                              ];
+                            } else {
+                              _selectedSpecialties = _selectedSpecialties
+                                  .where((x) => x != s)
+                                  .toList();
+                            }
+                          }),
+                        );
+                      })
+                      .toList(),
                 ),
               const SizedBox(height: FFTokens.spacingSm),
               // Bio
@@ -404,6 +452,7 @@ Future<Map<String, dynamic>?> openTrainerForm(
   required String title,
   List<String> defaultGymIds = const [],
   bool requireInitialPin = false,
+  bool selfEdit = false,
 }) {
   return Navigator.of(context).push<Map<String, dynamic>>(
     MaterialPageRoute(
@@ -413,6 +462,7 @@ Future<Map<String, dynamic>?> openTrainerForm(
         title: title,
         defaultGymIds: defaultGymIds,
         requireInitialPin: requireInitialPin,
+        selfEdit: selfEdit,
       ),
     ),
   );

@@ -12,6 +12,7 @@ import '../../shared/models.dart';
 import '../../shared/widgets/persona_switcher.dart';
 import '../../shared/widgets/ff_photo_picker_field.dart';
 import '../../shared/widgets/social_links.dart';
+import '../../shared/widgets/terms_agreement.dart';
 
 class TrainerRegistrationPage extends StatefulWidget {
   const TrainerRegistrationPage({super.key});
@@ -59,11 +60,29 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
     super.dispose();
   }
 
+  final _termsKey = GlobalKey<TermsAgreementFieldState>();
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    // Terms: the role's terms must be agreed to, and put on record, first.
+    final terms = _termsKey.currentState;
+    if (terms == null || !terms.agreed) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.tr('terms.mustAgree'))));
+      return;
+    }
     setState(() => _busy = true);
     try {
       final api = AppScope.of(context).api;
+      if (!await terms.record()) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(context.tr('terms.loadFailed'))));
+        return;
+      }
+      if (!mounted) return;
       await api.trainerRegister({
         'displayName': _nameCtrl.text.trim(),
         'photoUrl': _photoUrl ?? '',
@@ -343,6 +362,8 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
         ),
         const SizedBox(height: 8),
         SocialHandleFields(controllers: _socials),
+        const SizedBox(height: 12),
+        TermsAgreementField(key: _termsKey),
       ],
     );
   }

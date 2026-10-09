@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../app_scope.dart';
 import '../../shared/api_client.dart';
+import '../../shared/api_error_message.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/formatters.dart';
@@ -147,6 +148,9 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
   Map<String, dynamic>? get _myProfile {
     if (_profile != null) return _profile;
     final email = AppScope.of(context).auth.user?['email']?.toString();
+    // No email on the account (phone sign-in) must not match a trainer whose
+    // email is also missing — that would be someone else's profile.
+    if (email == null || email.isEmpty) return null;
     return _trainers.where((t) => t['email']?.toString() == email).firstOrNull;
   }
 
@@ -204,15 +208,25 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
     }
   }
 
-  /// C8 — edit professional details (rate, specialties, bio, photo) via the
-  /// trainer profile endpoint.
+  /// C8 — edit professional details (photos, rate, specialties, bio, phone,
+  /// social handles, availability) via the trainer's own profile endpoint.
   Future<void> _editProfessionalProfile() async {
+    // The profile may not have loaded yet (slow network, or it was only just
+    // linked to this account): fetch it rather than doing nothing.
+    if (_myProfile == null) await _refreshProfile();
+    if (!mounted) return;
     final trainer = _myProfile;
-    if (trainer == null) return;
+    if (trainer == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr('trainer.profileNotLoaded'))),
+      );
+      return;
+    }
     final payload = await openTrainerForm(
       context,
       title: context.tr('trainer.editProfessional'),
       initial: trainer,
+      selfEdit: true,
     );
     if (payload == null || !mounted) return;
     try {
@@ -234,15 +248,21 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
       );
     } on ApiException catch (e) {
       if (!mounted) return;
-      final body = e.body;
-      final invalidSocial =
-          body is Map && body['error'] == 'invalid_social_handle';
+      final code = e.body is Map ? (e.body as Map)['error']?.toString() : null;
+      const known = {
+        'invalid_social_handle': 'social.invalidHandle',
+        'invalid_phone': 'trainer.error.invalidPhone',
+        'invalid_rate': 'trainer.error.invalidRate',
+        'too_many_images': 'trainer.error.tooManyPhotos',
+        'displayName_required': 'trainer.error.nameRequired',
+        'trainer_profile_not_found': 'trainer.profileNotLoaded',
+      };
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            context.tr(
-              invalidSocial ? 'social.invalidHandle' : 'owner.errorGeneric',
-            ),
+            known.containsKey(code)
+                ? context.tr(known[code]!)
+                : errorMessage(FFLocaleScope.of(context), e),
           ),
         ),
       );
@@ -515,8 +535,18 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
       key: const Key('trainer-tile-professional'),
       icon: Icons.workspace_premium_outlined,
       title: context.tr('trainer.editProfessional'),
+      subtitle: context.tr('trainer.editProfessionalHint'),
       onTap: _editProfessionalProfile,
     ),
+    // The trainer's social profiles, as members see them (tap to open).
+    if (!SocialLinks.fromJson(_myProfile?['socialLinks']).isEmpty)
+      Padding(
+        key: const Key('trainer-profile-socials'),
+        padding: const EdgeInsets.fromLTRB(4, 4, 4, 12),
+        child: SocialLinksRow(
+          links: SocialLinks.fromJson(_myProfile?['socialLinks']),
+        ),
+      ),
     FFActionTile(
       key: const Key('trainer-reviews'),
       icon: Icons.star_outline,

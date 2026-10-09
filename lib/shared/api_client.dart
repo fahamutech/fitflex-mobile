@@ -688,6 +688,21 @@ class ApiClient {
     return out is Map ? Map<String, dynamic>.from(out) : <String, dynamic>{};
   }
 
+  /// The signed-in role's terms (member: FitFlex Terms; partner: partner
+  /// agreement) and whether the current version is accepted. With [role] it
+  /// returns the text for a role the user is about to add.
+  Future<Map<String, dynamic>> myTerms({String? lang, String? role}) async =>
+      await _request(
+            'GET',
+            _withQuery('/me/terms', {'lang': ?lang, 'role': ?role}),
+          )
+          as Map<String, dynamic>;
+
+  /// Accept the current terms for the signed-in role.
+  Future<Map<String, dynamic>> acceptTerms(String version) async =>
+      await _request('POST', '/me/terms', body: {'version': version})
+          as Map<String, dynamic>;
+
   Future<List<dynamic>> getSpecialties() async =>
       await _request('GET', '/settings/specialties');
 
@@ -1817,11 +1832,6 @@ class ApiClient {
   Future<Map<String, dynamic>> ownerCreateTrainer(
     Map<String, dynamic> data,
   ) async => await _request('POST', '/owner/trainers', body: data);
-
-  Future<Map<String, dynamic>> ownerUpdateTrainer(
-    String trainerId,
-    Map<String, dynamic> data,
-  ) async => await _request('POST', '/owner/trainers/$trainerId', body: data);
 
   Future<void> ownerRemoveTrainer(String trainerId) async =>
       await _request('POST', '/owner/trainers/$trainerId/remove');

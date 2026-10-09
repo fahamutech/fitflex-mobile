@@ -197,6 +197,17 @@ class TrainerProfile {
   final List<TrainerAvailability> availability;
   final SocialLinks socialLinks;
 
+  /// The trainer's photo gallery (first = profile picture). Empty for
+  /// profiles that only ever had a single [photoUrl].
+  final List<String> images;
+
+  /// Every photo to show: the gallery, or just the profile picture.
+  List<String> get photos {
+    if (images.isNotEmpty) return images;
+    final p = photoUrl;
+    return p == null || p.isEmpty ? const [] : [p];
+  }
+
   /// Set when this trainer is promoted for what the customer is looking at.
   final PromotionTag? promotion;
 
@@ -221,6 +232,7 @@ class TrainerProfile {
     this.bookable = true,
     this.availability = const [],
     this.socialLinks = const SocialLinks(),
+    this.images = const [],
     this.promotion,
   });
 
@@ -252,6 +264,12 @@ class TrainerProfile {
     bookable: json['bookable'] == null || _boolValue(json['bookable']),
     availability: _trainerAvailabilityFromJson(json['availability']),
     socialLinks: SocialLinks.fromJson(json['socialLinks']),
+    images:
+        (json['images'] as List?)
+            ?.whereType<String>()
+            .where((s) => s.isNotEmpty)
+            .toList() ??
+        const [],
     promotion: PromotionTag.fromJson(json['promotion']),
   );
 
@@ -277,6 +295,7 @@ class TrainerProfile {
     bookable: bookable,
     availability: availability,
     socialLinks: socialLinks,
+    images: images,
     promotion: promotion,
   );
 }
@@ -647,7 +666,9 @@ class PaymentRequest {
     productType: json['productType'] as String?,
     plan: json['plan'] as String?,
     gymId: json['gymId'] as String?,
-    gymName: json['gym'] is Map ? (json['gym'] as Map)['name'] as String? : null,
+    gymName: json['gym'] is Map
+        ? (json['gym'] as Map)['name'] as String?
+        : null,
     amountTzs: json['amountTzs'] as num? ?? 0,
     status: json['status'] as String? ?? 'pending',
     provider: json['provider'] as String? ?? '',
