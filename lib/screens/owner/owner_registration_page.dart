@@ -16,6 +16,7 @@ import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import '../../shared/widgets/location_picker.dart';
 import '../../shared/widgets/persona_switcher.dart';
+import '../../shared/widgets/terms_agreement.dart';
 
 class OwnerRegistrationPage extends StatefulWidget {
   const OwnerRegistrationPage({super.key});
@@ -134,11 +135,29 @@ class _OwnerRegistrationPageState extends State<OwnerRegistrationPage> {
     return (images, thumbnails);
   }
 
+  final _termsKey = GlobalKey<TermsAgreementFieldState>();
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    // Terms: the role's terms must be agreed to, and put on record, first.
+    final terms = _termsKey.currentState;
+    if (terms == null || !terms.agreed) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.tr('terms.mustAgree'))));
+      return;
+    }
     setState(() => _busy = true);
     try {
       final api = AppScope.of(context).api;
+      if (!await terms.record()) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(context.tr('terms.loadFailed'))));
+        return;
+      }
+      if (!mounted) return;
       // Convert local image paths to base64 data URIs
       final gymPayloads = <Map<String, dynamic>>[];
       for (final g in _gyms) {
@@ -389,6 +408,8 @@ class _OwnerRegistrationPageState extends State<OwnerRegistrationPage> {
           icon: const Icon(Icons.add),
           label: Text(context.tr('ownerReg.addGym')),
         ),
+        const SizedBox(height: 16),
+        TermsAgreementField(key: _termsKey),
       ],
     );
   }

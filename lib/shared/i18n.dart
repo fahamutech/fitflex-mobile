@@ -1240,16 +1240,20 @@ class FFLocale extends ChangeNotifier {
       'error.reason.paymentAlreadyPending':
           'you already have a payment waiting for approval for this',
       'error.reason.planNotOffered': 'this gym does not offer that plan',
-      'error.reason.gymNotAvailable': 'this gym is not taking subscriptions right now',
+      'error.reason.gymNotAvailable':
+          'this gym is not taking subscriptions right now',
       'error.reason.tierNotAvailable': 'this pass is not available right now',
       'pay.product.fitflexPass': 'FitFlex Pass',
       'pay.product.gymPlan': 'Gym plan',
       'pay.product.trainerSession': 'Trainer session',
       'pay.product.trainerPass': 'Trainer gym pass',
       'pay.product.shopOrder': 'Shop order',
-      'member.gymPlanPending': 'Your payment for a plan at this gym is waiting for approval.',
-      'member.gymPlansNote': 'These are this gym\'s own plans. They give access to this gym only and are separate from a FitFlex Pass.',
-      'member.passNoneAvailable': 'No pass is available right now. Please try again later.',
+      'member.gymPlanPending':
+          'Your payment for a plan at this gym is waiting for approval.',
+      'member.gymPlansNote':
+          'These are this gym\'s own plans. They give access to this gym only and are separate from a FitFlex Pass.',
+      'member.passNoneAvailable':
+          'No pass is available right now. Please try again later.',
       'error.reason.sessionStarted': 'this session has already started',
       'error.reason.bookingNotCancellable': 'this session can’t be cancelled',
       'error.reason.orderDispatched':
@@ -2145,6 +2149,35 @@ class FFLocale extends ChangeNotifier {
       'owner.registerMember': 'Register',
       'member.fullName': 'Full name',
       'owner.editTrainer': 'Edit trainer',
+      'owner.viewTrainer': 'Trainer profile',
+      'owner.trainerReadOnly':
+          'Only the trainer can change these details. You can remove the trainer from your gym.',
+      'owner.trainerSocial': 'Social media',
+      'trainer.editProfessionalHint':
+          'Photos, rate, specialties, bio, phone, social media and availability',
+      'trainer.profileNotLoaded':
+          'We could not open your trainer profile. Check your connection and try again.',
+      'trainer.error.invalidPhone': 'Enter a valid phone number.',
+      'trainer.error.invalidRate': 'Enter a valid session rate.',
+      'trainer.error.tooManyPhotos':
+          'Too many photos. Remove some and try again.',
+      'trainer.error.nameRequired': 'Enter your name.',
+      'terms.agreeRead': 'I have read and agree to these terms',
+      'terms.agreeContinue': 'Agree and continue',
+      'terms.loadFailed':
+          'We could not load the terms. Check your connection and try again.',
+      'terms.retry': 'Try again',
+      'terms.read': 'Read',
+      'terms.accepted': 'You agreed to the {title}',
+      'terms.agreeTo': 'I agree to the {title}',
+      'terms.mustAgree': 'Please read and agree to the terms to continue.',
+      'kyc.field.regionChoose': 'Choose a region',
+      'photos.title': 'Photos',
+      'photos.hint':
+          'Add up to {n} photos. Tap a photo to make it your profile picture.',
+      'photos.max': 'You can add up to {n} photos.',
+      'photos.profile': 'Profile',
+      'photos.required': 'Add at least one photo.',
       'owner.kycTitle': 'Payment & KYC details',
       'owner.paymentBank': 'Bank / FSP',
       'owner.paymentNumber': 'Payment number',
@@ -3900,6 +3933,35 @@ class FFLocale extends ChangeNotifier {
       'owner.registerMember': 'Sajili',
       'member.fullName': 'Jina kamili',
       'owner.editTrainer': 'Hariri trainer',
+      'owner.viewTrainer': 'Wasifu wa trainer',
+      'owner.trainerReadOnly':
+          'Ni trainer pekee anayeweza kubadilisha taarifa hizi. Unaweza kumwondoa trainer kwenye gym yako.',
+      'owner.trainerSocial': 'Mitandao ya kijamii',
+      'trainer.editProfessionalHint':
+          'Picha, bei, utaalamu, maelezo, simu, mitandao ya kijamii na muda wa kupatikana',
+      'trainer.profileNotLoaded':
+          'Hatukuweza kufungua wasifu wako wa trainer. Angalia mtandao wako kisha ujaribu tena.',
+      'trainer.error.invalidPhone': 'Weka namba sahihi ya simu.',
+      'trainer.error.invalidRate': 'Weka bei sahihi ya kipindi.',
+      'trainer.error.tooManyPhotos':
+          'Picha ni nyingi mno. Ondoa baadhi kisha ujaribu tena.',
+      'trainer.error.nameRequired': 'Weka jina lako.',
+      'terms.agreeRead': 'Nimesoma na ninakubali vigezo hivi',
+      'terms.agreeContinue': 'Kubali na uendelee',
+      'terms.loadFailed':
+          'Hatukuweza kupakia vigezo. Angalia mtandao wako kisha ujaribu tena.',
+      'terms.retry': 'Jaribu tena',
+      'terms.read': 'Soma',
+      'terms.accepted': 'Umekubali {title}',
+      'terms.agreeTo': 'Ninakubali {title}',
+      'terms.mustAgree': 'Tafadhali soma na ukubali vigezo ili kuendelea.',
+      'kyc.field.regionChoose': 'Chagua mkoa',
+      'photos.title': 'Picha',
+      'photos.hint':
+          'Ongeza hadi picha {n}. Gusa picha ili iwe picha yako ya wasifu.',
+      'photos.max': 'Unaweza kuongeza hadi picha {n}.',
+      'photos.profile': 'Wasifu',
+      'photos.required': 'Ongeza angalau picha moja.',
       'owner.kycTitle': 'Taarifa za malipo na KYC',
       'owner.paymentBank': 'Benki / FSP',
       'owner.paymentNumber': 'Namba ya malipo',
@@ -4702,9 +4764,12 @@ class FFLocale extends ChangeNotifier {
       'pay.product.trainerSession': 'Kipindi cha mkufunzi',
       'pay.product.trainerPass': 'Pasi ya mkufunzi ya gym',
       'pay.product.shopOrder': 'Oda ya duka',
-      'member.gymPlanPending': 'Malipo yako ya mpango katika gym hii yanasubiri idhini.',
-      'member.gymPlansNote': 'Hii ni mipango ya gym hii yenyewe. Inakupa ufikiaji wa gym hii pekee na haihusiani na FitFlex Pass.',
-      'member.passNoneAvailable': 'Hakuna pasi inayopatikana kwa sasa. Tafadhali jaribu tena baadaye.',
+      'member.gymPlanPending':
+          'Malipo yako ya mpango katika gym hii yanasubiri idhini.',
+      'member.gymPlansNote':
+          'Hii ni mipango ya gym hii yenyewe. Inakupa ufikiaji wa gym hii pekee na haihusiani na FitFlex Pass.',
+      'member.passNoneAvailable':
+          'Hakuna pasi inayopatikana kwa sasa. Tafadhali jaribu tena baadaye.',
       'error.reason.sessionStarted': 'kipindi hiki kimeshaanza',
       'error.reason.bookingNotCancellable': 'kipindi hiki hakiwezi kughairiwa',
       'error.reason.orderDispatched':

@@ -13,6 +13,7 @@ import '../../../shared/api_error_message.dart';
 import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
 import '../../../shared/i18n.dart';
+import '../../../shared/tanzania_regions.dart';
 import 'verification_models.dart';
 import 'verification_repository.dart';
 
@@ -220,7 +221,7 @@ class _AddressFields {
   }) => [
     _text(context, '${prefix}Line1', line1, required: required),
     _text(context, '${prefix}City', city, required: required),
-    _text(context, '${prefix}Region', region),
+    _RegionPicker(fieldKey: '${prefix}Region', controller: region),
   ];
 
   Map<String, dynamic> toJson() => {
@@ -234,6 +235,59 @@ class _AddressFields {
     line1.dispose();
     city.dispose();
     region.dispose();
+  }
+}
+
+/// Region as a list to pick from (the regions of Tanzania), kept in
+/// [controller] so the form saves it like any other field. A value typed
+/// before the list existed stays selectable until it is changed.
+class _RegionPicker extends StatefulWidget {
+  const _RegionPicker({required this.fieldKey, required this.controller});
+
+  final String fieldKey;
+  final TextEditingController controller;
+
+  @override
+  State<_RegionPicker> createState() => _RegionPickerState();
+}
+
+class _RegionPickerState extends State<_RegionPicker> {
+  late final String _typed = widget.controller.text.trim();
+  late String? _value =
+      matchTanzaniaRegion(_typed) ?? (_typed.isEmpty ? null : _typed);
+
+  @override
+  void initState() {
+    super.initState();
+    // Normalise "dar es salaam" → "Dar es Salaam" on the way in.
+    if (_value != null) widget.controller.text = _value!;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final legacy = _typed.isNotEmpty && matchTanzaniaRegion(_typed) == null;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
+      child: DropdownButtonFormField<String>(
+        key: Key('kyc-field-${widget.fieldKey}'),
+        initialValue: _value,
+        isExpanded: true,
+        decoration: InputDecoration(
+          labelText: context.tr('kyc.field.${widget.fieldKey}'),
+          border: const OutlineInputBorder(),
+        ),
+        hint: Text(context.tr('kyc.field.regionChoose')),
+        items: [
+          if (legacy) DropdownMenuItem(value: _typed, child: Text(_typed)),
+          for (final r in tanzaniaRegions)
+            DropdownMenuItem(value: r, child: Text(r)),
+        ],
+        onChanged: (v) => setState(() {
+          _value = v;
+          widget.controller.text = v ?? '';
+        }),
+      ),
+    );
   }
 }
 

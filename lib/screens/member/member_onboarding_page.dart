@@ -7,6 +7,7 @@ import '../../shared/components/theme_toggle_button.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import 'member_onboarding_controller.dart';
+import '../../shared/widgets/terms_agreement.dart';
 
 class MemberOnboardingPage extends StatefulWidget {
   const MemberOnboardingPage({super.key});
@@ -66,7 +67,24 @@ class _MemberOnboardingPageState extends State<MemberOnboardingPage> {
     super.dispose();
   }
 
-  void _submit() {
+  final _termsKey = GlobalKey<TermsAgreementFieldState>();
+
+  Future<void> _submit() async {
+    // Terms: agreed to, and on record, before the account is set up.
+    final terms = _termsKey.currentState;
+    if (terms == null || !terms.agreed) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.tr('terms.mustAgree'))));
+      return;
+    }
+    if (!await terms.record()) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.tr('terms.loadFailed'))));
+      return;
+    }
     _controller.submit(
       onSuccess: () {
         if (!mounted) return;
@@ -462,6 +480,8 @@ class _MemberOnboardingPageState extends State<MemberOnboardingPage> {
             ),
           ),
         ),
+        const SizedBox(height: 4),
+        TermsAgreementField(key: _termsKey),
       ],
     );
   }

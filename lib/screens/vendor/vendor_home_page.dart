@@ -12,6 +12,7 @@ import '../../shared/i18n.dart';
 import '../../shared/widgets/ff_photo_picker_field.dart';
 import '../../shared/widgets/invitations.dart';
 import '../../shared/widgets/persona_switcher.dart';
+import '../../shared/widgets/terms_agreement.dart';
 import '../pin_flows.dart';
 
 class VendorHomePage extends StatefulWidget {
@@ -54,7 +55,12 @@ class _VendorHomePageState extends State<VendorHomePage> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _refresh());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refresh();
+      // Vendors have no sign-up form of their own, so the vendor terms are
+      // asked here the first time (and again if a new version is published).
+      askToAgreeTerms(context, quiet: true);
+    });
   }
 
   Future<void> _refresh() async {
