@@ -851,7 +851,7 @@ class MembershipLineChartPainter extends CustomPainter {
       );
       textPainter.text = TextSpan(
         text: yVal.toInt().toString(),
-        style: TextStyle(color: labelColor, fontSize: 9),
+        style: TextStyle(color: labelColor, fontSize: 11),
       );
       textPainter.layout();
       textPainter.paint(
@@ -961,7 +961,7 @@ class MembershipLineChartPainter extends CustomPainter {
       final offset = getOffset(i, 0);
       textPainter.text = TextSpan(
         text: labels[i],
-        style: TextStyle(color: labelColor, fontSize: 8),
+        style: TextStyle(color: labelColor, fontSize: 11),
       );
       textPainter.layout();
       textPainter.paint(
