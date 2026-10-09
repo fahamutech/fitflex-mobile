@@ -2138,7 +2138,7 @@ class FFLocale extends ChangeNotifier {
       'owner.trainerUpdated': 'Trainer updated',
       'owner.noTrainersTitle': 'No trainers yet',
       'owner.noTrainersBody':
-          'Add your first trainer to manage their profile, specialties and sessions.',
+          'Add your first trainer. Trainers keep their own profile up to date.',
       'owner.errorEmailAlreadyInUse':
           'This email is already registered. Use a different email.',
       'owner.errorGeneric': 'Something went wrong. Please try again.',
@@ -3922,7 +3922,7 @@ class FFLocale extends ChangeNotifier {
       'owner.trainerUpdated': 'Taarifa za trainer zimesasishwa',
       'owner.noTrainersTitle': 'Bado hakuna ma-trainer',
       'owner.noTrainersBody':
-          'Ongeza trainer wako wa kwanza ili kusimamia wasifu, utaalamu na vipindi vyake.',
+          'Ongeza trainer wako wa kwanza. Ma-trainer husasisha wasifu wao wenyewe.',
       'owner.errorEmailAlreadyInUse':
           'Barua pepe hii tayari imesajiliwa. Tumia barua pepe nyingine.',
       'owner.errorGeneric': 'Hitilafu imetokea. Tafadhali jaribu tena.',
