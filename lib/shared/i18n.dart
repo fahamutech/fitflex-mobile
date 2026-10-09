@@ -1378,6 +1378,14 @@ class FFLocale extends ChangeNotifier {
       'vendor.settlementAccount': 'Settlement account',
       'vendor.logo': 'Logo',
       'vendor.banner': 'Banner',
+      'vendor.returnsPolicy': 'Returns policy (optional)',
+      'vendor.productCategories':
+          'Product categories (comma separated, optional)',
+      'kyc.vendorProfile.title': 'Business details',
+      'kyc.vendorProfile.hint':
+          'Add how buyers can reach you, what you sell, where you deliver and your returns policy. Nothing is published until you are approved.',
+      'kyc.vendorProfile.save': 'Save',
+      'kyc.vendorProfile.saved': 'Business details saved.',
       'vendor.publishProfile': 'Save and publish profile',
       'vendor.staffName': 'Staff name',
       'vendor.phone': 'Phone',
@@ -4812,6 +4820,14 @@ class FFLocale extends ChangeNotifier {
       'vendor.businessHours': 'Saa za kazi',
       'vendor.settlementAccount': 'Akaunti ya malipo',
       'vendor.logo': 'Nembo',
+      'vendor.returnsPolicy': 'Sera ya kurejesha bidhaa (si lazima)',
+      'vendor.productCategories':
+          'Aina za bidhaa (tenganisha kwa koma, si lazima)',
+      'kyc.vendorProfile.title': 'Taarifa za biashara',
+      'kyc.vendorProfile.hint':
+          'Weka jinsi wanunuzi wanavyoweza kukufikia, unachouza, unakopeleka bidhaa na sera yako ya kurejesha bidhaa. Hakuna kinachochapishwa hadi uidhinishwe.',
+      'kyc.vendorProfile.save': 'Hifadhi',
+      'kyc.vendorProfile.saved': 'Taarifa za biashara zimehifadhiwa.',
       'vendor.banner': 'Bango',
       'vendor.publishProfile': 'Hifadhi na chapisha wasifu',
       'vendor.staffName': 'Jina la mfanyakazi',

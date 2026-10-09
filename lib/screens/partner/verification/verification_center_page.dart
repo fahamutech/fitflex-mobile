@@ -143,6 +143,15 @@ class _VerificationCenterPageState extends State<VerificationCenterPage> {
     }
 
     final external = _externalHint(item);
+    if (external == 'kyc.hint.vendorProfile' && _isVendor()) {
+      final saved = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) => VendorKycProfilePage(api: _vendorApi()!),
+        ),
+      );
+      if (saved == true) await _load();
+      return;
+    }
     if (external != null) return _show(context.tr(external));
     final canEdit = item.requirementKey != null
         ? data.documentsEditable
@@ -178,6 +187,17 @@ class _VerificationCenterPageState extends State<VerificationCenterPage> {
       await _load();
     }
   }
+
+  bool _isVendor() =>
+      _vendorApi() != null &&
+      context
+              .getInheritedWidgetOfExactType<AppScope>()
+              ?.auth
+              .user?['userType'] ==
+          'vendor';
+
+  ApiClient? _vendorApi() =>
+      context.getInheritedWidgetOfExactType<AppScope>()?.api;
 
   /// Items kept on records the partner edits elsewhere in the app.
   String? _externalHint(KycItem item) => switch (item.key) {

@@ -1010,6 +1010,9 @@ class VendorProfileForm extends StatefulWidget {
 
 class _VendorProfileFormState extends State<VendorProfileForm> {
   late final Map<String, TextEditingController> _fields;
+  // Optional: not part of the all-fields-required check.
+  late final TextEditingController _productCategories;
+  late final TextEditingController _returnsPolicy;
   String? _logo;
   String? _banner;
 
@@ -1037,6 +1040,10 @@ class _VendorProfileFormState extends State<VendorProfileForm> {
       ])
         key: TextEditingController(text: value(key)),
     };
+    _productCategories = TextEditingController(
+      text: value('productCategories'),
+    );
+    _returnsPolicy = TextEditingController(text: value('returnsPolicy'));
     _logo = widget.profile['logo']?.toString();
     _banner = widget.profile['banner']?.toString();
   }
@@ -1046,6 +1053,8 @@ class _VendorProfileFormState extends State<VendorProfileForm> {
     for (final controller in _fields.values) {
       controller.dispose();
     }
+    _productCategories.dispose();
+    _returnsPolicy.dispose();
     super.dispose();
   }
 
@@ -1072,6 +1081,18 @@ class _VendorProfileFormState extends State<VendorProfileForm> {
       'settlementAccount': {
         'account': _fields['settlementAccount']!.text.trim(),
       },
+      ...(() {
+        final cats = _productCategories.text
+            .split(',')
+            .map((value) => value.trim())
+            .where((value) => value.isNotEmpty)
+            .toList();
+        final returns = _returnsPolicy.text.trim();
+        return {
+          if (cats.isNotEmpty) 'productCategories': cats,
+          if (returns.isNotEmpty) 'returnsPolicy': returns,
+        };
+      })(),
       'publish': true,
     });
   }
@@ -1137,6 +1158,22 @@ class _VendorProfileFormState extends State<VendorProfileForm> {
                   controller: entry.value,
                   decoration: InputDecoration(labelText: labels[entry.key]),
                 ),
+              TextField(
+                key: const Key('vendor-profile-productCategories'),
+                controller: _productCategories,
+                decoration: InputDecoration(
+                  labelText: context.tr('vendor.productCategories'),
+                ),
+              ),
+              TextField(
+                key: const Key('vendor-profile-returnsPolicy'),
+                controller: _returnsPolicy,
+                minLines: 2,
+                maxLines: 5,
+                decoration: InputDecoration(
+                  labelText: context.tr('vendor.returnsPolicy'),
+                ),
+              ),
               const SizedBox(height: FFTokens.spacingLg),
               SizedBox(
                 width: double.infinity,
