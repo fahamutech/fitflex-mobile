@@ -9,6 +9,7 @@ import '../../shared/design_tokens.dart';
 import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
+import '../../shared/payment_labels.dart';
 import 'member_shell.dart';
 
 class MemberPassesPage extends StatelessWidget {
@@ -45,6 +46,12 @@ class MemberPassesPage extends StatelessWidget {
     }
   }
 
+  /// The selected tier if it is still on sale, else the first one offered.
+  static String _effectiveTier(MemberData data) =>
+      data.passes.any((p) => p.id == data.selectedTier)
+      ? data.selectedTier
+      : data.passes.first.id;
+
   @override
   Widget build(BuildContext context) {
     final data = MemberDataScope.of(context);
@@ -55,7 +62,7 @@ class MemberPassesPage extends StatelessWidget {
           onPressed: () => context.go(AppRoutes.memberHome),
           icon: const Icon(Icons.arrow_back),
         ),
-        title: Text(context.tr('member.choosePlan')),
+        title: Text(context.tr('pay.product.fitflexPass')),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(28),
           child: Padding(
@@ -74,8 +81,10 @@ class MemberPassesPage extends StatelessWidget {
         padding: const EdgeInsets.all(FFTokens.spacingLg),
         children: [
           const SizedBox(height: 4),
-          if (data.pendingPayment != null)
-            _PendingBlockCard(pending: data.pendingPayment!)
+          // Only an open FitFlex Pass payment holds this screen: a pending
+          // gym plan or trainer session is a different product.
+          if (data.pendingPass != null)
+            _PendingBlockCard(pending: data.pendingPass!)
           else if (!data.passesLoaded)
             const Center(child: CircularProgressIndicator())
           else if (data.passes.isEmpty)
@@ -102,7 +111,7 @@ class MemberPassesPage extends StatelessWidget {
             ...data.passes.map(
               (p) => _SelectablePass(
                 pass: p,
-                selected: p.id == data.selectedTier,
+                selected: p.id == _effectiveTier(data),
                 gyms: data.gyms,
                 onTap: () => data.update((d) => d.selectedTier = p.id),
               ),
@@ -111,7 +120,11 @@ class MemberPassesPage extends StatelessWidget {
             FFAlert(message: context.tr('pass.note'), tone: FFAlertTone.info),
             const SizedBox(height: 16),
             FilledButton(
-              onPressed: () => context.go(AppRoutes.memberPayment),
+              onPressed: () {
+                // Never carry a stale or default tier into checkout.
+                data.update((d) => d.selectedTier = _effectiveTier(data));
+                context.go(AppRoutes.memberPayment);
+              },
               child: Text(context.tr('member.continuePayment')),
             ),
           ],
@@ -185,7 +198,7 @@ class _PendingBlockCard extends StatelessWidget {
           const SizedBox(height: 12),
           _DetailRow(
             label: context.tr('member.paymentPendingPlan'),
-            value: pending.tier.toUpperCase(),
+            value: paymentProductLabel(context, pending),
           ),
           _DetailRow(
             label: context.tr('member.paymentPendingAmount'),

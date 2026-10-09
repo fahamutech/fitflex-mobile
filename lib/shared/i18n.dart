@@ -1237,6 +1237,19 @@ class FFLocale extends ChangeNotifier {
           'Session cancelled. The member has been told.',
       'error.reason.cancelWindowPassed':
           'less than 24 hours to go, so this session can no longer be cancelled',
+      'error.reason.paymentAlreadyPending':
+          'you already have a payment waiting for approval for this',
+      'error.reason.planNotOffered': 'this gym does not offer that plan',
+      'error.reason.gymNotAvailable': 'this gym is not taking subscriptions right now',
+      'error.reason.tierNotAvailable': 'this pass is not available right now',
+      'pay.product.fitflexPass': 'FitFlex Pass',
+      'pay.product.gymPlan': 'Gym plan',
+      'pay.product.trainerSession': 'Trainer session',
+      'pay.product.trainerPass': 'Trainer gym pass',
+      'pay.product.shopOrder': 'Shop order',
+      'member.gymPlanPending': 'Your payment for a plan at this gym is waiting for approval.',
+      'member.gymPlansNote': 'These are this gym\'s own plans. They give access to this gym only and are separate from a FitFlex Pass.',
+      'member.passNoneAvailable': 'No pass is available right now. Please try again later.',
       'error.reason.sessionStarted': 'this session has already started',
       'error.reason.bookingNotCancellable': 'this session can’t be cancelled',
       'error.reason.orderDispatched':
@@ -4679,6 +4692,19 @@ class FFLocale extends ChangeNotifier {
           'Kipindi kimeghairiwa. Mwanachama amejulishwa.',
       'error.reason.cancelWindowPassed':
           'zimebaki chini ya saa 24, hivyo kipindi hiki hakiwezi kughairiwa tena',
+      'error.reason.paymentAlreadyPending':
+          'tayari una malipo yanayosubiri idhini kwa hili',
+      'error.reason.planNotOffered': 'gym hii haitoi mpango huo',
+      'error.reason.gymNotAvailable': 'gym hii haipokei wanachama kwa sasa',
+      'error.reason.tierNotAvailable': 'pasi hii haipatikani kwa sasa',
+      'pay.product.fitflexPass': 'FitFlex Pass',
+      'pay.product.gymPlan': 'Mpango wa gym',
+      'pay.product.trainerSession': 'Kipindi cha mkufunzi',
+      'pay.product.trainerPass': 'Pasi ya mkufunzi ya gym',
+      'pay.product.shopOrder': 'Oda ya duka',
+      'member.gymPlanPending': 'Malipo yako ya mpango katika gym hii yanasubiri idhini.',
+      'member.gymPlansNote': 'Hii ni mipango ya gym hii yenyewe. Inakupa ufikiaji wa gym hii pekee na haihusiani na FitFlex Pass.',
+      'member.passNoneAvailable': 'Hakuna pasi inayopatikana kwa sasa. Tafadhali jaribu tena baadaye.',
       'error.reason.sessionStarted': 'kipindi hiki kimeshaanza',
       'error.reason.bookingNotCancellable': 'kipindi hiki hakiwezi kughairiwa',
       'error.reason.orderDispatched':

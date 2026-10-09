@@ -100,6 +100,34 @@ class MemberData extends ChangeNotifier {
   Subscription? get subscription => me?.subscription;
   PaymentRequest? get pendingPayment => me?.pendingPayment;
 
+  /// An open FitFlex Pass payment. A pending gym plan, trainer session or
+  /// order is a different product and does not count.
+  PaymentRequest? get pendingPass => _openOf('FITFLEX_PASS');
+
+  /// An open plan payment for this gym only.
+  PaymentRequest? pendingGymPlan(String gymId) {
+    for (final p in me?.pendingPayments ?? const <PaymentRequest>[]) {
+      if (p.productType == 'GYM_SUBSCRIPTION' && p.gymId == gymId) return p;
+    }
+    return null;
+  }
+
+  PaymentRequest? _openOf(String productType) {
+    for (final p in me?.pendingPayments ?? const <PaymentRequest>[]) {
+      if (p.productType == productType) return p;
+    }
+    // An older server sends no list: its single pending payment is a pass if it has a tier.
+    final single = me?.pendingPayment;
+    if ((me?.pendingPayments.isEmpty ?? true) &&
+        productType == 'FITFLEX_PASS' &&
+        single != null &&
+        single.productType == null &&
+        single.tier.isNotEmpty) {
+      return single;
+    }
+    return null;
+  }
+
   void update(void Function(MemberData d) fn) {
     fn(this);
     notifyListeners();

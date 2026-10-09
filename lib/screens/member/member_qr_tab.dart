@@ -4,6 +4,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../app_scope.dart';
 import '../../router.dart';
+import '../../shared/payment_labels.dart';
 import '../../shared/models.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
@@ -213,7 +214,7 @@ class _PendingPaymentCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            '${pending.tier.toUpperCase()} - ${formatCurrency(pending.amountTzs)}',
+            '${paymentProductLabel(context, pending)} - ${formatCurrency(pending.amountTzs)}',
             style: TextStyle(
               color: Theme.of(context).textTheme.bodySmall?.color,
               fontSize: 14,

@@ -283,9 +283,9 @@ class _MemberGymDetailPageState extends State<MemberGymDetailPage> {
 
           // 13. Actions
           const SizedBox(height: 16),
-          if (data.pendingPayment != null) ...[
+          if (data.pendingGymPlan(gym.id) != null) ...[
             FFAlert(
-              message: context.tr('home.qr.pendingBody'),
+              message: context.tr('member.gymPlanPending'),
               tone: FFAlertTone.warning,
             ),
             const SizedBox(height: 8),
@@ -297,7 +297,8 @@ class _MemberGymDetailPageState extends State<MemberGymDetailPage> {
                 flex: 2,
                 child: FilledButton(
                   key: const Key('gym-subscribe-button'),
-                  onPressed: data.pendingPayment != null
+                  // Only this gym's own open plan payment holds the button.
+                  onPressed: data.pendingGymPlan(gym.id) != null
                       ? null
                       : () => _openPlans(gym),
                   child: Text(context.tr('member.subscribe')),
