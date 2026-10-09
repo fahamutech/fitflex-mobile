@@ -29,3 +29,4 @@ export 'ff_snack.dart';
 export 'ff_sheet.dart';
 export 'ff_dialog.dart';
 export 'ff_skeleton.dart';
+export 'ff_error_state.dart';
