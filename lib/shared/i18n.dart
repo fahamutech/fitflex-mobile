@@ -3271,6 +3271,8 @@ class FFLocale extends ChangeNotifier {
       'kyc.field.documentNumber': 'Document number',
       'kyc.field.issuedOn': 'Issue date',
       'kyc.field.expiresOn': 'Expiry date',
+      'kyc.field.optionalSuffix': '(optional)',
+      'kyc.doc.numberShared': 'Taken from the details you already gave.',
       'kyc.field.provider': 'Mobile money network',
       'kyc.field.bank': 'Bank',
       'kyc.field.accountName': 'Account name',
@@ -6683,6 +6685,9 @@ class FFLocale extends ChangeNotifier {
       'kyc.field.documentNumber': 'Namba ya hati',
       'kyc.field.issuedOn': 'Tarehe ya kutolewa',
       'kyc.field.expiresOn': 'Tarehe ya kuisha',
+      'kyc.field.optionalSuffix': '(si lazima)',
+      'kyc.doc.numberShared':
+          'Imechukuliwa kutoka kwa maelezo uliyokwisha toa.',
       'kyc.field.provider': 'Mtandao wa simu',
       'kyc.field.bank': 'Benki',
       'kyc.field.accountName': 'Jina la akaunti',

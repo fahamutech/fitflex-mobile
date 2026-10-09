@@ -760,6 +760,202 @@ void main() {
     });
   });
 
+  group('shared numbers and optional expiry', () {
+    Map<String, dynamic> vendorWith({String? reg, String? tin}) => {
+      'partnerType': 'vendor',
+      'case': {
+        'id': 'kyc_v',
+        'status': 'draft',
+        'registrationNumber': ?reg,
+        'tin': ?tin,
+      },
+      'people': [],
+      'documents': [],
+      'settlementAccounts': [],
+      'checklist': {'sections': [], 'missing': []},
+    };
+
+    Future<_FakeRepo> openDoc(
+      WidgetTester tester,
+      Map<String, dynamic> json,
+      String key,
+    ) async {
+      _tall(tester);
+      final repo = _FakeRepo(json);
+      await tester.pumpWidget(
+        _app(
+          DocumentPage(
+            repository: repo,
+            overview: KycOverview.fromJson(json),
+            requirementKey: key,
+            pickDocument: (_) async => null,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      return repo;
+    }
+
+    testWidgets('the ID number given on the person is prefilled and sent', (
+      tester,
+    ) async {
+      final repo = await openDoc(tester, _trainer(), 'trainer_id');
+      expect(
+        find.widgetWithText(TextFormField, '19950505111110000221'),
+        findsOneWidget,
+      );
+      expect(find.text('ID number'), findsOneWidget); // not marked required
+      expect(find.text('Taken from the details you already gave.'), findsOne);
+      await tester.tap(find.byKey(const Key('kyc-form-save')));
+      await tester.pumpAndSettle();
+      expect(repo.calls, ['document:trainer_id']);
+      expect(repo.bodies.single['documentNumber'], '19950505111110000221');
+    });
+
+    testWidgets('registration number and TIN from the business are prefilled', (
+      tester,
+    ) async {
+      final json = vendorWith(reg: 'BRELA-77', tin: '123-456-789');
+      await openDoc(tester, json, 'business_registration');
+      expect(find.widgetWithText(TextFormField, 'BRELA-77'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      await openDoc(tester, json, 'tin_certificate');
+      expect(find.widgetWithText(TextFormField, '123-456-789'), findsOneWidget);
+    });
+
+    testWidgets('a vendor representative ID uses the representative number', (
+      tester,
+    ) async {
+      final json = vendorWith();
+      json['people'] = [
+        {'role': 'authorised_representative', 'idNumber': 'REP-1'},
+      ];
+      await openDoc(tester, json, 'representative_id');
+      expect(find.widgetWithText(TextFormField, 'REP-1'), findsOneWidget);
+    });
+
+    testWidgets('with nothing given anywhere the number is still required', (
+      tester,
+    ) async {
+      final repo = await openDoc(tester, vendorWith(), 'tin_certificate');
+      expect(find.text('TIN *'), findsOneWidget);
+      expect(
+        find.text('Taken from the details you already gave.'),
+        findsNothing,
+      );
+      await tester.tap(find.byKey(const Key('kyc-form-save')));
+      await tester.pumpAndSettle();
+      expect(find.text('Required'), findsOneWidget);
+      expect(repo.calls, isEmpty);
+    });
+
+    testWidgets('a licence saves without an expiry date, which is optional', (
+      tester,
+    ) async {
+      final json = vendorWith();
+      final repo = await openDoc(tester, json, 'business_licence');
+      expect(find.text('Expiry date (optional)'), findsOneWidget);
+      await tester.enterText(
+        find.byKey(const Key('kyc-field-issuingAuthority')),
+        'TFRA',
+      );
+      await tester.enterText(
+        find.byKey(const Key('kyc-field-licenceNumber')),
+        'L-1',
+      );
+      await tester.tap(find.byKey(const Key('kyc-form-save')));
+      await tester.pumpAndSettle();
+      expect(repo.calls, ['document:business_licence']);
+      expect(repo.bodies.single['expiresOn'], isNull);
+    });
+
+    testWidgets('certification: issue date stays required; no expiry needed', (
+      tester,
+    ) async {
+      final json = _trainer();
+      (json['documents'] as List).clear();
+      final repo = await openDoc(tester, json, 'certification');
+      expect(find.text('Issue date *'), findsOneWidget);
+      await tester.enterText(
+        find.byKey(const Key('kyc-field-certificationBody')),
+        'ACE',
+      );
+      await tester.enterText(
+        find.byKey(const Key('kyc-field-certificateNumber')),
+        'C1',
+      );
+      await tester.tap(find.byKey(const Key('kyc-form-save')));
+      await tester.pumpAndSettle();
+      expect(find.text('Required'), findsOneWidget); // only the issue date
+      expect(repo.calls, isEmpty);
+    });
+
+    testWidgets('an expiry before the issue date is refused', (tester) async {
+      final json = _trainer();
+      final doc = (json['documents'] as List).last as Map<String, dynamic>;
+      doc['issuedOn'] = '2026-05-01';
+      doc['expiresOn'] = '2026-04-01';
+      final repo = await openDoc(tester, json, 'certification');
+      await tester.tap(find.byKey(const Key('kyc-form-save')));
+      await tester.pumpAndSettle();
+      expect(repo.calls, isEmpty);
+      expect(
+        find.text('The expiry date must be after the issue date.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets(
+      'the person form shows an ID number that came from a document',
+      (tester) async {
+        _tall(tester);
+        final json = _trainer();
+        (json['people'] as List).first['idNumber'] = 'FROM-DOC-9';
+        await tester.pumpWidget(
+          _app(
+            PersonFormPage(
+              repository: _FakeRepo(json),
+              overview: KycOverview.fromJson(json),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          find.widgetWithText(TextFormField, 'FROM-DOC-9'),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets('the business form shows numbers that came from documents', (
+      tester,
+    ) async {
+      _tall(tester);
+      final json = vendorWith(reg: 'BRELA-77', tin: '123-456-789');
+      await tester.pumpWidget(
+        _app(
+          BusinessFormPage(
+            repository: _FakeRepo(json),
+            overview: KycOverview.fromJson(json),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(TextFormField, 'BRELA-77'), findsOneWidget);
+      expect(find.widgetWithText(TextFormField, '123-456-789'), findsOneWidget);
+    });
+
+    test('the new strings exist in English and Swahili', () {
+      final en = FFLocale()..set(const Locale('en'));
+      final sw = FFLocale()..set(const Locale('sw'));
+      for (final k in ['kyc.field.optionalSuffix', 'kyc.doc.numberShared']) {
+        expect(en.t(k), isNot(k));
+        expect(sw.t(k), isNot(k));
+        expect(sw.t(k), isNot(en.t(k)));
+      }
+    });
+  });
+
   group('strings', () {
     test('every verification string exists in English and Swahili', () {
       final dir = Directory('lib/screens/partner/verification');

@@ -153,11 +153,13 @@ class _DateField extends StatelessWidget {
     required this.value,
     required this.onChanged,
     this.required = false,
+    this.optionalHint = false,
   });
   final String fieldKey;
   final String? value;
   final ValueChanged<String?> onChanged;
   final bool required;
+  final bool optionalHint;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -186,7 +188,11 @@ class _DateField extends StatelessWidget {
         child: InputDecorator(
           decoration: InputDecoration(
             labelText:
-                context.tr('kyc.field.$fieldKey') + (required ? ' *' : ''),
+                context.tr('kyc.field.$fieldKey') +
+                (required ? ' *' : '') +
+                (optionalHint
+                    ? ' ${context.tr('kyc.field.optionalSuffix')}'
+                    : ''),
             border: const OutlineInputBorder(),
             errorText: state.errorText,
             suffixIcon: const Icon(Icons.calendar_today_outlined),
@@ -572,8 +578,14 @@ class _DocumentPageState extends State<DocumentPage> {
   );
   // A reviewed document starts over: its details aren't carried into the new one.
   late final bool _fresh = _doc == null || _doc.status != 'pending';
+  // The ID, registration and TIN numbers are shared with the identity and
+  // business forms: the server fills whichever was not given first.
+  late final String? _shared = _sharedNumber();
+  late final String? _ownNumber = _fresh ? null : _doc?.documentNumber;
+  late final bool _prefilled =
+      (_ownNumber ?? '').trim().isEmpty && _shared != null;
   late final _number = TextEditingController(
-    text: _fresh ? null : _doc?.documentNumber,
+    text: (_ownNumber ?? '').trim().isEmpty ? _shared : _ownNumber,
   );
   late final _issuer = TextEditingController(
     text: _fresh ? null : _doc?.issuer,
@@ -590,6 +602,18 @@ class _DocumentPageState extends State<DocumentPage> {
     _number.dispose();
     _issuer.dispose();
     super.dispose();
+  }
+
+  String? _sharedNumber() {
+    final o = widget.overview;
+    final value = switch (widget.requirementKey) {
+      'owner_id' || 'trainer_id' || 'representative_id' =>
+        o.personFor(personRoleFor(o.partnerType))?.idNumber,
+      'business_registration' => o.kycCase?.registrationNumber,
+      'tin_certificate' => o.kycCase?.tin,
+      _ => null,
+    };
+    return (value ?? '').trim().isEmpty ? null : value!.trim();
   }
 
   KycDocument? get _current => _overview.currentDocument(widget.requirementKey);
@@ -620,6 +644,12 @@ class _DocumentPageState extends State<DocumentPage> {
 
   Future<void> _save() async {
     if (!_form.currentState!.validate()) return;
+    if (_spec.fields.contains('expiresOn') &&
+        _issuedOn != null &&
+        _expiresOn != null &&
+        _expiresOn!.compareTo(_issuedOn!) <= 0) {
+      return _snack(context, context.tr('kyc.error.dates'));
+    }
     setState(() => _busy = true);
     try {
       final updated = await widget.repository
@@ -686,7 +716,8 @@ class _DocumentPageState extends State<DocumentPage> {
             context,
             _numberLabel(widget.requirementKey),
             _number,
-            required: true,
+            required: _shared == null,
+            hintKey: _prefilled ? 'kyc.doc.numberShared' : null,
           ),
         if (_spec.fields.contains('issuedOn'))
           _DateField(
@@ -699,7 +730,8 @@ class _DocumentPageState extends State<DocumentPage> {
           _DateField(
             fieldKey: 'expiresOn',
             value: _expiresOn,
-            required: true,
+            required: false,
+            optionalHint: true,
             onChanged: (v) => setState(() => _expiresOn = v),
           ),
         FFSectionTitle(context.tr('kyc.doc.file')),
