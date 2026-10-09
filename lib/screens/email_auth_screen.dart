@@ -266,6 +266,7 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
+          tooltip: context.tr('a11y.back'),
           icon: const Icon(Icons.arrow_back),
           onPressed: _busy
               ? null
@@ -316,6 +317,9 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
                     children: [
                       PinInputRow(pin: _pin, obscure: _obscurePin),
                       IconButton(
+                        tooltip: _obscurePin
+                            ? context.tr('a11y.showPin')
+                            : context.tr('a11y.hidePin'),
                         icon: Icon(
                           _obscurePin ? Icons.visibility : Icons.visibility_off,
                           color: Theme.of(context).textTheme.bodySmall?.color,

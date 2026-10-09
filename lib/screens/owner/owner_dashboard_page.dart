@@ -58,6 +58,7 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
         title: Text(context.tr('owner.dashboard')),
         actions: [
           IconButton(
+            tooltip: context.tr('a11y.refresh'),
             icon: const Icon(Icons.refresh),
             onPressed: _loadDashboard,
           ),

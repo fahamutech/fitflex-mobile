@@ -185,6 +185,7 @@ class _SignUpScreenState extends State<SignUpScreen>
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
+          tooltip: context.tr('a11y.back'),
           icon: const Icon(Icons.arrow_back),
           onPressed: loading
               ? null

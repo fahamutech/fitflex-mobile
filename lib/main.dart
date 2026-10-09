@@ -238,8 +238,15 @@ class _FitFlexAppState extends State<FitFlexApp> {
                   GlobalCupertinoLocalizations.delegate,
                 ],
                 routerConfig: _router,
-                builder: (context, child) =>
-                    RecoveryBannerHost(child: child ?? const SizedBox.shrink()),
+                // Respect the system font size, but cap it so layouts built
+                // for normal text do not break at the largest settings.
+                builder: (context, child) => MediaQuery.withClampedTextScaling(
+                  minScaleFactor: 1.0,
+                  maxScaleFactor: 1.3,
+                  child: RecoveryBannerHost(
+                    child: child ?? const SizedBox.shrink(),
+                  ),
+                ),
               );
             },
           ),

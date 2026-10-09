@@ -584,6 +584,7 @@ class _PeopleTabState extends State<PeopleTab> {
               prefixIcon: const Icon(Icons.search),
               hintText: context.tr('community.searchHint'),
               suffixIcon: IconButton(
+                tooltip: context.tr('a11y.search'),
                 icon: const Icon(Icons.arrow_forward),
                 onPressed: _find,
               ),

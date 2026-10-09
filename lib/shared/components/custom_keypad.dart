@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../design_tokens.dart';
+import '../i18n.dart';
 
 class CustomKeypad extends StatelessWidget {
   const CustomKeypad({
@@ -22,6 +23,7 @@ class CustomKeypad extends StatelessWidget {
     Widget child,
     VoidCallback? onTap, {
     Color? bgColor,
+    String? semanticLabel,
   }) {
     final borderCol = bgColor != null
         ? Colors.transparent
@@ -36,9 +38,14 @@ class CustomKeypad extends StatelessWidget {
             side: BorderSide(color: borderCol),
           ),
           clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: isLoading ? null : onTap,
-            child: Center(child: child),
+          child: Semantics(
+            button: true,
+            label: semanticLabel,
+            excludeSemantics: semanticLabel != null,
+            child: InkWell(
+              onTap: isLoading ? null : onTap,
+              child: Center(child: child),
+            ),
           ),
         ),
       ),
@@ -105,6 +112,7 @@ class CustomKeypad extends StatelessWidget {
                   size: FFTokens.iconLg,
                 ),
                 onDelete,
+                semanticLabel: context.tr('a11y.delete'),
               ),
               _buildDigitKey(context, 0),
               _buildKey(

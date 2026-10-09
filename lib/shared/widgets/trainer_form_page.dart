@@ -149,6 +149,7 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
       appBar: AppBar(
         title: Text(widget.title),
         leading: IconButton(
+          tooltip: context.tr('common.close'),
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.of(context).pop(),
         ),

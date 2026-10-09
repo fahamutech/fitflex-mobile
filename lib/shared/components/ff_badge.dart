@@ -82,9 +82,16 @@ class FFBadge extends StatelessWidget {
             ),
             const SizedBox(width: FFTokens.spacingXs + 2),
           ],
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(color: fg),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              softWrap: false,
+              style: Theme.of(
+                context,
+              ).textTheme.labelMedium?.copyWith(color: fg),
+            ),
           ),
         ],
       ),

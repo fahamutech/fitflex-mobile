@@ -93,6 +93,7 @@ class _MemberGymDetailPageState extends State<MemberGymDetailPage> {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
+          tooltip: context.tr('a11y.back'),
           onPressed: () => context.go(AppRoutes.memberGyms),
           icon: const Icon(Icons.arrow_back),
         ),
@@ -506,6 +507,7 @@ class _GymHero extends StatelessWidget {
                   top: 0,
                   bottom: 0,
                   child: IconButton.filled(
+                    tooltip: context.tr('a11y.previous'),
                     key: const Key('gym-photo-previous'),
                     onPressed: currentIndex == 0
                         ? null
@@ -521,6 +523,7 @@ class _GymHero extends StatelessWidget {
                   top: 0,
                   bottom: 0,
                   child: IconButton.filled(
+                    tooltip: context.tr('a11y.next'),
                     key: const Key('gym-photo-next'),
                     onPressed: currentIndex == gym.images.length - 1
                         ? null
