@@ -98,7 +98,7 @@ class EnquiryThread extends StatelessWidget {
                       Text(
                         _when(m.at),
                         style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 11,
                           color:
                               (m.from == me ? Colors.white : scheme.onSurface)
                                   .withValues(alpha: .7),

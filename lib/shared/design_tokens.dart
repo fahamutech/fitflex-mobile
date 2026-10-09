@@ -1,17 +1,28 @@
 import 'package:flutter/material.dart';
 
-/// FitFlex design tokens — keep in sync with `fitflex-portal/app/globals.css`.
+/// FitFlex design tokens — mirror `fitflex-portal/app/globals.css`.
+///
+/// Brand ramp: the portal ramp (brand-25…950) is canonical. 400–500 are the
+/// bright "energy" greens (dark-surface accents, charts); 600+ are AA-safe with
+/// white (white on brand-600 = 5.7:1).
+/// Legacy mobile names are kept and now map one portal step up so existing
+/// call sites keep their contrast: brand500 = portal 600, brand600 = portal
+/// 700, brand700 = portal 800, brand800 = portal 900.
 class FFTokens {
   FFTokens._();
 
   // ── Brand scale (maps to --color-brand-*) ──
-  static const Color brand50 = Color(0xFFE7F4EC);
-  static const Color brand100 = Color(0xFFC4E3CF);
-  static const Color brand200 = Color(0xFF9ED1AF);
-  static const Color brand500 = Color(0xFF1F7A3A);
-  static const Color brand600 = Color(0xFF1A6B32);
-  static const Color brand700 = Color(0xFF155A2A);
-  static const Color brand800 = Color(0xFF104921);
+  static const Color brand50 = Color(0xFFEDFDF3);
+  static const Color brand100 = Color(0xFFD3FAE5);
+  static const Color brand200 = Color(0xFFAAF4CF);
+  static const Color brand300 = Color(0xFF75E7B3);
+  static const Color brand400 = Color(0xFF3DD98E);
+  // Portal-parity names for the bright greens.
+  static const Color brandBright = Color(0xFF17B26A); // portal brand-500
+  static const Color brand500 = Color(0xFF067647); // portal brand-600
+  static const Color brand600 = Color(0xFF085D3A); // portal brand-700
+  static const Color brand700 = Color(0xFF074D31); // portal brand-800
+  static const Color brand800 = Color(0xFF053321); // portal brand-900
 
   // Legacy aliases
   static const Color brand = brand500;
@@ -19,25 +30,36 @@ class FFTokens {
   static const Color brandLight = brand50;
 
   // ── Semantic colors ──
-  static const Color accent = Color(0xFFFF9800);
+  static const Color accent = Color(0xFFEAAA08); // gold: fills/graphics only
+  static const Color accent50 = Color(0xFFFEFDF0);
+  static const Color accent700 = Color(0xFF854A0E);
+
+  static const Color info50 = Color(0xFFEFF8FF);
+  static const Color info200 = Color(0xFFB2DDFF);
+  static const Color info600 = Color(0xFF1570EF);
+  static const Color info700 = Color(0xFF175CD3);
 
   static const Color error50 = Color(0xFFFEF3F2);
   static const Color error200 = Color(0xFFFECDCA);
   static const Color error500 = Color(0xFFDC2626);
   static const Color error600 = Color(0xFFD92D20);
   static const Color error700 = Color(0xFFB42318);
+
+  /// Error foreground on dark surfaces (>= 4.5:1 on slate-900/950).
+  static const Color errorOnDark = Color(0xFFF97066);
   static const Color danger = error500;
 
-  static const Color success50 = Color(0xFFECFDF3);
-  static const Color success200 = Color(0xFFABEFC6);
-  static const Color success500 = Color(0xFF16A34A);
-  static const Color success600 = Color(0xFF099250);
-  static const Color success700 = Color(0xFF067647);
+  // Success is teal-leaning so it is distinct from the brand green.
+  static const Color success50 = Color(0xFFF0FDF9);
+  static const Color success200 = Color(0xFF99F6E0);
+  static const Color success500 = Color(0xFF0E9384);
+  static const Color success600 = Color(0xFF107569);
+  static const Color success700 = Color(0xFF125D56);
   static const Color success = success500;
 
   static const Color warning50 = Color(0xFFFFFBEB);
   static const Color warning200 = Color(0xFFFEDF89);
-  static const Color warning500 = Color(0xFFFF9800);
+  static const Color warning500 = Color(0xFFF79009);
   static const Color warning700 = Color(0xFFB54708);
 
   // ── Foreground / text ── (dark-mode values)
@@ -46,7 +68,7 @@ class FFTokens {
   static const Color fgTertiary = Color(0xFFAAB4C4);
   static const Color fgQuaternary = Color(0xFF94A3B8);
   static const Color fgDisabled = Color(0xFF55677A);
-  static const Color fgBrand = Color(0xFF00B67A);
+  static const Color fgBrand = Color(0xFF17B26A);
 
   // Legacy aliases
   static const Color text = fgPrimary;
@@ -60,6 +82,10 @@ class FFTokens {
   // Legacy aliases
   static const Color surface = bgPrimary;
   static const Color surface2 = bgSecondary;
+
+  // Form-control boundaries, >= 3:1 against their surface (WCAG 1.4.11).
+  static const Color inputBorderLight = Color(0xFF858D9D);
+  static const Color inputBorderDark = Color(0xFF64748B);
 
   // ── Borders ── (dark-mode values)
   static const Color borderPrimary = Color(0xFF1E293B);
@@ -147,7 +173,7 @@ class FFTokens {
   static const Color darkBorder = Color(0xFF1E293B);
 
   // ── Vibrant brand green (dark-mode CTA + selection state) ──
-  static const Color brandVibrant = Color(0xFF00B67A);
+  static const Color brandVibrant = Color(0xFF17B26A);
 
   // ── On-dark text ──
   static const Color darkFgPrimary = Color(0xFFF1F5F9); // slate-100
@@ -155,8 +181,8 @@ class FFTokens {
   static const Color darkFgMuted = Color(0xFF94A3B8); // slate-400
 
   // ── Role-card accent icon colors ──
-  static const Color iconAccentGreen = Color(0xFF00B67A);
-  static const Color accentOrange = Color(0xFFFF9800);
+  static const Color iconAccentGreen = Color(0xFF17B26A);
+  static const Color accentOrange = Color(0xFFF79009);
   static const Color accentIndigo = Color(0xFF6366F1);
 }
 
@@ -183,8 +209,8 @@ ThemeData buildDarkTheme() {
       surfaceContainerLow: Color(0xFF0F1E2E),
       outlineVariant: Color(0xFF1E293B),
       outline: bord,
-      error: FFTokens.danger,
-      onError: Colors.white,
+      error: FFTokens.errorOnDark,
+      onError: Colors.black,
     ),
     // ── Text ──────────────────────────────────────────────────────────────────
     textTheme: const TextTheme(
@@ -385,11 +411,11 @@ ThemeData buildDarkTheme() {
       prefixIconColor: FFTokens.darkFgMuted,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(FFTokens.radiusMd),
-        borderSide: const BorderSide(color: bord),
+        borderSide: const BorderSide(color: FFTokens.inputBorderDark),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(FFTokens.radiusMd),
-        borderSide: const BorderSide(color: bord),
+        borderSide: const BorderSide(color: FFTokens.inputBorderDark),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(FFTokens.radiusMd),
@@ -397,11 +423,11 @@ ThemeData buildDarkTheme() {
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(FFTokens.radiusMd),
-        borderSide: const BorderSide(color: FFTokens.danger),
+        borderSide: const BorderSide(color: FFTokens.errorOnDark),
       ),
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(FFTokens.radiusMd),
-        borderSide: const BorderSide(color: FFTokens.danger, width: 2),
+        borderSide: const BorderSide(color: FFTokens.errorOnDark, width: 2),
       ),
     ),
     // ── Misc ──────────────────────────────────────────────────────────────────
@@ -499,8 +525,7 @@ ThemeData buildTheme() {
   const bg = Color(0xFFEEF2F7);
   const surface = Colors.white;
   const onSurface = Color(0xFF0F172A);
-  // Deep emerald keeps contrast on white.
-  const primary = Color(0xFF009366);
+  const primary = FFTokens.brand500; // #067647, 5.7:1 on white
   const onPrimary = Colors.white;
   const bord = Color(0xFFE2E8F0);
   const muted = Color(0xFF64748B);
@@ -721,11 +746,11 @@ ThemeData buildTheme() {
       prefixIconColor: muted,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(FFTokens.radiusMd),
-        borderSide: const BorderSide(color: bord),
+        borderSide: const BorderSide(color: FFTokens.inputBorderLight),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(FFTokens.radiusMd),
-        borderSide: const BorderSide(color: bord),
+        borderSide: const BorderSide(color: FFTokens.inputBorderLight),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(FFTokens.radiusMd),

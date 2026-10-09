@@ -443,7 +443,7 @@ class _SlotTile extends StatelessWidget {
                     slot.memberName!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 10, color: fg),
+                    style: TextStyle(fontSize: 11, color: fg),
                   ),
               ],
             ),
