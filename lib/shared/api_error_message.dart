@@ -106,6 +106,12 @@ String? _knownReason(FFLocale locale, String reason) {
     'order_already_delivered': 'error.reason.orderDispatched',
     'order_cancelled': 'error.reason.orderCancelled',
     'refund_already_requested': 'error.reason.refundAlreadyRequested',
+    // Pass and gym-plan purchases.
+    'payment_already_pending': 'error.reason.paymentAlreadyPending',
+    'plan_not_offered': 'error.reason.planNotOffered',
+    'gym_not_available': 'error.reason.gymNotAvailable',
+    'tier_not_available': 'error.reason.tierNotAvailable',
+    'invalid_tier': 'error.reason.tierNotAvailable',
     // Accounts.
     'email_already_used': 'error.reason.emailAlreadyUsed',
     'invalid_credentials': 'error.reason.invalidCredentials',

@@ -59,7 +59,7 @@ class _GymPlansSheetState extends State<GymPlansSheet> {
 
   Future<void> _subscribe() async {
     final plan = _selectedPlan;
-    if (plan == null) return;
+    if (plan == null || _busy) return;
     setState(() {
       _busy = true;
       _error = null;
@@ -106,6 +106,11 @@ class _GymPlansSheetState extends State<GymPlansSheet> {
             ),
             const SizedBox(height: 4),
             Text(widget.gym.name, style: Theme.of(context).textTheme.bodySmall),
+            const SizedBox(height: 4),
+            Text(
+              context.tr('member.gymPlansNote'),
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
             const SizedBox(height: 14),
             if (plans.isEmpty)
               FFEmptyState(title: context.tr('member.noGymPlans'))

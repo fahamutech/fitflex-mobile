@@ -604,6 +604,15 @@ class PaymentRequest {
   final String memberId;
   final String subscriptionId;
   final String tier;
+
+  /// What the request buys: FITFLEX_PASS, GYM_SUBSCRIPTION, TRAINER_SERVICE,
+  /// TRAINER_GYM_PASS or SHOP_ORDER (null from an older server).
+  final String? productType;
+
+  /// Daily / weekly / monthly for a gym plan.
+  final String? plan;
+  final String? gymId;
+  final String? gymName;
   final num amountTzs;
   final String status;
   final String provider;
@@ -617,6 +626,10 @@ class PaymentRequest {
     required this.memberId,
     required this.subscriptionId,
     required this.tier,
+    this.productType,
+    this.plan,
+    this.gymId,
+    this.gymName,
     required this.amountTzs,
     required this.status,
     required this.provider,
@@ -631,6 +644,10 @@ class PaymentRequest {
     memberId: json['memberId'] as String? ?? '',
     subscriptionId: json['subscriptionId'] as String? ?? '',
     tier: json['tier'] as String? ?? '',
+    productType: json['productType'] as String?,
+    plan: json['plan'] as String?,
+    gymId: json['gymId'] as String?,
+    gymName: json['gym'] is Map ? (json['gym'] as Map)['name'] as String? : null,
     amountTzs: json['amountTzs'] as num? ?? 0,
     status: json['status'] as String? ?? 'pending',
     provider: json['provider'] as String? ?? '',
@@ -723,6 +740,9 @@ class MemberMeResponse {
   final MemberSummary user;
   final Subscription? subscription;
   final PaymentRequest? pendingPayment;
+
+  /// Every open payment, each labelled by product (pass, gym plan, trainer session, ...).
+  final List<PaymentRequest> pendingPayments;
   final int visitsUsed;
   final int? visitCap;
 
@@ -730,6 +750,7 @@ class MemberMeResponse {
     required this.user,
     this.subscription,
     this.pendingPayment,
+    this.pendingPayments = const [],
     required this.visitsUsed,
     this.visitCap,
   });
@@ -746,6 +767,10 @@ class MemberMeResponse {
             json['pendingPayment'] as Map<String, dynamic>,
           )
         : null,
+    pendingPayments: [
+      for (final p in (json['pendingPayments'] as List? ?? const []))
+        if (p is Map<String, dynamic>) PaymentRequest.fromJson(p),
+    ],
     visitsUsed: (json['visitsUsed'] as num?)?.toInt() ?? 0,
     visitCap: (json['visitCap'] as num?)?.toInt(),
   );
