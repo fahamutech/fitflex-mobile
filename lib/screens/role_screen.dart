@@ -65,6 +65,7 @@ class _RoleScreenState extends State<RoleScreen>
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
+          tooltip: context.tr('a11y.back'),
           icon: const Icon(Icons.arrow_back),
           onPressed: () =>
               context.canPop() ? context.pop() : context.go(AppRoutes.auth),

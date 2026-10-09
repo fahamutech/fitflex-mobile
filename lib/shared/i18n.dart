@@ -38,6 +38,10 @@ class FFLocale extends ChangeNotifier {
       'common.errorTitle': 'Something went wrong',
       'common.errorBody':
           'We could not load this. Check your connection and try again.',
+      'a11y.search': 'Search',
+      'a11y.showPin': 'Show PIN',
+      'a11y.hidePin': 'Hide PIN',
+      'a11y.delete': 'Delete',
       'a11y.back': 'Back',
       'a11y.showPassword': 'Show password',
       'a11y.hidePassword': 'Hide password',
@@ -3473,6 +3477,10 @@ class FFLocale extends ChangeNotifier {
       'common.errorTitle': 'Hitilafu imetokea',
       'common.errorBody':
           'Hatukuweza kupakia hili. Angalia mtandao wako kisha jaribu tena.',
+      'a11y.search': 'Tafuta',
+      'a11y.showPin': 'Onyesha PIN',
+      'a11y.hidePin': 'Ficha PIN',
+      'a11y.delete': 'Futa',
       'a11y.back': 'Rudi',
       'a11y.showPassword': 'Onyesha nenosiri',
       'a11y.hidePassword': 'Ficha nenosiri',

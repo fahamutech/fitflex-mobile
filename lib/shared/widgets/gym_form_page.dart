@@ -452,6 +452,7 @@ class _GymFormPageState extends State<GymFormPage> {
                   : context.tr('owner.addGym')),
         ),
         leading: IconButton(
+          tooltip: context.tr('common.close'),
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.of(context).pop(),
         ),

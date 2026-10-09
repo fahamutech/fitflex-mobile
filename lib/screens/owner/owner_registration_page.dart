@@ -227,6 +227,7 @@ class _OwnerRegistrationPageState extends State<OwnerRegistrationPage> {
       appBar: AppBar(
         title: Text(context.tr('ownerReg.title')),
         leading: IconButton(
+          tooltip: context.tr('a11y.back'),
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
             if (_step > 0) {
@@ -455,6 +456,7 @@ class _GymCardWidgetState extends State<_GymCardWidget> {
                 ),
                 if (widget.canRemove)
                   IconButton(
+                    tooltip: context.tr('common.close'),
                     icon: const Icon(Icons.close, size: FFTokens.iconMd),
                     onPressed: widget.onRemove,
                   ),
@@ -718,6 +720,7 @@ class _TrainerSearchDialogState extends State<_TrainerSearchDialog> {
       appBar: AppBar(
         title: Text(context.tr('ownerReg.trainersLabel')),
         leading: IconButton(
+          tooltip: context.tr('common.close'),
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.of(context).pop(),
         ),

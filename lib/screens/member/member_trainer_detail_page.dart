@@ -229,6 +229,7 @@ class _MemberTrainerDetailPageState extends State<MemberTrainerDetailPage> {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
+          tooltip: context.tr('a11y.back'),
           key: const Key('trainer-detail-back'),
           onPressed: () => context.go(AppRoutes.memberTrainers),
           icon: const Icon(Icons.arrow_back),

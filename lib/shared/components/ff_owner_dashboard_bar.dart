@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../design_tokens.dart';
+import '../i18n.dart';
 import 'theme_toggle_button.dart';
 import '../inbox/inbox_pages.dart';
 
@@ -56,6 +57,7 @@ class FFOwnerDashboardBar extends StatelessWidget
       automaticallyImplyLeading: false,
       leading: showBackButton
           ? IconButton(
+              tooltip: context.tr('a11y.back'),
               icon: const Icon(Icons.arrow_back),
               onPressed: () => Navigator.of(context).maybePop(),
             )
@@ -128,18 +130,24 @@ class FFOwnerDashboardBar extends StatelessWidget
         const ThemeToggleButton(),
         const SizedBox(width: 4),
         // Avatar
-        GestureDetector(
-          key: const Key('owner-profile-button'),
+        Semantics(
+          button: true,
+          label: context.tr('owner.profile'),
+          excludeSemantics: true,
           onTap: onAvatarTap,
-          child: CircleAvatar(
-            radius: 16,
-            backgroundColor: FFTokens.brand500,
-            child: Text(
-              initials,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 11,
+          child: GestureDetector(
+            key: const Key('owner-profile-button'),
+            onTap: onAvatarTap,
+            child: CircleAvatar(
+              radius: 16,
+              backgroundColor: FFTokens.brand500,
+              child: Text(
+                initials,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 11,
+                ),
               ),
             ),
           ),

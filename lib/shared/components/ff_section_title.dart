@@ -15,11 +15,14 @@ class FFSectionTitle extends StatelessWidget {
         top: FFTokens.spacingMd,
         bottom: FFTokens.spacingSm + 2,
       ),
-      child: Text(
-        text,
-        style: Theme.of(
-          context,
-        ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+      child: Semantics(
+        header: true,
+        child: Text(
+          text,
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+        ),
       ),
     );
   }

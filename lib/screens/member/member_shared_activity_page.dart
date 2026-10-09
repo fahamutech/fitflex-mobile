@@ -233,6 +233,7 @@ class _MemberSharedActivityPageState extends State<MemberSharedActivityPage> {
                           ),
                         ),
                         IconButton(
+                          tooltip: context.tr('a11y.send'),
                           key: const Key('comment-send'),
                           onPressed: _sending ? null : _send,
                           icon: const Icon(Icons.send),

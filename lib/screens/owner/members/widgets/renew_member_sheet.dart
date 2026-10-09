@@ -85,6 +85,7 @@ class _RenewMemberSheetState extends State<_RenewMemberSheet> {
                     ),
                   ),
                   IconButton(
+                    tooltip: context.tr('common.close'),
                     icon: const Icon(Icons.close),
                     onPressed: () => Navigator.pop(context),
                   ),
