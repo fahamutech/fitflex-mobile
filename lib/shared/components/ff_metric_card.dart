@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../design_tokens.dart';
+import '../tone_theme.dart';
 import 'ff_card.dart';
 
 /// Trend direction for metric cards.
@@ -93,19 +94,13 @@ class _TrendBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (Color bg, Color fg, String arrow) = switch (direction) {
-      FFTrendDirection.up => (
-        FFTokens.success50,
-        FFTokens.success700,
-        '\u2191',
-      ),
-      FFTrendDirection.down => (FFTokens.error50, FFTokens.error700, '\u2193'),
-      FFTrendDirection.neutral => (
-        FFTokens.bgTertiary,
-        FFTokens.fgTertiary,
-        '\u2014',
-      ),
+    final tones = FFToneTheme.of(context);
+    final (FFToneColors c, String arrow) = switch (direction) {
+      FFTrendDirection.up => (tones.success, '\u2191'),
+      FFTrendDirection.down => (tones.danger, '\u2193'),
+      FFTrendDirection.neutral => (tones.neutral, '\u2014'),
     };
+    final (bg, fg) = (c.bg, c.fg);
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: FFTokens.spacingSm,

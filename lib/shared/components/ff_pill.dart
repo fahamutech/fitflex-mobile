@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../design_tokens.dart';
+import '../tone_theme.dart';
 
 /// Small pill / chip used for tags, filters, and tier badges.
 ///
@@ -20,6 +21,7 @@ class FFPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final brand = FFToneTheme.of(context).brand;
     final text = label.replaceAll('_', ' ');
     final child = Container(
       padding: const EdgeInsets.symmetric(
@@ -27,13 +29,13 @@ class FFPill extends StatelessWidget {
         vertical: FFTokens.spacingXs + 2,
       ),
       decoration: BoxDecoration(
-        color: filled ? FFTokens.brand : FFTokens.brandLight,
+        color: filled ? theme.colorScheme.primary : brand.bg,
         borderRadius: BorderRadius.circular(FFTokens.radiusFull),
       ),
       child: Text(
         text,
         style: theme.textTheme.labelSmall?.copyWith(
-          color: filled ? Colors.white : FFTokens.brandDark,
+          color: filled ? theme.colorScheme.onPrimary : brand.fg,
           fontWeight: FontWeight.w700,
         ),
       ),
