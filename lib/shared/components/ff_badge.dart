@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../design_tokens.dart';
+import '../tone_theme.dart';
 
 /// Badge tone matching portal's BadgeTone.
 enum FFBadgeTone { defaultTone, gray, brand, success, danger, warning }
@@ -19,44 +20,16 @@ class FFBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (Color bg, Color fg, Color ring, Color dotColor) = switch (tone) {
-      FFBadgeTone.defaultTone => (
-        FFTokens.bgTertiary,
-        FFTokens.fgTertiary,
-        FFTokens.borderSecondary,
-        FFTokens.fgDisabled,
-      ),
-      FFBadgeTone.gray => (
-        FFTokens.gray100,
-        FFTokens.gray700,
-        FFTokens.gray200,
-        FFTokens.gray500,
-      ),
-      FFBadgeTone.brand => (
-        FFTokens.brand50,
-        FFTokens.brand700,
-        FFTokens.brand200,
-        FFTokens.brand500,
-      ),
-      FFBadgeTone.success => (
-        FFTokens.success50,
-        FFTokens.success700,
-        FFTokens.success200,
-        FFTokens.success500,
-      ),
-      FFBadgeTone.danger => (
-        FFTokens.error50,
-        FFTokens.error700,
-        FFTokens.error200,
-        FFTokens.error500,
-      ),
-      FFBadgeTone.warning => (
-        FFTokens.warning50,
-        FFTokens.warning700,
-        FFTokens.warning200,
-        FFTokens.warning500,
-      ),
+    final tones = FFToneTheme.of(context);
+    final c = switch (tone) {
+      FFBadgeTone.defaultTone => tones.neutral,
+      FFBadgeTone.gray => tones.gray,
+      FFBadgeTone.brand => tones.brand,
+      FFBadgeTone.success => tones.success,
+      FFBadgeTone.danger => tones.danger,
+      FFBadgeTone.warning => tones.warning,
     };
+    final (bg, fg, ring, dotColor) = (c.bg, c.fg, c.border, c.dot);
 
     return Container(
       padding: const EdgeInsets.symmetric(

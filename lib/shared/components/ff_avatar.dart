@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../design_tokens.dart';
+import '../tone_theme.dart';
 import 'ff_remote_image.dart';
 
 /// Avatar size variants.
@@ -39,7 +39,7 @@ class FFAvatar extends StatelessWidget {
     if (src != null && src!.isNotEmpty) {
       return CircleAvatar(
         radius: _radius,
-        backgroundColor: FFTokens.bgTertiary,
+        backgroundColor: FFToneTheme.of(context).neutral.bg,
         child: ClipOval(
           child: FFRemoteImage(
             src: src!,
@@ -78,13 +78,13 @@ class _InitialsAvatar extends StatelessWidget {
   Widget build(BuildContext context) {
     return CircleAvatar(
       radius: radius,
-      backgroundColor: FFTokens.brand100,
+      backgroundColor: FFToneTheme.of(context).brand.bg,
       child: Text(
         initials,
         style: Theme.of(context).textTheme.labelLarge?.copyWith(
           fontSize: fontSize,
           fontWeight: FontWeight.w600,
-          color: FFTokens.brand700,
+          color: FFToneTheme.of(context).brand.fg,
         ),
       ),
     );

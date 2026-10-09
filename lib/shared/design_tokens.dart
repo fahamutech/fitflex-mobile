@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'tone_theme.dart';
+
 /// FitFlex design tokens — mirror `fitflex-portal/app/globals.css`.
 ///
 /// Brand ramp: the portal ramp (brand-25…950) is canonical. 400–500 are the
@@ -197,6 +199,7 @@ ThemeData buildDarkTheme() {
     useMaterial3: true,
     fontFamily: FFTokens.fontSans,
     brightness: Brightness.dark,
+    extensions: const <ThemeExtension<dynamic>>[FFToneTheme.dark],
     scaffoldBackgroundColor: bg,
     colorScheme: const ColorScheme.dark(
       primary: primary,
@@ -534,6 +537,7 @@ ThemeData buildTheme() {
     useMaterial3: true,
     fontFamily: FFTokens.fontSans,
     brightness: Brightness.light,
+    extensions: const <ThemeExtension<dynamic>>[FFToneTheme.light],
     scaffoldBackgroundColor: bg,
     colorScheme: const ColorScheme.light(
       primary: primary,
