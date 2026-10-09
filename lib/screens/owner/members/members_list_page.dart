@@ -481,7 +481,7 @@ class _ScanQrButton extends StatelessWidget {
                 context.tr('members.scanQrShort'),
                 style: theme.textTheme.labelSmall?.copyWith(
                   color: theme.colorScheme.onPrimary,
-                  fontSize: 9,
+                  fontSize: 11,
                 ),
               ),
             ],
