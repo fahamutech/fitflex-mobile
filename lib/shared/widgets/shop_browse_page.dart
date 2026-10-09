@@ -1260,12 +1260,14 @@ class _ProductTile extends StatelessWidget {
                   children: [
                     if (qty > 0)
                       IconButton(
+                        tooltip: context.tr('a11y.decrease'),
                         key: Key('shop-remove-${product.id}'),
                         icon: const Icon(Icons.remove_circle_outline),
                         onPressed: onRemove,
                       ),
                     if (qty > 0) Text('$qty'),
                     IconButton(
+                      tooltip: context.tr('a11y.increase'),
                       key: Key('shop-add-${product.id}'),
                       icon: const Icon(Icons.add_circle_outline),
                       onPressed: onAdd,

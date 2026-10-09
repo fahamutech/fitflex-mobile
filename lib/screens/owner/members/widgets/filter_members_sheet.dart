@@ -61,6 +61,7 @@ class _FilterMembersSheetState extends State<_FilterMembersSheet> {
                   ),
                 ),
                 IconButton(
+                  tooltip: context.tr('common.close'),
                   icon: const Icon(Icons.close),
                   onPressed: () => Navigator.pop(context),
                 ),

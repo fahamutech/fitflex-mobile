@@ -30,6 +30,7 @@ class MemberPaymentPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
+          tooltip: context.tr('a11y.back'),
           onPressed: () => context.go(AppRoutes.memberPasses),
           icon: const Icon(Icons.arrow_back),
         ),

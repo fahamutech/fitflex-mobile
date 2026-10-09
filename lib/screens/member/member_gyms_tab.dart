@@ -269,6 +269,7 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
                         suffixIcon: _search.isEmpty
                             ? null
                             : IconButton(
+                                tooltip: context.tr('common.close'),
                                 icon: const Icon(Icons.close, size: 18),
                                 onPressed: () {
                                   _searchCtrl.clear();

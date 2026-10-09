@@ -94,6 +94,7 @@ class _MemberGymDetailPageState extends State<MemberGymDetailPage> {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
+          tooltip: context.tr('a11y.back'),
           onPressed: () => context.go(AppRoutes.memberGyms),
           icon: const Icon(Icons.arrow_back),
         ),

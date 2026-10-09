@@ -26,7 +26,10 @@ class FFPageHeader extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: theme.textTheme.titleLarge),
+                Semantics(
+                  header: true,
+                  child: Text(title, style: theme.textTheme.titleLarge),
+                ),
                 if (description != null) ...[
                   const SizedBox(height: FFTokens.spacing2xs),
                   Text(description!, style: theme.textTheme.bodySmall),

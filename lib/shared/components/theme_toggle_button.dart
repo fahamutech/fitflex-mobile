@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../i18n.dart';
 import '../theme_notifier.dart';
 
 /// A reusable icon button that toggles between light and dark theme.
@@ -14,7 +15,7 @@ class ThemeToggleButton extends StatelessWidget {
       icon: Icon(
         theme.isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
       ),
-      tooltip: theme.isDark ? 'Switch to light mode' : 'Switch to dark mode',
+      tooltip: context.tr(theme.isDark ? 'a11y.lightMode' : 'a11y.darkMode'),
       onPressed: theme.toggle,
     );
   }
