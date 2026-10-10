@@ -518,6 +518,17 @@ class FFLocale extends ChangeNotifier {
       'payouts.member': 'Member',
       'payouts.basis.completed': 'Completed',
       'payouts.basis.tookPlace': 'Took place',
+      'payouts.vendor.intro':
+          'FitFlex pays you each week for orders that were paid for and delivered, after its commission. Each statement is checked and approved before it is paid.',
+      'payouts.vendor.empty':
+          'No statements yet. Your first one appears the week after your first delivered order.',
+      'payouts.vendor.sessions': '{n} order(s)',
+      'payouts.vendor.breakdown':
+          'Sales of your items: {list}. FitFlex commission: {commission}.',
+      'payouts.vendor.sessionsTitle': 'Orders on this statement',
+      'payouts.vendor.order': 'Order',
+      'payouts.vendor.items': '{n} item(s)',
+      'payouts.vendor.sales': 'Sales {amount}',
       'trainer.linkedGymsCount': 'Linked gyms',
       'trainer.noSessions': 'No sessions for this day yet.',
       'trainer.addSession': 'Add manual session',
@@ -4029,6 +4040,17 @@ class FFLocale extends ChangeNotifier {
       'payouts.member': 'Mwanachama',
       'payouts.basis.completed': 'Kimekamilika',
       'payouts.basis.tookPlace': 'Kilifanyika',
+      'payouts.vendor.intro':
+          'FitFlex inakulipa kila wiki kwa oda zilizolipiwa na kufikishwa, baada ya kutoa kamisheni yake. Kila taarifa hukaguliwa na kuidhinishwa kabla ya kulipwa.',
+      'payouts.vendor.empty':
+          'Bado hakuna taarifa. Ya kwanza itaonekana wiki inayofuata baada ya oda yako ya kwanza kufikishwa.',
+      'payouts.vendor.sessions': 'Oda {n}',
+      'payouts.vendor.breakdown':
+          'Mauzo ya bidhaa zako: {list}. Kamisheni ya FitFlex: {commission}.',
+      'payouts.vendor.sessionsTitle': 'Oda kwenye taarifa hii',
+      'payouts.vendor.order': 'Oda',
+      'payouts.vendor.items': 'Bidhaa {n}',
+      'payouts.vendor.sales': 'Mauzo {amount}',
       'trainer.linkedGymsCount': 'Gym zilizounganishwa',
       'trainer.noSessions': 'Bado hakuna vipindi siku hii.',
       'trainer.addSession': 'Ongeza kipindi',

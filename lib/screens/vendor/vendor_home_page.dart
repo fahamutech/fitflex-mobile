@@ -10,6 +10,7 @@ import '../../shared/design_tokens.dart';
 import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
 import '../../shared/widgets/ff_photo_picker_field.dart';
+import '../../shared/widgets/partner_payouts_page.dart';
 import '../../shared/widgets/invitations.dart';
 import '../../shared/widgets/persona_switcher.dart';
 import '../../shared/widgets/terms_agreement.dart';
@@ -500,6 +501,17 @@ class _VendorHomePageState extends State<VendorHomePage> {
               ),
             ),
           ),
+        FilledButton.tonalIcon(
+          key: const Key('vendor-payouts'),
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => const PartnerPayoutsPage(kind: PayoutKind.vendor),
+            ),
+          ),
+          icon: const Icon(Icons.account_balance_wallet_outlined),
+          label: Text(context.tr('payouts.title')),
+        ),
+        const SizedBox(height: FFTokens.spacingSm),
         OutlinedButton.icon(
           key: const Key('vendor-download-statement'),
           onPressed: () async {
