@@ -55,8 +55,9 @@ Future<void> main() async {
   await auth.hydrate();
 
   final locale = FFLocale();
-
   final themeNotifier = ThemeNotifier();
+  // Restore the language and theme chosen on this device.
+  await Future.wait([locale.load(), themeNotifier.load()]);
 
   runApp(
     FitFlexApp(

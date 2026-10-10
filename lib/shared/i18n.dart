@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Lightweight i18n provider with English + Swahili.
 /// All user-facing strings live here.
 class FFLocale extends ChangeNotifier {
+  static const prefsKey = 'ff.locale';
+
   Locale _locale = const Locale('en');
   Locale get locale => _locale;
 
@@ -10,6 +13,32 @@ class FFLocale extends ChangeNotifier {
     if (_supported.contains(l.languageCode)) {
       _locale = l;
       notifyListeners();
+      _save();
+    }
+  }
+
+  /// Restores the language chosen on this device, if any.
+  Future<void> load() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getString(prefsKey);
+      if (saved != null &&
+          _supported.contains(saved) &&
+          saved != _locale.languageCode) {
+        _locale = Locale(saved);
+        notifyListeners();
+      }
+    } catch (_) {
+      // Keep the default.
+    }
+  }
+
+  Future<void> _save() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(prefsKey, _locale.languageCode);
+    } catch (_) {
+      // Not saved; the choice still applies for this session.
     }
   }
 
