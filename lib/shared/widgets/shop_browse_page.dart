@@ -9,7 +9,10 @@ import '../api_error_message.dart';
 import '../components/components.dart';
 import '../design_tokens.dart';
 import '../formatters.dart';
+import '../discovery_loader.dart';
 import '../i18n.dart';
+import '../promotion.dart';
+import '../promotion_events.dart';
 
 num _shopNumber(dynamic value, [num fallback = 0]) {
   if (value is num) return value;
@@ -42,6 +45,7 @@ class ShopProduct {
     this.vendor = const {},
     this.reviews = const [],
     this.similarProducts = const [],
+    this.promotion,
   });
 
   final String id;
@@ -62,6 +66,9 @@ class ShopProduct {
   final Map<String, dynamic> vendor;
   final List<Map<String, dynamic>> reviews;
   final List<ShopProduct> similarProducts;
+
+  /// Set when this product is promoted for what the customer is looking at.
+  final PromotionTag? promotion;
 
   factory ShopProduct.fromJson(Map<String, dynamic> json) => ShopProduct(
     id: json['id'] as String? ?? '',
@@ -94,6 +101,7 @@ class ShopProduct {
         .whereType<Map>()
         .map((value) => ShopProduct.fromJson(Map<String, dynamic>.from(value)))
         .toList(),
+    promotion: PromotionTag.fromJson(json['promotion']),
   );
 
   bool get inStock => stock > 0;
@@ -172,6 +180,12 @@ class ShopBrowseBody extends StatefulWidget {
 
 class _ShopBrowseBodyState extends State<ShopBrowseBody> {
   List<ShopProduct> _products = [];
+
+  /// Featured and promoted products from the server's ranked discovery, with
+  /// their labels. Empty when the server has none or cannot be reached.
+  List<ShopProduct> _featured = [];
+  Map<String, PromotionTag> _promoTags = {};
+  String? _placement;
   List<Map<String, dynamic>> _orders = [];
   final ShopCart _cart = ShopCart();
   final Set<String> _saved = {};
@@ -259,14 +273,45 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
         _orders = results[1].whereType<Map<String, dynamic>>().toList();
         _loading = false;
       });
+      await _loadPromotions();
     } on ApiException {
       if (mounted) setState(() => _loading = false);
     }
   }
 
-  List<ShopProduct> get _visible {
+  /// Which products are Featured or promoted. Only labels and the Featured
+  /// section come from here; the list keeps its own filters and sort. Any
+  /// failure just leaves the catalogue as it was.
+  Future<void> _loadPromotions() async {
+    if (!kServerDiscovery) return;
+    try {
+      final result = DiscoverResult.fromJson<ShopProduct>(
+        await AppScope.of(context).api.discover(
+          'products',
+          DiscoverQuery(limit: 50, session: discoverSessionId()),
+        ),
+        ShopProduct.fromJson,
+      );
+      if (!mounted) return;
+      setState(() {
+        _featured = result.featured;
+        _placement = result.placement;
+        _promoTags = {
+          for (final p in [...result.featured, ...result.items])
+            if (p.promotion != null) p.id: p.promotion!,
+        };
+      });
+    } catch (_) {
+      // Discovery is an improvement, never a requirement.
+    }
+  }
+
+  /// Whether a product passes the search and every filter the customer set.
+  /// The Featured section uses the same test, so a featured product that does
+  /// not match what they asked for is not shown.
+  bool _passes(ShopProduct product) {
     final query = _search.trim().toLowerCase();
-    var values = _products.where((product) {
+    {
       final searchMatch =
           query.isEmpty ||
           [
@@ -290,7 +335,17 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
           (_maxDistanceKm == null ||
               (product.distanceKm != null &&
                   product.distanceKm! <= _maxDistanceKm!));
-    }).toList();
+    }
+  }
+
+  /// Featured products that match what the customer asked for. An explicit
+  /// sort switches promotion off, as it does on the server.
+  List<ShopProduct> get _visibleFeatured => _sort == 'newest'
+      ? _featured.where(_passes).toList()
+      : const <ShopProduct>[];
+
+  List<ShopProduct> get _visible {
+    final values = _products.where(_passes).toList();
     if (_sort == 'price_asc') {
       values.sort((a, b) => a.effectivePrice.compareTo(b.effectivePrice));
     } else if (_sort == 'price_desc') {
@@ -386,6 +441,11 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
       // The cached catalogue record still supports cart actions offline.
     }
     if (!mounted) return;
+    PromotionEvents.instance.recordForTouched(
+      'detail_view',
+      'product',
+      product.id,
+    );
     final buyNow = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -524,6 +584,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
   }
 
   List<Widget> _buildCatalogue() {
+    final featured = _visibleFeatured;
     final categories = _products
         .map((product) => product.category)
         .whereType<String>()
@@ -620,7 +681,20 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
         ],
       ),
       const SizedBox(height: FFTokens.spacingMd),
-      if (_visible.isEmpty)
+      if (featured.isNotEmpty)
+        FFFeaturedStrip(
+          title: context.tr('member.featuredProducts'),
+          count: featured.length,
+          height: 210,
+          itemWidth: 160,
+          itemBuilder: (context, i) => _FeaturedProductCard(
+            key: Key('shop-featured-${featured[i].id}'),
+            product: featured[i],
+            placement: _placement,
+            onOpen: () => _openProduct(featured[i]),
+          ),
+        ),
+      if (_visible.isEmpty && featured.isEmpty)
         FFEmptyState(title: context.tr('shop.noProducts'))
       else
         ..._visible.map(
@@ -629,11 +703,21 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
             child: _ProductTile(
               key: Key('shop-product-${product.id}'),
               product: product,
+              promotion: _promoTags[product.id],
+              placement: _placement,
               qty: _cart.qtyOf(product.id),
               saved: _saved.contains(product.id),
               onOpen: () => _openProduct(product),
               onSave: () => setState(() {
-                if (!_saved.add(product.id)) _saved.remove(product.id);
+                if (_saved.add(product.id)) {
+                  PromotionEvents.instance.recordForTouched(
+                    'save',
+                    'product',
+                    product.id,
+                  );
+                } else {
+                  _saved.remove(product.id);
+                }
                 _cart.remove(product.id);
               }),
               onAdd: product.inStock
@@ -965,10 +1049,97 @@ class _MarketplaceFiltersSheetState extends State<_MarketplaceFiltersSheet> {
   }
 }
 
+/// A product in the Featured row: image, name, price and its label.
+class _FeaturedProductCard extends StatelessWidget {
+  const _FeaturedProductCard({
+    super.key,
+    required this.product,
+    required this.onOpen,
+    this.placement,
+  });
+
+  final ShopProduct product;
+  final VoidCallback onOpen;
+  final String? placement;
+
+  @override
+  Widget build(BuildContext context) => PromotionTracked(
+    entityType: 'product',
+    entityId: product.id,
+    promotion: product.promotion,
+    placement: placement,
+    child: _card(context),
+  );
+
+  Widget _card(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final tag = product.promotion;
+    return FFCard(
+      child: InkWell(
+        onTap: () {
+          trackPromotionClick(
+            'product',
+            product.id,
+            product.promotion,
+            placement: placement,
+          );
+          onOpen();
+        },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Container(
+                width: double.infinity,
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  color: colors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(FFTokens.radiusMd),
+                ),
+                child: product.images.isEmpty
+                    ? Icon(Icons.shopping_bag_outlined, color: colors.primary)
+                    : FFRemoteImage(
+                        src: product.images.first,
+                        width: double.infinity,
+                        height: double.infinity,
+                        fit: BoxFit.cover,
+                        fallback: Icon(
+                          Icons.shopping_bag_outlined,
+                          color: colors.primary,
+                        ),
+                      ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              product.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            Text(
+              formatCurrency(product.effectivePrice),
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: colors.primary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            if (tag != null) FFPromotionBadge(tag: tag),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ProductTile extends StatelessWidget {
   const _ProductTile({
     super.key,
     required this.product,
+    this.promotion,
+    this.placement,
     required this.qty,
     required this.saved,
     required this.onOpen,
@@ -977,6 +1148,8 @@ class _ProductTile extends StatelessWidget {
     required this.onRemove,
   });
   final ShopProduct product;
+  final PromotionTag? promotion;
+  final String? placement;
   final int qty;
   final bool saved;
   final VoidCallback onOpen;
@@ -985,11 +1158,27 @@ class _ProductTile extends StatelessWidget {
   final VoidCallback? onRemove;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => PromotionTracked(
+    entityType: 'product',
+    entityId: product.id,
+    promotion: promotion,
+    placement: placement,
+    child: _card(context),
+  );
+
+  Widget _card(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     return FFCard(
       child: InkWell(
-        onTap: onOpen,
+        onTap: () {
+          trackPromotionClick(
+            'product',
+            product.id,
+            promotion,
+            placement: placement,
+          );
+          onOpen();
+        },
         child: Row(
           children: [
             Container(
@@ -1028,6 +1217,11 @@ class _ProductTile extends StatelessWidget {
                     Text(
                       product.brand!,
                       style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  if (promotion != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: FFPromotionBadge(tag: promotion!),
                     ),
                   Text(
                     formatCurrency(product.effectivePrice),

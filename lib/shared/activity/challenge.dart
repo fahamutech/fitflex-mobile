@@ -80,8 +80,10 @@ class ChallengeTeamRef {
   const ChallengeTeamRef({required this.id, required this.name, this.gymId});
 }
 
-/// `upcoming`, `active`, `ended` or `cancelled`.
+/// `draft` (only its maker sees it), `upcoming`, `active`, `ended` or
+/// `cancelled`.
 enum ChallengePhase {
+  draft,
   upcoming,
   active,
   ended,
@@ -117,6 +119,9 @@ class Challenge {
   /// `public` or `audience` (the creator's clients, members or staff).
   final String visibility;
   final ChallengePhase phase;
+
+  /// `draft`, `active`, `paused`, `closed`, `cancelled` or `archived`.
+  final String status;
   final int participantCount;
   final bool joined;
   final ChallengeMode mode;
@@ -141,6 +146,7 @@ class Challenge {
     this.rewardItems = const [],
     this.visibility = 'audience',
     this.phase = ChallengePhase.active,
+    this.status = 'active',
     this.participantCount = 0,
     this.joined = false,
     this.mode = ChallengeMode.individual,
@@ -148,6 +154,16 @@ class Challenge {
     this.myTeamId,
     this.leaderboardOptIn = false,
   });
+
+  bool get isDraft => status == 'draft';
+
+  /// Published and not over: running or upcoming, paused or not.
+  bool get isLive =>
+      (status == 'active' || status == 'paused') &&
+      (phase == ChallengePhase.active || phase == ChallengePhase.upcoming);
+
+  /// Taking no new people; those already in carry on.
+  bool get isPaused => status == 'paused' && isLive;
 
   String? get myTeamName =>
       teams.where((t) => t.id == myTeamId).firstOrNull?.name;
@@ -171,6 +187,7 @@ class Challenge {
     rewardItems: rewardItems,
     visibility: visibility,
     phase: phase,
+    status: status,
     participantCount: participantCount ?? this.participantCount,
     joined: joined ?? this.joined,
     mode: mode,
@@ -217,6 +234,7 @@ class Challenge {
           : [for (final l in labels) ChallengeRewardItem(id: l, label: l)],
       visibility: json['visibility'] as String? ?? 'audience',
       phase: ChallengePhase.fromWire(json['phase'] as String?),
+      status: json['status'] as String? ?? 'active',
       participantCount: (json['participantCount'] as num?)?.toInt() ?? 0,
       joined: json['joined'] == true,
       mode: ChallengeMode.fromWire(json['mode'] as String?),

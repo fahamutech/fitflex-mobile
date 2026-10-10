@@ -12,7 +12,9 @@ import '../../shared/widgets/availability_calendar.dart';
 import '../../shared/widgets/enquiry_thread.dart';
 import '../../shared/widgets/reviews_section.dart';
 import '../../shared/widgets/social_links.dart';
+import '../../shared/widgets/photo_gallery.dart';
 import 'member_shell.dart';
+import '../../shared/promotion_events.dart';
 import 'widgets/trainer_actions_sheet.dart';
 import 'widgets/trainer_sharing.dart';
 
@@ -49,6 +51,12 @@ class _MemberTrainerDetailPageState extends State<MemberTrainerDetailPage> {
     super.didChangeDependencies();
     if (_started) return;
     _started = true;
+    // Only counts when the member arrived from a promoted card (fresh touch).
+    PromotionEvents.instance.recordForTouched(
+      'detail_view',
+      'trainer',
+      trainerId,
+    );
     _loadSchedule();
     _loadConversation();
   }
@@ -151,6 +159,11 @@ class _MemberTrainerDetailPageState extends State<MemberTrainerDetailPage> {
   }
 
   Future<void> _book() async {
+    PromotionEvents.instance.recordForTouched(
+      'booking_click',
+      'trainer',
+      trainerId,
+    );
     final data = MemberDataScope.of(context);
     final trainer = data.trainers.where((t) => t.id == trainerId).firstOrNull;
     if (trainer == null) return;
@@ -279,6 +292,16 @@ class _MemberTrainerDetailPageState extends State<MemberTrainerDetailPage> {
       body: ListView(
         padding: const EdgeInsets.all(FFTokens.spacingLg),
         children: [
+          // The trainer's photos, swipeable and full screen on tap — the same
+          // gallery as a gym's.
+          if (trainer.photos.isNotEmpty)
+            PhotoGallery(
+              key: const Key('trainer-section-gallery'),
+              images: trainer.photos,
+              keyPrefix: 'trainer',
+              emptyIcon: Icons.person,
+              height: 220,
+            ),
           // Trainer header
           Row(
             children: [

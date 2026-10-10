@@ -4,6 +4,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 import 'models.dart';
+import 'promotion.dart';
 
 class ApiException implements Exception {
   final int status;
@@ -235,6 +236,178 @@ class ApiClient {
 
   // ── Identity V2 · invitations (404 while the backend flag is off) ─────────
 
+  // ── Identity V2 · I7: a PIN kept by FitFlex ───────────────────────────────
+
+  /// True when the backend answers at [path] (anything but "not found" or
+  /// "not set up"). An empty request is refused before it does anything.
+  Future<bool> _routeAvailable(String path) async {
+    try {
+      await _request('POST', path, body: const <String, dynamic>{});
+      return true;
+    } on ApiException catch (e) {
+      return e.status != 404 && e.code != 'pin_not_configured';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Which sign-in options the server offers (public). Throws on 404 from an
+  /// older server; callers fall back to the route probes.
+  Future<Map<String, dynamic>> signInOptions() async {
+    return await _request('GET', '/auth/options');
+  }
+
+  /// Sign-in and registration with a number or email and a PIN are on.
+  Future<bool> pinLoginAvailable() => _routeAvailable('/auth/pin/login');
+
+  /// Forgot PIN is on.
+  Future<bool> pinResetAvailable() => _routeAvailable('/auth/pin/reset/start');
+
+  /// Sign in with one mobile number or email (`{phone: …}` or `{email: …}`)
+  /// and the PIN. Returns a session, or `setupRequired` for an existing user
+  /// whose PIN is still held by Firebase.
+  Future<Map<String, dynamic>> pinLogin(
+    Map<String, String> contact,
+    String pin, {
+    String? locale,
+  }) async {
+    return await _request(
+      'POST',
+      '/auth/pin/login',
+      body: {...contact, 'pin': pin, 'locale': ?locale},
+    );
+  }
+
+  Future<Map<String, dynamic>> pinSetup({
+    required String setupToken,
+    String? code,
+    required String pin,
+  }) async {
+    return await _request(
+      'POST',
+      '/auth/pin/setup',
+      body: {'setupToken': setupToken, 'code': ?code, 'pin': pin},
+    );
+  }
+
+  Future<Map<String, dynamic>> registerStart(
+    Map<String, String> contact,
+    String? locale,
+  ) async {
+    return await _request(
+      'POST',
+      '/auth/register/start',
+      body: {...contact, 'locale': ?locale},
+    );
+  }
+
+  Future<Map<String, dynamic>> registerConfirm(
+    Map<String, String> contact,
+    String code,
+  ) async {
+    return await _request(
+      'POST',
+      '/auth/register/confirm',
+      body: {...contact, 'code': code},
+    );
+  }
+
+  Future<Map<String, dynamic>> registerComplete({
+    required String registrationToken,
+    required String role,
+    required String pin,
+  }) async {
+    return await _request(
+      'POST',
+      '/auth/register/complete',
+      body: {'registrationToken': registrationToken, 'role': role, 'pin': pin},
+    );
+  }
+
+  Future<Map<String, dynamic>> pinResetStart(
+    Map<String, String> contact,
+    String? locale,
+  ) async {
+    return await _request(
+      'POST',
+      '/auth/pin/reset/start',
+      body: {...contact, 'locale': ?locale},
+    );
+  }
+
+  Future<Map<String, dynamic>> pinResetConfirm(
+    Map<String, String> contact,
+    String code,
+  ) async {
+    return await _request(
+      'POST',
+      '/auth/pin/reset/confirm',
+      body: {...contact, 'code': code},
+    );
+  }
+
+  Future<Map<String, dynamic>> pinResetComplete(
+    String resetToken,
+    String pin,
+  ) async {
+    return await _request(
+      'POST',
+      '/auth/pin/reset/complete',
+      body: {'resetToken': resetToken, 'pin': pin},
+    );
+  }
+
+  /// After signing in with an invitation's start PIN: the person's name and
+  /// their own PIN. Answers the onboarding step (their invitations).
+  Future<Map<String, dynamic>> inviteBegin({
+    required String startToken,
+    required String displayName,
+    required String pin,
+  }) async {
+    return await _request(
+      'POST',
+      '/auth/invite/begin',
+      body: {'startToken': startToken, 'displayName': displayName, 'pin': pin},
+    );
+  }
+
+  /// A person with no profile yet accepts ([accept]) or declines an invitation.
+  Future<Map<String, dynamic>> onboardingAnswer(
+    String onboardingToken,
+    String invitationId, {
+    required bool accept,
+  }) async {
+    return await _request(
+      'POST',
+      '/auth/onboarding/${accept ? 'accept' : 'decline'}',
+      body: {'onboardingToken': onboardingToken, 'invitationId': invitationId},
+    );
+  }
+
+  /// A person with no profile yet chooses how to use FitFlex.
+  Future<Map<String, dynamic>> onboardingRole(
+    String onboardingToken,
+    String role,
+  ) async {
+    return await _request(
+      'POST',
+      '/auth/onboarding/role',
+      body: {'onboardingToken': onboardingToken, 'role': role},
+    );
+  }
+
+  /// Change the PIN. The response is a new session: earlier ones are over.
+  Future<Map<String, dynamic>> changePin(
+    String currentPin,
+    String newPin,
+  ) async {
+    return await _request(
+      'POST',
+      '/me/pin',
+      body: {'currentPin': currentPin, 'newPin': newPin},
+    );
+  }
+
   /// Identity V2 · I6a: this Person's verified mobile numbers and emails
   /// (`identifiers`) and profile values not verified yet (`unverified`).
   Future<Map<String, dynamic>> myIdentifiers() async {
@@ -264,6 +437,108 @@ class ApiClient {
       '/me/identifiers/verify/confirm',
       body: {'phone': ?phone, 'email': ?email, 'code': code},
     );
+  }
+
+  /// Replace the mobile number or email the person signs in with: their PIN
+  /// and the new value. A code goes to the new value.
+  Future<Map<String, dynamic>> requestIdentifierChange({
+    String? phone,
+    String? email,
+    required String pin,
+    String? locale,
+  }) async {
+    return await _request(
+      'POST',
+      '/me/identifiers/change/request',
+      body: {'phone': ?phone, 'email': ?email, 'pin': pin, 'locale': ?locale},
+    );
+  }
+
+  Future<Map<String, dynamic>> confirmIdentifierChange({
+    String? phone,
+    String? email,
+    required String code,
+    String? locale,
+  }) async {
+    return await _request(
+      'POST',
+      '/me/identifiers/change/confirm',
+      body: {'phone': ?phone, 'email': ?email, 'code': code, 'locale': ?locale},
+    );
+  }
+
+  // ── Identity V2 · account recovery (member path) ───────────────────────────
+
+  /// Step 1: [oldContact] is what the person signed in with before, [newContact]
+  /// the number or email that gets a code. Each is `{phone: …}` or `{email: …}`.
+  Future<Map<String, dynamic>> recoveryStart(
+    Map<String, String> oldContact,
+    Map<String, String> newContact,
+    String? locale,
+  ) async {
+    return await _request(
+      'POST',
+      '/auth/recovery/start',
+      body: {'old': oldContact, 'new': newContact, 'locale': ?locale},
+    );
+  }
+
+  /// Step 2: the code and the name on the account. Returns `requestToken`.
+  Future<Map<String, dynamic>> recoveryConfirm(
+    Map<String, String> oldContact,
+    Map<String, String> newContact,
+    String code,
+    String name,
+    String? locale,
+  ) async {
+    return await _request(
+      'POST',
+      '/auth/recovery/confirm',
+      body: {
+        'old': oldContact,
+        'new': newContact,
+        'code': code,
+        'name': name,
+        'locale': ?locale,
+      },
+    );
+  }
+
+  Future<Map<String, dynamic>> recoveryEvidence(
+    String requestToken,
+    Map<String, String> answers,
+  ) async {
+    return await _request(
+      'POST',
+      '/auth/recovery/evidence',
+      body: {'requestToken': requestToken, 'answers': answers},
+    );
+  }
+
+  Future<Map<String, dynamic>> recoveryStatus(String requestToken) async {
+    return await _request(
+      'POST',
+      '/auth/recovery/status',
+      body: {'requestToken': requestToken},
+    );
+  }
+
+  Future<Map<String, dynamic>> recoveryCancel(String requestToken) async {
+    return await _request(
+      'POST',
+      '/auth/recovery/cancel',
+      body: {'requestToken': requestToken},
+    );
+  }
+
+  /// Is a recovery request open on the signed-in account?
+  Future<Map<String, dynamic>> myRecovery() async {
+    return await _request('GET', '/me/recovery');
+  }
+
+  /// The signed-in owner cancels an open recovery request.
+  Future<Map<String, dynamic>> cancelMyRecovery() async {
+    return await _request('POST', '/me/recovery/cancel', body: const {});
   }
 
   /// Open invitations addressed to the signed-in Person.
@@ -384,6 +659,49 @@ class ApiClient {
       await _request('GET', '/subscription-tiers');
 
   Future<List<dynamic>> listGyms() async => await _request('GET', '/gyms');
+
+  /// Ranked discovery with promotion: `/discover/gyms`, `/discover/trainers` or
+  /// `/discover/products`. A promotion only ever moves a result that already
+  /// matches the search and filters; the answer says which cards are promoted.
+  Future<Map<String, dynamic>> discover(
+    String kind,
+    DiscoverQuery query,
+  ) async {
+    final out = await _request(
+      'GET',
+      '/discover/$kind${query.toQueryString()}',
+    );
+    return Map<String, dynamic>.from(out as Map);
+  }
+
+  /// Promotion analytics: `POST /events` (open to anonymous callers). At most
+  /// 50 events per request. Returns `{accepted, duplicates, rejected:[{index,
+  /// error}]}`; throws [ApiException] on a non-2xx answer.
+  Future<Map<String, dynamic>> postEvents(
+    List<Map<String, dynamic>> events,
+  ) async {
+    final out = await _request(
+      'POST',
+      '/events',
+      body: {'source': 'mobile', 'events': events},
+    );
+    return out is Map ? Map<String, dynamic>.from(out) : <String, dynamic>{};
+  }
+
+  /// The signed-in role's terms (member: FitFlex Terms; partner: partner
+  /// agreement) and whether the current version is accepted. With [role] it
+  /// returns the text for a role the user is about to add.
+  Future<Map<String, dynamic>> myTerms({String? lang, String? role}) async =>
+      await _request(
+            'GET',
+            _withQuery('/me/terms', {'lang': ?lang, 'role': ?role}),
+          )
+          as Map<String, dynamic>;
+
+  /// Accept the current terms for the signed-in role.
+  Future<Map<String, dynamic>> acceptTerms(String version) async =>
+      await _request('POST', '/me/terms', body: {'version': version})
+          as Map<String, dynamic>;
 
   Future<List<dynamic>> getSpecialties() async =>
       await _request('GET', '/settings/specialties');
@@ -910,9 +1228,30 @@ class ApiClient {
     String scope,
     String id, {
     String? gymId,
+  }) => challengeAction(scope, id, 'cancel', gymId: gymId);
+
+  /// Edit a challenge you created. Type and format lock once it starts or
+  /// anyone joins; the start date locks once it starts.
+  Future<Map<String, dynamic>> updateChallenge(
+    String scope,
+    String id,
+    Map<String, dynamic> body, {
+    String? gymId,
+  }) async => await _request(
+    'PATCH',
+    _creatorPath(scope, '/${Uri.encodeComponent(id)}', gymId: gymId),
+    body: body,
+  );
+
+  /// [action]: cancel, close, archive, publish, pause or resume.
+  Future<Map<String, dynamic>> challengeAction(
+    String scope,
+    String id,
+    String action, {
+    String? gymId,
   }) async => await _request(
     'POST',
-    _creatorPath(scope, '/${Uri.encodeComponent(id)}/cancel', gymId: gymId),
+    _creatorPath(scope, '/${Uri.encodeComponent(id)}/$action', gymId: gymId),
   );
 
   Future<Map<String, dynamic>> challengeParticipants(
@@ -1501,11 +1840,6 @@ class ApiClient {
   Future<Map<String, dynamic>> ownerCreateTrainer(
     Map<String, dynamic> data,
   ) async => await _request('POST', '/owner/trainers', body: data);
-
-  Future<Map<String, dynamic>> ownerUpdateTrainer(
-    String trainerId,
-    Map<String, dynamic> data,
-  ) async => await _request('POST', '/owner/trainers/$trainerId', body: data);
 
   Future<void> ownerRemoveTrainer(String trainerId) async =>
       await _request('POST', '/owner/trainers/$trainerId/remove');

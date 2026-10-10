@@ -8,6 +8,7 @@ import '../api_error_message.dart';
 import '../components/ff_action_tile.dart';
 import '../design_tokens.dart';
 import '../i18n.dart';
+import 'terms_agreement.dart';
 
 /// Human label for a persona's userType.
 String personaLabel(BuildContext context, Object? userType) {
@@ -88,8 +89,13 @@ Future<void> addPersonaAndContinue(
   final locale = FFLocaleScope.of(context);
   final failed = context.tr('persona.addFailed');
   final inUse = context.tr('persona.addInUse');
+  // A new role has its own terms: agree before it is created.
+  final version = await askToAgreeTerms(context, role: userType);
+  if (version == null) return;
   try {
     await auth.addPersona(userType);
+    // On record now that the role exists (its own form asks again if not).
+    await recordTermsAccepted(auth.api, version);
     if (context.mounted) context.go(routeForSignedInUser(auth));
   } on ApiException catch (e) {
     messenger.showSnackBar(

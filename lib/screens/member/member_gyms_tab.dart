@@ -4,11 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app_scope.dart';
 import '../../router.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
+import '../../shared/discovery_loader.dart';
+import '../../shared/promotion_events.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
+import '../../shared/promotion.dart';
 import 'member_shell.dart';
 import 'widgets/gym_card.dart';
 import 'widgets/gym_filters.dart';
@@ -32,6 +36,26 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
   double? _userLng;
   bool _locationLoading = false;
 
+  /// The server's ranked answer for the current search and filters: a Featured
+  /// section and the results below it. Null until it arrives, or if the server
+  /// cannot be reached, in which case the plain list is filtered on the phone.
+  DiscoverResult<Gym>? _discovery;
+  bool _discoveryLoading = false;
+  late final DiscoveryLoader<Gym> _loader = DiscoveryLoader<Gym>(
+    fetch: (q) async => DiscoverResult.fromJson<Gym>(
+      await AppScope.of(
+        context,
+      ).api.discover('gyms', q.withSession(discoverSessionId())),
+      Gym.fromJson,
+    ),
+    onResult: (r) {
+      if (mounted) setState(() => _discovery = r);
+    },
+    onLoading: (v) {
+      if (mounted) setState(() => _discoveryLoading = v);
+    },
+  );
+
   static const _filters = [
     'all',
     'saved',
@@ -52,11 +76,15 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _fetchLocation());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchLocation();
+      _requestDiscovery(immediate: true);
+    });
   }
 
   @override
   void dispose() {
+    _loader.dispose();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -86,13 +114,70 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
         _userLng = position.longitude;
         _locationLoading = false;
       });
+      _requestDiscovery(immediate: true);
     } catch (_) {
       if (!mounted) return;
       setState(() => _locationLoading = false);
     }
   }
 
+  /// Ask the server to rank for what the customer has typed and chosen. The
+  /// tier chip, the verified switch, 'nearest' and the search go to the server;
+  /// price, amenities and 'saved' are applied on the phone to what comes back.
+  void _requestDiscovery({bool immediate = false}) {
+    const tiers = {'standard', 'midtier', 'premium'};
+    final nearest =
+        _filter == 'nearest' && _userLat != null && _userLng != null;
+    _loader.request(
+      DiscoverQuery(
+        q: _search,
+        lat: _userLat,
+        lng: _userLng,
+        sort: nearest ? 'distance' : null,
+        filters: {
+          if (tiers.contains(_filter)) 'tier': _filter,
+          if (_verifiedOnly) 'verified': 'true',
+        },
+        limit: 50,
+      ),
+      immediate: immediate,
+    );
+  }
+
+  /// What the customer sees: the server's ranked list when there is one (the
+  /// search, tier and verified filters are already applied), otherwise the
+  /// full list filtered here, exactly as before discovery existed.
   List<Gym> _filtered(List<Gym> gyms, Set<String> favoriteIds) {
+    final ranked = _discovery;
+    if (ranked != null) {
+      // 'saved' needs the Featured gyms too, so they are not lost from the list.
+      final pool = _filter == 'saved'
+          ? [...ranked.featured, ...ranked.items]
+          : ranked.items;
+      return _clientFilters(pool, favoriteIds);
+    }
+    return _plainFiltered(gyms, favoriteIds);
+  }
+
+  /// The Featured section: only gyms the server featured for this search, and
+  /// only those that also pass the filters applied here.
+  List<Gym> _featured(Set<String> favoriteIds) {
+    final ranked = _discovery;
+    if (ranked == null || _filter == 'saved') return const [];
+    return _clientFilters(ranked.featured, favoriteIds);
+  }
+
+  List<Gym> _clientFilters(List<Gym> gyms, Set<String> favoriteIds) {
+    final pool = _filter == 'saved'
+        ? gyms.where((g) => favoriteIds.contains(g.id)).toList()
+        : gyms;
+    return applyGymFilter(
+      pool,
+      GymFilter(price: _priceFilter, amenities: _amenityFilter),
+    );
+  }
+
+  List<Gym> _plainFiltered(List<Gym> gyms, Set<String> favoriteIds) {
     var result = applyGymFilter(
       _filter == 'saved'
           ? gyms.where((g) => favoriteIds.contains(g.id)).toList()
@@ -129,6 +214,7 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
   Widget build(BuildContext context) {
     final data = MemberDataScope.of(context);
     final gyms = _filtered(data.gyms, data.favoriteGymIds);
+    final featured = _featured(data.favoriteGymIds);
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
@@ -187,6 +273,7 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
                                 onPressed: () {
                                   _searchCtrl.clear();
                                   setState(() => _search = '');
+                                  _requestDiscovery(immediate: true);
                                 },
                               ),
                         border: OutlineInputBorder(
@@ -195,8 +282,13 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
                           ),
                         ),
                       ),
-                      onChanged: (v) => setState(() => _search = v),
+                      onChanged: (v) {
+                        setState(() => _search = v);
+                        _requestDiscovery();
+                      },
                     ),
+                    if (_discoveryLoading)
+                      const LinearProgressIndicator(minHeight: 2),
                     const SizedBox(height: 12),
                     // ── Tier filter chips ──────────────────────────────
                     SizedBox(
@@ -264,6 +356,7 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
                               if (_filters[i] == 'nearest') {
                                 _fetchLocation();
                               }
+                              _requestDiscovery(immediate: true);
                             },
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 100),
@@ -389,8 +482,10 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
                                   style: tt.labelMedium,
                                 ),
                                 value: _verifiedOnly,
-                                onChanged: (v) =>
-                                    setState(() => _verifiedOnly = v),
+                                onChanged: (v) {
+                                  setState(() => _verifiedOnly = v);
+                                  _requestDiscovery(immediate: true);
+                                },
                               ),
                             ),
                           ],
@@ -405,6 +500,25 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
                         ),
                       ),
                   ],
+                ),
+              ),
+            ),
+
+            // ── Featured (labelled; only gyms that match this search) ───────
+            SliverToBoxAdapter(
+              child: FFFeaturedStrip(
+                title: context.tr('member.featuredGyms'),
+                count: featured.length,
+                itemBuilder: (context, i) => GymGridCard(
+                  key: Key('gym-featured-${featured[i].id}'),
+                  gym: featured[i],
+                  placement: _discovery?.placement,
+                  distanceKm: gymDisplayDistanceKm(
+                    featured[i],
+                    userLat: _userLat,
+                    userLng: _userLng,
+                    activeFilter: _filter,
+                  ),
                 ),
               ),
             ),
@@ -438,7 +552,7 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
             ),
 
             // ── Grid ────────────────────────────────────────────────────
-            if (gyms.isEmpty)
+            if (gyms.isEmpty && featured.isEmpty)
               SliverFillRemaining(
                 hasScrollBody: false,
                 child: Padding(
@@ -446,7 +560,7 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
                   child: FFEmptyState(title: context.tr('member.noData')),
                 ),
               )
-            else
+            else if (gyms.isNotEmpty)
               SliverPadding(
                 padding: const EdgeInsets.all(FFTokens.spacingLg),
                 sliver: SliverGrid(
@@ -454,6 +568,7 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
                     (context, i) => GymGridCard(
                       key: Key('gym-card-${gyms[i].id}'),
                       gym: gyms[i],
+                      placement: _discovery?.placement,
                       distanceKm: gymDisplayDistanceKm(
                         gyms[i],
                         userLat: _userLat,

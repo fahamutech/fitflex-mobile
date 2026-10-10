@@ -103,8 +103,46 @@ class _MemberBenefitsPageState extends State<MemberBenefitsPage> {
                   ),
                   const SizedBox(height: FFTokens.spacingMd),
                 ],
+                const _SponsorVisibilityNote(),
               ],
             ),
+    );
+  }
+}
+
+/// What the sponsor behind these benefits can and cannot see of the member.
+class _SponsorVisibilityNote extends StatelessWidget {
+  const _SponsorVisibilityNote();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      key: const ValueKey('benefits-visibility'),
+      padding: const EdgeInsets.all(FFTokens.spacingMd),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(FFTokens.radiusMd),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            context.tr('benefits.visibility.title'),
+            style: theme.textTheme.titleSmall,
+          ),
+          const SizedBox(height: FFTokens.spacingSm),
+          Text(
+            context.tr('benefits.visibility.sees'),
+            style: theme.textTheme.bodySmall,
+          ),
+          const SizedBox(height: FFTokens.spacingSm),
+          Text(
+            context.tr('benefits.visibility.hidden'),
+            style: theme.textTheme.bodySmall,
+          ),
+        ],
+      ),
     );
   }
 }

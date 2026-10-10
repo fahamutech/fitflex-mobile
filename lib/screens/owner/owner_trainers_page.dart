@@ -5,6 +5,9 @@ import '../../shared/api_client.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
+import '../../shared/models.dart';
+import '../../shared/widgets/photo_gallery.dart';
+import '../../shared/widgets/social_links.dart';
 import '../../shared/widgets/trainer_form_page.dart';
 import 'owner_shell.dart';
 import '../../shared/widgets/invitations.dart';
@@ -94,7 +97,7 @@ class OwnerTrainersPage extends StatelessWidget {
                   delegate: SliverChildBuilderDelegate(
                     (ctx, i) => _OwnerTrainerGridCard(
                       trainer: items[i],
-                      onEdit: () => _showEditTrainerDialog(context, items[i]),
+                      onView: () => _viewTrainer(context, items[i]),
                       onRemove: () => _confirmRemoveTrainer(context, items[i]),
                     ),
                     childCount: items.length,
@@ -172,35 +175,14 @@ class OwnerTrainersPage extends StatelessWidget {
     }
   }
 
-  Future<void> _showEditTrainerDialog(
-    BuildContext context,
-    Map<String, dynamic> trainer,
-  ) async {
-    final payload = await openTrainerForm(
-      context,
-      title: context.tr('owner.editTrainer'),
-      initial: trainer,
+  /// A trainer's profile belongs to the trainer: the owner can look at it,
+  /// but only the trainer changes it.
+  void _viewTrainer(BuildContext context, Map<String, dynamic> trainer) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => OwnerTrainerProfilePage(trainer: trainer),
+      ),
     );
-    if (payload == null) return;
-    payload.remove('email');
-    if (!context.mounted) return;
-    final api = AppScope.of(context).api;
-    final message = context.tr('owner.trainerUpdated');
-    try {
-      await api.ownerUpdateTrainer(trainer['id'].toString(), payload);
-      if (!context.mounted) return;
-      final shell = context.findAncestorStateOfType<OwnerShellState>();
-      await shell?.refreshAll();
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message)));
-    } on ApiException catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(_apiErrorMessage(context, e))));
-    }
   }
 
   void _confirmRemoveTrainer(
@@ -254,12 +236,12 @@ class OwnerTrainersPage extends StatelessWidget {
 class _OwnerTrainerGridCard extends StatelessWidget {
   const _OwnerTrainerGridCard({
     required this.trainer,
-    required this.onEdit,
+    required this.onView,
     required this.onRemove,
   });
 
   final Map<String, dynamic> trainer;
-  final VoidCallback onEdit;
+  final VoidCallback onView;
   final VoidCallback onRemove;
 
   @override
@@ -288,53 +270,69 @@ class _OwnerTrainerGridCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.vertical(
-              top: Radius.circular(FFTokens.radiusLg),
-            ),
-            child: AspectRatio(
-              aspectRatio: 1,
-              child: photoUrl != null && photoUrl.isNotEmpty
-                  ? FFRemoteImage(
-                      src: photoUrl,
-                      width: double.infinity,
-                      height: double.infinity,
-                      fit: BoxFit.cover,
-                      fallback: _initials(cs, initials),
-                    )
-                  : _initials(cs, initials),
-            ),
-          ),
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(10, 8, 10, 0),
+            child: InkWell(
+              key: Key('owner-trainer-open-${trainer['id']}'),
+              onTap: onView,
+              borderRadius: BorderRadius.vertical(
+                top: Radius.circular(FFTokens.radiusLg),
+              ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: tt.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+                  ClipRRect(
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(FFTokens.radiusLg),
+                    ),
+                    child: AspectRatio(
+                      aspectRatio: 1,
+                      child: photoUrl != null && photoUrl.isNotEmpty
+                          ? FFRemoteImage(
+                              src: photoUrl,
+                              width: double.infinity,
+                              height: double.infinity,
+                              fit: BoxFit.cover,
+                              fallback: _initials(cs, initials),
+                            )
+                          : _initials(cs, initials),
+                    ),
                   ),
-                  if (specialties.isNotEmpty) ...[
-                    const SizedBox(height: 3),
-                    Text(
-                      specialties,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: tt.bodySmall?.copyWith(fontSize: 11),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(10, 8, 10, 0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: tt.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          if (specialties.isNotEmpty) ...[
+                            const SizedBox(height: 3),
+                            Text(
+                              specialties,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: tt.bodySmall?.copyWith(fontSize: 11),
+                            ),
+                          ],
+                          if (phone != null) ...[
+                            const SizedBox(height: 3),
+                            Text(
+                              phone,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: tt.bodySmall?.copyWith(fontSize: 11),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
-                  ],
-                  if (phone != null) ...[
-                    const SizedBox(height: 3),
-                    Text(
-                      phone,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: tt.bodySmall?.copyWith(fontSize: 11),
-                    ),
-                  ],
+                  ),
                 ],
               ),
             ),
@@ -344,9 +342,10 @@ class _OwnerTrainerGridCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               IconButton(
-                icon: const Icon(Icons.edit, size: 18),
-                onPressed: onEdit,
-                tooltip: context.tr('owner.editTrainer'),
+                key: Key('owner-trainer-view-${trainer['id']}'),
+                icon: const Icon(Icons.visibility_outlined, size: 18),
+                onPressed: onView,
+                tooltip: context.tr('owner.viewTrainer'),
                 visualDensity: VisualDensity.compact,
               ),
               IconButton(
@@ -373,6 +372,143 @@ class _OwnerTrainerGridCard extends StatelessWidget {
           color: cs.primary,
         ),
       ),
+    ),
+  );
+}
+
+/// Owner — a trainer's profile, to read only. Photos, details, contact and
+/// social profiles are the trainer's own; nothing here can be changed.
+class OwnerTrainerProfilePage extends StatelessWidget {
+  const OwnerTrainerProfilePage({super.key, required this.trainer});
+
+  final Map<String, dynamic> trainer;
+
+  @override
+  Widget build(BuildContext context) {
+    final tt = Theme.of(context).textTheme;
+    final profile = TrainerProfile.fromJson(trainer);
+    final phone = trainer['phone']?.toString() ?? '';
+    final email = trainer['email']?.toString() ?? '';
+    final bio = profile.bio ?? '';
+    final availability = (trainer['availability'] as List? ?? [])
+        .whereType<Map>()
+        .toList();
+    final rate = profile.hourlyRateTzs;
+
+    Widget section(String title, List<Widget> children) => Padding(
+      padding: const EdgeInsets.only(top: FFTokens.spacingLg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          FFSectionTitle(title),
+          const SizedBox(height: FFTokens.spacingSm),
+          ...children,
+        ],
+      ),
+    );
+
+    return Scaffold(
+      appBar: AppBar(title: Text(context.tr('owner.viewTrainer'))),
+      body: ListView(
+        key: const Key('owner-trainer-profile'),
+        padding: const EdgeInsets.all(FFTokens.spacingLg),
+        children: [
+          if (profile.photos.isNotEmpty)
+            PhotoGallery(
+              key: const Key('owner-trainer-gallery'),
+              images: profile.photos,
+              keyPrefix: 'owner-trainer',
+              emptyIcon: Icons.person,
+              height: 220,
+            ),
+          const SizedBox(height: FFTokens.spacingMd),
+          Text(
+            profile.displayName,
+            style: tt.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          if (rate > 0) ...[
+            const SizedBox(height: 4),
+            Text(
+              '${profile.sessionRateCurrency} ${rate.toStringAsFixed(0)}',
+              style: tt.bodyMedium,
+            ),
+          ],
+          const SizedBox(height: FFTokens.spacingMd),
+          FFCard(
+            key: const Key('owner-trainer-readonly-note'),
+            child: Row(
+              children: [
+                const Icon(Icons.lock_outline, size: 18),
+                const SizedBox(width: FFTokens.spacingSm),
+                Expanded(
+                  child: Text(
+                    context.tr('owner.trainerReadOnly'),
+                    style: tt.bodySmall,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (phone.isNotEmpty || email.isNotEmpty)
+            section(context.tr('trainer.contact'), [
+              if (phone.isNotEmpty)
+                _ProfileLine(icon: Icons.phone_outlined, text: phone),
+              if (email.isNotEmpty)
+                _ProfileLine(icon: Icons.mail_outline, text: email),
+            ]),
+          if (!profile.socialLinks.isEmpty)
+            section(context.tr('owner.trainerSocial'), [
+              SocialLinksRow(
+                key: const Key('owner-trainer-socials'),
+                links: profile.socialLinks,
+              ),
+            ]),
+          if (profile.specialties.isNotEmpty)
+            section(context.tr('trainerReg.specialties'), [
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  for (final s in profile.specialties) Chip(label: Text(s)),
+                ],
+              ),
+            ]),
+          if (bio.isNotEmpty)
+            section(context.tr('trainerReg.bio'), [
+              Text(bio, style: tt.bodyMedium),
+            ]),
+          if (availability.isNotEmpty)
+            section(context.tr('trainer.availability'), [
+              for (final a in availability)
+                _ProfileLine(
+                  icon: Icons.schedule,
+                  text: [
+                    a['day']?.toString() ?? '',
+                    (a['slots'] as List? ?? []).join(', '),
+                  ].where((v) => v.isNotEmpty).join(' · '),
+                ),
+            ]),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileLine extends StatelessWidget {
+  const _ProfileLine({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 6),
+    child: Row(
+      children: [
+        Icon(icon, size: 18),
+        const SizedBox(width: FFTokens.spacingSm),
+        Expanded(child: Text(text)),
+      ],
     ),
   );
 }

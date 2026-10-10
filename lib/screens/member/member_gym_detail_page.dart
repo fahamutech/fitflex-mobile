@@ -12,6 +12,8 @@ import '../../shared/i18n.dart';
 import '../../shared/models.dart';
 import '../../shared/widgets/reviews_section.dart';
 import 'member_shell.dart';
+import '../../shared/promotion_events.dart';
+import '../../shared/widgets/photo_gallery.dart';
 import 'widgets/gym_card.dart';
 import 'widgets/gym_plans_sheet.dart';
 import 'widgets/trainer_card.dart';
@@ -28,6 +30,17 @@ class MemberGymDetailPage extends StatefulWidget {
 class _MemberGymDetailPageState extends State<MemberGymDetailPage> {
   bool _openingDirections = false;
 
+  @override
+  void initState() {
+    super.initState();
+    // Only counts when the member arrived from a promoted card (fresh touch).
+    PromotionEvents.instance.recordForTouched(
+      'detail_view',
+      'gym',
+      widget.gymId,
+    );
+  }
+
   Future<void> _handleDirections(Gym gym) async {
     setState(() => _openingDirections = true);
     try {
@@ -40,6 +53,11 @@ class _MemberGymDetailPageState extends State<MemberGymDetailPage> {
   // A7: Subscribe → gym's own Daily/Weekly/Monthly plans.
   Future<void> _openPlans(Gym gym) async {
     final data = MemberDataScope.of(context);
+    PromotionEvents.instance.recordForTouched(
+      'subscription_click',
+      'gym',
+      gym.id,
+    );
     final subscribed = await showGymPlansSheet(context, gym);
     if (subscribed == true && mounted) {
       final res = await AppScope.of(context).api.me();
@@ -266,9 +284,9 @@ class _MemberGymDetailPageState extends State<MemberGymDetailPage> {
 
           // 13. Actions
           const SizedBox(height: 16),
-          if (data.pendingPayment != null) ...[
+          if (data.pendingGymPlan(gym.id) != null) ...[
             FFAlert(
-              message: context.tr('home.qr.pendingBody'),
+              message: context.tr('member.gymPlanPending'),
               tone: FFAlertTone.warning,
             ),
             const SizedBox(height: 8),
@@ -280,7 +298,8 @@ class _MemberGymDetailPageState extends State<MemberGymDetailPage> {
                 flex: 2,
                 child: FilledButton(
                   key: const Key('gym-subscribe-button'),
-                  onPressed: data.pendingPayment != null
+                  // Only this gym's own open plan payment holds the button.
+                  onPressed: data.pendingGymPlan(gym.id) != null
                       ? null
                       : () => _openPlans(gym),
                   child: Text(context.tr('member.subscribe')),
@@ -447,162 +466,8 @@ class _GymHero extends StatelessWidget {
 
   final Gym gym;
 
-  void _openPhoto(BuildContext context, String image, int index) {
-    final controller = PageController(initialPage: index);
-    var currentIndex = index;
-    showDialog<void>(
-      context: context,
-      barrierColor: Colors.black,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => Dialog.fullscreen(
-          key: const Key('gym-photo-fullscreen'),
-          backgroundColor: Colors.black,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              PageView.builder(
-                controller: controller,
-                itemCount: gym.images.length,
-                onPageChanged: (value) =>
-                    setDialogState(() => currentIndex = value),
-                itemBuilder: (context, photoIndex) => InteractiveViewer(
-                  minScale: 1,
-                  maxScale: 5,
-                  child: FFRemoteImage(
-                    src: gym.images[photoIndex],
-                    width: double.infinity,
-                    height: double.infinity,
-                    fit: BoxFit.contain,
-                    fallback: const Center(
-                      child: Icon(
-                        Icons.broken_image_outlined,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              if (gym.images.length > 1) ...[
-                Positioned(
-                  left: 12,
-                  top: 0,
-                  bottom: 0,
-                  child: IconButton.filled(
-                    key: const Key('gym-photo-previous'),
-                    onPressed: currentIndex == 0
-                        ? null
-                        : () => controller.previousPage(
-                            duration: const Duration(milliseconds: 180),
-                            curve: Curves.easeOut,
-                          ),
-                    icon: const Icon(Icons.chevron_left),
-                  ),
-                ),
-                Positioned(
-                  right: 12,
-                  top: 0,
-                  bottom: 0,
-                  child: IconButton.filled(
-                    key: const Key('gym-photo-next'),
-                    onPressed: currentIndex == gym.images.length - 1
-                        ? null
-                        : () => controller.nextPage(
-                            duration: const Duration(milliseconds: 180),
-                            curve: Curves.easeOut,
-                          ),
-                    icon: const Icon(Icons.chevron_right),
-                  ),
-                ),
-              ],
-              Positioned(
-                top: 12,
-                right: 12,
-                child: SafeArea(
-                  child: IconButton.filled(
-                    key: const Key('gym-photo-close'),
-                    onPressed: () => Navigator.pop(dialogContext),
-                    icon: const Icon(Icons.close),
-                    tooltip: MaterialLocalizations.of(
-                      dialogContext,
-                    ).closeButtonTooltip,
-                  ),
-                ),
-              ),
-              Positioned(
-                bottom: 20,
-                left: 0,
-                right: 0,
-                child: SafeArea(
-                  child: Center(
-                    child: Text(
-                      '${currentIndex + 1}/${gym.images.length}',
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   @override
-  Widget build(BuildContext context) {
-    final images = gym.images;
-    return Container(
-      height: 180,
-      margin: const EdgeInsets.only(bottom: 14),
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(FFTokens.radiusXl),
-      ),
-      child: images.isNotEmpty
-          ? PageView.builder(
-              itemCount: images.length,
-              itemBuilder: (context, index) => GestureDetector(
-                key: Key('gym-photo-$index'),
-                onTap: () => _openPhoto(context, images[index], index),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    FFRemoteImage(
-                      src: images[index],
-                      width: double.infinity,
-                      height: 180,
-                      fit: BoxFit.cover,
-                      fallback: Center(
-                        child: Icon(
-                          Icons.fitness_center,
-                          color: Theme.of(context).colorScheme.primary,
-                          size: 48,
-                        ),
-                      ),
-                    ),
-                    if (images.length > 1)
-                      Positioned(
-                        right: 10,
-                        bottom: 10,
-                        child: FFBadge(
-                          label: '${index + 1}/${images.length}',
-                          tone: FFBadgeTone.gray,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            )
-          : Center(
-              child: Icon(
-                Icons.fitness_center,
-                color: Theme.of(context).colorScheme.primary,
-                size: 48,
-              ),
-            ),
-    );
-  }
+  Widget build(BuildContext context) => PhotoGallery(images: gym.images);
 }
 
 class _ItemCategory {
@@ -930,6 +795,9 @@ class _SaveGymButtonState extends State<_SaveGymButton> {
     final messenger = ScaffoldMessenger.of(context);
     final failed = context.tr('error.requestFailed');
     setState(() => _busy = true);
+    if (!saved) {
+      PromotionEvents.instance.recordForTouched('save', 'gym', widget.gymId);
+    }
     data.update((d) {
       final next = {...d.favoriteGymIds};
       saved ? next.remove(widget.gymId) : next.add(widget.gymId);

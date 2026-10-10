@@ -13,6 +13,7 @@ import '../../../shared/api_error_message.dart';
 import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
 import '../../../shared/i18n.dart';
+import '../../../shared/tanzania_regions.dart';
 import 'verification_models.dart';
 import 'verification_repository.dart';
 
@@ -153,11 +154,13 @@ class _DateField extends StatelessWidget {
     required this.value,
     required this.onChanged,
     this.required = false,
+    this.optionalHint = false,
   });
   final String fieldKey;
   final String? value;
   final ValueChanged<String?> onChanged;
   final bool required;
+  final bool optionalHint;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -186,7 +189,11 @@ class _DateField extends StatelessWidget {
         child: InputDecorator(
           decoration: InputDecoration(
             labelText:
-                context.tr('kyc.field.$fieldKey') + (required ? ' *' : ''),
+                context.tr('kyc.field.$fieldKey') +
+                (required ? ' *' : '') +
+                (optionalHint
+                    ? ' ${context.tr('kyc.field.optionalSuffix')}'
+                    : ''),
             border: const OutlineInputBorder(),
             errorText: state.errorText,
             suffixIcon: const Icon(Icons.calendar_today_outlined),
@@ -214,7 +221,7 @@ class _AddressFields {
   }) => [
     _text(context, '${prefix}Line1', line1, required: required),
     _text(context, '${prefix}City', city, required: required),
-    _text(context, '${prefix}Region', region),
+    _RegionPicker(fieldKey: '${prefix}Region', controller: region),
   ];
 
   Map<String, dynamic> toJson() => {
@@ -228,6 +235,59 @@ class _AddressFields {
     line1.dispose();
     city.dispose();
     region.dispose();
+  }
+}
+
+/// Region as a list to pick from (the regions of Tanzania), kept in
+/// [controller] so the form saves it like any other field. A value typed
+/// before the list existed stays selectable until it is changed.
+class _RegionPicker extends StatefulWidget {
+  const _RegionPicker({required this.fieldKey, required this.controller});
+
+  final String fieldKey;
+  final TextEditingController controller;
+
+  @override
+  State<_RegionPicker> createState() => _RegionPickerState();
+}
+
+class _RegionPickerState extends State<_RegionPicker> {
+  late final String _typed = widget.controller.text.trim();
+  late String? _value =
+      matchTanzaniaRegion(_typed) ?? (_typed.isEmpty ? null : _typed);
+
+  @override
+  void initState() {
+    super.initState();
+    // Normalise "dar es salaam" → "Dar es Salaam" on the way in.
+    if (_value != null) widget.controller.text = _value!;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final legacy = _typed.isNotEmpty && matchTanzaniaRegion(_typed) == null;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
+      child: DropdownButtonFormField<String>(
+        key: Key('kyc-field-${widget.fieldKey}'),
+        initialValue: _value,
+        isExpanded: true,
+        decoration: InputDecoration(
+          labelText: context.tr('kyc.field.${widget.fieldKey}'),
+          border: const OutlineInputBorder(),
+        ),
+        hint: Text(context.tr('kyc.field.regionChoose')),
+        items: [
+          if (legacy) DropdownMenuItem(value: _typed, child: Text(_typed)),
+          for (final r in tanzaniaRegions)
+            DropdownMenuItem(value: r, child: Text(r)),
+        ],
+        onChanged: (v) => setState(() {
+          _value = v;
+          widget.controller.text = v ?? '';
+        }),
+      ),
+    );
   }
 }
 
@@ -511,6 +571,160 @@ class _BusinessFormPageState extends State<BusinessFormPage> {
   );
 }
 
+// ── Vendor business profile ────────────────────────────────────────────────
+
+List<String> _splitList(String v) =>
+    v.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+
+/// The four checklist items a vendor keeps on their business profile (contact,
+/// product categories, delivery areas, returns policy). Saved as a draft —
+/// never published — so it works while the vendor is still pending approval.
+class VendorKycProfilePage extends StatefulWidget {
+  const VendorKycProfilePage({super.key, required this.api});
+  final ApiClient api;
+
+  @override
+  State<VendorKycProfilePage> createState() => _VendorKycProfilePageState();
+}
+
+class _VendorKycProfilePageState extends State<VendorKycProfilePage> {
+  final _form = GlobalKey<FormState>();
+  final _contact = TextEditingController();
+  final _email = TextEditingController();
+  final _categories = TextEditingController();
+  final _regions = TextEditingController();
+  final _returns = TextEditingController();
+  bool _loading = true;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _prefill();
+  }
+
+  @override
+  void dispose() {
+    for (final c in [_contact, _email, _categories, _regions, _returns]) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  String _joined(dynamic raw) =>
+      raw is List ? raw.map((e) => e.toString()).join(', ') : '';
+
+  Future<void> _prefill() async {
+    try {
+      final p = await widget.api.vendorProfile();
+      _contact.text = p['contactNumber']?.toString() ?? '';
+      _email.text = p['email']?.toString() ?? '';
+      final cats = _joined(p['productCategories']);
+      _categories.text = cats.isNotEmpty
+          ? cats
+          : (p['businessCategory']?.toString() ?? '');
+      _regions.text = _joined(p['deliveryRegions']);
+      _returns.text = p['returnsPolicy']?.toString() ?? '';
+    } catch (_) {
+      // Start empty; saving will report any real problem.
+    }
+    if (mounted) setState(() => _loading = false);
+  }
+
+  Future<void> _save() async {
+    if (!_form.currentState!.validate()) return;
+    setState(() => _busy = true);
+    try {
+      await widget.api.vendorSaveProfile({
+        'contactNumber': _contact.text.trim(),
+        'email': _email.text.trim(),
+        'productCategories': _splitList(_categories.text),
+        'deliveryRegions': _splitList(_regions.text),
+        'returnsPolicy': _returns.text.trim(),
+      });
+      if (!mounted) return;
+      _snack(context, context.tr('kyc.vendorProfile.saved'));
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (mounted) setState(() => _busy = false);
+      if (mounted) _snack(context, errorMessage(FFLocaleScope.of(context), e));
+    }
+  }
+
+  Widget _field(
+    String key,
+    String label,
+    TextEditingController c, {
+    TextInputType? keyboard,
+    int lines = 1,
+    String? Function(String)? check,
+  }) => Padding(
+    padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
+    child: TextFormField(
+      key: Key('kyc-vendor-$key'),
+      controller: c,
+      keyboardType: keyboard,
+      minLines: lines,
+      maxLines: lines == 1 ? 1 : lines + 3,
+      decoration: InputDecoration(
+        labelText: label,
+        border: const OutlineInputBorder(),
+      ),
+      validator: check == null ? null : (v) => check(v ?? ''),
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    String? needed(String v) =>
+        v.trim().isEmpty ? context.tr('kyc.required') : null;
+    return _FormScaffold(
+      title: context.tr('kyc.vendorProfile.title'),
+      formKey: _form,
+      busy: _busy || _loading,
+      onSave: _save,
+      children: _loading
+          ? [const Center(child: CircularProgressIndicator())]
+          : [
+              Text(context.tr('kyc.vendorProfile.hint')),
+              _gap(),
+              _field(
+                'contactNumber',
+                '${context.tr('vendor.contactNumber')} *',
+                _contact,
+                keyboard: TextInputType.phone,
+                check: needed,
+              ),
+              _field(
+                'email',
+                '${context.tr('vendor.email')} *',
+                _email,
+                keyboard: TextInputType.emailAddress,
+                check: (v) =>
+                    needed(v) ??
+                    (v.contains('@') ? null : context.tr('kyc.error.email')),
+              ),
+              _field(
+                'productCategories',
+                context.tr('vendor.productCategories'),
+                _categories,
+              ),
+              _field(
+                'deliveryRegions',
+                context.tr('vendor.deliveryRegions'),
+                _regions,
+              ),
+              _field(
+                'returnsPolicy',
+                context.tr('vendor.returnsPolicy'),
+                _returns,
+                lines: 3,
+              ),
+            ],
+    );
+  }
+}
+
 // ── Documents ───────────────────────────────────────────────────────────────
 
 enum DocumentSource { camera, gallery, file }
@@ -572,8 +786,14 @@ class _DocumentPageState extends State<DocumentPage> {
   );
   // A reviewed document starts over: its details aren't carried into the new one.
   late final bool _fresh = _doc == null || _doc.status != 'pending';
+  // The ID, registration and TIN numbers are shared with the identity and
+  // business forms: the server fills whichever was not given first.
+  late final String? _shared = _sharedNumber();
+  late final String? _ownNumber = _fresh ? null : _doc?.documentNumber;
+  late final bool _prefilled =
+      (_ownNumber ?? '').trim().isEmpty && _shared != null;
   late final _number = TextEditingController(
-    text: _fresh ? null : _doc?.documentNumber,
+    text: (_ownNumber ?? '').trim().isEmpty ? _shared : _ownNumber,
   );
   late final _issuer = TextEditingController(
     text: _fresh ? null : _doc?.issuer,
@@ -590,6 +810,18 @@ class _DocumentPageState extends State<DocumentPage> {
     _number.dispose();
     _issuer.dispose();
     super.dispose();
+  }
+
+  String? _sharedNumber() {
+    final o = widget.overview;
+    final value = switch (widget.requirementKey) {
+      'owner_id' || 'trainer_id' || 'representative_id' =>
+        o.personFor(personRoleFor(o.partnerType))?.idNumber,
+      'business_registration' => o.kycCase?.registrationNumber,
+      'tin_certificate' => o.kycCase?.tin,
+      _ => null,
+    };
+    return (value ?? '').trim().isEmpty ? null : value!.trim();
   }
 
   KycDocument? get _current => _overview.currentDocument(widget.requirementKey);
@@ -620,6 +852,12 @@ class _DocumentPageState extends State<DocumentPage> {
 
   Future<void> _save() async {
     if (!_form.currentState!.validate()) return;
+    if (_spec.fields.contains('expiresOn') &&
+        _issuedOn != null &&
+        _expiresOn != null &&
+        _expiresOn!.compareTo(_issuedOn!) <= 0) {
+      return _snack(context, context.tr('kyc.error.dates'));
+    }
     setState(() => _busy = true);
     try {
       final updated = await widget.repository
@@ -686,7 +924,8 @@ class _DocumentPageState extends State<DocumentPage> {
             context,
             _numberLabel(widget.requirementKey),
             _number,
-            required: true,
+            required: _shared == null,
+            hintKey: _prefilled ? 'kyc.doc.numberShared' : null,
           ),
         if (_spec.fields.contains('issuedOn'))
           _DateField(
@@ -699,7 +938,8 @@ class _DocumentPageState extends State<DocumentPage> {
           _DateField(
             fieldKey: 'expiresOn',
             value: _expiresOn,
-            required: true,
+            required: false,
+            optionalHint: true,
             onChanged: (v) => setState(() => _expiresOn = v),
           ),
         FFSectionTitle(context.tr('kyc.doc.file')),

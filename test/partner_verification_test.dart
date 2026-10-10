@@ -8,6 +8,11 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:fitflexmobile/app_scope.dart';
+import 'package:fitflexmobile/shared/auth_state.dart';
+import 'package:fitflexmobile/screens/vendor/vendor_home_page.dart';
 
 import 'package:fitflexmobile/screens/partner/verification/verification_center_page.dart';
 import 'package:fitflexmobile/screens/partner/verification/verification_forms.dart';
@@ -261,11 +266,59 @@ class _FakeRepo extends VerificationRepository {
   }
 }
 
+class _CountingRepo extends _FakeRepo {
+  _CountingRepo(_FakeRepo inner, this.onOverview) : super(inner.json);
+  final void Function() onOverview;
+  @override
+  Future<KycOverview> overview() {
+    onOverview();
+    return super.overview();
+  }
+}
+
 Widget _app(Widget home, {String lang = 'en'}) {
   final locale = FFLocale()..set(Locale(lang));
   return FFLocaleScope(
     notifier: locale,
     child: MaterialApp(home: home),
+  );
+}
+
+class _FakeApi extends ApiClient {
+  _FakeApi({this.profile = const {}}) : super(baseUrl: 'http://localhost:0');
+  Map<String, dynamic> profile;
+  final saved = <Map<String, dynamic>>[];
+  Object? failWith;
+
+  @override
+  Future<Map<String, dynamic>> vendorProfile() async => profile;
+
+  @override
+  Future<Map<String, dynamic>> vendorSaveProfile(
+    Map<String, dynamic> data,
+  ) async {
+    if (failWith != null) throw failWith!;
+    saved.add(data);
+    return data;
+  }
+}
+
+Future<Widget> _scoped(Widget home, _FakeApi api, String userType) async {
+  SharedPreferences.setMockInitialValues({});
+  final auth = AuthState(api);
+  await auth.signIn('t', {
+    'id': 'u1',
+    'userType': userType,
+    'status': 'active',
+  });
+  final locale = FFLocale()..set(const Locale('en'));
+  return AppScope(
+    api: api,
+    auth: auth,
+    child: FFLocaleScope(
+      notifier: locale,
+      child: MaterialApp(home: home),
+    ),
   );
 }
 
@@ -757,6 +810,465 @@ void main() {
       await tester.pumpAndSettle();
       expect(repo.calls, ['business']);
       expect(repo.bodies.single['tin'], '123-456-789');
+    });
+  });
+
+  group('shared numbers and optional expiry', () {
+    Map<String, dynamic> vendorWith({String? reg, String? tin}) => {
+      'partnerType': 'vendor',
+      'case': {
+        'id': 'kyc_v',
+        'status': 'draft',
+        'registrationNumber': ?reg,
+        'tin': ?tin,
+      },
+      'people': [],
+      'documents': [],
+      'settlementAccounts': [],
+      'checklist': {'sections': [], 'missing': []},
+    };
+
+    Future<_FakeRepo> openDoc(
+      WidgetTester tester,
+      Map<String, dynamic> json,
+      String key,
+    ) async {
+      _tall(tester);
+      final repo = _FakeRepo(json);
+      await tester.pumpWidget(
+        _app(
+          DocumentPage(
+            repository: repo,
+            overview: KycOverview.fromJson(json),
+            requirementKey: key,
+            pickDocument: (_) async => null,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      return repo;
+    }
+
+    testWidgets('the ID number given on the person is prefilled and sent', (
+      tester,
+    ) async {
+      final repo = await openDoc(tester, _trainer(), 'trainer_id');
+      expect(
+        find.widgetWithText(TextFormField, '19950505111110000221'),
+        findsOneWidget,
+      );
+      expect(find.text('ID number'), findsOneWidget); // not marked required
+      expect(find.text('Taken from the details you already gave.'), findsOne);
+      await tester.tap(find.byKey(const Key('kyc-form-save')));
+      await tester.pumpAndSettle();
+      expect(repo.calls, ['document:trainer_id']);
+      expect(repo.bodies.single['documentNumber'], '19950505111110000221');
+    });
+
+    testWidgets('registration number and TIN from the business are prefilled', (
+      tester,
+    ) async {
+      final json = vendorWith(reg: 'BRELA-77', tin: '123-456-789');
+      await openDoc(tester, json, 'business_registration');
+      expect(find.widgetWithText(TextFormField, 'BRELA-77'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      await openDoc(tester, json, 'tin_certificate');
+      expect(find.widgetWithText(TextFormField, '123-456-789'), findsOneWidget);
+    });
+
+    testWidgets('a vendor representative ID uses the representative number', (
+      tester,
+    ) async {
+      final json = vendorWith();
+      json['people'] = [
+        {'role': 'authorised_representative', 'idNumber': 'REP-1'},
+      ];
+      await openDoc(tester, json, 'representative_id');
+      expect(find.widgetWithText(TextFormField, 'REP-1'), findsOneWidget);
+    });
+
+    testWidgets('with nothing given anywhere the number is still required', (
+      tester,
+    ) async {
+      final repo = await openDoc(tester, vendorWith(), 'tin_certificate');
+      expect(find.text('TIN *'), findsOneWidget);
+      expect(
+        find.text('Taken from the details you already gave.'),
+        findsNothing,
+      );
+      await tester.tap(find.byKey(const Key('kyc-form-save')));
+      await tester.pumpAndSettle();
+      expect(find.text('Required'), findsOneWidget);
+      expect(repo.calls, isEmpty);
+    });
+
+    testWidgets('a licence saves without an expiry date, which is optional', (
+      tester,
+    ) async {
+      final json = vendorWith();
+      final repo = await openDoc(tester, json, 'business_licence');
+      expect(find.text('Expiry date (optional)'), findsOneWidget);
+      await tester.enterText(
+        find.byKey(const Key('kyc-field-issuingAuthority')),
+        'TFRA',
+      );
+      await tester.enterText(
+        find.byKey(const Key('kyc-field-licenceNumber')),
+        'L-1',
+      );
+      await tester.tap(find.byKey(const Key('kyc-form-save')));
+      await tester.pumpAndSettle();
+      expect(repo.calls, ['document:business_licence']);
+      expect(repo.bodies.single['expiresOn'], isNull);
+    });
+
+    testWidgets('certification: issue date stays required; no expiry needed', (
+      tester,
+    ) async {
+      final json = _trainer();
+      (json['documents'] as List).clear();
+      final repo = await openDoc(tester, json, 'certification');
+      expect(find.text('Issue date *'), findsOneWidget);
+      await tester.enterText(
+        find.byKey(const Key('kyc-field-certificationBody')),
+        'ACE',
+      );
+      await tester.enterText(
+        find.byKey(const Key('kyc-field-certificateNumber')),
+        'C1',
+      );
+      await tester.tap(find.byKey(const Key('kyc-form-save')));
+      await tester.pumpAndSettle();
+      expect(find.text('Required'), findsOneWidget); // only the issue date
+      expect(repo.calls, isEmpty);
+    });
+
+    testWidgets('an expiry before the issue date is refused', (tester) async {
+      final json = _trainer();
+      final doc = (json['documents'] as List).last as Map<String, dynamic>;
+      doc['issuedOn'] = '2026-05-01';
+      doc['expiresOn'] = '2026-04-01';
+      final repo = await openDoc(tester, json, 'certification');
+      await tester.tap(find.byKey(const Key('kyc-form-save')));
+      await tester.pumpAndSettle();
+      expect(repo.calls, isEmpty);
+      expect(
+        find.text('The expiry date must be after the issue date.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets(
+      'the person form shows an ID number that came from a document',
+      (tester) async {
+        _tall(tester);
+        final json = _trainer();
+        (json['people'] as List).first['idNumber'] = 'FROM-DOC-9';
+        await tester.pumpWidget(
+          _app(
+            PersonFormPage(
+              repository: _FakeRepo(json),
+              overview: KycOverview.fromJson(json),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          find.widgetWithText(TextFormField, 'FROM-DOC-9'),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets('the business form shows numbers that came from documents', (
+      tester,
+    ) async {
+      _tall(tester);
+      final json = vendorWith(reg: 'BRELA-77', tin: '123-456-789');
+      await tester.pumpWidget(
+        _app(
+          BusinessFormPage(
+            repository: _FakeRepo(json),
+            overview: KycOverview.fromJson(json),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(TextFormField, 'BRELA-77'), findsOneWidget);
+      expect(find.widgetWithText(TextFormField, '123-456-789'), findsOneWidget);
+    });
+
+    test('the new strings exist in English and Swahili', () {
+      final en = FFLocale()..set(const Locale('en'));
+      final sw = FFLocale()..set(const Locale('sw'));
+      for (final k in ['kyc.field.optionalSuffix', 'kyc.doc.numberShared']) {
+        expect(en.t(k), isNot(k));
+        expect(sw.t(k), isNot(k));
+        expect(sw.t(k), isNot(en.t(k)));
+      }
+    });
+  });
+
+  group('vendor business profile items', () {
+    const profileKeys = [
+      'business.contact',
+      'marketplace.product_categories',
+      'marketplace.delivery',
+      'marketplace.returns',
+    ];
+
+    Map<String, dynamic> vendor(String partnerType, {bool done = false}) => {
+      'partnerType': partnerType,
+      'case': {'id': 'kyc_v', 'status': 'draft'},
+      'people': [],
+      'documents': [],
+      'settlementAccounts': [],
+      'checklist': {
+        'sections': [
+          {
+            'key': 'marketplace',
+            'items': [
+              for (final k in profileKeys)
+                _item(k, done ? 'complete' : 'missing'),
+              _item('marketplace.settlement', 'missing'),
+            ],
+          },
+        ],
+        'missing': profileKeys,
+        'readyToSubmit': false,
+        'complete': false,
+      },
+    };
+
+    for (final key in profileKeys) {
+      testWidgets('a vendor tapping $key opens the profile page', (
+        tester,
+      ) async {
+        _tall(tester);
+        final api = _FakeApi();
+        await tester.pumpWidget(
+          await _scoped(
+            VerificationCenterPage(repository: _FakeRepo(vendor('vendor'))),
+            api,
+            'vendor',
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(Key('kyc-item-$key')));
+        await tester.pumpAndSettle();
+        expect(find.byType(VendorKycProfilePage), findsOneWidget);
+        expect(find.textContaining('Business profile in'), findsNothing);
+        expect(find.textContaining('Update this in'), findsNothing);
+      });
+    }
+
+    testWidgets('saving sends exactly the five fields, then reloads', (
+      tester,
+    ) async {
+      _tall(tester);
+      final api = _FakeApi(
+        profile: {'contactNumber': '+255700000001', 'businessName': 'X'},
+      );
+      final repo = _FakeRepo(vendor('vendor'));
+      var loads = 0;
+      final counting = _CountingRepo(repo, () => loads++);
+      await tester.pumpWidget(
+        await _scoped(
+          VerificationCenterPage(repository: counting),
+          api,
+          'vendor',
+        ),
+      );
+      await tester.pumpAndSettle();
+      final before = loads;
+      await tester.tap(find.byKey(const Key('kyc-item-business.contact')));
+      await tester.pumpAndSettle();
+      // Prefilled from the saved profile.
+      expect(find.text('+255700000001'), findsOneWidget);
+
+      // Email is required and must look like an address.
+      await tester.tap(find.byKey(const Key('kyc-form-save')));
+      await tester.pumpAndSettle();
+      expect(api.saved, isEmpty);
+      await tester.enterText(find.byKey(const Key('kyc-vendor-email')), 'nope');
+      await tester.tap(find.byKey(const Key('kyc-form-save')));
+      await tester.pumpAndSettle();
+      expect(api.saved, isEmpty);
+
+      await tester.enterText(
+        find.byKey(const Key('kyc-vendor-email')),
+        'shop@example.com',
+      );
+      await tester.enterText(
+        find.byKey(const Key('kyc-vendor-productCategories')),
+        'Supplements, Equipment ,',
+      );
+      await tester.enterText(
+        find.byKey(const Key('kyc-vendor-deliveryRegions')),
+        'Dar es Salaam, Arusha',
+      );
+      await tester.enterText(
+        find.byKey(const Key('kyc-vendor-returnsPolicy')),
+        'Returns within 7 days.',
+      );
+      await tester.tap(find.byKey(const Key('kyc-form-save')));
+      await tester.pumpAndSettle();
+
+      expect(api.saved, [
+        {
+          'contactNumber': '+255700000001',
+          'email': 'shop@example.com',
+          'productCategories': ['Supplements', 'Equipment'],
+          'deliveryRegions': ['Dar es Salaam', 'Arusha'],
+          'returnsPolicy': 'Returns within 7 days.',
+        },
+      ]);
+      expect(api.saved.single.containsKey('publish'), isFalse);
+      expect(find.byType(VendorKycProfilePage), findsNothing);
+      expect(loads, greaterThan(before));
+    });
+
+    testWidgets('an API error is shown and the page stays open', (
+      tester,
+    ) async {
+      _tall(tester);
+      final api = _FakeApi(profile: {'contactNumber': '1', 'email': 'a@b.c'})
+        ..failWith = ApiException(500, 'boom');
+      await tester.pumpWidget(
+        await _scoped(
+          VerificationCenterPage(repository: _FakeRepo(vendor('vendor'))),
+          api,
+          'vendor',
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('kyc-item-marketplace.returns')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('kyc-form-save')));
+      await tester.pumpAndSettle();
+      expect(find.byType(VendorKycProfilePage), findsOneWidget);
+      expect(find.byType(SnackBar), findsOneWidget);
+    });
+
+    for (final type in ['gym_owner', 'trainer']) {
+      testWidgets('a $type still sees the hint', (tester) async {
+        _tall(tester);
+        await tester.pumpWidget(
+          await _scoped(
+            VerificationCenterPage(repository: _FakeRepo(vendor(type))),
+            _FakeApi(),
+            type,
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('kyc-item-business.contact')));
+        await tester.pump();
+        expect(find.byType(VendorKycProfilePage), findsNothing);
+        expect(find.textContaining('business profile'), findsOneWidget);
+      });
+    }
+
+    testWidgets('a vendor tapping the payout item opens payout accounts', (
+      tester,
+    ) async {
+      _tall(tester);
+      await tester.pumpWidget(
+        await _scoped(
+          VerificationCenterPage(repository: _FakeRepo(vendor('vendor'))),
+          _FakeApi(),
+          'vendor',
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('kyc-item-marketplace.settlement')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(PayoutAccountsPage), findsOneWidget);
+    });
+
+    testWidgets('VendorProfileForm: optional fields only sent when filled', (
+      tester,
+    ) async {
+      _tall(tester);
+      Map<String, dynamic>? result;
+      Future<void> open(WidgetTester t, Map<String, dynamic> profile) async {
+        result = null;
+        await t.pumpWidget(const SizedBox());
+        await t.pumpWidget(
+          FFLocaleScope(
+            notifier: FFLocale()..set(const Locale('en')),
+            child: MaterialApp(
+              home: Builder(
+                builder: (ctx) => Scaffold(
+                  body: TextButton(
+                    onPressed: () async {
+                      result = await showModalBottomSheet<Map<String, dynamic>>(
+                        context: ctx,
+                        isScrollControlled: true,
+                        builder: (_) => VendorProfileForm(profile: profile),
+                      );
+                    },
+                    child: const Text('open'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await t.tap(find.text('open'));
+        await t.pumpAndSettle();
+      }
+
+      Future<void> publish(WidgetTester t) async {
+        final b = find.byKey(const Key('vendor-profile-publish'));
+        await t.ensureVisible(b);
+        await t.tap(b);
+        await t.pumpAndSettle();
+      }
+
+      // Missing logo/banner keeps the original gate: nothing is returned.
+      await open(tester, {'businessName': 'a'});
+      await publish(tester);
+      expect(result, isNull);
+      expect(
+        find.byKey(const Key('vendor-profile-returnsPolicy')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('vendor-profile-productCategories')),
+        findsOneWidget,
+      );
+
+      final full = {
+        'businessName': 'a',
+        'logo': 'l',
+        'banner': 'b',
+        'description': 'd',
+        'businessCategory': 'c',
+        'contactNumber': '1',
+        'email': 'e@x.y',
+        'address': 'ad',
+        'deliveryRegions': ['Dar'],
+        'businessHours': {'summary': 'h'},
+        'settlementAccount': {'account': 's'},
+      };
+      await open(tester, full);
+      await publish(tester);
+      expect(result, isNotNull);
+      expect(result!['publish'], isTrue);
+      expect(result!.containsKey('returnsPolicy'), isFalse);
+      expect(result!.containsKey('productCategories'), isFalse);
+
+      await open(tester, {
+        ...full,
+        'returnsPolicy': '7 days',
+        'productCategories': ['A', 'B'],
+      });
+      await publish(tester);
+      expect(result!['returnsPolicy'], '7 days');
+      expect(result!['productCategories'], ['A', 'B']);
+      expect(result!['publish'], isTrue);
     });
   });
 

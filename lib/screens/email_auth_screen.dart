@@ -12,6 +12,8 @@ import '../shared/design_tokens.dart';
 import '../shared/firebase_auth_service.dart';
 import '../shared/i18n.dart';
 import '../shared/pin_credentials.dart';
+import 'account_recovery.dart';
+import 'pin_flows.dart';
 
 enum EmailAuthMode { signIn, signUp }
 
@@ -34,6 +36,8 @@ class EmailAuthScreen extends StatefulWidget {
 class _EmailAuthScreenState extends State<EmailAuthScreen> {
   FirebaseAuthService? _firebaseAuth;
   bool _busy = false;
+  // Set while this phone holds an account recovery request to look at.
+  String? _recoveryToken;
   String _pin = '';
   final int _minPinLength = 4;
   // A new PIN is exactly four digits. Signing in still accepts the longer
@@ -76,8 +80,109 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
     );
   }
 
+  @override
+  void initState() {
+    super.initState();
+    _loadRecoveryToken();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) AppScope.of(context).auth.loadSignInOptions();
+    });
+  }
+
+  /// Sign in with the PIN FitFlex keeps. An existing user whose PIN is still
+  /// with Firebase is taken through moving it across.
+  Future<void> _submitWithFitFlexPin() async {
+    final scope = AppScope.of(context);
+    final locale = FFLocaleScope.of(context).locale.languageCode;
+    setState(() => _busy = true);
+    try {
+      final res = await scope.api.pinLogin(
+        contactOf(widget.initialEmail),
+        _pin,
+        locale: locale,
+      );
+      if (!mounted) return;
+      // Invited with a start PIN, or no profile yet: those have their own steps.
+      if (res['startPin'] == true || res['onboarding'] == true) {
+        setState(() => _pin = '');
+        await openSignInStep(context, res);
+        return;
+      }
+      if (res['setupRequired'] == true) {
+        final pin = _pin;
+        setState(() => _pin = '');
+        await Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => PinSetupScreen(
+              setupToken: res['setupToken'].toString(),
+              contact:
+                  res['identifierValue']?.toString() ?? widget.initialEmail,
+              needsCode: res['verificationRequired'] == true,
+              needsNewPin: res['pinChangeRequired'] == true,
+              currentPin: pin,
+              resendAfterSeconds:
+                  (res['resendAfterSeconds'] as num?)?.toInt() ?? 60,
+            ),
+          ),
+        );
+        return;
+      }
+      await scope.auth.completeFitFlexSession(res);
+      if (!mounted) return;
+      context.go(routeForSignedInUser(scope.auth));
+    } catch (e) {
+      if (!mounted) return;
+      _showErrorDialog(pinErrorMessage(context, e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _recover() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const AccountRecoveryScreen()),
+    );
+    _loadRecoveryToken();
+  }
+
+  Future<void> _checkRecovery() async {
+    final token = _recoveryToken;
+    if (token == null) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => RecoveryStatusScreen(requestToken: token),
+      ),
+    );
+    _loadRecoveryToken();
+  }
+
+  Future<void> _loadRecoveryToken() async {
+    final token = await savedRecoveryToken();
+    if (mounted) setState(() => _recoveryToken = token);
+  }
+
+  /// Forgot PIN by FitFlex code: not for an email while FitFlex cannot send
+  /// email codes.
+  bool _resetOffered(BuildContext context) {
+    final auth = AppScope.of(context).auth;
+    return !widget.initialEmail.contains('@') || auth.emailCodesAvailable;
+  }
+
+  void _forgotPin() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ForgotPinScreen(contact: widget.initialEmail),
+      ),
+    );
+  }
+
   Future<void> _submit() async {
     if (_pin.length < _minPinLength) return;
+    // When FitFlex keeps the PIN, sign-in goes to FitFlex, not Firebase.
+    if (widget.initialMode == EmailAuthMode.signIn &&
+        usesFitFlexCodes(AppScope.of(context).auth, widget.initialEmail)) {
+      return _submitWithFitFlexPin();
+    }
     setState(() => _busy = true);
 
     try {
@@ -232,14 +337,15 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
                     ),
                   ),
                   const SizedBox(height: FFTokens.spacingLg),
-                  if (widget.initialMode == EmailAuthMode.signIn)
+                  if (widget.initialMode == EmailAuthMode.signIn &&
+                      _resetOffered(context))
                     Center(
                       child: TextButton(
-                        onPressed: _busy
+                        key: const Key('forgot-pin'),
+                        onPressed:
+                            _busy || !AppScope.of(context).auth.pinResetEnabled
                             ? null
-                            : () {
-                                // Forgot password logic here
-                              },
+                            : _forgotPin,
                         child: Text(
                           context.tr('auth.forgotPin'),
                           style: TextStyle(
@@ -249,6 +355,25 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
                         ),
                       ),
                     ),
+                  if (widget.initialMode == EmailAuthMode.signIn &&
+                      _resetOffered(context) &&
+                      AppScope.of(context).auth.pinResetEnabled) ...[
+                    Center(
+                      child: TextButton(
+                        key: const Key('recovery-link'),
+                        onPressed: _busy ? null : _recover,
+                        child: Text(context.tr('rec.link')),
+                      ),
+                    ),
+                    if (_recoveryToken != null)
+                      Center(
+                        child: TextButton(
+                          key: const Key('recovery-check'),
+                          onPressed: _busy ? null : _checkRecovery,
+                          child: Text(context.tr('rec.check')),
+                        ),
+                      ),
+                  ],
                   const SizedBox(height: FFTokens.spacingMd),
                 ],
               ),

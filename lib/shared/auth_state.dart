@@ -31,10 +31,21 @@ class AuthState extends ChangeNotifier {
   // A trainer or gym owner: is their own verification approved? Null for
   // other roles, and for a backend that does not report it.
   bool? _partnerVerified;
+  // Identity V2 · I7: FitFlex keeps the PIN (sign-in and registration with a
+  // number or email + PIN), and forgot PIN. Both follow the backend flags.
+  bool _pinLoginEnabled = false;
+  bool _pinResetEnabled = false;
+  bool _emailCodesAvailable = true;
+  bool _smsCodesAvailable = true;
+  bool _signInOptionsLoaded = false;
   // Identity V2 identifiers: what this Person has proved is theirs.
   bool _identifiersEnabled = false;
   List<Map<String, dynamic>> _verifiedIdentifiers = const [];
   List<Map<String, dynamic>> _unverifiedIdentifiers = const [];
+  // Which kind to suggest adding as a second contact ('email' or 'phone'),
+  // and whether the person dismissed the reminder in this session.
+  String? _secondContactMissing;
+  bool _secondContactDismissed = false;
 
   String? get token => _token;
   Map<String, dynamic>? get user => _user;
@@ -70,6 +81,67 @@ class AuthState extends ChangeNotifier {
   /// False while a trainer or gym owner is active but not verified yet.
   bool? get partnerVerified => _partnerVerified;
 
+  /// True when sign-in and registration use a number or email and a PIN that
+  /// FitFlex keeps. While false the app signs in through Firebase as before.
+  bool get pinLoginEnabled => _pinLoginEnabled;
+
+  /// True when forgot PIN is available.
+  bool get pinResetEnabled => _pinResetEnabled;
+
+  /// True when FitFlex can send codes to an email. While false, email
+  /// accounts stay on the Firebase path.
+  bool get emailCodesAvailable => _emailCodesAvailable;
+
+  /// True when FitFlex can send codes to a mobile number.
+  bool get smsCodesAvailable => _smsCodesAvailable;
+
+  /// Ask the backend which sign-in options are on. Safe to call repeatedly;
+  /// it asks once unless [force] is set. Offline leaves the options off.
+  Future<void> loadSignInOptions({bool force = false}) async {
+    if (_signInOptionsLoaded && !force) return;
+    Map<String, dynamic>? options;
+    try {
+      options = await api.signInOptions();
+    } catch (_) {
+      options = null; // older server (404) or offline: probe the routes
+    }
+    if (options != null && options['pinLogin'] is bool) {
+      _pinLoginEnabled = options['pinLogin'] == true;
+      _pinResetEnabled = options['pinReset'] == true;
+      _emailCodesAvailable = options['emailCodes'] != false;
+      _smsCodesAvailable = options['smsCodes'] != false;
+    } else {
+      final results = await Future.wait([
+        api.pinLoginAvailable(),
+        api.pinResetAvailable(),
+      ]);
+      _pinLoginEnabled = results[0];
+      _pinResetEnabled = results[1];
+      _emailCodesAvailable = true;
+      _smsCodesAvailable = true;
+    }
+    _signInOptionsLoaded = true;
+    notifyListeners();
+  }
+
+  /// Store a session that a PIN flow returned (sign-in, registration, PIN
+  /// setup, reset or change) and load what follows a sign-in.
+  Future<Map<String, dynamic>> completeFitFlexSession(
+    Map<String, dynamic> res,
+  ) async {
+    final user = Map<String, dynamic>.from(res['user'] as Map);
+    if (user['userType']?.toString() == 'admin') {
+      await signOut();
+      throw const AdminMobileSignInException();
+    }
+    await signInWithFitFlexSession(res['token'] as String, user);
+    _partnerVerified = res['partnerVerified'] as bool?;
+    await _applyPersonaPayload(res);
+    unawaited(refreshInvitations());
+    unawaited(refreshIdentifiers());
+    return user;
+  }
+
   /// True when the backend lets a person verify a mobile number or email.
   bool get identifiersEnabled => _identifiersEnabled;
 
@@ -79,6 +151,16 @@ class AuthState extends ChangeNotifier {
   /// Profile values (mobile number, email) not verified yet.
   List<Map<String, dynamic>> get unverifiedIdentifiers =>
       _unverifiedIdentifiers;
+
+  /// 'email' or 'phone' when only one kind is verified and the reminder to add
+  /// the other has not been dismissed this session; otherwise null.
+  String? get secondContactReminder =>
+      _secondContactDismissed ? null : _secondContactMissing;
+
+  void dismissSecondContactReminder() {
+    _secondContactDismissed = true;
+    notifyListeners();
+  }
 
   /// Set when the backend couldn't pick a persona (several, none used last).
   bool get personaChoiceRequired => _personaChoiceRequired;
@@ -91,6 +173,7 @@ class AuthState extends ChangeNotifier {
     _role = prefs.getString('role') ?? 'member';
     _personas = _decodePersonas(prefs.getString('personas'));
     api.setToken(_token);
+    unawaited(loadSignInOptions());
 
     // If we have a token, refresh user from backend to get latest status
     if (_token != null) {
@@ -269,11 +352,17 @@ class AuthState extends ChangeNotifier {
       _identifiersEnabled = true;
       _verifiedIdentifiers = listOf(res['identifiers']);
       _unverifiedIdentifiers = listOf(res['unverified']);
+      final second = res['secondContact'];
+      final missing = second is Map ? second['missing']?.toString() : null;
+      _secondContactMissing = missing == 'email' || missing == 'phone'
+          ? missing
+          : null;
     } on ApiException catch (e) {
       if (e.status == 404) {
         _identifiersEnabled = false;
         _verifiedIdentifiers = const [];
         _unverifiedIdentifiers = const [];
+        _secondContactMissing = null;
       }
     } catch (_) {
       // Offline: keep what we have.
@@ -342,6 +431,8 @@ class AuthState extends ChangeNotifier {
     _identifiersEnabled = false;
     _verifiedIdentifiers = const [];
     _unverifiedIdentifiers = const [];
+    _secondContactMissing = null;
+    _secondContactDismissed = false;
     _partnerVerified = null;
     api.setToken(null);
     final prefs = await SharedPreferences.getInstance();

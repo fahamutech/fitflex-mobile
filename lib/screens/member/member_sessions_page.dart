@@ -12,6 +12,8 @@ import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
+import '../../shared/models.dart';
+import '../../shared/payment_labels.dart';
 
 class MemberSessionsPage extends StatefulWidget {
   const MemberSessionsPage({super.key});
@@ -416,7 +418,7 @@ class _RefundRequestSheetState extends State<_RefundRequestSheet> {
   }
 
   String _paymentLabel(Map<String, dynamic> p) {
-    final what = (p['tier'] ?? p['plan'] ?? '').toString();
+    final what = paymentProductLabel(context, PaymentRequest.fromJson(p));
     final day = (p['decidedAt'] ?? p['requestedAt'] ?? '').toString();
     return [
       formatCurrency(p['amountTzs'] as num? ?? 0),

@@ -24,6 +24,8 @@ class MemberPaymentPage extends StatelessWidget {
         .firstOrNull;
     final price = pass?.price ?? 0;
     final visitCap = pass?.visitCap;
+    // Nothing to pay for until the chosen tier is found in the live catalogue.
+    final payable = pass != null && price > 0;
 
     return Scaffold(
       appBar: AppBar(
@@ -60,7 +62,7 @@ class MemberPaymentPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 _Row(
-                  label: context.tr('member.choosePlan'),
+                  label: context.tr('pay.product.fitflexPass'),
                   value: context.tr('pass.${data.selectedTier}'),
                 ),
                 _Row(
@@ -116,7 +118,12 @@ class MemberPaymentPage extends StatelessWidget {
           //   onTap: () {},
           // ),
           const SizedBox(height: 16),
-          _SubmitButton(tier: data.selectedTier),
+          if (!payable)
+            FFAlert(
+              message: context.tr('member.passNoneAvailable'),
+              tone: FFAlertTone.warning,
+            ),
+          _SubmitButton(tier: data.selectedTier, enabled: payable),
         ],
       ),
     );
@@ -146,9 +153,10 @@ class _Row extends StatelessWidget {
 }
 
 class _SubmitButton extends StatefulWidget {
-  const _SubmitButton({required this.tier});
+  const _SubmitButton({required this.tier, required this.enabled});
 
   final String tier;
+  final bool enabled;
 
   @override
   State<_SubmitButton> createState() => _SubmitButtonState();
@@ -158,6 +166,7 @@ class _SubmitButtonState extends State<_SubmitButton> {
   bool _loading = false;
 
   Future<void> _submit() async {
+    if (_loading) return; // a second tap must not send a second request
     setState(() => _loading = true);
     try {
       await AppScope.of(context).api.requestPass(widget.tier);
@@ -184,7 +193,7 @@ class _SubmitButtonState extends State<_SubmitButton> {
   @override
   Widget build(BuildContext context) {
     return FilledButton(
-      onPressed: _loading ? null : _submit,
+      onPressed: _loading || !widget.enabled ? null : _submit,
       child: _loading
           ? FFSpinner(size: 18, color: Theme.of(context).colorScheme.onPrimary)
           : Text(context.tr('member.requestPayment')),

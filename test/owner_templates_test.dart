@@ -401,7 +401,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Violezo'));
       await tester.pumpAndSettle();
-      expect(find.text('Kikumbusho cha kuhuisha'), findsWidgets);
+      expect(find.text('Kikumbusho cha kulipia tena'), findsWidgets);
       expect(find.textContaining('Habari'), findsOneWidget);
     });
 

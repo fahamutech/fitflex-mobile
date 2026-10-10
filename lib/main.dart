@@ -10,12 +10,14 @@ import 'shared/activity/activity_config.dart';
 import 'shared/activity/phone_steps.dart';
 import 'shared/activity/run_recorder.dart';
 import 'router.dart';
+import 'screens/account_recovery.dart';
 import 'shared/api_client.dart';
 import 'shared/auth_state.dart';
 import 'shared/inbox/inbox_controller.dart';
 import 'shared/push_service.dart';
 import 'shared/design_tokens.dart';
 import 'shared/i18n.dart';
+import 'shared/promotion_events.dart';
 import 'shared/push_banner.dart';
 import 'shared/theme_notifier.dart';
 import 'firebase_options.dart';
@@ -48,6 +50,7 @@ Future<void> main() async {
     await initPhoneStepsBackground();
   }
   final api = ApiClient();
+  PromotionEvents.install(api);
   final auth = AuthState(api, push: mockAuth ? null : PushService(api));
   await auth.hydrate();
 
@@ -235,6 +238,8 @@ class _FitFlexAppState extends State<FitFlexApp> {
                   GlobalCupertinoLocalizations.delegate,
                 ],
                 routerConfig: _router,
+                builder: (context, child) =>
+                    RecoveryBannerHost(child: child ?? const SizedBox.shrink()),
               );
             },
           ),

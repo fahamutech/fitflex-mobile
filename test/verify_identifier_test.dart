@@ -23,6 +23,44 @@ class _FakeApi extends ApiClient {
   List<Map<String, dynamic>> unverified = [];
   List<Map<String, dynamic>> invitations = [];
   final requests = <Map<String, dynamic>>[];
+  bool resetOn = true;
+  final changeRequests = <Map<String, dynamic>>[];
+  final changeConfirms = <Map<String, dynamic>>[];
+  ApiException? changeError;
+
+  @override
+  Future<bool> pinLoginAvailable() async => true;
+  @override
+  Future<bool> pinResetAvailable() async => resetOn;
+
+  @override
+  Future<Map<String, dynamic>> requestIdentifierChange({
+    String? phone,
+    String? email,
+    required String pin,
+    String? locale,
+  }) async {
+    changeRequests.add({'phone': ?phone, 'email': ?email, 'pin': pin});
+    final error = changeError;
+    changeError = null;
+    if (error != null) throw error;
+    return {'sent': true};
+  }
+
+  @override
+  Future<Map<String, dynamic>> confirmIdentifierChange({
+    String? phone,
+    String? email,
+    required String code,
+    String? locale,
+  }) async {
+    changeConfirms.add({'phone': ?phone, 'email': ?email, 'code': code});
+    verified = [
+      {'type': 'phone', 'value': phone ?? email},
+    ];
+    return {'changed': true};
+  }
+
   final confirms = <Map<String, dynamic>>[];
   ApiException? requestError;
   ApiException? confirmError;
@@ -267,4 +305,78 @@ void main() {
       expect(find.byKey(const Key('invitations-notice')), findsNothing);
     },
   );
+
+  testWidgets(
+    'change a verified number: the new one and the PIN, then the code',
+    (tester) async {
+      final api = _FakeApi()
+        ..verified = [
+          {'type': 'phone', 'value': '+255712345678'},
+        ];
+      final auth = await _signedIn(api);
+      await auth.loadSignInOptions();
+      await tester.pumpWidget(_app(auth, const ContactDetailsScreen()));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('change-+255712345678')));
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('You sign in with +255712345678'),
+        findsOneWidget,
+      );
+
+      // Both are needed before anything is sent.
+      await tester.enterText(
+        find.byKey(const Key('change-value')),
+        '0799000111',
+      );
+      await tester.tap(find.byKey(const Key('change-send')));
+      await tester.pumpAndSettle();
+      expect(find.text('Enter the new one and your PIN.'), findsOneWidget);
+      expect(api.changeRequests, isEmpty);
+
+      // A wrong PIN is said plainly and sends no code.
+      api.changeError = ApiException(400, {'error': 'pin_incorrect'});
+      await tester.enterText(find.byKey(const Key('change-pin')), '0000');
+      await tester.tap(find.byKey(const Key('change-send')));
+      await tester.pumpAndSettle();
+      expect(find.text('Your current PIN is not right.'), findsOneWidget);
+      expect(find.byKey(const Key('change-code')), findsNothing);
+
+      await tester.enterText(find.byKey(const Key('change-pin')), '4821');
+      await tester.tap(find.byKey(const Key('change-send')));
+      await tester.pumpAndSettle();
+      expect(api.changeRequests.last, {'phone': '0799000111', 'pin': '4821'});
+      await tester.enterText(find.byKey(const Key('change-code')), '123456');
+      await tester.tap(find.byKey(const Key('change-confirm')));
+      await tester.pumpAndSettle();
+      expect(api.changeConfirms.single, {
+        'phone': '0799000111',
+        'code': '123456',
+      });
+
+      // Back on the list, showing the new number.
+      expect(find.text('0799000111'), findsOneWidget);
+      expect(find.text('+255712345678'), findsNothing);
+      expect(
+        find.text('Changed. The old one no longer signs in.'),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets('Change is not offered while the backend has it off', (
+    tester,
+  ) async {
+    final api = _FakeApi()
+      ..resetOn = false
+      ..verified = [
+        {'type': 'email', 'value': 'a@b.co'},
+      ];
+    final auth = await _signedIn(api);
+    await auth.loadSignInOptions();
+    await tester.pumpWidget(_app(auth, const ContactDetailsScreen()));
+    await tester.pumpAndSettle();
+    expect(find.text('a@b.co'), findsOneWidget);
+    expect(find.byKey(const Key('change-a@b.co')), findsNothing);
+  });
 }

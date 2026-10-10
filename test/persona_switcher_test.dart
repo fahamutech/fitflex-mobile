@@ -45,6 +45,8 @@ class _FakeApi extends ApiClient {
   final added = <String>[];
   List<String> addable = const [];
   bool addConflict = false;
+  final termsAsked = <String?>[];
+  final termsAccepted = <String>[];
   List<Map<String, dynamic>> personas = [
     _persona('usr_member', 'member'),
     _persona('usr_trainer', 'trainer'),
@@ -76,6 +78,26 @@ class _FakeApi extends ApiClient {
       'activePersonaId': 'usr_member',
       'addablePersonaTypes': addable,
     };
+  }
+
+  @override
+  Future<Map<String, dynamic>> myTerms({String? lang, String? role}) async {
+    termsAsked.add(role);
+    return {
+      'required': true,
+      'accepted': false,
+      'version': 'v1',
+      'title': 'Partner Agreement',
+      'sections': [
+        {'heading': 'Your role', 'text': 'Terms of the role.'},
+      ],
+    };
+  }
+
+  @override
+  Future<Map<String, dynamic>> acceptTerms(String version) async {
+    termsAccepted.add(version);
+    return {'accepted': true};
   }
 
   @override
@@ -256,7 +278,23 @@ void main() {
 
       await tester.tap(find.byKey(const Key('add-persona-trainer')));
       await tester.pumpAndSettle();
+      // The new role's terms come first; nothing is created until agreed.
+      expect(api.termsAsked, ['trainer']);
+      expect(find.text('Terms of the role.'), findsOneWidget);
+      expect(api.added, isEmpty);
+      expect(
+        tester
+            .widget<FilledButton>(find.byKey(const Key('terms-page-agree')))
+            .onPressed,
+        isNull,
+        reason: 'must tick first',
+      );
+      await tester.tap(find.byKey(const Key('terms-page-check')));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('terms-page-agree')));
+      await tester.pumpAndSettle();
       expect(api.added, ['trainer']);
+      expect(api.termsAccepted, ['v1'], reason: 'recorded for the new role');
       expect(api.switched, [
         'usr_new_trainer',
       ], reason: 'continues as the new role');
@@ -265,6 +303,24 @@ void main() {
       expect(find.text('trainer home'), findsOneWidget);
     },
   );
+
+  testWidgets('closing the terms without agreeing adds no role', (
+    tester,
+  ) async {
+    final api = _soloMemberApi();
+    final auth = await _signedIn(api);
+    await tester.pumpWidget(_app(auth, const PersonaSwitcherTile()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('persona-switch')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('add-persona-trainer')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(CloseButton));
+    await tester.pumpAndSettle();
+    expect(api.added, isEmpty);
+    expect(api.termsAccepted, isEmpty);
+    expect(auth.user?['userType'], 'member');
+  });
 
   testWidgets('an email already used for that role explains how to link it', (
     tester,
@@ -276,6 +332,10 @@ void main() {
     await tester.tap(find.byKey(const Key('persona-switch')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('add-persona-vendor')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('terms-page-check')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('terms-page-agree')));
     await tester.pumpAndSettle();
     expect(
       find.textContaining('already has a profile for that role'),

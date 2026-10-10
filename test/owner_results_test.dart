@@ -170,8 +170,8 @@ void main() {
 
   testWidgets('results in Swahili', (tester) async {
     await tester.pumpWidget(_app(ResultsView(results: _september), lang: 'sw'));
-    expect(find.text('Mapato yanayohusishwa'), findsOneWidget);
-    expect(find.text('Walihuisha'), findsOneWidget);
+    expect(find.text('Mapato kutokana na ujumbe'), findsOneWidget);
+    expect(find.text('Waliolipia tena'), findsOneWidget);
   });
 
   test('every results string has a Swahili translation', () {

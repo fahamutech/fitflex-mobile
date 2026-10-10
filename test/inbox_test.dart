@@ -22,6 +22,9 @@ class _FakeApi extends ApiClient {
     'pushMarketing': true,
     'whatsappMarketing': false,
     'whatsappAvailable': false,
+    'smsMarketing': false,
+    'smsTransactional': true,
+    'smsAvailable': true,
   };
   List<Map<String, dynamic>> rows = [
     {
@@ -368,6 +371,21 @@ void main() {
         await tester.tap(find.byKey(const Key('whatsapp-agree')));
         await tester.pumpAndSettle();
         expect(api.calls, contains('prefs:{whatsappMarketing: true}'));
+
+        // SMS: offers need agreement too; reminders are on and can be switched off.
+        await tester.ensureVisible(find.byKey(const Key('prefs-sms-offers')));
+        await tester.tap(find.byKey(const Key('prefs-sms-offers')));
+        await tester.pumpAndSettle();
+        expect(find.text('Get offers by SMS?'), findsOneWidget);
+        await tester.tap(find.byKey(const Key('sms-agree')));
+        await tester.pumpAndSettle();
+        expect(api.calls, contains('prefs:{smsMarketing: true}'));
+        await tester.ensureVisible(
+          find.byKey(const Key('prefs-sms-reminders')),
+        );
+        await tester.tap(find.byKey(const Key('prefs-sms-reminders')));
+        await tester.pumpAndSettle();
+        expect(api.calls, contains('prefs:{smsTransactional: false}'));
         expect(
           find.textContaining('always come to your Messages'),
           findsOneWidget,

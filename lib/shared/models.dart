@@ -1,3 +1,4 @@
+import 'promotion.dart';
 // Typed data models matching the portal's TypeScript interfaces in api.ts.
 // Keeps the mobile app aligned with the backend/portal data contract.
 
@@ -33,6 +34,9 @@ class Gym {
   final num rating;
   final int reviewCount;
 
+  /// Set when this gym is promoted for what the customer is looking at.
+  final PromotionTag? promotion;
+
   Gym({
     required this.id,
     required this.name,
@@ -57,6 +61,7 @@ class Gym {
     this.equipment = const [],
     this.rating = 0,
     this.reviewCount = 0,
+    this.promotion,
   });
 
   factory Gym.fromJson(Map<String, dynamic> json) {
@@ -105,6 +110,7 @@ class Gym {
           (json['equipment'] as List?)?.whereType<String>().toList() ?? [],
       rating: _numValue(json['rating']) ?? 0,
       reviewCount: (_numValue(json['reviewCount']) ?? 0).toInt(),
+      promotion: PromotionTag.fromJson(json['promotion']),
     );
   }
 
@@ -133,6 +139,7 @@ class Gym {
     equipment: equipment,
     rating: rating,
     reviewCount: reviewCount,
+    promotion: promotion,
   );
 
   bool get isFreeOnline => accessMode == 'free_online';
@@ -190,6 +197,20 @@ class TrainerProfile {
   final List<TrainerAvailability> availability;
   final SocialLinks socialLinks;
 
+  /// The trainer's photo gallery (first = profile picture). Empty for
+  /// profiles that only ever had a single [photoUrl].
+  final List<String> images;
+
+  /// Every photo to show: the gallery, or just the profile picture.
+  List<String> get photos {
+    if (images.isNotEmpty) return images;
+    final p = photoUrl;
+    return p == null || p.isEmpty ? const [] : [p];
+  }
+
+  /// Set when this trainer is promoted for what the customer is looking at.
+  final PromotionTag? promotion;
+
   TrainerProfile({
     required this.id,
     this.userId,
@@ -211,6 +232,8 @@ class TrainerProfile {
     this.bookable = true,
     this.availability = const [],
     this.socialLinks = const SocialLinks(),
+    this.images = const [],
+    this.promotion,
   });
 
   factory TrainerProfile.fromJson(Map<String, dynamic> json) => TrainerProfile(
@@ -241,6 +264,13 @@ class TrainerProfile {
     bookable: json['bookable'] == null || _boolValue(json['bookable']),
     availability: _trainerAvailabilityFromJson(json['availability']),
     socialLinks: SocialLinks.fromJson(json['socialLinks']),
+    images:
+        (json['images'] as List?)
+            ?.whereType<String>()
+            .where((s) => s.isNotEmpty)
+            .toList() ??
+        const [],
+    promotion: PromotionTag.fromJson(json['promotion']),
   );
 
   /// This trainer with a new rating — after the member reviews them.
@@ -265,6 +295,8 @@ class TrainerProfile {
     bookable: bookable,
     availability: availability,
     socialLinks: socialLinks,
+    images: images,
+    promotion: promotion,
   );
 }
 
@@ -591,6 +623,15 @@ class PaymentRequest {
   final String memberId;
   final String subscriptionId;
   final String tier;
+
+  /// What the request buys: FITFLEX_PASS, GYM_SUBSCRIPTION, TRAINER_SERVICE,
+  /// TRAINER_GYM_PASS or SHOP_ORDER (null from an older server).
+  final String? productType;
+
+  /// Daily / weekly / monthly for a gym plan.
+  final String? plan;
+  final String? gymId;
+  final String? gymName;
   final num amountTzs;
   final String status;
   final String provider;
@@ -604,6 +645,10 @@ class PaymentRequest {
     required this.memberId,
     required this.subscriptionId,
     required this.tier,
+    this.productType,
+    this.plan,
+    this.gymId,
+    this.gymName,
     required this.amountTzs,
     required this.status,
     required this.provider,
@@ -618,6 +663,12 @@ class PaymentRequest {
     memberId: json['memberId'] as String? ?? '',
     subscriptionId: json['subscriptionId'] as String? ?? '',
     tier: json['tier'] as String? ?? '',
+    productType: json['productType'] as String?,
+    plan: json['plan'] as String?,
+    gymId: json['gymId'] as String?,
+    gymName: json['gym'] is Map
+        ? (json['gym'] as Map)['name'] as String?
+        : null,
     amountTzs: json['amountTzs'] as num? ?? 0,
     status: json['status'] as String? ?? 'pending',
     provider: json['provider'] as String? ?? '',
@@ -710,6 +761,9 @@ class MemberMeResponse {
   final MemberSummary user;
   final Subscription? subscription;
   final PaymentRequest? pendingPayment;
+
+  /// Every open payment, each labelled by product (pass, gym plan, trainer session, ...).
+  final List<PaymentRequest> pendingPayments;
   final int visitsUsed;
   final int? visitCap;
 
@@ -717,6 +771,7 @@ class MemberMeResponse {
     required this.user,
     this.subscription,
     this.pendingPayment,
+    this.pendingPayments = const [],
     required this.visitsUsed,
     this.visitCap,
   });
@@ -733,6 +788,10 @@ class MemberMeResponse {
             json['pendingPayment'] as Map<String, dynamic>,
           )
         : null,
+    pendingPayments: [
+      for (final p in (json['pendingPayments'] as List? ?? const []))
+        if (p is Map<String, dynamic>) PaymentRequest.fromJson(p),
+    ],
     visitsUsed: (json['visitsUsed'] as num?)?.toInt() ?? 0,
     visitCap: (json['visitCap'] as num?)?.toInt(),
   );
