@@ -7,6 +7,7 @@ import '../../app_scope.dart';
 import '../../router.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
+import '../../shared/tone_theme.dart';
 import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
@@ -884,18 +885,20 @@ class _ExpandableChipGroupState extends State<_ExpandableChipGroup> {
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: FFTokens.success50,
-                              border: Border.all(color: FFTokens.success200),
+                              color: FFToneTheme.of(context).success.bg,
+                              border: Border.all(
+                                color: FFToneTheme.of(context).success.border,
+                              ),
                               borderRadius: BorderRadius.circular(
                                 FFTokens.radiusMd,
                               ),
                             ),
                             child: Text(
                               item,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
-                                color: FFTokens.success700,
+                                color: FFToneTheme.of(context).success.fg,
                               ),
                             ),
                           )

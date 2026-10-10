@@ -4,6 +4,7 @@ import '../../app_scope.dart';
 import '../../shared/api_client.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
+import '../../shared/tone_theme.dart';
 import '../../shared/i18n.dart';
 import '../../shared/widgets/trainer_form_page.dart';
 import 'owner_shell.dart';
@@ -517,7 +518,10 @@ class _PendingTrainerCardState extends State<_PendingTrainerCard> {
               onPressed: () => _decide('reject'),
             ),
             IconButton(
-              icon: const Icon(Icons.check_circle, color: Colors.green),
+              icon: Icon(
+                Icons.check_circle,
+                color: FFToneTheme.of(context).success.dot,
+              ),
               tooltip: context.tr('owner.approve'),
               onPressed: () => _decide('approve'),
             ),
