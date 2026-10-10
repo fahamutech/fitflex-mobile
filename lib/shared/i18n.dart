@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Lightweight i18n provider with English + Swahili.
 /// All user-facing strings live here.
 class FFLocale extends ChangeNotifier {
+  static const prefsKey = 'ff.locale';
+
   Locale _locale = const Locale('en');
   Locale get locale => _locale;
 
@@ -10,6 +13,32 @@ class FFLocale extends ChangeNotifier {
     if (_supported.contains(l.languageCode)) {
       _locale = l;
       notifyListeners();
+      _save();
+    }
+  }
+
+  /// Restores the language chosen on this device, if any.
+  Future<void> load() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getString(prefsKey);
+      if (saved != null &&
+          _supported.contains(saved) &&
+          saved != _locale.languageCode) {
+        _locale = Locale(saved);
+        notifyListeners();
+      }
+    } catch (_) {
+      // Keep the default.
+    }
+  }
+
+  Future<void> _save() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(prefsKey, _locale.languageCode);
+    } catch (_) {
+      // Not saved; the choice still applies for this session.
     }
   }
 
@@ -53,6 +82,12 @@ class FFLocale extends ChangeNotifier {
       'a11y.increase': 'Increase quantity',
       'a11y.decrease': 'Decrease quantity',
       'a11y.open': 'Open',
+      'theme.title': 'Theme',
+      'theme.dark': 'Dark',
+      'theme.light': 'Light',
+      'theme.auto': 'Auto (dark at night)',
+      'lang.switchToSwahili': 'Switch to Swahili',
+      'lang.switchToEnglish': 'Switch to English',
       'a11y.lightMode': 'Switch to light mode',
       'a11y.darkMode': 'Switch to dark mode',
       'lang.title': 'Choose language',
@@ -3492,6 +3527,13 @@ class FFLocale extends ChangeNotifier {
       'a11y.increase': 'Ongeza idadi',
       'a11y.decrease': 'Punguza idadi',
       'a11y.open': 'Fungua',
+      // Kept in English until native Swahili review.
+      'theme.title': 'Theme',
+      'theme.dark': 'Dark',
+      'theme.light': 'Light',
+      'theme.auto': 'Auto (dark at night)',
+      'lang.switchToSwahili': 'Switch to Swahili',
+      'lang.switchToEnglish': 'Switch to English',
       'a11y.lightMode': 'Tumia hali ya mwanga',
       'a11y.darkMode': 'Tumia hali ya giza',
       'lang.title': 'Chagua Lugha',

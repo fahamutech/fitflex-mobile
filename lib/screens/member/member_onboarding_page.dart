@@ -140,7 +140,7 @@ class _MemberOnboardingPageState extends State<MemberOnboardingPage> {
           appBar: AppBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
-            actions: const [ThemeToggleButton()],
+            actions: const [AppPrefsButtons()],
           ),
           body: SafeArea(
             child: Padding(

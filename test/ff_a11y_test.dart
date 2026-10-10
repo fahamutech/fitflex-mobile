@@ -143,7 +143,7 @@ void main() {
       h.dispose();
     });
 
-    testWidgets('ThemeToggleButton tooltip is localised', (t) async {
+    testWidgets('ThemeToggleButton tooltip names the choice', (t) async {
       await t.pumpWidget(
         ThemeScope(
           notifier: ThemeNotifier(),
@@ -153,7 +153,7 @@ void main() {
           ),
         ),
       );
-      expect(find.byTooltip('Tumia hali ya mwanga'), findsOneWidget);
+      expect(find.byTooltip('Theme: Dark'), findsOneWidget);
     });
   });
 }

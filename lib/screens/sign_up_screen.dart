@@ -193,7 +193,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                     ? context.pop()
                     : context.go(AppRoutes.auth),
         ),
-        actions: const [ThemeToggleButton()],
+        actions: const [AppPrefsButtons()],
       ),
       body: SafeArea(
         child: FadeTransition(
