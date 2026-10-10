@@ -39,6 +39,7 @@ class TrainerFormPage extends StatefulWidget {
 class _TrainerFormPageState extends State<TrainerFormPage> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _name;
+  late final TextEditingController _nickname;
   late final TextEditingController _email;
   late final TextEditingController _phone;
   late final TextEditingController _rate;
@@ -60,7 +61,12 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
   void initState() {
     super.initState();
     final t = widget.initial ?? const {};
-    _name = TextEditingController(text: t['displayName']?.toString() ?? '');
+    // `displayName` is what clients see (the nickname when there is one);
+    // the trainer's own name is `fullName`.
+    _name = TextEditingController(
+      text: (t['fullName'] ?? t['displayName'])?.toString() ?? '',
+    );
+    _nickname = TextEditingController(text: t['nickname']?.toString() ?? '');
     _email = TextEditingController(text: t['email']?.toString() ?? '');
     _phone = TextEditingController(text: t['phone']?.toString() ?? '');
     _rate = TextEditingController(
@@ -145,6 +151,8 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
     try {
       final payload = <String, dynamic>{
         'displayName': _name.text.trim(),
+        // '' removes the nickname. Only the trainer chooses it.
+        if (widget.selfEdit) 'nickname': _nickname.text.trim(),
         'phone': _phone.text.trim(),
         'specialties': _selectedSpecialties,
         'hourlyRateTzs': num.tryParse(_rate.text.trim()) ?? 0,
@@ -228,6 +236,23 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
                 validator: _required,
               ),
               const SizedBox(height: FFTokens.spacingSm),
+              if (widget.selfEdit) ...[
+                FFTextField(
+                  key: const Key('trainerFormNickname'),
+                  controller: _nickname,
+                  label: context.tr('trainer.nickname'),
+                  hint: context.tr('trainer.nicknameHint'),
+                  validator: (v) => trainerNicknameError(context, v),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
+                  child: Text(
+                    context.tr('trainer.nicknameHelp'),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+                const SizedBox(height: FFTokens.spacingSm),
+              ],
               // Email — part of the account, not of a trainer's own edit.
               if (!widget.selfEdit) ...[
                 FFTextField(
@@ -444,6 +469,19 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
     });
     if (entry != null && mounted) setState(() => _availability.add(entry));
   }
+}
+
+/// Null when [value] can be a trainer's nickname (or is empty: it is optional).
+/// Same rule as the server: 2–30 characters, starting with a letter or number;
+/// letters, numbers, spaces and . _ ' -.
+String? trainerNicknameError(BuildContext context, String? value) {
+  final v = (value ?? '').replaceAll(RegExp(r'\s+'), ' ').trim();
+  if (v.isEmpty) return null;
+  final ok =
+      v.length >= 2 &&
+      v.length <= 30 &&
+      RegExp(r"^[\p{L}\p{N}][\p{L}\p{N} ._'-]*$", unicode: true).hasMatch(v);
+  return ok ? null : context.tr('trainer.nicknameInvalid');
 }
 
 Future<Map<String, dynamic>?> openTrainerForm(

@@ -2149,6 +2149,12 @@ class FFLocale extends ChangeNotifier {
       'owner.registerMember': 'Register',
       'member.fullName': 'Full name',
       'owner.editTrainer': 'Edit trainer',
+      'trainer.nickname': 'Nickname (optional)',
+      'trainer.nicknameHint': 'e.g. Coach Asha',
+      'trainer.nicknameHelp':
+          'The name clients see on your profile, plans, posts and messages. Leave empty to use your own name.',
+      'trainer.nicknameInvalid':
+          'Use 2 to 30 letters or numbers. Spaces, dots, dashes and underscores are fine.',
       'owner.viewTrainer': 'Trainer profile',
       'owner.trainerReadOnly':
           'Only the trainer can change these details. You can remove the trainer from your gym.',
@@ -3933,6 +3939,12 @@ class FFLocale extends ChangeNotifier {
       'owner.registerMember': 'Sajili',
       'member.fullName': 'Jina kamili',
       'owner.editTrainer': 'Hariri trainer',
+      'trainer.nickname': 'Jina la utani (si lazima)',
+      'trainer.nicknameHint': 'mf. Coach Asha',
+      'trainer.nicknameHelp':
+          'Jina ambalo wateja wataliona kwenye wasifu, mipango, machapisho na ujumbe wako. Acha wazi ili kutumia jina lako halisi.',
+      'trainer.nicknameInvalid':
+          'Tumia herufi au namba 2 hadi 30. Nafasi, nukta, vistari na vistari vya chini vinaruhusiwa.',
       'owner.viewTrainer': 'Wasifu wa trainer',
       'owner.trainerReadOnly':
           'Ni trainer pekee anayeweza kubadilisha taarifa hizi. Unaweza kumwondoa trainer kwenye gym yako.',

@@ -426,6 +426,16 @@ class OwnerTrainerProfilePage extends StatelessWidget {
             profile.displayName,
             style: tt.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
           ),
+          // Clients see the nickname; the gym also knows the trainer's own name.
+          if ((trainer['nickname']?.toString() ?? '').isNotEmpty &&
+              (trainer['fullName']?.toString() ?? '').isNotEmpty) ...[
+            const SizedBox(height: 2),
+            Text(
+              trainer['fullName'].toString(),
+              key: const Key('owner-trainer-fullname'),
+              style: tt.bodyMedium,
+            ),
+          ],
           if (rate > 0) ...[
             const SizedBox(height: 4),
             Text(
