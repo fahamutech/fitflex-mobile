@@ -356,13 +356,13 @@ class OwnerShellState extends State<OwnerShell> {
                   icon: Icon(
                     tab.icon,
                     color: _data.ownerGyms.isEmpty && tab.route != '/owner/home'
-                        ? Colors.grey
+                        ? Theme.of(context).disabledColor
                         : null,
                   ),
                   selectedIcon: Icon(
                     tab.selectedIcon,
                     color: _data.ownerGyms.isEmpty && tab.route != '/owner/home'
-                        ? Colors.grey
+                        ? Theme.of(context).disabledColor
                         : null,
                   ),
                   label: context.tr(tab.labelKey),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../design_tokens.dart';
+import '../tone_theme.dart';
 
 enum _SnackTone { success, error, info, warning }
 
@@ -48,54 +49,17 @@ class FFSnack {
     VoidCallback? onAction,
   ) {
     final theme = Theme.of(context);
-    final dark = theme.brightness == Brightness.dark;
-    final (
-      IconData icon,
-      Color s50,
-      Color s200,
-      Color s500,
-      Color s700,
-    ) = switch (tone) {
-      _SnackTone.success => (
-        Icons.check_circle_outline,
-        FFTokens.success50,
-        FFTokens.success200,
-        FFTokens.success500,
-        FFTokens.success700,
-      ),
-      _SnackTone.error => (
-        Icons.error_outline,
-        FFTokens.error50,
-        FFTokens.error200,
-        FFTokens.error500,
-        FFTokens.error700,
-      ),
-      _SnackTone.warning => (
-        Icons.warning_amber_rounded,
-        FFTokens.warning50,
-        FFTokens.warning200,
-        FFTokens.warning500,
-        FFTokens.warning700,
-      ),
-      _SnackTone.info => (
-        Icons.info_outline,
-        FFTokens.brand50,
-        FFTokens.brand200,
-        FFTokens.brand500,
-        FFTokens.brand800,
-      ),
+    final tones = FFToneTheme.of(context);
+    final (IconData icon, FFToneColors c) = switch (tone) {
+      _SnackTone.success => (Icons.check_circle_outline, tones.success),
+      _SnackTone.error => (Icons.error_outline, tones.danger),
+      _SnackTone.warning => (Icons.warning_amber_rounded, tones.warning),
+      _SnackTone.info => (Icons.info_outline, tones.info),
     };
-    // Light: pale tint with dark text. Dark: the tone tinted over the
-    // surface with normal on-surface text and a light icon.
-    final bg = dark
-        ? Color.alphaBlend(
-            s500.withValues(alpha: 0.22),
-            theme.colorScheme.surface,
-          )
-        : s50;
-    final fg = dark ? theme.colorScheme.onSurface : s700;
-    final iconColor = dark ? s200 : s700;
-    final border = dark ? s500.withValues(alpha: 0.5) : s200;
+    final bg = c.bg;
+    final fg = c.fg;
+    final iconColor = c.fg;
+    final border = c.border;
 
     final messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();

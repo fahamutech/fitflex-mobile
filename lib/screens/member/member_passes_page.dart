@@ -6,6 +6,7 @@ import '../../app_scope.dart';
 import '../../router.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
+import '../../shared/tone_theme.dart';
 import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
@@ -159,13 +160,15 @@ class _PendingBlockCard extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: FFTokens.warning50,
-                  border: Border.all(color: FFTokens.warning200),
+                  color: FFToneTheme.of(context).warning.bg,
+                  border: Border.all(
+                    color: FFToneTheme.of(context).warning.border,
+                  ),
                   borderRadius: BorderRadius.circular(FFTokens.radiusXl),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.hourglass_top_rounded,
-                  color: FFTokens.warning700,
+                  color: FFToneTheme.of(context).warning.fg,
                   size: 22,
                 ),
               ),
