@@ -256,7 +256,7 @@ class _OwnerRegistrationPageState extends State<OwnerRegistrationPage> {
             }
           },
         ),
-        actions: const [PersonaSwitchButton(), ThemeToggleButton()],
+        actions: const [PersonaSwitchButton(), AppPrefsButtons()],
       ),
       body: SafeArea(
         child: Padding(

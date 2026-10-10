@@ -127,7 +127,7 @@ class FFOwnerDashboardBar extends StatelessWidget
       actions: [
         // The inbox bell, with a real unread count.
         const InboxBellButton(),
-        const ThemeToggleButton(),
+        const AppPrefsButtons(),
         const SizedBox(width: 4),
         // Avatar
         Semantics(

@@ -70,7 +70,7 @@ class _RoleScreenState extends State<RoleScreen>
           onPressed: () =>
               context.canPop() ? context.pop() : context.go(AppRoutes.auth),
         ),
-        actions: const [ThemeToggleButton()],
+        actions: const [AppPrefsButtons()],
       ),
       body: SafeArea(
         child: FadeTransition(

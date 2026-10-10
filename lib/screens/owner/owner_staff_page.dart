@@ -215,7 +215,7 @@ class _OwnerStaffPageState extends State<OwnerStaffPage> {
           },
         ),
         title: Text(context.tr('staff.title')),
-        actions: const [ThemeToggleButton()],
+        actions: const [AppPrefsButtons()],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAddStaffDialog,
