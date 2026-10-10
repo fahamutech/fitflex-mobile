@@ -87,7 +87,7 @@ class FitFlexApp extends StatefulWidget {
   State<FitFlexApp> createState() => _FitFlexAppState();
 }
 
-class _FitFlexAppState extends State<FitFlexApp> {
+class _FitFlexAppState extends State<FitFlexApp> with WidgetsBindingObserver {
   late final GoRouter _router;
   late final ActivityBackend _activity;
   late final InboxController _inbox;
@@ -100,6 +100,7 @@ class _FitFlexAppState extends State<FitFlexApp> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _router = buildRouter(widget.auth);
     final sample = activitySampleDataEnabled();
     _activity = ActivityBackend.create(widget.api, sample: sample);
@@ -195,7 +196,14 @@ class _FitFlexAppState extends State<FitFlexApp> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Auto theme: the clock may have crossed dusk or dawn while suspended.
+    if (state == AppLifecycleState.resumed) widget.themeNotifier.refresh();
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     widget.auth.removeListener(_onAuth);
     widget.locale.removeListener(_syncLocale);
     widget.auth.push?.onOpen = null;

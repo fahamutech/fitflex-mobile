@@ -131,7 +131,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(context.tr('app.title')),
-        actions: const [ThemeToggleButton()],
+        actions: const [AppPrefsButtons()],
       ),
       body: SafeArea(
         child: Padding(

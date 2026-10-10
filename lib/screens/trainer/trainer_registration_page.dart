@@ -121,7 +121,7 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
             }
           },
         ),
-        actions: const [PersonaSwitchButton(), ThemeToggleButton()],
+        actions: const [PersonaSwitchButton(), AppPrefsButtons()],
       ),
       body: SafeArea(
         child: Padding(

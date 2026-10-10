@@ -86,7 +86,7 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
           },
         ),
         title: Text(context.tr('member.profile')),
-        actions: const [ThemeToggleButton()],
+        actions: const [AppPrefsButtons()],
       ),
       body: ListView(
         padding: const EdgeInsets.all(FFTokens.spacingLg),

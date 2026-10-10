@@ -278,7 +278,7 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
                   }
                 },
         ),
-        actions: const [ThemeToggleButton()],
+        actions: const [AppPrefsButtons()],
       ),
       body: SafeArea(
         child: Padding(

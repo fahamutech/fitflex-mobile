@@ -589,7 +589,7 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
           appBar: AppBar(
             automaticallyImplyLeading: false,
             title: Text(context.tr('app.title')),
-            actions: const [InboxBellButton(), ThemeToggleButton()],
+            actions: const [InboxBellButton(), AppPrefsButtons()],
           ),
           body: Column(
             children: [
