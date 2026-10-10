@@ -225,9 +225,73 @@ void main() {
     expect(payload!['images'], [_png, _png]);
     expect(payload!['photoUrl'], _png);
     expect(payload!['socialLinks'], containsPair('instagram', 'asha.fit'));
+    expect(payload!['nickname'], '', reason: 'none chosen');
     for (final field in ['email', 'status', 'gymIds', 'initialPin']) {
       expect(payload!.containsKey(field), isFalse, reason: field);
     }
+  });
+
+  testWidgets('a trainer chooses the name clients see; their own name stays', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 4000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    Map<String, dynamic>? payload;
+    await tester.pumpWidget(
+      _wrap(
+        Builder(
+          builder: (context) => TextButton(
+            onPressed: () async => payload = await openTrainerForm(
+              context,
+              title: 'Edit professional details',
+              // As the server returns it once a nickname is set.
+              initial: {
+                ..._trainer(),
+                'displayName': 'Coach Asha',
+                'fullName': 'Asha Mushi',
+                'nickname': 'Coach Asha',
+              },
+              selfEdit: true,
+            ),
+            child: const Text('open'),
+          ),
+        ),
+        api: _FakeApi(),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(TextFormField, 'Asha Mushi'), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, 'Coach Asha'), findsOneWidget);
+
+    await tester.enterText(find.byKey(const Key('trainerFormNickname')), '@');
+    await tester.tap(find.byKey(const Key('trainerFormSave')));
+    await tester.pumpAndSettle();
+    expect(payload, isNull, reason: 'not a usable nickname');
+    expect(find.textContaining('Use 2 to 30 letters'), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const Key('trainerFormNickname')),
+      'Asha Fit',
+    );
+    await tester.tap(find.byKey(const Key('trainerFormSave')));
+    await tester.pumpAndSettle();
+    expect(payload!['displayName'], 'Asha Mushi');
+    expect(payload!['nickname'], 'Asha Fit');
+  });
+
+  testWidgets('a gym owner adding a trainer is not asked for a nickname', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 4000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      _wrap(const TrainerFormPage(title: 'Add trainer'), api: _FakeApi()),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('trainerFormNickname')), findsNothing);
   });
 
   testWidgets("a trainer's own profile cannot be saved without a photo", (
@@ -277,6 +341,28 @@ void main() {
     expect(find.byIcon(Icons.edit), findsNothing);
   });
 
+  testWidgets("gym owner sees the nickname, with the trainer's own name", (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _wrap(
+        OwnerTrainerProfilePage(
+          trainer: {
+            ..._trainer(),
+            'displayName': 'Coach Asha',
+            'fullName': 'Asha Mushi',
+            'nickname': 'Coach Asha',
+          },
+        ),
+        api: _FakeApi(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Coach Asha'), findsOneWidget);
+    expect(find.byKey(const Key('owner-trainer-fullname')), findsOneWidget);
+    expect(find.text('Asha Mushi'), findsOneWidget);
+  });
+
   test('every new string exists in English and Swahili', () {
     const keys = [
       'owner.viewTrainer',
@@ -302,6 +388,10 @@ void main() {
       'photos.max',
       'photos.profile',
       'photos.required',
+      'trainer.nickname',
+      'trainer.nicknameHint',
+      'trainer.nicknameHelp',
+      'trainer.nicknameInvalid',
     ];
     for (final lang in ['en', 'sw']) {
       expect(FFLocale.keysOf(lang), containsAll(keys), reason: lang);

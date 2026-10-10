@@ -13,6 +13,7 @@ import '../../shared/widgets/persona_switcher.dart';
 import '../../shared/widgets/ff_photo_picker_field.dart';
 import '../../shared/widgets/social_links.dart';
 import '../../shared/widgets/terms_agreement.dart';
+import '../../shared/widgets/trainer_form_page.dart';
 
 class TrainerRegistrationPage extends StatefulWidget {
   const TrainerRegistrationPage({super.key});
@@ -29,6 +30,7 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
 
   // Step 0 — Personal
   final _nameCtrl = TextEditingController();
+  final _nicknameCtrl = TextEditingController();
   String? _photoUrl;
   String? _gender;
   final _bioCtrl = TextEditingController();
@@ -52,6 +54,7 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
   @override
   void dispose() {
     _nameCtrl.dispose();
+    _nicknameCtrl.dispose();
     _bioCtrl.dispose();
     _sessionRateCtrl.dispose();
     for (final c in _socials.values) {
@@ -85,6 +88,8 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
       if (!mounted) return;
       await api.trainerRegister({
         'displayName': _nameCtrl.text.trim(),
+        if (_nicknameCtrl.text.trim().isNotEmpty)
+          'nickname': _nicknameCtrl.text.trim(),
         'photoUrl': _photoUrl ?? '',
         'gender': _gender,
         'bio': _bioCtrl.text.trim(),
@@ -246,6 +251,19 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
           validator: (v) => (v == null || v.trim().isEmpty)
               ? context.tr('onboarding.required')
               : null,
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          key: const Key('trainer-reg-nickname'),
+          controller: _nicknameCtrl,
+          decoration: InputDecoration(
+            labelText: context.tr('trainer.nickname'),
+            hintText: context.tr('trainer.nicknameHint'),
+            helperText: context.tr('trainer.nicknameHelp'),
+            helperMaxLines: 2,
+            border: const OutlineInputBorder(),
+          ),
+          validator: (v) => trainerNicknameError(context, v),
         ),
         const SizedBox(height: 16),
         Text(

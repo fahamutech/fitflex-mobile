@@ -255,6 +255,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
         'invalid_rate': 'trainer.error.invalidRate',
         'too_many_images': 'trainer.error.tooManyPhotos',
         'displayName_required': 'trainer.error.nameRequired',
+        'invalid_nickname': 'trainer.nicknameInvalid',
         'trainer_profile_not_found': 'trainer.profileNotLoaded',
       };
       ScaffoldMessenger.of(context).showSnackBar(
