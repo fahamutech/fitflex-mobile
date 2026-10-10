@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../components/components.dart';
 import '../design_tokens.dart';
+import '../tone_theme.dart';
 import '../i18n.dart';
 import '../models.dart';
 
@@ -335,7 +336,9 @@ class _DateTile extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 6),
                     decoration: BoxDecoration(
                       color: open > 0
-                          ? (selected ? Colors.white24 : FFTokens.brand50)
+                          ? (selected
+                                ? Colors.white24
+                                : FFToneTheme.of(context).brand.bg)
                           : Colors.transparent,
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -423,7 +426,7 @@ class _SlotTile extends StatelessWidget {
                   ? FFTokens.brand500
                   : (booked || past)
                   ? scheme.outlineVariant.withValues(alpha: .5)
-                  : FFTokens.brand200,
+                  : FFToneTheme.of(context).brand.border,
             ),
           ),
           child: ExcludeSemantics(
@@ -489,7 +492,11 @@ class _Legend extends StatelessWidget {
       spacing: 12,
       runSpacing: 6,
       children: [
-        item(scheme.surface, FFTokens.brand200, 'cal.available'),
+        item(
+          scheme.surface,
+          FFToneTheme.of(context).brand.border,
+          'cal.available',
+        ),
         if (showSelected)
           item(FFTokens.brand500, FFTokens.brand500, 'cal.selected'),
         item(
