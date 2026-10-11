@@ -236,7 +236,15 @@ class _VerificationCenterPageState extends State<VerificationCenterPage> {
                   _StatusCard(data: data),
                   const SizedBox(height: FFTokens.spacingLg),
                   for (final section in data.sections) ...[
-                    FFSectionTitle(context.tr('kyc.section.${section.key}')),
+                    FFSectionTitle(
+                      context.tr(
+                        // A vendor's person is the vendor themselves.
+                        data.partnerType == 'vendor' &&
+                                section.key == 'representative'
+                            ? 'kyc.section.yourDetails'
+                            : 'kyc.section.${section.key}',
+                      ),
+                    ),
                     FFCard(
                       padding: EdgeInsets.zero,
                       child: Column(

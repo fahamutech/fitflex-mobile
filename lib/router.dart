@@ -173,6 +173,8 @@ String routeForSignedInUser(AuthState auth) {
     if (role == 'gym_operator' && !onboarded) {
       return AppRoutes.ownerRegistration;
     }
+    // A vendor waiting for approval can already add products.
+    if (role == 'vendor') return AppRoutes.vendorHome;
     return AppRoutes.pending;
   }
   if (role == 'member') {
@@ -244,6 +246,14 @@ GoRouter buildRouter(AuthState auth) {
             !onboarded &&
             loc != AppRoutes.ownerRegistration) {
           return AppRoutes.ownerRegistration;
+        }
+        if (role == 'vendor') {
+          // Vendors work on products while FitFlex verifies them; the
+          // verification centre is the only other place they need.
+          if (loc == AppRoutes.vendorHome || loc == AppRoutes.verification) {
+            return null;
+          }
+          return AppRoutes.vendorHome;
         }
         if (loc != AppRoutes.pending &&
             loc != AppRoutes.verification &&

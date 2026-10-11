@@ -1407,13 +1407,25 @@ class FFLocale extends ChangeNotifier {
       'vendor.logo': 'Logo',
       'vendor.banner': 'Banner',
       'vendor.returnsPolicy': 'Returns policy (optional)',
-      'vendor.productCategories':
-          'Product categories (comma separated, optional)',
+      'vendor.productCategories': 'Product categories',
       'kyc.vendorProfile.title': 'Business details',
       'kyc.vendorProfile.hint':
-          'Add how buyers can reach you, what you sell, where you deliver and your returns policy. Nothing is published until you are approved.',
+          'Add how buyers can reach you and the kinds of products you sell. Nothing is published until you are approved.',
       'kyc.vendorProfile.save': 'Save',
       'kyc.vendorProfile.saved': 'Business details saved.',
+      'vendor.emailOptional': 'Email (optional)',
+      'vendor.categoriesRequired': 'Choose at least one category.',
+      'vendor.categoryOld': 'old',
+      'vendor.pendingBanner':
+          'Your verification is still to be completed or approved. You can add your products now; FitFlex reviews them and they appear in the shop once your verification is approved.',
+      'kyc.section.yourDetails': 'Your details',
+      'kyc.form.yourDetails': 'Your details',
+      'kyc.form.yourDetailsIntro':
+          'Enter your own details exactly as they appear on your ID.',
+      'kyc.item.nationality': 'Nationality',
+      'error.reason.invalidCategory': 'Choose a category from the list.',
+      'error.reason.invalidPosition':
+          'Choose your position: owner, co-owner or employee.',
       'vendor.publishProfile': 'Save and publish profile',
       'vendor.staffName': 'Staff name',
       'vendor.phone': 'Phone',
@@ -4991,13 +5003,25 @@ class FFLocale extends ChangeNotifier {
       'vendor.settlementAccount': 'Akaunti ya malipo',
       'vendor.logo': 'Nembo',
       'vendor.returnsPolicy': 'Sera ya kurejesha bidhaa (si lazima)',
-      'vendor.productCategories':
-          'Aina za bidhaa (tenganisha kwa koma, si lazima)',
+      'vendor.productCategories': 'Aina za bidhaa',
       'kyc.vendorProfile.title': 'Taarifa za biashara',
       'kyc.vendorProfile.hint':
-          'Weka jinsi wanunuzi wanavyoweza kukufikia, unachouza, unakopeleka bidhaa na sera yako ya kurejesha bidhaa. Hakuna kinachochapishwa hadi uidhinishwe.',
+          'Weka jinsi wanunuzi wanavyoweza kukufikia na aina za bidhaa unazouza. Hakuna kinachochapishwa hadi uidhinishwe.',
       'kyc.vendorProfile.save': 'Hifadhi',
       'kyc.vendorProfile.saved': 'Taarifa za biashara zimehifadhiwa.',
+      'vendor.emailOptional': 'Barua pepe (si lazima)',
+      'vendor.categoriesRequired': 'Chagua angalau aina moja.',
+      'vendor.categoryOld': 'ya zamani',
+      'vendor.pendingBanner':
+          'Uthibitisho wako bado haujakamilika au kuidhinishwa. Unaweza kuongeza bidhaa zako sasa; FitFlex huzipitia na zitaonekana dukani pindi uthibitisho wako utakapoidhinishwa.',
+      'kyc.section.yourDetails': 'Taarifa zako',
+      'kyc.form.yourDetails': 'Taarifa zako',
+      'kyc.form.yourDetailsIntro':
+          'Weka taarifa zako mwenyewe kama zinavyoonekana kwenye kitambulisho chako.',
+      'kyc.item.nationality': 'Uraia',
+      'error.reason.invalidCategory': 'Chagua aina kutoka kwenye orodha.',
+      'error.reason.invalidPosition':
+          'Chagua cheo chako: mmiliki, mmiliki mwenza au mfanyakazi.',
       'vendor.banner': 'Bango',
       'vendor.publishProfile': 'Hifadhi na chapisha wasifu',
       'vendor.staffName': 'Jina la mfanyakazi',

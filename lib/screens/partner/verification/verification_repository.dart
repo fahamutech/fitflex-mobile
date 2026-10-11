@@ -1,5 +1,7 @@
 // Repository — the only place partner verification talks to the ApiClient.
 
+import 'dart:typed_data';
+
 import '../../../shared/api_client.dart';
 import 'verification_models.dart';
 
@@ -39,6 +41,10 @@ class VerificationRepository {
       docType: docType,
     ),
   );
+
+  /// The stored file of one of the partner's own documents (for a preview).
+  Future<Uint8List> documentFile(String documentId) =>
+      _api.myKycDocumentFile(documentId);
 
   Future<void> addPayoutAccount(Map<String, dynamic> body) async =>
       _api.addMyKycSettlementAccount(body);

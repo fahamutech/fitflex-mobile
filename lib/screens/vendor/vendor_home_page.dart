@@ -5,10 +5,13 @@ import 'package:go_router/go_router.dart';
 import '../../app_scope.dart';
 import '../../router.dart';
 import '../../shared/api_client.dart';
+import '../../shared/api_error_message.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
+import '../../shared/product_categories.dart';
+import '../../shared/widgets/product_category_picker.dart';
 import '../../shared/widgets/ff_photo_picker_field.dart';
 import '../../shared/widgets/partner_payouts_page.dart';
 import '../../shared/widgets/invitations.dart';
@@ -40,6 +43,27 @@ class _VendorHomePageState extends State<VendorHomePage> {
     return (user?['vendorPermissions'] as List? ?? []).contains(permission);
   }
 
+  /// A vendor whose verification is not approved yet: they can add products,
+  /// which FitFlex reviews; nothing is in the shop until they are approved.
+  bool get _pendingApproval {
+    final auth = AppScope.of(context).auth;
+    return auth.isPendingApproval && auth.user?['userType'] == 'vendor';
+  }
+
+  static const _friendlyCodes = {
+    'invalid_category',
+    'invalid_product_category',
+    'name_required',
+    'priceTzs_required',
+    'invalid_stock',
+  };
+
+  /// Reasons the vendor can act on are shown; anything else stays generic.
+  String _saveFailedText(Object e) =>
+      e is ApiException && _friendlyCodes.contains(e.code)
+      ? apiErrorMessage(FFLocaleScope.of(context), e)
+      : context.tr('vendor.saveFailed');
+
   List<int> get _sections {
     final sections = <int>[
       if (_can('products')) 0,
@@ -64,8 +88,28 @@ class _VendorHomePageState extends State<VendorHomePage> {
     });
   }
 
+  /// While waiting for approval, pick up an approval made in the meantime.
+  Future<void> _checkApproval() async {
+    if (!_pendingApproval) return;
+    final scope = AppScope.of(context);
+    try {
+      final user = (await scope.api.me())['user'];
+      if (user is Map &&
+          user['approvalStatus']?.toString() != 'pending_approval') {
+        await scope.auth.signIn(
+          scope.auth.token!,
+          Map<String, dynamic>.from(user),
+        );
+      }
+    } catch (_) {
+      // Not being able to check changes nothing; the banner stays.
+    }
+  }
+
   Future<void> _refresh() async {
     setState(() => _loading = true);
+    await _checkApproval();
+    if (!mounted) return;
     try {
       final results = await Future.wait([
         _can('products')
@@ -95,6 +139,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
             .toList();
         _profile = results[2] as Map<String, dynamic>;
         if (_profile['status'] != 'published' &&
+            !_pendingApproval &&
             AppScope.of(context).auth.user?['userType'] != 'vendor_staff') {
           _tab = 4;
         }
@@ -134,11 +179,11 @@ class _VendorHomePageState extends State<VendorHomePage> {
         SnackBar(content: Text(context.tr('vendor.productSaved'))),
       );
       await _refresh();
-    } on ApiException {
+    } on ApiException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(context.tr('vendor.saveFailed'))));
+      ).showSnackBar(SnackBar(content: Text(_saveFailedText(e))));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -236,19 +281,30 @@ class _VendorHomePageState extends State<VendorHomePage> {
           ),
         ],
       ),
-      body: _loading
-          ? const Center(child: FFSpinner())
-          : RefreshIndicator(
-              onRefresh: _refresh,
-              child: switch (_tab) {
-                0 => _productsTab(),
-                1 => _ordersTab(),
-                2 => _paymentsTab(),
-                3 => _enquiriesTab(),
-                4 => _businessTab(),
-                _ => _restrictedTab(),
-              },
-            ),
+      body: Column(
+        children: [
+          ListenableBuilder(
+            listenable: AppScope.of(context).auth,
+            builder: (context, _) =>
+                _pendingApproval ? _pendingBanner() : const SizedBox.shrink(),
+          ),
+          Expanded(
+            child: _loading
+                ? const Center(child: FFSpinner())
+                : RefreshIndicator(
+                    onRefresh: _refresh,
+                    child: switch (_tab) {
+                      0 => _productsTab(),
+                      1 => _ordersTab(),
+                      2 => _paymentsTab(),
+                      3 => _enquiriesTab(),
+                      4 => _businessTab(),
+                      _ => _restrictedTab(),
+                    },
+                  ),
+          ),
+        ],
+      ),
       floatingActionButton: _tab == 0
           ? FloatingActionButton.extended(
               key: const Key('vendor-add-product'),
@@ -306,6 +362,45 @@ class _VendorHomePageState extends State<VendorHomePage> {
       ),
     );
   }
+
+  Widget _pendingBanner() => Padding(
+    padding: const EdgeInsets.fromLTRB(
+      FFTokens.spacingLg,
+      FFTokens.spacingMd,
+      FFTokens.spacingLg,
+      0,
+    ),
+    child: FFCard(
+      key: const Key('vendor-pending-banner'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                Icons.hourglass_top_outlined,
+                size: 20,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              const SizedBox(width: FFTokens.spacingSm),
+              Expanded(child: Text(context.tr('vendor.pendingBanner'))),
+            ],
+          ),
+          const SizedBox(height: FFTokens.spacingSm),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: OutlinedButton.icon(
+              key: const Key('vendor-pending-verification'),
+              onPressed: () => context.push(AppRoutes.verification),
+              icon: const Icon(Icons.verified_user_outlined),
+              label: Text(context.tr('kyc.entry.title')),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 
   Widget _productsTab() {
     if (_products.isEmpty) {
@@ -734,7 +829,15 @@ class _VendorHomePageState extends State<VendorHomePage> {
       builder: (_) => VendorProfileForm(profile: _profile),
     );
     if (result == null || !mounted) return;
-    await AppScope.of(context).api.vendorSaveProfile(result);
+    try {
+      await AppScope.of(context).api.vendorSaveProfile(result);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_saveFailedText(e))));
+      return;
+    }
     await _refresh();
   }
 
@@ -779,7 +882,9 @@ class VendorProductForm extends StatefulWidget {
 class _VendorProductFormState extends State<VendorProductForm> {
   late final TextEditingController _name;
   late final TextEditingController _description;
-  late final TextEditingController _category;
+  // The category key to send: the product's own when it is on the list, or
+  // the vendor's new pick. Null keeps an older free-text category untouched.
+  String? _category;
   late final TextEditingController _brand;
   late final TextEditingController _price;
   late final TextEditingController _discountPrice;
@@ -796,10 +901,13 @@ class _VendorProductFormState extends State<VendorProductForm> {
     super.initState();
     final product = widget.product;
     _name = TextEditingController(text: product?['name']?.toString());
+    final storedCategory = product?['category']?.toString();
+    if (ProductCategories.current.any((c) => c.key == storedCategory)) {
+      _category = storedCategory;
+    }
     _description = TextEditingController(
       text: product?['description']?.toString(),
     );
-    _category = TextEditingController(text: product?['category']?.toString());
     _brand = TextEditingController(text: product?['brand']?.toString());
     _price = TextEditingController(text: product?['priceTzs']?.toString());
     _discountPrice = TextEditingController(
@@ -824,7 +932,6 @@ class _VendorProductFormState extends State<VendorProductForm> {
   void dispose() {
     _name.dispose();
     _description.dispose();
-    _category.dispose();
     _brand.dispose();
     _price.dispose();
     _discountPrice.dispose();
@@ -841,7 +948,7 @@ class _VendorProductFormState extends State<VendorProductForm> {
     Navigator.pop(context, {
       'name': _name.text.trim(),
       'description': _description.text.trim(),
-      'category': _category.text.trim(),
+      if (_category != null) 'category': _category,
       'brand': _brand.text.trim(),
       'priceTzs': price,
       'discountPriceTzs': num.tryParse(_discountPrice.text.trim()),
@@ -921,12 +1028,9 @@ class _VendorProductFormState extends State<VendorProductForm> {
                   labelText: context.tr('vendor.description'),
                 ),
               ),
-              TextField(
-                key: const Key('vendor-product-category'),
-                controller: _category,
-                decoration: InputDecoration(
-                  labelText: context.tr('vendor.category'),
-                ),
+              ProductCategoryDropdown(
+                current: widget.product?['category']?.toString(),
+                onChanged: (key) => _category = key,
               ),
               Row(
                 children: [
@@ -1028,9 +1132,10 @@ class VendorProfileForm extends StatefulWidget {
 
 class _VendorProfileFormState extends State<VendorProfileForm> {
   late final Map<String, TextEditingController> _fields;
-  // Optional: not part of the all-fields-required check.
-  late final TextEditingController _productCategories;
-  late final TextEditingController _returnsPolicy;
+  // The business's product categories (keys from the fixed list).
+  late List<String> _categories;
+  // A business category typed before the list existed, kept until replaced.
+  late final String _legacyCategory;
   String? _logo;
   String? _banner;
 
@@ -1048,20 +1153,20 @@ class _VendorProfileFormState extends State<VendorProfileForm> {
       for (final key in [
         'businessName',
         'description',
-        'businessCategory',
         'contactNumber',
         'email',
         'address',
-        'deliveryRegions',
         'businessHours',
         'settlementAccount',
       ])
         key: TextEditingController(text: value(key)),
     };
-    _productCategories = TextEditingController(
-      text: value('productCategories'),
-    );
-    _returnsPolicy = TextEditingController(text: value('returnsPolicy'));
+    final stored = widget.profile['productCategories'];
+    _categories = ProductCategories.keysFor([
+      if (stored is List) ...stored,
+      if (stored is! List || stored.isEmpty) widget.profile['businessCategory'],
+    ]);
+    _legacyCategory = value('businessCategory').trim();
     _logo = widget.profile['logo']?.toString();
     _banner = widget.profile['banner']?.toString();
   }
@@ -1071,46 +1176,46 @@ class _VendorProfileFormState extends State<VendorProfileForm> {
     for (final controller in _fields.values) {
       controller.dispose();
     }
-    _productCategories.dispose();
-    _returnsPolicy.dispose();
     super.dispose();
   }
 
   void _submit() {
     if (_logo == null || _banner == null) return;
-    if (_fields.values.any((controller) => controller.text.trim().isEmpty)) {
+    // The email is optional; everything else is needed to publish.
+    if (_fields.entries.any(
+      (e) => e.key != 'email' && e.value.text.trim().isEmpty,
+    )) {
       return;
     }
+    if (_categories.isEmpty && _legacyCategory.isEmpty) return;
+    // The server still asks for one business category: the first one picked
+    // (its English name) keeps older readers of the profile working.
+    final businessCategory = _categories.isEmpty
+        ? _legacyCategory
+        : ProductCategories.current
+              .firstWhere(
+                (c) => c.key == _categories.first,
+                orElse: () => ProductCategory(
+                  _categories.first,
+                  _categories.first,
+                  _categories.first,
+                ),
+              )
+              .en;
     Navigator.pop(context, {
       'businessName': _fields['businessName']!.text.trim(),
       'logo': _logo,
       'banner': _banner,
       'description': _fields['description']!.text.trim(),
-      'businessCategory': _fields['businessCategory']!.text.trim(),
+      'businessCategory': businessCategory,
       'contactNumber': _fields['contactNumber']!.text.trim(),
       'email': _fields['email']!.text.trim(),
       'address': _fields['address']!.text.trim(),
-      'deliveryRegions': _fields['deliveryRegions']!.text
-          .split(',')
-          .map((value) => value.trim())
-          .where((value) => value.isNotEmpty)
-          .toList(),
       'businessHours': {'summary': _fields['businessHours']!.text.trim()},
       'settlementAccount': {
         'account': _fields['settlementAccount']!.text.trim(),
       },
-      ...(() {
-        final cats = _productCategories.text
-            .split(',')
-            .map((value) => value.trim())
-            .where((value) => value.isNotEmpty)
-            .toList();
-        final returns = _returnsPolicy.text.trim();
-        return {
-          if (cats.isNotEmpty) 'productCategories': cats,
-          if (returns.isNotEmpty) 'returnsPolicy': returns,
-        };
-      })(),
+      if (_categories.isNotEmpty) 'productCategories': _categories,
       'publish': true,
     });
   }
@@ -1120,11 +1225,9 @@ class _VendorProfileFormState extends State<VendorProfileForm> {
     final labels = {
       'businessName': context.tr('vendor.businessName'),
       'description': context.tr('vendor.businessDescription'),
-      'businessCategory': context.tr('vendor.businessCategory'),
       'contactNumber': context.tr('vendor.contactNumber'),
-      'email': context.tr('vendor.email'),
+      'email': context.tr('vendor.emailOptional'),
       'address': context.tr('vendor.address'),
-      'deliveryRegions': context.tr('vendor.deliveryRegions'),
       'businessHours': context.tr('vendor.businessHours'),
       'settlementAccount': context.tr('vendor.settlementAccount'),
     };
@@ -1176,21 +1279,11 @@ class _VendorProfileFormState extends State<VendorProfileForm> {
                   controller: entry.value,
                   decoration: InputDecoration(labelText: labels[entry.key]),
                 ),
-              TextField(
-                key: const Key('vendor-profile-productCategories'),
-                controller: _productCategories,
-                decoration: InputDecoration(
-                  labelText: context.tr('vendor.productCategories'),
-                ),
-              ),
-              TextField(
-                key: const Key('vendor-profile-returnsPolicy'),
-                controller: _returnsPolicy,
-                minLines: 2,
-                maxLines: 5,
-                decoration: InputDecoration(
-                  labelText: context.tr('vendor.returnsPolicy'),
-                ),
+              const SizedBox(height: FFTokens.spacingSm),
+              ProductCategoryMultiSelect(
+                keyPrefix: 'vendor-profile-category',
+                selected: _categories,
+                onChanged: (next) => setState(() => _categories = next),
               ),
               const SizedBox(height: FFTokens.spacingLg),
               SizedBox(

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
@@ -1544,6 +1545,10 @@ class ApiClient {
     _withQuery('/trainer/schedule', {'from': ?from, 'days': ?days?.toString()}),
   );
 
+  /// The product categories vendors choose from (public).
+  Future<Map<String, dynamic>> shopCategories() async =>
+      await _request('GET', '/shop/categories');
+
   // Shop (D1)
   Future<List<dynamic>> listShopProducts({
     String? category,
@@ -2289,6 +2294,28 @@ class ApiClient {
     }
     if (res.statusCode == 401 && onUnauthorized != null) onUnauthorized!();
     throw ApiException(res.statusCode, decoded);
+  }
+
+  /// The stored file of one of my own documents, as bytes.
+  Future<Uint8List> myKycDocumentFile(String documentId) async {
+    final uri = Uri.parse(
+      '$baseUrl/me/kyc/documents/${Uri.encodeComponent(documentId)}/file',
+    );
+    final res = await http
+        .get(
+          uri,
+          headers: {if (_token != null) 'authorization': 'Bearer $_token'},
+        )
+        .timeout(const Duration(seconds: 30));
+    if (res.statusCode >= 200 && res.statusCode < 300) return res.bodyBytes;
+    if (res.statusCode == 401 && onUnauthorized != null) onUnauthorized!();
+    dynamic body;
+    try {
+      body = res.body.isEmpty ? null : jsonDecode(res.body);
+    } catch (_) {
+      body = null;
+    }
+    throw ApiException(res.statusCode, body);
   }
 
   Future<Map<String, dynamic>> addMyKycSettlementAccount(

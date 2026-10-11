@@ -128,6 +128,10 @@ String? _knownReason(FFLocale locale, String reason) {
     'schedule_too_soon': 'error.reason.scheduleTooSoon',
     'invalid_content': 'error.reason.invalidContent',
     'invalid_audience': 'error.reason.invalidAudience',
+    // Vendor products and verification.
+    'invalid_category': 'error.reason.invalidCategory',
+    'invalid_product_category': 'error.reason.invalidCategory',
+    'invalid_position': 'error.reason.invalidPosition',
     // Reviews.
     'no_completed_booking': 'error.reason.noCompletedBooking',
     'no_checkin_or_direct_subscription': 'error.reason.noGymVisit',

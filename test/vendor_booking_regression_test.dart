@@ -119,26 +119,37 @@ void main() {
     expect(find.byKey(const Key('vendor-product-save')), findsOneWidget);
   });
 
-  testWidgets('vendor business profile requires every publication field', (
+  testWidgets('vendor business profile asks for the publication fields', (
     tester,
   ) async {
     final wrapped = _wrap(const VendorProfileForm(profile: {}));
     await tester.pumpWidget(wrapped.widget);
     await tester.pumpAndSettle();
 
+    // Email is optional; delivery areas, returns policy and the free-text
+    // business category are gone (categories are picked from a list).
     for (final key in [
       'businessName',
       'description',
-      'businessCategory',
       'contactNumber',
       'email',
       'address',
-      'deliveryRegions',
       'businessHours',
       'settlementAccount',
     ]) {
       expect(find.byKey(Key('vendor-profile-$key')), findsOneWidget);
     }
+    for (final key in [
+      'businessCategory',
+      'deliveryRegions',
+      'returnsPolicy',
+    ]) {
+      expect(find.byKey(Key('vendor-profile-$key')), findsNothing);
+    }
+    expect(
+      find.byKey(const Key('vendor-profile-category-equipment')),
+      findsOneWidget,
+    );
     expect(find.byKey(const Key('vendor-profile-publish')), findsOneWidget);
   });
 
