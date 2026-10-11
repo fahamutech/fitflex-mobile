@@ -818,7 +818,9 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              FFDropdownField<int>(
+              // Kept as the compact rating picker: FFDropdownField is a full-width
+              // bordered field and would crowd the comment box below it.
+              DropdownButton<int>(
                 value: rating,
                 items: [1, 2, 3, 4, 5]
                     .map(
