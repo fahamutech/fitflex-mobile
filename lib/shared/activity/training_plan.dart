@@ -181,6 +181,10 @@ class TrainingPlan {
   final DateTime endDate;
   final List<TrainingPlanWeek> weeks;
 
+  /// The trainer who made the plan, when one did.
+  final String? trainerName;
+  final String? note;
+
   final int sessions;
   final int completed;
   final int skipped;
@@ -204,6 +208,8 @@ class TrainingPlan {
     required this.startDate,
     required this.endDate,
     this.weeks = const [],
+    this.trainerName,
+    this.note,
     this.sessions = 0,
     this.completed = 0,
     this.skipped = 0,
@@ -212,6 +218,7 @@ class TrainingPlan {
   });
 
   bool get isActive => status == 'active';
+  bool get fromTrainer => createdByType == 'trainer';
 
   /// 0–1 of the plan's sessions completed.
   double get completion => sessions == 0 ? 0 : completed / sessions;
@@ -267,11 +274,151 @@ class TrainingPlan {
       startDate: start,
       endDate: end,
       weeks: weeks,
+      trainerName: json['trainer'] is Map
+          ? (json['trainer'] as Map)['displayName'] as String?
+          : null,
+      note: json['note'] as String?,
       sessions: n(progress['sessions'], weeks.expand((w) => w.days).length),
       completed: n(progress['completed']),
       skipped: n(progress['skipped']),
       missed: n(progress['missed']),
       currentWeek: n(progress['currentWeek'], 1),
+    );
+  }
+}
+
+/// One session in outline: its day, name and what it contains.
+class PlanSessionOutline {
+  /// 1 = Monday … 7 = Sunday.
+  final int day;
+  final DateTime? date;
+  final String name;
+  final int? estimatedDuration;
+
+  /// "Bench Press 3 × 10" lines, as far as they are known.
+  final List<String> exercises;
+
+  const PlanSessionOutline({
+    required this.day,
+    this.date,
+    required this.name,
+    this.estimatedDuration,
+    this.exercises = const [],
+  });
+
+  static PlanSessionOutline? tryParse(Object? raw) {
+    if (raw is! Map) return null;
+    final day = (raw['day'] as num?)?.toInt();
+    if (day == null) return null;
+    final date = DateTime.tryParse(raw['date'] as String? ?? '');
+    return PlanSessionOutline(
+      day: day,
+      date: date == null ? null : DateTime(date.year, date.month, date.day),
+      name: raw['name'] as String? ?? '',
+      estimatedDuration: (raw['estimatedDuration'] as num?)?.toInt(),
+      exercises: [
+        for (final e
+            in (raw['exercises'] as List? ?? const []).whereType<Map>())
+          '${e['exerciseName'] ?? ''} ${e['sets'] ?? 1} × '
+              '${e['reps'] ?? '${e['duration'] ?? 0} s'}',
+      ],
+    );
+  }
+}
+
+/// A plan a trainer has made for the member, waiting for their answer.
+class TrainingPlanOffer {
+  final String id;
+  final String name;
+  final String? note;
+  final String? trainerName;
+  final int durationWeeks;
+  final int daysPerWeek;
+  final DateTime? startDate;
+
+  /// The first week's sessions (later weeks follow the same days).
+  final List<PlanSessionOutline> firstWeek;
+
+  const TrainingPlanOffer({
+    required this.id,
+    required this.name,
+    this.note,
+    this.trainerName,
+    required this.durationWeeks,
+    required this.daysPerWeek,
+    this.startDate,
+    this.firstWeek = const [],
+  });
+
+  static TrainingPlanOffer? tryParse(Object? raw) {
+    if (raw is! Map) return null;
+    final id = raw['id'] as String?;
+    if (id == null) return null;
+    final weeks = (raw['weeks'] as List? ?? const []).whereType<Map>().toList();
+    final start = DateTime.tryParse(raw['startDate'] as String? ?? '');
+    return TrainingPlanOffer(
+      id: id,
+      name: raw['name'] as String? ?? '',
+      note: raw['note'] as String?,
+      trainerName: raw['trainer'] is Map
+          ? (raw['trainer'] as Map)['displayName'] as String?
+          : null,
+      durationWeeks: (raw['durationWeeks'] as num?)?.toInt() ?? weeks.length,
+      daysPerWeek: (raw['daysPerWeek'] as num?)?.toInt() ?? 0,
+      startDate: start,
+      firstWeek: [
+        if (weeks.isNotEmpty)
+          for (final d in (weeks.first['days'] as List? ?? const []))
+            ?PlanSessionOutline.tryParse(d),
+      ],
+    );
+  }
+}
+
+/// A plan as the trainer who made it sees it.
+class TrainerMadePlan {
+  final String id;
+  final String name;
+
+  /// `offered`, `active`, `completed`, `cancelled` or `declined`.
+  final String status;
+  final int durationWeeks;
+  final int daysPerWeek;
+  final DateTime? startDate;
+
+  /// Sessions done / in the plan — null unless the client shares their
+  /// workout history.
+  final int? completed;
+  final int? sessions;
+
+  const TrainerMadePlan({
+    required this.id,
+    required this.name,
+    required this.status,
+    required this.durationWeeks,
+    required this.daysPerWeek,
+    this.startDate,
+    this.completed,
+    this.sessions,
+  });
+
+  /// Still live: waiting for an answer, or the plan the client is on.
+  bool get isOpen => status == 'offered' || status == 'active';
+
+  static TrainerMadePlan? tryParse(Object? raw) {
+    if (raw is! Map) return null;
+    final id = raw['id'] as String?;
+    if (id == null) return null;
+    final progress = raw['progress'] is Map ? raw['progress'] as Map : null;
+    return TrainerMadePlan(
+      id: id,
+      name: raw['name'] as String? ?? '',
+      status: raw['status'] as String? ?? 'offered',
+      durationWeeks: (raw['durationWeeks'] as num?)?.toInt() ?? 0,
+      daysPerWeek: (raw['daysPerWeek'] as num?)?.toInt() ?? 0,
+      startDate: DateTime.tryParse(raw['startDate'] as String? ?? ''),
+      completed: (progress?['completed'] as num?)?.toInt(),
+      sessions: (progress?['sessions'] as num?)?.toInt(),
     );
   }
 }

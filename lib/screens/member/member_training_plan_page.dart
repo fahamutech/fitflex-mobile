@@ -122,7 +122,8 @@ class _MemberTrainingPlanPageState extends State<MemberTrainingPlanPage> {
         FFPageHeader(
           title: trainingPlanTitle(context, plan),
           description: [
-            trainingGoalLabel(context, plan.goal),
+            if (plan.fromTrainer) plan.name,
+            trainingPlanByline(context, plan),
             context
                 .tr('training.daysAWeek')
                 .replaceAll('{n}', '${plan.daysPerWeek}'),

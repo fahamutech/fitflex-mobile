@@ -57,6 +57,9 @@ class MemberData extends ChangeNotifier {
   /// The training plan the member is on, if any.
   TrainingPlan? trainingPlan;
   bool trainingLoaded = false;
+
+  /// Plans trainers have made for the member, waiting for an answer.
+  List<TrainingPlanOffer> trainingOffers = [];
   List<TrainerConnection> trainerConnections = [];
   List<GymSharing> gymSharing = [];
   List<Challenge> challenges = [];
@@ -420,9 +423,18 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
 
   Future<void> _refreshTraining() async {
     try {
-      final plan = await AppScope.of(context).training.currentPlan();
+      final repo = AppScope.of(context).training;
+      final plan = await repo.currentPlan();
+      // Offers are extra: failing to load them must not hide the plan.
+      var offers = const <TrainingPlanOffer>[];
+      try {
+        offers = await repo.offers();
+      } catch (error) {
+        debugPrint('[MemberShell] Could not load plan offers: $error');
+      }
       _data.update((d) {
         d.trainingPlan = plan;
+        d.trainingOffers = offers;
         d.trainingLoaded = true;
       });
     } catch (error) {

@@ -14,6 +14,18 @@ import '../member_shell.dart';
 String trainingPlanTitle(BuildContext context, TrainingPlan plan) =>
     context.tr('training.planWeeks').replaceAll('{n}', '${plan.durationWeeks}');
 
+/// Who the plan is from: "From Coach Amani" for a trainer's plan, else the
+/// goal FitFlex built it for.
+String trainingPlanByline(BuildContext context, TrainingPlan plan) =>
+    plan.fromTrainer
+    ? context
+          .tr('training.fromTrainer')
+          .replaceAll(
+            '{name}',
+            plan.trainerName ?? context.tr('training.yourTrainer'),
+          )
+    : trainingGoalLabel(context, plan.goal);
+
 /// The member's goal in words (the same labels as onboarding).
 String trainingGoalLabel(BuildContext context, String goal) =>
     context.tr('onboarding.goal_$goal');
@@ -125,7 +137,8 @@ class TrainingPlanCard extends StatelessWidget {
             ),
           ),
           Text(
-            trainingGoalLabel(context, plan.goal),
+            trainingPlanByline(context, plan),
+            key: const Key('training-byline'),
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.primary,
               fontWeight: FontWeight.w600,
