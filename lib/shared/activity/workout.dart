@@ -93,10 +93,56 @@ class WorkoutSet {
   };
 }
 
+/// An exercise that can stand in for one in a workout: it trains the same
+/// area and suits the member's equipment, place and experience.
+class ExerciseAlternative {
+  final String id;
+  final String name;
+  final String? description;
+  final List<String> equipment;
+  final int? sets;
+  final int? reps;
+
+  /// Seconds, for timed exercises.
+  final int? duration;
+
+  const ExerciseAlternative({
+    required this.id,
+    required this.name,
+    this.description,
+    this.equipment = const [],
+    this.sets,
+    this.reps,
+    this.duration,
+  });
+
+  static ExerciseAlternative? tryParse(Object? raw) {
+    if (raw is! Map) return null;
+    final id = raw['id'] as String?;
+    final name = raw['name'] as String?;
+    if (id == null || name == null) return null;
+    return ExerciseAlternative(
+      id: id,
+      name: name,
+      description: raw['description'] as String?,
+      equipment: [
+        for (final x in (raw['equipment'] as List? ?? const [])) x.toString(),
+      ],
+      sets: (raw['defaultSets'] as num?)?.toInt(),
+      reps: (raw['defaultReps'] as num?)?.toInt(),
+      duration: (raw['defaultDuration'] as num?)?.toInt(),
+    );
+  }
+}
+
 class WorkoutExercise {
   final String id;
   final String workoutId;
   final String exerciseName;
+
+  /// The FitFlex library exercise this is, when it came from the library
+  /// (plan workouts). Those can be replaced with an alternative.
+  final String? libraryId;
   final String? muscleGroup;
 
   /// Planned number of sets.
@@ -112,10 +158,14 @@ class WorkoutExercise {
   final List<WorkoutSet> workoutSets;
   String? notes;
 
+  /// The member chose to leave this exercise out of the session.
+  bool skipped;
+
   WorkoutExercise({
     required this.id,
     required this.workoutId,
     required this.exerciseName,
+    this.libraryId,
     this.muscleGroup,
     required this.sets,
     this.reps,
@@ -124,12 +174,18 @@ class WorkoutExercise {
     this.tracksWeight = false,
     required this.workoutSets,
     this.notes,
+    this.skipped = false,
   });
 
   bool get isTimed => reps == null && duration != null;
 
+  /// A skipped exercise is never complete.
   bool get isComplete =>
-      workoutSets.isNotEmpty && workoutSets.every((s) => s.completed);
+      !skipped &&
+      workoutSets.isNotEmpty &&
+      workoutSets.every((s) => s.completed);
+
+  bool get hasSetsDone => workoutSets.any((s) => s.completed);
 
   factory WorkoutExercise.fromJson(Map<String, dynamic> json) {
     final reps = (json['reps'] as num?)?.toInt();
@@ -148,6 +204,7 @@ class WorkoutExercise {
       id: json['id'] as String? ?? '',
       workoutId: json['workoutId'] as String? ?? '',
       exerciseName: json['exerciseName'] as String? ?? '',
+      libraryId: json['libraryId'] as String?,
       muscleGroup: json['muscleGroup'] as String?,
       sets: (json['sets'] as num?)?.toInt() ?? sets.length,
       reps: reps,
@@ -156,12 +213,14 @@ class WorkoutExercise {
       tracksWeight: json['tracksWeight'] == true,
       workoutSets: sets,
       notes: json['notes'] as String?,
+      skipped: json['skipped'] == true,
     );
   }
 
   Map<String, dynamic> toLogJson() => {
     'id': id,
     'notes': notes,
+    'skipped': skipped,
     'workoutSets': [
       for (final s in workoutSets) s.toLogJson(tracksWeight: tracksWeight),
     ],
@@ -171,6 +230,7 @@ class WorkoutExercise {
     'id': id,
     'workoutId': workoutId,
     'exerciseName': exerciseName,
+    'libraryId': libraryId,
     'muscleGroup': muscleGroup,
     'sets': sets,
     'reps': reps,
@@ -178,6 +238,7 @@ class WorkoutExercise {
     'instructions': instructions,
     'tracksWeight': tracksWeight,
     'notes': notes,
+    'skipped': skipped,
     'workoutSets': [for (final s in workoutSets) s.toJson()],
   };
 }
@@ -232,11 +293,13 @@ class Workout {
   /// Assigned by a connected trainer.
   bool get fromTrainer => trainerId != null;
 
-  int get setsTotal => exercises.fold(0, (n, e) => n + e.workoutSets.length);
-  int get setsCompleted => exercises.fold(
-    0,
-    (n, e) => n + e.workoutSets.where((s) => s.completed).length,
-  );
+  /// Sets still in the session: a skipped exercise's sets don't count.
+  int get setsTotal => exercises
+      .where((e) => !e.skipped)
+      .fold(0, (n, e) => n + e.workoutSets.length);
+  int get setsCompleted => exercises
+      .where((e) => !e.skipped)
+      .fold(0, (n, e) => n + e.workoutSets.where((s) => s.completed).length);
   int get exercisesCompleted => exercises.where((e) => e.isComplete).length;
 
   factory Workout.fromJson(Map<String, dynamic> json) {
