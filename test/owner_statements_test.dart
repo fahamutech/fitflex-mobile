@@ -20,7 +20,7 @@ const _paid = {
   'members': 2,
   'visits': 9,
   'earnedTzs': 120000,
-  'networkAdjustmentTzs': 15000,
+  'networkAdjustmentTzs': -15000,
   'adjustmentsTzs': -3500,
   'carriedForwardTzs': 0,
   'payableTzs': 101500,
@@ -41,7 +41,7 @@ const _detail = {
       'visitDates': ['2026-09-03', '2026-09-04', '2026-09-12'],
       'bracket': 'weekly',
       'earnedTzs': 70000,
-      'networkAdjustmentTzs': 15000,
+      'networkAdjustmentTzs': -15000,
       'finalTzs': 55000,
     },
     {

@@ -192,7 +192,7 @@ class _OwnerStatementPageState extends State<OwnerStatementPage> {
               if (s.networkAdjustmentTzs != 0)
                 _Row(
                   label: context.tr('owner.statementNetwork'),
-                  value: signedCurrency(-s.networkAdjustmentTzs),
+                  value: signedCurrency(s.networkAdjustmentTzs),
                 ),
               if (s.adjustmentsTzs != 0)
                 _Row(
@@ -362,7 +362,7 @@ class _LineCard extends StatelessWidget {
                 '${bracket == null ? '' : ' · $bracket'}',
             value: formatCurrency(l.finalTzs),
             hint: l.networkAdjustmentTzs != 0
-                ? '${formatCurrency(l.earnedTzs)} ${signedCurrency(-l.networkAdjustmentTzs)}'
+                ? '${formatCurrency(l.earnedTzs)} ${signedCurrency(l.networkAdjustmentTzs)}'
                 : null,
           ),
           if (l.visitDates.isNotEmpty)
