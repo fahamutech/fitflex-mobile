@@ -21,4 +21,37 @@ void main() {
     expect(field.minLines, isNull);
     expect(field.maxLines, 1);
   });
+
+  testWidgets('FFDropdownField isExpanded is passed through', (tester) async {
+    await pumpFF(
+      tester,
+      FFDropdownField<String>(
+        value: 'a',
+        isExpanded: true,
+        items: const [DropdownMenuItem(value: 'a', child: Text('A'))],
+        onChanged: (_) {},
+      ),
+      width: 300,
+    );
+    final dd = tester.widget<DropdownButton<String>>(
+      find.byType(DropdownButton<String>),
+    );
+    expect(dd.isExpanded, isTrue);
+  });
+
+  testWidgets('FFDropdownField isExpanded defaults to false', (tester) async {
+    await pumpFF(
+      tester,
+      FFDropdownField<String>(
+        value: 'a',
+        items: const [DropdownMenuItem(value: 'a', child: Text('A'))],
+        onChanged: (_) {},
+      ),
+      width: 300,
+    );
+    final dd = tester.widget<DropdownButton<String>>(
+      find.byType(DropdownButton<String>),
+    );
+    expect(dd.isExpanded, isFalse);
+  });
 }

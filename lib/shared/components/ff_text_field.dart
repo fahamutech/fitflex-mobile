@@ -83,6 +83,7 @@ class FFDropdownField<T> extends StatelessWidget {
     required this.onChanged,
     this.label,
     this.width,
+    this.isExpanded = false,
   });
 
   final T? value;
@@ -91,12 +92,17 @@ class FFDropdownField<T> extends StatelessWidget {
   final String? label;
   final double? width;
 
+  /// Makes the selected item fill the field so long labels can ellipsize
+  /// instead of overflowing.
+  final bool isExpanded;
+
   @override
   Widget build(BuildContext context) {
     final field = DropdownButtonFormField<T>(
       initialValue: value,
       items: items,
       onChanged: onChanged,
+      isExpanded: isExpanded,
       decoration: InputDecoration(labelText: label),
     );
     if (width != null) return SizedBox(width: width, child: field);
