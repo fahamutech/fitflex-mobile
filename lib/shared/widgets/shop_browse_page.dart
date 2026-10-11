@@ -381,16 +381,12 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
         _ordering = false;
         _section = 1;
       });
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(context.tr('shop.orderPlaced'))));
+      FFSnack.success(context, context.tr('shop.orderPlaced'));
       await _load();
     } on ApiException {
       if (!mounted) return;
       setState(() => _ordering = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(context.tr('shop.orderFailed'))));
+      FFSnack.error(context, context.tr('shop.orderFailed'));
     }
   }
 
@@ -506,8 +502,10 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
         title: Text(context.tr('shop.invoice')),
         content: SelectableText(invoice),
         actions: [
-          TextButton(
+          FFButton(
             key: const Key('shop-download-receipt'),
+            label: context.tr('shop.downloadReceipt'),
+            variant: FFButtonVariant.ghost,
             onPressed: () async {
               try {
                 await saveTextExport(
@@ -523,7 +521,6 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
                 );
               }
             },
-            child: Text(context.tr('shop.downloadReceipt')),
           ),
         ],
       ),
@@ -579,15 +576,10 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
         .toSet()
         .toList();
     return [
-      TextField(
+      FFTextField(
         key: const Key('shop-search'),
-        decoration: InputDecoration(
-          hintText: context.tr('shop.searchHint'),
-          prefixIcon: const Icon(Icons.search, size: 20),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(FFTokens.radiusLg),
-          ),
-        ),
+        hint: context.tr('shop.searchHint'),
+        prefixIcon: const Icon(Icons.search, size: 20),
         onChanged: (value) => setState(() => _search = value),
       ),
       const SizedBox(height: FFTokens.spacingSm),
@@ -619,10 +611,10 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
       Row(
         children: [
           Expanded(
-            child: DropdownButtonFormField<String>(
+            child: FFDropdownField<String>(
               key: const Key('shop-sort'),
-              initialValue: _sort,
-              decoration: InputDecoration(labelText: context.tr('shop.sort')),
+              value: _sort,
+              label: context.tr('shop.sort'),
               items: [
                 DropdownMenuItem(
                   value: 'newest',
@@ -826,7 +818,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              DropdownButton<int>(
+              FFDropdownField<int>(
                 value: rating,
                 items: [1, 2, 3, 4, 5]
                     .map(
@@ -844,18 +836,16 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
                     .toList(),
                 onChanged: (value) => setDialogState(() => rating = value ?? 5),
               ),
-              TextField(
+              FFTextField(
                 controller: controller,
-                decoration: InputDecoration(
-                  labelText: context.tr('shop.comment'),
-                ),
+                label: context.tr('shop.comment'),
               ),
             ],
           ),
           actions: [
-            FilledButton(
+            FFButton(
+              label: context.tr('shop.submitReview'),
               onPressed: () => Navigator.pop(dialogContext, true),
-              child: Text(context.tr('shop.submitReview')),
             ),
           ],
         ),
@@ -946,8 +936,6 @@ class _MarketplaceFiltersSheetState extends State<_MarketplaceFiltersSheet> {
 
   @override
   Widget build(BuildContext context) {
-    InputDecoration decoration(String key) =>
-        InputDecoration(labelText: context.tr(key));
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.fromLTRB(
@@ -964,48 +952,48 @@ class _MarketplaceFiltersSheetState extends State<_MarketplaceFiltersSheet> {
                 context.tr('shop.filters'),
                 style: Theme.of(context).textTheme.titleLarge,
               ),
-              TextField(
+              FFTextField(
                 key: const Key('shop-filter-brand'),
                 controller: _brand,
-                decoration: decoration('shop.brand'),
+                label: context.tr('shop.brand'),
               ),
-              TextField(
+              FFTextField(
                 key: const Key('shop-filter-vendor'),
                 controller: _vendor,
-                decoration: decoration('shop.vendor'),
+                label: context.tr('shop.vendor'),
               ),
               Row(
                 children: [
                   Expanded(
-                    child: TextField(
+                    child: FFTextField(
                       key: const Key('shop-filter-min-price'),
                       controller: _minPrice,
                       keyboardType: TextInputType.number,
-                      decoration: decoration('shop.minPrice'),
+                      label: context.tr('shop.minPrice'),
                     ),
                   ),
                   const SizedBox(width: FFTokens.spacingSm),
                   Expanded(
-                    child: TextField(
+                    child: FFTextField(
                       key: const Key('shop-filter-max-price'),
                       controller: _maxPrice,
                       keyboardType: TextInputType.number,
-                      decoration: decoration('shop.maxPrice'),
+                      label: context.tr('shop.maxPrice'),
                     ),
                   ),
                 ],
               ),
-              TextField(
+              FFTextField(
                 key: const Key('shop-filter-rating'),
                 controller: _rating,
                 keyboardType: TextInputType.number,
-                decoration: decoration('shop.minimumRating'),
+                label: context.tr('shop.minimumRating'),
               ),
-              TextField(
+              FFTextField(
                 key: const Key('shop-filter-distance'),
                 controller: _distance,
                 keyboardType: TextInputType.number,
-                decoration: decoration('shop.maximumDistance'),
+                label: context.tr('shop.maximumDistance'),
               ),
               const SizedBox(height: FFTokens.spacingLg),
               Row(
@@ -1406,19 +1394,15 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
                 ),
               ),
               if (_delivery == 'home_delivery')
-                TextField(
+                FFTextField(
                   key: const Key('shop-delivery-address'),
                   controller: _address,
-                  decoration: InputDecoration(
-                    labelText: context.tr('shop.deliveryAddress'),
-                  ),
+                  label: context.tr('shop.deliveryAddress'),
                 )
               else ...[
-                TextField(
+                FFTextField(
                   key: const Key('shop-pickup-search'),
-                  decoration: InputDecoration(
-                    labelText: context.tr('shop.searchPickup'),
-                  ),
+                  label: context.tr('shop.searchPickup'),
                   onChanged: (value) =>
                       setState(() => _gymSearch = value.trim().toLowerCase()),
                 ),
@@ -1429,12 +1413,10 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
                   size: FFButtonSize.sm,
                   icon: Icons.near_me_outlined,
                 ),
-                DropdownButtonFormField<String>(
+                FFDropdownField<String>(
                   key: const Key('shop-pickup-gym'),
-                  initialValue: _gymId,
-                  decoration: InputDecoration(
-                    labelText: context.tr('shop.selectGym'),
-                  ),
+                  value: _gymId,
+                  label: context.tr('shop.selectGym'),
                   items: _gyms
                       .where(
                         (gym) =>
@@ -1459,12 +1441,10 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
                 ),
               ],
               const SizedBox(height: FFTokens.spacingMd),
-              DropdownButtonFormField<String>(
+              FFDropdownField<String>(
                 key: const Key('shop-payment-method'),
-                initialValue: _payment,
-                decoration: InputDecoration(
-                  labelText: context.tr('shop.paymentMethod'),
-                ),
+                value: _payment,
+                label: context.tr('shop.paymentMethod'),
                 items: const [
                   DropdownMenuItem(value: 'mpesa', child: Text('M-Pesa')),
                   DropdownMenuItem(
@@ -1506,17 +1486,17 @@ class _ProductDetailsSheet extends StatelessWidget {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(context.tr('shop.chatVendor')),
-        content: TextField(
+        content: FFTextField(
           key: const Key('shop-enquiry-message'),
           controller: controller,
           maxLines: 3,
-          decoration: InputDecoration(hintText: context.tr('shop.enquiryHint')),
+          hint: context.tr('shop.enquiryHint'),
         ),
         actions: [
-          FilledButton(
+          FFButton(
             key: const Key('shop-enquiry-send'),
+            label: context.tr('shop.send'),
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: Text(context.tr('shop.send')),
           ),
         ],
       ),
@@ -1789,12 +1769,10 @@ class _VendorStoreSheetState extends State<VendorStoreSheet> {
             if (categories.isNotEmpty)
               Text('${context.tr('shop.categories')}: $categories'),
             const SizedBox(height: FFTokens.spacingMd),
-            TextField(
+            FFTextField(
               key: const Key('shop-store-search'),
-              decoration: InputDecoration(
-                labelText: context.tr('shop.searchStore'),
-                prefixIcon: const Icon(Icons.search),
-              ),
+              label: context.tr('shop.searchStore'),
+              prefixIcon: const Icon(Icons.search),
               onChanged: (value) => setState(() => _search = value),
             ),
             const SizedBox(height: FFTokens.spacingMd),
