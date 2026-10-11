@@ -164,6 +164,26 @@ Future<void> _openProductMenu(
 
 Finder _field(String key) => find.byKey(Key(key));
 
+/// The profile sheet is a long lazy list (the category checklist pushes the
+/// publish button off screen), so scroll it until [target] is built.
+Future<void> _scrollProfileTo(WidgetTester tester, Finder target) async {
+  // The sheet is the top route, so its scrollable is the last one built.
+  await tester.scrollUntilVisible(
+    target,
+    200,
+    scrollable: find.byType(Scrollable).last,
+  );
+}
+
+Future<void> _typeProfile(
+  WidgetTester tester,
+  Finder field,
+  String text,
+) async {
+  await _scrollProfileTo(tester, field);
+  await typeInto(tester, field, text);
+}
+
 void main() {
   setUpAll(loadAppFonts);
 
@@ -278,7 +298,12 @@ void main() {
       );
       await typeInto(tester, _field('vendor-product-brand'), 'IronCo');
       await typeInto(tester, _field('vendor-product-description'), 'Cast iron');
-      await typeInto(tester, _field('vendor-product-category'), 'Equipment');
+      // The category is now picked from the fixed list.
+      await tester.ensureVisible(_field('vendor-product-category'));
+      await tester.tap(_field('vendor-product-category'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Gym & fitness equipment').last);
+      await tester.pumpAndSettle();
       await typeInto(tester, _field('vendor-product-price'), '45000');
       await typeInto(tester, _field('vendor-product-stock'), '7');
       await typeInto(tester, _field('vendor-product-discount-price'), '39000');
@@ -290,7 +315,7 @@ void main() {
       expect(api.only('POST', '/vendor/products').body, {
         'name': 'Kettlebell 12kg',
         'description': 'Cast iron',
-        'category': 'Equipment',
+        'category': 'equipment',
         'brand': 'IronCo',
         'priceTzs': 45000,
         'discountPriceTzs': 39000,
@@ -389,7 +414,8 @@ void main() {
       expect(api.only('PUT', '/vendor/products/p1').body, {
         'name': 'Whey Protein',
         'description': 'Isolate',
-        'category': 'Supplements',
+        // The older free-text category 'Supplements' is left untouched, so
+        // it is not sent unless the vendor picks one from the list.
         'brand': 'MuscleCo',
         'priceTzs': 90000,
         'discountPriceTzs': 80000,
@@ -684,6 +710,12 @@ void main() {
         api.fail('GET /vendor/payments/statement', 500);
         final host = await _pump(tester, api);
         await _tab(tester, 'payments');
+        // The payouts entry above it pushes the button below the first screen.
+        await tester.scrollUntilVisible(
+          find.byKey(const Key('vendor-download-statement')),
+          200,
+          scrollable: find.byType(Scrollable).first,
+        );
         await tapVisible(
           tester,
           find.byKey(const Key('vendor-download-statement')),
@@ -812,17 +844,12 @@ void main() {
       await _pump(tester, api);
       await _tab(tester, 'business');
       await tapVisible(tester, find.byKey(const Key('vendor-edit-profile')));
-      await typeInto(
+      await _typeProfile(
         tester,
         _field('vendor-profile-businessName'),
         'FitFlex Gear',
       );
-      await typeInto(
-        tester,
-        _field('vendor-profile-deliveryRegions'),
-        'Dar es Salaam, Mwanza ,',
-      );
-      await typeInto(tester, _field('vendor-profile-returnsPolicy'), '');
+      await _scrollProfileTo(tester, _field('vendor-profile-publish'));
       await tapVisible(tester, _field('vendor-profile-publish'));
 
       expect(api.only('PUT', '/vendor/profile').body, {
@@ -834,10 +861,9 @@ void main() {
         'contactNumber': '+255700000001',
         'email': 'store@fitflex.test',
         'address': 'Masaki',
-        'deliveryRegions': ['Dar es Salaam', 'Mwanza'],
         'businessHours': {'summary': '08:00-18:00'},
         'settlementAccount': {'account': '0123456789'},
-        'productCategories': ['Supplements'],
+        // The seeded 'Supplements' is older free text, not a key on the list.
         'publish': true,
       });
       expect(find.byKey(const Key('vendor-profile-publish')), findsNothing);
@@ -854,17 +880,17 @@ void main() {
       for (final key in [
         'businessName',
         'description',
-        'businessCategory',
         'contactNumber',
-        'email',
+        // The email is optional now, so blanking it does not block publishing.
         'address',
-        'deliveryRegions',
         'businessHours',
         'settlementAccount',
       ]) {
         final field = _field('vendor-profile-$key');
+        await _scrollProfileTo(tester, field);
         final original = textOf(tester, field);
         await typeInto(tester, field, '   ');
+        await _scrollProfileTo(tester, _field('vendor-profile-publish'));
         await tapVisible(tester, _field('vendor-profile-publish'));
         expect(
           _field('vendor-profile-publish'),
@@ -885,6 +911,7 @@ void main() {
       await _tab(tester, 'business');
       await tester.tap(find.byKey(const Key('vendor-edit-profile')));
       await tester.pumpAndSettle();
+      await _scrollProfileTo(tester, _field('vendor-profile-publish'));
       await tapVisible(tester, _field('vendor-profile-publish'));
       expect(_field('vendor-profile-publish'), findsOneWidget);
       expect(api.sent('PUT', '/vendor/profile'), isFalse);
