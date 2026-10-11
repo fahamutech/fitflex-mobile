@@ -461,11 +461,7 @@ class _GymFormPageState extends State<GymFormPage> {
             key: const Key('gym-form-save'),
             onPressed: _busy ? null : _save,
             child: _busy
-                ? const SizedBox(
-                    height: 18,
-                    width: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
+                ? FFSpinner(size: 18)
                 : Text(context.tr('member.save')),
           ),
         ],

@@ -104,7 +104,7 @@ class _MemberRunDetailPageState extends State<MemberRunDetailPage> {
                   _route == null
                       ? const SizedBox(
                           height: 220,
-                          child: Center(child: CircularProgressIndicator()),
+                          child: Center(child: FFSpinner(size: 32)),
                         )
                       : _route!.isEmpty
                       ? const SizedBox.shrink()

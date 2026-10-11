@@ -162,7 +162,7 @@ class _FeedTabState extends State<FeedTab> {
   @override
   Widget build(BuildContext context) {
     final items = _items;
-    if (items == null) return const Center(child: CircularProgressIndicator());
+    if (items == null) return const Center(child: FFSpinner(size: 32));
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(
@@ -747,7 +747,7 @@ class _PeopleTabState extends State<PeopleTab> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_loaded) return const Center(child: CircularProgressIndicator());
+    if (!_loaded) return const Center(child: FFSpinner(size: 32));
     final theme = Theme.of(context);
     return RefreshIndicator(
       onRefresh: _load,
@@ -948,7 +948,7 @@ class _GroupsTabState extends State<GroupsTab> {
   @override
   Widget build(BuildContext context) {
     final mine = _mine;
-    if (mine == null) return const Center(child: CircularProgressIndicator());
+    if (mine == null) return const Center(child: FFSpinner(size: 32));
     final theme = Theme.of(context);
     return RefreshIndicator(
       onRefresh: _load,

@@ -294,7 +294,7 @@ class _PlanWorkoutSheetState extends State<_PlanWorkoutSheet> {
             if (snap.connectionState != ConnectionState.done) {
               return const SizedBox(
                 height: 200,
-                child: Center(child: CircularProgressIndicator()),
+                child: Center(child: FFSpinner(size: 32)),
               );
             }
             final templates = snap.data ?? const <WorkoutTemplate>[];

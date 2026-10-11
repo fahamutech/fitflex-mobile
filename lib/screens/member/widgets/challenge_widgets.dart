@@ -209,7 +209,7 @@ List<Widget> buildChallengesSection(
   DateTime now,
 ) {
   if (!data.challengesLoaded) {
-    return const [Center(child: CircularProgressIndicator())];
+    return const [Center(child: FFSpinner(size: 32))];
   }
   final g = groupChallenges(
     data.challenges,

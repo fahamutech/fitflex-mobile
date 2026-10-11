@@ -114,7 +114,7 @@ class MemberPassesPage extends StatelessWidget {
           if (data.pendingPass != null)
             _PendingBlockCard(pending: data.pendingPass!)
           else if (!data.passesLoaded)
-            const Center(child: CircularProgressIndicator())
+            const Center(child: FFSpinner(size: 32))
           else if (data.passes.isEmpty)
             Center(
               child: Padding(

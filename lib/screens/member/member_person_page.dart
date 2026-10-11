@@ -107,7 +107,7 @@ class _MemberPersonPageState extends State<MemberPersonPage> {
               body: t('community.profileGoneBody'),
             )
           : p == null
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: FFSpinner(size: 32))
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView(

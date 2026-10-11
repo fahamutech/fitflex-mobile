@@ -686,11 +686,7 @@ class _TrainerGymDetailPageState extends State<TrainerGymDetailPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   _openingDirections
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
+                      ? FFSpinner(size: 18)
                       : Icon(Icons.map_outlined, size: 18, color: primary),
                   const SizedBox(width: 6),
                   Text(

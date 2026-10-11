@@ -178,7 +178,7 @@ class _SharePickerState extends State<_SharePicker> {
             if (_mine == null)
               const Padding(
                 padding: EdgeInsets.all(FFTokens.spacingSm),
-                child: Center(child: CircularProgressIndicator()),
+                child: Center(child: FFSpinner(size: 32)),
               )
             else
               for (final g in _mine!)

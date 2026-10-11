@@ -647,11 +647,7 @@ class _PendingTrainerCardState extends State<_PendingTrainerCard> {
             ),
           ),
           if (_busy)
-            const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
+            FFSpinner(size: 20)
           else ...[
             IconButton(
               icon: Icon(

@@ -499,7 +499,7 @@ class _RecoveryStatusScreenState extends State<RecoveryStatusScreen> {
     final state = status?['status']?.toString();
     final List<Widget> body;
     if (_loading && status == null) {
-      body = [const Center(child: CircularProgressIndicator())];
+      body = [const Center(child: FFSpinner(size: 32))];
     } else if (_gone) {
       body = [
         Text(

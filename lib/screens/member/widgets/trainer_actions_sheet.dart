@@ -328,7 +328,7 @@ class _TrainerBookingSheetState extends State<TrainerBookingSheet> {
     if (_error == null)
       const Padding(
         padding: EdgeInsets.all(24),
-        child: Center(child: CircularProgressIndicator()),
+        child: Center(child: FFSpinner(size: 32)),
       )
     else ...[
       FFAlert(message: _error!, tone: FFAlertTone.error),

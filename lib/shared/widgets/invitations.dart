@@ -185,7 +185,7 @@ class _InvitationsScreenState extends State<InvitationsScreen> {
           listenable: auth,
           builder: (context, _) {
             if (_loading) {
-              return const Center(child: CircularProgressIndicator());
+              return const Center(child: FFSpinner(size: 32));
             }
             final items = auth.invitations;
             return ListView(
@@ -797,7 +797,7 @@ class _GymInvitationsPageState extends State<GymInvitationsPage> {
       appBar: AppBar(title: Text(context.tr('invite.sentTitle'))),
       body: SafeArea(
         child: _loading
-            ? const Center(child: CircularProgressIndicator())
+            ? const Center(child: FFSpinner(size: 32))
             : ListView(
                 padding: const EdgeInsets.all(FFTokens.spacingMd),
                 children: [

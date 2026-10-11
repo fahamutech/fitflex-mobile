@@ -370,7 +370,7 @@ class _MemberWorkoutPageState extends State<MemberWorkoutPage> {
   Widget build(BuildContext context) {
     final data = MemberDataScope.of(context);
     if (!data.workoutsLoaded) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: FFSpinner(size: 32));
     }
     final w = _w;
     if (w == null && _fetching) {

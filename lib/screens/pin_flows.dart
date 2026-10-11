@@ -466,7 +466,7 @@ class _RegisterFlowScreenState extends State<RegisterFlowScreen> {
       step = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (_busy) const Center(child: CircularProgressIndicator()),
+          if (_busy) const Center(child: FFSpinner(size: 32)),
           if (_error != null)
             Text(
               _error!,

@@ -179,12 +179,7 @@ class AudienceCountBanner extends StatelessWidget {
           Icon(Icons.groups_outlined, color: theme.colorScheme.primary),
           const SizedBox(width: FFTokens.spacingSm),
           Expanded(child: child),
-          if (c.countLoading && count != null)
-            const SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
+          if (c.countLoading && count != null) FFSpinner(size: 16),
         ],
       ),
     );

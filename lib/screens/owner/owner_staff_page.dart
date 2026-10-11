@@ -215,7 +215,7 @@ class _OwnerStaffPageState extends State<OwnerStaffPage> {
       body: RefreshIndicator(
         onRefresh: _refresh,
         child: _loading
-            ? const Center(child: CircularProgressIndicator())
+            ? const Center(child: FFSpinner(size: 32))
             : _staff.isEmpty
             ? ListView(
                 padding: const EdgeInsets.all(FFTokens.spacingLg),

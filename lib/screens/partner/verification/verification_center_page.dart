@@ -226,7 +226,7 @@ class _VerificationCenterPageState extends State<VerificationCenterPage> {
                       onPressed: _load,
                     ),
                   )
-                : const Center(child: CircularProgressIndicator()))
+                : const Center(child: FFSpinner(size: 32)))
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView(

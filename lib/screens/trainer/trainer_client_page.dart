@@ -376,7 +376,7 @@ class _TrainerClientPageState extends State<TrainerClientPage> {
       body: _failed
           ? Center(child: FFEmptyState(title: context.tr('owner.errorGeneric')))
           : _o == null
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: FFSpinner(size: 32))
           : RefreshIndicator(onRefresh: _load, child: _body(context, _o!)),
     );
   }

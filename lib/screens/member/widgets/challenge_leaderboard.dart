@@ -233,7 +233,7 @@ class _ChallengeLeaderboardSectionState
               if (b == null)
                 const Padding(
                   padding: EdgeInsets.all(FFTokens.spacingMd),
-                  child: Center(child: CircularProgressIndicator()),
+                  child: Center(child: FFSpinner(size: 32)),
                 )
               else ...[
                 if (you != null)

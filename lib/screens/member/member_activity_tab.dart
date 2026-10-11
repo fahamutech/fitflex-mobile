@@ -72,7 +72,7 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
         if (!data.activityLoaded)
           const Padding(
             padding: EdgeInsets.all(FFTokens.spacingXl),
-            child: Center(child: CircularProgressIndicator()),
+            child: Center(child: FFSpinner(size: 32)),
           )
         else
           ...switch (_section) {

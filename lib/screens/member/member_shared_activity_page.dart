@@ -140,7 +140,7 @@ class _MemberSharedActivityPageState extends State<MemberSharedActivityPage> {
       body: _missing
           ? FFEmptyState(title: context.tr('community.activityGone'))
           : item == null
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: FFSpinner(size: 32))
           : Column(
               children: [
                 Expanded(

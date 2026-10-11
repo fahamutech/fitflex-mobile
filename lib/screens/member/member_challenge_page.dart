@@ -145,7 +145,7 @@ class _MemberChallengePageState extends State<MemberChallengePage> {
         children: [
           back,
           if (!data.challengesLoaded)
-            const Center(child: CircularProgressIndicator())
+            const Center(child: FFSpinner(size: 32))
           else
             FFEmptyState(title: context.tr('challenge.notFound')),
         ],

@@ -136,11 +136,7 @@ class _LocationPickerState extends State<LocationPicker> {
                     onPressed: _locating ? null : _getCurrentLocation,
                     backgroundColor: Theme.of(context).colorScheme.surface,
                     child: _locating
-                        ? const SizedBox(
-                            height: 18,
-                            width: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
+                        ? FFSpinner(size: 18)
                         : Icon(
                             Icons.my_location,
                             color: Theme.of(context).colorScheme.primary,

@@ -80,7 +80,7 @@ class GoalsBlock extends StatelessWidget {
           ],
         ),
         if (!data.goalsLoaded)
-          const Center(child: CircularProgressIndicator())
+          const Center(child: FFSpinner(size: 32))
         else if (goals.isEmpty)
           FFEmptyState(
             title: context.tr('progress.noGoals'),

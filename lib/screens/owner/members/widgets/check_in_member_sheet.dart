@@ -146,11 +146,7 @@ class _CheckInMemberSheetState extends State<_CheckInMemberSheet> {
                 child: FilledButton.icon(
                   onPressed: _busy ? null : _confirm,
                   icon: _busy
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
+                      ? FFSpinner(size: 16)
                       : const Icon(Icons.qr_code, size: FFTokens.iconSm),
                   label: Text(context.tr('members.checkInConfirm')),
                 ),

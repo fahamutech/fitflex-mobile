@@ -111,7 +111,7 @@ class _ChallengeManagerPageState extends State<ChallengeManagerPage> {
       body: _failed
           ? Center(child: FFEmptyState(title: context.tr('owner.errorGeneric')))
           : items == null
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: FFSpinner(size: 32))
           : ListView(
               padding: const EdgeInsets.fromLTRB(
                 FFTokens.spacingLg,
@@ -390,7 +390,7 @@ class _ParticipantsPageState extends State<_ParticipantsPage> {
         ],
       ),
       body: rows == null
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: FFSpinner(size: 32))
           : ListView(
               padding: const EdgeInsets.all(FFTokens.spacingLg),
               children: [

@@ -714,7 +714,7 @@ class _VendorKycProfilePageState extends State<VendorKycProfilePage> {
       busy: _busy || _loading,
       onSave: _save,
       children: _loading
-          ? [const Center(child: CircularProgressIndicator())]
+          ? [const Center(child: FFSpinner(size: 32))]
           : [
               Text(context.tr('kyc.vendorProfile.hint')),
               _gap(),
@@ -1454,7 +1454,7 @@ class _AgreementPageState extends State<AgreementPage> {
       body: a == null
           ? Center(
               child: _loadError == null
-                  ? const CircularProgressIndicator()
+                  ? FFSpinner(size: 32)
                   : Padding(
                       padding: const EdgeInsets.all(FFTokens.spacingLg),
                       child: Text(context.tr('kyc.agreement.loadFailed')),

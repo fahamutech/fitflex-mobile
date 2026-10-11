@@ -88,7 +88,7 @@ class _MemberScanGymPageState extends State<MemberScanGymPage> {
             ),
             if (_busy) ...[
               const SizedBox(height: 16),
-              const Center(child: CircularProgressIndicator()),
+              const Center(child: FFSpinner(size: 32)),
             ],
           ],
           if (result != null)

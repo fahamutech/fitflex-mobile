@@ -339,7 +339,7 @@ class _DevLoginPanelState extends State<_DevLoginPanel> {
           ),
           const SizedBox(height: FFTokens.spacingSm),
           if (_busy)
-            const Center(child: CircularProgressIndicator())
+            const Center(child: FFSpinner(size: 32))
           else
             Wrap(
               spacing: 8,

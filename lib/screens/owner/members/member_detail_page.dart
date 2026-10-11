@@ -521,11 +521,7 @@ class _CheckInSummaryCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (controller.summaryLoading)
-              const SizedBox(
-                width: 12,
-                height: 12,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
+              FFSpinner(size: 12)
             else
               Text(
                 _periodLabel(context, controller.period),

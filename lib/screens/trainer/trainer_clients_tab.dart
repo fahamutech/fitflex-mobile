@@ -109,7 +109,7 @@ class _TrainerClientsTabState extends State<TrainerClientsTab> {
         ],
       );
     }
-    if (!_loaded) return const Center(child: CircularProgressIndicator());
+    if (!_loaded) return const Center(child: FFSpinner(size: 32));
     final pending = _clients
         .where((c) => c.status == TrainerConnectionStatus.pending)
         .toList();

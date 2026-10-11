@@ -192,11 +192,7 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
             key: const Key('trainerFormSave'),
             onPressed: _busy ? null : _save,
             child: _busy
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
+                ? FFSpinner(size: 18)
                 : Text(context.tr('member.save')),
           ),
         ],

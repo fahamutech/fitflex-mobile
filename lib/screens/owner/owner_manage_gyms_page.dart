@@ -348,7 +348,7 @@ Future<void> showGymEntranceQr(
           if (payload == null) {
             return const SizedBox(
               height: 240,
-              child: Center(child: CircularProgressIndicator()),
+              child: Center(child: FFSpinner(size: 32)),
             );
           }
           return Column(

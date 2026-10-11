@@ -277,11 +277,7 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
                         }
                       },
                 child: busy
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
+                    ? FFSpinner(size: 18)
                     : Text(context.tr('member.save')),
               ),
             ],

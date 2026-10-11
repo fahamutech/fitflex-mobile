@@ -162,7 +162,7 @@ class _GroupPageState extends State<GroupPage> {
       body: _missing
           ? FFEmptyState(title: t('community.groupGone'))
           : g == null
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: FFSpinner(size: 32))
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView(
@@ -400,7 +400,7 @@ class _GroupManagerPageState extends State<GroupManagerPage> {
         label: Text(t('community.createGroup')),
       ),
       body: groups == null
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: FFSpinner(size: 32))
           : ListView(
               padding: const EdgeInsets.all(FFTokens.spacingLg),
               children: [
