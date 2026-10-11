@@ -72,9 +72,7 @@ class _StaffFormPageState extends State<StaffFormPage> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedGymIds.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('staff.selectAtLeastOneGym'))),
-      );
+      FFSnack.info(context, context.tr('staff.selectAtLeastOneGym'));
       return;
     }
     if (!_isEdit && _pin.length != 4) {

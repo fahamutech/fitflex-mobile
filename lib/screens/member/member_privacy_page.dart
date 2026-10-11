@@ -111,7 +111,7 @@ class _MemberActivitySharingPageState extends State<MemberActivitySharingPage> {
   Future<void> _apply(TrainerConnection c, TrainerPermissions next) async {
     final api = AppScope.of(context).api;
     final data = MemberDataScope.of(context);
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final failed = context.tr('sharing.failed');
     setState(() {
       _pending[c.id] = next;
@@ -129,7 +129,7 @@ class _MemberActivitySharingPageState extends State<MemberActivitySharingPage> {
       );
       if (mounted) setState(() => _saved.add(c.id));
     } catch (_) {
-      messenger.showSnackBar(SnackBar(content: Text(failed)));
+      messenger.error(failed);
     } finally {
       if (mounted) {
         setState(() {
@@ -181,14 +181,14 @@ class _MemberActivitySharingPageState extends State<MemberActivitySharingPage> {
     );
     if (!ok || !mounted) return;
     final api = AppScope.of(context).api;
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final failed = context.tr('sharing.failed');
     setState(() => _saving.add(c.id));
     try {
       await api.endTrainerConnection(c.id);
       await _shell?.refreshConnections();
     } catch (_) {
-      messenger.showSnackBar(SnackBar(content: Text(failed)));
+      messenger.error(failed);
     } finally {
       if (mounted) setState(() => _saving.remove(c.id));
     }
@@ -447,7 +447,7 @@ class _GymSharingSectionState extends State<GymSharingSection> {
   Future<void> _set(GymSharing g, GymPermission p, bool on) async {
     final api = AppScope.of(context).api;
     final data = MemberDataScope.of(context);
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final failed = context.tr('sharing.failed');
     final next = {...g.permissions};
     on ? next.add(p) : next.remove(p);
@@ -465,7 +465,7 @@ class _GymSharingSectionState extends State<GymSharingSection> {
       );
       if (mounted) setState(() => _saved.add(g.gym.id));
     } catch (_) {
-      messenger.showSnackBar(SnackBar(content: Text(failed)));
+      messenger.error(failed);
     } finally {
       if (mounted) setState(() => _pending.remove(g.gym.id));
     }

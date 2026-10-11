@@ -66,17 +66,15 @@ class _CampaignDetailPageState extends State<CampaignDetailPage> {
   }
 
   Future<void> _act(Future<void> Function() action, String doneKey) async {
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     setState(() => _busy = true);
     try {
       await action();
       if (!mounted) return;
-      messenger.showSnackBar(SnackBar(content: Text(context.tr(doneKey))));
+      messenger.success(context.tr(doneKey));
     } on ApiException catch (e) {
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text(apiErrorMessage(FFLocaleScope.of(context), e))),
-      );
+      messenger.error(apiErrorMessage(FFLocaleScope.of(context), e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }

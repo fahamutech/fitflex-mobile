@@ -95,19 +95,15 @@ class _OwnerMembersPageState extends State<OwnerMembersPage> {
     }
     final payload = await openAddMemberSheet(context, gyms: gyms);
     if (payload == null || !mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     try {
       await _controller!.repository.createMember(payload);
       await _controller!.refresh();
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text(context.tr('owner.memberAdded'))),
-      );
+      messenger.success(context.tr('owner.memberAdded'));
     } on ApiException {
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text(context.tr('owner.errorGeneric'))),
-      );
+      messenger.error(context.tr('owner.errorGeneric'));
     }
   }
 

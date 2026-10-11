@@ -319,9 +319,7 @@ class OwnerShellState extends State<OwnerShell> {
   void _onTab(int index) {
     final tabs = _visibleTabs;
     if (_data.ownerGyms.isEmpty && index != 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('owner.notApprovedYet'))),
-      );
+      FFSnack.info(context, context.tr('owner.notApprovedYet'));
       return;
     }
     context.go(tabs[index].route);

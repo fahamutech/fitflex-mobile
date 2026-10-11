@@ -231,9 +231,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
     if (!mounted) return;
     final trainer = _myProfile;
     if (trainer == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('trainer.profileNotLoaded'))),
-      );
+      FFSnack.info(context, context.tr('trainer.profileNotLoaded'));
       return;
     }
     final payload = await openTrainerForm(
@@ -257,9 +255,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
               .toList();
         });
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('member.profileUpdated'))),
-      );
+      FFSnack.success(context, context.tr('member.profileUpdated'));
       await _syncAccount(payload);
     } on ApiException catch (e) {
       if (!mounted) return;

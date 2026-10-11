@@ -110,7 +110,7 @@ class _MemberLogActivityPageState extends State<MemberLogActivityPage> {
     final scope = AppScope.of(context);
     final data = MemberDataScope.of(context);
     final locale = FFLocaleScope.of(context);
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final router = GoRouter.of(context);
     final done = context.tr('logActivity.saved');
     setState(() => _saving = true);
@@ -123,7 +123,7 @@ class _MemberLogActivityPageState extends State<MemberLogActivityPage> {
             d.activities = [...d.activities, saved]
               ..sort((a, b) => b.startedAt.compareTo(a.startedAt)),
       );
-      messenger.showSnackBar(SnackBar(content: Text(done)));
+      messenger.success(done);
       if (router.canPop()) {
         router.pop(true);
       } else {

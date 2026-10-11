@@ -188,7 +188,7 @@ class _ChallengeLeaderboardSectionState
   Future<void> _setOptIn(bool on) async {
     final api = AppScope.of(context).api;
     final data = MemberDataScope.of(context);
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final failed = context.tr('challenge.failed');
     setState(() => _busy = true);
     try {
@@ -201,7 +201,7 @@ class _ChallengeLeaderboardSectionState
       );
       await _load();
     } catch (_) {
-      messenger.showSnackBar(SnackBar(content: Text(failed)));
+      messenger.error(failed);
     } finally {
       if (mounted) setState(() => _busy = false);
     }

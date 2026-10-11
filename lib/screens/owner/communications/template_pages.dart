@@ -78,7 +78,7 @@ class _TemplateDetailPageState extends State<TemplateDetailPage> {
   }
 
   Future<void> _copy() async {
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     setState(() => _busy = true);
     try {
       final copy = await _repo.duplicateTemplate(
@@ -87,19 +87,13 @@ class _TemplateDetailPageState extends State<TemplateDetailPage> {
         name: templateName(context, _template!),
       );
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text(context.tr('comms.tpl.copied'))),
-      );
+      messenger.success(context.tr('comms.tpl.copied'));
       context.pushReplacement(
         '/owner/communications/templates/${copy.id}/edit${_gymQuery()}',
       );
     } on ApiException catch (e) {
       if (mounted) {
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text(apiErrorMessage(FFLocaleScope.of(context), e)),
-          ),
-        );
+        messenger.error(apiErrorMessage(FFLocaleScope.of(context), e));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -126,21 +120,15 @@ class _TemplateDetailPageState extends State<TemplateDetailPage> {
       ),
     );
     if (ok != true || !mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     try {
       await _repo.archiveTemplate(widget.templateId);
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text(context.tr('comms.tpl.archived'))),
-      );
+      messenger.info(context.tr('comms.tpl.archived'));
       context.pop(true);
     } on ApiException catch (e) {
       if (mounted) {
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text(apiErrorMessage(FFLocaleScope.of(context), e)),
-          ),
-        );
+        messenger.error(apiErrorMessage(FFLocaleScope.of(context), e));
       }
     }
   }
@@ -410,7 +398,7 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
       });
 
   Future<void> _save() async {
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     setState(() => _saving = true);
     try {
       final body = _payload;
@@ -421,17 +409,11 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
         await _repo.updateTemplate(widget.templateId!, body);
       }
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text(context.tr('comms.tpl.saved'))),
-      );
+      messenger.success(context.tr('comms.tpl.saved'));
       context.pop(true);
     } on ApiException catch (e) {
       if (mounted) {
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text(apiErrorMessage(FFLocaleScope.of(context), e)),
-          ),
-        );
+        messenger.error(apiErrorMessage(FFLocaleScope.of(context), e));
       }
     } finally {
       if (mounted) setState(() => _saving = false);

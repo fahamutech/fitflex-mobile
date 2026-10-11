@@ -107,7 +107,7 @@ class GoalsBlock extends StatelessWidget {
 Future<void> _mark(BuildContext context, Goal g, {bool undo = false}) async {
   final repo = AppScope.of(context).goals;
   final data = MemberDataScope.of(context);
-  final messenger = ScaffoldMessenger.of(context);
+  final messenger = FFSnack.of(context);
   final failed = context.tr('goal.saveFailed');
   try {
     final saved = await repo.checkIn(g.id, undo: undo);
@@ -115,7 +115,7 @@ Future<void> _mark(BuildContext context, Goal g, {bool undo = false}) async {
       (d) => d.goals = [for (final x in d.goals) x.id == saved.id ? saved : x],
     );
   } catch (_) {
-    messenger.showSnackBar(SnackBar(content: Text(failed)));
+    messenger.error(failed);
   }
 }
 
@@ -290,13 +290,13 @@ class _GoalMenu extends StatelessWidget {
   Future<void> _set(BuildContext context, GoalStatus status) async {
     final repo = AppScope.of(context).goals;
     final shell = context.findAncestorStateOfType<MemberShellState>();
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final failed = context.tr('goal.saveFailed');
     try {
       await repo.update(goal.id, status: status);
       await shell?.refreshGoals();
     } catch (_) {
-      messenger.showSnackBar(SnackBar(content: Text(failed)));
+      messenger.error(failed);
     }
   }
 

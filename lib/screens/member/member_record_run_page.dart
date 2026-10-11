@@ -71,6 +71,7 @@ class _MemberRecordRunPageState extends State<MemberRecordRunPage> {
     final scope = AppScope.of(context);
     final shell = context.findAncestorStateOfType<MemberShellState>();
     final messenger = ScaffoldMessenger.of(context);
+    final messengerSnack = FFSnack.of(context);
     final saved = context.tr('run.savedToast');
     final failed = context.tr('run.saveFailed');
     final tooShort = context.tr('run.tooShort');
@@ -83,7 +84,7 @@ class _MemberRecordRunPageState extends State<MemberRecordRunPage> {
         shareChosen: _shareChosen,
       );
       await shell?.refreshAfterWorkout();
-      messenger.showSnackBar(SnackBar(content: Text(saved)));
+      messengerSnack.success(saved);
       if (mounted) context.go(AppRoutes.memberActivity);
     } catch (e) {
       final short = e.toString().contains('too_short');

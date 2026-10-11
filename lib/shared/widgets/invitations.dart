@@ -141,7 +141,7 @@ class _InvitationsScreenState extends State<InvitationsScreen> {
 
   Future<void> _respond(Map<String, dynamic> invitation, bool accept) async {
     final scope = AppScope.of(context);
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final id = invitation['id'].toString();
     setState(() => _busyId = id);
     try {
@@ -149,9 +149,7 @@ class _InvitationsScreenState extends State<InvitationsScreen> {
         await scope.api.declineInvitation(id);
         await scope.auth.refreshInvitations();
         if (mounted) {
-          messenger.showSnackBar(
-            SnackBar(content: Text(context.tr('invite.declined'))),
-          );
+          messenger.info(context.tr('invite.declined'));
         }
         return;
       }
@@ -159,9 +157,7 @@ class _InvitationsScreenState extends State<InvitationsScreen> {
       await scope.auth.refreshInvitations();
       await scope.auth.refreshPersonas();
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text(context.tr('invite.accepted'))),
-      );
+      messenger.success(context.tr('invite.accepted'));
       // A new role (for example gym staff): continue as it.
       final personaId = res['personaId']?.toString();
       final canSwitch = scope.auth.switchablePersonas.any(
@@ -172,9 +168,7 @@ class _InvitationsScreenState extends State<InvitationsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        messenger.showSnackBar(
-          SnackBar(content: Text(inviteErrorMessage(context, e))),
-        );
+        messenger.error(inviteErrorMessage(context, e));
       }
     } finally {
       if (mounted) setState(() => _busyId = null);
@@ -695,12 +689,12 @@ class _InvitePersonSheetState extends State<_InvitePersonSheet> {
                 key: const Key('invite-copy-link'),
                 label: context.tr('invite.copyLink'),
                 onPressed: () async {
-                  final messenger = ScaffoldMessenger.of(context);
+                  final messenger = FFSnack.of(context);
                   final copied = context.tr('invite.linkCopied');
                   await Clipboard.setData(
                     ClipboardData(text: inviteLink(_token!)),
                   );
-                  messenger.showSnackBar(SnackBar(content: Text(copied)));
+                  messenger.success(copied);
                 },
                 variant: FFButtonVariant.secondary,
                 icon: Icons.link,
@@ -779,7 +773,7 @@ class _GymInvitationsPageState extends State<GymInvitationsPage> {
 
   Future<void> _act(Map<String, dynamic> inv, String action) async {
     final api = AppScope.of(context).api;
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final done = context.tr('invite.actionDone');
     try {
       await api.gymInvitationAction(
@@ -788,13 +782,11 @@ class _GymInvitationsPageState extends State<GymInvitationsPage> {
         action,
         orgType: widget.orgType,
       );
-      messenger.showSnackBar(SnackBar(content: Text(done)));
+      messenger.success(done);
       await _load();
     } catch (e) {
       if (mounted) {
-        messenger.showSnackBar(
-          SnackBar(content: Text(inviteErrorMessage(context, e))),
-        );
+        messenger.error(inviteErrorMessage(context, e));
       }
     }
   }

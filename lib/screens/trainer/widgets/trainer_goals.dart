@@ -44,12 +44,9 @@ class TrainerGoalsSection extends StatelessWidget {
       onSave: (body) => api.trainerAssignGoal(relationshipId, body),
     );
     if (ok == true && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            context.tr('trainerGoal.saved').replaceAll('{name}', clientName),
-          ),
-        ),
+      FFSnack.success(
+        context,
+        context.tr('trainerGoal.saved').replaceAll('{name}', clientName),
       );
       await onChanged();
     }
@@ -129,13 +126,13 @@ class _AssignedGoalCard extends StatelessWidget {
 
   Future<void> _update(BuildContext context, Map<String, dynamic> body) async {
     final api = AppScope.of(context).api;
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final locale = FFLocaleScope.of(context);
     try {
       await api.trainerUpdateGoal(relationshipId, assigned.goal.id, body);
       await onChanged();
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(errorMessage(locale, e))));
+      messenger.error(errorMessage(locale, e));
     }
   }
 

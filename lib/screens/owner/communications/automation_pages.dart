@@ -88,7 +88,7 @@ class _AutomationsTabState extends State<AutomationsTab> {
   }
 
   Future<void> _toggle(Automation a, bool on) async {
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     setState(() => _busy.add(a.id));
     try {
       final updated = await _repo.updateAutomation(a.id, enabled: on);
@@ -98,11 +98,7 @@ class _AutomationsTabState extends State<AutomationsTab> {
       );
     } on ApiException catch (e) {
       if (mounted) {
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text(apiErrorMessage(FFLocaleScope.of(context), e)),
-          ),
-        );
+        messenger.error(apiErrorMessage(FFLocaleScope.of(context), e));
       }
     } finally {
       if (mounted) setState(() => _busy.remove(a.id));

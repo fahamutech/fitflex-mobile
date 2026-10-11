@@ -172,9 +172,7 @@ class _SubmitButtonState extends State<_SubmitButton> {
     try {
       await AppScope.of(context).api.requestPass(widget.tier);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('member.paymentSubmitted'))),
-      );
+      FFSnack.success(context, context.tr('member.paymentSubmitted'));
       // Refresh QR and user data after subscription
       final shellState = context.findAncestorStateOfType<MemberShellState>();
       await shellState?.refreshQr();
@@ -183,9 +181,7 @@ class _SubmitButtonState extends State<_SubmitButton> {
       context.go(AppRoutes.memberHome);
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(apiErrorMessage(FFLocaleScope.of(context), e))),
-      );
+      FFSnack.error(context, apiErrorMessage(FFLocaleScope.of(context), e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }

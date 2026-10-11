@@ -96,9 +96,7 @@ class _MemberTrainerDetailPageState extends State<MemberTrainerDetailPage> {
       return true;
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage(FFLocaleScope.of(context), e))),
-        );
+        FFSnack.error(context, errorMessage(FFLocaleScope.of(context), e));
       }
       return false;
     }
@@ -147,9 +145,7 @@ class _MemberTrainerDetailPageState extends State<MemberTrainerDetailPage> {
       _pickedGymId = gymId;
       if (_picked.remove(key) == null) {
         if (_picked.length >= _maxSlots) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(context.tr('member.tooManySlots'))),
-          );
+          FFSnack.info(context, context.tr('member.tooManySlots'));
           return;
         }
         _picked[key] = (date: day.date, slot: slot.slot);
@@ -180,9 +176,7 @@ class _MemberTrainerDetailPageState extends State<MemberTrainerDetailPage> {
         _picked.clear();
         _pickedGymId = null;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('member.bookingRequested'))),
-      );
+      FFSnack.info(context, context.tr('member.bookingRequested'));
       _loadSchedule();
     }
   }
@@ -205,14 +199,10 @@ class _MemberTrainerDetailPageState extends State<MemberTrainerDetailPage> {
     try {
       await AppScope.of(context).api.engageTrainer(trainerId, type: 'interest');
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('member.interestSent'))),
-      );
+      FFSnack.success(context, context.tr('member.interestSent'));
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('member.enquiryFailed'))),
-      );
+      FFSnack.error(context, context.tr('member.enquiryFailed'));
     } finally {
       if (mounted) setState(() => _interestBusy = false);
     }

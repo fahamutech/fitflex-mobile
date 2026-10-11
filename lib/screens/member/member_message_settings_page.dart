@@ -47,7 +47,7 @@ class _MemberMessageSettingsPageState extends State<MemberMessageSettingsPage> {
   }
 
   Future<void> _set(String key, bool value) async {
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final before = _prefs![key];
     setState(() {
       _prefs = {..._prefs!, key: value};
@@ -61,9 +61,7 @@ class _MemberMessageSettingsPageState extends State<MemberMessageSettingsPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _prefs = {..._prefs!, key: before});
-      messenger.showSnackBar(
-        SnackBar(content: Text(errorMessage(FFLocaleScope.of(context), e))),
-      );
+      messenger.error(errorMessage(FFLocaleScope.of(context), e));
     } finally {
       if (mounted) setState(() => _saving = null);
     }

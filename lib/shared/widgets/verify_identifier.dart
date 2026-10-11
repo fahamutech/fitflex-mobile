@@ -304,12 +304,12 @@ class _VerifyIdentifierScreenState extends State<VerifyIdentifierScreen> {
   Future<void> _done() async {
     final auth = AppScope.of(context).auth;
     final navigator = Navigator.of(context);
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final message = context.tr('verify.done');
     await auth.refreshIdentifiers();
     // A newly verified number or email can bring invitations with it.
     await auth.refreshInvitations();
-    messenger.showSnackBar(SnackBar(content: Text(message)));
+    messenger.info(message);
     navigator.pop(true);
   }
 
@@ -548,7 +548,7 @@ class _ChangeIdentifierScreenState extends State<ChangeIdentifierScreen> {
     if (code.isEmpty) return;
     final scope = AppScope.of(context);
     final navigator = Navigator.of(context);
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final done = context.tr('change.done');
     final locale = FFLocaleScope.of(context).locale.languageCode;
     final value = _value.text.trim();
@@ -561,7 +561,7 @@ class _ChangeIdentifierScreenState extends State<ChangeIdentifierScreen> {
         locale: locale,
       );
       await scope.auth.refreshIdentifiers();
-      messenger.showSnackBar(SnackBar(content: Text(done)));
+      messenger.success(done);
       navigator.pop(true);
     } catch (e) {
       if (mounted) {

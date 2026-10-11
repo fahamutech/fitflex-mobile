@@ -92,7 +92,7 @@ class _MemberSessionsPageState extends State<MemberSessionsPage> {
       ),
     );
     if (confirmed != true || !mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final locale = FFLocaleScope.of(context);
     final done = context.tr(
       refundable ? 'sessions.cancelledRefund' : 'sessions.cancelled',
@@ -103,9 +103,9 @@ class _MemberSessionsPageState extends State<MemberSessionsPage> {
         context,
       ).api.cancelMyTrainerBooking(booking['id'].toString());
       await _load();
-      messenger.showSnackBar(SnackBar(content: Text(done)));
+      messenger.success(done);
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(errorMessage(locale, e))));
+      messenger.error(errorMessage(locale, e));
       await _load();
     } finally {
       if (mounted) setState(() => _busyId = null);
@@ -120,9 +120,7 @@ class _MemberSessionsPageState extends State<MemberSessionsPage> {
       builder: (_) => const _RefundRequestSheet(),
     );
     if (sent == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('refunds.requestSent'))),
-      );
+      FFSnack.success(context, context.tr('refunds.requestSent'));
       await _load();
     }
   }

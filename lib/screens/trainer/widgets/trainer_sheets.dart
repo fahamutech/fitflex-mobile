@@ -89,15 +89,15 @@ class _TrainerSessionsSheetState extends State<TrainerSessionsSheet> {
       ),
     );
     if (confirmed != true || !mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final locale = FFLocaleScope.of(context);
     final done = context.tr('trainer.sessionCancelled');
     try {
       await AppScope.of(context).api.trainerCancelBooking(s['id'].toString());
       await _load();
-      messenger.showSnackBar(SnackBar(content: Text(done)));
+      messenger.success(done);
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(errorMessage(locale, e))));
+      messenger.error(errorMessage(locale, e));
     }
   }
 

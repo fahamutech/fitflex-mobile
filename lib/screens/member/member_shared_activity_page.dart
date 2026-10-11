@@ -82,7 +82,7 @@ class _MemberSharedActivityPageState extends State<MemberSharedActivityPage> {
   Future<void> _send() async {
     final t = _text.text.trim();
     if (t.isEmpty) return;
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     setState(() => _sending = true);
     try {
       await AppScope.of(context).api.addComment(widget.activityId, t);
@@ -90,7 +90,7 @@ class _MemberSharedActivityPageState extends State<MemberSharedActivityPage> {
       await _load();
     } catch (e) {
       if (mounted) {
-        messenger.showSnackBar(SnackBar(content: Text(errorText(context, e))));
+        messenger.error(errorText(context, e));
       }
     } finally {
       if (mounted) setState(() => _sending = false);
@@ -99,12 +99,12 @@ class _MemberSharedActivityPageState extends State<MemberSharedActivityPage> {
 
   Future<void> _commentAction(SocialComment c, String action) async {
     final api = AppScope.of(context).api;
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final reported = context.tr('community.reportedToast');
     if (action == 'delete') await api.deleteComment(c.id);
     if (action == 'report') {
       await api.report('comment', c.id);
-      messenger.showSnackBar(SnackBar(content: Text(reported)));
+      messenger.info(reported);
     }
     await _load();
   }
@@ -121,12 +121,12 @@ class _MemberSharedActivityPageState extends State<MemberSharedActivityPage> {
           if (item != null && item.owner.relationship != Relationship.you)
             PopupMenuButton<String>(
               onSelected: (_) async {
-                final messenger = ScaffoldMessenger.of(context);
+                final messenger = FFSnack.of(context);
                 final done = context.tr('community.reportedToast');
                 await AppScope.of(
                   context,
                 ).api.report('activity', item.activity.id);
-                messenger.showSnackBar(SnackBar(content: Text(done)));
+                messenger.success(done);
               },
               itemBuilder: (_) => [
                 PopupMenuItem(

@@ -116,9 +116,7 @@ class OwnerManageGymsPage extends StatelessWidget {
       ).showSnackBar(SnackBar(content: Text(message)));
     } on ApiException catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(apiErrorMessage(FFLocaleScope.of(context), e))),
-      );
+      FFSnack.error(context, apiErrorMessage(FFLocaleScope.of(context), e));
     }
   }
 
@@ -142,9 +140,7 @@ class OwnerManageGymsPage extends StatelessWidget {
       ).showSnackBar(SnackBar(content: Text(message)));
     } on ApiException catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(apiErrorMessage(FFLocaleScope.of(context), e))),
-      );
+      FFSnack.error(context, apiErrorMessage(FFLocaleScope.of(context), e));
     }
   }
 
@@ -180,12 +176,9 @@ class OwnerManageGymsPage extends StatelessWidget {
                 ).showSnackBar(SnackBar(content: Text(message)));
               } on ApiException catch (e) {
                 if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      apiErrorMessage(FFLocaleScope.of(context), e),
-                    ),
-                  ),
+                FFSnack.error(
+                  context,
+                  apiErrorMessage(FFLocaleScope.of(context), e),
                 );
               }
             },

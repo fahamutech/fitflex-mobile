@@ -116,18 +116,16 @@ class _ReviewsSectionState extends State<ReviewsSection> {
     );
     if (confirmed != true || !mounted) return;
     final locale = FFLocaleScope.of(context);
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     try {
       final result = await AppScope.of(
         context,
       ).api.deleteMyReview(widget.subject, widget.subjectId);
       widget.onRatingChanged?.call(result.average, result.count);
-      messenger.showSnackBar(
-        SnackBar(content: Text(locale.t('reviews.deleted'))),
-      );
+      messenger.success(locale.t('reviews.deleted'));
       if (mounted) _load();
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(errorMessage(locale, e))));
+      messenger.error(errorMessage(locale, e));
     }
   }
 

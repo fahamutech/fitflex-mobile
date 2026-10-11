@@ -221,9 +221,7 @@ class OwnerTrainersPage extends StatelessWidget {
                 ).showSnackBar(SnackBar(content: Text(message)));
               } on ApiException catch (e) {
                 if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(_apiErrorMessage(context, e))),
-                );
+                FFSnack.error(context, _apiErrorMessage(context, e));
               }
             },
             child: Text(context.tr('owner.removeTrainer')),

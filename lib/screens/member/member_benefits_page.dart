@@ -51,16 +51,16 @@ class _MemberBenefitsPageState extends State<MemberBenefitsPage> {
   /// Ask to pay the member's share of a sponsored pass. The pass starts when
   /// FitFlex confirms the payment.
   Future<void> _unlock(String entitlementId) async {
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final locale = FFLocaleScope.of(context);
     final requested = context.tr('benefits.pass.requested');
     setState(() => _unlocking = entitlementId);
     try {
       await AppScope.of(context).api.unlockSponsoredPass(entitlementId);
       await _load();
-      messenger.showSnackBar(SnackBar(content: Text(requested)));
+      messenger.info(requested);
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(errorMessage(locale, e))));
+      messenger.error(errorMessage(locale, e));
     } finally {
       if (mounted) setState(() => _unlocking = null);
     }

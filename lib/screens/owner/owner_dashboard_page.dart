@@ -321,9 +321,7 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
           FilledButton(
             onPressed: () {
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(context.tr('owner.gymUpdated'))),
-              );
+              FFSnack.success(context, context.tr('owner.gymUpdated'));
             },
             child: Text(context.tr('member.save')),
           ),
@@ -375,9 +373,7 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
           FilledButton(
             onPressed: () {
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(context.tr('owner.bankUpdated'))),
-              );
+              FFSnack.success(context, context.tr('owner.bankUpdated'));
             },
             child: Text(context.tr('member.save')),
           ),

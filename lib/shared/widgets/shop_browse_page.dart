@@ -247,9 +247,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
       );
       setState(() => _orders = latest);
       if (changed) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.tr('shop.trackingUpdated'))),
-        );
+        FFSnack.success(context, context.tr('shop.trackingUpdated'));
       }
     } on ApiException {
       // Preserve the last successful timeline and retry on the next interval.
@@ -420,15 +418,15 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
       ),
     );
     if (confirmed != true || !mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final locale = FFLocaleScope.of(context);
     final done = context.tr(paid ? 'shop.cancelledRefund' : 'shop.cancelled');
     try {
       await AppScope.of(context).api.cancelMyShopOrder(order['id'].toString());
       await _load();
-      messenger.showSnackBar(SnackBar(content: Text(done)));
+      messenger.success(done);
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(errorMessage(locale, e))));
+      messenger.error(errorMessage(locale, e));
     }
   }
 
@@ -529,10 +527,9 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
                 if (dialogContext.mounted) Navigator.pop(dialogContext);
               } catch (_) {
                 if (!dialogContext.mounted) return;
-                ScaffoldMessenger.of(dialogContext).showSnackBar(
-                  SnackBar(
-                    content: Text(dialogContext.tr('shop.exportFailed')),
-                  ),
+                FFSnack.error(
+                  dialogContext,
+                  dialogContext.tr('shop.exportFailed'),
                 );
               }
             },
@@ -1345,9 +1342,7 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
       });
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('shop.locationUnavailable'))),
-      );
+      FFSnack.error(context, context.tr('shop.locationUnavailable'));
     }
   }
 
@@ -1559,9 +1554,7 @@ class _ProductDetailsSheet extends StatelessWidget {
       );
     } on ApiException {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('shop.storeLoadFailed'))),
-      );
+      FFSnack.error(context, context.tr('shop.storeLoadFailed'));
     }
   }
 

@@ -301,23 +301,22 @@ class _TrainerClientPageState extends State<TrainerClientPage> {
       ),
     );
     if (assigned == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(context.tr('assign.done').replaceAll('{name}', _name)),
-        ),
+      FFSnack.success(
+        context,
+        context.tr('assign.done').replaceAll('{name}', _name),
       );
       await _load();
     }
   }
 
   Future<void> _cancel(ClientWorkout w) async {
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final failed = context.tr('owner.errorGeneric');
     try {
       await AppScope.of(context).api.trainerCancelWorkout(w.id);
       await _load();
     } catch (_) {
-      messenger.showSnackBar(SnackBar(content: Text(failed)));
+      messenger.error(failed);
     }
   }
 
@@ -346,9 +345,7 @@ class _TrainerClientPageState extends State<TrainerClientPage> {
       navigator.pop();
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.tr('owner.errorGeneric'))),
-        );
+        FFSnack.error(context, context.tr('owner.errorGeneric'));
       }
     }
   }

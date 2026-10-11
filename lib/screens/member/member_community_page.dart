@@ -83,8 +83,7 @@ final compactButton = FilledButton.styleFrom(
   visualDensity: VisualDensity.compact,
 );
 
-void _toast(BuildContext context, String text) =>
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+void _toast(BuildContext context, String text) => FFSnack.info(context, text);
 
 // ── Feed ─────────────────────────────────────────────────────────────────
 
@@ -648,13 +647,13 @@ class _PeopleTabState extends State<PeopleTab> {
   }
 
   Future<void> _act(Future<Object?> Function() call, String done) async {
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final failed = errorText(context, '');
     try {
       await call();
-      messenger.showSnackBar(SnackBar(content: Text(done)));
+      messenger.success(done);
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(failed)));
+      messenger.error(failed);
     }
     await _load();
     if (_found != null) await _find();
@@ -901,6 +900,7 @@ class _GroupsTabState extends State<GroupsTab> {
 
   Future<void> _join({String? groupId, String? code}) async {
     final messenger = ScaffoldMessenger.of(context);
+    final messengerSnack = FFSnack.of(context);
     final t = context.tr;
     try {
       final r = await AppScope.of(
@@ -916,7 +916,7 @@ class _GroupsTabState extends State<GroupsTab> {
       );
     } catch (e) {
       if (mounted) {
-        messenger.showSnackBar(SnackBar(content: Text(errorText(context, e))));
+        messengerSnack.error(errorText(context, e));
       }
     }
     await _load();

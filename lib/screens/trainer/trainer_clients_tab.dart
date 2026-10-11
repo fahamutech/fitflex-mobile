@@ -61,14 +61,14 @@ class _TrainerClientsTabState extends State<TrainerClientsTab> {
 
   Future<void> _decide(TrainerConnection c, bool accept) async {
     final api = AppScope.of(context).api;
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final failed = context.tr('owner.errorGeneric');
     setState(() => _busyId = c.id);
     try {
       await api.trainerDecideClient(c.id, accept: accept);
       await _load();
     } catch (_) {
-      messenger.showSnackBar(SnackBar(content: Text(failed)));
+      messenger.error(failed);
     } finally {
       if (mounted) setState(() => _busyId = null);
     }

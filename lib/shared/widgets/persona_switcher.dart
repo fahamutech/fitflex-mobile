@@ -5,10 +5,10 @@ import '../../app_scope.dart';
 import '../../router.dart';
 import '../api_client.dart';
 import '../api_error_message.dart';
-import '../components/ff_action_tile.dart';
 import '../design_tokens.dart';
 import '../i18n.dart';
 import 'terms_agreement.dart';
+import '../components/components.dart';
 
 /// Human label for a persona's userType.
 String personaLabel(BuildContext context, Object? userType) {
@@ -47,7 +47,7 @@ IconData _personaIcon(Object? userType) {
 /// Switch this session to [personaId], then route to that persona's home.
 Future<void> switchToPersona(BuildContext context, String personaId) async {
   final auth = AppScope.of(context).auth;
-  final messenger = ScaffoldMessenger.of(context);
+  final messenger = FFSnack.of(context);
   final locale = FFLocaleScope.of(context);
   final failed = context.tr('persona.switchFailed');
   try {
@@ -58,9 +58,7 @@ Future<void> switchToPersona(BuildContext context, String personaId) async {
     }
     if (context.mounted) context.go(routeForSignedInUser(auth));
   } catch (e) {
-    messenger.showSnackBar(
-      SnackBar(content: Text('$failed ${errorMessage(locale, e)}'.trim())),
-    );
+    messenger.error('$failed ${errorMessage(locale, e)}'.trim());
   }
 }
 
@@ -86,6 +84,7 @@ Future<void> addPersonaAndContinue(
 ) async {
   final auth = AppScope.of(context).auth;
   final messenger = ScaffoldMessenger.of(context);
+  final messengerSnack = FFSnack.of(context);
   final locale = FFLocaleScope.of(context);
   final failed = context.tr('persona.addFailed');
   final inUse = context.tr('persona.addInUse');
@@ -108,9 +107,7 @@ Future<void> addPersonaAndContinue(
       ),
     );
   } catch (e) {
-    messenger.showSnackBar(
-      SnackBar(content: Text('$failed ${errorMessage(locale, e)}'.trim())),
-    );
+    messengerSnack.error('$failed ${errorMessage(locale, e)}'.trim());
   }
 }
 

@@ -201,9 +201,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
         context,
       ).api.vendorSaveProduct(draft, productId: product?['id']?.toString());
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('vendor.productSaved'))),
-      );
+      FFSnack.success(context, context.tr('vendor.productSaved'));
       await _refresh();
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -224,9 +222,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
       await _refresh();
     } on ApiException {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.tr('vendor.saveFailed'))),
-        );
+        FFSnack.error(context, context.tr('vendor.saveFailed'));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -242,9 +238,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
       await _refresh();
     } on ApiException {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.tr('vendor.saveFailed'))),
-        );
+        FFSnack.error(context, context.tr('vendor.saveFailed'));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -260,9 +254,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
       await _refresh();
     } on ApiException {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.tr('vendor.saveFailed'))),
-        );
+        FFSnack.error(context, context.tr('vendor.saveFailed'));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -276,9 +268,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
       await _refresh();
     } on ApiException {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.tr('vendor.saveFailed'))),
-        );
+        FFSnack.error(context, context.tr('vendor.saveFailed'));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -661,9 +651,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
               );
             } catch (_) {
               if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(context.tr('shop.exportFailed'))),
-              );
+              FFSnack.error(context, context.tr('shop.exportFailed'));
             }
           },
           variant: FFButtonVariant.secondary,

@@ -39,6 +39,7 @@ class _MemberChallengePageState extends State<MemberChallengePage> {
     final data = MemberDataScope.of(context);
     final shell = context.findAncestorStateOfType<MemberShellState>();
     final messenger = ScaffoldMessenger.of(context);
+    final messengerSnack = FFSnack.of(context);
     final done = context.tr(
       c.joined ? 'challenge.leftToast' : 'challenge.joinedToast',
     );
@@ -83,7 +84,7 @@ class _MemberChallengePageState extends State<MemberChallengePage> {
           ],
         );
       }
-      messenger.showSnackBar(SnackBar(content: Text(done)));
+      messengerSnack.success(done);
     } on ApiException catch (e) {
       // Paused while it was on screen: say so, and let the list catch up.
       final paused = e.code == 'challenge_paused';
@@ -92,7 +93,7 @@ class _MemberChallengePageState extends State<MemberChallengePage> {
       );
       if (paused) await shell?.refreshChallenges();
     } catch (_) {
-      messenger.showSnackBar(SnackBar(content: Text(failed)));
+      messengerSnack.error(failed);
     } finally {
       if (mounted) setState(() => _busy = false);
     }

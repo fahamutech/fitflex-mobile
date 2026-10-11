@@ -149,19 +149,15 @@ class _CampaignComposerPageState extends State<CampaignComposerPage> {
 
   Future<void> _saveDraft() async {
     final c = _controller!;
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     try {
       await c.saveDraft();
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text(context.tr('comms.done.draft'))),
-      );
+      messenger.success(context.tr('comms.done.draft'));
       context.pop(true);
     } on ApiException catch (e) {
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text(apiErrorMessage(FFLocaleScope.of(context), e))),
-      );
+      messenger.error(apiErrorMessage(FFLocaleScope.of(context), e));
     }
   }
 

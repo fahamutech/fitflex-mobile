@@ -69,9 +69,7 @@ class _MemberGymDetailPageState extends State<MemberGymDetailPage> {
         ),
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('member.subscribeRequested'))),
-      );
+      FFSnack.info(context, context.tr('member.subscribeRequested'));
     }
   }
 
@@ -797,7 +795,7 @@ class _SaveGymButtonState extends State<_SaveGymButton> {
 
   Future<void> _toggle(MemberData data, bool saved) async {
     final api = AppScope.of(context).api;
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final failed = context.tr('error.requestFailed');
     setState(() => _busy = true);
     if (!saved) {
@@ -816,7 +814,7 @@ class _SaveGymButtonState extends State<_SaveGymButton> {
         saved ? next.add(widget.gymId) : next.remove(widget.gymId);
         d.favoriteGymIds = next;
       });
-      messenger.showSnackBar(SnackBar(content: Text(failed)));
+      messenger.error(failed);
     } finally {
       if (mounted) setState(() => _busy = false);
     }

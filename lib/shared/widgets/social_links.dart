@@ -99,7 +99,7 @@ class SocialLinksRow extends StatelessWidget {
     String platform,
     String handle,
   ) async {
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final failed = context.tr('social.openFailed');
     var ok = false;
     try {
@@ -110,7 +110,7 @@ class SocialLinksRow extends StatelessWidget {
     } catch (_) {
       ok = false;
     }
-    if (!ok) messenger.showSnackBar(SnackBar(content: Text(failed)));
+    if (!ok) messenger.error(failed);
   }
 
   @override

@@ -63,18 +63,18 @@ class _GroupPageState extends State<GroupPage> {
     String? done,
     bool close = false,
   }) async {
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final router = GoRouter.maybeOf(context);
     try {
       await call();
-      if (done != null) messenger.showSnackBar(SnackBar(content: Text(done)));
+      if (done != null) messenger.success(done);
       if (close) {
         router?.pop();
         return;
       }
     } catch (e) {
       if (mounted) {
-        messenger.showSnackBar(SnackBar(content: Text(errorText(context, e))));
+        messenger.error(errorText(context, e));
       }
     }
     await _load();
@@ -225,9 +225,7 @@ class _GroupPageState extends State<GroupPage> {
                               Clipboard.setData(
                                 ClipboardData(text: g.inviteCode!),
                               );
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(t('community.copied'))),
-                              );
+                              FFSnack.success(context, t('community.copied'));
                             },
                           ),
                         ],

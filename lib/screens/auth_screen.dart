@@ -386,9 +386,7 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
         _polling = false;
         context.go(routeForSignedInUser(scope.auth));
       } else if (!silent) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.tr('auth.stillPending'))),
-        );
+        FFSnack.info(context, context.tr('auth.stillPending'));
       }
     } catch (_) {
       if (!silent && mounted) {

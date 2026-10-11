@@ -92,9 +92,7 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
       ).showSnackBar(SnackBar(content: Text(successMessage)));
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(apiErrorMessage(FFLocaleScope.of(context), e))),
-      );
+      FFSnack.error(context, apiErrorMessage(FFLocaleScope.of(context), e));
     }
   }
 
@@ -149,9 +147,7 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
         await _refreshMemberData(data);
       } catch (_) {}
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.tr('member.profileUpdated'))),
-        );
+        FFSnack.success(context, context.tr('member.profileUpdated'));
       }
     }
   }
@@ -165,12 +161,12 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
     // FitFlex keeps the PIN: change it there. An account whose PIN is still
     // with Firebase (false) falls through to the old dialog below.
     if (AppScope.of(context).auth.pinLoginEnabled) {
-      final messenger = ScaffoldMessenger.of(context);
+      final messenger = FFSnack.of(context);
       final changedText = context.tr('pin.changed');
       final changed = await showChangePinDialog(context);
       if (changed == null || !mounted) return;
       if (changed) {
-        messenger.showSnackBar(SnackBar(content: Text(changedText)));
+        messenger.info(changedText);
         return;
       }
     }

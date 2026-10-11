@@ -264,7 +264,7 @@ Future<void> editActivitySharing(BuildContext context, Activity a) async {
   final data = context
       .getInheritedWidgetOfExactType<MemberDataScope>()
       ?.notifier;
-  final messenger = ScaffoldMessenger.of(context);
+  final messenger = FFSnack.of(context);
   final shell = context.findAncestorStateOfType<MemberShellState>();
   final done = context.tr('audience.savedToast');
   final failed = context.tr('community.error.generic');
@@ -283,11 +283,11 @@ Future<void> editActivitySharing(BuildContext context, Activity a) async {
               : x,
       ],
     );
-    messenger.showSnackBar(SnackBar(content: Text(done)));
+    messenger.success(done);
     // The shell keeps the server's list; bring it up to date too.
     await shell?.refreshAfterWorkout();
   } catch (_) {
-    messenger.showSnackBar(SnackBar(content: Text(failed)));
+    messenger.error(failed);
   }
 }
 
@@ -307,7 +307,7 @@ Future<bool> deleteOwnActivity(BuildContext context, Activity a) async {
       .getInheritedWidgetOfExactType<MemberDataScope>()
       ?.notifier;
   final shell = context.findAncestorStateOfType<MemberShellState>();
-  final messenger = ScaffoldMessenger.of(context);
+  final messenger = FFSnack.of(context);
   final done = context.tr('logActivity.deleted');
   final failed = context.tr('logActivity.deleteFailed');
   final ok = await showDialog<bool>(
@@ -337,11 +337,11 @@ Future<bool> deleteOwnActivity(BuildContext context, Activity a) async {
           if (x.id != a.id) x,
       ],
     );
-    messenger.showSnackBar(SnackBar(content: Text(done)));
+    messenger.success(done);
     await shell?.refreshAfterWorkout();
     return true;
   } catch (_) {
-    messenger.showSnackBar(SnackBar(content: Text(failed)));
+    messenger.error(failed);
     return false;
   }
 }

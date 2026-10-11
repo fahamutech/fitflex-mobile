@@ -258,7 +258,7 @@ class _ParticipantsPageState extends State<_ParticipantsPage> {
       if (ok != true || !mounted) return;
     }
     final navigator = Navigator.of(context);
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final generic = context.tr('owner.errorGeneric');
     final tr = context.tr;
     setState(() => _busy = true);
@@ -273,11 +273,9 @@ class _ParticipantsPageState extends State<_ParticipantsPage> {
         _adopt(res);
       }
     } on ApiException catch (e) {
-      messenger.showSnackBar(
-        SnackBar(content: Text(challengeErrorText(tr, e, generic))),
-      );
+      messenger.error(challengeErrorText(tr, e, generic));
     } catch (_) {
-      messenger.showSnackBar(SnackBar(content: Text(generic)));
+      messenger.error(generic);
     } finally {
       if (mounted) setState(() => _busy = false);
     }

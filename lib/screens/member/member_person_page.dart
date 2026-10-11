@@ -44,14 +44,14 @@ class _MemberPersonPageState extends State<MemberPersonPage> {
   }
 
   Future<void> _do(Future<Object?> Function() call, String done) async {
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final failed = context.tr('community.error.generic');
     setState(() => _busy = true);
     try {
       await call();
-      messenger.showSnackBar(SnackBar(content: Text(done)));
+      messenger.success(done);
     } catch (_) {
-      messenger.showSnackBar(SnackBar(content: Text(failed)));
+      messenger.error(failed);
     }
     await _load();
     if (mounted) setState(() => _busy = false);

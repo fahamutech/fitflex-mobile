@@ -155,6 +155,7 @@ class _TrainerConnectCardState extends State<TrainerConnectCard> {
     final api = AppScope.of(context).api;
     final shell = context.findAncestorStateOfType<MemberShellState>();
     final messenger = ScaffoldMessenger.of(context);
+    final messengerSnack = FFSnack.of(context);
     final sent = context.tr('connect.sent');
     final failed = context.tr('connect.failed');
     final notVerified = context.tr('unverified.trainerPublic');
@@ -162,7 +163,7 @@ class _TrainerConnectCardState extends State<TrainerConnectCard> {
     try {
       await api.requestTrainerConnection(widget.trainerId, perms.toJson());
       await shell?.refreshConnections();
-      messenger.showSnackBar(SnackBar(content: Text(sent)));
+      messengerSnack.success(sent);
     } on ApiException catch (e) {
       messenger.showSnackBar(
         SnackBar(
@@ -172,7 +173,7 @@ class _TrainerConnectCardState extends State<TrainerConnectCard> {
         ),
       );
     } catch (_) {
-      messenger.showSnackBar(SnackBar(content: Text(failed)));
+      messengerSnack.error(failed);
     } finally {
       if (mounted) setState(() => _busy = false);
     }

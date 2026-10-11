@@ -53,9 +53,7 @@ class _TrainerPassesPageState extends State<TrainerPassesPage> {
     try {
       await AppScope.of(context).api.trainerCancelPass(pass['id'].toString());
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('trainerPass.cancelled'))),
-      );
+      FFSnack.info(context, context.tr('trainerPass.cancelled'));
       await _load();
     } catch (e) {
       if (!mounted) return;
@@ -306,9 +304,7 @@ class _TrainerQrPageState extends State<TrainerQrPage> {
                 MaterialPageRoute(builder: (_) => const MemberScanGymPage()),
               );
               if (checkedIn == true && context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(context.tr('checkin.done'))),
-                );
+                FFSnack.success(context, context.tr('checkin.done'));
               }
             },
             variant: FFButtonVariant.secondary,

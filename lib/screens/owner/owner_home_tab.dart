@@ -425,11 +425,7 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
                   elevation: 0,
                 ),
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(context.tr('owner.reportsComingSoon')),
-                    ),
-                  );
+                  FFSnack.info(context, context.tr('owner.reportsComingSoon'));
                 },
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
