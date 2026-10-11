@@ -135,6 +135,15 @@ class ExerciseAlternative {
   }
 }
 
+/// How a finished workout can be rated, and what can be said about one of
+/// its exercises. Wire values match the backend.
+const workoutRatings = ['too_easy', 'just_right', 'too_hard'];
+const exerciseFeedbackReasons = [
+  'didnt_enjoy',
+  'couldnt_perform',
+  'equipment_unavailable',
+];
+
 class WorkoutExercise {
   final String id;
   final String workoutId;
@@ -158,6 +167,10 @@ class WorkoutExercise {
   final List<WorkoutSet> workoutSets;
   String? notes;
 
+  /// What got in the way, said after the workout: `didnt_enjoy`,
+  /// `couldnt_perform` or `equipment_unavailable`.
+  String? feedback;
+
   /// The member chose to leave this exercise out of the session.
   bool skipped;
 
@@ -174,6 +187,7 @@ class WorkoutExercise {
     this.tracksWeight = false,
     required this.workoutSets,
     this.notes,
+    this.feedback,
     this.skipped = false,
   });
 
@@ -213,6 +227,7 @@ class WorkoutExercise {
       tracksWeight: json['tracksWeight'] == true,
       workoutSets: sets,
       notes: json['notes'] as String?,
+      feedback: json['feedback'] as String?,
       skipped: json['skipped'] == true,
     );
   }
@@ -238,6 +253,7 @@ class WorkoutExercise {
     'instructions': instructions,
     'tracksWeight': tracksWeight,
     'notes': notes,
+    'feedback': feedback,
     'skipped': skipped,
     'workoutSets': [for (final s in workoutSets) s.toJson()],
   };
@@ -270,6 +286,9 @@ class Workout {
   final String? activityId;
   String? notes;
 
+  /// How the finished workout felt: `too_easy`, `just_right`, `too_hard`.
+  String? feedbackRating;
+
   Workout({
     required this.id,
     required this.userId,
@@ -288,6 +307,7 @@ class Workout {
     this.completedAt,
     this.activityId,
     this.notes,
+    this.feedbackRating,
   });
 
   /// Assigned by a connected trainer.
@@ -330,6 +350,9 @@ class Workout {
       completedAt: DateTime.tryParse(json['completedAt'] as String? ?? ''),
       activityId: json['activityId'] as String?,
       notes: json['notes'] as String?,
+      feedbackRating: json['feedback'] is Map
+          ? (json['feedback'] as Map)['rating'] as String?
+          : null,
     );
   }
 
@@ -377,6 +400,7 @@ class Workout {
     'completedAt': completedAt?.toIso8601String(),
     'activityId': activityId,
     'notes': notes,
+    'feedback': feedbackRating == null ? null : {'rating': feedbackRating},
   };
 }
 

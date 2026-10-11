@@ -91,6 +91,9 @@ class _Repo implements WorkoutRepository {
         type: ActivityType.strength,
         source: ActivitySource.fitflex,
         startedAt: _now,
+        durationMinutes: 40,
+        calories: 163,
+        workoutId: 'w1',
       ),
     );
   }
@@ -127,6 +130,20 @@ class _Repo implements WorkoutRepository {
     return workout = Workout.fromJson(json);
   }
 
+  bool failFeedback = false;
+
+  @override
+  Future<Workout> feedback(
+    String workoutId, {
+    String? rating,
+    String? exerciseId,
+    String? reason,
+  }) async {
+    calls.add(('feedback', (rating, exerciseId, reason)));
+    if (failFeedback) throw ApiException(500, {'error': 'boom'});
+    return workout;
+  }
+
   @override
   Future<Workout> start(String id) async =>
       workout = workout.copy(status: WorkoutStatus.inProgress, startedAt: _now);
@@ -150,6 +167,7 @@ class _Repo implements WorkoutRepository {
 Future<_Repo> _open(
   WidgetTester tester, {
   String status = 'in_progress',
+  List<Activity> activities = const [],
 }) async {
   tester.view.physicalSize = const Size(1080, 6000);
   tester.view.devicePixelRatio = 3;
@@ -157,7 +175,8 @@ Future<_Repo> _open(
   final repo = _Repo(_workout(status: status));
   final data = MemberData()
     ..workouts = [repo.workout]
-    ..workoutsLoaded = true;
+    ..workoutsLoaded = true
+    ..activities = activities;
   final api = ApiClient();
   await tester.pumpWidget(
     AppScope(
@@ -339,5 +358,128 @@ void main() {
     expect(find.text('Dumbbell Bench Press'), findsOneWidget);
     // The skip made before the swap is still there.
     expect(find.byKey(const Key('exercise-skipped-e2')), findsOneWidget);
+  });
+
+  testWidgets('finishing shows the calories and asks how it went', (
+    tester,
+  ) async {
+    final repo = await _open(tester);
+    await tester.tap(find.byKey(const Key('exercise-done-e1')));
+    await tester.tap(find.byKey(const Key('exercise-done-e2')));
+    await tester.tap(find.byKey(const Key('exercise-done-e3')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('workout-finish')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('workout-complete')), findsOneWidget);
+    expect(find.textContaining('About 163 kcal'), findsOneWidget);
+    expect(find.text('How was it?'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('feedback-too_hard')));
+    await tester.pumpAndSettle();
+    expect(repo.calls.last, ('feedback', ('too_hard', null, null)));
+    expect(
+      tester
+          .widget<ChoiceChip>(find.byKey(const Key('feedback-too_hard')))
+          .selected,
+      isTrue,
+    );
+    // Tapping the same answer again asks nothing more of the server.
+    await tester.tap(find.byKey(const Key('feedback-too_hard')));
+    await tester.pumpAndSettle();
+    expect(repo.calls.where((c) => c.$1 == 'feedback').length, 1);
+
+    // One exercise didn't work.
+    await tester.tap(find.byKey(const Key('feedback-exercises')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('feedback-ex-e2')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('feedback-reason-e2-couldnt_perform')),
+    );
+    await tester.pumpAndSettle();
+    expect(repo.calls.last, ('feedback', (null, 'e2', 'couldnt_perform')));
+    expect(find.text("Couldn't do it"), findsOneWidget);
+
+    // And it can be taken back.
+    await tester.tap(find.byKey(const Key('feedback-ex-e2')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('feedback-clear-e2')));
+    await tester.pumpAndSettle();
+    expect(repo.calls.last, ('feedback', (null, 'e2', null)));
+    expect(find.text("Couldn't do it"), findsNothing);
+  });
+
+  testWidgets('feedback that cannot be saved is put back', (tester) async {
+    final repo = await _open(tester, status: 'completed');
+    repo.failFeedback = true;
+    expect(find.byKey(const Key('workout-calories')), findsNothing);
+    await tester.tap(find.byKey(const Key('feedback-just_right')));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<ChoiceChip>(find.byKey(const Key('feedback-just_right')))
+          .selected,
+      isFalse,
+    );
+    expect(find.textContaining("Couldn't save that"), findsOneWidget);
+  });
+
+  testWidgets('a workout finished earlier shows its calories and feedback', (
+    tester,
+  ) async {
+    final w = _workout(status: 'completed')
+      ..feedbackRating = 'just_right'
+      ..exercises[0].feedback = 'didnt_enjoy';
+    expect(w.copy().feedbackRating, 'just_right');
+    expect(w.copy().exercises[0].feedback, 'didnt_enjoy');
+
+    tester.view.physicalSize = const Size(1080, 6000);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final repo = _Repo(w);
+    final data = MemberData()
+      ..workouts = [w]
+      ..workoutsLoaded = true
+      ..activities = [
+        Activity(
+          id: 'a1',
+          userId: 'm1',
+          type: ActivityType.strength,
+          source: ActivitySource.fitflex,
+          startedAt: _now,
+          calories: 210,
+          workoutId: 'w1',
+        ),
+      ];
+    final api = ApiClient();
+    await tester.pumpWidget(
+      AppScope(
+        api: api,
+        auth: AuthState(api),
+        workoutRepository: repo,
+        child: FFLocaleScope(
+          notifier: FFLocale(),
+          child: MaterialApp(
+            theme: buildTheme(),
+            home: Scaffold(
+              body: MemberDataScope(
+                data: data,
+                child: MemberWorkoutPage(workoutId: 'w1', now: () => _now),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(find.textContaining('About 210 kcal'), findsOneWidget);
+    expect(
+      tester
+          .widget<ChoiceChip>(find.byKey(const Key('feedback-just_right')))
+          .selected,
+      isTrue,
+    );
+    // The exercise list opens by itself when something was said.
+    expect(find.text("Didn't enjoy it"), findsOneWidget);
   });
 }

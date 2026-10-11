@@ -39,6 +39,16 @@ abstract class WorkoutRepository {
     String? lang,
   });
 
+  /// Says how a finished workout went: a [rating] for the session and/or
+  /// what got in the way of [exerciseId] ([reason] null clears it).
+  /// FitFlex shapes the next plan with it.
+  Future<Workout> feedback(
+    String workoutId, {
+    String? rating,
+    String? exerciseId,
+    String? reason,
+  });
+
   /// Swaps an exercise for one of its [alternatives]; returns the workout.
   Future<Workout> replaceExercise(
     String workoutId,
@@ -118,6 +128,22 @@ class ApiWorkoutRepository implements WorkoutRepository {
 
   @override
   Future<Workout> skip(String id) async => _workout(await api.skipWorkout(id));
+
+  @override
+  Future<Workout> feedback(
+    String workoutId, {
+    String? rating,
+    String? exerciseId,
+    String? reason,
+  }) async => _workout(
+    await api.workoutFeedback(workoutId, {
+      'rating': ?rating,
+      if (exerciseId != null)
+        'exercises': [
+          {'id': exerciseId, 'reason': reason},
+        ],
+    }),
+  );
 
   @override
   Future<List<ExerciseAlternative>> alternatives(
@@ -292,6 +318,21 @@ class LocalWorkoutRepository implements WorkoutRepository {
     final i = _index(id);
     _workouts[i] = _workouts[i].copy(status: WorkoutStatus.skipped);
     return _workouts[i].copy();
+  }
+
+  @override
+  Future<Workout> feedback(
+    String workoutId, {
+    String? rating,
+    String? exerciseId,
+    String? reason,
+  }) async {
+    final w = _workouts[_index(workoutId)];
+    if (rating != null) w.feedbackRating = rating;
+    if (exerciseId != null) {
+      w.exercises.firstWhere((e) => e.id == exerciseId).feedback = reason;
+    }
+    return w.copy();
   }
 
   // Sample workouts come from fixed templates, not the exercise library,
