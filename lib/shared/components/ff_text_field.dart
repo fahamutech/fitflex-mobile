@@ -17,6 +17,7 @@ class FFTextField extends StatelessWidget {
     this.obscureText = false,
     this.enabled = true,
     this.maxLines = 1,
+    this.minLines,
     this.onChanged,
     this.prefixIcon,
     this.suffixIcon,
@@ -35,6 +36,10 @@ class FFTextField extends StatelessWidget {
   final bool obscureText;
   final bool enabled;
   final int maxLines;
+
+  /// Minimum visible lines for a growing multi-line field (use with a larger
+  /// [maxLines]). Null keeps the field at its natural height.
+  final int? minLines;
   final ValueChanged<String>? onChanged;
   final Widget? prefixIcon;
   final Widget? suffixIcon;
@@ -52,6 +57,7 @@ class FFTextField extends StatelessWidget {
       obscureText: obscureText,
       enabled: enabled,
       maxLines: maxLines,
+      minLines: minLines,
       onChanged: onChanged,
       textInputAction: textInputAction,
       onFieldSubmitted: onFieldSubmitted,
