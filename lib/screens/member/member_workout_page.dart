@@ -447,18 +447,20 @@ class _MemberWorkoutPageState extends State<MemberWorkoutPage> {
         if (w.status == WorkoutStatus.planned) ...[
           SizedBox(
             width: double.infinity,
-            child: FilledButton.icon(
+            child: FFButton(
               key: const Key('workout-start'),
+              label: context.tr('workout.start'),
               onPressed: _busy ? null : _start,
-              icon: const Icon(Icons.play_arrow),
-              label: Text(context.tr('workout.start')),
+              icon: Icons.play_arrow,
             ),
           ),
           Center(
-            child: TextButton(
+            child: FFButton(
               key: const Key('workout-skip'),
+              label: context.tr('workout.skip'),
               onPressed: _busy ? null : _skip,
-              child: Text(context.tr('workout.skip')),
+              variant: FFButtonVariant.ghost,
+              size: FFButtonSize.sm,
             ),
           ),
           const SizedBox(height: FFTokens.spacingSm),
@@ -489,11 +491,11 @@ class _MemberWorkoutPageState extends State<MemberWorkoutPage> {
           const SizedBox(height: FFTokens.spacingSm),
           SizedBox(
             width: double.infinity,
-            child: FilledButton.icon(
+            child: FFButton(
               key: const Key('workout-finish'),
+              label: context.tr('workout.finish'),
               onPressed: _busy ? null : _finish,
-              icon: const Icon(Icons.flag_outlined),
-              label: Text(context.tr('workout.finish')),
+              icon: Icons.flag_outlined,
             ),
           ),
         ],
@@ -622,11 +624,13 @@ class _MemberWorkoutPageState extends State<MemberWorkoutPage> {
                   )
                 : Align(
                     alignment: Alignment.centerLeft,
-                    child: TextButton.icon(
+                    child: FFButton(
                       key: Key('exercise-add-note-${e.id}'),
+                      label: context.tr('workout.addNote'),
                       onPressed: () => setState(() => _noteOpen.add(e.id)),
-                      icon: const Icon(Icons.edit_note, size: 18),
-                      label: Text(context.tr('workout.addNote')),
+                      variant: FFButtonVariant.ghost,
+                      size: FFButtonSize.sm,
+                      icon: Icons.edit_note,
                     ),
                   )
           else if ((e.notes ?? '').isNotEmpty)
@@ -824,11 +828,13 @@ class _BackRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Align(
       alignment: Alignment.centerLeft,
-      child: TextButton.icon(
+      child: FFButton(
         key: const Key('workout-back'),
+        label: context.tr('activity.title'),
         onPressed: () => context.go(AppRoutes.memberActivity),
-        icon: const Icon(Icons.arrow_back, size: 18),
-        label: Text(context.tr('activity.title')),
+        variant: FFButtonVariant.ghost,
+        size: FFButtonSize.sm,
+        icon: Icons.arrow_back,
       ),
     );
   }
@@ -1076,10 +1082,10 @@ class _CompleteView extends StatelessWidget {
           style: theme.textTheme.bodySmall,
         ),
         const SizedBox(height: FFTokens.spacingMd),
-        FilledButton(
+        FFButton(
           key: const Key('workout-done'),
+          label: context.tr('workout.done'),
           onPressed: () => context.go(AppRoutes.memberActivity),
-          child: Text(context.tr('workout.done')),
         ),
       ],
     );

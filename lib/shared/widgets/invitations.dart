@@ -6,11 +6,11 @@ import '../../app_scope.dart';
 import '../../router.dart';
 import '../api_client.dart';
 import '../api_error_message.dart';
-import '../components/ff_action_tile.dart';
 import '../design_tokens.dart';
 import '../i18n.dart';
 import 'persona_switcher.dart';
 import 'verify_identifier.dart';
+import '../components/components.dart';
 
 /// Where an invitation link opens (the web build of this app).
 const kInviteLinkBase = 'https://fitflex-af-app.web.app';
@@ -209,16 +209,14 @@ class _InvitationsScreenState extends State<InvitationsScreen> {
                 if (_needsVerified != null && auth.identifiersEnabled)
                   Padding(
                     padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
-                    child: FilledButton(
+                    child: FFButton(
                       key: const Key('invitations-verify'),
-                      onPressed: () => _verifyThenRetry(_needsVerified!),
-                      child: Text(
-                        context.tr(
-                          _needsVerified == 'phone'
-                              ? 'verify.phoneTitle'
-                              : 'verify.emailTitle',
-                        ),
+                      label: context.tr(
+                        _needsVerified == 'phone'
+                            ? 'verify.phoneTitle'
+                            : 'verify.emailTitle',
                       ),
+                      onPressed: () => _verifyThenRetry(_needsVerified!),
                     ),
                   ),
                 if (items.isEmpty)
@@ -314,16 +312,18 @@ class _InvitationCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                TextButton(
+                FFButton(
                   key: Key('decline-$id'),
+                  label: context.tr('invite.decline'),
                   onPressed: busy ? null : onDecline,
-                  child: Text(context.tr('invite.decline')),
+                  variant: FFButtonVariant.ghost,
+                  size: FFButtonSize.sm,
                 ),
                 const SizedBox(width: FFTokens.spacingSm),
-                FilledButton(
+                FFButton(
                   key: Key('accept-$id'),
+                  label: context.tr('invite.accept'),
                   onPressed: busy ? null : onAccept,
-                  child: Text(context.tr('invite.accept')),
                 ),
               ],
             ),
@@ -685,16 +685,15 @@ class _InvitePersonSheetState extends State<_InvitePersonSheet> {
             ],
             const SizedBox(height: FFTokens.spacingMd),
             if (!sent)
-              FilledButton(
+              FFButton(
                 key: const Key('invite-send'),
+                label: context.tr('invite.send'),
                 onPressed: _busy ? null : _send,
-                child: Text(context.tr('invite.send')),
               )
             else ...[
-              OutlinedButton.icon(
+              FFButton(
                 key: const Key('invite-copy-link'),
-                icon: const Icon(Icons.link),
-                label: Text(context.tr('invite.copyLink')),
+                label: context.tr('invite.copyLink'),
                 onPressed: () async {
                   final messenger = ScaffoldMessenger.of(context);
                   final copied = context.tr('invite.linkCopied');
@@ -703,12 +702,14 @@ class _InvitePersonSheetState extends State<_InvitePersonSheet> {
                   );
                   messenger.showSnackBar(SnackBar(content: Text(copied)));
                 },
+                variant: FFButtonVariant.secondary,
+                icon: Icons.link,
               ),
               const SizedBox(height: FFTokens.spacingSm),
-              FilledButton(
+              FFButton(
                 key: const Key('invite-done'),
+                label: context.tr('invite.done'),
                 onPressed: () => Navigator.of(context).pop(true),
-                child: Text(context.tr('invite.done')),
               ),
             ],
           ],
@@ -859,28 +860,36 @@ class _GymInvitationsPageState extends State<GymInvitationsPage> {
                 spacing: 8,
                 children: [
                   if (open)
-                    TextButton(
+                    FFButton(
                       key: Key('resend-$id'),
+                      label: context.tr('invite.resend'),
                       onPressed: () => _act(inv, 'resend'),
-                      child: Text(context.tr('invite.resend')),
+                      variant: FFButtonVariant.ghost,
+                      size: FFButtonSize.sm,
                     ),
                   if (open)
-                    TextButton(
+                    FFButton(
                       key: Key('cancel-$id'),
+                      label: context.tr('invite.cancel'),
                       onPressed: () => _act(inv, 'cancel'),
-                      child: Text(context.tr('invite.cancel')),
+                      variant: FFButtonVariant.ghost,
+                      size: FFButtonSize.sm,
                     ),
                   if (lapsedPaid)
-                    TextButton(
+                    FFButton(
                       key: Key('reissue-$id'),
+                      label: context.tr('invite.reissue'),
                       onPressed: () => _act(inv, 'reissue'),
-                      child: Text(context.tr('invite.reissue')),
+                      variant: FFButtonVariant.ghost,
+                      size: FFButtonSize.sm,
                     ),
                   if (lapsedPaid)
-                    TextButton(
+                    FFButton(
                       key: Key('refunded-$id'),
+                      label: context.tr('invite.markRefunded'),
                       onPressed: () => _act(inv, 'refunded'),
-                      child: Text(context.tr('invite.markRefunded')),
+                      variant: FFButtonVariant.ghost,
+                      size: FFButtonSize.sm,
                     ),
                 ],
               ),

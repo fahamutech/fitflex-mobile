@@ -121,10 +121,12 @@ class _ClientsDigestState extends State<ClientsDigest> {
             ),
           Align(
             alignment: Alignment.centerRight,
-            child: TextButton(
+            child: FFButton(
               key: const Key('trainer-digest-open'),
+              label: context.tr('digest.seeClients'),
               onPressed: widget.onOpenClients,
-              child: Text(context.tr('digest.seeClients')),
+              variant: FFButtonVariant.ghost,
+              size: FFButtonSize.sm,
             ),
           ),
         ],

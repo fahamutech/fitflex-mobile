@@ -221,9 +221,9 @@ class _HistoryList<T> extends StatelessWidget {
             FFEmptyState(
               title: context.tr('comms.loadFailed'),
               body: errorMessage(FFLocaleScope.of(context), c.error!),
-              action: FilledButton(
+              action: FFButton(
+                label: context.tr('comms.retry'),
                 onPressed: c.refresh,
-                child: Text(context.tr('comms.retry')),
               ),
             )
           else if (c.items.isEmpty && (c.loading || !c.started))
@@ -245,10 +245,11 @@ class _HistoryList<T> extends StatelessWidget {
               Center(
                 child: c.loading
                     ? const FFSpinner()
-                    : OutlinedButton(
+                    : FFButton(
                         key: const Key('history-more'),
+                        label: context.tr('comms.history.loadMore'),
                         onPressed: c.loadMore,
-                        child: Text(context.tr('comms.history.loadMore')),
+                        variant: FFButtonVariant.secondary,
                       ),
               ),
           ],

@@ -565,11 +565,12 @@ class _GymFormPageState extends State<GymFormPage> {
                     ),
                   ),
                 ),
-              OutlinedButton.icon(
+              FFButton(
                 key: const Key('gym-add-class'),
+                label: context.tr('ownerReg.addClass'),
                 onPressed: _showClassEditor,
-                icon: const Icon(Icons.add, size: 18),
-                label: Text(context.tr('ownerReg.addClass')),
+                variant: FFButtonVariant.secondary,
+                icon: Icons.add,
               ),
               const SizedBox(height: FFTokens.spacingMd),
               FFFieldLabel(context.tr('ownerReg.trainerPassLabel')),
@@ -698,10 +699,11 @@ class _GymFormPageState extends State<GymFormPage> {
                   ),
                 ),
               const SizedBox(height: 8),
-              OutlinedButton.icon(
+              FFButton(
+                label: context.tr('ownerReg.pickImage'),
                 onPressed: _pickImage,
-                icon: const Icon(Icons.add_a_photo, size: 18),
-                label: Text(context.tr('ownerReg.pickImage')),
+                variant: FFButtonVariant.secondary,
+                icon: Icons.add_a_photo,
               ),
               const SizedBox(height: 24),
             ],

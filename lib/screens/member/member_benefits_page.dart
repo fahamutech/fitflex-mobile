@@ -77,9 +77,9 @@ class _MemberBenefitsPageState extends State<MemberBenefitsPage> {
                 : FFEmptyState(
                     title: context.tr('inbox.loadFailed'),
                     body: errorMessage(FFLocaleScope.of(context), _error!),
-                    action: FilledButton(
+                    action: FFButton(
+                      label: context.tr('comms.retry'),
                       onPressed: _load,
-                      child: Text(context.tr('comms.retry')),
                     ),
                   ))
           : rows.isEmpty
@@ -245,12 +245,12 @@ class _BenefitCard extends StatelessWidget {
     return [
       Text(context.tr('benefits.pass.unlockBody')),
       const SizedBox(height: FFTokens.spacingSm),
-      FilledButton(
+      FFButton(
         key: Key('unlock-${pass?['entitlementId']}'),
+        label: context
+            .tr('benefits.pass.unlock')
+            .replaceAll('{amount}', amount),
         onPressed: busy ? null : () => onUnlock('${pass?['entitlementId']}'),
-        child: Text(
-          context.tr('benefits.pass.unlock').replaceAll('{amount}', amount),
-        ),
       ),
     ];
   }

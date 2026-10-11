@@ -121,9 +121,9 @@ class _AutomationsTabState extends State<AutomationsTab> {
           : FFEmptyState(
               title: context.tr('comms.loadFailed'),
               body: errorMessage(FFLocaleScope.of(context), _error!),
-              action: FilledButton(
+              action: FFButton(
+                label: context.tr('comms.retry'),
                 onPressed: _load,
-                child: Text(context.tr('comms.retry')),
               ),
             );
     }
@@ -420,10 +420,12 @@ class _AutomationDetailPageState extends State<AutomationDetailPage> {
                 style: theme.textTheme.titleSmall,
               ),
             ),
-            TextButton(
+            FFButton(
               key: const Key('automation-change-template'),
+              label: context.tr('comms.tpl.change'),
               onPressed: _busy ? null : _changeTemplate,
-              child: Text(context.tr('comms.tpl.change')),
+              variant: FFButtonVariant.ghost,
+              size: FFButtonSize.sm,
             ),
           ],
         ),

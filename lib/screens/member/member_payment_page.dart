@@ -193,11 +193,10 @@ class _SubmitButtonState extends State<_SubmitButton> {
 
   @override
   Widget build(BuildContext context) {
-    return FilledButton(
+    return FFButton(
+      label: context.tr('member.requestPayment'),
       onPressed: _loading || !widget.enabled ? null : _submit,
-      child: _loading
-          ? FFSpinner(size: 18, color: Theme.of(context).colorScheme.onPrimary)
-          : Text(context.tr('member.requestPayment')),
+      loading: _loading,
     );
   }
 }

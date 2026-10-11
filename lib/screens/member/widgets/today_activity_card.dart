@@ -154,10 +154,12 @@ class TodayActivityCard extends StatelessWidget {
           ],
           Align(
             alignment: Alignment.centerRight,
-            child: TextButton(
+            child: FFButton(
               key: const Key('today-activity-view'),
+              label: context.tr('activity.view'),
               onPressed: () => context.go(AppRoutes.memberActivity),
-              child: Text(context.tr('activity.view')),
+              variant: FFButtonVariant.ghost,
+              size: FFButtonSize.sm,
             ),
           ),
         ],

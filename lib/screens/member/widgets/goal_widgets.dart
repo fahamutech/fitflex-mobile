@@ -69,11 +69,13 @@ class GoalsBlock extends StatelessWidget {
             Expanded(
               child: FFSectionTitle(context.tr('progress.currentGoals')),
             ),
-            TextButton.icon(
+            FFButton(
               key: const Key('goal-add'),
+              label: context.tr('progress.addGoal'),
               onPressed: () => showAddGoalSheet(context),
-              icon: const Icon(Icons.add, size: 18),
-              label: Text(context.tr('progress.addGoal')),
+              variant: FFButtonVariant.ghost,
+              size: FFButtonSize.sm,
+              icon: Icons.add,
             ),
           ],
         ),
@@ -262,10 +264,12 @@ class GoalCard extends StatelessWidget {
                     ),
                     if (p.current > 0) ...[
                       const SizedBox(width: FFTokens.spacingSm),
-                      TextButton(
+                      FFButton(
                         key: Key('goal-undo-${g.id}'),
+                        label: context.tr('goal.undoDone'),
                         onPressed: () => _mark(context, g, undo: true),
-                        child: Text(context.tr('goal.undoDone')),
+                        variant: FFButtonVariant.ghost,
+                        size: FFButtonSize.sm,
                       ),
                     ],
                   ],
@@ -556,10 +560,10 @@ class _AddGoalSheetState extends State<_AddGoalSheet> {
           const SizedBox(height: FFTokens.spacingMd),
           SizedBox(
             width: double.infinity,
-            child: FilledButton(
+            child: FFButton(
               key: const Key('goal-save'),
+              label: context.tr('goal.save'),
               onPressed: _saving ? null : _save,
-              child: Text(context.tr('goal.save')),
             ),
           ),
         ],

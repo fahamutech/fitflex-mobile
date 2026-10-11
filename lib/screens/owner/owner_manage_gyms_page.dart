@@ -85,10 +85,11 @@ class OwnerManageGymsPage extends StatelessWidget {
                   FFTokens.spacingLg,
                   FFTokens.spacingLg,
                 ),
-                child: OutlinedButton.icon(
+                child: FFButton(
+                  label: context.tr('owner.addGym'),
                   onPressed: () => _showAddGymDialog(context),
-                  icon: const Icon(Icons.add),
-                  label: Text(context.tr('owner.addGym')),
+                  variant: FFButtonVariant.secondary,
+                  icon: Icons.add,
                 ),
               ),
             ),

@@ -3,10 +3,10 @@ import 'package:go_router/go_router.dart';
 import '../router.dart';
 import '../shared/api_client.dart';
 import '../shared/api_error_message.dart';
-import '../shared/components/theme_toggle_button.dart';
 import '../shared/i18n.dart';
 import '../shared/design_tokens.dart';
 import '../app_scope.dart';
+import '../shared/components/components.dart';
 
 /// Compile-time flag: enables a dev-only mock-login panel for blackbox testing.
 /// Build with `--dart-define=MOCK_AUTH=true`. Never enabled in store builds.
@@ -156,9 +156,9 @@ class _RoleScreenState extends State<RoleScreen>
                   padding: const EdgeInsets.all(FFTokens.spacingLg),
                   child: SizedBox(
                     width: double.infinity,
-                    child: FilledButton(
+                    child: FFButton(
+                      label: context.tr('lang.continue'),
                       onPressed: _selectedRole != null ? _continue : null,
-                      child: Text(context.tr('lang.continue')),
                     ),
                   ),
                 ),
@@ -345,25 +345,29 @@ class _DevLoginPanelState extends State<_DevLoginPanel> {
               spacing: 8,
               runSpacing: 8,
               children: [
-                OutlinedButton(
+                FFButton(
                   key: const Key('devLoginMember'),
+                  label: 'Member',
                   onPressed: () => _login('member'),
-                  child: const Text('Member'),
+                  variant: FFButtonVariant.secondary,
                 ),
-                OutlinedButton(
+                FFButton(
                   key: const Key('devLoginOwner'),
+                  label: 'Gym Owner',
                   onPressed: () => _login('owner'),
-                  child: const Text('Gym Owner'),
+                  variant: FFButtonVariant.secondary,
                 ),
-                OutlinedButton(
+                FFButton(
                   key: const Key('devLoginTrainer'),
+                  label: 'Trainer',
                   onPressed: () => _login('trainer'),
-                  child: const Text('Trainer'),
+                  variant: FFButtonVariant.secondary,
                 ),
-                OutlinedButton(
+                FFButton(
                   key: const Key('devLoginVendor'),
+                  label: 'Vendor',
                   onPressed: () => _login('vendor'),
-                  child: const Text('Vendor'),
+                  variant: FFButtonVariant.secondary,
                 ),
               ],
             ),

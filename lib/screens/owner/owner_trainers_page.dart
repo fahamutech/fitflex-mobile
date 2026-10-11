@@ -57,11 +57,11 @@ class OwnerTrainersPage extends StatelessWidget {
               sliver: SliverToBoxAdapter(
                 child: Align(
                   alignment: Alignment.centerRight,
-                  child: FilledButton.icon(
+                  child: FFButton(
                     key: const Key('owner-add-trainer'),
+                    label: context.tr('owner.addTrainer'),
                     onPressed: () => _createTrainer(context, data.ownerGyms),
-                    icon: const Icon(Icons.person_add_alt_1),
-                    label: Text(context.tr('owner.addTrainer')),
+                    icon: Icons.person_add_alt_1,
                   ),
                 ),
               ),

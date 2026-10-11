@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../router.dart';
-import '../shared/components/theme_toggle_button.dart';
 import '../shared/i18n.dart';
 import '../shared/design_tokens.dart';
+import '../shared/components/components.dart';
 
 class LanguageScreen extends StatefulWidget {
   const LanguageScreen({super.key});
@@ -112,9 +112,9 @@ class _LanguageScreenState extends State<LanguageScreen>
                   padding: const EdgeInsets.all(FFTokens.spacingLg),
                   child: SizedBox(
                     width: double.infinity,
-                    child: FilledButton(
+                    child: FFButton(
+                      label: 'Continue',
                       onPressed: _selected != null ? _continue : null,
-                      child: const Text('Continue'),
                     ),
                   ),
                 ),

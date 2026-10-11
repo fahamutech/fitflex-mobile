@@ -5,7 +5,6 @@ import '../../app_scope.dart';
 import '../../router.dart';
 import '../../shared/api_client.dart';
 import '../../shared/api_error_message.dart';
-import '../../shared/components/theme_toggle_button.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
@@ -14,6 +13,7 @@ import '../../shared/widgets/ff_photo_picker_field.dart';
 import '../../shared/widgets/social_links.dart';
 import '../../shared/widgets/terms_agreement.dart';
 import '../../shared/widgets/trainer_form_page.dart';
+import '../../shared/components/components.dart';
 
 class TrainerRegistrationPage extends StatefulWidget {
   const TrainerRegistrationPage({super.key});
@@ -181,29 +181,20 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
                   children: [
                     if (_step > 0)
                       Expanded(
-                        child: OutlinedButton(
+                        child: FFButton(
+                          label: context.tr('onboarding.back'),
                           onPressed: _back,
-                          child: Text(context.tr('onboarding.back')),
+                          variant: FFButtonVariant.secondary,
                         ),
                       ),
                     if (_step > 0) const SizedBox(width: 12),
                     Expanded(
-                      child: FilledButton(
+                      child: FFButton(
+                        label: _step < 1
+                            ? context.tr('onboarding.next')
+                            : context.tr('trainerReg.submit'),
                         onPressed: _busy ? null : _next,
-                        child: _busy
-                            ? const SizedBox(
-                                height: 18,
-                                width: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : Text(
-                                _step < 1
-                                    ? context.tr('onboarding.next')
-                                    : context.tr('trainerReg.submit'),
-                              ),
+                        loading: _busy,
                       ),
                     ),
                   ],

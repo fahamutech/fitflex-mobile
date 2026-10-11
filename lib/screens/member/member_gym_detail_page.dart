@@ -451,10 +451,11 @@ class _GymPlansPreview extends StatelessWidget {
           const SizedBox(height: 8),
           SizedBox(
             width: double.infinity,
-            child: OutlinedButton(
+            child: FFButton(
               key: const Key('gym-plans-cta'),
+              label: context.tr('member.viewPlans'),
               onPressed: onSubscribe,
-              child: Text(context.tr('member.viewPlans')),
+              variant: FFButtonVariant.secondary,
             ),
           ),
         ],
@@ -753,13 +754,13 @@ class _ExpandableChipGroupState extends State<_ExpandableChipGroup> {
             ),
           if (widget.items.length > 8) ...[
             const SizedBox(height: 8),
-            TextButton(
+            FFButton(
+              label: _expanded
+                  ? context.tr('gym.showLess')
+                  : context.tr('gym.viewAll'),
               onPressed: () => setState(() => _expanded = !_expanded),
-              child: Text(
-                _expanded
-                    ? context.tr('gym.showLess')
-                    : context.tr('gym.viewAll'),
-              ),
+              variant: FFButtonVariant.ghost,
+              size: FFButtonSize.sm,
             ),
           ],
         ],

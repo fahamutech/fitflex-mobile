@@ -212,18 +212,19 @@ class _MemberRecordRunPageState extends State<MemberRecordRunPage> {
                 Row(
                   children: [
                     Expanded(
-                      child: OutlinedButton(
+                      child: FFButton(
                         key: const Key('run-discard'),
+                        label: context.tr('run.discard'),
                         onPressed: _saving ? null : () => _discard(r),
-                        child: Text(context.tr('run.discard')),
+                        variant: FFButtonVariant.secondary,
                       ),
                     ),
                     const SizedBox(width: FFTokens.spacingSm),
                     Expanded(
-                      child: FilledButton(
+                      child: FFButton(
                         key: const Key('run-save'),
+                        label: context.tr('run.save'),
                         onPressed: _saving ? null : () => _save(r),
-                        child: Text(context.tr('run.save')),
                       ),
                     ),
                   ],
@@ -375,11 +376,13 @@ class _AccessAlert extends StatelessWidget {
               off ? 'run.locationOffBody' : 'run.permissionBody',
             ),
           ),
-          TextButton(
+          FFButton(
+            label: context.tr('phoneSteps.openSettings'),
             onPressed: off
                 ? recorder.gps.openLocationSettings
                 : recorder.gps.openAppSettings,
-            child: Text(context.tr('phoneSteps.openSettings')),
+            variant: FFButtonVariant.ghost,
+            size: FFButtonSize.sm,
           ),
         ],
       ),

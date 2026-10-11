@@ -199,9 +199,11 @@ class _FeedTabState extends State<FeedTab> {
             ),
           if (_next != null)
             Center(
-              child: TextButton(
+              child: FFButton(
+                label: context.tr('community.more'),
                 onPressed: _loadingMore ? null : () => _load(more: true),
-                child: Text(context.tr('community.more')),
+                variant: FFButtonVariant.ghost,
+                size: FFButtonSize.sm,
               ),
             ),
         ],
@@ -327,10 +329,12 @@ class FeedCard extends StatelessWidget {
                   ),
                   label: Text('${item.kudos}'),
                 ),
-                TextButton.icon(
+                FFButton(
+                  label: '${item.comments}',
                   onPressed: onOpen,
-                  icon: const Icon(Icons.chat_bubble_outline, size: 18),
-                  label: Text('${item.comments}'),
+                  variant: FFButtonVariant.ghost,
+                  size: FFButtonSize.sm,
+                  icon: Icons.chat_bubble_outline,
                 ),
                 if (you && item.views != null) ...[
                   const Spacer(),
@@ -954,20 +958,21 @@ class _GroupsTabState extends State<GroupsTab> {
           Row(
             children: [
               Expanded(
-                child: FilledButton.icon(
+                child: FFButton(
                   key: const Key('group-create'),
+                  label: context.tr('community.createGroup'),
                   onPressed: _create,
-                  icon: const Icon(Icons.add),
-                  label: Text(context.tr('community.createGroup')),
+                  icon: Icons.add,
                 ),
               ),
               const SizedBox(width: FFTokens.spacingSm),
               Expanded(
-                child: OutlinedButton.icon(
+                child: FFButton(
                   key: const Key('group-join-code'),
+                  label: context.tr('community.joinByCode'),
                   onPressed: _joinByCode,
-                  icon: const Icon(Icons.vpn_key_outlined),
-                  label: Text(context.tr('community.joinByCode')),
+                  variant: FFButtonVariant.secondary,
+                  icon: Icons.vpn_key_outlined,
                 ),
               ),
             ],
@@ -1208,10 +1213,10 @@ class _GroupFormState extends State<_GroupForm> {
             subtitle: Text(context.tr('community.listedHint')),
           ),
           const SizedBox(height: FFTokens.spacingSm),
-          FilledButton(
+          FFButton(
             key: const Key('group-save'),
+            label: context.tr('community.saveGroup'),
             onPressed: _busy ? null : _save,
-            child: Text(context.tr('community.saveGroup')),
           ),
         ],
       ),

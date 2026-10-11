@@ -53,10 +53,12 @@ class _TrainerReviewsPageState extends State<TrainerReviewsPage> {
                 message: context.tr('reviews.loadFailed'),
                 tone: FFAlertTone.error,
               ),
-              TextButton(
+              FFButton(
                 key: const Key('trainer-reviews-retry'),
+                label: context.tr('reviews.retry'),
                 onPressed: _load,
-                child: Text(context.tr('reviews.retry')),
+                variant: FFButtonVariant.ghost,
+                size: FFButtonSize.sm,
               ),
             ] else if (data == null)
               const Padding(

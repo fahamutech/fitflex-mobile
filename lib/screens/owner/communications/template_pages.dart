@@ -161,9 +161,9 @@ class _TemplateDetailPageState extends State<TemplateDetailPage> {
                 : FFEmptyState(
                     title: context.tr('comms.loadFailed'),
                     body: errorMessage(FFLocaleScope.of(context), _error!),
-                    action: FilledButton(
+                    action: FFButton(
+                      label: context.tr('comms.retry'),
                       onPressed: _load,
-                      child: Text(context.tr('comms.retry')),
                     ),
                   ))
           : _body(context, t, p),
@@ -244,26 +244,28 @@ class _TemplateDetailPageState extends State<TemplateDetailPage> {
           ),
         ],
         const SizedBox(height: FFTokens.spacingLg),
-        FilledButton.icon(
+        FFButton(
           key: const Key('tpl-use'),
+          label: context.tr('comms.tpl.use'),
           onPressed: _busy
               ? null
               : () => context.push(
                   '/owner/communications/new${_gymQuery({'templateId': t.id})}',
                 ),
-          icon: const Icon(Icons.send_outlined),
-          label: Text(context.tr('comms.tpl.use')),
+          icon: Icons.send_outlined,
         ),
         const SizedBox(height: FFTokens.spacingSm),
         if (t.system)
-          OutlinedButton(
+          FFButton(
             key: const Key('tpl-copy'),
+            label: context.tr('comms.tpl.copy'),
             onPressed: _busy ? null : _copy,
-            child: Text(context.tr('comms.tpl.copy')),
+            variant: FFButtonVariant.secondary,
           )
         else ...[
-          OutlinedButton(
+          FFButton(
             key: const Key('tpl-edit'),
+            label: context.tr('comms.tpl.edit'),
             onPressed: _busy
                 ? null
                 : () async {
@@ -272,13 +274,15 @@ class _TemplateDetailPageState extends State<TemplateDetailPage> {
                     );
                     if (mounted) await _load();
                   },
-            child: Text(context.tr('comms.tpl.edit')),
+            variant: FFButtonVariant.secondary,
           ),
           const SizedBox(height: FFTokens.spacingSm),
-          TextButton(
+          FFButton(
             key: const Key('tpl-archive'),
+            label: context.tr('comms.tpl.archive'),
             onPressed: _busy ? null : _archive,
-            child: Text(context.tr('comms.tpl.archive')),
+            variant: FFButtonVariant.ghost,
+            size: FFButtonSize.sm,
           ),
         ],
       ],
@@ -460,10 +464,10 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(FFTokens.spacingMd),
-          child: FilledButton(
+          child: FFButton(
             key: const Key('tpl-save'),
+            label: context.tr('comms.tpl.save'),
             onPressed: _ready && _valid && !_saving ? _save : null,
-            child: Text(context.tr('comms.tpl.save')),
           ),
         ),
       ),

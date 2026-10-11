@@ -122,10 +122,12 @@ class _InboxPageState extends State<InboxPage> {
           if (inbox != null)
             ListenableBuilder(
               listenable: inbox,
-              builder: (context, _) => TextButton(
+              builder: (context, _) => FFButton(
                 key: const Key('inbox-read-all'),
+                label: context.tr('inbox.markAllRead'),
                 onPressed: inbox.unread == 0 ? null : inbox.markAllRead,
-                child: Text(context.tr('inbox.markAllRead')),
+                variant: FFButtonVariant.ghost,
+                size: FFButtonSize.sm,
               ),
             ),
           if (isMember)
@@ -159,9 +161,9 @@ class _InboxPageState extends State<InboxPage> {
           FFEmptyState(
             title: context.tr('inbox.loadFailed'),
             body: errorMessage(FFLocaleScope.of(context), inbox.error!),
-            action: FilledButton(
+            action: FFButton(
+              label: context.tr('comms.retry'),
               onPressed: inbox.load,
-              child: Text(context.tr('comms.retry')),
             ),
           ),
         ],
@@ -239,7 +241,9 @@ class _MessageTile extends StatelessWidget {
       child: InkWell(
         key: Key('inbox-${m.id}'),
         borderRadius: BorderRadius.circular(FFTokens.radiusXl),
-        onTap: m.isFriendInvitation ? null : () => context.push('/inbox/${m.id}'),
+        onTap: m.isFriendInvitation
+            ? null
+            : () => context.push('/inbox/${m.id}'),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -288,7 +292,9 @@ class _MessageTile extends StatelessWidget {
                   Text(
                     text.body,
                     maxLines: m.isFriendInvitation ? null : 2,
-                    overflow: m.isFriendInvitation ? null : TextOverflow.ellipsis,
+                    overflow: m.isFriendInvitation
+                        ? null
+                        : TextOverflow.ellipsis,
                     style: theme.textTheme.bodySmall,
                   ),
                   // Approve / Reject sit on the card itself.
@@ -380,18 +386,19 @@ class _InboxMessagePageState extends State<InboxMessagePage> {
           ),
         const SizedBox(height: FFTokens.spacingMd),
         Text(_text(context, m).body, style: theme.textTheme.bodyLarge),
-        if (m.isFriendInvitation) FriendInvitationActions(message: m, inbox: inbox),
+        if (m.isFriendInvitation)
+          FriendInvitationActions(message: m, inbox: inbox),
         if (route != null) ...[
           const SizedBox(height: FFTokens.spacingLg),
-          FilledButton(
+          FFButton(
             key: const Key('inbox-cta'),
+            label: m.ctaLabel ?? inboxButtonLabel(context, m),
             onPressed: () async {
               await inbox.click(m.id);
               // Member screens live in the member shell: go, like the rest
               // of the app does, rather than stacking the shell on the inbox.
               if (context.mounted) context.go(route);
             },
-            child: Text(m.ctaLabel ?? inboxButtonLabel(context, m)),
           ),
         ],
         if (m.kind == InboxCategory.offers) ...[

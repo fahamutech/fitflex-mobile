@@ -81,16 +81,11 @@ class _FormScaffold extends StatelessWidget {
     ),
     bottomNavigationBar: SafeArea(
       minimum: const EdgeInsets.all(FFTokens.spacingLg),
-      child: FilledButton(
+      child: FFButton(
         key: const Key('kyc-form-save'),
+        label: context.tr('kyc.save'),
         onPressed: busy ? null : onSave,
-        child: busy
-            ? const SizedBox(
-                height: 18,
-                width: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : Text(context.tr('kyc.save')),
+        loading: busy,
       ),
     ),
   );
@@ -1010,29 +1005,32 @@ class _DocumentPageState extends State<DocumentPage> {
                 spacing: FFTokens.spacingSm,
                 runSpacing: FFTokens.spacingSm,
                 children: [
-                  OutlinedButton.icon(
+                  FFButton(
                     key: const Key('kyc-doc-camera'),
+                    label: context.tr('photo.camera'),
                     onPressed: _busy
                         ? null
                         : () => _upload(DocumentSource.camera),
-                    icon: const Icon(Icons.photo_camera_outlined),
-                    label: Text(context.tr('photo.camera')),
+                    variant: FFButtonVariant.secondary,
+                    icon: Icons.photo_camera_outlined,
                   ),
-                  OutlinedButton.icon(
+                  FFButton(
                     key: const Key('kyc-doc-gallery'),
+                    label: context.tr('photo.gallery'),
                     onPressed: _busy
                         ? null
                         : () => _upload(DocumentSource.gallery),
-                    icon: const Icon(Icons.photo_library_outlined),
-                    label: Text(context.tr('photo.gallery')),
+                    variant: FFButtonVariant.secondary,
+                    icon: Icons.photo_library_outlined,
                   ),
-                  OutlinedButton.icon(
+                  FFButton(
                     key: const Key('kyc-doc-pdf'),
+                    label: context.tr('kyc.doc.choosePdf'),
                     onPressed: _busy
                         ? null
                         : () => _upload(DocumentSource.file),
-                    icon: const Icon(Icons.picture_as_pdf_outlined),
-                    label: Text(context.tr('kyc.doc.choosePdf')),
+                    variant: FFButtonVariant.secondary,
+                    icon: Icons.picture_as_pdf_outlined,
                   ),
                 ],
               ),
@@ -1239,11 +1237,11 @@ class _PayoutAccountsPageState extends State<PayoutAccountsPage> {
     ),
     bottomNavigationBar: SafeArea(
       minimum: const EdgeInsets.all(FFTokens.spacingLg),
-      child: FilledButton.icon(
+      child: FFButton(
         key: const Key('kyc-account-add'),
+        label: context.tr('kyc.accounts.add'),
         onPressed: _busy ? null : _add,
-        icon: const Icon(Icons.add),
-        label: Text(context.tr('kyc.accounts.add')),
+        icon: Icons.add,
       ),
     ),
   );
@@ -1516,16 +1514,11 @@ class _AgreementPageState extends State<AgreementPage> {
           ? null
           : SafeArea(
               minimum: const EdgeInsets.all(FFTokens.spacingLg),
-              child: FilledButton(
+              child: FFButton(
                 key: const Key('kyc-agreement-accept'),
+                label: context.tr('kyc.agreement.accept'),
                 onPressed: _busy || !_agreed ? null : _accept,
-                child: _busy
-                    ? const SizedBox(
-                        height: 18,
-                        width: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Text(context.tr('kyc.agreement.accept')),
+                loading: _busy,
               ),
             ),
     );

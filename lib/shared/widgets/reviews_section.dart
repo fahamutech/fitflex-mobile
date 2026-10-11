@@ -158,11 +158,11 @@ class _ReviewsSectionState extends State<ReviewsSection> {
           if (mine.hasReview)
             _MyReviewCard(mine: mine, onEdit: _write, onDelete: _delete)
           else if (mine.eligible)
-            FilledButton.icon(
+            FFButton(
               key: const Key('review-write'),
+              label: context.tr('reviews.write'),
               onPressed: _write,
-              icon: const Icon(Icons.rate_review_outlined, size: 18),
-              label: Text(context.tr('reviews.write')),
+              icon: Icons.rate_review_outlined,
             )
           else
             Text(
@@ -307,15 +307,19 @@ class _MyReviewCard extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            TextButton(
+            FFButton(
               key: const Key('review-edit'),
+              label: context.tr('reviews.edit'),
               onPressed: onEdit,
-              child: Text(context.tr('reviews.edit')),
+              variant: FFButtonVariant.ghost,
+              size: FFButtonSize.sm,
             ),
-            TextButton(
+            FFButton(
               key: const Key('review-delete'),
+              label: context.tr('reviews.delete'),
               onPressed: onDelete,
-              child: Text(context.tr('reviews.delete')),
+              variant: FFButtonVariant.ghost,
+              size: FFButtonSize.sm,
             ),
           ],
         ),
@@ -556,14 +560,11 @@ class _ReviewSheetState extends State<ReviewSheet> {
           FFAlert(message: _submitError!, tone: FFAlertTone.error),
         ],
         const SizedBox(height: 16),
-        FilledButton(
+        FFButton(
           key: const Key('review-submit'),
+          label: context.tr(_editing ? 'reviews.update' : 'reviews.submit'),
           onPressed: _rating == 0 || _busy ? null : _submit,
-          child: _busy
-              ? const FFSpinner(size: 18)
-              : Text(
-                  context.tr(_editing ? 'reviews.update' : 'reviews.submit'),
-                ),
+          loading: _busy,
         ),
       ],
     ),

@@ -214,43 +214,39 @@ class _CampaignComposerPageState extends State<CampaignComposerPage> {
               child: Row(
                 children: [
                   if (c.step.index > 0)
-                    OutlinedButton(
+                    FFButton(
                       key: const Key('comms-back'),
+                      label: context.tr('comms.back'),
                       onPressed: c.submitting ? null : c.back,
-                      child: Text(context.tr('comms.back')),
+                      variant: FFButtonVariant.secondary,
                     ),
                   const Spacer(),
                   if (c.step == ComposerStep.confirm) ...[
-                    TextButton(
+                    FFButton(
                       key: const Key('comms-save-draft'),
+                      label: context.tr('comms.saveDraft'),
                       onPressed: c.submitting ? null : _saveDraft,
-                      child: Text(context.tr('comms.saveDraft')),
+                      variant: FFButtonVariant.ghost,
+                      size: FFButtonSize.sm,
                     ),
                     const SizedBox(width: FFTokens.spacingXs),
-                    FilledButton(
+                    FFButton(
                       key: const Key('comms-submit'),
+                      label: context.tr(
+                        c.scheduleLater
+                            ? 'comms.scheduleCampaign'
+                            : 'comms.sendCampaign',
+                      ),
                       onPressed: c.canContinue(ComposerStep.confirm)
                           ? _submit
                           : null,
-                      child: c.submitting
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Text(
-                              context.tr(
-                                c.scheduleLater
-                                    ? 'comms.scheduleCampaign'
-                                    : 'comms.sendCampaign',
-                              ),
-                            ),
+                      loading: c.submitting,
                     ),
                   ] else
-                    FilledButton(
+                    FFButton(
                       key: const Key('comms-next'),
+                      label: context.tr('comms.next'),
                       onPressed: c.canContinue(c.step) ? c.next : null,
-                      child: Text(context.tr('comms.next')),
                     ),
                 ],
               ),
@@ -368,15 +364,14 @@ class _ScheduleStep extends StatelessWidget {
         ),
         if (c.scheduleLater) ...[
           const SizedBox(height: FFTokens.spacingSm),
-          OutlinedButton.icon(
+          FFButton(
             key: const Key('pick-time'),
+            label: c.scheduledAt == null
+                ? context.tr('comms.schedule.pick')
+                : formatWhen(context, c.scheduledAt!),
             onPressed: () => _pick(context),
-            icon: const Icon(Icons.event_outlined),
-            label: Text(
-              c.scheduledAt == null
-                  ? context.tr('comms.schedule.pick')
-                  : formatWhen(context, c.scheduledAt!),
-            ),
+            variant: FFButtonVariant.secondary,
+            icon: Icons.event_outlined,
           ),
           if (tooSoon)
             Padding(
@@ -450,9 +445,9 @@ class _PreviewStep extends StatelessWidget {
       return FFEmptyState(
         title: context.tr('comms.loadFailed'),
         body: errorMessage(FFLocaleScope.of(context), c.previewError!),
-        action: FilledButton(
+        action: FFButton(
+          label: context.tr('comms.retry'),
           onPressed: c.loadPreview,
-          child: Text(context.tr('comms.retry')),
         ),
       );
     }

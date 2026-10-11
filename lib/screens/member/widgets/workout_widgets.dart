@@ -366,10 +366,10 @@ class _PlanWorkoutSheetState extends State<_PlanWorkoutSheet> {
                 const SizedBox(height: FFTokens.spacingMd),
                 SizedBox(
                   width: double.infinity,
-                  child: FilledButton(
+                  child: FFButton(
                     key: const Key('workout-plan-save'),
+                    label: context.tr('workout.planSave'),
                     onPressed: _selected == null || _saving ? null : _plan,
-                    child: Text(context.tr('workout.planSave')),
                   ),
                 ),
               ],

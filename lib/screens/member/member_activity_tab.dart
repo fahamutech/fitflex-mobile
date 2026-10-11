@@ -109,11 +109,13 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
         children: [
           Expanded(child: FFSectionTitle(context.tr('activity.today'))),
           if (activities.isNotEmpty)
-            TextButton.icon(
+            FFButton(
               key: const Key('activity-log-open'),
+              label: context.tr('logActivity.open'),
               onPressed: () => openLogActivity(context),
-              icon: const Icon(Icons.add, size: 18),
-              label: Text(context.tr('logActivity.open')),
+              variant: FFButtonVariant.ghost,
+              size: FFButtonSize.sm,
+              icon: Icons.add,
             ),
         ],
       ),
@@ -198,11 +200,13 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
       Row(
         children: [
           Expanded(child: FFSectionTitle(context.tr('activity.recent'))),
-          TextButton.icon(
+          FFButton(
             key: const Key('data-origins-info'),
+            label: context.tr('origin.link'),
             onPressed: () => showDataOriginsSheet(context),
-            icon: const Icon(Icons.info_outline, size: 18),
-            label: Text(context.tr('origin.link')),
+            variant: FFButtonVariant.ghost,
+            size: FFButtonSize.sm,
+            icon: Icons.info_outline,
           ),
         ],
       ),
@@ -240,11 +244,13 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
       if (todayIds.isNotEmpty || upcoming.isNotEmpty)
         Align(
           alignment: Alignment.centerRight,
-          child: TextButton.icon(
+          child: FFButton(
             key: const Key('workout-plan-more'),
+            label: context.tr('workout.plan'),
             onPressed: () => showPlanWorkoutSheet(context),
-            icon: const Icon(Icons.add, size: 18),
-            label: Text(context.tr('workout.plan')),
+            variant: FFButtonVariant.ghost,
+            size: FFButtonSize.sm,
+            icon: Icons.add,
           ),
         ),
       if (upcoming.isNotEmpty) ...[
@@ -258,11 +264,13 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
       Row(
         children: [
           Expanded(child: FFSectionTitle(context.tr('workout.otherActivity'))),
-          TextButton.icon(
+          FFButton(
             key: const Key('workouts-log-open'),
+            label: context.tr('logActivity.open'),
             onPressed: () => openLogActivity(context),
-            icon: const Icon(Icons.add, size: 18),
-            label: Text(context.tr('logActivity.open')),
+            variant: FFButtonVariant.ghost,
+            size: FFButtonSize.sm,
+            icon: Icons.add,
           ),
         ],
       ),

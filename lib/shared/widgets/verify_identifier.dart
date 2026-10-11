@@ -6,9 +6,9 @@ import 'package:flutter/services.dart';
 import '../../app_scope.dart';
 import '../api_client.dart';
 import '../api_error_message.dart';
-import '../components/ff_action_tile.dart';
 import '../design_tokens.dart';
 import '../i18n.dart';
+import '../components/components.dart';
 
 // Identity V2 · I6a: a person proves a mobile number or email is theirs with
 // a code FitFlex sends (SMS to a number, email to an email). It is asked for
@@ -130,10 +130,12 @@ class SecondContactCard extends StatelessWidget {
                     context.tr(phone ? 'verify.addPhone' : 'second.addEmail'),
                   ),
                 ),
-                TextButton(
+                FFButton(
                   key: const Key('second-contact-dismiss'),
+                  label: context.tr('second.dismiss'),
                   onPressed: auth.dismissSecondContactReminder,
-                  child: Text(context.tr('second.dismiss')),
+                  variant: FFButtonVariant.ghost,
+                  size: FFButtonSize.sm,
                 ),
               ],
             ),
@@ -188,8 +190,9 @@ class ContactDetailsScreen extends StatelessWidget {
                         auth.pinResetEnabled &&
                             (item['type'] == 'phone' ||
                                 auth.emailCodesAvailable)
-                        ? TextButton(
+                        ? FFButton(
                             key: Key('change-${item['value']}'),
+                            label: context.tr('change.action'),
                             onPressed: () => Navigator.of(context).push(
                               MaterialPageRoute<void>(
                                 builder: (_) => ChangeIdentifierScreen(
@@ -198,7 +201,8 @@ class ContactDetailsScreen extends StatelessWidget {
                                 ),
                               ),
                             ),
-                            child: Text(context.tr('change.action')),
+                            variant: FFButtonVariant.ghost,
+                            size: FFButtonSize.sm,
                           )
                         : const Icon(Icons.check_circle_outline),
                   ),
@@ -219,23 +223,26 @@ class ContactDetailsScreen extends StatelessWidget {
                     trailing:
                         item['type'] == 'email' && !auth.emailCodesAvailable
                         ? null
-                        : TextButton(
+                        : FFButton(
                             key: Key('verify-${item['value']}'),
+                            label: context.tr('verify.verify'),
                             onPressed: () => _verify(
                               context,
                               item['type'].toString(),
                               item['value']?.toString(),
                             ),
-                            child: Text(context.tr('verify.verify')),
+                            variant: FFButtonVariant.ghost,
+                            size: FFButtonSize.sm,
                           ),
                   ),
                 if (!hasPhone) ...[
                   const SizedBox(height: FFTokens.spacingMd),
-                  OutlinedButton.icon(
+                  FFButton(
                     key: const Key('add-phone'),
-                    icon: const Icon(Icons.add),
-                    label: Text(context.tr('verify.addPhone')),
+                    label: context.tr('verify.addPhone'),
                     onPressed: () => _verify(context, 'phone'),
+                    variant: FFButtonVariant.secondary,
+                    icon: Icons.add,
                   ),
                 ],
               ],
@@ -421,31 +428,34 @@ class _VerifyIdentifierScreenState extends State<VerifyIdentifierScreen> {
             ],
             const SizedBox(height: FFTokens.spacingMd),
             if (!_sent)
-              FilledButton(
+              FFButton(
                 key: const Key('verify-send'),
+                label: context.tr('verify.send'),
                 onPressed: _busy ? null : _send,
-                child: Text(context.tr('verify.send')),
               )
             else ...[
-              FilledButton(
+              FFButton(
                 key: const Key('verify-confirm'),
+                label: context.tr('verify.confirm'),
                 onPressed: _busy ? null : _confirm,
-                child: Text(context.tr('verify.confirm')),
               ),
               const SizedBox(height: FFTokens.spacingSm),
-              TextButton(
+              FFButton(
                 key: const Key('verify-resend'),
+                label: _resendIn > 0
+                    ? context
+                          .tr('verify.resendIn')
+                          .replaceAll('{n}', '$_resendIn')
+                    : context.tr('verify.resend'),
                 onPressed: _busy || _resendIn > 0 ? null : _send,
-                child: Text(
-                  _resendIn > 0
-                      ? context
-                            .tr('verify.resendIn')
-                            .replaceAll('{n}', '$_resendIn')
-                      : context.tr('verify.resend'),
-                ),
+                variant: FFButtonVariant.ghost,
+                size: FFButtonSize.sm,
               ),
-              TextButton(
+              FFButton(
                 key: const Key('verify-change'),
+                label: context.tr(
+                  _isPhone ? 'verify.changePhone' : 'verify.changeEmail',
+                ),
                 onPressed: _busy
                     ? null
                     : () => setState(() {
@@ -453,11 +463,8 @@ class _VerifyIdentifierScreenState extends State<VerifyIdentifierScreen> {
                         _notice = null;
                         _code.clear();
                       }),
-                child: Text(
-                  context.tr(
-                    _isPhone ? 'verify.changePhone' : 'verify.changeEmail',
-                  ),
-                ),
+                variant: FFButtonVariant.ghost,
+                size: FFButtonSize.sm,
               ),
             ],
           ],
@@ -634,16 +641,16 @@ class _ChangeIdentifierScreenState extends State<ChangeIdentifierScreen> {
             ],
             const SizedBox(height: FFTokens.spacingMd),
             if (!_sent)
-              FilledButton(
+              FFButton(
                 key: const Key('change-send'),
+                label: context.tr('verify.send'),
                 onPressed: _busy ? null : _send,
-                child: Text(context.tr('verify.send')),
               )
             else
-              FilledButton(
+              FFButton(
                 key: const Key('change-confirm'),
+                label: context.tr('verify.confirm'),
                 onPressed: _busy ? null : _confirm,
-                child: Text(context.tr('verify.confirm')),
               ),
           ],
         ),

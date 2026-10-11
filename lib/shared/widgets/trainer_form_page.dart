@@ -401,11 +401,12 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
                   ),
                 );
               }),
-              OutlinedButton.icon(
+              FFButton(
                 key: const Key('trainer-availability-add'),
+                label: context.tr('trainer.addAvailability'),
                 onPressed: _addAvailability,
-                icon: const Icon(Icons.add),
-                label: Text(context.tr('trainer.addAvailability')),
+                variant: FFButtonVariant.secondary,
+                icon: Icons.add,
               ),
             ],
           ),

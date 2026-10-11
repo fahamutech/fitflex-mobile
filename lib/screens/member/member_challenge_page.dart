@@ -130,10 +130,12 @@ class _MemberChallengePageState extends State<MemberChallengePage> {
         .firstOrNull;
     final back = Align(
       alignment: Alignment.centerLeft,
-      child: TextButton.icon(
+      child: FFButton(
+        label: context.tr('activity.title'),
         onPressed: () => context.go(AppRoutes.memberActivity),
-        icon: const Icon(Icons.arrow_back, size: 18),
-        label: Text(context.tr('activity.title')),
+        variant: FFButtonVariant.ghost,
+        size: FFButtonSize.sm,
+        icon: Icons.arrow_back,
       ),
     );
     if (c == null) {
@@ -259,15 +261,16 @@ class _MemberChallengePageState extends State<MemberChallengePage> {
           SizedBox(
             width: double.infinity,
             child: c.joined
-                ? OutlinedButton(
+                ? FFButton(
                     key: const Key('challenge-leave'),
+                    label: context.tr('challenge.leave'),
                     onPressed: _busy ? null : () => _toggle(c),
-                    child: Text(context.tr('challenge.leave')),
+                    variant: FFButtonVariant.secondary,
                   )
-                : FilledButton(
+                : FFButton(
                     key: const Key('challenge-join'),
+                    label: context.tr('challenge.join'),
                     onPressed: _busy ? null : () => _toggle(c),
-                    child: Text(context.tr('challenge.join')),
                   ),
           ),
       ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../shared/i18n.dart';
+import '../../../shared/components/components.dart';
 
 /// Bottom sheet for adding a direct member (by owner).
 class AddMemberSheet extends StatefulWidget {
@@ -186,25 +187,18 @@ class _AddMemberSheetState extends State<AddMemberSheet> {
               Row(
                 children: [
                   Expanded(
-                    child: FilledButton(
+                    child: FFButton(
+                      label: context.tr('owner.registerMember'),
                       onPressed: _busy ? null : _submit,
-                      child: _busy
-                          ? const SizedBox(
-                              height: 18,
-                              width: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : Text(context.tr('owner.registerMember')),
+                      loading: _busy,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: OutlinedButton(
+                    child: FFButton(
+                      label: context.tr('member.cancel'),
                       onPressed: () => Navigator.of(context).pop(),
-                      child: Text(context.tr('member.cancel')),
+                      variant: FFButtonVariant.secondary,
                     ),
                   ),
                 ],

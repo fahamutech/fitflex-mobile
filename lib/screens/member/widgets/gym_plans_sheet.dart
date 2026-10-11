@@ -136,16 +136,11 @@ class _GymPlansSheetState extends State<GymPlansSheet> {
             if (plans.isNotEmpty)
               SizedBox(
                 width: double.infinity,
-                child: FilledButton(
+                child: FFButton(
                   key: const Key('gym-plan-subscribe'),
+                  label: context.tr('member.subscribe'),
                   onPressed: _selectedPlan == null || _busy ? null : _subscribe,
-                  child: _busy
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(context.tr('member.subscribe')),
+                  loading: _busy,
                 ),
               ),
           ],

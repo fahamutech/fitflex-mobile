@@ -221,9 +221,9 @@ class _VerificationCenterPageState extends State<VerificationCenterPage> {
           ? (_error != null
                 ? FFEmptyState(
                     title: errorMessage(FFLocaleScope.of(context), _error!),
-                    action: FilledButton(
+                    action: FFButton(
+                      label: context.tr('kyc.retry'),
                       onPressed: _load,
-                      child: Text(context.tr('kyc.retry')),
                     ),
                   )
                 : const Center(child: CircularProgressIndicator()))
@@ -276,24 +276,23 @@ class _VerificationCenterPageState extends State<VerificationCenterPage> {
   Widget? _actions(KycOverview data) {
     Widget? button;
     if (data.editable) {
-      button = FilledButton(
+      button = FFButton(
         key: const Key('kyc-submit'),
+        label: data.readyToSubmit
+            ? context.tr('kyc.submit.action')
+            : context
+                  .tr('kyc.itemsLeft')
+                  .replaceFirst('{n}', '${data.itemsLeft}'),
         onPressed: _busy || !data.readyToSubmit ? null : _confirmSubmit,
-        child: Text(
-          data.readyToSubmit
-              ? context.tr('kyc.submit.action')
-              : context
-                    .tr('kyc.itemsLeft')
-                    .replaceFirst('{n}', '${data.itemsLeft}'),
-        ),
       );
     } else if (data.status == KycStatus.submitted) {
-      button = OutlinedButton(
+      button = FFButton(
         key: const Key('kyc-withdraw'),
+        label: context.tr('kyc.withdraw.action'),
         onPressed: _busy
             ? null
             : () => _run(() => _repo!.withdraw(), done: 'kyc.withdraw.done'),
-        child: Text(context.tr('kyc.withdraw.action')),
+        variant: FFButtonVariant.secondary,
       );
     }
     if (button == null) return null;

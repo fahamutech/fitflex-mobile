@@ -69,13 +69,13 @@ class MemberPassesPage extends StatelessWidget {
     const SizedBox(height: 12),
     FFAlert(message: context.tr('pass.note'), tone: FFAlertTone.info),
     const SizedBox(height: 16),
-    FilledButton(
+    FFButton(
+      label: context.tr('member.continuePayment'),
       onPressed: () {
         // Never carry a stale or default tier into checkout.
         data.update((d) => d.selectedTier = _effectiveTier(data));
         context.go(AppRoutes.memberPayment);
       },
-      child: Text(context.tr('member.continuePayment')),
     ),
   ];
 
@@ -127,9 +127,10 @@ class MemberPassesPage extends StatelessWidget {
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                     const SizedBox(height: 12),
-                    OutlinedButton(
+                    FFButton(
+                      label: context.tr('home.retry'),
                       onPressed: () => _retry(context, data),
-                      child: Text(context.tr('home.retry')),
+                      variant: FFButtonVariant.secondary,
                     ),
                   ],
                 ),
@@ -220,9 +221,10 @@ class _UpgradeGateState extends State<_UpgradeGate> {
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 12),
-              OutlinedButton(
+              FFButton(
+                label: context.tr('home.retry'),
                 onPressed: _reload,
-                child: Text(context.tr('home.retry')),
+                variant: FFButtonVariant.secondary,
               ),
             ],
           );
@@ -349,23 +351,19 @@ class _UpgradeGateState extends State<_UpgradeGate> {
               ),
             ],
             const SizedBox(height: 16),
-            FilledButton(
+            FFButton(
+              label: chosen == null
+                  ? context.tr('upgrade.request')
+                  : context
+                        .tr('upgrade.pay')
+                        .replaceFirst(
+                          '{amount}',
+                          formatCurrency(
+                            ((chosen['differenceTzs'] as num?) ?? 0).toInt(),
+                          ),
+                        ),
               onPressed: chosen == null || _sending ? null : _submit,
-              child: _sending
-                  ? FFSpinner(size: 18, color: theme.colorScheme.onPrimary)
-                  : Text(
-                      chosen == null
-                          ? context.tr('upgrade.request')
-                          : context
-                                .tr('upgrade.pay')
-                                .replaceFirst(
-                                  '{amount}',
-                                  formatCurrency(
-                                    ((chosen['differenceTzs'] as num?) ?? 0)
-                                        .toInt(),
-                                  ),
-                                ),
-                    ),
+              loading: _sending,
             ),
           ],
         );
@@ -453,10 +451,11 @@ class _PendingBlockCard extends StatelessWidget {
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
-            child: OutlinedButton.icon(
+            child: FFButton(
+              label: context.tr('member.contactSupport'),
               onPressed: _openSupport,
-              icon: const Icon(Icons.support_agent, size: 18),
-              label: Text(context.tr('member.contactSupport')),
+              variant: FFButtonVariant.secondary,
+              icon: Icons.support_agent,
             ),
           ),
         ],

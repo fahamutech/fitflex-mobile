@@ -152,9 +152,9 @@ class _CampaignDetailPageState extends State<CampaignDetailPage> {
                 : FFEmptyState(
                     title: context.tr('comms.loadFailed'),
                     body: errorMessage(FFLocaleScope.of(context), _error!),
-                    action: FilledButton(
+                    action: FFButton(
+                      label: context.tr('comms.retry'),
                       onPressed: _load,
-                      child: Text(context.tr('comms.retry')),
                     ),
                   ))
           : RefreshIndicator(onRefresh: _load, child: _body(context, d)),
@@ -291,13 +291,14 @@ class _CampaignDetailPageState extends State<CampaignDetailPage> {
             ),
           ),
           const SizedBox(height: FFTokens.spacingSm),
-          OutlinedButton.icon(
+          FFButton(
             key: const Key('detail-recipients'),
+            label: context.tr('comms.history.seeRecipients'),
             onPressed: () => context.push(
               '/owner/communications/campaigns/${c.id}/recipients',
             ),
-            icon: const Icon(Icons.people_outline),
-            label: Text(context.tr('comms.history.seeRecipients')),
+            variant: FFButtonVariant.secondary,
+            icon: Icons.people_outline,
           ),
           FFSectionTitle(context.tr('comms.results.title')),
           ResultsCard(
@@ -308,38 +309,43 @@ class _CampaignDetailPageState extends State<CampaignDetailPage> {
         ],
         const SizedBox(height: FFTokens.spacingLg),
         if (c.status == CampaignStatus.draft) ...[
-          FilledButton.icon(
+          FFButton(
             key: const Key('detail-edit'),
+            label: context.tr('comms.detail.edit'),
             onPressed: _busy ? null : () => _edit(c),
-            icon: const Icon(Icons.edit_outlined),
-            label: Text(context.tr('comms.detail.edit')),
+            icon: Icons.edit_outlined,
           ),
           const SizedBox(height: FFTokens.spacingSm),
-          OutlinedButton(
+          FFButton(
             key: const Key('detail-delete'),
+            label: context.tr('comms.detail.delete'),
             onPressed: _busy ? null : () => _delete(c),
-            child: Text(context.tr('comms.detail.delete')),
+            variant: FFButtonVariant.secondary,
           ),
         ],
         if (c.status == CampaignStatus.scheduled) ...[
-          OutlinedButton(
+          FFButton(
             key: const Key('detail-unschedule'),
+            label: context.tr('comms.detail.unschedule'),
             onPressed: _busy ? null : () => _unschedule(c),
-            child: Text(context.tr('comms.detail.unschedule')),
+            variant: FFButtonVariant.secondary,
           ),
           const SizedBox(height: FFTokens.spacingSm),
-          OutlinedButton(
+          FFButton(
             key: const Key('detail-cancel'),
+            label: context.tr('comms.detail.cancel'),
             onPressed: _busy ? null : () => _cancel(c),
-            child: Text(context.tr('comms.detail.cancel')),
+            variant: FFButtonVariant.secondary,
           ),
         ],
         const SizedBox(height: FFTokens.spacingSm),
-        TextButton.icon(
+        FFButton(
           key: const Key('detail-duplicate'),
+          label: context.tr('comms.detail.duplicate'),
           onPressed: _busy ? null : () => _duplicate(c),
-          icon: const Icon(Icons.copy_outlined),
-          label: Text(context.tr('comms.detail.duplicate')),
+          variant: FFButtonVariant.ghost,
+          size: FFButtonSize.sm,
+          icon: Icons.copy_outlined,
         ),
       ],
     );

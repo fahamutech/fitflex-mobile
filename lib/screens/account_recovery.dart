@@ -8,6 +8,7 @@ import '../shared/api_client.dart';
 import '../shared/design_tokens.dart';
 import '../shared/i18n.dart';
 import 'pin_flows.dart';
+import '../shared/components/components.dart';
 
 // Identity V2 · account recovery (member path): someone who lost every
 // verified number and email, and forgot the PIN, asks FitFlex to move the
@@ -250,10 +251,10 @@ class _AccountRecoveryScreenState extends State<AccountRecoveryScreen> {
         ),
         _errorText(context, _error),
         const SizedBox(height: FFTokens.spacingMd),
-        FilledButton(
+        FFButton(
           key: const Key('recovery-request'),
+          label: context.tr('rec.request'),
           onPressed: _busy ? null : _send,
-          child: Text(context.tr('rec.request')),
         ),
       ];
     }
@@ -364,15 +365,17 @@ class _RecoveryQuestionsScreenState extends State<RecoveryQuestionsScreen> {
         ],
         _errorText(context, _error),
         const SizedBox(height: FFTokens.spacingMd),
-        FilledButton(
+        FFButton(
           key: const Key('recovery-send-answers'),
+          label: context.tr('rec.send'),
           onPressed: _busy ? null : _send,
-          child: Text(context.tr('rec.send')),
         ),
-        TextButton(
+        FFButton(
           key: const Key('recovery-answer-later'),
+          label: context.tr('rec.later'),
           onPressed: _busy ? null : () => _leave(Navigator.of(context), false),
-          child: Text(context.tr('rec.later')),
+          variant: FFButtonVariant.ghost,
+          size: FFButtonSize.sm,
         ),
       ],
     );
@@ -505,15 +508,20 @@ class _RecoveryStatusScreenState extends State<RecoveryStatusScreen> {
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: FFTokens.spacingMd),
-        FilledButton(
+        FFButton(
+          label: context.tr('rec.done'),
           onPressed: () => Navigator.of(context).pop(),
-          child: Text(context.tr('rec.done')),
         ),
       ];
     } else if (status == null) {
       body = [
         _errorText(context, _error),
-        TextButton(onPressed: _load, child: Text(context.tr('verify.resend'))),
+        FFButton(
+          label: context.tr('verify.resend'),
+          onPressed: _load,
+          variant: FFButtonVariant.ghost,
+          size: FFButtonSize.sm,
+        ),
       ];
     } else if (state == 'open') {
       final answered = ((status['answered'] as List?) ?? const [])
@@ -538,15 +546,17 @@ class _RecoveryStatusScreenState extends State<RecoveryStatusScreen> {
         ),
         _errorText(context, _error),
         const SizedBox(height: FFTokens.spacingMd),
-        FilledButton(
+        FFButton(
           key: const Key('recovery-add-answers'),
+          label: context.tr('rec.addAnswers'),
           onPressed: _busy ? null : _addAnswers,
-          child: Text(context.tr('rec.addAnswers')),
         ),
-        TextButton(
+        FFButton(
           key: const Key('recovery-cancel'),
+          label: context.tr('rec.cancel'),
           onPressed: _busy ? null : _cancel,
-          child: Text(context.tr('rec.cancel')),
+          variant: FFButtonVariant.ghost,
+          size: FFButtonSize.sm,
         ),
       ];
     } else if (state == 'refused') {
@@ -574,10 +584,10 @@ class _RecoveryStatusScreenState extends State<RecoveryStatusScreen> {
           ),
         ],
         const SizedBox(height: FFTokens.spacingMd),
-        FilledButton(
+        FFButton(
           key: const Key('recovery-ack'),
+          label: context.tr('rec.done'),
           onPressed: _acknowledge,
-          child: Text(context.tr('rec.done')),
         ),
       ];
     } else if (state == 'completed') {
@@ -589,10 +599,10 @@ class _RecoveryStatusScreenState extends State<RecoveryStatusScreen> {
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: FFTokens.spacingMd),
-        FilledButton(
+        FFButton(
           key: const Key('recovery-set-pin'),
+          label: context.tr('rec.setPin'),
           onPressed: () => _acknowledge(setPinFor: to),
-          child: Text(context.tr('rec.setPin')),
         ),
       ];
     } else {
@@ -603,10 +613,10 @@ class _RecoveryStatusScreenState extends State<RecoveryStatusScreen> {
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: FFTokens.spacingMd),
-        FilledButton(
+        FFButton(
           key: const Key('recovery-ack'),
+          label: context.tr('rec.done'),
           onPressed: _acknowledge,
-          child: Text(context.tr('rec.done')),
         ),
       ];
     }
@@ -740,10 +750,10 @@ class _RecoveryBannerHostState extends State<RecoveryBannerHost>
                       ),
                     ),
                     const SizedBox(width: FFTokens.spacingSm),
-                    FilledButton(
+                    FFButton(
                       key: const Key('recovery-banner-cancel'),
+                      label: context.tr('rec.bannerCancel'),
                       onPressed: _busy ? null : _cancel,
-                      child: Text(context.tr('rec.bannerCancel')),
                     ),
                   ],
                 ),

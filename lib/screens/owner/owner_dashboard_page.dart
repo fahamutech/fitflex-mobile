@@ -78,9 +78,10 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  OutlinedButton(
+                  FFButton(
+                    label: context.tr('home.retry'),
                     onPressed: _loadDashboard,
-                    child: Text(context.tr('home.retry')),
+                    variant: FFButtonVariant.secondary,
                   ),
                 ],
               ),

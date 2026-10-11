@@ -111,9 +111,9 @@ class _MemberMessageSettingsPageState extends State<MemberMessageSettingsPage> {
                 : FFEmptyState(
                     title: context.tr('inbox.loadFailed'),
                     body: errorMessage(FFLocaleScope.of(context), _error!),
-                    action: FilledButton(
+                    action: FFButton(
+                      label: context.tr('comms.retry'),
                       onPressed: _load,
-                      child: Text(context.tr('comms.retry')),
                     ),
                   ))
           : ListView(

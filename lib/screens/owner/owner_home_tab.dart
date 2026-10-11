@@ -1281,18 +1281,10 @@ class _DateFilterSheetState extends State<_DateFilterSheet> {
                     ),
                   ),
                   const SizedBox(height: FFTokens.spacingMd),
-                  FilledButton(
+                  FFButton(
+                    label: context.tr('owner.applyFilter'),
                     onPressed: _applying ? null : _apply,
-                    child: _applying
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : Text(context.tr('owner.applyFilter')),
+                    loading: _applying,
                   ),
                 ],
               ),

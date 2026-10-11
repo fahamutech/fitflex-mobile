@@ -223,10 +223,12 @@ class _TrainerBookingSheetState extends State<TrainerBookingSheet> {
             ),
             Align(
               alignment: Alignment.centerRight,
-              child: TextButton(
+              child: FFButton(
                 key: const Key('trainer-book-close'),
+                label: context.tr('member.close'),
                 onPressed: _busy ? null : () => Navigator.pop(context),
-                child: Text(context.tr('member.close')),
+                variant: FFButtonVariant.ghost,
+                size: FFButtonSize.sm,
               ),
             ),
             const SizedBox(height: 14),
@@ -309,22 +311,13 @@ class _TrainerBookingSheetState extends State<TrainerBookingSheet> {
       const SizedBox(height: 10),
       SizedBox(
         width: double.infinity,
-        child: FilledButton(
+        child: FFButton(
           key: const Key('trainer-book-slots'),
+          label: count == 0
+              ? context.tr('member.bookSession')
+              : context.tr('member.bookSlots').replaceAll('{n}', '$count'),
           onPressed: count == 0 || _busy ? null : _quote,
-          child: _busy
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Text(
-                  count == 0
-                      ? context.tr('member.bookSession')
-                      : context
-                            .tr('member.bookSlots')
-                            .replaceAll('{n}', '$count'),
-                ),
+          loading: _busy,
         ),
       ),
     ];
@@ -342,9 +335,10 @@ class _TrainerBookingSheetState extends State<TrainerBookingSheet> {
       const SizedBox(height: 12),
       SizedBox(
         width: double.infinity,
-        child: OutlinedButton(
+        child: FFButton(
+          label: context.tr('member.back'),
           onPressed: () => Navigator.pop(context, false),
-          child: Text(context.tr('member.back')),
+          variant: FFButtonVariant.secondary,
         ),
       ),
     ],
@@ -417,28 +411,24 @@ class _TrainerBookingSheetState extends State<TrainerBookingSheet> {
       Row(
         children: [
           Expanded(
-            child: OutlinedButton(
+            child: FFButton(
               key: const Key('trainer-book-back'),
+              label: context.tr('member.back'),
               onPressed: _busy
                   ? null
                   : () => widget.slots.isNotEmpty
                         ? Navigator.pop(context, false)
                         : setState(() => _summary = null),
-              child: Text(context.tr('member.back')),
+              variant: FFButtonVariant.secondary,
             ),
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: FilledButton(
+            child: FFButton(
               key: const Key('trainer-book-confirm'),
+              label: context.tr('member.confirmBooking'),
               onPressed: _busy ? null : _confirm,
-              child: _busy
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Text(context.tr('member.confirmBooking')),
+              loading: _busy,
             ),
           ),
         ],

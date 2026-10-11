@@ -487,11 +487,13 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
               ],
             ),
             if (trainer != null && socials.isEmpty)
-              TextButton.icon(
+              FFButton(
                 key: const Key('trainer-add-socials'),
+                label: context.tr('social.addPrompt'),
                 onPressed: _editProfessionalProfile,
-                icon: const Icon(Icons.add_link, size: 18),
-                label: Text(context.tr('social.addPrompt')),
+                variant: FFButtonVariant.ghost,
+                size: FFButtonSize.sm,
+                icon: Icons.add_link,
               ),
           ],
         ),
@@ -612,11 +614,12 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
     const ChangePinTile(),
     const PersonaSwitcherTile(),
     const SizedBox(height: 16),
-    OutlinedButton.icon(
+    FFButton(
       key: const Key('trainer-sign-out'),
+      label: context.tr('home.signout'),
       onPressed: _signOut,
-      icon: const Icon(Icons.logout),
-      label: Text(context.tr('home.signout')),
+      variant: FFButtonVariant.secondary,
+      icon: Icons.logout,
     ),
   ]);
 

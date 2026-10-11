@@ -151,37 +151,34 @@ class _MemberPersonPageState extends State<MemberPersonPage> {
                   const SizedBox(height: FFTokens.spacingMd),
                   if (rel != Relationship.you)
                     followingThem
-                        ? OutlinedButton(
+                        ? FFButton(
                             key: const Key('person-unfollow'),
+                            label: t(
+                              rel == Relationship.friends
+                                  ? 'community.friendsUnfollow'
+                                  : 'community.followingUnfollow',
+                            ),
                             onPressed: _busy
                                 ? null
                                 : () => _do(
                                     () => api.unfollow(widget.userId),
                                     t('community.unfollowedToast'),
                                   ),
-                            child: Text(
-                              t(
-                                rel == Relationship.friends
-                                    ? 'community.friendsUnfollow'
-                                    : 'community.followingUnfollow',
-                              ),
-                            ),
+                            variant: FFButtonVariant.secondary,
                           )
-                        : FilledButton(
+                        : FFButton(
                             key: const Key('person-follow'),
+                            label: t(
+                              rel == Relationship.followsYou
+                                  ? 'community.followBack'
+                                  : 'community.follow',
+                            ),
                             onPressed: _busy
                                 ? null
                                 : () => _do(
                                     () => api.follow(widget.userId),
                                     t('community.followedToast'),
                                   ),
-                            child: Text(
-                              t(
-                                rel == Relationship.followsYou
-                                    ? 'community.followBack'
-                                    : 'community.follow',
-                              ),
-                            ),
                           ),
                   FFSectionTitle(t('community.posts')),
                   if (p.items.isEmpty)

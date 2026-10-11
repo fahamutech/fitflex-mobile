@@ -792,13 +792,12 @@ class _ChallengeSheetState extends State<_ChallengeSheet> {
               },
             ),
             const SizedBox(height: FFTokens.spacingSm),
-            OutlinedButton.icon(
+            FFButton(
               key: const Key('challenge-dates'),
+              label: '${fmt.format(_range.start)} – ${fmt.format(_range.end)}',
               onPressed: _pickDates,
-              icon: const Icon(Icons.date_range),
-              label: Text(
-                '${fmt.format(_range.start)} – ${fmt.format(_range.end)}',
-              ),
+              variant: FFButtonVariant.secondary,
+              icon: Icons.date_range,
             ),
             const SizedBox(height: FFTokens.spacingSm),
             TextFormField(
@@ -842,22 +841,23 @@ class _ChallengeSheetState extends State<_ChallengeSheet> {
               Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
             const SizedBox(height: FFTokens.spacingSm),
             if (_existing == null) ...[
-              OutlinedButton(
+              FFButton(
                 key: const Key('challenge-save-draft'),
+                label: context.tr('challenge.saveDraft'),
                 onPressed: _busy ? null : () => _save(draft: true),
-                child: Text(context.tr('challenge.saveDraft')),
+                variant: FFButtonVariant.secondary,
               ),
               const SizedBox(height: FFTokens.spacingXs),
-              FilledButton(
+              FFButton(
                 key: const Key('challenge-create'),
+                label: context.tr('challenge.create'),
                 onPressed: _busy ? null : _save,
-                child: Text(context.tr('challenge.create')),
               ),
             ] else
-              FilledButton(
+              FFButton(
                 key: const Key('challenge-save'),
+                label: context.tr('challenge.saveChanges'),
                 onPressed: _busy ? null : _save,
-                child: Text(context.tr('challenge.saveChanges')),
               ),
           ],
         ),

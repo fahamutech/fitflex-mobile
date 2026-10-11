@@ -818,14 +818,16 @@ class _AssignWorkoutSheetState extends State<AssignWorkoutSheet> {
                   ),
                 ),
               ),
-            TextButton.icon(
+            FFButton(
               key: const Key('assign-new-plan'),
+              label: context.tr('plans.new'),
               onPressed: () async {
                 final plans = await widget.onNewPlan();
                 if (mounted) setState(() => _plans = plans);
               },
-              icon: const Icon(Icons.add, size: 18),
-              label: Text(context.tr('plans.new')),
+              variant: FFButtonVariant.ghost,
+              size: FFButtonSize.sm,
+              icon: Icons.add,
             ),
             const SizedBox(height: FFTokens.spacingSm),
             Text(
@@ -862,16 +864,14 @@ class _AssignWorkoutSheetState extends State<AssignWorkoutSheet> {
             const SizedBox(height: FFTokens.spacingMd),
             SizedBox(
               width: double.infinity,
-              child: FilledButton(
+              child: FFButton(
                 key: const Key('assign-save'),
+                label: context
+                    .tr(_dates.length > 1 ? 'assign.saveMany' : 'assign.save')
+                    .replaceAll('{n}', '${_dates.length}'),
                 onPressed: _planId == null || _dates.isEmpty || _busy
                     ? null
                     : _submit,
-                child: Text(
-                  context
-                      .tr(_dates.length > 1 ? 'assign.saveMany' : 'assign.save')
-                      .replaceAll('{n}', '${_dates.length}'),
-                ),
               ),
             ),
           ],

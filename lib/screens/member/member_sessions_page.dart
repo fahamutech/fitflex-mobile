@@ -138,9 +138,9 @@ class _MemberSessionsPageState extends State<MemberSessionsPage> {
                 : FFEmptyState(
                     title: context.tr('inbox.loadFailed'),
                     body: errorMessage(FFLocaleScope.of(context), _error!),
-                    action: FilledButton(
+                    action: FFButton(
+                      label: context.tr('comms.retry'),
                       onPressed: _load,
-                      child: Text(context.tr('comms.retry')),
                     ),
                   ))
           : RefreshIndicator(
@@ -183,10 +183,11 @@ class _MemberSessionsPageState extends State<MemberSessionsPage> {
                       const SizedBox(height: FFTokens.spacingSm),
                     ],
                   const SizedBox(height: FFTokens.spacingMd),
-                  OutlinedButton(
+                  FFButton(
                     key: const Key('refund-ask'),
+                    label: context.tr('refunds.ask'),
                     onPressed: _askRefund,
-                    child: Text(context.tr('refunds.ask')),
+                    variant: FFButtonVariant.secondary,
                   ),
                   const SizedBox(height: FFTokens.spacingSm),
                   Text(
@@ -263,10 +264,12 @@ class _SessionCard extends StatelessWidget {
           if (canCancel)
             Align(
               alignment: Alignment.centerLeft,
-              child: TextButton(
+              child: FFButton(
                 key: Key('session-cancel-${booking['id']}'),
+                label: context.tr('sessions.cancel'),
                 onPressed: busy ? null : onCancel,
-                child: Text(context.tr('sessions.cancel')),
+                variant: FFButtonVariant.ghost,
+                size: FFButtonSize.sm,
               ),
             ),
         ],
@@ -516,10 +519,10 @@ class _RefundRequestSheetState extends State<_RefundRequestSheet> {
                 ),
               SizedBox(
                 width: double.infinity,
-                child: FilledButton(
+                child: FFButton(
                   key: const Key('refund-send'),
+                  label: context.tr('refunds.send'),
                   onPressed: _busy || _paymentId == null ? null : _send,
-                  child: Text(context.tr('refunds.send')),
                 ),
               ),
             ],

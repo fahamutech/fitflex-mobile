@@ -187,10 +187,12 @@ class ChallengeCard extends StatelessWidget {
                 ),
               ),
               if (showView)
-                TextButton(
+                FFButton(
                   key: Key('challenge-view-${c.id}'),
+                  label: context.tr('challenge.view'),
                   onPressed: () => context.go(challengeRoute(c.id)),
-                  child: Text(context.tr('challenge.view')),
+                  variant: FFButtonVariant.ghost,
+                  size: FFButtonSize.sm,
                 ),
             ],
           ),

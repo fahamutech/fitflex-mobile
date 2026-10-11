@@ -52,9 +52,11 @@ class AudienceSelector extends StatelessWidget {
             tone: FFAlertTone.info,
           ),
         if (c.hasCustomFilter)
-          TextButton(
+          FFButton(
+            label: context.tr('comms.audience.clearCustom'),
             onPressed: c.clearCustomFilter,
-            child: Text(context.tr('comms.audience.clearCustom')),
+            variant: FFButtonVariant.ghost,
+            size: FFButtonSize.sm,
           )
         else ...[
           _ChoiceRow(

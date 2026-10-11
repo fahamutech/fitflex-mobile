@@ -216,9 +216,10 @@ class _MemberActivitySharingPageState extends State<MemberActivitySharingPage> {
           FFEmptyState(
             title: context.tr('sharing.noTrainers'),
             body: context.tr('connect.noneBody'),
-            action: OutlinedButton(
+            action: FFButton(
+              label: context.tr('member.findTrainer'),
               onPressed: () => context.go(AppRoutes.memberTrainers),
-              child: Text(context.tr('member.findTrainer')),
+              variant: FFButtonVariant.secondary,
             ),
           )
         else
@@ -344,14 +345,14 @@ class _MemberActivitySharingPageState extends State<MemberActivitySharingPage> {
           ),
           Align(
             alignment: Alignment.centerLeft,
-            child: TextButton(
+            child: FFButton(
               key: Key('sharing-activity-expand-${c.id}'),
+              label: context.tr(expanded ? 'sharing.fewer' : 'sharing.choose'),
               onPressed: () => setState(
                 () => expanded ? _expanded.remove(c.id) : _expanded.add(c.id),
               ),
-              child: Text(
-                context.tr(expanded ? 'sharing.fewer' : 'sharing.choose'),
-              ),
+              variant: FFButtonVariant.ghost,
+              size: FFButtonSize.sm,
             ),
           ),
           if (expanded)
@@ -383,10 +384,11 @@ class _MemberActivitySharingPageState extends State<MemberActivitySharingPage> {
             spacing: FFTokens.spacingSm,
             children: [
               if (!perms.isEmpty)
-                OutlinedButton(
+                FFButton(
                   key: Key('sharing-stop-${c.id}'),
+                  label: context.tr('sharing.stop'),
                   onPressed: busy ? null : () => _stopAll(c, name),
-                  child: Text(context.tr('sharing.stop')),
+                  variant: FFButtonVariant.secondary,
                 ),
               TextButton(
                 key: Key('sharing-disconnect-${c.id}'),
@@ -419,10 +421,12 @@ class _BackRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Align(
     alignment: Alignment.centerLeft,
-    child: TextButton.icon(
+    child: FFButton(
+      label: label,
       onPressed: () => context.go(to),
-      icon: const Icon(Icons.arrow_back, size: 18),
-      label: Text(label),
+      variant: FFButtonVariant.ghost,
+      size: FFButtonSize.sm,
+      icon: Icons.arrow_back,
     ),
   );
 }

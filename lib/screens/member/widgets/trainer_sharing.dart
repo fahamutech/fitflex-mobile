@@ -107,14 +107,12 @@ class _SharingSheetState extends State<_SharingSheet> {
             const SizedBox(height: FFTokens.spacingSm),
             SizedBox(
               width: double.infinity,
-              child: FilledButton(
+              child: FFButton(
                 key: const Key('share-save'),
-                onPressed: () => Navigator.pop(context, _perms),
-                child: Text(
-                  context.tr(
-                    widget.isRequest ? 'share.sendRequest' : 'share.save',
-                  ),
+                label: context.tr(
+                  widget.isRequest ? 'share.sendRequest' : 'share.save',
                 ),
+                onPressed: () => Navigator.pop(context, _perms),
               ),
             ),
           ],
@@ -208,10 +206,11 @@ class _TrainerConnectCardState extends State<TrainerConnectCard> {
       );
       body =
           '${context.tr('share.canSee')}: ${sharedSummary(context, c.permissions)}';
-      action = OutlinedButton(
+      action = FFButton(
         key: const Key('trainer-manage-sharing'),
+        label: context.tr('connect.manage'),
         onPressed: () => context.go(AppRoutes.memberActivitySharing),
-        child: Text(context.tr('connect.manage')),
+        variant: FFButtonVariant.secondary,
       );
     }
     return FFCard(

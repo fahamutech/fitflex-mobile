@@ -142,15 +142,19 @@ class _MessageComposerState extends State<MessageComposer> {
                           style: theme.textTheme.bodyMedium,
                         ),
                       ),
-                      TextButton(
+                      FFButton(
                         key: const Key('msg-change-template'),
+                        label: context.tr('comms.tpl.change'),
                         onPressed: widget.onPickTemplate,
-                        child: Text(context.tr('comms.tpl.change')),
+                        variant: FFButtonVariant.ghost,
+                        size: FFButtonSize.sm,
                       ),
-                      TextButton(
+                      FFButton(
                         key: const Key('msg-clear-template'),
+                        label: context.tr('comms.tpl.blank'),
                         onPressed: _c.clearTemplate,
-                        child: Text(context.tr('comms.tpl.blank')),
+                        variant: FFButtonVariant.ghost,
+                        size: FFButtonSize.sm,
                       ),
                     ],
                   ),
@@ -183,15 +187,17 @@ class _MessageComposerState extends State<MessageComposer> {
                 ),
               ),
               if (!text.isEmpty)
-                TextButton(
+                FFButton(
                   key: const Key('msg-remove-translation'),
+                  label: context.tr('comms.lang.remove'),
                   onPressed: () {
                     _title[_lang]!.clear();
                     _body[_lang]!.clear();
                     _cta[_lang]!.clear();
                     _c.removeTranslation(_lang);
                   },
-                  child: Text(context.tr('comms.lang.remove')),
+                  variant: FFButtonVariant.ghost,
+                  size: FFButtonSize.sm,
                 ),
             ],
           ),

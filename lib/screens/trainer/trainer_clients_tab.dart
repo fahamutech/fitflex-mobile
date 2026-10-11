@@ -97,12 +97,13 @@ class _TrainerClientsTabState extends State<TrainerClientsTab> {
         children: [
           FFEmptyState(
             title: context.tr('owner.errorGeneric'),
-            action: OutlinedButton(
+            action: FFButton(
+              label: context.tr('clients.retry'),
               onPressed: () {
                 setState(() => _failed = false);
                 _load();
               },
-              child: Text(context.tr('clients.retry')),
+              variant: FFButtonVariant.secondary,
             ),
           ),
         ],
@@ -159,20 +160,22 @@ class _TrainerClientsTabState extends State<TrainerClientsTab> {
                     const SizedBox(height: FFTokens.spacingSm),
                     Row(
                       children: [
-                        FilledButton(
+                        FFButton(
                           key: Key('client-accept-${c.id}'),
+                          label: context.tr('clients.accept'),
                           onPressed: _busyId == c.id
                               ? null
                               : () => _decide(c, true),
-                          child: Text(context.tr('clients.accept')),
                         ),
                         const SizedBox(width: FFTokens.spacingSm),
-                        TextButton(
+                        FFButton(
                           key: Key('client-decline-${c.id}'),
+                          label: context.tr('clients.decline'),
                           onPressed: _busyId == c.id
                               ? null
                               : () => _decide(c, false),
-                          child: Text(context.tr('clients.decline')),
+                          variant: FFButtonVariant.ghost,
+                          size: FFButtonSize.sm,
                         ),
                       ],
                     ),
@@ -222,11 +225,13 @@ class _TrainerClientsTabState extends State<TrainerClientsTab> {
           Row(
             children: [
               Expanded(child: FFSectionTitle(context.tr('plans.title'))),
-              TextButton.icon(
+              FFButton(
                 key: const Key('plan-new'),
+                label: context.tr('plans.new'),
                 onPressed: () => _editPlan(),
-                icon: const Icon(Icons.add, size: 18),
-                label: Text(context.tr('plans.new')),
+                variant: FFButtonVariant.ghost,
+                size: FFButtonSize.sm,
+                icon: Icons.add,
               ),
             ],
           ),

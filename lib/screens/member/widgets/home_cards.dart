@@ -105,11 +105,13 @@ class HomeRecommendation extends StatelessWidget {
         Row(
           children: [
             Expanded(child: FFSectionTitle(context.tr('home.recommended'))),
-            TextButton(
+            FFButton(
+              label: context.tr('home.seeAll'),
               onPressed: () => context.go(
                 gym != null ? AppRoutes.memberGyms : AppRoutes.memberTrainers,
               ),
-              child: Text(context.tr('home.seeAll')),
+              variant: FFButtonVariant.ghost,
+              size: FFButtonSize.sm,
             ),
           ],
         ),

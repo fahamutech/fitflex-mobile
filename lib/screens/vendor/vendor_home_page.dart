@@ -426,11 +426,12 @@ class _VendorHomePageState extends State<VendorHomePage> {
           const SizedBox(height: FFTokens.spacingSm),
           Align(
             alignment: AlignmentDirectional.centerStart,
-            child: OutlinedButton.icon(
+            child: FFButton(
               key: const Key('vendor-pending-verification'),
+              label: context.tr('kyc.entry.title'),
               onPressed: () => context.push(AppRoutes.verification),
-              icon: const Icon(Icons.verified_user_outlined),
-              label: Text(context.tr('kyc.entry.title')),
+              variant: FFButtonVariant.secondary,
+              icon: Icons.verified_user_outlined,
             ),
           ),
         ],
@@ -560,14 +561,16 @@ class _VendorHomePageState extends State<VendorHomePage> {
                           '${context.tr('vendor.mark')} ${_nextOrderStatus(order).replaceAll('_', ' ')}',
                         ),
                       ),
-                      TextButton(
+                      FFButton(
+                        label: context.tr('vendor.cancel'),
                         onPressed: _busy
                             ? null
                             : () => _updateOrder(
                                 order['id'].toString(),
                                 'cancelled',
                               ),
-                        child: Text(context.tr('vendor.cancel')),
+                        variant: FFButtonVariant.ghost,
+                        size: FFButtonSize.sm,
                       ),
                     ],
                   ),
@@ -643,8 +646,9 @@ class _VendorHomePageState extends State<VendorHomePage> {
           label: Text(context.tr('payouts.title')),
         ),
         const SizedBox(height: FFTokens.spacingSm),
-        OutlinedButton.icon(
+        FFButton(
           key: const Key('vendor-download-statement'),
+          label: context.tr('vendor.downloadStatement'),
           onPressed: () async {
             try {
               final statement = await AppScope.of(
@@ -662,8 +666,8 @@ class _VendorHomePageState extends State<VendorHomePage> {
               );
             }
           },
-          icon: const Icon(Icons.download_outlined),
-          label: Text(context.tr('vendor.downloadStatement')),
+          variant: FFButtonVariant.secondary,
+          icon: Icons.download_outlined,
         ),
       ],
     );
@@ -701,20 +705,24 @@ class _VendorHomePageState extends State<VendorHomePage> {
                   ),
                 Wrap(
                   children: [
-                    TextButton(
+                    FFButton(
                       key: Key('vendor-reply-${enquiry['id']}'),
+                      label: context.tr('vendor.reply'),
                       onPressed: () => _replyEnquiry(enquiry),
-                      child: Text(context.tr('vendor.reply')),
+                      variant: FFButtonVariant.ghost,
+                      size: FFButtonSize.sm,
                     ),
                     if (enquiry['status'] != 'resolved')
-                      TextButton(
+                      FFButton(
+                        label: context.tr('vendor.resolve'),
                         onPressed: () async {
                           await AppScope.of(
                             context,
                           ).api.vendorResolveEnquiry(enquiry['id'].toString());
                           await _refresh();
                         },
-                        child: Text(context.tr('vendor.resolve')),
+                        variant: FFButtonVariant.ghost,
+                        size: FFButtonSize.sm,
                       ),
                   ],
                 ),
@@ -784,11 +792,12 @@ class _VendorHomePageState extends State<VendorHomePage> {
                       icon: const Icon(Icons.edit_outlined),
                       label: Text(context.tr('vendor.editProfile')),
                     ),
-                    OutlinedButton.icon(
+                    FFButton(
                       key: const Key('vendor-verification'),
+                      label: context.tr('kyc.entry.title'),
                       onPressed: () => context.push('/verification'),
-                      icon: const Icon(Icons.verified_user_outlined),
-                      label: Text(context.tr('kyc.entry.title')),
+                      variant: FFButtonVariant.secondary,
+                      icon: Icons.verified_user_outlined,
                     ),
                   ],
                 ),
@@ -805,27 +814,31 @@ class _VendorHomePageState extends State<VendorHomePage> {
             ),
             // With invitations on, only the vendor itself invites staff.
             if (!_invites || _isVendor)
-              TextButton.icon(
+              FFButton(
                 key: const Key('vendor-add-staff'),
+                label: context.tr('vendor.addStaff'),
                 onPressed: _addStaff,
-                icon: const Icon(Icons.person_add_alt),
-                label: Text(context.tr('vendor.addStaff')),
+                variant: FFButtonVariant.ghost,
+                size: FFButtonSize.sm,
+                icon: Icons.person_add_alt,
               ),
           ],
         ),
         if (_invites && _isVendor)
           Align(
             alignment: AlignmentDirectional.centerStart,
-            child: TextButton.icon(
+            child: FFButton(
               key: const Key('vendor-invitations-sent'),
-              icon: const Icon(Icons.outgoing_mail),
-              label: Text(context.tr('invite.sentTitle')),
+              label: context.tr('invite.sentTitle'),
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) =>
                       GymInvitationsPage(gymId: _vendorId, orgType: 'vendor'),
                 ),
               ),
+              variant: FFButtonVariant.ghost,
+              size: FFButtonSize.sm,
+              icon: Icons.outgoing_mail,
             ),
           ),
         for (final staff in _staff)
@@ -835,14 +848,16 @@ class _VendorHomePageState extends State<VendorHomePage> {
               subtitle: Text('${staff['vendorRole']} · ${staff['email']}'),
               trailing: staff['accountStatus'] == 'suspended'
                   ? Text(context.tr('vendor.disabled'))
-                  : TextButton(
+                  : FFButton(
+                      label: context.tr('vendor.disable'),
                       onPressed: () async {
                         await AppScope.of(
                           context,
                         ).api.vendorDisableStaff(staff['id'].toString());
                         await _refresh();
                       },
-                      child: Text(context.tr('vendor.disable')),
+                      variant: FFButtonVariant.ghost,
+                      size: FFButtonSize.sm,
                     ),
             ),
           ),
@@ -1143,10 +1158,10 @@ class _VendorProductFormState extends State<VendorProductForm> {
               const SizedBox(height: FFTokens.spacingLg),
               SizedBox(
                 width: double.infinity,
-                child: FilledButton(
+                child: FFButton(
                   key: const Key('vendor-product-save'),
+                  label: context.tr('vendor.save'),
                   onPressed: _submit,
-                  child: Text(context.tr('vendor.save')),
                 ),
               ),
             ],
@@ -1324,10 +1339,10 @@ class _VendorProfileFormState extends State<VendorProfileForm> {
               const SizedBox(height: FFTokens.spacingLg),
               SizedBox(
                 width: double.infinity,
-                child: FilledButton(
+                child: FFButton(
                   key: const Key('vendor-profile-publish'),
+                  label: context.tr('vendor.publishProfile'),
                   onPressed: _submit,
-                  child: Text(context.tr('vendor.publishProfile')),
                 ),
               ),
             ],
@@ -1481,10 +1496,10 @@ class _VendorStaffFormState extends State<VendorStaffForm> {
                 ),
               SizedBox(
                 width: double.infinity,
-                child: FilledButton(
+                child: FFButton(
                   key: const Key('vendor-staff-save'),
+                  label: context.tr('vendor.saveStaff'),
                   onPressed: _submit,
-                  child: Text(context.tr('vendor.saveStaff')),
                 ),
               ),
             ],

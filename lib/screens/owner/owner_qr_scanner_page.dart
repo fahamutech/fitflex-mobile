@@ -172,9 +172,10 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
               children: [
                 FFAlert(message: _error!, tone: FFAlertTone.error),
                 const SizedBox(height: 12),
-                OutlinedButton(
+                FFButton(
+                  label: context.tr('ownerScan.scanAgain'),
                   onPressed: _reset,
-                  child: Text(context.tr('ownerScan.scanAgain')),
+                  variant: FFButtonVariant.secondary,
                 ),
               ],
             ),
@@ -377,9 +378,10 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
             tone: FFAlertTone.warning,
           ),
         const SizedBox(height: 12),
-        OutlinedButton(
+        FFButton(
+          label: context.tr('ownerScan.scanAgain'),
           onPressed: _reset,
-          child: Text(context.tr('ownerScan.scanAgain')),
+          variant: FFButtonVariant.secondary,
         ),
 
         if (_error != null) ...[

@@ -67,11 +67,13 @@ class TrainerGoalsSection extends StatelessWidget {
         Row(
           children: [
             Expanded(child: FFSectionTitle(context.tr('trainerGoal.section'))),
-            TextButton.icon(
+            FFButton(
               key: const Key('trainer-goal-add'),
+              label: context.tr('trainerGoal.add'),
               onPressed: () => _set(context),
-              icon: const Icon(Icons.flag_outlined, size: 18),
-              label: Text(context.tr('trainerGoal.add')),
+              variant: FFButtonVariant.ghost,
+              size: FFButtonSize.sm,
+              icon: Icons.flag_outlined,
             ),
           ],
         ),
@@ -592,11 +594,13 @@ class _AssignGoalSheetState extends State<AssignGoalSheet> {
                   ],
                 ),
                 if (_when == _When.dates)
-                  TextButton.icon(
+                  FFButton(
                     key: const Key('goal-dates'),
+                    label: context.tr('trainerGoal.changeDates'),
                     onPressed: _pickRange,
-                    icon: const Icon(Icons.date_range, size: 18),
-                    label: Text(context.tr('trainerGoal.changeDates')),
+                    variant: FFButtonVariant.ghost,
+                    size: FFButtonSize.sm,
+                    icon: Icons.date_range,
                   ),
               ],
               if (_error case final e?)
@@ -620,10 +624,10 @@ class _AssignGoalSheetState extends State<AssignGoalSheet> {
               const SizedBox(height: FFTokens.spacingSm),
               SizedBox(
                 width: double.infinity,
-                child: FilledButton(
+                child: FFButton(
                   key: const Key('assign-goal-save'),
+                  label: context.tr('trainerGoal.save'),
                   onPressed: _saving ? null : _save,
-                  child: Text(context.tr('trainerGoal.save')),
                 ),
               ),
             ],

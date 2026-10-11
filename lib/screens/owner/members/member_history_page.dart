@@ -170,9 +170,10 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
           padding: const EdgeInsets.all(FFTokens.spacingLg),
           child: FFEmptyState(
             title: context.tr('members.errorLoading'),
-            action: OutlinedButton(
+            action: FFButton(
+              label: context.tr('members.retry'),
               onPressed: c.refresh,
-              child: Text(context.tr('members.retry')),
+              variant: FFButtonVariant.secondary,
             ),
           ),
         ),
@@ -201,9 +202,10 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
               child: Center(
                 child: c.loadingMore
                     ? const FFSpinner()
-                    : OutlinedButton(
+                    : FFButton(
+                        label: context.tr('members.loadMore'),
                         onPressed: c.loadMore,
-                        child: Text(context.tr('members.loadMore')),
+                        variant: FFButtonVariant.secondary,
                       ),
               ),
             );

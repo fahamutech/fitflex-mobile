@@ -138,10 +138,12 @@ class _TrainerSessionsSheetState extends State<TrainerSessionsSheet> {
                     ),
                   ),
                 ),
-                TextButton.icon(
+                FFButton(
+                  label: _dateOnly(_date),
                   onPressed: _pickDate,
-                  icon: const Icon(Icons.calendar_today_outlined, size: 16),
-                  label: Text(_dateOnly(_date)),
+                  variant: FFButtonVariant.ghost,
+                  size: FFButtonSize.sm,
+                  icon: Icons.calendar_today_outlined,
                 ),
               ],
             ),
@@ -213,11 +215,12 @@ class _TrainerSessionsSheetState extends State<TrainerSessionsSheet> {
             const SizedBox(height: 10),
             SizedBox(
               width: double.infinity,
-              child: OutlinedButton.icon(
+              child: FFButton(
                 key: const Key('trainer-add-session'),
+                label: context.tr('trainer.addSession'),
                 onPressed: _addManualSession,
-                icon: const Icon(Icons.add),
-                label: Text(context.tr('trainer.addSession')),
+                variant: FFButtonVariant.secondary,
+                icon: Icons.add,
               ),
             ),
           ],
@@ -399,16 +402,11 @@ class _TrainerAddSessionSheetState extends State<TrainerAddSessionSheet> {
                 FFAlert(message: _error!, tone: FFAlertTone.error),
               ],
               const SizedBox(height: 14),
-              FilledButton(
+              FFButton(
                 key: const Key('session-save'),
+                label: context.tr('member.save'),
                 onPressed: _busy ? null : _save,
-                child: _busy
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Text(context.tr('member.save')),
+                loading: _busy,
               ),
             ],
           ),

@@ -219,10 +219,10 @@ class _SharePickerState extends State<_SharePicker> {
               ],
             ),
             const SizedBox(height: FFTokens.spacingMd),
-            FilledButton(
+            FFButton(
               key: const Key('share-done'),
+              label: context.tr('audience.done'),
               onPressed: () => Navigator.pop(context, (share: _choice)),
-              child: Text(context.tr('audience.done')),
             ),
           ],
         ),
@@ -473,12 +473,14 @@ class _SocialPrivacySectionState extends State<SocialPrivacySection> {
                           for (final p in s.blocked)
                             ListTile(
                               title: Text(p.name),
-                              trailing: TextButton(
+                              trailing: FFButton(
+                                label: t('audience.unblock'),
                                 onPressed: () async {
                                   await api.unblock(p.id);
                                   if (ctx.mounted) Navigator.pop(ctx);
                                 },
-                                child: Text(t('audience.unblock')),
+                                variant: FFButtonVariant.ghost,
+                                size: FFButtonSize.sm,
                               ),
                             ),
                         ],

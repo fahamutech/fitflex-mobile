@@ -272,10 +272,11 @@ class ActivityGetStartedCard extends StatelessWidget {
                   onPressed: () => openLogActivity(context),
                   child: Text(context.tr('logActivity.open')),
                 ),
-                OutlinedButton(
+                FFButton(
                   key: const Key('activity-get-started-plan'),
+                  label: context.tr('workout.plan'),
                   onPressed: () => showPlanWorkoutSheet(context),
-                  child: Text(context.tr('workout.plan')),
+                  variant: FFButtonVariant.secondary,
                 ),
               ],
             )

@@ -132,8 +132,9 @@ class _JoinSheetState extends State<_JoinSheet> {
             const SizedBox(height: FFTokens.spacingSm),
             SizedBox(
               width: double.infinity,
-              child: FilledButton(
+              child: FFButton(
                 key: const Key('join-confirm'),
+                label: context.tr('challenge.join'),
                 onPressed: _ready
                     ? () => Navigator.pop<JoinChoice>(context, (
                         teamId: _teamId,
@@ -141,7 +142,6 @@ class _JoinSheetState extends State<_JoinSheet> {
                         leaderboardOptIn: _optIn,
                       ))
                     : null,
-                child: Text(context.tr('challenge.join')),
               ),
             ),
           ],

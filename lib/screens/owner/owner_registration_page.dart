@@ -292,31 +292,20 @@ class _OwnerRegistrationPageState extends State<OwnerRegistrationPage> {
                   children: [
                     if (_step > 0)
                       Expanded(
-                        child: OutlinedButton(
+                        child: FFButton(
+                          label: context.tr('onboarding.back'),
                           onPressed: _back,
-                          child: Text(context.tr('onboarding.back')),
+                          variant: FFButtonVariant.secondary,
                         ),
                       ),
                     if (_step > 0) const SizedBox(width: 12),
                     Expanded(
-                      child: FilledButton(
+                      child: FFButton(
+                        label: _step < 1
+                            ? context.tr('onboarding.next')
+                            : context.tr('ownerReg.submit'),
                         onPressed: _busy ? null : _next,
-                        child: _busy
-                            ? SizedBox(
-                                height: 18,
-                                width: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onPrimary,
-                                ),
-                              )
-                            : Text(
-                                _step < 1
-                                    ? context.tr('onboarding.next')
-                                    : context.tr('ownerReg.submit'),
-                              ),
+                        loading: _busy,
                       ),
                     ),
                   ],
@@ -404,10 +393,11 @@ class _OwnerRegistrationPageState extends State<OwnerRegistrationPage> {
           );
         }),
         const SizedBox(height: 12),
-        OutlinedButton.icon(
+        FFButton(
+          label: context.tr('ownerReg.addGym'),
           onPressed: _addGym,
-          icon: const Icon(Icons.add),
-          label: Text(context.tr('ownerReg.addGym')),
+          variant: FFButtonVariant.secondary,
+          icon: Icons.add,
         ),
         const SizedBox(height: 16),
         TermsAgreementField(key: _termsKey),
@@ -580,10 +570,11 @@ class _GymCardWidgetState extends State<_GymCardWidget> {
                 ),
               ),
             // Select trainer button — opens fullscreen search dialog
-            OutlinedButton.icon(
+            FFButton(
+              label: context.tr('ownerReg.searchTrainers'),
               onPressed: () => _openTrainerSearchDialog(context, gym),
-              icon: const Icon(Icons.person_add_alt_1, size: 18),
-              label: Text(context.tr('ownerReg.searchTrainers')),
+              variant: FFButtonVariant.secondary,
+              icon: Icons.person_add_alt_1,
             ),
             const SizedBox(height: 16),
 
@@ -660,10 +651,11 @@ class _GymCardWidgetState extends State<_GymCardWidget> {
                 ),
               ),
             const SizedBox(height: 8),
-            OutlinedButton.icon(
+            FFButton(
+              label: context.tr('ownerReg.pickImage'),
               onPressed: _pickImage,
-              icon: const Icon(Icons.add_a_photo, size: 18),
-              label: Text(context.tr('ownerReg.pickImage')),
+              variant: FFButtonVariant.secondary,
+              icon: Icons.add_a_photo,
             ),
           ],
         ),

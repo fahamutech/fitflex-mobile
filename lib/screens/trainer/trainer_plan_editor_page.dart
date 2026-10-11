@@ -245,22 +245,23 @@ class _TrainerPlanEditorPageState extends State<TrainerPlanEditorPage> {
                   icon: const Icon(Icons.library_add_outlined),
                   label: Text(context.tr('exercisePicker.add')),
                 ),
-                OutlinedButton.icon(
+                FFButton(
                   key: const Key('plan-add-exercise'),
+                  label: context.tr('plans.addExercise'),
                   onPressed: _plan.exercises.length >= 20
                       ? null
                       : () =>
                             setState(() => _plan.exercises.add(PlanExercise())),
-                  icon: const Icon(Icons.add),
-                  label: Text(context.tr('plans.addExercise')),
+                  variant: FFButtonVariant.secondary,
+                  icon: Icons.add,
                 ),
               ],
             ),
             const SizedBox(height: FFTokens.spacingLg),
-            FilledButton(
+            FFButton(
               key: const Key('plan-save'),
+              label: context.tr('plans.save'),
               onPressed: _busy ? null : _save,
-              child: Text(context.tr('plans.save')),
             ),
           ],
         ),
@@ -337,20 +338,20 @@ class _ExerciseEditor extends StatelessWidget {
           ),
           Align(
             alignment: Alignment.centerLeft,
-            child: TextButton.icon(
+            child: FFButton(
               key: Key('exercise-pick-$index'),
+              label: context.tr(
+                e.fromLibrary
+                    ? 'exercisePicker.change'
+                    : 'exercisePicker.choose',
+              ),
               onPressed: () async {
                 final picked = await showExercisePicker(context);
                 if (picked != null) onPicked(picked.toPlanExercise());
               },
-              icon: const Icon(Icons.library_books_outlined, size: 18),
-              label: Text(
-                context.tr(
-                  e.fromLibrary
-                      ? 'exercisePicker.change'
-                      : 'exercisePicker.choose',
-                ),
-              ),
+              variant: FFButtonVariant.ghost,
+              size: FFButtonSize.sm,
+              icon: Icons.library_books_outlined,
             ),
           ),
           if (e.fromLibrary)

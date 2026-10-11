@@ -328,14 +328,13 @@ class TrainerGymsTabState extends State<TrainerGymsTab> {
                     actions: Badge(
                       isLabelVisible: _openPassCount > 0,
                       label: Text('$_openPassCount'),
-                      child: TextButton.icon(
+                      child: FFButton(
                         key: const Key('trainer-my-passes'),
+                        label: context.tr('trainerPass.myPasses'),
                         onPressed: _openPasses,
-                        icon: const Icon(
-                          Icons.confirmation_number_outlined,
-                          size: 18,
-                        ),
-                        label: Text(context.tr('trainerPass.myPasses')),
+                        variant: FFButtonVariant.ghost,
+                        size: FFButtonSize.sm,
+                        icon: Icons.confirmation_number_outlined,
                       ),
                     ),
                   ),
@@ -882,17 +881,19 @@ class _TrainerGymSheetState extends State<TrainerGymSheet> {
           Text(context.tr('trainerPass.joinBody'), style: textTheme.bodySmall),
           const SizedBox(height: 8),
           if (widget.joinPending)
-            OutlinedButton(
+            FFButton(
               key: const Key('trainer-gym-cancel-join'),
+              label: context.tr('trainerPass.cancelJoin'),
               onPressed: _busy ? null : _cancelJoin,
-              child: Text(context.tr('trainerPass.cancelJoin')),
+              variant: FFButtonVariant.secondary,
             )
           else
-            OutlinedButton.icon(
+            FFButton(
               key: const Key('trainer-gym-apply'),
+              label: context.tr('trainer.apply'),
               onPressed: _busy ? null : _applyToJoin,
-              icon: const Icon(Icons.handshake_outlined, size: 18),
-              label: Text(context.tr('trainer.apply')),
+              variant: FFButtonVariant.secondary,
+              icon: Icons.handshake_outlined,
             ),
         ],
       ],
@@ -935,21 +936,22 @@ class _TrainerGymSheetState extends State<TrainerGymSheet> {
           ),
           const SizedBox(height: 8),
           if (active)
-            FilledButton.icon(
+            FFButton(
               key: const Key('trainer-gym-show-qr'),
+              label: context.tr('trainerPass.showQr'),
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(builder: (_) => const TrainerQrPage()),
               ),
-              icon: const Icon(Icons.qr_code_2),
-              label: Text(context.tr('trainerPass.showQr')),
+              icon: Icons.qr_code_2,
             )
           else
-            OutlinedButton(
+            FFButton(
               key: const Key('trainer-gym-cancel-pass'),
+              label: context.tr('trainerPass.cancelRequest'),
               onPressed: _busy
                   ? null
                   : () => _cancelPending(current['id'].toString()),
-              child: Text(context.tr('trainerPass.cancelRequest')),
+              variant: FFButtonVariant.secondary,
             ),
         ],
       ),
@@ -1009,20 +1011,13 @@ class _TrainerGymSheetState extends State<TrainerGymSheet> {
       const SizedBox(height: 10),
       SizedBox(
         width: double.infinity,
-        child: FilledButton(
+        child: FFButton(
           key: const Key('trainer-pass-buy'),
+          label: context.tr(
+            isPass ? 'trainerPass.getPass' : 'trainerPass.getPlan',
+          ),
           onPressed: _busy || _period == null ? null : _buy,
-          child: _busy
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Text(
-                  context.tr(
-                    isPass ? 'trainerPass.getPass' : 'trainerPass.getPlan',
-                  ),
-                ),
+          loading: _busy,
         ),
       ),
     ];
