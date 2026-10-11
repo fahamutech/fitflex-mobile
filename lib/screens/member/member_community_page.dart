@@ -8,6 +8,7 @@ import '../../router.dart';
 import '../../shared/activity/run_metrics.dart' show formatPace;
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
+import '../../shared/friend_invites.dart';
 import '../../shared/i18n.dart';
 import '../../shared/social.dart';
 
@@ -370,6 +371,11 @@ class _PeopleTabState extends State<PeopleTab> {
       _following = const [],
       _followers = const [];
   List<SocialPerson>? _found;
+  // Result of searching by email / phone, and the invitations this member sent.
+  Map<String, dynamic>? _contactFound;
+  ({String? email, String? phone})? _contactQuery;
+  List<Map<String, dynamic>> _sentRequests = const [];
+  bool _contactBusy = false;
   String _code = '';
   bool _loaded = false;
   bool _started = false;
@@ -398,8 +404,16 @@ class _PeopleTabState extends State<PeopleTab> {
     final api = AppScope.of(context).api;
     try {
       final r = await Future.wait([api.connections(), api.socialSettings()]);
+      Object? sent;
+      try {
+        sent = (await api.friendInvitations())['outgoing'];
+      } catch (_) {}
       if (!mounted) return;
       setState(() {
+        _sentRequests = [
+          for (final i in (sent as List? ?? const []))
+            if (i is Map) i.cast<String, dynamic>(),
+        ];
         _friends = _people(r[0]['friends']);
         _following = _people(r[0]['following']);
         _followers = _people(r[0]['followers']);
@@ -411,9 +425,210 @@ class _PeopleTabState extends State<PeopleTab> {
     }
   }
 
+  /// An email address or a mobile number, as typed; null for a name or code.
+  static ({String? email, String? phone})? _asContact(String q) {
+    if (q.contains('@')) return (email: q, phone: null);
+    final digits = q.replaceAll(RegExp(r'\D'), '');
+    if (RegExp(r'^\+?[\d\s().-]+$').hasMatch(q) && digits.length >= 9) {
+      return (email: null, phone: q);
+    }
+    return null;
+  }
+
+  Future<void> _findContact(({String? email, String? phone}) c) async {
+    final api = AppScope.of(context).api;
+    setState(() {
+      _found = null;
+      _contactBusy = true;
+    });
+    try {
+      final r = await api.friendLookup(email: c.email, phone: c.phone);
+      if (!mounted) return;
+      setState(() {
+        _contactQuery = c;
+        _contactFound = (r['result'] as Map?)?.cast<String, dynamic>();
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _contactQuery = c;
+        _contactFound = null;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorText(context, e))),
+      );
+    } finally {
+      if (mounted) setState(() => _contactBusy = false);
+    }
+  }
+
+  /// Request to a member, or a share link for someone not on FitFlex.
+  Future<void> _invite({String? userId}) async {
+    final api = AppScope.of(context).api;
+    final c = _contactQuery;
+    final t = context.tr;
+    final messenger = ScaffoldMessenger.of(context);
+    final locale = FFLocaleScope.of(context).locale.languageCode;
+    setState(() => _contactBusy = true);
+    try {
+      final r = await api.inviteFriend(
+        userId: userId,
+        email: userId == null ? c?.email : null,
+        phone: userId == null ? c?.phone : null,
+        locale: locale,
+      );
+      final share = (r['share'] as Map?)?.cast<String, dynamic>();
+      if (share != null && mounted) {
+        // FitFlex sends nothing: the member picks the app and sends it.
+        await shareFriendInvite(
+          context,
+          text: share['text'].toString(),
+          link: share['link'].toString(),
+          subject: share['subject']?.toString(),
+        );
+        messenger.showSnackBar(SnackBar(content: Text(t('friendInvite.created'))));
+      } else {
+        messenger.showSnackBar(SnackBar(content: Text(t('friendInvite.requestSent'))));
+      }
+    } catch (e) {
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(errorText(context, e)),
+            action: SnackBarAction(
+              label: t('comms.retry'),
+              onPressed: () => _invite(userId: userId),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _contactBusy = false);
+    }
+    if (mounted) {
+      await _load();
+      if (c != null) await _findContact(c);
+    }
+  }
+
+  Widget _contactCard() {
+    final theme = Theme.of(context);
+    final t = context.tr;
+    final r = _contactFound;
+    if (r == null) return const SizedBox.shrink();
+    final isMember = r['kind'] == 'member';
+    final rel = r['relationship']?.toString() ?? 'none';
+    final pending = (r['request'] as Map?)?['status'] == 'pending';
+    final String title;
+    final String hint;
+    Widget? action;
+    if (isMember) {
+      title = r['name']?.toString() ?? '';
+      if (rel == 'friends') {
+        hint = t('community.friends');
+      } else if (pending) {
+        hint = t('friendInvite.status.pending');
+      } else {
+        hint = t('friendInvite.onFitflex');
+        action = FilledButton.tonal(
+          key: const Key('friend-request-send'),
+          style: compactButton,
+          onPressed: _contactBusy ? null : () => _invite(userId: r['userId'].toString()),
+          child: Text(t('friendInvite.sendRequest')),
+        );
+      }
+    } else {
+      title = t('friendInvite.notOnFitflex');
+      hint = t('friendInvite.shareHint');
+      action = FilledButton.icon(
+        key: const Key('friend-invite-share'),
+        style: compactButton,
+        onPressed: _contactBusy ? null : () => _invite(),
+        icon: const Icon(Icons.share, size: 18),
+        label: Text(t('friendInvite.invite')),
+      );
+    }
+    return FFCard(
+      key: const Key('contact-result'),
+      margin: const EdgeInsets.only(bottom: FFTokens.spacingXs),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(child: Text(title, style: theme.textTheme.titleSmall)),
+              ?action,
+            ],
+          ),
+          const SizedBox(height: FFTokens.spacing2xs),
+          Text(hint, style: theme.textTheme.bodySmall),
+          if (!isMember) ...[
+            const SizedBox(height: FFTokens.spacing2xs),
+            Text(t('friendInvite.smsNote'), style: theme.textTheme.bodySmall),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _sentRequestsSection() {
+    final t = context.tr;
+    final api = AppScope.of(context).api;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        FFSectionTitle(t('friendInvite.sentTitle')),
+        for (final i in _sentRequests)
+          FFCard(
+            key: Key('sent-${i['id']}'),
+            margin: const EdgeInsets.only(bottom: FFTokens.spacingXs),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    (i['name']?.toString().isNotEmpty ?? false)
+                        ? i['name'].toString()
+                        : t('friendInvite.linkShared.${i['contactType'] ?? 'email'}'),
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                ),
+                if (i['status'] == 'pending')
+                  TextButton(
+                    key: Key('sent-cancel-${i['id']}'),
+                    onPressed: () => _act(
+                      () => api.revokeFriendInvitation(i['id'].toString()),
+                      t('friendInvite.cancelled'),
+                    ),
+                    child: Text(t('friendInvite.cancel')),
+                  ),
+                FFBadge(
+                  label: t('friendInvite.status.${i['status']}'),
+                  tone: i['status'] == 'accepted'
+                      ? FFBadgeTone.success
+                      : FFBadgeTone.gray,
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
   Future<void> _find() async {
     final q = _search.text.trim();
-    if (q.isEmpty) return setState(() => _found = null);
+    if (q.isEmpty) {
+      return setState(() {
+        _found = null;
+        _contactFound = null;
+        _contactQuery = null;
+      });
+    }
+    final contact = _asContact(q);
+    if (contact != null) return _findContact(contact);
+    setState(() {
+      _contactFound = null;
+      _contactQuery = null;
+    });
     final api = AppScope.of(context).api;
     // Invite codes are 8 letters/digits; anything else searches by name.
     final isCode = RegExp(r'^[A-Za-z0-9]{8}$').hasMatch(q);
@@ -589,6 +804,11 @@ class _PeopleTabState extends State<PeopleTab> {
               ),
             ),
           ),
+          if (_contactBusy) const LinearProgressIndicator(),
+          if (_contactFound != null) ...[
+            FFSectionTitle(context.tr('community.results')),
+            _contactCard(),
+          ],
           if (_found != null) ...[
             FFSectionTitle(context.tr('community.results')),
             if (_found!.isEmpty)
@@ -598,6 +818,7 @@ class _PeopleTabState extends State<PeopleTab> {
               ),
             for (final p in _found!) _personTile(p),
           ],
+          if (_sentRequests.isNotEmpty) _sentRequestsSection(),
           if (_followers.isNotEmpty) ...[
             FFSectionTitle(context.tr('community.followsYou')),
             for (final p in _followers) _personTile(p),

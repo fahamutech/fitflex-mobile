@@ -38,6 +38,10 @@ class InboxMessage {
   final DateTime? readAt;
 
   bool get unread => readAt == null;
+  /// A request to connect: answered with Approve / Reject on the card.
+  bool get isFriendInvitation => type == 'friend_invitation';
+  String get friendStatus => data['status']?.toString() ?? 'pending';
+  String? get invitationId => _nonEmpty(data['invitationId']);
   bool get fromCampaign => data['source'] == 'communication';
   String get deepLink => data['deepLink']?.toString() ?? '';
   String? get ctaLabel => _nonEmpty(data['ctaLabel']);
@@ -59,12 +63,13 @@ class InboxMessage {
     return InboxCategory.other;
   }
 
-  InboxMessage copyWith({DateTime? readAt}) => InboxMessage(
+  InboxMessage copyWith({DateTime? readAt, Map<String, dynamic>? data}) =>
+      InboxMessage(
     id: id,
     type: type,
     title: title,
     body: body,
-    data: data,
+    data: data ?? this.data,
     category: category,
     gymId: gymId,
     campaignId: campaignId,
@@ -209,6 +214,61 @@ class InboxController extends ChangeNotifier {
     if (byId(id) == null) await load();
     await markRead(id);
     return byId(id);
+  }
+
+  final Set<String> _answering = {};
+  bool isAnswering(String id) => _answering.contains(id);
+
+  /// Approve or reject a friend invitation from its card. Returns the
+  /// invitation's status afterwards, or null if it couldn't be answered
+  /// (the card then stays as it was and the member can retry).
+  Future<String?> answerFriendInvitation(String id, {required bool approve}) async {
+    final m = byId(id);
+    final invitationId = m?.invitationId;
+    if (m == null || invitationId == null || _answering.contains(id)) return null;
+    _answering.add(id);
+    notifyListeners();
+    try {
+      final res = approve
+          ? await _api.approveFriendInvitation(invitationId)
+          : await _api.rejectFriendInvitation(invitationId);
+      final status =
+          ((res['invitation'] as Map?)?['status'] ?? (approve ? 'accepted' : 'rejected'))
+              .toString();
+      _setStatus(id, status);
+      return status;
+    } catch (e) {
+      // Already answered elsewhere, expired, or withdrawn: show what is true now.
+      final status = _statusFromError(e);
+      if (status != null) {
+        _setStatus(id, status);
+        return status;
+      }
+      return null;
+    } finally {
+      _answering.remove(id);
+      notifyListeners();
+    }
+  }
+
+  static String? _statusFromError(Object e) {
+    final code = e is ApiException ? e.code : null;
+    for (final s in const ['accepted', 'rejected', 'expired', 'revoked']) {
+      if (code == 'invitation_$s') return s;
+    }
+    return null;
+  }
+
+  void _setStatus(String id, String status) {
+    final i = _messages.indexWhere((m) => m.id == id);
+    if (i < 0) return;
+    final wasUnread = _messages[i].unread;
+    _messages = [..._messages]
+      ..[i] = _messages[i].copyWith(
+        readAt: DateTime.now(),
+        data: {..._messages[i].data, 'status': status},
+      );
+    if (wasUnread && _unread > 0) _unread -= 1;
   }
 
   void _setRead(String id) {

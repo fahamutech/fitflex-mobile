@@ -40,6 +40,7 @@ import 'screens/owner/communications/automation_pages.dart';
 import 'screens/member/member_benefits_page.dart';
 import 'screens/member/member_sessions_page.dart';
 import 'screens/member/member_message_settings_page.dart';
+import 'shared/friend_invites.dart';
 import 'shared/inbox/inbox_pages.dart';
 import 'screens/vendor/vendor_home_page.dart';
 import 'screens/partner/verification/verification_center_page.dart';
@@ -86,6 +87,7 @@ abstract class AppRoutes {
   static const ownerMemberCheckins = '/owner/members/:memberId/checkins';
   static const ownerMemberPayments = '/owner/members/:memberId/payments';
   static const inbox = '/inbox';
+  static const friendInvite = '/friend-invite/:token';
   static const inboxMessage = '/inbox/:messageId';
   static const memberMessageSettings = '/member/message-settings';
   static const memberBenefits = '/member/benefits';
@@ -213,6 +215,9 @@ GoRouter buildRouter(AuthState auth) {
         AppRoutes.verifyEmail,
         AppRoutes.googleWebCallback,
       ];
+
+      // An invitation link opens for anyone; it is kept through sign-in.
+      if (loc.startsWith('/friend-invite/')) return null;
 
       if (!loggedIn && !publicRoutes.contains(loc)) {
         return AppRoutes.language;
@@ -478,6 +483,11 @@ GoRouter buildRouter(AuthState auth) {
         ),
       ),
       // Inbox — every signed-in role's messages.
+      GoRoute(
+        path: AppRoutes.friendInvite,
+        builder: (context, state) =>
+            FriendInvitePage(token: state.pathParameters['token'] ?? ''),
+      ),
       GoRoute(
         path: AppRoutes.inbox,
         name: 'inbox',
