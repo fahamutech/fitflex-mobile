@@ -5,6 +5,7 @@ import 'shared/activity/goal_repository.dart';
 import 'shared/activity/manual_activity_log.dart';
 import 'shared/activity/phone_steps.dart';
 import 'shared/activity/run_recorder.dart';
+import 'shared/activity/training_repository.dart';
 import 'shared/activity/workout_repository.dart';
 import 'shared/api_client.dart';
 import 'shared/auth_state.dart';
@@ -19,6 +20,7 @@ class AppScope extends InheritedWidget {
     this.activityProvider,
     this.goalRepository,
     this.workoutRepository,
+    this.trainingRepository,
     this.manualActivityLog,
     this.phoneSteps,
     this.runRecorder,
@@ -34,6 +36,7 @@ class AppScope extends InheritedWidget {
   final ActivityProvider? activityProvider;
   final GoalRepository? goalRepository;
   final WorkoutRepository? workoutRepository;
+  final TrainingRepository? trainingRepository;
   final ManualActivityLog? manualActivityLog;
 
   /// Counting steps with this phone. Null where it isn't offered (sample
@@ -53,6 +56,7 @@ class AppScope extends InheritedWidget {
   ActivityProvider get activity => activityProvider ?? _sample.activity;
   GoalRepository get goals => goalRepository ?? _sample.goals;
   WorkoutRepository get workouts => workoutRepository ?? _sample.workouts;
+  TrainingRepository get training => trainingRepository ?? _sample.training;
   ManualActivityLog get manualLog => manualActivityLog ?? _sample.manualLog;
 
   static AppScope of(BuildContext context) {
@@ -68,6 +72,7 @@ class AppScope extends InheritedWidget {
       activityProvider != oldWidget.activityProvider ||
       goalRepository != oldWidget.goalRepository ||
       workoutRepository != oldWidget.workoutRepository ||
+      trainingRepository != oldWidget.trainingRepository ||
       manualActivityLog != oldWidget.manualActivityLog ||
       phoneSteps != oldWidget.phoneSteps ||
       runRecorder != oldWidget.runRecorder ||

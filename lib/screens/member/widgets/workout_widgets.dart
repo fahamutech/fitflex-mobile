@@ -11,6 +11,7 @@ import '../../../shared/design_tokens.dart';
 import '../../../shared/i18n.dart';
 import '../member_shell.dart';
 import 'activity_widgets.dart';
+import 'training_widgets.dart';
 
 String workoutRoute(String id) =>
     AppRoutes.memberWorkout.replaceFirst(':workoutId', Uri.encodeComponent(id));
@@ -71,6 +72,25 @@ class TodayWorkoutCard extends StatelessWidget {
     if (!data.workoutsLoaded) return const SizedBox.shrink();
     final today = todaysWorkouts(data.workouts, now);
     if (today.isEmpty) {
+      // On a training plan, a day without a session is a recovery day.
+      final plan = data.trainingPlan;
+      if (plan != null) {
+        final next = plan.nextOpen(now);
+        return FFEmptyState(
+          key: const Key('today-recovery'),
+          title: context.tr('training.recoveryDay'),
+          body: next == null
+              ? context.tr('training.allDone')
+              : context
+                    .tr('training.nextWorkoutOn')
+                    .replaceAll('{date}', trainingDate(context, next.date)),
+          action: FilledButton.tonal(
+            key: const Key('today-view-plan'),
+            onPressed: () => context.go(AppRoutes.memberTrainingPlan),
+            child: Text(context.tr('training.viewPlan')),
+          ),
+        );
+      }
       return FFEmptyState(
         key: const Key('today-workout-empty'),
         title: context.tr('workout.noneToday'),
