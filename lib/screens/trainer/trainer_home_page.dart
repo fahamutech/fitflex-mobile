@@ -13,7 +13,6 @@ import '../../shared/inbox/inbox_pages.dart';
 import '../../shared/models.dart';
 import '../../shared/root_back_navigation.dart';
 import '../../shared/widgets/partner_not_verified.dart';
-import '../../shared/widgets/profile_form_page.dart';
 import '../../shared/widgets/shop_browse_page.dart';
 import '../../shared/widgets/social_links.dart';
 import '../../shared/widgets/trainer_form_page.dart';
@@ -188,28 +187,9 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
     launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
-  Future<void> _showEditProfileDialog() async {
-    final user = Map<String, dynamic>.from(
-      (_me?['user'] as Map?) ?? AppScope.of(context).auth.user ?? const {},
-    );
-    final saved = await openProfileForm(
-      context,
-      title: context.tr('member.editDetails'),
-      initialUser: user,
-      onSignOut: _signOut,
-    );
-    if (saved == true) {
-      if (!mounted) return;
-      await _refreshMe();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('member.profileUpdated'))),
-      );
-    }
-  }
-
-  /// C8 — edit professional details (photos, rate, specialties, bio, phone,
-  /// social handles, availability) via the trainer's own profile endpoint.
+  /// Edit profile: one form for the trainer's name, nickname, phone, photos,
+  /// rate, specialties, bio, social handles and availability. The account's
+  /// name and phone follow what is saved here.
   Future<void> _editProfessionalProfile() async {
     // The profile may not have loaded yet (slow network, or it was only just
     // linked to this account): fetch it rather than doing nothing.
@@ -224,7 +204,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
     }
     final payload = await openTrainerForm(
       context,
-      title: context.tr('trainer.editProfessional'),
+      title: context.tr('trainer.editProfile'),
       initial: trainer,
       selfEdit: true,
     );
@@ -246,6 +226,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.tr('member.profileUpdated'))),
       );
+      await _syncAccount(payload);
     } on ApiException catch (e) {
       if (!mounted) return;
       final code = e.body is Map ? (e.body as Map)['error']?.toString() : null;
@@ -267,6 +248,24 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
           ),
         ),
       );
+    }
+  }
+
+  /// Keep the sign-in account's name and phone the same as the profile just
+  /// saved (there is one form for both). The profile is already saved, so a
+  /// failure here is not shown.
+  Future<void> _syncAccount(Map<String, dynamic> payload) async {
+    final name = payload['displayName']?.toString().trim() ?? '';
+    final phone = payload['phone']?.toString().trim() ?? '';
+    if (name.isEmpty) return;
+    try {
+      await AppScope.of(context).api.updateProfile({
+        'displayName': name,
+        if (phone.isNotEmpty) 'phone': phone,
+      });
+      if (mounted) await _refreshMe();
+    } on ApiException {
+      // The trainer profile is saved; the account keeps its earlier details.
     }
   }
 
@@ -527,15 +526,9 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
     ),
     const SizedBox(height: 12),
     FFActionTile(
-      key: const Key('trainer-edit-account'),
+      key: const Key('trainer-tile-professional'),
       icon: Icons.edit_outlined,
       title: context.tr('trainer.editProfile'),
-      onTap: _showEditProfileDialog,
-    ),
-    FFActionTile(
-      key: const Key('trainer-tile-professional'),
-      icon: Icons.workspace_premium_outlined,
-      title: context.tr('trainer.editProfessional'),
       subtitle: context.tr('trainer.editProfessionalHint'),
       onTap: _editProfessionalProfile,
     ),

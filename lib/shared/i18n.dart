@@ -2228,7 +2228,7 @@ class FFLocale extends ChangeNotifier {
           'Only the trainer can change these details. You can remove the trainer from your gym.',
       'owner.trainerSocial': 'Social media',
       'trainer.editProfessionalHint':
-          'Photos, rate, specialties, bio, phone, social media and availability',
+          'Name, photos, phone, rate, specialties, bio, social media and availability',
       'trainer.profileNotLoaded':
           'We could not open your trainer profile. Check your connection and try again.',
       'trainer.error.invalidPhone': 'Enter a valid phone number.',
@@ -2246,6 +2246,10 @@ class FFLocale extends ChangeNotifier {
       'terms.agreeTo': 'I agree to the {title}',
       'terms.mustAgree': 'Please read and agree to the terms to continue.',
       'kyc.field.regionChoose': 'Choose a region',
+      'kyc.field.cityChoose': 'Choose from the list',
+      'kyc.field.bankChoose': 'Choose your bank',
+      'kyc.field.bankOther': 'Other bank (not listed)',
+      'kyc.field.bankName': 'Bank name',
       'photos.title': 'Photos',
       'photos.hint':
           'Add up to {n} photos. Tap a photo to make it your profile picture.',
@@ -4018,7 +4022,7 @@ class FFLocale extends ChangeNotifier {
           'Ni trainer pekee anayeweza kubadilisha taarifa hizi. Unaweza kumwondoa trainer kwenye gym yako.',
       'owner.trainerSocial': 'Mitandao ya kijamii',
       'trainer.editProfessionalHint':
-          'Picha, bei, utaalamu, maelezo, simu, mitandao ya kijamii na muda wa kupatikana',
+          'Jina, picha, simu, bei, utaalamu, maelezo, mitandao ya kijamii na muda wa kupatikana',
       'trainer.profileNotLoaded':
           'Hatukuweza kufungua wasifu wako wa trainer. Angalia mtandao wako kisha ujaribu tena.',
       'trainer.error.invalidPhone': 'Weka namba sahihi ya simu.',
@@ -4036,6 +4040,10 @@ class FFLocale extends ChangeNotifier {
       'terms.agreeTo': 'Ninakubali {title}',
       'terms.mustAgree': 'Tafadhali soma na ukubali vigezo ili kuendelea.',
       'kyc.field.regionChoose': 'Chagua mkoa',
+      'kyc.field.cityChoose': 'Chagua kwenye orodha',
+      'kyc.field.bankChoose': 'Chagua benki yako',
+      'kyc.field.bankOther': 'Benki nyingine (haipo kwenye orodha)',
+      'kyc.field.bankName': 'Jina la benki',
       'photos.title': 'Picha',
       'photos.hint':
           'Ongeza hadi picha {n}. Gusa picha ili iwe picha yako ya wasifu.',

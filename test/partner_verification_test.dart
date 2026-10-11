@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:fitflexmobile/shared/tanzania_banks.dart';
 import 'package:fitflexmobile/app_scope.dart';
 import 'package:fitflexmobile/shared/auth_state.dart';
 import 'package:fitflexmobile/screens/vendor/vendor_home_page.dart';
@@ -628,10 +629,13 @@ void main() {
           find.byKey(const Key('kyc-field-addressLine1')),
           'Mbezi Beach',
         );
-        await tester.enterText(
-          find.byKey(const Key('kyc-field-addressCity')),
-          'Dar es Salaam',
-        );
+        // City is picked from the regions of Tanzania; there is no separate
+        // region field any more.
+        expect(find.byKey(const Key('kyc-field-addressRegion')), findsNothing);
+        await tester.tap(find.byKey(const Key('kyc-field-addressCity')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Dar es Salaam').last);
+        await tester.pumpAndSettle();
         await tester.tap(find.byKey(const Key('kyc-form-save')));
         await tester.pumpAndSettle();
         expect(find.text('Enter a valid email address.'), findsOneWidget);
@@ -767,6 +771,58 @@ void main() {
         expect(find.byTooltip('Remove'), findsOneWidget);
       },
     );
+
+    testWidgets('payout: a bank is picked from the list of Tanzanian banks', (
+      tester,
+    ) async {
+      _tall(tester);
+      final repo = _FakeRepo(_trainer());
+      await tester.pumpWidget(_app(VerificationCenterPage(repository: repo)));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('kyc-item-settlement.payout_account')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('kyc-account-add')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Bank'));
+      await tester.pumpAndSettle();
+
+      // No bank chosen yet: saving asks for one, and nothing is typed.
+      expect(find.byKey(const Key('kyc-field-bankName')), findsNothing);
+      await tester.tap(find.byKey(const Key('kyc-form-save')));
+      await tester.pumpAndSettle();
+      expect(repo.calls, isEmpty);
+
+      await tester.tap(find.byKey(const Key('kyc-field-bank')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('CRDB Bank').last);
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('kyc-field-accountName')),
+        'Neema Said',
+      );
+      await tester.enterText(
+        find.byKey(const Key('kyc-field-accountNumber')),
+        '0150123456789',
+      );
+      await tester.tap(find.byKey(const Key('kyc-form-save')));
+      await tester.pumpAndSettle();
+      expect(repo.bodies.single, {
+        'method': 'bank',
+        'provider': 'CRDB Bank',
+        'accountName': 'Neema Said',
+        'accountNumber': '0150123456789',
+      });
+    });
+
+    test('the bank list is alphabetical, with no bank twice', () {
+      final sorted = [...tanzaniaBanks]
+        ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+      expect(tanzaniaBanks, sorted);
+      expect(tanzaniaBanks.toSet().length, tanzaniaBanks.length);
+      expect(tanzaniaBanks, containsAll(['CRDB Bank', 'NMB Bank']));
+    });
   });
 
   group('optional items (vendors)', () {
