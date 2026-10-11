@@ -337,5 +337,29 @@ void main() {
       await tester.tap(find.byKey(const Key('trainer-digest-open')));
       expect(opened, isTrue);
     });
+
+    testWidgets('home digest is left out with no connected client', (
+      tester,
+    ) async {
+      // Only connections that ended or were declined: nothing to show.
+      final api = _FakeApi()
+        ..clients = [
+          _conn(id: 'e', status: 'ended', member: 'Past Client'),
+          _conn(id: 'd', status: 'declined', member: 'Declined'),
+        ];
+      await tester.pumpWidget(_app(api, ClientsDigest(onOpenClients: () {})));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('trainer-clients-digest')), findsNothing);
+    });
+
+    testWidgets('home digest still shows a request waiting for an answer', (
+      tester,
+    ) async {
+      final api = _FakeApi()
+        ..clients = [_conn(id: 'p', status: 'pending', member: 'New Member')];
+      await tester.pumpWidget(_app(api, ClientsDigest(onOpenClients: () {})));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('trainer-clients-digest')), findsOneWidget);
+    });
   });
 }

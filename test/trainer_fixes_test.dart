@@ -6,6 +6,7 @@ import 'package:fitflexmobile/app_scope.dart';
 import 'package:fitflexmobile/screens/owner/owner_trainers_page.dart';
 import 'package:fitflexmobile/shared/api_client.dart';
 import 'package:fitflexmobile/shared/auth_state.dart';
+import 'package:fitflexmobile/shared/components/components.dart';
 import 'package:fitflexmobile/shared/design_tokens.dart';
 import 'package:fitflexmobile/shared/i18n.dart';
 import 'package:fitflexmobile/shared/models.dart';
@@ -214,7 +215,13 @@ void main() {
     );
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('trainerFormEmail')), findsNothing);
+    // The account email is shown, but it is not changed from this form.
+    expect(
+      tester
+          .widget<FFTextField>(find.byKey(const Key('trainerFormEmail')))
+          .enabled,
+      isFalse,
+    );
     expect(find.byKey(const Key('photo-gallery-item-1')), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('trainerFormSave')));

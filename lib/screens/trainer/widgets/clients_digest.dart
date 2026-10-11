@@ -45,7 +45,7 @@ class _ClientsDigestState extends State<ClientsDigest> {
   @override
   Widget build(BuildContext context) {
     final clients = _clients;
-    if (clients == null || clients.isEmpty) return const SizedBox.shrink();
+    if (clients == null) return const SizedBox.shrink();
     final theme = Theme.of(context);
     final requests = clients
         .where((c) => c.status == TrainerConnectionStatus.pending)
@@ -53,6 +53,9 @@ class _ClientsDigestState extends State<ClientsDigest> {
     final active = clients
         .where((c) => c.status == TrainerConnectionStatus.active)
         .toList();
+    // Nothing to show without a connected client or a request to answer
+    // (ended or declined connections do not count).
+    if (active.isEmpty && requests == 0) return const SizedBox.shrink();
     final toCheck = active
         .where((c) => (c.summary?.needsAttention ?? const []).isNotEmpty)
         .toList();

@@ -15,6 +15,7 @@ import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
 import '../../../shared/i18n.dart';
 import '../../../shared/product_categories.dart';
+import '../../../shared/tanzania_banks.dart';
 import '../../../shared/tanzania_regions.dart';
 import '../../../shared/widgets/product_category_picker.dart';
 import 'verification_models.dart';
@@ -211,11 +212,13 @@ class _DateField extends StatelessWidget {
 class _AddressFields {
   _AddressFields(KycAddress a)
     : line1 = TextEditingController(text: a.line1),
-      city = TextEditingController(text: a.city),
-      region = TextEditingController(text: a.region);
+      // An address is a street or plot and a city, picked from the regions
+      // of Tanzania. One saved with only a region shows that region.
+      city = TextEditingController(
+        text: (a.city ?? '').isNotEmpty ? a.city : a.region,
+      );
   final TextEditingController line1;
   final TextEditingController city;
-  final TextEditingController region;
 
   List<Widget> build(
     BuildContext context,
@@ -223,38 +226,44 @@ class _AddressFields {
     bool required = true,
   }) => [
     _text(context, '${prefix}Line1', line1, required: required),
-    _text(context, '${prefix}City', city, required: required),
-    _RegionPicker(fieldKey: '${prefix}Region', controller: region),
+    _CityPicker(
+      fieldKey: '${prefix}City',
+      controller: city,
+      required: required,
+    ),
   ];
 
   Map<String, dynamic> toJson() => {
     'line1': line1.text.trim(),
     'city': city.text.trim(),
-    'region': region.text.trim(),
     'country': 'TZ',
   };
 
   void dispose() {
     line1.dispose();
     city.dispose();
-    region.dispose();
   }
 }
 
-/// Region as a list to pick from (the regions of Tanzania), kept in
+/// City or town as a list to pick from (the regions of Tanzania), kept in
 /// [controller] so the form saves it like any other field. A value typed
 /// before the list existed stays selectable until it is changed.
-class _RegionPicker extends StatefulWidget {
-  const _RegionPicker({required this.fieldKey, required this.controller});
+class _CityPicker extends StatefulWidget {
+  const _CityPicker({
+    required this.fieldKey,
+    required this.controller,
+    this.required = false,
+  });
 
   final String fieldKey;
   final TextEditingController controller;
+  final bool required;
 
   @override
-  State<_RegionPicker> createState() => _RegionPickerState();
+  State<_CityPicker> createState() => _CityPickerState();
 }
 
-class _RegionPickerState extends State<_RegionPicker> {
+class _CityPickerState extends State<_CityPicker> {
   late final String _typed = widget.controller.text.trim();
   late String? _value =
       matchTanzaniaRegion(_typed) ?? (_typed.isEmpty ? null : _typed);
@@ -276,10 +285,12 @@ class _RegionPickerState extends State<_RegionPicker> {
         initialValue: _value,
         isExpanded: true,
         decoration: InputDecoration(
-          labelText: context.tr('kyc.field.${widget.fieldKey}'),
+          labelText:
+              context.tr('kyc.field.${widget.fieldKey}') +
+              (widget.required ? ' *' : ''),
           border: const OutlineInputBorder(),
         ),
-        hint: Text(context.tr('kyc.field.regionChoose')),
+        hint: Text(context.tr('kyc.field.cityChoose')),
         items: [
           if (legacy) DropdownMenuItem(value: _typed, child: Text(_typed)),
           for (final r in tanzaniaRegions)
@@ -289,6 +300,9 @@ class _RegionPickerState extends State<_RegionPicker> {
           _value = v;
           widget.controller.text = v ?? '';
         }),
+        validator: (v) => widget.required && (v == null || v.isEmpty)
+            ? context.tr('kyc.required')
+            : null,
       ),
     );
   }
@@ -1235,6 +1249,9 @@ class _PayoutAccountsPageState extends State<PayoutAccountsPage> {
   );
 }
 
+/// The "my bank is not listed" choice in the bank list.
+const _otherBank = '__other__';
+
 class _AddAccountPage extends StatefulWidget {
   const _AddAccountPage({required this.repository});
   final VerificationRepository repository;
@@ -1247,6 +1264,8 @@ class _AddAccountPageState extends State<_AddAccountPage> {
   final _form = GlobalKey<FormState>();
   String _method = 'mobile_money';
   String? _mobileProvider = 'mpesa';
+  // A bank from the list, or [_otherBank] with its name typed in [_bank].
+  String? _bankChoice;
   final _bank = TextEditingController();
   final _name = TextEditingController();
   final _number = TextEditingController();
@@ -1267,7 +1286,11 @@ class _AddAccountPageState extends State<_AddAccountPage> {
     try {
       await widget.repository.addPayoutAccount({
         'method': _method,
-        'provider': _method == 'bank' ? _bank.text.trim() : _mobileProvider,
+        'provider': _method != 'bank'
+            ? _mobileProvider
+            : _bankChoice == _otherBank
+            ? _bank.text.trim()
+            : _bankChoice,
         'accountName': _name.text.trim(),
         'accountNumber': _number.text.trim(),
         if (_method == 'bank' && _branch.text.trim().isNotEmpty)
@@ -1313,8 +1336,34 @@ class _AddAccountPageState extends State<_AddAccountPage> {
           (v) => setState(() => _mobileProvider = v),
           required: true,
         )
-      else
-        _text(context, 'bank', _bank, required: true),
+      else ...[
+        Padding(
+          padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
+          child: DropdownButtonFormField<String>(
+            key: const Key('kyc-field-bank'),
+            initialValue: _bankChoice,
+            isExpanded: true,
+            decoration: InputDecoration(
+              labelText: '${context.tr('kyc.field.bank')} *',
+              border: const OutlineInputBorder(),
+            ),
+            hint: Text(context.tr('kyc.field.bankChoose')),
+            items: [
+              for (final b in tanzaniaBanks)
+                DropdownMenuItem(value: b, child: Text(b)),
+              DropdownMenuItem(
+                value: _otherBank,
+                child: Text(context.tr('kyc.field.bankOther')),
+              ),
+            ],
+            onChanged: (v) => setState(() => _bankChoice = v),
+            validator: (v) => v == null ? context.tr('kyc.required') : null,
+          ),
+        ),
+        // Only for a bank that is not in the list.
+        if (_bankChoice == _otherBank)
+          _text(context, 'bankName', _bank, required: true),
+      ],
       _text(
         context,
         'accountName',

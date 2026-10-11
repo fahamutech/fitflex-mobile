@@ -253,8 +253,9 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
                 ),
                 const SizedBox(height: FFTokens.spacingSm),
               ],
-              // Email — part of the account, not of a trainer's own edit.
-              if (!widget.selfEdit) ...[
+              // Email — part of the account: a trainer sees it but changes it
+              // through their sign-in details, not here.
+              if (!widget.selfEdit || _email.text.isNotEmpty) ...[
                 FFTextField(
                   key: const Key('trainerFormEmail'),
                   controller: _email,
