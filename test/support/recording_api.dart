@@ -398,3 +398,24 @@ Future<void> tapAndSettleDialogClose(WidgetTester tester, Finder f) async {
   await tester.tap(f);
   await tester.pumpAndSettle();
 }
+
+/// Runs [body] collecting (instead of failing on) framework error reports.
+/// Each is returned as its full report text, rendered at the moment it was
+/// reported (the widget tree it describes may be gone afterwards).
+Future<List<String>> captureFlutterErrors(Future<void> Function() body) async {
+  final previous = FlutterError.onError;
+  final errors = <String>[];
+  FlutterError.onError = (details) {
+    try {
+      errors.add(details.toDiagnosticsNode().toStringDeep());
+    } catch (_) {
+      errors.add(details.exceptionAsString());
+    }
+  };
+  try {
+    await body();
+  } finally {
+    FlutterError.onError = previous;
+  }
+  return errors;
+}
