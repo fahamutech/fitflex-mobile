@@ -397,25 +397,15 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
   /// Cancel an order that is not on its way yet; a paid one is refunded.
   Future<void> _cancelOrder(Map<String, dynamic> order) async {
     final paid = order['paymentStatus'] == 'paid';
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(context.tr('shop.cancelOrder')),
-        content: Text(
-          context.tr(paid ? 'shop.cancelConfirmPaid' : 'shop.cancelConfirm'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(context.tr('sessions.keep')),
-          ),
-          FilledButton(
-            key: const Key('order-cancel-confirm'),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(context.tr('shop.cancelOrder')),
-          ),
-        ],
+    final confirmed = await showFFConfirmDialog(
+      context,
+      title: context.tr('shop.cancelOrder'),
+      message: context.tr(
+        paid ? 'shop.cancelConfirmPaid' : 'shop.cancelConfirm',
       ),
+      cancelLabel: context.tr('sessions.keep'),
+      confirmLabel: context.tr('shop.cancelOrder'),
+      confirmKey: const Key('order-cancel-confirm'),
     );
     if (confirmed != true || !mounted) return;
     final messenger = FFSnack.of(context);

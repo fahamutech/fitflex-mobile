@@ -96,23 +96,13 @@ class _ReviewsSectionState extends State<ReviewsSection> {
   }
 
   Future<void> _delete() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(ctx.tr('reviews.deleteConfirmTitle')),
-        content: Text(ctx.tr('reviews.deleteConfirmBody')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(ctx.tr('reviews.cancel')),
-          ),
-          FilledButton(
-            key: const Key('review-delete-confirm'),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(ctx.tr('reviews.delete')),
-          ),
-        ],
-      ),
+    final confirmed = await showFFConfirmDialog(
+      context,
+      title: context.tr('reviews.deleteConfirmTitle'),
+      message: context.tr('reviews.deleteConfirmBody'),
+      cancelLabel: context.tr('reviews.cancel'),
+      confirmLabel: context.tr('reviews.delete'),
+      confirmKey: const Key('review-delete-confirm'),
     );
     if (confirmed != true || !mounted) return;
     final locale = FFLocaleScope.of(context);

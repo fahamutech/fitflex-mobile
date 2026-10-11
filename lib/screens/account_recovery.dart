@@ -434,23 +434,13 @@ class _RecoveryStatusScreenState extends State<RecoveryStatusScreen> {
   }
 
   Future<void> _cancel() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        content: Text(context.tr('rec.cancelAsk')),
-        actions: [
-          TextButton(
-            key: const Key('recovery-cancel-no'),
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(context.tr('rec.cancelNo')),
-          ),
-          TextButton(
-            key: const Key('recovery-cancel-yes'),
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(context.tr('rec.cancelYes')),
-          ),
-        ],
-      ),
+    final ok = await showFFConfirmDialog(
+      context,
+      message: context.tr('rec.cancelAsk'),
+      cancelLabel: context.tr('rec.cancelNo'),
+      confirmLabel: context.tr('rec.cancelYes'),
+      cancelKey: const Key('recovery-cancel-no'),
+      confirmKey: const Key('recovery-cancel-yes'),
     );
     if (ok != true || !mounted) return;
     final api = AppScope.of(context).api;

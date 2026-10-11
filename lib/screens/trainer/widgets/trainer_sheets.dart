@@ -70,23 +70,13 @@ class _TrainerSessionsSheetState extends State<TrainerSessionsSheet> {
 
   /// Cancel a session I can't take. A member who paid is refunded in full.
   Future<void> _cancelBooking(Map<String, dynamic> s) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(context.tr('trainer.cancelSession')),
-        content: Text(context.tr('trainer.cancelSessionConfirm')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(context.tr('sessions.keep')),
-          ),
-          FilledButton(
-            key: const Key('trainer-cancel-confirm'),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(context.tr('trainer.cancelSession')),
-          ),
-        ],
-      ),
+    final confirmed = await showFFConfirmDialog(
+      context,
+      title: context.tr('trainer.cancelSession'),
+      message: context.tr('trainer.cancelSessionConfirm'),
+      cancelLabel: context.tr('sessions.keep'),
+      confirmLabel: context.tr('trainer.cancelSession'),
+      confirmKey: const Key('trainer-cancel-confirm'),
     );
     if (confirmed != true || !mounted) return;
     final messenger = FFSnack.of(context);

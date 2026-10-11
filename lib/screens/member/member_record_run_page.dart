@@ -46,23 +46,13 @@ class _MemberRecordRunPageState extends State<MemberRecordRunPage> {
   }
 
   Future<void> _finish(RunRecorder r) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(ctx.tr('run.finishTitle')),
-        content: Text(ctx.tr('run.finishBody')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(ctx.tr('run.keepGoing')),
-          ),
-          FilledButton(
-            key: const Key('run-finish-confirm'),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(ctx.tr('run.finish')),
-          ),
-        ],
-      ),
+    final ok = await showFFConfirmDialog(
+      context,
+      title: context.tr('run.finishTitle'),
+      message: context.tr('run.finishBody'),
+      cancelLabel: context.tr('run.keepGoing'),
+      confirmLabel: context.tr('run.finish'),
+      confirmKey: const Key('run-finish-confirm'),
     );
     if (ok == true) await r.finish();
   }
@@ -97,23 +87,13 @@ class _MemberRecordRunPageState extends State<MemberRecordRunPage> {
   }
 
   Future<void> _discard(RunRecorder r) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(ctx.tr('run.discardTitle')),
-        content: Text(ctx.tr('run.discardBody')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(ctx.tr('trainer.cancel')),
-          ),
-          FilledButton(
-            key: const Key('run-discard-confirm'),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(ctx.tr('run.discard')),
-          ),
-        ],
-      ),
+    final ok = await showFFConfirmDialog(
+      context,
+      title: context.tr('run.discardTitle'),
+      message: context.tr('run.discardBody'),
+      cancelLabel: context.tr('trainer.cancel'),
+      confirmLabel: context.tr('run.discard'),
+      confirmKey: const Key('run-discard-confirm'),
     );
     if (ok == true) await r.discard();
   }

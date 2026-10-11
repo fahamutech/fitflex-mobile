@@ -321,22 +321,12 @@ class _TrainerClientPageState extends State<TrainerClientPage> {
   }
 
   Future<void> _end() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(ctx.tr('clients.endTitle')),
-        content: Text(ctx.tr('clients.endBody').replaceAll('{name}', _name)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(ctx.tr('workout.keepGoing')),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(ctx.tr('connect.end')),
-          ),
-        ],
-      ),
+    final ok = await showFFConfirmDialog(
+      context,
+      title: context.tr('clients.endTitle'),
+      message: context.tr('clients.endBody').replaceAll('{name}', _name),
+      cancelLabel: context.tr('workout.keepGoing'),
+      confirmLabel: context.tr('connect.end'),
     );
     if (ok != true || !mounted) return;
     final navigator = Navigator.of(context);

@@ -232,24 +232,14 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
   }
 
   Future<void> _signOut(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(context.tr('home.signout')),
-        content: Text(context.tr('confirm.signout')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(context.tr('member.cancel')),
-          ),
-          FilledButton(
-            key: const Key('owner-confirm-sign-out'),
-            style: FilledButton.styleFrom(backgroundColor: FFTokens.error500),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(context.tr('home.signout')),
-          ),
-        ],
-      ),
+    final confirmed = await showFFConfirmDialog(
+      context,
+      title: context.tr('home.signout'),
+      message: context.tr('confirm.signout'),
+      cancelLabel: context.tr('member.cancel'),
+      confirmLabel: context.tr('home.signout'),
+      destructive: true,
+      confirmKey: const Key('owner-confirm-sign-out'),
     );
     if (confirmed != true || !context.mounted) return;
     await AppScope.of(context).auth.signOut();

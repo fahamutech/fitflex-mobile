@@ -213,23 +213,13 @@ class _OwnerRegistrationPageState extends State<OwnerRegistrationPage> {
 
   Future<void> _removeGym(int index) async {
     if (_gyms.length <= 1) return;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(context.tr('ownerReg.removeGym')),
-        content: Text(context.tr('ownerReg.confirmRemoveGym')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(context.tr('member.cancel')),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: FFTokens.error500),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(context.tr('ownerReg.removeGym')),
-          ),
-        ],
-      ),
+    final confirmed = await showFFConfirmDialog(
+      context,
+      title: context.tr('ownerReg.removeGym'),
+      message: context.tr('ownerReg.confirmRemoveGym'),
+      cancelLabel: context.tr('member.cancel'),
+      confirmLabel: context.tr('ownerReg.removeGym'),
+      destructive: true,
     );
     if (confirmed != true || !mounted) return;
     setState(() {

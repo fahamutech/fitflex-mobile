@@ -77,23 +77,13 @@ class _MemberMessageSettingsPageState extends State<MemberMessageSettingsPage> {
   // switched on after they agree.
   Future<void> _setOffers(String channel, String key, bool value) async {
     if (!value) return _set(key, false);
-    final agreed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(ctx.tr('msgPrefs.${channel}Consent.title')),
-        content: Text(ctx.tr('msgPrefs.${channel}Consent.body')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(ctx.tr('comms.keep')),
-          ),
-          FilledButton(
-            key: Key('$channel-agree'),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(ctx.tr('msgPrefs.${channel}Consent.agree')),
-          ),
-        ],
-      ),
+    final agreed = await showFFConfirmDialog(
+      context,
+      title: context.tr('msgPrefs.${channel}Consent.title'),
+      message: context.tr('msgPrefs.${channel}Consent.body'),
+      cancelLabel: context.tr('comms.keep'),
+      confirmLabel: context.tr('msgPrefs.${channel}Consent.agree'),
+      confirmKey: Key('$channel-agree'),
     );
     if (agreed == true) await _set(key, true);
   }

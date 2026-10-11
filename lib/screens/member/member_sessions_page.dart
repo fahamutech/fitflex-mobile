@@ -67,29 +67,17 @@ class _MemberSessionsPageState extends State<MemberSessionsPage> {
     final rule = (booking['cancellation'] as Map?) ?? const {};
     final refundable = rule['refundable'] == true;
     final amount = formatCurrency(booking['amountTzs'] as num? ?? 0);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(context.tr('sessions.cancelTitle')),
-        content: Text(
-          refundable
-              ? context
-                    .tr('sessions.cancelConfirmRefund')
-                    .replaceFirst('{amount}', amount)
-              : context.tr('sessions.cancelConfirm'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(context.tr('sessions.keep')),
-          ),
-          FilledButton(
-            key: const Key('session-cancel-confirm'),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(context.tr('sessions.cancel')),
-          ),
-        ],
-      ),
+    final confirmed = await showFFConfirmDialog(
+      context,
+      title: context.tr('sessions.cancelTitle'),
+      message: refundable
+          ? context
+                .tr('sessions.cancelConfirmRefund')
+                .replaceFirst('{amount}', amount)
+          : context.tr('sessions.cancelConfirm'),
+      cancelLabel: context.tr('sessions.keep'),
+      confirmLabel: context.tr('sessions.cancel'),
+      confirmKey: const Key('session-cancel-confirm'),
     );
     if (confirmed != true || !mounted) return;
     final messenger = FFSnack.of(context);

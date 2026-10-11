@@ -310,23 +310,13 @@ Future<bool> deleteOwnActivity(BuildContext context, Activity a) async {
   final messenger = FFSnack.of(context);
   final done = context.tr('logActivity.deleted');
   final failed = context.tr('logActivity.deleteFailed');
-  final ok = await showDialog<bool>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: Text(ctx.tr('logActivity.deleteTitle')),
-      content: Text(ctx.tr('logActivity.deleteBody')),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(ctx, false),
-          child: Text(ctx.tr('trainer.cancel')),
-        ),
-        FilledButton(
-          key: const Key('activity-delete-confirm'),
-          onPressed: () => Navigator.pop(ctx, true),
-          child: Text(ctx.tr('logActivity.delete')),
-        ),
-      ],
-    ),
+  final ok = await showFFConfirmDialog(
+    context,
+    title: context.tr('logActivity.deleteTitle'),
+    message: context.tr('logActivity.deleteBody'),
+    cancelLabel: context.tr('trainer.cancel'),
+    confirmLabel: context.tr('logActivity.delete'),
+    confirmKey: const Key('activity-delete-confirm'),
   );
   if (ok != true) return false;
   try {

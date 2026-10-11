@@ -91,23 +91,13 @@ class _VerificationCenterPageState extends State<VerificationCenterPage> {
   }
 
   Future<void> _confirmSubmit() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(ctx.tr('kyc.submit.title')),
-        content: Text(ctx.tr('kyc.submit.body')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(ctx.tr('kyc.cancel')),
-          ),
-          FilledButton(
-            key: const Key('kyc-submit-confirm'),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(ctx.tr('kyc.submit.action')),
-          ),
-        ],
-      ),
+    final ok = await showFFConfirmDialog(
+      context,
+      title: context.tr('kyc.submit.title'),
+      message: context.tr('kyc.submit.body'),
+      cancelLabel: context.tr('kyc.cancel'),
+      confirmLabel: context.tr('kyc.submit.action'),
+      confirmKey: const Key('kyc-submit-confirm'),
     );
     if (ok == true) await _run(() => _repo!.submit(), done: 'kyc.submit.done');
   }

@@ -237,23 +237,13 @@ class _ParticipantsPageState extends State<_ParticipantsPage> {
     bool leave = false,
   }) async {
     if (body != null) {
-      final ok = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(title ?? _c.name),
-          content: Text(body),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(ctx.tr('workout.keepGoing')),
-            ),
-            FilledButton(
-              key: Key('challenge-$action-confirm'),
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(confirm ?? title ?? ''),
-            ),
-          ],
-        ),
+      final ok = await showFFConfirmDialog(
+        context,
+        title: title ?? _c.name,
+        message: body,
+        cancelLabel: context.tr('workout.keepGoing'),
+        confirmLabel: confirm ?? title ?? '',
+        confirmKey: Key('challenge-$action-confirm'),
       );
       if (ok != true || !mounted) return;
     }

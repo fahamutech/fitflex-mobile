@@ -80,26 +80,15 @@ class _CampaignDetailPageState extends State<CampaignDetailPage> {
     }
   }
 
-  Future<bool> _confirm(String titleKey, String bodyKey) async =>
-      await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(ctx.tr(titleKey)),
-          content: Text(ctx.tr(bodyKey)),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(ctx.tr('comms.keep')),
-            ),
-            FilledButton(
-              key: const Key('dialog-confirm'),
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(ctx.tr('comms.yes')),
-            ),
-          ],
-        ),
-      ) ??
-      false;
+  Future<bool> _confirm(String titleKey, String bodyKey) =>
+      showFFConfirmDialog(
+        context,
+        title: context.tr(titleKey),
+        message: context.tr(bodyKey),
+        cancelLabel: context.tr('comms.keep'),
+        confirmLabel: context.tr('comms.yes'),
+        confirmKey: const Key('dialog-confirm'),
+      );
 
   Future<void> _edit(Campaign c) async {
     await context.push('/owner/communications/campaigns/${c.id}/edit');

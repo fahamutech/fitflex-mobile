@@ -141,23 +141,13 @@ class _MemberActivitySharingPageState extends State<MemberActivitySharingPage> {
   }
 
   Future<bool> _confirm(String title, String body, String action) async =>
-      await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(title),
-          content: Text(body),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(ctx.tr('workout.keepGoing')),
-            ),
-            FilledButton(
-              key: const Key('sharing-confirm'),
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(action),
-            ),
-          ],
-        ),
+      await showFFConfirmDialog(
+        context,
+        title: title,
+        message: body,
+        cancelLabel: context.tr('workout.keepGoing'),
+        confirmLabel: action,
+        confirmKey: const Key('sharing-confirm'),
       ) ==
       true;
 

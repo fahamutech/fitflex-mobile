@@ -83,23 +83,13 @@ class _TrainerPlanEditorPageState extends State<TrainerPlanEditorPage> {
   }
 
   Future<void> _delete() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(ctx.tr('plans.deleteTitle')),
-        content: Text(ctx.tr('plans.deleteBody')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(ctx.tr('workout.keepGoing')),
-          ),
-          FilledButton(
-            key: const Key('plan-delete-confirm'),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(ctx.tr('plans.delete')),
-          ),
-        ],
-      ),
+    final ok = await showFFConfirmDialog(
+      context,
+      title: context.tr('plans.deleteTitle'),
+      message: context.tr('plans.deleteBody'),
+      cancelLabel: context.tr('workout.keepGoing'),
+      confirmLabel: context.tr('plans.delete'),
+      confirmKey: const Key('plan-delete-confirm'),
     );
     if (ok != true || !mounted) return;
     final api = AppScope.of(context).api;

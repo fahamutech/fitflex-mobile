@@ -777,35 +777,21 @@ class _TrainerGymSheetState extends State<TrainerGymSheet> {
     final option = _options.firstWhere((o) => o['period'] == _period);
     final isPass = _access == 'trainer_pass';
     final price = formatCurrency((option['feeTzs'] as num?) ?? 0);
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(
-          ctx.tr(
-            isPass
-                ? 'trainerPass.confirmPassTitle'
-                : 'trainerPass.confirmPlanTitle',
-          ),
-        ),
-        content: Text(
-          ctx
-              .tr('trainerPass.confirmBody')
-              .replaceAll('{period}', ctx.tr('trainerPass.period.$_period'))
-              .replaceAll('{gym}', gym['name']?.toString() ?? '')
-              .replaceAll('{price}', price),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(ctx.tr('member.cancel')),
-          ),
-          FilledButton(
-            key: const Key('trainer-pass-confirm'),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(ctx.tr('trainerPass.request')),
-          ),
-        ],
+    final ok = await showFFConfirmDialog(
+      context,
+      title: context.tr(
+        isPass
+            ? 'trainerPass.confirmPassTitle'
+            : 'trainerPass.confirmPlanTitle',
       ),
+      message: context
+          .tr('trainerPass.confirmBody')
+          .replaceAll('{period}', context.tr('trainerPass.period.$_period'))
+          .replaceAll('{gym}', gym['name']?.toString() ?? '')
+          .replaceAll('{price}', price),
+      cancelLabel: context.tr('member.cancel'),
+      confirmLabel: context.tr('trainerPass.request'),
+      confirmKey: const Key('trainer-pass-confirm'),
     );
     if (ok != true || !mounted) return;
     final api = AppScope.of(context).api;

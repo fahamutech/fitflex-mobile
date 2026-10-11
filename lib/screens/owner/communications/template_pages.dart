@@ -101,23 +101,13 @@ class _TemplateDetailPageState extends State<TemplateDetailPage> {
   }
 
   Future<void> _archive() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(ctx.tr('comms.tpl.archiveTitle')),
-        content: Text(ctx.tr('comms.tpl.archiveBody')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(ctx.tr('comms.keep')),
-          ),
-          FilledButton(
-            key: const Key('dialog-confirm'),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(ctx.tr('comms.yes')),
-          ),
-        ],
-      ),
+    final ok = await showFFConfirmDialog(
+      context,
+      title: context.tr('comms.tpl.archiveTitle'),
+      message: context.tr('comms.tpl.archiveBody'),
+      cancelLabel: context.tr('comms.keep'),
+      confirmLabel: context.tr('comms.yes'),
+      confirmKey: const Key('dialog-confirm'),
     );
     if (ok != true || !mounted) return;
     final messenger = FFSnack.of(context);

@@ -232,23 +232,13 @@ class _MemberWorkoutPageState extends State<MemberWorkoutPage> {
   }
 
   Future<bool?> _confirm(String title, String body, String action) =>
-      showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(title),
-          content: Text(body),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(ctx.tr('workout.keepGoing')),
-            ),
-            FilledButton(
-              key: const Key('workout-confirm'),
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(action),
-            ),
-          ],
-        ),
+      showFFConfirmDialog(
+        context,
+        title: title,
+        message: body,
+        cancelLabel: context.tr('workout.keepGoing'),
+        confirmLabel: action,
+        confirmKey: const Key('workout-confirm'),
       );
 
   TextEditingController _field(String key, String? initial) =>
