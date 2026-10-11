@@ -11,6 +11,7 @@ import '../design_tokens.dart';
 import '../formatters.dart';
 import '../discovery_loader.dart';
 import '../i18n.dart';
+import '../product_categories.dart';
 import '../promotion.dart';
 import '../promotion_events.dart';
 
@@ -615,7 +616,12 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
             for (final category in categories) ...[
               const SizedBox(width: 6),
               FilterChip(
-                label: Text(category),
+                label: Text(
+                  ProductCategories.labelFor(
+                    category,
+                    FFLocaleScope.of(context).locale.languageCode,
+                  ),
+                ),
                 selected: _category == category,
                 onSelected: (_) => setState(() => _category = category),
               ),
@@ -1710,6 +1716,12 @@ class _VendorStoreSheetState extends State<VendorStoreSheet> {
         .map((product) => product.category)
         .whereType<String>()
         .toSet()
+        .map(
+          (c) => ProductCategories.labelFor(
+            c,
+            FFLocaleScope.of(context).locale.languageCode,
+          ),
+        )
         .join(', ');
     final reviews = (store['reviews'] as List? ?? []).whereType<Map>();
     return SafeArea(
@@ -1802,7 +1814,12 @@ class _VendorStoreSheetState extends State<VendorStoreSheet> {
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.shopping_bag_outlined),
                   title: Text(product.name),
-                  subtitle: Text(product.category ?? ''),
+                  subtitle: Text(
+                    ProductCategories.labelFor(
+                      product.category,
+                      FFLocaleScope.of(context).locale.languageCode,
+                    ),
+                  ),
                   trailing: Text(formatCurrency(product.effectivePrice)),
                 ),
               ),

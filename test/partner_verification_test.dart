@@ -3,6 +3,7 @@
 // Screens are pumped with a fake repository and a fake file picker, so no
 // network, camera or file system is involved.
 
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -133,6 +134,18 @@ class _FakeRepo extends VerificationRepository {
   final bodies = <Map<String, dynamic>>[];
   List<int>? uploadedBytes;
   String? uploadedName;
+
+  /// What GET /me/kyc/documents/:id/file returns; null makes it fail.
+  Uint8List? fileBytes;
+  final fileLoads = <String>[];
+
+  @override
+  Future<Uint8List> documentFile(String documentId) async {
+    fileLoads.add(documentId);
+    final bytes = fileBytes;
+    if (bytes == null) throw ApiException(404, {'error': 'file_not_found'});
+    return bytes;
+  }
 
   KycOverview get _now => KycOverview.fromJson(json);
 
@@ -303,13 +316,19 @@ class _FakeApi extends ApiClient {
   }
 }
 
-Future<Widget> _scoped(Widget home, _FakeApi api, String userType) async {
+Future<Widget> _scoped(
+  Widget home,
+  _FakeApi api,
+  String userType, {
+  Map<String, dynamic> user = const {},
+}) async {
   SharedPreferences.setMockInitialValues({});
   final auth = AuthState(api);
   await auth.signIn('t', {
     'id': 'u1',
     'userType': userType,
     'status': 'active',
+    ...user,
   });
   final locale = FFLocale()..set(const Locale('en'));
   return AppScope(
@@ -367,7 +386,18 @@ void main() {
       expect(personRoleFor('vendor'), 'authorised_representative');
       expect(personRoleFor('trainer'), 'principal');
       expect(personFieldsFor('gym_owner'), contains('relationship'));
-      expect(personFieldsFor('vendor'), containsAll(['position', 'authority']));
+      expect(
+        personFieldsFor('vendor'),
+        containsAll([
+          'fullName',
+          'nationality',
+          'idType',
+          'idNumber',
+          'position',
+        ]),
+      );
+      expect(personFieldsFor('vendor'), isNot(contains('authority')));
+      expect(documentSpecs.containsKey('representative_authority'), isFalse);
       expect(hasBusinessFor('trainer'), isFalse);
     });
   });
@@ -1010,12 +1040,7 @@ void main() {
   });
 
   group('vendor business profile items', () {
-    const profileKeys = [
-      'business.contact',
-      'marketplace.product_categories',
-      'marketplace.delivery',
-      'marketplace.returns',
-    ];
+    const profileKeys = ['business.contact', 'marketplace.product_categories'];
 
     Map<String, dynamic> vendor(String partnerType, {bool done = false}) => {
       'partnerType': partnerType,
@@ -1062,70 +1087,114 @@ void main() {
       });
     }
 
-    testWidgets('saving sends exactly the five fields, then reloads', (
+    testWidgets(
+      'saving sends contact, email and the category keys, then reloads',
+      (tester) async {
+        _tall(tester);
+        final api = _FakeApi(
+          profile: {'contactNumber': '+255700000001', 'businessName': 'X'},
+        );
+        final repo = _FakeRepo(vendor('vendor'));
+        var loads = 0;
+        final counting = _CountingRepo(repo, () => loads++);
+        await tester.pumpWidget(
+          await _scoped(
+            VerificationCenterPage(repository: counting),
+            api,
+            'vendor',
+          ),
+        );
+        await tester.pumpAndSettle();
+        final before = loads;
+        await tester.tap(find.byKey(const Key('kyc-item-business.contact')));
+        await tester.pumpAndSettle();
+        // Prefilled from the saved profile.
+        expect(find.text('+255700000001'), findsOneWidget);
+        // No delivery areas or returns policy any more.
+        expect(
+          find.byKey(const Key('kyc-vendor-deliveryRegions')),
+          findsNothing,
+        );
+        expect(find.byKey(const Key('kyc-vendor-returnsPolicy')), findsNothing);
+        expect(find.text('Email (optional)'), findsOneWidget);
+
+        // At least one category is required; the email is not.
+        await tester.tap(find.byKey(const Key('kyc-form-save')));
+        await tester.pumpAndSettle();
+        expect(api.saved, isEmpty);
+        expect(
+          find.byKey(const Key('kyc-vendor-category-error')),
+          findsOneWidget,
+        );
+
+        // An email that is given must still look like an address.
+        await tester.enterText(
+          find.byKey(const Key('kyc-vendor-email')),
+          'nope',
+        );
+        await tester.tap(
+          find.byKey(const Key('kyc-vendor-category-equipment')),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('kyc-form-save')));
+        await tester.pumpAndSettle();
+        expect(api.saved, isEmpty);
+
+        await tester.enterText(find.byKey(const Key('kyc-vendor-email')), '');
+        await tester.tap(
+          find.byKey(const Key('kyc-vendor-category-supplements_nutrition')),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('kyc-form-save')));
+        await tester.pumpAndSettle();
+
+        expect(api.saved, [
+          {
+            'contactNumber': '+255700000001',
+            'email': '',
+            'productCategories': ['equipment', 'supplements_nutrition'],
+          },
+        ]);
+        expect(api.saved.single.containsKey('publish'), isFalse);
+        expect(find.byType(VendorKycProfilePage), findsNothing);
+        expect(loads, greaterThan(before));
+      },
+    );
+
+    testWidgets('saved categories and older values are ticked on opening', (
       tester,
     ) async {
       _tall(tester);
       final api = _FakeApi(
-        profile: {'contactNumber': '+255700000001', 'businessName': 'X'},
+        profile: {
+          'contactNumber': '1',
+          'productCategories': ['equipment', 'Food & drinks', 'Gear', 'events'],
+        },
       );
-      final repo = _FakeRepo(vendor('vendor'));
-      var loads = 0;
-      final counting = _CountingRepo(repo, () => loads++);
       await tester.pumpWidget(
         await _scoped(
-          VerificationCenterPage(repository: counting),
+          VerificationCenterPage(repository: _FakeRepo(vendor('vendor'))),
           api,
           'vendor',
         ),
       );
       await tester.pumpAndSettle();
-      final before = loads;
       await tester.tap(find.byKey(const Key('kyc-item-business.contact')));
       await tester.pumpAndSettle();
-      // Prefilled from the saved profile.
-      expect(find.text('+255700000001'), findsOneWidget);
-
-      // Email is required and must look like an address.
+      bool ticked(String key) => tester
+          .widget<CheckboxListTile>(find.byKey(Key('kyc-vendor-category-$key')))
+          .value!;
+      expect(ticked('equipment'), isTrue);
+      expect(ticked('food_drinks'), isTrue); // from its English name
+      expect(ticked('events'), isTrue);
+      expect(ticked('other'), isFalse); // "Gear" matches nothing: ignored
       await tester.tap(find.byKey(const Key('kyc-form-save')));
       await tester.pumpAndSettle();
-      expect(api.saved, isEmpty);
-      await tester.enterText(find.byKey(const Key('kyc-vendor-email')), 'nope');
-      await tester.tap(find.byKey(const Key('kyc-form-save')));
-      await tester.pumpAndSettle();
-      expect(api.saved, isEmpty);
-
-      await tester.enterText(
-        find.byKey(const Key('kyc-vendor-email')),
-        'shop@example.com',
-      );
-      await tester.enterText(
-        find.byKey(const Key('kyc-vendor-productCategories')),
-        'Supplements, Equipment ,',
-      );
-      await tester.enterText(
-        find.byKey(const Key('kyc-vendor-deliveryRegions')),
-        'Dar es Salaam, Arusha',
-      );
-      await tester.enterText(
-        find.byKey(const Key('kyc-vendor-returnsPolicy')),
-        'Returns within 7 days.',
-      );
-      await tester.tap(find.byKey(const Key('kyc-form-save')));
-      await tester.pumpAndSettle();
-
-      expect(api.saved, [
-        {
-          'contactNumber': '+255700000001',
-          'email': 'shop@example.com',
-          'productCategories': ['Supplements', 'Equipment'],
-          'deliveryRegions': ['Dar es Salaam', 'Arusha'],
-          'returnsPolicy': 'Returns within 7 days.',
-        },
+      expect(api.saved.single['productCategories'], [
+        'equipment',
+        'food_drinks',
+        'events',
       ]);
-      expect(api.saved.single.containsKey('publish'), isFalse);
-      expect(find.byType(VendorKycProfilePage), findsNothing);
-      expect(loads, greaterThan(before));
     });
 
     testWidgets('an API error is shown and the page stays open', (
@@ -1142,7 +1211,11 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('kyc-item-marketplace.returns')));
+      await tester.tap(
+        find.byKey(const Key('kyc-item-marketplace.product_categories')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('kyc-vendor-category-other')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('kyc-form-save')));
       await tester.pumpAndSettle();
@@ -1187,88 +1260,368 @@ void main() {
       expect(find.byType(PayoutAccountsPage), findsOneWidget);
     });
 
-    testWidgets('VendorProfileForm: optional fields only sent when filled', (
-      tester,
-    ) async {
-      _tall(tester);
-      Map<String, dynamic>? result;
-      Future<void> open(WidgetTester t, Map<String, dynamic> profile) async {
-        result = null;
-        await t.pumpWidget(const SizedBox());
-        await t.pumpWidget(
-          FFLocaleScope(
-            notifier: FFLocale()..set(const Locale('en')),
-            child: MaterialApp(
-              home: Builder(
-                builder: (ctx) => Scaffold(
-                  body: TextButton(
-                    onPressed: () async {
-                      result = await showModalBottomSheet<Map<String, dynamic>>(
-                        context: ctx,
-                        isScrollControlled: true,
-                        builder: (_) => VendorProfileForm(profile: profile),
-                      );
-                    },
-                    child: const Text('open'),
+    testWidgets(
+      'VendorProfileForm: email optional, no delivery or returns, categories as keys',
+      (tester) async {
+        _tall(tester);
+        Map<String, dynamic>? result;
+        Future<void> open(WidgetTester t, Map<String, dynamic> profile) async {
+          result = null;
+          await t.pumpWidget(const SizedBox());
+          await t.pumpWidget(
+            FFLocaleScope(
+              notifier: FFLocale()..set(const Locale('en')),
+              child: MaterialApp(
+                home: Builder(
+                  builder: (ctx) => Scaffold(
+                    body: TextButton(
+                      onPressed: () async {
+                        result =
+                            await showModalBottomSheet<Map<String, dynamic>>(
+                              context: ctx,
+                              isScrollControlled: true,
+                              builder: (_) =>
+                                  VendorProfileForm(profile: profile),
+                            );
+                      },
+                      child: const Text('open'),
+                    ),
                   ),
                 ),
               ),
             ),
+          );
+          await t.tap(find.text('open'));
+          await t.pumpAndSettle();
+        }
+
+        Future<void> publish(WidgetTester t) async {
+          final b = find.byKey(const Key('vendor-profile-publish'));
+          await t.ensureVisible(b);
+          await t.tap(b);
+          await t.pumpAndSettle();
+        }
+
+        // Missing logo/banner keeps the original gate: nothing is returned.
+        await open(tester, {'businessName': 'a'});
+        await publish(tester);
+        expect(result, isNull);
+        // The free-text, delivery and returns fields are gone.
+        for (final k in [
+          'vendor-profile-returnsPolicy',
+          'vendor-profile-deliveryRegions',
+          'vendor-profile-productCategories',
+          'vendor-profile-businessCategory',
+        ]) {
+          expect(find.byKey(Key(k)), findsNothing, reason: k);
+        }
+        expect(
+          find.byKey(const Key('vendor-profile-category-equipment')),
+          findsOneWidget,
+        );
+        expect(find.text('Email (optional)'), findsOneWidget);
+
+        // No email, no categories ticked, no older category: not publishable.
+        final full = {
+          'businessName': 'a',
+          'logo': 'l',
+          'banner': 'b',
+          'description': 'd',
+          'contactNumber': '1',
+          'address': 'ad',
+          'businessHours': {'summary': 'h'},
+          'settlementAccount': {'account': 's'},
+        };
+        await open(tester, full);
+        await publish(tester);
+        expect(result, isNull);
+
+        // Tick two categories: email may stay empty.
+        for (final k in ['food_drinks', 'equipment']) {
+          final tile = find.byKey(Key('vendor-profile-category-$k'));
+          await tester.ensureVisible(tile);
+          await tester.tap(tile);
+          await tester.pumpAndSettle();
+        }
+        await tester.pumpAndSettle();
+        await publish(tester);
+        expect(result, isNotNull);
+        expect(result!['publish'], isTrue);
+        expect(result!['email'], '');
+        expect(result!['productCategories'], ['food_drinks', 'equipment']);
+        // The server still asks for one business category: first pick's name.
+        expect(result!['businessCategory'], 'Food & drinks');
+        expect(result!.containsKey('deliveryRegions'), isFalse);
+        expect(result!.containsKey('returnsPolicy'), isFalse);
+
+        // An older business category that matches nothing still publishes.
+        await open(tester, {...full, 'businessCategory': 'Gear shop'});
+        await publish(tester);
+        expect(result!['businessCategory'], 'Gear shop');
+        expect(result!.containsKey('productCategories'), isFalse);
+
+        // One that matches a name is ticked.
+        await open(tester, {...full, 'businessCategory': 'equipment'});
+        await publish(tester);
+        expect(result!['productCategories'], ['equipment']);
+      },
+    );
+  });
+
+  group('vendor details and photo preview', () {
+    final png = base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    );
+
+    Map<String, dynamic> vendorOverview({
+      Map<String, dynamic>? person,
+      List<Map<String, dynamic>>? documents,
+    }) => {
+      'partnerType': 'vendor',
+      'case': {'id': 'kyc_v', 'status': 'draft'},
+      'people': [?person],
+      'documents': [...?documents],
+      'settlementAccounts': [],
+      'checklist': {
+        'sections': [
+          {
+            'key': 'representative',
+            'items': [
+              _item('representative.fullName', 'missing'),
+              _item('representative.nationality', 'missing'),
+              _item('representative.idNumber', 'missing'),
+              _item('representative.position', 'missing'),
+              _item(
+                'representative.id_document',
+                'missing',
+                requirementKey: 'representative_id',
+              ),
+            ],
+          },
+        ],
+        'missing': ['representative.fullName'],
+        'readyToSubmit': false,
+        'complete': false,
+      },
+    };
+
+    testWidgets(
+      'the vendor gives their own details: nationality and a position list, no authority',
+      (tester) async {
+        _tall(tester);
+        final repo = _FakeRepo(vendorOverview());
+        await tester.pumpWidget(
+          await _scoped(
+            VerificationCenterPage(repository: repo),
+            _FakeApi(),
+            'vendor',
+            user: {'displayName': 'Asha Mushi'},
           ),
         );
-        await t.tap(find.text('open'));
-        await t.pumpAndSettle();
-      }
+        await tester.pumpAndSettle();
+        // The section is called "Your details", not "Representative".
+        expect(find.text('Your details'), findsOneWidget);
+        expect(find.text('Representative'), findsNothing);
 
-      Future<void> publish(WidgetTester t) async {
-        final b = find.byKey(const Key('vendor-profile-publish'));
-        await t.ensureVisible(b);
-        await t.tap(b);
-        await t.pumpAndSettle();
-      }
+        await tester.tap(
+          find.byKey(const Key('kyc-item-representative.fullName')),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('Your details'), findsWidgets);
+        // Name comes from the account; nothing else is guessed.
+        expect(
+          find.widgetWithText(TextFormField, 'Asha Mushi'),
+          findsOneWidget,
+        );
+        expect(find.byKey(const Key('kyc-field-nationality')), findsOneWidget);
+        expect(find.byKey(const Key('kyc-field-position')), findsOneWidget);
+        expect(find.byKey(const Key('kyc-field-authority')), findsNothing);
+        expect(find.byKey(const Key('kyc-field-phone')), findsNothing);
+        expect(find.byKey(const Key('kyc-field-email')), findsNothing);
 
-      // Missing logo/banner keeps the original gate: nothing is returned.
-      await open(tester, {'businessName': 'a'});
-      await publish(tester);
-      expect(result, isNull);
+        await tester.enterText(
+          find.byKey(const Key('kyc-field-idNumber')),
+          '19900101-11111-00001-11',
+        );
+        // Nationality and position are mandatory.
+        await tester.tap(find.byKey(const Key('kyc-form-save')));
+        await tester.pumpAndSettle();
+        expect(repo.calls, isEmpty);
+        expect(find.text('Required'), findsNWidgets(2));
+
+        await tester.tap(find.byKey(const Key('kyc-field-nationality')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Kenya').last);
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('kyc-field-position')));
+        await tester.pumpAndSettle();
+        expect(find.text('Owner'), findsWidgets);
+        expect(find.text('Co-owner'), findsWidgets);
+        expect(find.text('Employee'), findsWidgets);
+        await tester.tap(find.text('Co-owner').last);
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('kyc-form-save')));
+        await tester.pumpAndSettle();
+
+        expect(repo.calls, ['person:authorised_representative']);
+        final body = repo.bodies.single;
+        expect(body['fullName'], 'Asha Mushi');
+        expect(body['nationality'], 'KE');
+        expect(body['position'], 'co_owner');
+        expect(body['idNumber'], '19900101-11111-00001-11');
+        for (final k in ['authority', 'phone', 'email', 'address']) {
+          expect(body.containsKey(k), isFalse, reason: k);
+        }
+      },
+    );
+
+    testWidgets('a saved position and nationality are kept', (tester) async {
+      _tall(tester);
+      final repo = _FakeRepo(
+        vendorOverview(
+          person: {
+            'role': 'authorised_representative',
+            'fullName': 'Juma Bakari',
+            'nationality': 'UG',
+            'idType': 'passport',
+            'idNumber': 'P123',
+            'position': 'employee',
+          },
+        ),
+      );
+      await tester.pumpWidget(
+        _app(
+          PersonFormPage(
+            repository: repo,
+            overview: KycOverview.fromJson(repo.json),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('kyc-form-save')));
+      await tester.pumpAndSettle();
+      expect(repo.bodies.single['position'], 'employee');
+      expect(repo.bodies.single['nationality'], 'UG');
+      expect(repo.bodies.single['idType'], 'passport');
+    });
+
+    testWidgets('a picture shows as a thumbnail right after it is uploaded', (
+      tester,
+    ) async {
+      _tall(tester);
+      final repo = _FakeRepo(vendorOverview());
+      await tester.pumpWidget(
+        _app(
+          DocumentPage(
+            repository: repo,
+            overview: KycOverview.fromJson(repo.json),
+            requirementKey: 'representative_id',
+            pickDocument: (_) async => PickedDocument(png, 'my id.png'),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('kyc-doc-preview')), findsNothing);
+      await tester.ensureVisible(find.byKey(const Key('kyc-doc-gallery')));
+      await tester.tap(find.byKey(const Key('kyc-doc-gallery')));
+      await tester.pumpAndSettle();
+
+      final preview = find.byKey(const Key('kyc-doc-preview'));
+      expect(preview, findsOneWidget);
       expect(
-        find.byKey(const Key('vendor-profile-returnsPolicy')),
+        find.descendant(of: preview, matching: find.byType(Image)),
         findsOneWidget,
       );
+      expect(tester.getSize(preview), const Size(72, 72));
+      // The picture is not fetched again, and the file name is not the label.
+      expect(repo.fileLoads, isEmpty);
+      expect(find.text('my id.png'), findsNothing);
+      expect(find.text('File attached'), findsOneWidget);
+    });
+
+    Map<String, dynamic> withFile(String fileName, {String? mime}) =>
+        vendorOverview(
+          documents: [
+            {
+              'id': 'doc_9',
+              'requirementKey': 'representative_id',
+              'docType': 'national_id',
+              'status': 'pending',
+              'hasFile': true,
+              'fileName': fileName,
+              'mimeType': ?mime,
+              'createdAt': '2026-10-01T00:00:00Z',
+            },
+          ],
+        );
+
+    testWidgets('an uploaded picture is loaded through the repository', (
+      tester,
+    ) async {
+      _tall(tester);
+      final repo = _FakeRepo(withFile('id.jpg', mime: 'image/jpeg'))
+        ..fileBytes = Uint8List.fromList(png);
+      await tester.pumpWidget(
+        _app(
+          DocumentPage(
+            repository: repo,
+            overview: KycOverview.fromJson(repo.json),
+            requirementKey: 'representative_id',
+            pickDocument: (_) async => null,
+          ),
+        ),
+      );
+      // Progress first, then the picture.
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      await tester.pumpAndSettle();
+      expect(repo.fileLoads, ['doc_9']);
       expect(
-        find.byKey(const Key('vendor-profile-productCategories')),
+        find.descendant(
+          of: find.byKey(const Key('kyc-doc-preview')),
+          matching: find.byType(Image),
+        ),
         findsOneWidget,
       );
+    });
 
-      final full = {
-        'businessName': 'a',
-        'logo': 'l',
-        'banner': 'b',
-        'description': 'd',
-        'businessCategory': 'c',
-        'contactNumber': '1',
-        'email': 'e@x.y',
-        'address': 'ad',
-        'deliveryRegions': ['Dar'],
-        'businessHours': {'summary': 'h'},
-        'settlementAccount': {'account': 's'},
-      };
-      await open(tester, full);
-      await publish(tester);
-      expect(result, isNotNull);
-      expect(result!['publish'], isTrue);
-      expect(result!.containsKey('returnsPolicy'), isFalse);
-      expect(result!.containsKey('productCategories'), isFalse);
+    testWidgets('a picture that cannot be loaded falls back to an icon', (
+      tester,
+    ) async {
+      _tall(tester);
+      final repo = _FakeRepo(withFile('id.jpg', mime: 'image/jpeg'));
+      await tester.pumpWidget(
+        _app(
+          DocumentPage(
+            repository: repo,
+            overview: KycOverview.fromJson(repo.json),
+            requirementKey: 'representative_id',
+            pickDocument: (_) async => null,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('kyc-doc-preview')), findsOneWidget);
+      expect(find.byIcon(Icons.image_outlined), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
 
-      await open(tester, {
-        ...full,
-        'returnsPolicy': '7 days',
-        'productCategories': ['A', 'B'],
-      });
-      await publish(tester);
-      expect(result!['returnsPolicy'], '7 days');
-      expect(result!['productCategories'], ['A', 'B']);
-      expect(result!['publish'], isTrue);
+    testWidgets('a PDF shows an icon with its file name', (tester) async {
+      _tall(tester);
+      final repo = _FakeRepo(withFile('licence.pdf', mime: 'application/pdf'));
+      await tester.pumpWidget(
+        _app(
+          DocumentPage(
+            repository: repo,
+            overview: KycOverview.fromJson(repo.json),
+            requirementKey: 'representative_id',
+            pickDocument: (_) async => null,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byIcon(Icons.picture_as_pdf_outlined), findsWidgets);
+      expect(find.text('licence.pdf'), findsOneWidget);
+      expect(repo.fileLoads, isEmpty);
     });
   });
 
@@ -1291,6 +1644,7 @@ void main() {
         'settlement',
         'professional',
         'representative',
+        'yourDetails',
         'marketplace',
         'agreements',
       ]) {
@@ -1328,6 +1682,7 @@ void main() {
         'liability_cover',
         'contact',
         'authority_document',
+        'nationality',
         'product_categories',
         'delivery',
         'returns',
@@ -1340,7 +1695,6 @@ void main() {
       }
       for (final o in [
         ...relationships,
-        ...authorities,
         ...entityTypes,
         ...mobileMoneyProviders,
         'nida',

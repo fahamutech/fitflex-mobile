@@ -8,12 +8,15 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../app_scope.dart';
 import '../../../shared/api_client.dart';
 import '../../../shared/api_error_message.dart';
 import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
 import '../../../shared/i18n.dart';
+import '../../../shared/product_categories.dart';
 import '../../../shared/tanzania_regions.dart';
+import '../../../shared/widgets/product_category_picker.dart';
 import 'verification_models.dart';
 import 'verification_repository.dart';
 
@@ -319,16 +322,39 @@ class _PersonFormPageState extends State<PersonFormPage> {
   );
   late final KycPerson _p =
       widget.overview.personFor(_role) ?? KycPerson(role: _role);
-  late final _name = TextEditingController(text: _p.fullName);
-  late final _idNumber = TextEditingController(text: _p.idNumber);
+  // A vendor's own details start from their account (name, and nationality
+  // and ID number when the profile has them); nothing is guessed otherwise.
+  late final Map<String, dynamic>? _account = context
+      .getInheritedWidgetOfExactType<AppScope>()
+      ?.auth
+      .user;
+  String? _accountText(String key) {
+    final v = _account?[key]?.toString().trim();
+    return v == null || v.isEmpty ? null : v;
+  }
+
+  late final _name = TextEditingController(
+    text: _p.fullName ?? (_isVendor ? _accountText('displayName') : null),
+  );
+  late final _idNumber = TextEditingController(
+    text: _p.idNumber ?? (_isVendor ? _accountText('idNumber') : null),
+  );
   late final _phone = TextEditingController(text: _p.phone);
   late final _email = TextEditingController(text: _p.email);
   late final _position = TextEditingController(text: _p.position);
   late final _address = _AddressFields(_p.address);
-  late String _nationality = _p.nationality ?? 'TZ';
+  late String? _nationality =
+      _p.nationality ??
+      (_isVendor
+          ? (countries.containsKey(_accountText('nationality'))
+                ? _accountText('nationality')
+                : null)
+          : 'TZ');
   late String? _idType = _p.idType ?? 'nida';
   late String? _relationship = _p.relationship;
-  late String? _authority = _p.authority;
+  late String? _vendorPosition = vendorPositions.contains(_p.position)
+      ? _p.position
+      : null;
   bool _busy = false;
 
   @override
@@ -341,6 +367,7 @@ class _PersonFormPageState extends State<PersonFormPage> {
   }
 
   bool get _isTrainer => widget.overview.partnerType == 'trainer';
+  bool get _isVendor => widget.overview.partnerType == 'vendor';
 
   Future<void> _save() async {
     if (!_form.currentState!.validate()) return;
@@ -348,16 +375,17 @@ class _PersonFormPageState extends State<PersonFormPage> {
     try {
       final body = <String, dynamic>{
         'fullName': _name.text.trim(),
-        'nationality': _nationality,
+        'nationality': _nationality ?? 'TZ',
         'idType': _idType,
         'idNumber': _blankToNull(_idNumber.text),
         if (_fields.contains('phone')) 'phone': _blankToNull(_phone.text),
         if (_fields.contains('email')) 'email': _blankToNull(_email.text),
         if (_fields.contains('address')) 'address': _address.toJson(),
         if (_fields.contains('position'))
-          'position': _blankToNull(_position.text),
+          'position': _isVendor
+              ? _vendorPosition
+              : _blankToNull(_position.text),
         if (_fields.contains('relationship')) 'relationship': _relationship,
-        if (_fields.contains('authority')) 'authority': _authority,
       };
       final updated = await widget.repository.updatePerson(_role, body);
       if (mounted) Navigator.of(context).pop(updated);
@@ -373,20 +401,18 @@ class _PersonFormPageState extends State<PersonFormPage> {
     final vendor = widget.overview.partnerType == 'vendor';
     // Tanzanian trainers identify with NIDA; everyone else may use a passport.
     final idTypes = _isTrainer
-        ? (_nationality == 'TZ' ? const ['nida'] : const ['passport'])
+        ? ((_nationality ?? 'TZ') == 'TZ' ? const ['nida'] : const ['passport'])
         : const ['nida', 'passport'];
     if (!idTypes.contains(_idType)) _idType = idTypes.first;
     return _FormScaffold(
-      title: context.tr(
-        vendor ? 'kyc.form.representative' : 'kyc.form.identity',
-      ),
+      title: context.tr(vendor ? 'kyc.form.yourDetails' : 'kyc.form.identity'),
       formKey: _form,
       busy: _busy,
       onSave: _save,
       children: [
         Text(
           context.tr(
-            vendor ? 'kyc.form.representativeIntro' : 'kyc.form.identityIntro',
+            vendor ? 'kyc.form.yourDetailsIntro' : 'kyc.form.identityIntro',
           ),
         ),
         _gap(),
@@ -397,17 +423,21 @@ class _PersonFormPageState extends State<PersonFormPage> {
             key: const Key('kyc-field-nationality'),
             initialValue: countries.containsKey(_nationality)
                 ? _nationality
-                : 'TZ',
+                : (vendor ? null : 'TZ'),
             isExpanded: true,
             decoration: InputDecoration(
-              labelText: context.tr('kyc.field.nationality'),
+              labelText:
+                  context.tr('kyc.field.nationality') + (vendor ? ' *' : ''),
               border: const OutlineInputBorder(),
             ),
             items: [
               for (final e in countries.entries)
                 DropdownMenuItem(value: e.key, child: Text(e.value)),
             ],
-            onChanged: (v) => setState(() => _nationality = v ?? 'TZ'),
+            validator: (v) =>
+                vendor && v == null ? context.tr('kyc.required') : null,
+            onChanged: (v) =>
+                setState(() => _nationality = v ?? (vendor ? null : 'TZ')),
           ),
         ),
         _choice(
@@ -425,7 +455,17 @@ class _PersonFormPageState extends State<PersonFormPage> {
           required: true,
           hintKey: _idType == 'nida' ? 'kyc.hint.nida' : null,
         ),
-        if (_fields.contains('position')) _text(context, 'position', _position),
+        if (_fields.contains('position'))
+          vendor
+              ? _choice(
+                  context,
+                  'position',
+                  _vendorPosition,
+                  vendorPositions,
+                  (v) => setState(() => _vendorPosition = v),
+                  required: true,
+                )
+              : _text(context, 'position', _position),
         if (_fields.contains('relationship'))
           _choice(
             context,
@@ -434,14 +474,6 @@ class _PersonFormPageState extends State<PersonFormPage> {
             relationships,
             (v) => setState(() => _relationship = v),
             required: true,
-          ),
-        if (_fields.contains('authority'))
-          _choice(
-            context,
-            'authority',
-            _authority,
-            authorities,
-            (v) => setState(() => _authority = v),
           ),
         if (_fields.contains('phone'))
           _text(
@@ -573,12 +605,10 @@ class _BusinessFormPageState extends State<BusinessFormPage> {
 
 // ── Vendor business profile ────────────────────────────────────────────────
 
-List<String> _splitList(String v) =>
-    v.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
-
-/// The four checklist items a vendor keeps on their business profile (contact,
-/// product categories, delivery areas, returns policy). Saved as a draft —
-/// never published — so it works while the vendor is still pending approval.
+/// The two checklist items a vendor keeps on their business profile: how to
+/// contact them (a number; the email is optional) and the product categories
+/// they sell in. Saved as a draft — never published — so it works while the
+/// vendor is still pending approval.
 class VendorKycProfilePage extends StatefulWidget {
   const VendorKycProfilePage({super.key, required this.api});
   final ApiClient api;
@@ -591,9 +621,8 @@ class _VendorKycProfilePageState extends State<VendorKycProfilePage> {
   final _form = GlobalKey<FormState>();
   final _contact = TextEditingController();
   final _email = TextEditingController();
-  final _categories = TextEditingController();
-  final _regions = TextEditingController();
-  final _returns = TextEditingController();
+  List<String> _categories = const [];
+  bool _categoriesTried = false;
   bool _loading = true;
   bool _busy = false;
 
@@ -605,26 +634,23 @@ class _VendorKycProfilePageState extends State<VendorKycProfilePage> {
 
   @override
   void dispose() {
-    for (final c in [_contact, _email, _categories, _regions, _returns]) {
-      c.dispose();
-    }
+    _contact.dispose();
+    _email.dispose();
     super.dispose();
   }
 
-  String _joined(dynamic raw) =>
-      raw is List ? raw.map((e) => e.toString()).join(', ') : '';
-
   Future<void> _prefill() async {
     try {
+      await ProductCategories.load(widget.api);
       final p = await widget.api.vendorProfile();
       _contact.text = p['contactNumber']?.toString() ?? '';
       _email.text = p['email']?.toString() ?? '';
-      final cats = _joined(p['productCategories']);
-      _categories.text = cats.isNotEmpty
-          ? cats
-          : (p['businessCategory']?.toString() ?? '');
-      _regions.text = _joined(p['deliveryRegions']);
-      _returns.text = p['returnsPolicy']?.toString() ?? '';
+      final stored = p['productCategories'];
+      // Older values map onto the list when they match a key or its name.
+      _categories = ProductCategories.keysFor([
+        if (stored is List) ...stored,
+        if (stored is! List || stored.isEmpty) p['businessCategory'],
+      ]);
     } catch (_) {
       // Start empty; saving will report any real problem.
     }
@@ -632,22 +658,22 @@ class _VendorKycProfilePageState extends State<VendorKycProfilePage> {
   }
 
   Future<void> _save() async {
-    if (!_form.currentState!.validate()) return;
+    setState(() => _categoriesTried = true);
+    final valid = _form.currentState!.validate();
+    if (!valid || _categories.isEmpty) return;
     setState(() => _busy = true);
     try {
       await widget.api.vendorSaveProfile({
         'contactNumber': _contact.text.trim(),
         'email': _email.text.trim(),
-        'productCategories': _splitList(_categories.text),
-        'deliveryRegions': _splitList(_regions.text),
-        'returnsPolicy': _returns.text.trim(),
+        'productCategories': _categories,
       });
       if (!mounted) return;
       _snack(context, context.tr('kyc.vendorProfile.saved'));
       Navigator.of(context).pop(true);
     } catch (e) {
       if (mounted) setState(() => _busy = false);
-      if (mounted) _snack(context, errorMessage(FFLocaleScope.of(context), e));
+      if (mounted) _snack(context, _errorText(context, e));
     }
   }
 
@@ -656,7 +682,6 @@ class _VendorKycProfilePageState extends State<VendorKycProfilePage> {
     String label,
     TextEditingController c, {
     TextInputType? keyboard,
-    int lines = 1,
     String? Function(String)? check,
   }) => Padding(
     padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
@@ -664,8 +689,6 @@ class _VendorKycProfilePageState extends State<VendorKycProfilePage> {
       key: Key('kyc-vendor-$key'),
       controller: c,
       keyboardType: keyboard,
-      minLines: lines,
-      maxLines: lines == 1 ? 1 : lines + 3,
       decoration: InputDecoration(
         labelText: label,
         border: const OutlineInputBorder(),
@@ -676,8 +699,6 @@ class _VendorKycProfilePageState extends State<VendorKycProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    String? needed(String v) =>
-        v.trim().isEmpty ? context.tr('kyc.required') : null;
     return _FormScaffold(
       title: context.tr('kyc.vendorProfile.title'),
       formKey: _form,
@@ -693,32 +714,23 @@ class _VendorKycProfilePageState extends State<VendorKycProfilePage> {
                 '${context.tr('vendor.contactNumber')} *',
                 _contact,
                 keyboard: TextInputType.phone,
-                check: needed,
+                check: (v) =>
+                    v.trim().isEmpty ? context.tr('kyc.required') : null,
               ),
               _field(
                 'email',
-                '${context.tr('vendor.email')} *',
+                context.tr('vendor.emailOptional'),
                 _email,
                 keyboard: TextInputType.emailAddress,
-                check: (v) =>
-                    needed(v) ??
-                    (v.contains('@') ? null : context.tr('kyc.error.email')),
+                // Optional: only checked when something is given.
+                check: (v) => _checkEmail(context, v),
               ),
-              _field(
-                'productCategories',
-                context.tr('vendor.productCategories'),
-                _categories,
-              ),
-              _field(
-                'deliveryRegions',
-                context.tr('vendor.deliveryRegions'),
-                _regions,
-              ),
-              _field(
-                'returnsPolicy',
-                context.tr('vendor.returnsPolicy'),
-                _returns,
-                lines: 3,
+              ProductCategoryMultiSelect(
+                keyPrefix: 'kyc-vendor-category',
+                required: true,
+                showError: _categoriesTried,
+                selected: _categories,
+                onChanged: (next) => setState(() => _categories = next),
               ),
             ],
     );
@@ -804,6 +816,10 @@ class _DocumentPageState extends State<DocumentPage> {
       ? _doc.docType
       : _spec.types.first;
   bool _busy = false;
+  // The picture just uploaded, shown at once without fetching it again.
+  Uint8List? _uploadedBytes;
+  // Previews fetched through the repository, by document id.
+  final _previews = <String, Future<Uint8List>>{};
 
   @override
   void dispose() {
@@ -841,7 +857,10 @@ class _DocumentPageState extends State<DocumentPage> {
         docType: _docType,
       );
       if (!mounted) return;
-      setState(() => _overview = updated);
+      setState(() {
+        _overview = updated;
+        _uploadedBytes = _looksLikeImage(picked.name) ? picked.bytes : null;
+      });
       _snack(context, context.tr('kyc.doc.uploaded'));
     } catch (e) {
       if (mounted) _snack(context, _errorText(context, e));
@@ -949,18 +968,19 @@ class _DocumentPageState extends State<DocumentPage> {
             children: [
               Row(
                 children: [
-                  Icon(
-                    hasFile
-                        ? Icons.check_circle_outline
-                        : Icons.upload_file_outlined,
-                  ),
+                  if (hasFile)
+                    _filePreview(current)
+                  else
+                    const Icon(Icons.upload_file_outlined),
                   const SizedBox(width: FFTokens.spacingSm),
                   Expanded(
                     child: Text(
-                      hasFile
-                          ? (current.fileName ??
-                                context.tr('kyc.doc.fileAttached'))
-                          : context.tr('kyc.doc.noFile'),
+                      !hasFile
+                          ? context.tr('kyc.doc.noFile')
+                          : (current.isImage || _uploadedBytes != null)
+                          ? context.tr('kyc.doc.fileAttached')
+                          : (current.fileName ??
+                                context.tr('kyc.doc.fileAttached')),
                       key: const Key('kyc-doc-file-name'),
                     ),
                   ),
@@ -1009,6 +1029,62 @@ class _DocumentPageState extends State<DocumentPage> {
     );
   }
 
+  static bool _looksLikeImage(String name) =>
+      RegExp(r'\.(jpe?g|png|webp)$', caseSensitive: false).hasMatch(name);
+
+  /// A 72 x 72 thumbnail of the file: the picture just uploaded, a preview
+  /// fetched through the repository, or an icon for a PDF (or when the
+  /// picture cannot be shown).
+  Widget _filePreview(KycDocument doc) {
+    const size = 72.0;
+    final theme = Theme.of(context);
+    Widget frame(Widget child) => Container(
+      key: const Key('kyc-doc-preview'),
+      width: size,
+      height: size,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(FFTokens.radiusMd),
+        color: theme.colorScheme.surfaceContainerHighest,
+      ),
+      child: child,
+    );
+    Widget icon(IconData data) => frame(Center(child: Icon(data, size: 32)));
+    Widget picture(Uint8List bytes) => frame(
+      Image.memory(
+        bytes,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => icon(Icons.broken_image_outlined),
+      ),
+    );
+
+    final fresh = _uploadedBytes;
+    if (fresh != null) return picture(fresh);
+    if (!doc.isImage) return icon(Icons.picture_as_pdf_outlined);
+    final future = _previews.putIfAbsent(
+      doc.id,
+      () => widget.repository.documentFile(doc.id),
+    );
+    return FutureBuilder<Uint8List>(
+      future: future,
+      builder: (context, snap) {
+        if (snap.hasError) return icon(Icons.image_outlined);
+        if (!snap.hasData) {
+          return frame(
+            const Center(
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          );
+        }
+        return picture(snap.data!);
+      },
+    );
+  }
+
   static String _issuerLabel(String requirementKey) => switch (requirementKey) {
     'certification' => 'certificationBody',
     'liability_insurance' => 'insurer',
@@ -1033,7 +1109,6 @@ class _DocumentPageState extends State<DocumentPage> {
     'business_licence' => 'licence',
     'certification' => 'certification',
     'liability_insurance' => 'liability_cover',
-    'representative_authority' => 'authority_document',
     _ => requirementKey,
   };
 }

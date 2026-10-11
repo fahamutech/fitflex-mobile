@@ -177,6 +177,7 @@ class KycDocument {
     required this.status,
     required this.hasFile,
     this.fileName,
+    this.mimeType,
     this.documentNumber,
     this.issuer,
     this.issuedOn,
@@ -191,12 +192,21 @@ class KycDocument {
   final String status; // pending | accepted | rejected | expired | superseded
   final bool hasFile;
   final String? fileName;
+  final String? mimeType;
   final String? documentNumber;
   final String? issuer;
   final String? issuedOn;
   final String? expiresOn;
   final String? reviewNote;
   final DateTime? createdAt;
+
+  /// The file is a picture (JPEG, PNG or WebP) rather than a PDF.
+  bool get isImage =>
+      (mimeType ?? '').startsWith('image/') ||
+      RegExp(
+        r'\.(jpe?g|png|webp)$',
+        caseSensitive: false,
+      ).hasMatch(fileName ?? '');
 
   factory KycDocument.fromJson(Map<String, dynamic> j) => KycDocument(
     id: j['id'] as String,
@@ -205,6 +215,7 @@ class KycDocument {
     status: j['status'] as String? ?? 'pending',
     hasFile: j['hasFile'] == true,
     fileName: j['fileName'] as String?,
+    mimeType: j['mimeType'] as String?,
     documentNumber: j['documentNumber'] as String?,
     issuer: j['issuer'] as String?,
     issuedOn: j['issuedOn'] as String?,
@@ -425,10 +436,6 @@ const documentSpecs = <String, DocumentSpec>{
     ['liability_insurance'],
     ['issuer', 'documentNumber', 'expiresOn'],
   ),
-  'representative_authority': DocumentSpec([
-    'letter_of_authority',
-    'board_resolution',
-  ], []),
 };
 
 /// The one person each partner type names.
@@ -457,16 +464,8 @@ List<String> personFieldsFor(String partnerType) => switch (partnerType) {
     'email',
     'address',
   ],
-  _ => const [
-    'fullName',
-    'nationality',
-    'idType',
-    'idNumber',
-    'position',
-    'authority',
-    'phone',
-    'email',
-  ],
+  // A vendor gives their own details (11 Oct 2026): no signing authority.
+  _ => const ['fullName', 'nationality', 'idType', 'idNumber', 'position'],
 };
 
 /// Partners with a business section (trainers are individuals).
@@ -482,7 +481,9 @@ const relationships = [
   'employee',
   'other',
 ];
-const authorities = ['sole_signatory', 'joint_signatory', 'delegated'];
+
+/// A vendor's own position in the business.
+const vendorPositions = ['owner', 'co_owner', 'employee'];
 const mobileMoneyProviders = ['mpesa', 'airtel_money', 'mixx', 'halopesa'];
 
 /// Nationalities offered for identity (ISO codes the API accepts).
