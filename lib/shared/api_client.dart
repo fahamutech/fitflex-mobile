@@ -866,6 +866,30 @@ class ApiClient {
   Future<Map<String, dynamic>> skipWorkout(String id) async =>
       await _request('POST', '/me/workouts/${Uri.encodeComponent(id)}/skip');
 
+  // ── Training plans ────────────────────────────────────────────────────
+  /// `{ preferences (as chosen), effective (as a plan would use them) }`.
+  Future<Map<String, dynamic>> trainingPreferences() async =>
+      await _request('GET', '/me/training-preferences');
+
+  Future<Map<String, dynamic>> saveTrainingPreferences(
+    Map<String, dynamic> body,
+  ) async => await _request('PUT', '/me/training-preferences', body: body);
+
+  /// `{ plan }` — the plan the member is on, or null.
+  Future<Map<String, dynamic>> currentTrainingPlan() async =>
+      await _request('GET', '/me/training-plans/current');
+
+  /// Has FitFlex make a plan. `{ durationWeeks?, startDate?, replace? }`.
+  Future<Map<String, dynamic>> createTrainingPlan(
+    Map<String, dynamic> body,
+  ) async => await _request('POST', '/me/training-plans', body: body);
+
+  Future<Map<String, dynamic>> cancelTrainingPlan(String id) async =>
+      await _request(
+        'POST',
+        '/me/training-plans/${Uri.encodeComponent(id)}/cancel',
+      );
+
   // ── Trainer ↔ member connections ──────────────────────────────────────
   Future<List<dynamic>> myTrainerConnections() async {
     final res = await _request('GET', '/me/trainer-connections');
@@ -1092,11 +1116,13 @@ class ApiClient {
   );
   // Friend invitations: search by email / phone, request or share a link,
   // answer from Notifications. FitFlex sends nothing outside the app.
-  Future<Map<String, dynamic>> friendLookup({String? email, String? phone}) =>
-      _map(
-        'GET',
-        '/me/friend-invitations/lookup?${Uri(queryParameters: {'email': ?email, 'phone': ?phone}).query}',
-      );
+  Future<Map<String, dynamic>> friendLookup({
+    String? email,
+    String? phone,
+  }) => _map(
+    'GET',
+    '/me/friend-invitations/lookup?${Uri(queryParameters: {'email': ?email, 'phone': ?phone}).query}',
+  );
   Future<Map<String, dynamic>> friendInvitations() =>
       _map('GET', '/me/friend-invitations');
   Future<Map<String, dynamic>> inviteFriend({
@@ -1107,7 +1133,12 @@ class ApiClient {
   }) => _map(
     'POST',
     '/me/friend-invitations',
-    body: {'userId': ?userId, 'email': ?email, 'phone': ?phone, 'locale': ?locale},
+    body: {
+      'userId': ?userId,
+      'email': ?email,
+      'phone': ?phone,
+      'locale': ?locale,
+    },
   );
   Future<Map<String, dynamic>> approveFriendInvitation(String id) =>
       _map('POST', '/me/friend-invitations/${_e(id)}/approve');

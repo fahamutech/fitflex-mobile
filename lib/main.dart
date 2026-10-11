@@ -160,7 +160,9 @@ class _FitFlexAppState extends State<FitFlexApp> {
     final message = await _inbox.openFromPush(data);
     if (message != null) {
       // A friend request is answered on its card in the list.
-      _router.push(message.isFriendInvitation ? '/inbox' : '/inbox/${message.id}');
+      _router.push(
+        message.isFriendInvitation ? '/inbox' : '/inbox/${message.id}',
+      );
       return;
     }
     final role = widget.auth.user?['userType']?.toString() ?? widget.auth.role;
@@ -231,6 +233,7 @@ class _FitFlexAppState extends State<FitFlexApp> {
       activityProvider: _activity.activity,
       goalRepository: _activity.goals,
       workoutRepository: _activity.workouts,
+      trainingRepository: _activity.training,
       manualActivityLog: _activity.manualLog,
       phoneSteps: _phoneSteps,
       runRecorder: _runs,

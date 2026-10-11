@@ -12,6 +12,7 @@ import '../../shared/activity/challenge.dart';
 import '../../shared/activity/goal.dart';
 import '../../shared/activity/gym_sharing.dart';
 import '../../shared/activity/trainer_connection.dart';
+import '../../shared/activity/training_plan.dart';
 import '../../shared/activity/workout.dart';
 import '../../shared/api_error_message.dart';
 import '../../shared/auth_state.dart';
@@ -52,6 +53,10 @@ class MemberData extends ChangeNotifier {
   bool goalsLoaded = false;
   List<Workout> workouts = [];
   bool workoutsLoaded = false;
+
+  /// The training plan the member is on, if any.
+  TrainingPlan? trainingPlan;
+  bool trainingLoaded = false;
   List<TrainerConnection> trainerConnections = [];
   List<GymSharing> gymSharing = [];
   List<Challenge> challenges = [];
@@ -263,6 +268,7 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
         _refreshActivity(),
         _refreshGoals(),
         _refreshWorkouts(),
+        _refreshTraining(),
         _refreshConnections(),
         _refreshGymSharing(),
         _refreshChallenges(),
@@ -412,6 +418,24 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _refreshTraining() async {
+    try {
+      final plan = await AppScope.of(context).training.currentPlan();
+      _data.update((d) {
+        d.trainingPlan = plan;
+        d.trainingLoaded = true;
+      });
+    } catch (error) {
+      debugPrint('[MemberShell] Could not load the training plan: $error');
+      _data.update((d) => d.trainingLoaded = true);
+    }
+  }
+
+  /// After a plan is made, changed or stopped: the plan and its workouts.
+  Future<void> refreshTraining() async {
+    await Future.wait([_refreshTraining(), _refreshWorkouts()]);
+  }
+
   Future<void> _refreshConnections() async {
     try {
       final rows = await AppScope.of(context).api.myTrainerConnections();
@@ -467,7 +491,11 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
   /// After a workout changes: its list, and — once finished — the activity
   /// it was recorded as, which moves goals, progress and streaks.
   Future<void> refreshAfterWorkout() async {
-    await Future.wait([_refreshWorkouts(), _refreshActivity()]);
+    await Future.wait([
+      _refreshWorkouts(),
+      _refreshActivity(),
+      _refreshTraining(),
+    ]);
   }
 
   Future<void> refreshTrainers() async {

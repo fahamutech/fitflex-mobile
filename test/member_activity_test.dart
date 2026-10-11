@@ -187,7 +187,7 @@ void main() {
     final data = _data(sample: true);
     await tester.pumpWidget(_wrap(MemberActivityTab(now: _now), data));
 
-    for (final label in ['Overview', 'Workouts', 'Challenges', 'Progress']) {
+    for (final label in ['Today', 'Training', 'Challenges', 'Progress']) {
       expect(find.text(label), findsWidgets);
     }
     expect(find.text('6,240'), findsWidgets);
@@ -217,7 +217,7 @@ void main() {
       3000,
     );
     await tester.pumpAndSettle();
-    await tester.tap(section('Workouts'));
+    await tester.tap(section('Training'));
     await tester.pumpAndSettle();
     expect(find.text('Running'), findsOneWidget);
     expect(find.text('Walking'), findsNothing);

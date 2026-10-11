@@ -16,9 +16,10 @@ import 'widgets/activity_widgets.dart';
 import 'widgets/challenge_widgets.dart';
 import 'widgets/goal_widgets.dart';
 import 'widgets/progress_section.dart';
+import 'widgets/training_widgets.dart';
 import 'widgets/workout_widgets.dart';
 
-/// Member Activity tab: Overview · Workouts · Challenges · Progress.
+/// Member Activity tab: Today · Training · Challenges · Progress.
 class MemberActivityTab extends StatefulWidget {
   const MemberActivityTab({
     super.key,
@@ -231,6 +232,7 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
         .where((a) => a.isWorkout && a.workoutId == null)
         .toList();
     return [
+      TrainingPlanCard(data: data, now: now),
       TodayWorkoutCard(data: data, now: now),
       TrainerPlanBlock(data: data, now: now),
       if (todayIds.isNotEmpty || upcoming.isNotEmpty)

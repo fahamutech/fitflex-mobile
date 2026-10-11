@@ -11,6 +11,8 @@ import 'screens/email_auth_screen.dart';
 import 'screens/verify_email_screen.dart';
 import 'shared/widgets/persona_switcher.dart';
 import 'screens/member/member_shell.dart';
+import 'screens/member/member_training_plan_page.dart';
+import 'screens/member/member_training_setup_page.dart';
 import 'shared/activity/activity.dart';
 import 'screens/member/member_shop_tab.dart';
 import 'screens/member/member_onboarding_page.dart';
@@ -124,6 +126,8 @@ abstract class AppRoutes {
   static const memberRunDetail = '/member/activity/runs/:activityId';
   static const memberProgress = '/member/activity/progress';
   static const memberWorkout = '/member/activity/workouts/:workoutId';
+  static const memberTrainingPlan = '/member/activity/training';
+  static const memberTrainingSetup = '/member/activity/training/setup';
   static const memberChallenge = '/member/activity/challenges/:challengeId';
   static const memberGyms = '/member/gyms';
   static const memberGymDetail = '/member/gyms/:gymId';
@@ -665,6 +669,19 @@ GoRouter buildRouter(AuthState auth) {
                 builder: (context, state) => MemberChallengePage(
                   challengeId: state.pathParameters['challengeId']!,
                 ),
+              ),
+              GoRoute(
+                path: 'training',
+                name: 'memberTrainingPlan',
+                builder: (context, state) => const MemberTrainingPlanPage(),
+                routes: [
+                  GoRoute(
+                    path: 'setup',
+                    name: 'memberTrainingSetup',
+                    builder: (context, state) =>
+                        const MemberTrainingSetupPage(),
+                  ),
+                ],
               ),
               GoRoute(
                 path: 'workouts/:workoutId',

@@ -15,6 +15,7 @@ import 'providers/geolocator_gps_source.dart';
 import 'providers/phone_step_counter.dart';
 import 'run_recorder.dart';
 import 'sample_activity_log.dart';
+import 'training_repository.dart';
 import 'workout_repository.dart';
 
 /// Whether the member Activity screens run on generated sample data instead
@@ -43,6 +44,9 @@ class ActivityBackend {
   final GoalRepository goals;
   final WorkoutRepository workouts;
 
+  /// Training preferences and plans.
+  final TrainingRepository training;
+
   /// Where hand-logged activity is saved.
   final ManualActivityLog manualLog;
 
@@ -50,15 +54,18 @@ class ActivityBackend {
     required this.activity,
     required this.goals,
     required this.workouts,
+    required this.training,
     required this.manualLog,
   });
 
   factory ActivityBackend.sample() {
     final log = SampleActivityLog();
+    final workouts = LocalWorkoutRepository(log: log);
     return ActivityBackend(
       activity: MockActivityProvider(days: activityHistoryDays, log: log),
       goals: LocalGoalRepository(),
-      workouts: LocalWorkoutRepository(log: log),
+      workouts: workouts,
+      training: LocalTrainingRepository(workouts: workouts),
       manualLog: LocalManualActivityLog(sampleLog: log),
     );
   }
@@ -67,6 +74,7 @@ class ActivityBackend {
     activity: ApiActivityProvider(api),
     goals: ApiGoalRepository(api),
     workouts: ApiWorkoutRepository(api),
+    training: ApiTrainingRepository(api),
     manualLog: ApiManualActivityLog(api),
   );
 
