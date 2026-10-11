@@ -33,6 +33,7 @@ class MemberWorkoutPage extends StatefulWidget {
 class _MemberWorkoutPageState extends State<MemberWorkoutPage> {
   Workout? _w;
   bool _loaded = false;
+  bool _fetching = false;
   bool _busy = false;
 
   /// Calories of the workout just finished (from its Activity).
@@ -58,6 +59,9 @@ class _MemberWorkoutPageState extends State<MemberWorkoutPage> {
     _loaded = true;
     final found = data.workouts.where((w) => w.id == widget.workoutId);
     _w = found.isEmpty ? null : found.first.copy();
+    // A session further ahead than the app keeps loaded (a plan's later
+    // weeks): fetch it on its own.
+    if (_w == null) _fetch();
     final w = _w;
     if (w != null && w.status == WorkoutStatus.completed) {
       _summary = summarizeWorkout(
@@ -82,6 +86,29 @@ class _MemberWorkoutPageState extends State<MemberWorkoutPage> {
       c.dispose();
     }
     super.dispose();
+  }
+
+  Future<void> _fetch() async {
+    setState(() => _fetching = true);
+    Workout? w;
+    try {
+      w = await _repo.get(widget.workoutId);
+    } catch (_) {
+      // Shown as "not found", with the way back.
+    }
+    if (!mounted) return;
+    setState(() {
+      _fetching = false;
+      _w = w;
+      if (w != null && w.status == WorkoutStatus.completed) {
+        _summary = summarizeWorkout(
+          w,
+          durationMinutes: _completedMinutes(w),
+          history: MemberDataScope.of(context).workouts,
+        );
+      }
+    });
+    _syncTicker();
   }
 
   int _completedMinutes(Workout w) {
@@ -316,7 +343,12 @@ class _MemberWorkoutPageState extends State<MemberWorkoutPage> {
     if (picked == null || !mounted) return;
     setState(() => _busy = true);
     try {
-      final updated = await _repo.replaceExercise(w.id, e.id, picked.id);
+      final updated = await _repo.replaceExercise(
+        w.id,
+        e.id,
+        picked.id,
+        lang: lang,
+      );
       if (!mounted) return;
       setState(() => _w = updated.copy());
       _toast('workout.replaced');
@@ -341,6 +373,9 @@ class _MemberWorkoutPageState extends State<MemberWorkoutPage> {
       return const Center(child: CircularProgressIndicator());
     }
     final w = _w;
+    if (w == null && _fetching) {
+      return const Center(child: CircularProgressIndicator());
+    }
     if (w == null) {
       return ListView(
         padding: const EdgeInsets.all(FFTokens.spacingLg),

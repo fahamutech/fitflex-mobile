@@ -22,7 +22,12 @@ abstract class TrainingRepository {
 
   /// Has FitFlex make a plan from the saved preferences. Throws
   /// [ActivePlanExists] unless [replace] ends the plan they are on.
-  Future<TrainingPlan> generate({required int weeks, bool replace = false});
+  /// [lang] is the language the plan's session names are written in.
+  Future<TrainingPlan> generate({
+    required int weeks,
+    bool replace = false,
+    String? lang,
+  });
 
   Future<void> cancel(String planId);
 }
@@ -57,11 +62,13 @@ class ApiTrainingRepository implements TrainingRepository {
   Future<TrainingPlan> generate({
     required int weeks,
     bool replace = false,
+    String? lang,
   }) async {
     try {
       final res = await api.createTrainingPlan({
         'durationWeeks': weeks,
         'replace': replace,
+        'lang': ?lang,
       });
       final plan = TrainingPlan.tryParse(res['plan']);
       if (plan == null) throw const FormatException('plan');
@@ -172,6 +179,7 @@ class LocalTrainingRepository implements TrainingRepository {
   Future<TrainingPlan> generate({
     required int weeks,
     bool replace = false,
+    String? lang,
   }) async {
     final existing = await currentPlan();
     if (existing != null) {

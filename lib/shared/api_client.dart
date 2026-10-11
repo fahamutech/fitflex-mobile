@@ -842,6 +842,10 @@ class ApiClient {
   Future<Map<String, dynamic>> planWorkout(Map<String, dynamic> data) async =>
       await _request('POST', '/me/workouts', body: data);
 
+  /// `{ workout }` — one of the member's workouts.
+  Future<Map<String, dynamic>> myWorkout(String id) async =>
+      await _request('GET', '/me/workouts/${Uri.encodeComponent(id)}');
+
   Future<Map<String, dynamic>> startWorkout(String id) async =>
       await _request('POST', '/me/workouts/${Uri.encodeComponent(id)}/start');
 
@@ -895,12 +899,13 @@ class ApiClient {
   Future<Map<String, dynamic>> replaceWorkoutExercise(
     String workoutId,
     String exerciseId,
-    String libraryId,
-  ) async => await _request(
+    String libraryId, {
+    String? lang,
+  }) async => await _request(
     'POST',
     '/me/workouts/${Uri.encodeComponent(workoutId)}/exercises/'
         '${Uri.encodeComponent(exerciseId)}/replace',
-    body: {'libraryId': libraryId},
+    body: {'libraryId': libraryId, 'lang': ?lang},
   );
 
   // ── Training plans ────────────────────────────────────────────────────

@@ -137,6 +137,7 @@ class TrainingPlanCard extends StatelessWidget {
             child: LinearProgressIndicator(
               value: plan.completion.clamp(0.0, 1.0),
               minHeight: 8,
+              semanticsLabel: context.tr('training.myPlan'),
             ),
           ),
           const SizedBox(height: FFTokens.spacingXs),

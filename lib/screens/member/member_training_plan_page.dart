@@ -82,7 +82,6 @@ class _MemberTrainingPlanPageState extends State<MemberTrainingPlanPage> {
     final data = MemberDataScope.of(context);
     final today = dayOf(widget.now ?? DateTime.now());
     final plan = data.trainingPlan;
-    final loaded = {for (final w in data.workouts) w.id};
     final back = Align(
       alignment: Alignment.centerLeft,
       child: TextButton.icon(
@@ -160,6 +159,7 @@ class _MemberTrainingPlanPageState extends State<MemberTrainingPlanPage> {
                 child: LinearProgressIndicator(
                   value: plan.completion.clamp(0.0, 1.0),
                   minHeight: 8,
+                  semanticsLabel: context.tr('training.myPlan'),
                 ),
               ),
               const SizedBox(height: FFTokens.spacingXs),
@@ -201,8 +201,7 @@ class _MemberTrainingPlanPageState extends State<MemberTrainingPlanPage> {
               day: d,
               status: _statusLabel(context, d, today),
               highlight: d.isOpen && d.date == today,
-              // Workouts further ahead than the app keeps open later.
-              onTap: d.workoutId != null && loaded.contains(d.workoutId)
+              onTap: d.workoutId != null
                   ? () => context.go(workoutRoute(d.workoutId!))
                   : null,
             ),
