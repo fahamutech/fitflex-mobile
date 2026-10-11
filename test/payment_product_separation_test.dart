@@ -81,17 +81,18 @@ void main() {
       });
     }
 
-    testWidgets('a gym with no pricing shows the unavailable state, not pass tiers', (
-      tester,
-    ) async {
-      await tester.pumpWidget(_wrap(GymPlansSheet(gym: _gym('g2', 'Bare'))));
-      expect(
-        find.text('No plans configured for this gym yet.'),
-        findsOneWidget,
-      );
-      expect(find.text('Pro'), findsNothing);
-      expect(find.byKey(const Key('gym-plan-subscribe')), findsNothing);
-    });
+    testWidgets(
+      'a gym with no pricing shows the unavailable state, not pass tiers',
+      (tester) async {
+        await tester.pumpWidget(_wrap(GymPlansSheet(gym: _gym('g2', 'Bare'))));
+        expect(
+          find.text('No plans configured for this gym yet.'),
+          findsOneWidget,
+        );
+        expect(find.text('Pro'), findsNothing);
+        expect(find.byKey(const Key('gym-plan-subscribe')), findsNothing);
+      },
+    );
 
     testWidgets('only the periods the gym sells are purchasable', (
       tester,
@@ -104,22 +105,30 @@ void main() {
       expect(find.byKey(const Key('gym-plan-weekly')), findsNothing);
     });
 
-    testWidgets('changing the gym replaces the offers and drops the selection', (
-      tester,
-    ) async {
-      final a = _gym('g1', 'Alpha', day: 5000, month: 80000);
-      final b = _gym('g3', 'Monthly Only', month: 90000);
-      await tester.pumpWidget(_wrap(GymPlansSheet(key: ValueKey(a.id), gym: a)));
-      await tester.tap(find.byKey(const Key('gym-plan-daily')));
-      await tester.pump();
-      await tester.pumpWidget(_wrap(GymPlansSheet(key: ValueKey(b.id), gym: b)));
-      expect(find.byKey(const Key('gym-plan-daily')), findsNothing);
-      expect(find.text('Monthly Only'), findsOneWidget);
-      final button = tester.widget<FilledButton>(
-        find.byKey(const Key('gym-plan-subscribe')),
-      );
-      expect(button.onPressed, isNull, reason: 'no stale selection');
-    });
+    testWidgets(
+      'changing the gym replaces the offers and drops the selection',
+      (tester) async {
+        final a = _gym('g1', 'Alpha', day: 5000, month: 80000);
+        final b = _gym('g3', 'Monthly Only', month: 90000);
+        await tester.pumpWidget(
+          _wrap(GymPlansSheet(key: ValueKey(a.id), gym: a)),
+        );
+        await tester.tap(find.byKey(const Key('gym-plan-daily')));
+        await tester.pump();
+        await tester.pumpWidget(
+          _wrap(GymPlansSheet(key: ValueKey(b.id), gym: b)),
+        );
+        expect(find.byKey(const Key('gym-plan-daily')), findsNothing);
+        expect(find.text('Monthly Only'), findsOneWidget);
+        final button = tester.widget<FilledButton>(
+          find.descendant(
+            of: find.byKey(const Key('gym-plan-subscribe')),
+            matching: find.byType(FilledButton),
+          ),
+        );
+        expect(button.onPressed, isNull, reason: 'no stale selection');
+      },
+    );
 
     testWidgets('the sheet says these plans are for this gym only', (
       tester,
@@ -127,7 +136,10 @@ void main() {
       await tester.pumpWidget(
         _wrap(GymPlansSheet(gym: _gym('g1', 'Alpha', day: 5000))),
       );
-      expect(find.textContaining('separate from a FitFlex Pass'), findsOneWidget);
+      expect(
+        find.textContaining('separate from a FitFlex Pass'),
+        findsOneWidget,
+      );
     });
   });
 
@@ -176,20 +188,23 @@ void main() {
       expect(d.me!.pendingPayment, isNull);
     });
 
-    test('an older server (no product types) still reads a tiered request as a pass', () {
-      final d = MemberData()
-        ..me = MemberMeResponse.fromJson({
-          'user': {'id': 'u1', 'userType': 'member'},
-          'visitsUsed': 0,
-          'pendingPayment': {
-            'id': 'p',
-            'tier': 'pro',
-            'amountTzs': 120000,
-            'status': 'pending',
-          },
-        });
-      expect(d.pendingPass, isNotNull);
-    });
+    test(
+      'an older server (no product types) still reads a tiered request as a pass',
+      () {
+        final d = MemberData()
+          ..me = MemberMeResponse.fromJson({
+            'user': {'id': 'u1', 'userType': 'member'},
+            'visitsUsed': 0,
+            'pendingPayment': {
+              'id': 'p',
+              'tier': 'pro',
+              'amountTzs': 120000,
+              'status': 'pending',
+            },
+          });
+        expect(d.pendingPass, isNotNull);
+      },
+    );
   });
 
   group('payment labels say what was bought', () {
@@ -210,12 +225,17 @@ void main() {
 
     testWidgets('FitFlex Pass names the tier', (tester) async {
       expect(
-        await label(tester, _pay({'productType': 'FITFLEX_PASS', 'tier': 'pro'})),
+        await label(
+          tester,
+          _pay({'productType': 'FITFLEX_PASS', 'tier': 'pro'}),
+        ),
         'FitFlex Pass · Pro',
       );
     });
 
-    testWidgets('gym plan names the gym and period, with no tier', (tester) async {
+    testWidgets('gym plan names the gym and period, with no tier', (
+      tester,
+    ) async {
       final text = await label(
         tester,
         _pay({
@@ -231,7 +251,9 @@ void main() {
       expect(text, isNot(contains('FitFlex Pass')));
     });
 
-    testWidgets('trainer session and order are not called a pass', (tester) async {
+    testWidgets('trainer session and order are not called a pass', (
+      tester,
+    ) async {
       expect(
         await label(tester, _pay({'productType': 'TRAINER_SERVICE'})),
         'Trainer session',

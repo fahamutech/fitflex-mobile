@@ -417,7 +417,10 @@ void main() {
       expect(find.text('Professional'), findsOneWidget);
       expect(find.text('Add file'), findsOneWidget); // certification
       final submit = tester.widget<FilledButton>(
-        find.byKey(const Key('kyc-submit')),
+        find.descendant(
+          of: find.byKey(const Key('kyc-submit')),
+          matching: find.byType(FilledButton),
+        ),
       );
       expect(submit.onPressed, isNull);
       expect(find.text('3 items left to complete'), findsOneWidget);
@@ -506,7 +509,10 @@ void main() {
       );
       expect(find.textContaining('independent contractor'), findsOneWidget);
 
-      final accept = find.byKey(const Key('kyc-agreement-accept'));
+      final accept = find.descendant(
+        of: find.byKey(const Key('kyc-agreement-accept')),
+        matching: find.byType(FilledButton),
+      );
       expect(tester.widget<FilledButton>(accept).onPressed, isNull);
       await tester.tap(find.byKey(const Key('kyc-agreement-check')));
       await tester.pump();
