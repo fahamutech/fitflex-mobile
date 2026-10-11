@@ -13,6 +13,7 @@ import 'router.dart';
 import 'screens/account_recovery.dart';
 import 'shared/api_client.dart';
 import 'shared/auth_state.dart';
+import 'shared/friend_invites.dart';
 import 'shared/inbox/inbox_controller.dart';
 import 'shared/push_service.dart';
 import 'shared/design_tokens.dart';
@@ -158,7 +159,8 @@ class _FitFlexAppState extends State<FitFlexApp> {
   Future<void> _openFromPush(Map<String, dynamic> data) async {
     final message = await _inbox.openFromPush(data);
     if (message != null) {
-      _router.push('/inbox/${message.id}');
+      // A friend request is answered on its card in the list.
+      _router.push(message.isFriendInvitation ? '/inbox' : '/inbox/${message.id}');
       return;
     }
     final role = widget.auth.user?['userType']?.toString() ?? widget.auth.role;
@@ -189,8 +191,25 @@ class _FitFlexAppState extends State<FitFlexApp> {
     if (token != null && token != _lastToken) {
       _inbox.load();
       _syncLocale();
+      _claimKeptInvite();
     }
     _lastToken = token;
+  }
+
+  /// Someone opened a friend-invitation link before signing in: now that
+  /// they have, attach it (the server checks it was made for their
+  /// verified email / number) and show the request under Notifications.
+  Future<void> _claimKeptInvite() async {
+    final kept = await PendingFriendInvite.take();
+    if (kept == null) return;
+    try {
+      final res = await widget.api.claimFriendInvitation(kept);
+      await _inbox.load();
+      final status = ((res['invitation'] as Map?)?['status'] ?? '').toString();
+      if (status == 'pending') _router.go('/inbox');
+    } catch (_) {
+      // Wrong account, expired or withdrawn: the link page explains if reopened.
+    }
   }
 
   @override

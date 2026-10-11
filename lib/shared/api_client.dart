@@ -1089,6 +1089,35 @@ class ApiClient {
     'GET',
     '/social/people?${Uri(queryParameters: {'q': ?q, 'code': ?code}).query}',
   );
+  // Friend invitations: search by email / phone, request or share a link,
+  // answer from Notifications. FitFlex sends nothing outside the app.
+  Future<Map<String, dynamic>> friendLookup({String? email, String? phone}) =>
+      _map(
+        'GET',
+        '/me/friend-invitations/lookup?${Uri(queryParameters: {'email': ?email, 'phone': ?phone}).query}',
+      );
+  Future<Map<String, dynamic>> friendInvitations() =>
+      _map('GET', '/me/friend-invitations');
+  Future<Map<String, dynamic>> inviteFriend({
+    String? userId,
+    String? email,
+    String? phone,
+    String? locale,
+  }) => _map(
+    'POST',
+    '/me/friend-invitations',
+    body: {'userId': ?userId, 'email': ?email, 'phone': ?phone, 'locale': ?locale},
+  );
+  Future<Map<String, dynamic>> approveFriendInvitation(String id) =>
+      _map('POST', '/me/friend-invitations/${_e(id)}/approve');
+  Future<Map<String, dynamic>> rejectFriendInvitation(String id) =>
+      _map('POST', '/me/friend-invitations/${_e(id)}/reject');
+  Future<Map<String, dynamic>> revokeFriendInvitation(String id) =>
+      _map('DELETE', '/me/friend-invitations/${_e(id)}');
+  Future<Map<String, dynamic>> claimFriendInvitation(String token) =>
+      _map('POST', '/me/friend-invitations/claim', body: {'token': token});
+  Future<Map<String, dynamic>> previewFriendInvitation(String token) =>
+      _map('GET', '/friend-invitations/preview/${_e(token)}');
   Future<Map<String, dynamic>> follow(String userId) =>
       _map('POST', '/me/follows', body: {'userId': userId});
   Future<Map<String, dynamic>> unfollow(String userId) =>

@@ -10,6 +10,7 @@ import '../../app_scope.dart';
 import '../api_error_message.dart';
 import '../components/components.dart';
 import '../design_tokens.dart';
+import '../friend_invites.dart';
 import '../i18n.dart';
 import 'inbox_controller.dart';
 
@@ -186,6 +187,20 @@ class _InboxPageState extends State<InboxPage> {
   }
 }
 
+/// What a message shows: friend invitations are composed from their data so
+/// the text follows the app language.
+({String title, String body}) _text(BuildContext context, InboxMessage m) {
+  if (m.isFriendInvitation) {
+    final name = (m.data['inviterName']?.toString() ?? '').trim();
+    final who = name.isEmpty ? context.tr('friendInvite.someone') : name;
+    return (
+      title: context.tr('friendInvite.cardTitle'),
+      body: context.tr('friendInvite.cardBody').replaceFirst('{name}', who),
+    );
+  }
+  return (title: m.title, body: m.body);
+}
+
 class _MessageTile extends StatelessWidget {
   const _MessageTile({required this.message});
   final InboxMessage message;
@@ -194,12 +209,14 @@ class _MessageTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final m = message;
+    final text = _text(context, m);
+    final inbox = AppScope.of(context).inbox;
     return FFCard(
       margin: const EdgeInsets.only(bottom: FFTokens.spacingSm),
       child: InkWell(
         key: Key('inbox-${m.id}'),
         borderRadius: BorderRadius.circular(FFTokens.radiusXl),
-        onTap: () => context.push('/inbox/${m.id}'),
+        onTap: m.isFriendInvitation ? null : () => context.push('/inbox/${m.id}'),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -238,7 +255,7 @@ class _MessageTile extends StatelessWidget {
                   ),
                   const SizedBox(height: FFTokens.spacing2xs),
                   Text(
-                    m.title,
+                    text.title,
                     style: m.unread
                         ? theme.textTheme.titleSmall
                         : theme.textTheme.titleSmall?.copyWith(
@@ -246,11 +263,14 @@ class _MessageTile extends StatelessWidget {
                           ),
                   ),
                   Text(
-                    m.body,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                    text.body,
+                    maxLines: m.isFriendInvitation ? null : 2,
+                    overflow: m.isFriendInvitation ? null : TextOverflow.ellipsis,
                     style: theme.textTheme.bodySmall,
                   ),
+                  // Approve / Reject sit on the card itself.
+                  if (m.isFriendInvitation && inbox != null)
+                    FriendInvitationActions(message: m, inbox: inbox),
                   if (m.kind == InboxCategory.offers)
                     Padding(
                       padding: const EdgeInsets.only(top: FFTokens.spacingXs),
@@ -329,14 +349,15 @@ class _InboxMessagePageState extends State<InboxMessagePage> {
           ),
         ),
         const SizedBox(height: FFTokens.spacingXs),
-        Text(m.title, style: theme.textTheme.titleLarge),
+        Text(_text(context, m).title, style: theme.textTheme.titleLarge),
         if (m.createdAt != null)
           Text(
             DateFormat('d MMM yyyy, HH:mm').format(m.createdAt!),
             style: theme.textTheme.bodySmall,
           ),
         const SizedBox(height: FFTokens.spacingMd),
-        Text(m.body, style: theme.textTheme.bodyLarge),
+        Text(_text(context, m).body, style: theme.textTheme.bodyLarge),
+        if (m.isFriendInvitation) FriendInvitationActions(message: m, inbox: inbox),
         if (route != null) ...[
           const SizedBox(height: FFTokens.spacingLg),
           FilledButton(

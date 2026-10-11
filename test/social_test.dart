@@ -111,6 +111,12 @@ class _Api extends ApiClient {
 
   @override
   Future<Map<String, dynamic>> connections() async => conn;
+
+  @override
+  Future<Map<String, dynamic>> friendInvitations() async => {
+    'incoming': [],
+    'outgoing': [],
+  };
   @override
   Future<Map<String, dynamic>> socialSettings() async => {
     'defaultShare': null,
