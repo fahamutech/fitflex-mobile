@@ -20,7 +20,11 @@ String workoutRoute(String id) =>
 String muscleLabel(BuildContext context, String group) {
   final key = 'muscle.$group';
   final label = context.tr(key);
-  return label == key ? group.replaceAll('_', ' ') : label;
+  if (label != key) return label;
+  // Plan workouts name the training area (quadriceps, obliques…).
+  final areaKey = 'training.area.$group';
+  final area = context.tr(areaKey);
+  return area == areaKey ? group.replaceAll('_', ' ') : area;
 }
 
 /// "3 × 10" for rep-based exercises, "3 × 30 s" for timed ones.

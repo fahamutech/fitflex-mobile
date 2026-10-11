@@ -5,6 +5,7 @@ import '../../../shared/activity/activity.dart';
 import '../../../shared/activity/activity_summary.dart';
 import '../../../shared/activity/progress_engine.dart';
 import '../../../shared/activity/streaks.dart';
+import '../../../shared/activity/training_plan.dart';
 import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
 import '../../../shared/i18n.dart';
@@ -12,6 +13,7 @@ import '../member_shell.dart';
 import 'activity_bar_chart.dart';
 import 'activity_widgets.dart';
 import 'goal_widgets.dart';
+import 'training_widgets.dart';
 
 /// The Progress section of the Activity tab: goals, weekly and monthly
 /// progress, trends, consistency, streaks, milestones and records.
@@ -31,6 +33,7 @@ List<Widget> buildProgressSection(
   }
   return [
     GoalsBlock(data: data, now: now),
+    if (data.trainingPlan case final plan?) _TrainingBlock(plan: plan),
     _WeeklyBlock(activities: acts, now: now),
     _MonthlyBlock(activities: acts, now: now),
     _TrendsBlock(activities: acts, now: now),
@@ -432,6 +435,60 @@ class _DayCell extends StatelessWidget {
 }
 
 // ── Streaks ─────────────────────────────────────────────────────────────────
+
+/// How far through their training plan the member is.
+class _TrainingBlock extends StatelessWidget {
+  const _TrainingBlock({required this.plan});
+
+  final TrainingPlan plan;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final line = trainingProgressLine(context, plan);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        FFSectionTitle(context.tr('training.myPlan')),
+        FFCard(
+          key: const Key('progress-training'),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${trainingPlanTitle(context, plan)} · '
+                '${trainingGoalLabel(context, plan.goal)}',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: FFTokens.spacingSm),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(FFTokens.radiusFull),
+                child: LinearProgressIndicator(
+                  value: plan.completion.clamp(0.0, 1.0),
+                  minHeight: 8,
+                  semanticsLabel: context.tr('training.myPlan'),
+                ),
+              ),
+              const SizedBox(height: FFTokens.spacingXs),
+              Text(line, style: theme.textTheme.bodySmall),
+              if (plan.skipped + plan.missed > 0)
+                Text(
+                  context
+                      .tr('training.notDone')
+                      .replaceAll('{skipped}', '${plan.skipped}')
+                      .replaceAll('{missed}', '${plan.missed}'),
+                  key: const Key('progress-training-not-done'),
+                  style: theme.textTheme.bodySmall,
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
 
 class _StreaksBlock extends StatelessWidget {
   const _StreaksBlock({required this.data, required this.now});

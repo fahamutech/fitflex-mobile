@@ -4,6 +4,7 @@ import 'package:fitflexmobile/app_scope.dart';
 import 'package:fitflexmobile/screens/member/member_shell.dart';
 import 'package:fitflexmobile/screens/member/member_training_plan_page.dart';
 import 'package:fitflexmobile/screens/member/member_training_setup_page.dart';
+import 'package:fitflexmobile/screens/member/widgets/progress_section.dart';
 import 'package:fitflexmobile/screens/member/widgets/training_widgets.dart';
 import 'package:fitflexmobile/screens/member/widgets/workout_widgets.dart';
 import 'package:fitflexmobile/shared/activity/sample_activity_log.dart';
@@ -88,6 +89,7 @@ class _FakeTraining implements TrainingRepository {
   TrainingPreferences prefs;
   TrainingPlan? plan;
   final calls = <(String, Object?)>[];
+  final langs = <String?>[];
   bool externalPlan = false;
   bool fail = false;
 
@@ -107,8 +109,10 @@ class _FakeTraining implements TrainingRepository {
   Future<TrainingPlan> generate({
     required int weeks,
     bool replace = false,
+    String? lang,
   }) async {
     calls.add(('generate', (weeks, replace)));
+    langs.add(lang);
     if (fail) throw ApiException(500, {'error': 'boom'});
     if (externalPlan && !replace) throw const ActivePlanExists();
     return plan = TrainingPlan.tryParse(_planJson())!;
@@ -286,6 +290,7 @@ void main() {
       expect(saved['sessionMinutes'], 45);
       expect(saved['daysPerWeek'], 4);
       expect(repo.calls.last, ('generate', (6, false)));
+      expect(repo.langs.single, 'en', reason: 'names in the app language');
       expect(data.trainingPlan, isNotNull, reason: 'the plan is in place');
     });
 
@@ -394,6 +399,8 @@ void main() {
       expect(find.text('Coming up'), findsNWidgets(2));
       expect(find.textContaining('7 exercises · 45 min'), findsNWidgets(6));
       expect(find.byKey(const Key('training-day-2026-10-12')), findsOneWidget);
+      // Every session opens, however far ahead it is.
+      expect(find.byIcon(Icons.chevron_right), findsNWidgets(6));
     });
 
     testWidgets('stopping the plan asks first', (tester) async {
@@ -495,6 +502,80 @@ void main() {
       );
       expect(find.byKey(const Key('today-workout-empty')), findsOneWidget);
     });
+  });
+
+  testWidgets('a plan made in Swahili asks for Swahili names', (tester) async {
+    await _tall(tester);
+    final repo = _FakeTraining();
+    await tester.pumpWidget(
+      _app(
+        const MemberTrainingSetupPage(),
+        data: _data(),
+        training: repo,
+        lang: 'sw',
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Mpango wako wa mazoezi'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('training-generate')));
+    await tester.pumpAndSettle();
+    expect(repo.langs.single, 'sw');
+  });
+
+  testWidgets('Progress shows how far through the plan they are', (
+    tester,
+  ) async {
+    await _tall(tester);
+    final plan = TrainingPlan.tryParse(_planJson())!;
+    final data = _data(plan: plan)..activityIsSample = true;
+    await tester.pumpWidget(
+      _app(
+        Builder(
+          builder: (context) =>
+              ListView(children: buildProgressSection(context, data, _now)),
+        ),
+        data: data,
+      ),
+    );
+    await tester.pump();
+    expect(find.byKey(const Key('progress-training')), findsOneWidget);
+    expect(find.text('2-week plan · Gain Muscle'), findsOneWidget);
+    expect(find.text('Week 2 of 2 · 1 of 6 sessions done'), findsOneWidget);
+    expect(find.text('1 skipped · 1 missed'), findsOneWidget);
+
+    // No plan, no block.
+    final none = _data()..activityIsSample = true;
+    await tester.pumpWidget(
+      _app(
+        Builder(
+          builder: (context) =>
+              ListView(children: buildProgressSection(context, none, _now)),
+        ),
+        data: none,
+      ),
+    );
+    await tester.pump();
+    expect(find.byKey(const Key('progress-training')), findsNothing);
+  });
+
+  testWidgets('plan exercises name their area in words', (tester) async {
+    late String quads, legacy, unknown;
+    await tester.pumpWidget(
+      _app(
+        Builder(
+          builder: (context) {
+            quads = muscleLabel(context, 'quadriceps');
+            legacy = muscleLabel(context, 'arms');
+            unknown = muscleLabel(context, 'left_elbow');
+            return const SizedBox();
+          },
+        ),
+        data: _data(),
+      ),
+    );
+    expect(quads, 'Quadriceps');
+    expect(legacy, 'Arms');
+    expect(unknown, 'left elbow');
   });
 
   test('every training line exists in English and Swahili', () {

@@ -112,8 +112,9 @@ class _Repo implements WorkoutRepository {
   Future<Workout> replaceExercise(
     String workoutId,
     String exerciseId,
-    String libraryId,
-  ) async {
+    String libraryId, {
+    String? lang,
+  }) async {
     calls.add(('replace', (exerciseId, libraryId)));
     final json = workout.toJson();
     json['exercises'] = [
@@ -162,6 +163,8 @@ class _Repo implements WorkoutRepository {
   }) async => workout;
   @override
   Future<List<WorkoutTemplate>> templates() async => const [];
+  @override
+  Future<Workout?> get(String id) async => id == workout.id ? workout : null;
 }
 
 Future<_Repo> _open(
@@ -481,5 +484,50 @@ void main() {
     );
     // The exercise list opens by itself when something was said.
     expect(find.text("Didn't enjoy it"), findsOneWidget);
+  });
+
+  testWidgets('a session further ahead than the app keeps is fetched', (
+    tester,
+  ) async {
+    Future<void> open(_Repo repo, String id) async {
+      final data = MemberData()..workoutsLoaded = true;
+      final api = ApiClient();
+      await tester.pumpWidget(
+        AppScope(
+          key: ValueKey(id),
+          api: api,
+          auth: AuthState(api),
+          workoutRepository: repo,
+          child: FFLocaleScope(
+            notifier: FFLocale(),
+            child: MaterialApp(
+              theme: buildTheme(),
+              home: Scaffold(
+                body: MemberDataScope(
+                  data: data,
+                  child: MemberWorkoutPage(workoutId: id, now: () => _now),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    tester.view.physicalSize = const Size(1080, 6000);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final repo = _Repo(_workout(status: 'planned'));
+    await open(repo, 'w1');
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(find.text('Chest + Triceps'), findsOneWidget);
+    expect(find.byKey(const Key('workout-start')), findsOneWidget);
+
+    // One that isn't theirs, or is gone, says so with the way back.
+    await open(repo, 'w_other');
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('workout-start')), findsNothing);
+    expect(find.byKey(const Key('workout-back')), findsOneWidget);
   });
 }

@@ -110,6 +110,8 @@ class _MemberTrainingSetupPageState extends State<MemberTrainingSetupPage> {
     final shell = context.findAncestorStateOfType<MemberShellState>();
     final router = GoRouter.maybeOf(context);
     final failed = context.tr('training.failed');
+    // Session names are written in the language the app is in right now.
+    final lang = Localizations.localeOf(context).languageCode;
     var replace = data.trainingPlan != null;
     if (replace && !await _confirmReplace()) return;
     if (!mounted) return;
@@ -121,7 +123,7 @@ class _MemberTrainingSetupPageState extends State<MemberTrainingSetupPage> {
       await repo.savePreferences(p);
       TrainingPlan plan;
       try {
-        plan = await repo.generate(weeks: _weeks, replace: replace);
+        plan = await repo.generate(weeks: _weeks, replace: replace, lang: lang);
       } on ActivePlanExists {
         // A plan made elsewhere since this screen opened: ask, then go on.
         if (!mounted || !await _confirmReplace()) {
@@ -129,7 +131,7 @@ class _MemberTrainingSetupPageState extends State<MemberTrainingSetupPage> {
           return;
         }
         replace = true;
-        plan = await repo.generate(weeks: _weeks, replace: true);
+        plan = await repo.generate(weeks: _weeks, replace: true, lang: lang);
       }
       if (shell != null) {
         await shell.refreshTraining();

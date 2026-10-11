@@ -53,8 +53,13 @@ abstract class WorkoutRepository {
   Future<Workout> replaceExercise(
     String workoutId,
     String exerciseId,
-    String libraryId,
-  );
+    String libraryId, {
+    String? lang,
+  });
+
+  /// One workout by id, or null when it isn't the member's or is gone. For
+  /// workouts outside the window [list] was asked for.
+  Future<Workout?> get(String id);
 }
 
 /// Workouts stored on the FitFlex backend.
@@ -163,10 +168,26 @@ class ApiWorkoutRepository implements WorkoutRepository {
   Future<Workout> replaceExercise(
     String workoutId,
     String exerciseId,
-    String libraryId,
-  ) async => _workout(
-    await api.replaceWorkoutExercise(workoutId, exerciseId, libraryId),
+    String libraryId, {
+    String? lang,
+  }) async => _workout(
+    await api.replaceWorkoutExercise(
+      workoutId,
+      exerciseId,
+      libraryId,
+      lang: lang,
+    ),
   );
+
+  @override
+  Future<Workout?> get(String id) async {
+    try {
+      return _workout(await api.myWorkout(id));
+    } on ApiException catch (e) {
+      if (e.status == 404) return null;
+      rethrow;
+    }
+  }
 }
 
 /// In-memory workouts for sample-data mode. Completing one adds its
@@ -348,6 +369,11 @@ class LocalWorkoutRepository implements WorkoutRepository {
   Future<Workout> replaceExercise(
     String workoutId,
     String exerciseId,
-    String libraryId,
-  ) => throw UnsupportedError('Sample workouts have no alternatives.');
+    String libraryId, {
+    String? lang,
+  }) => throw UnsupportedError('Sample workouts have no alternatives.');
+
+  @override
+  Future<Workout?> get(String id) async =>
+      _workouts.where((w) => w.id == id).firstOrNull?.copy();
 }

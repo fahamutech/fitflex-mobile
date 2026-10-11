@@ -1729,6 +1729,7 @@ class FFLocale extends ChangeNotifier {
       'workoutFeedback.clear': "Clear",
       'workoutFeedback.failed':
           "Couldn't save that. Check your connection and try again.",
+      'training.notDone': "{skipped} skipped · {missed} missed",
       'phoneSteps.title': 'Count your steps with this phone',
       'audience.title': 'Who can see this',
       'audience.private': 'Only you',
@@ -5462,6 +5463,7 @@ class FFLocale extends ChangeNotifier {
       'workoutFeedback.clear': "Ondoa",
       'workoutFeedback.failed':
           "Imeshindikana kuhifadhi. Angalia mtandao wako kisha ujaribu tena.",
+      'training.notDone': "{skipped} vimerukwa · {missed} vimekosekana",
       'phoneSteps.title': 'Hesabu hatua zako kwa simu hii',
       'audience.title': 'Nani anaweza kuona',
       'audience.private': 'Wewe tu',
