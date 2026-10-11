@@ -244,6 +244,48 @@ class _MemberWorkoutPageState extends State<MemberWorkoutPage> {
     _changed();
   }
 
+  /// Leave an exercise out of the session, or bring it back. A skipped
+  /// exercise has no sets done.
+  void _toggleSkip(WorkoutExercise e) {
+    e.skipped = !e.skipped;
+    if (e.skipped) {
+      for (final s in e.workoutSets) {
+        s.completed = false;
+      }
+    }
+    _changed();
+  }
+
+  /// Swap an exercise for one that trains the same area.
+  Future<void> _replace(WorkoutExercise e) async {
+    final w = _w!;
+    final lang = Localizations.localeOf(context).languageCode;
+    // Anything typed so far is saved first, so the swap loses nothing.
+    _autosave?.cancel();
+    await _save();
+    if (!mounted) return;
+    final picked = await showModalBottomSheet<ExerciseAlternative>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _AlternativesSheet(
+        exercise: e,
+        load: () => _repo.alternatives(w.id, e.id, lang: lang),
+      ),
+    );
+    if (picked == null || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      final updated = await _repo.replaceExercise(w.id, e.id, picked.id);
+      if (!mounted) return;
+      setState(() => _w = updated.copy());
+      _toast('workout.replaced');
+    } catch (_) {
+      if (mounted) _toast('workout.replaceFailed');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   void _toggleExercise(WorkoutExercise e) {
     final done = !e.isComplete;
     for (final s in e.workoutSets) {
@@ -386,6 +428,10 @@ class _MemberWorkoutPageState extends State<MemberWorkoutPage> {
   Widget _exerciseCard(BuildContext context, WorkoutExercise e, bool live) {
     final theme = Theme.of(context);
     final noteOpen = _noteOpen.contains(e.id) || (e.notes ?? '').isNotEmpty;
+    final open = _w?.status.isOpen ?? false;
+    // Only library exercises have alternatives, and only before a set is done.
+    final canReplace = open && e.libraryId != null && !e.hasSetsDone;
+    final faded = theme.colorScheme.onSurfaceVariant;
     return FFCard(
       key: Key('exercise-${e.id}'),
       child: Column(
@@ -401,6 +447,7 @@ class _MemberWorkoutPageState extends State<MemberWorkoutPage> {
                       e.exerciseName,
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
+                        color: e.skipped ? faded : null,
                         decoration: e.isComplete
                             ? TextDecoration.lineThrough
                             : null,
@@ -417,7 +464,12 @@ class _MemberWorkoutPageState extends State<MemberWorkoutPage> {
                   ],
                 ),
               ),
-              if (live)
+              if (e.skipped)
+                FFPill(
+                  key: Key('exercise-skipped-${e.id}'),
+                  label: context.tr('workout.exerciseSkipped'),
+                ),
+              if (live && !e.skipped)
                 IconButton(
                   key: Key('exercise-done-${e.id}'),
                   tooltip: context.tr('workout.markExercise'),
@@ -429,16 +481,45 @@ class _MemberWorkoutPageState extends State<MemberWorkoutPage> {
                     color: e.isComplete ? theme.colorScheme.primary : null,
                   ),
                 ),
+              if (open)
+                PopupMenuButton<String>(
+                  key: Key('exercise-menu-${e.id}'),
+                  tooltip: context.tr('workout.exerciseMenu'),
+                  enabled: !_busy,
+                  onSelected: (v) => v == 'skip' ? _toggleSkip(e) : _replace(e),
+                  itemBuilder: (_) => [
+                    PopupMenuItem(
+                      key: Key('exercise-skip-${e.id}'),
+                      value: 'skip',
+                      child: Text(
+                        context.tr(
+                          e.skipped
+                              ? 'workout.undoSkip'
+                              : 'workout.skipExercise',
+                        ),
+                      ),
+                    ),
+                    if (canReplace)
+                      PopupMenuItem(
+                        key: Key('exercise-replace-${e.id}'),
+                        value: 'replace',
+                        child: Text(context.tr('workout.replaceExercise')),
+                      ),
+                  ],
+                ),
             ],
           ),
-          if (e.instructions != null)
+          if (e.instructions != null && !e.skipped)
             Padding(
               padding: const EdgeInsets.only(top: FFTokens.spacingXs),
               child: Text(e.instructions!, style: theme.textTheme.bodySmall),
             ),
           const SizedBox(height: FFTokens.spacingSm),
-          for (final s in e.workoutSets) _setRow(context, e, s, live),
-          if (live)
+          if (!e.skipped)
+            for (final s in e.workoutSets) _setRow(context, e, s, live),
+          if (e.skipped)
+            const SizedBox.shrink()
+          else if (live)
             noteOpen
                 ? Padding(
                     padding: const EdgeInsets.only(top: FFTokens.spacingSm),
@@ -566,6 +647,91 @@ class _MemberWorkoutPageState extends State<MemberWorkoutPage> {
             onChanged: live ? (v) => _toggleSet(e, s, v ?? false) : null,
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The exercises that could stand in for [exercise]; pops with the one
+/// the member picks.
+class _AlternativesSheet extends StatefulWidget {
+  const _AlternativesSheet({required this.exercise, required this.load});
+
+  final WorkoutExercise exercise;
+  final Future<List<ExerciseAlternative>> Function() load;
+
+  @override
+  State<_AlternativesSheet> createState() => _AlternativesSheetState();
+}
+
+class _AlternativesSheetState extends State<_AlternativesSheet> {
+  late final Future<List<ExerciseAlternative>> _future = widget.load();
+
+  String _target(BuildContext context, ExerciseAlternative a) {
+    final sets = a.sets ?? widget.exercise.sets;
+    return a.reps != null
+        ? '$sets × ${a.reps}'
+        : '$sets × ${a.duration ?? 0} ${context.tr('workout.secondsShort')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(FFTokens.spacingLg),
+        child: FutureBuilder<List<ExerciseAlternative>>(
+          future: _future,
+          builder: (context, snap) {
+            final items = snap.data;
+            return ListView(
+              key: const Key('alternatives-sheet'),
+              shrinkWrap: true,
+              children: [
+                Text(
+                  context
+                      .tr('workout.replaceTitle')
+                      .replaceAll('{name}', widget.exercise.exerciseName),
+                  style: theme.textTheme.titleLarge,
+                ),
+                const SizedBox(height: FFTokens.spacingXs),
+                Text(
+                  context.tr('workout.replaceBody'),
+                  style: theme.textTheme.bodySmall,
+                ),
+                const SizedBox(height: FFTokens.spacingMd),
+                if (snap.hasError)
+                  Text(
+                    context.tr('workout.replaceFailed'),
+                    key: const Key('alternatives-error'),
+                  )
+                else if (items == null)
+                  const Padding(
+                    padding: EdgeInsets.all(FFTokens.spacingLg),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                else if (items.isEmpty)
+                  Text(
+                    context.tr('workout.replaceNone'),
+                    key: const Key('alternatives-none'),
+                  )
+                else
+                  for (final a in items)
+                    ListTile(
+                      key: Key('alternative-${a.id}'),
+                      contentPadding: EdgeInsets.zero,
+                      minVerticalPadding: FFTokens.spacingSm,
+                      title: Text(a.name),
+                      subtitle: Text(
+                        [_target(context, a), ?a.description].join(' · '),
+                      ),
+                      trailing: const Icon(Icons.swap_horiz),
+                      onTap: () => Navigator.pop(context, a),
+                    ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }

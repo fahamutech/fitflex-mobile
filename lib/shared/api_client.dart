@@ -866,6 +866,33 @@ class ApiClient {
   Future<Map<String, dynamic>> skipWorkout(String id) async =>
       await _request('POST', '/me/workouts/${Uri.encodeComponent(id)}/skip');
 
+  /// Exercises that could stand in for one in the member's workout.
+  Future<List<dynamic>> workoutExerciseAlternatives(
+    String workoutId,
+    String exerciseId, {
+    String? lang,
+  }) async {
+    final q = lang == null ? '' : '?lang=${Uri.encodeQueryComponent(lang)}';
+    final res = await _request(
+      'GET',
+      '/me/workouts/${Uri.encodeComponent(workoutId)}/exercises/'
+          '${Uri.encodeComponent(exerciseId)}/alternatives$q',
+    );
+    return (res as Map)['alternatives'] as List? ?? const [];
+  }
+
+  /// `{ workout, exercise }` after the swap.
+  Future<Map<String, dynamic>> replaceWorkoutExercise(
+    String workoutId,
+    String exerciseId,
+    String libraryId,
+  ) async => await _request(
+    'POST',
+    '/me/workouts/${Uri.encodeComponent(workoutId)}/exercises/'
+        '${Uri.encodeComponent(exerciseId)}/replace',
+    body: {'libraryId': libraryId},
+  );
+
   // ── Training plans ────────────────────────────────────────────────────
   /// `{ preferences (as chosen), effective (as a plan would use them) }`.
   Future<Map<String, dynamic>> trainingPreferences() async =>

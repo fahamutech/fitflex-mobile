@@ -30,6 +30,21 @@ abstract class WorkoutRepository {
   Future<WorkoutCompletion> complete(Workout workout, {int? durationMinutes});
 
   Future<Workout> skip(String id);
+
+  /// Exercises that could stand in for one in a workout. Empty when the
+  /// exercise didn't come from the FitFlex library.
+  Future<List<ExerciseAlternative>> alternatives(
+    String workoutId,
+    String exerciseId, {
+    String? lang,
+  });
+
+  /// Swaps an exercise for one of its [alternatives]; returns the workout.
+  Future<Workout> replaceExercise(
+    String workoutId,
+    String exerciseId,
+    String libraryId,
+  );
 }
 
 /// Workouts stored on the FitFlex backend.
@@ -103,6 +118,29 @@ class ApiWorkoutRepository implements WorkoutRepository {
 
   @override
   Future<Workout> skip(String id) async => _workout(await api.skipWorkout(id));
+
+  @override
+  Future<List<ExerciseAlternative>> alternatives(
+    String workoutId,
+    String exerciseId, {
+    String? lang,
+  }) async => [
+    for (final raw in await api.workoutExerciseAlternatives(
+      workoutId,
+      exerciseId,
+      lang: lang,
+    ))
+      ?ExerciseAlternative.tryParse(raw),
+  ];
+
+  @override
+  Future<Workout> replaceExercise(
+    String workoutId,
+    String exerciseId,
+    String libraryId,
+  ) async => _workout(
+    await api.replaceWorkoutExercise(workoutId, exerciseId, libraryId),
+  );
 }
 
 /// In-memory workouts for sample-data mode. Completing one adds its
@@ -255,4 +293,20 @@ class LocalWorkoutRepository implements WorkoutRepository {
     _workouts[i] = _workouts[i].copy(status: WorkoutStatus.skipped);
     return _workouts[i].copy();
   }
+
+  // Sample workouts come from fixed templates, not the exercise library,
+  // so there is nothing to swap them for.
+  @override
+  Future<List<ExerciseAlternative>> alternatives(
+    String workoutId,
+    String exerciseId, {
+    String? lang,
+  }) async => const [];
+
+  @override
+  Future<Workout> replaceExercise(
+    String workoutId,
+    String exerciseId,
+    String libraryId,
+  ) => throw UnsupportedError('Sample workouts have no alternatives.');
 }

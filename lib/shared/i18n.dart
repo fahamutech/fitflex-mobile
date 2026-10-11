@@ -1701,6 +1701,19 @@ class FFLocale extends ChangeNotifier {
       'training.status.removed': "Removed",
       'training.status.missed': "Missed",
       'training.status.today': "Today",
+      'workout.exerciseMenu': "Exercise options",
+      'workout.skipExercise': "Skip this exercise",
+      'workout.undoSkip': "Bring this exercise back",
+      'workout.exerciseSkipped': "Skipped",
+      'workout.replaceExercise': "Replace exercise",
+      'workout.replaceTitle': "Replace {name}",
+      'workout.replaceBody':
+          "These train the same area and fit the equipment you have.",
+      'workout.replaceNone':
+          "Nothing else fits what you have right now. You can skip this exercise instead.",
+      'workout.replaced': "Exercise replaced.",
+      'workout.replaceFailed':
+          "Couldn't do that. Check your connection and try again.",
       'phoneSteps.title': 'Count your steps with this phone',
       'audience.title': 'Who can see this',
       'audience.private': 'Only you',
@@ -5405,6 +5418,19 @@ class FFLocale extends ChangeNotifier {
       'training.status.removed': "Kimeondolewa",
       'training.status.missed': "Kimekosekana",
       'training.status.today': "Leo",
+      'workout.exerciseMenu': "Chaguo za zoezi",
+      'workout.skipExercise': "Ruka zoezi hili",
+      'workout.undoSkip': "Rudisha zoezi hili",
+      'workout.exerciseSkipped': "Limerukwa",
+      'workout.replaceExercise': "Badilisha zoezi",
+      'workout.replaceTitle': "Badilisha {name}",
+      'workout.replaceBody':
+          "Haya yanafanya kazi sehemu ile ile na yanaendana na vifaa ulivyo navyo.",
+      'workout.replaceNone':
+          "Hakuna zoezi lingine linaloendana na ulivyo navyo kwa sasa. Unaweza kuruka zoezi hili badala yake.",
+      'workout.replaced': "Zoezi limebadilishwa.",
+      'workout.replaceFailed':
+          "Imeshindikana. Angalia mtandao wako kisha ujaribu tena.",
       'phoneSteps.title': 'Hesabu hatua zako kwa simu hii',
       'audience.title': 'Nani anaweza kuona',
       'audience.private': 'Wewe tu',
