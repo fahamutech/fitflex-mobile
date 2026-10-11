@@ -866,6 +866,16 @@ class ApiClient {
   Future<Map<String, dynamic>> skipWorkout(String id) async =>
       await _request('POST', '/me/workouts/${Uri.encodeComponent(id)}/skip');
 
+  /// `{ rating?, exercises?: [{ id, reason }] }` on a finished workout.
+  Future<Map<String, dynamic>> workoutFeedback(
+    String id,
+    Map<String, dynamic> body,
+  ) async => await _request(
+    'POST',
+    '/me/workouts/${Uri.encodeComponent(id)}/feedback',
+    body: body,
+  );
+
   /// Exercises that could stand in for one in the member's workout.
   Future<List<dynamic>> workoutExerciseAlternatives(
     String workoutId,

@@ -34,6 +34,9 @@ class _MemberWorkoutPageState extends State<MemberWorkoutPage> {
   Workout? _w;
   bool _loaded = false;
   bool _busy = false;
+
+  /// Calories of the workout just finished (from its Activity).
+  int? _calories;
   bool _dirty = false;
   WorkoutSummary? _summary;
   Timer? _tick;
@@ -189,6 +192,7 @@ class _MemberWorkoutPageState extends State<MemberWorkoutPage> {
       );
       setState(() {
         _w = done.workout;
+        _calories = done.activity.calories;
         _summary = summary;
       });
       _syncTicker();
@@ -242,6 +246,43 @@ class _MemberWorkoutPageState extends State<MemberWorkoutPage> {
       }
     }
     _changed();
+  }
+
+  /// The calories recorded for a workout finished earlier, from its
+  /// Activity.
+  int? _caloriesFrom(MemberData data, Workout w) => data.activities
+      .where((a) => a.workoutId == w.id || a.id == w.activityId)
+      .firstOrNull
+      ?.calories;
+
+  /// How the workout felt. Shown at once; put back if it can't be saved.
+  Future<void> _rate(String rating) async {
+    final w = _w!;
+    final before = w.feedbackRating;
+    if (before == rating) return;
+    setState(() => w.feedbackRating = rating);
+    try {
+      await _repo.feedback(w.id, rating: rating);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => w.feedbackRating = before);
+      _toast('workoutFeedback.failed');
+    }
+  }
+
+  /// What got in the way of one exercise; null clears it.
+  Future<void> _exerciseFeedback(WorkoutExercise e, String? reason) async {
+    final w = _w!;
+    final before = e.feedback;
+    if (before == reason) return;
+    setState(() => e.feedback = reason);
+    try {
+      await _repo.feedback(w.id, exerciseId: e.id, reason: reason);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => e.feedback = before);
+      _toast('workoutFeedback.failed');
+    }
   }
 
   /// Leave an exercise out of the session, or bring it back. A skipped
@@ -310,7 +351,13 @@ class _MemberWorkoutPageState extends State<MemberWorkoutPage> {
       );
     }
     if (_summary != null) {
-      return _CompleteView(workout: w, summary: _summary!);
+      return _CompleteView(
+        workout: w,
+        summary: _summary!,
+        calories: _calories ?? _caloriesFrom(data, w),
+        onRate: _rate,
+        onExerciseFeedback: _exerciseFeedback,
+      );
     }
     return _session(context, w);
   }
@@ -753,10 +800,22 @@ class _BackRow extends StatelessWidget {
 }
 
 class _CompleteView extends StatelessWidget {
-  const _CompleteView({required this.workout, required this.summary});
+  const _CompleteView({
+    required this.workout,
+    required this.summary,
+    required this.calories,
+    required this.onRate,
+    required this.onExerciseFeedback,
+  });
 
   final Workout workout;
   final WorkoutSummary summary;
+
+  /// Estimated energy used; null when the member's weight isn't known.
+  final int? calories;
+  final void Function(String rating) onRate;
+  final void Function(WorkoutExercise exercise, String? reason)
+  onExerciseFeedback;
 
   String _recordValue(BuildContext context, WorkoutRecord r) {
     String n(num v) => v == v.roundToDouble() ? '${v.round()}' : '$v';
@@ -827,6 +886,117 @@ class _CompleteView extends StatelessWidget {
                 Icons.repeat,
                 context.tr('workout.setsDone'),
                 '${s.setsCompleted}/${s.setsTotal}',
+              ),
+            ],
+          ),
+        ),
+        if (calories != null)
+          Padding(
+            padding: const EdgeInsets.only(top: FFTokens.spacingSm),
+            child: Text(
+              '${context.tr('workout.calories').replaceAll('{n}', '$calories')}'
+              ' · ${context.tr('workout.caloriesNote')}',
+              key: const Key('workout-calories'),
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall,
+            ),
+          ),
+        const SizedBox(height: FFTokens.spacingMd),
+        FFCard(
+          key: const Key('workout-feedback'),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                context.tr('workoutFeedback.title'),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: FFTokens.spacingSm),
+              Wrap(
+                spacing: FFTokens.spacingSm,
+                runSpacing: FFTokens.spacingXs,
+                children: [
+                  for (final r in workoutRatings)
+                    ChoiceChip(
+                      key: Key('feedback-$r'),
+                      label: Text(context.tr('workoutFeedback.$r')),
+                      selected: workout.feedbackRating == r,
+                      onSelected: (_) => onRate(r),
+                    ),
+                ],
+              ),
+              const SizedBox(height: FFTokens.spacingXs),
+              Text(
+                context.tr('workoutFeedback.note'),
+                style: theme.textTheme.bodySmall,
+              ),
+              Theme(
+                data: theme.copyWith(dividerColor: Colors.transparent),
+                child: ExpansionTile(
+                  key: const Key('feedback-exercises'),
+                  tilePadding: EdgeInsets.zero,
+                  childrenPadding: EdgeInsets.zero,
+                  initiallyExpanded: workout.exercises.any(
+                    (e) => e.feedback != null,
+                  ),
+                  title: Text(
+                    context.tr('workoutFeedback.exercisesTitle'),
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                  children: [
+                    for (final e in workout.exercises)
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              e.exerciseName,
+                              style: theme.textTheme.bodyMedium,
+                            ),
+                          ),
+                          PopupMenuButton<String>(
+                            key: Key('feedback-ex-${e.id}'),
+                            onSelected: (v) =>
+                                onExerciseFeedback(e, v == 'clear' ? null : v),
+                            itemBuilder: (_) => [
+                              for (final reason in exerciseFeedbackReasons)
+                                PopupMenuItem(
+                                  key: Key('feedback-reason-${e.id}-$reason'),
+                                  value: reason,
+                                  child: Text(
+                                    context.tr(
+                                      'workoutFeedback.reason.$reason',
+                                    ),
+                                  ),
+                                ),
+                              if (e.feedback != null)
+                                PopupMenuItem(
+                                  key: Key('feedback-clear-${e.id}'),
+                                  value: 'clear',
+                                  child: Text(
+                                    context.tr('workoutFeedback.clear'),
+                                  ),
+                                ),
+                            ],
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: FFTokens.spacingSm,
+                              ),
+                              child: FFPill(
+                                label: context.tr(
+                                  e.feedback == null
+                                      ? 'workoutFeedback.choose'
+                                      : 'workoutFeedback.reason.${e.feedback}',
+                                ),
+                                filled: e.feedback != null,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
               ),
             ],
           ),
