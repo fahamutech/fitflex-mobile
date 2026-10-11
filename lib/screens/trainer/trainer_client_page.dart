@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../app_scope.dart';
 import '../../shared/activity/goal.dart';
 import '../../shared/activity/trainer_connection.dart';
+import '../../shared/activity/training_plan.dart';
 import '../../shared/activity/workout.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
@@ -15,6 +16,7 @@ import '../member/widgets/trainer_sharing.dart' show permissionLabel;
 import '../member/widgets/workout_widgets.dart' show exerciseTarget;
 import '../../shared/widgets/challenge_manager_page.dart';
 import 'trainer_plan_editor_page.dart';
+import 'trainer_training_plan_page.dart';
 import 'widgets/trainer_goals.dart';
 import 'widgets/client_summary_card.dart';
 
@@ -41,6 +43,9 @@ class TrainerClientPage extends StatefulWidget {
 class _TrainerClientPageState extends State<TrainerClientPage> {
   ClientOverview? _o;
   bool _failed = false;
+
+  /// Training plans this trainer has made for the client, newest first.
+  List<TrainerMadePlan> _madePlans = const [];
   late List<TrainerPlan> _plans = widget.plans;
 
   String get _name =>
@@ -61,6 +66,177 @@ class _TrainerClientPageState extends State<TrainerClientPage> {
     } catch (_) {
       if (mounted) setState(() => _failed = true);
     }
+    await _loadMadePlans();
+  }
+
+  Future<void> _loadMadePlans() async {
+    if (!mounted) return;
+    try {
+      final rows = await AppScope.of(
+        context,
+      ).api.trainerClientTrainingPlans(widget.connection.id);
+      if (!mounted) return;
+      setState(
+        () => _madePlans = [for (final r in rows) ?TrainerMadePlan.tryParse(r)],
+      );
+    } catch (_) {
+      // The rest of the client page stands without it.
+    }
+  }
+
+  Future<void> _makePlan() async {
+    final sent = await openTrainerTrainingPlan(
+      context,
+      connection: widget.connection,
+      savedWorkouts: _plans,
+    );
+    if (sent != true || !mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          context.tr('trainerPlan.sent').replaceAll('{name}', _name),
+        ),
+      ),
+    );
+    await _loadMadePlans();
+  }
+
+  Future<void> _withdrawPlan(TrainerMadePlan plan) async {
+    final offered = plan.status == 'offered';
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          ctx.tr(
+            offered ? 'trainerPlan.withdrawTitle' : 'trainerPlan.stopTitle',
+          ),
+        ),
+        content: Text(
+          ctx
+              .tr(offered ? 'trainerPlan.withdrawBody' : 'trainerPlan.stopBody')
+              .replaceAll('{name}', _name),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(ctx.tr('trainerPlan.keep')),
+          ),
+          FilledButton(
+            key: const Key('trainer-plan-withdraw-confirm'),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(
+              ctx.tr(offered ? 'trainerPlan.withdraw' : 'trainerPlan.stop'),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final failed = context.tr('owner.errorGeneric');
+    try {
+      await AppScope.of(context).api.trainerCancelTrainingPlan(plan.id);
+      await _loadMadePlans();
+    } catch (_) {
+      messenger.showSnackBar(SnackBar(content: Text(failed)));
+    }
+  }
+
+  Widget _trainingPlanBlock(BuildContext context) {
+    final theme = Theme.of(context);
+    final plan = _madePlans.firstOrNull;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        FFSectionTitle(context.tr('trainerPlan.section')),
+        FFCard(
+          key: const Key('client-training-plan'),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (plan == null)
+                Text(
+                  context.tr('trainerPlan.noneYet').replaceAll('{name}', _name),
+                  style: theme.textTheme.bodyMedium,
+                )
+              else ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        plan.name,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    FFPill(
+                      key: const Key('client-training-plan-status'),
+                      label: context
+                          .tr('trainerPlan.status.${plan.status}')
+                          .replaceAll('{name}', _name),
+                      filled: plan.status == 'active',
+                    ),
+                  ],
+                ),
+                Text(
+                  [
+                    context
+                        .tr('training.weeks')
+                        .replaceAll('{n}', '${plan.durationWeeks}'),
+                    context
+                        .tr('training.daysAWeek')
+                        .replaceAll('{n}', '${plan.daysPerWeek}'),
+                    if (plan.completed != null && plan.sessions != null)
+                      context
+                          .tr('training.sessionsDone')
+                          .replaceAll('{n}', '${plan.completed}')
+                          .replaceAll('{total}', '${plan.sessions}'),
+                  ].join(' · '),
+                  style: theme.textTheme.bodySmall,
+                ),
+                if (plan.status == 'active' && plan.completed == null)
+                  Text(
+                    context
+                        .tr('trainerPlan.progressNotShared')
+                        .replaceAll('{name}', _name),
+                    style: theme.textTheme.bodySmall,
+                  ),
+              ],
+              const SizedBox(height: FFTokens.spacingSm),
+              Wrap(
+                spacing: FFTokens.spacingSm,
+                children: [
+                  FilledButton.tonal(
+                    key: const Key('client-make-plan'),
+                    onPressed: _makePlan,
+                    child: Text(
+                      context.tr(
+                        plan != null && plan.isOpen
+                            ? 'trainerPlan.makeAnother'
+                            : 'trainerPlan.make',
+                      ),
+                    ),
+                  ),
+                  if (plan != null && plan.isOpen)
+                    TextButton(
+                      key: const Key('client-plan-withdraw'),
+                      onPressed: () => _withdrawPlan(plan),
+                      child: Text(
+                        context.tr(
+                          plan.status == 'offered'
+                              ? 'trainerPlan.withdraw'
+                              : 'trainerPlan.stop',
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 
   Future<void> _reloadPlans() async {
@@ -332,6 +508,7 @@ class _TrainerClientPageState extends State<TrainerClientPage> {
           FFSectionTitle(context.tr('share.challenges')),
           FFCard(child: SharedChallengesList(items: o.challenges!)),
         ],
+        _trainingPlanBlock(context),
         FFSectionTitle(context.tr('assign.upcoming')),
         if (upcoming.isEmpty)
           FFEmptyState(

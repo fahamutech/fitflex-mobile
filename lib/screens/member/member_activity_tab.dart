@@ -16,6 +16,7 @@ import 'widgets/activity_widgets.dart';
 import 'widgets/challenge_widgets.dart';
 import 'widgets/goal_widgets.dart';
 import 'widgets/progress_section.dart';
+import 'widgets/training_offer.dart';
 import 'widgets/training_widgets.dart';
 import 'widgets/workout_widgets.dart';
 
@@ -232,6 +233,7 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
         .where((a) => a.isWorkout && a.workoutId == null)
         .toList();
     return [
+      for (final offer in data.trainingOffers) TrainingOfferCard(offer: offer),
       TrainingPlanCard(data: data, now: now),
       TodayWorkoutCard(data: data, now: now),
       TrainerPlanBlock(data: data, now: now),

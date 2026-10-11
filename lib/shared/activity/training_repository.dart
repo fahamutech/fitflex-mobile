@@ -30,6 +30,14 @@ abstract class TrainingRepository {
   });
 
   Future<void> cancel(String planId);
+
+  /// Plans trainers have made for the member that await an answer.
+  Future<List<TrainingPlanOffer>> offers();
+
+  /// Takes a trainer's plan; it replaces the one the member is on.
+  Future<TrainingPlan> accept(String offerId);
+
+  Future<void> decline(String offerId);
 }
 
 /// Training plans made and stored by the FitFlex backend.
@@ -82,6 +90,25 @@ class ApiTrainingRepository implements TrainingRepository {
   @override
   Future<void> cancel(String planId) async =>
       await api.cancelTrainingPlan(planId);
+
+  @override
+  Future<List<TrainingPlanOffer>> offers() async => [
+    for (final raw
+        in (await api.trainingPlanOffers())['offers'] as List? ?? const [])
+      ?TrainingPlanOffer.tryParse(raw),
+  ];
+
+  @override
+  Future<TrainingPlan> accept(String offerId) async {
+    final plan = TrainingPlan.tryParse(
+      (await api.acceptTrainingPlan(offerId))['plan'],
+    );
+    if (plan == null) throw const FormatException('plan');
+    return plan;
+  }
+
+  @override
+  Future<void> decline(String offerId) => api.declineTrainingPlan(offerId);
 }
 
 /// Sample-data mode: a small stand-in for the backend's engine. It lays the
@@ -237,4 +264,15 @@ class LocalTrainingRepository implements TrainingRepository {
     }
     _plan = null;
   }
+
+  // Sample mode has no trainers, so nothing is ever offered.
+  @override
+  Future<List<TrainingPlanOffer>> offers() async => const [];
+
+  @override
+  Future<TrainingPlan> accept(String offerId) =>
+      throw UnsupportedError('No offers in sample mode.');
+
+  @override
+  Future<void> decline(String offerId) async {}
 }

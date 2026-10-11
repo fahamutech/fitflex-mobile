@@ -926,6 +926,57 @@ class ApiClient {
     Map<String, dynamic> body,
   ) async => await _request('POST', '/me/training-plans', body: body);
 
+  // Plans a trainer makes for a client.
+  /// `{ offers }` — trainers' plans the member hasn't answered yet.
+  Future<Map<String, dynamic>> trainingPlanOffers() async =>
+      await _request('GET', '/me/training-plans/offers');
+
+  /// `{ plan }` — the trainer's plan, now the member's.
+  Future<Map<String, dynamic>> acceptTrainingPlan(String id) async =>
+      await _request(
+        'POST',
+        '/me/training-plans/${Uri.encodeComponent(id)}/accept',
+      );
+
+  Future<void> declineTrainingPlan(String id) async => await _request(
+    'POST',
+    '/me/training-plans/${Uri.encodeComponent(id)}/decline',
+  );
+
+  /// `{ days, usedClientPreferences }` — FitFlex's first week for a client.
+  Future<Map<String, dynamic>> trainerSuggestTrainingPlan(
+    String connectionId,
+    Map<String, dynamic> body,
+  ) async => await _request(
+    'POST',
+    '/trainer/clients/${Uri.encodeComponent(connectionId)}'
+        '/training-plans/suggestion',
+    body: body,
+  );
+
+  /// Offers a client a plan. `{ name?, note?, durationWeeks, days: [...] }`.
+  Future<Map<String, dynamic>> trainerOfferTrainingPlan(
+    String connectionId,
+    Map<String, dynamic> body,
+  ) async => await _request(
+    'POST',
+    '/trainer/clients/${Uri.encodeComponent(connectionId)}/training-plans',
+    body: body,
+  );
+
+  Future<List<dynamic>> trainerClientTrainingPlans(String connectionId) async {
+    final res = await _request(
+      'GET',
+      '/trainer/clients/${Uri.encodeComponent(connectionId)}/training-plans',
+    );
+    return (res as Map)['plans'] as List? ?? const [];
+  }
+
+  Future<void> trainerCancelTrainingPlan(String planId) async => await _request(
+    'POST',
+    '/trainer/training-plans/${Uri.encodeComponent(planId)}/cancel',
+  );
+
   Future<Map<String, dynamic>> cancelTrainingPlan(String id) async =>
       await _request(
         'POST',

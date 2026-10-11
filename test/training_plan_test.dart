@@ -5,6 +5,7 @@ import 'package:fitflexmobile/screens/member/member_shell.dart';
 import 'package:fitflexmobile/screens/member/member_training_plan_page.dart';
 import 'package:fitflexmobile/screens/member/member_training_setup_page.dart';
 import 'package:fitflexmobile/screens/member/widgets/progress_section.dart';
+import 'package:fitflexmobile/screens/member/widgets/training_offer.dart';
 import 'package:fitflexmobile/screens/member/widgets/training_widgets.dart';
 import 'package:fitflexmobile/screens/member/widgets/workout_widgets.dart';
 import 'package:fitflexmobile/shared/activity/sample_activity_log.dart';
@@ -123,7 +124,57 @@ class _FakeTraining implements TrainingRepository {
     calls.add(('cancel', planId));
     plan = null;
   }
+
+  List<TrainingPlanOffer> waiting = [];
+
+  @override
+  Future<List<TrainingPlanOffer>> offers() async => waiting;
+
+  @override
+  Future<TrainingPlan> accept(String offerId) async {
+    calls.add(('accept', offerId));
+    if (fail) throw ApiException(500, {'error': 'boom'});
+    final json = _planJson()
+      ..['createdByType'] = 'trainer'
+      ..['name'] = 'Strength block'
+      ..['trainer'] = {'id': 't1', 'displayName': 'Coach Amani'};
+    return plan = TrainingPlan.tryParse(json)!;
+  }
+
+  @override
+  Future<void> decline(String offerId) async {
+    calls.add(('decline', offerId));
+  }
 }
+
+Map<String, dynamic> _offerJson() => {
+  'id': 'tpn_offer',
+  'name': 'Strength block',
+  'note': 'Go steady in week one.',
+  'status': 'offered',
+  'durationWeeks': 4,
+  'daysPerWeek': 2,
+  'startDate': '2026-10-12',
+  'trainer': {'id': 't1', 'displayName': 'Coach Amani'},
+  'weeks': [
+    {
+      'week': 1,
+      'days': [
+        {
+          'day': 1,
+          'date': '2026-10-12',
+          'name': 'Push day',
+          'estimatedDuration': 50,
+          'exercises': [
+            {'exerciseName': 'Bench Press', 'sets': 3, 'reps': 8},
+            {'exerciseName': 'Plank', 'sets': 2, 'duration': 40},
+          ],
+        },
+        {'day': 4, 'date': '2026-10-15', 'name': 'Leg day', 'exercises': []},
+      ],
+    },
+  ],
+};
 
 Widget _app(
   Widget child, {
@@ -576,6 +627,129 @@ void main() {
     expect(quads, 'Quadriceps');
     expect(legacy, 'Arms');
     expect(unknown, 'left elbow');
+  });
+
+  group("a trainer's plan offer", () {
+    test('reads the offer the server sends', () {
+      final o = TrainingPlanOffer.tryParse(_offerJson())!;
+      expect(o.trainerName, 'Coach Amani');
+      expect(o.durationWeeks, 4);
+      expect(o.firstWeek.map((s) => (s.day, s.name)), [
+        (1, 'Push day'),
+        (4, 'Leg day'),
+      ]);
+      expect(o.firstWeek.first.exercises, [
+        'Bench Press 3 × 8',
+        'Plank 2 × 40 s',
+      ]);
+      expect(TrainingPlanOffer.tryParse({'name': 'x'}), isNull);
+    });
+
+    testWidgets('look inside, then accept: it replaces the plan they are on', (
+      tester,
+    ) async {
+      await _tall(tester);
+      final offer = TrainingPlanOffer.tryParse(_offerJson())!;
+      final own = TrainingPlan.tryParse(_planJson())!;
+      final repo = _FakeTraining(plan: own)..waiting = [offer];
+      final data = _data(plan: own)..trainingOffers = [offer];
+      await tester.pumpWidget(
+        _app(
+          ListenableBuilder(
+            listenable: data,
+            builder: (context, _) => ListView(
+              children: [
+                for (final o in data.trainingOffers)
+                  TrainingOfferCard(offer: o),
+                TrainingPlanCard(data: data, now: _now),
+              ],
+            ),
+          ),
+          data: data,
+          training: repo,
+        ),
+      );
+      expect(find.text('Coach Amani made you a plan'), findsOneWidget);
+      expect(
+        find.text('Strength block · 4 weeks · 2 days a week'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const Key('training-offer-open-tpn_offer')));
+      await tester.pumpAndSettle();
+      expect(find.text('Go steady in week one.'), findsOneWidget);
+      expect(find.text('Monday · Push day · 50 min'), findsOneWidget);
+      expect(find.text('Bench Press 3 × 8'), findsOneWidget);
+      expect(find.text('Thursday · Leg day'), findsOneWidget);
+      expect(find.textContaining('Nothing changes until you accept'), findsOne);
+
+      await tester.tap(find.byKey(const Key('offer-accept')));
+      await tester.pumpAndSettle();
+      expect(find.text('Replace your current plan?'), findsOneWidget);
+      expect(repo.calls, isEmpty, reason: 'not before they confirm');
+      await tester.tap(find.byKey(const Key('offer-replace-confirm')));
+      await tester.pumpAndSettle();
+      expect(repo.calls.single, ('accept', 'tpn_offer'));
+      expect(data.trainingOffers, isEmpty);
+      expect(data.trainingPlan!.fromTrainer, isTrue);
+      expect(find.byKey(const Key('offer-sheet')), findsNothing);
+      expect(find.text('From Coach Amani'), findsOneWidget);
+      expect(find.text('This is now your plan.'), findsOneWidget);
+    });
+
+    testWidgets('declining changes nothing of theirs', (tester) async {
+      await _tall(tester);
+      final offer = TrainingPlanOffer.tryParse(_offerJson())!;
+      final own = TrainingPlan.tryParse(_planJson())!;
+      final repo = _FakeTraining(plan: own)..waiting = [offer];
+      final data = _data(plan: own)..trainingOffers = [offer];
+      await tester.pumpWidget(
+        _app(
+          ListenableBuilder(
+            listenable: data,
+            builder: (context, _) => ListView(
+              children: [
+                for (final o in data.trainingOffers)
+                  TrainingOfferCard(offer: o),
+              ],
+            ),
+          ),
+          data: data,
+          training: repo,
+        ),
+      );
+      await tester.tap(find.byKey(const Key('training-offer-open-tpn_offer')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('offer-decline')));
+      await tester.pumpAndSettle();
+      expect(repo.calls.single, ('decline', 'tpn_offer'));
+      expect(data.trainingPlan!.id, own.id);
+      expect(data.trainingOffers, isEmpty);
+      expect(find.text('Plan declined.'), findsOneWidget);
+    });
+
+    testWidgets('a failed accept keeps the offer open and says so', (
+      tester,
+    ) async {
+      await _tall(tester);
+      final offer = TrainingPlanOffer.tryParse(_offerJson())!;
+      final repo = _FakeTraining()..fail = true;
+      final data = _data()..trainingOffers = [offer];
+      await tester.pumpWidget(
+        _app(
+          TrainingOfferCard(offer: offer),
+          data: data,
+          training: repo,
+        ),
+      );
+      await tester.tap(find.byKey(const Key('training-offer-open-tpn_offer')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('offer-accept')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('offer-error')), findsOneWidget);
+      expect(data.trainingOffers.length, 1);
+      expect(data.trainingPlan, isNull);
+    });
   });
 
   test('every training line exists in English and Swahili', () {
