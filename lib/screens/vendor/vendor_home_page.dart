@@ -181,9 +181,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
     } on ApiException {
       if (!mounted) return;
       setState(() => _loading = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(context.tr('vendor.loadFailed'))));
+      FFSnack.error(context, context.tr('vendor.loadFailed'));
     }
   }
 
@@ -205,9 +203,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
       await _refresh();
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(_saveFailedText(e))));
+      FFSnack.error(context, _saveFailedText(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -538,8 +534,10 @@ class _VendorHomePageState extends State<VendorHomePage> {
                   Wrap(
                     spacing: FFTokens.spacingSm,
                     children: [
-                      FilledButton.tonal(
+                      FFButton(
                         key: Key('vendor-next-${order['id']}'),
+                        label:
+                            '${context.tr('vendor.mark')} ${_nextOrderStatus(order).replaceAll('_', ' ')}',
                         // Only paid orders can be fulfilled.
                         onPressed: _busy || order['paymentStatus'] == 'pending'
                             ? null
@@ -547,9 +545,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
                                 order['id'].toString(),
                                 _nextOrderStatus(order),
                               ),
-                        child: Text(
-                          '${context.tr('vendor.mark')} ${_nextOrderStatus(order).replaceAll('_', ' ')}',
-                        ),
+                        size: FFButtonSize.sm,
                       ),
                       FFButton(
                         label: context.tr('vendor.cancel'),
@@ -728,15 +724,15 @@ class _VendorHomePageState extends State<VendorHomePage> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(context.tr('vendor.reply')),
-        content: TextField(
+        content: FFTextField(
           key: const Key('vendor-reply-message'),
           controller: controller,
           maxLines: 3,
         ),
         actions: [
-          FilledButton(
+          FFButton(
+            label: context.tr('shop.send'),
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: Text(context.tr('shop.send')),
           ),
         ],
       ),
@@ -774,11 +770,11 @@ class _VendorHomePageState extends State<VendorHomePage> {
                   spacing: FFTokens.spacingSm,
                   runSpacing: FFTokens.spacingSm,
                   children: [
-                    FilledButton.tonalIcon(
+                    FFButton(
                       key: const Key('vendor-edit-profile'),
+                      label: context.tr('vendor.editProfile'),
                       onPressed: _editProfile,
-                      icon: const Icon(Icons.edit_outlined),
-                      label: Text(context.tr('vendor.editProfile')),
+                      icon: Icons.edit_outlined,
                     ),
                     FFButton(
                       key: const Key('vendor-verification'),
@@ -1046,26 +1042,20 @@ class _VendorProductFormState extends State<VendorProductForm> {
                   ],
                 ),
               ),
-              TextField(
+              FFTextField(
                 key: const Key('vendor-product-name'),
                 controller: _name,
-                decoration: InputDecoration(
-                  labelText: context.tr('vendor.name'),
-                ),
+                label: context.tr('vendor.name'),
               ),
-              TextField(
+              FFTextField(
                 key: const Key('vendor-product-brand'),
                 controller: _brand,
-                decoration: InputDecoration(
-                  labelText: context.tr('vendor.brand'),
-                ),
+                label: context.tr('vendor.brand'),
               ),
-              TextField(
+              FFTextField(
                 key: const Key('vendor-product-description'),
                 controller: _description,
-                decoration: InputDecoration(
-                  labelText: context.tr('vendor.description'),
-                ),
+                label: context.tr('vendor.description'),
               ),
               ProductCategoryDropdown(
                 current: widget.product?['category']?.toString(),
@@ -1074,67 +1064,55 @@ class _VendorProductFormState extends State<VendorProductForm> {
               Row(
                 children: [
                   Expanded(
-                    child: TextField(
+                    child: FFTextField(
                       key: const Key('vendor-product-price'),
                       controller: _price,
                       keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: context.tr('vendor.price'),
-                      ),
+                      label: context.tr('vendor.price'),
                     ),
                   ),
                   const SizedBox(width: FFTokens.spacingMd),
                   Expanded(
-                    child: TextField(
+                    child: FFTextField(
                       key: const Key('vendor-product-stock'),
                       controller: _stock,
                       keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: context.tr('vendor.stock'),
-                      ),
+                      label: context.tr('vendor.stock'),
                     ),
                   ),
                 ],
               ),
-              TextField(
+              FFTextField(
                 key: const Key('vendor-product-discount-price'),
                 controller: _discountPrice,
                 keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: context.tr('vendor.discountPrice'),
-                ),
+                label: context.tr('vendor.discountPrice'),
               ),
               Row(
                 children: [
                   Expanded(
-                    child: TextField(
+                    child: FFTextField(
                       key: const Key('vendor-product-sku'),
                       controller: _sku,
-                      decoration: InputDecoration(
-                        labelText: context.tr('vendor.sku'),
-                      ),
+                      label: context.tr('vendor.sku'),
                     ),
                   ),
                   const SizedBox(width: FFTokens.spacingMd),
                   Expanded(
-                    child: TextField(
+                    child: FFTextField(
                       key: const Key('vendor-product-weight'),
                       controller: _weight,
                       keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: context.tr('vendor.weight'),
-                      ),
+                      label: context.tr('vendor.weight'),
                     ),
                   ),
                 ],
               ),
-              TextField(
+              FFTextField(
                 key: const Key('vendor-product-variants'),
                 controller: _variants,
-                decoration: InputDecoration(
-                  labelText: context.tr('vendor.variants'),
-                  hintText: context.tr('vendor.variantsHint'),
-                ),
+                label: context.tr('vendor.variants'),
+                hint: context.tr('vendor.variantsHint'),
               ),
               SwitchListTile(
                 key: const Key('vendor-product-visibility'),
@@ -1313,10 +1291,10 @@ class _VendorProfileFormState extends State<VendorProfileForm> {
                 ],
               ),
               for (final entry in _fields.entries)
-                TextField(
+                FFTextField(
                   key: Key('vendor-profile-${entry.key}'),
                   controller: entry.value,
-                  decoration: InputDecoration(labelText: labels[entry.key]),
+                  label: labels[entry.key],
                 ),
               const SizedBox(height: FFTokens.spacingSm),
               ProductCategoryMultiSelect(
@@ -1410,41 +1388,31 @@ class _VendorStaffFormState extends State<VendorStaffForm> {
                 context.tr('vendor.addStaff'),
                 style: Theme.of(context).textTheme.titleLarge,
               ),
-              TextField(
+              FFTextField(
                 key: const Key('vendor-staff-name'),
                 controller: _name,
-                decoration: InputDecoration(
-                  labelText: context.tr('vendor.staffName'),
-                ),
+                label: context.tr('vendor.staffName'),
               ),
-              TextField(
+              FFTextField(
                 key: const Key('vendor-staff-email'),
                 controller: _email,
-                decoration: InputDecoration(
-                  labelText: context.tr('vendor.email'),
-                ),
+                label: context.tr('vendor.email'),
               ),
-              TextField(
+              FFTextField(
                 key: const Key('vendor-staff-phone'),
                 controller: _phone,
-                decoration: InputDecoration(
-                  labelText: context.tr('vendor.phone'),
-                ),
+                label: context.tr('vendor.phone'),
               ),
-              TextField(
+              FFTextField(
                 key: const Key('vendor-staff-password'),
                 controller: _password,
                 obscureText: true,
-                decoration: InputDecoration(
-                  labelText: context.tr('vendor.password'),
-                ),
+                label: context.tr('vendor.password'),
               ),
-              DropdownButtonFormField<String>(
+              FFDropdownField<String>(
                 key: const Key('vendor-staff-role'),
-                initialValue: _role,
-                decoration: InputDecoration(
-                  labelText: context.tr('vendor.role'),
-                ),
+                value: _role,
+                label: context.tr('vendor.role'),
                 items: [
                   DropdownMenuItem(
                     value: 'admin',
