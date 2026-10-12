@@ -2,6 +2,7 @@
 // set-up screen, the weekly plan view and the cards on the Activity tab.
 import 'package:fitflexmobile/app_scope.dart';
 import 'package:fitflexmobile/screens/member/member_shell.dart';
+import 'package:fitflexmobile/screens/member/member_training_offer_page.dart';
 import 'package:fitflexmobile/screens/member/member_training_plan_page.dart';
 import 'package:fitflexmobile/screens/member/member_training_setup_page.dart';
 import 'package:fitflexmobile/screens/member/widgets/progress_section.dart';
@@ -17,6 +18,8 @@ import 'package:fitflexmobile/shared/api_client.dart';
 import 'package:fitflexmobile/shared/auth_state.dart';
 import 'package:fitflexmobile/shared/design_tokens.dart';
 import 'package:fitflexmobile/shared/i18n.dart';
+import 'package:fitflexmobile/shared/inbox/inbox_controller.dart';
+import 'package:fitflexmobile/shared/inbox/inbox_pages.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -749,6 +752,128 @@ void main() {
       expect(find.byKey(const Key('offer-error')), findsOneWidget);
       expect(data.trainingOffers.length, 1);
       expect(data.trainingPlan, isNull);
+    });
+  });
+
+  group('notifications lead to the plan', () {
+    test('each plan message knows where it goes', () {
+      String? route(String type, {String? planId}) =>
+          memberRouteFor(deepLink: '', type: type, planId: planId);
+      expect(
+        route('training_plan_offered', planId: 'tpn_offer'),
+        '/member/activity/training/offers/tpn_offer',
+      );
+      expect(route('training_plan_updated'), '/member/activity/training');
+      expect(route('training_plan_stopped'), '/member/activity/training');
+      // No plan, or an id that isn't one: the message is shown instead.
+      expect(route('training_plan_offered'), isNull);
+      expect(route('training_plan_offered', planId: '../../admin'), isNull);
+      // Messages meant for the trainer lead nowhere on a member's phone.
+      expect(route('training_plan_accepted', planId: 'tpn_offer'), isNull);
+
+      expect(opensScreenDirectly('training_plan_offered'), isTrue);
+      expect(opensScreenDirectly('training_plan_updated'), isTrue);
+      expect(opensScreenDirectly('trainer_enquiry_reply'), isFalse);
+      expect(opensScreenDirectly('subscription_renewal'), isFalse);
+      // A campaign's own link still wins over the type.
+      expect(
+        memberLinkFor(deepLink: 'payment', type: 'training_plan_offered'),
+        'payment',
+      );
+    });
+
+    testWidgets('the button on each message says where it leads', (
+      tester,
+    ) async {
+      final labels = <String, String>{};
+      InboxMessage message(String type, {String? link}) => InboxMessage(
+        id: 'n',
+        type: type,
+        title: '',
+        body: '',
+        data: {'deepLink': ?link},
+      );
+      await tester.pumpWidget(
+        _app(
+          Builder(
+            builder: (context) {
+              for (final t in [
+                'training_plan_offered',
+                'training_plan_updated',
+                'trainer_enquiry_reply',
+                'subscription_renewal',
+                'something_else',
+              ]) {
+                labels[t] = inboxButtonLabel(context, message(t));
+              }
+              labels['campaign'] = inboxButtonLabel(
+                context,
+                message('campaign', link: 'renewal'),
+              );
+              return const SizedBox();
+            },
+          ),
+          data: _data(),
+        ),
+      );
+      expect(labels['training_plan_offered'], 'View the plan');
+      expect(labels['training_plan_updated'], 'View my plan');
+      expect(labels['trainer_enquiry_reply'], 'View trainer');
+      expect(labels['subscription_renewal'], 'View membership');
+      expect(labels['campaign'], 'Renew membership');
+      expect(labels['something_else'], 'Open');
+    });
+
+    testWidgets('the offer opens on a page of its own and can be answered', (
+      tester,
+    ) async {
+      await _tall(tester);
+      final offer = TrainingPlanOffer.tryParse(_offerJson())!;
+      final repo = _FakeTraining()..waiting = [offer];
+      final data = _data()..trainingOffers = [offer];
+      await tester.pumpWidget(
+        _app(
+          const MemberTrainingOfferPage(offerId: 'tpn_offer'),
+          data: data,
+          training: repo,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('training-back')), findsOneWidget);
+      expect(find.text('Strength block'), findsOneWidget);
+      expect(find.text('Go steady in week one.'), findsOneWidget);
+      expect(find.text('Monday · Push day · 50 min'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('offer-accept')));
+      await tester.pumpAndSettle();
+      expect(repo.calls.single, ('accept', 'tpn_offer'));
+      expect(data.trainingPlan!.fromTrainer, isTrue);
+      expect(data.trainingOffers, isEmpty);
+    });
+
+    testWidgets('an offer that is no longer waiting says so', (tester) async {
+      await _tall(tester);
+      final data = _data();
+      await tester.pumpWidget(
+        _app(const MemberTrainingOfferPage(offerId: 'tpn_offer'), data: data),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('offer-gone')), findsOneWidget);
+      expect(
+        find.text('This plan is no longer waiting for your answer'),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('offer-accept')), findsNothing);
+      expect(find.byKey(const Key('offer-gone-plan')), findsOneWidget);
+
+      // Already accepted (the notification was opened a second time).
+      final json = _planJson()..['id'] = 'tpn_offer';
+      final mine = _data(plan: TrainingPlan.tryParse(json));
+      await tester.pumpWidget(
+        _app(const MemberTrainingOfferPage(offerId: 'tpn_offer'), data: mine),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('You are already on this plan'), findsOneWidget);
     });
   });
 

@@ -73,26 +73,38 @@ Future<void> showTrainingOfferSheet(
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    builder: (_) => _OfferSheet(offer: offer, data: data, shell: shell),
+    builder: (_) => TrainingOfferView(offer: offer, data: data, shell: shell),
   );
 }
 
-class _OfferSheet extends StatefulWidget {
-  const _OfferSheet({
+/// An offer in full — its sessions, the trainer's note, Accept / Decline.
+/// Shown in a sheet from the Training tab, and as a page of its own when
+/// reached from a notification.
+class TrainingOfferView extends StatefulWidget {
+  const TrainingOfferView({
+    super.key,
     required this.offer,
     required this.data,
     required this.shell,
+    this.header,
+    this.onAnswered,
   });
 
   final TrainingPlanOffer offer;
   final MemberData data;
   final MemberShellState? shell;
 
+  /// Shown above the offer (the page's way back).
+  final Widget? header;
+
+  /// Called once the member has answered; by default the sheet closes.
+  final void Function(bool accepted)? onAnswered;
+
   @override
-  State<_OfferSheet> createState() => _OfferSheetState();
+  State<TrainingOfferView> createState() => _TrainingOfferViewState();
 }
 
-class _OfferSheetState extends State<_OfferSheet> {
+class _TrainingOfferViewState extends State<TrainingOfferView> {
   bool _busy = false;
   String? _error;
 
@@ -146,7 +158,11 @@ class _OfferSheetState extends State<_OfferSheet> {
           if (plan != null) d.trainingPlan = plan;
         });
       }
-      navigator.pop();
+      if (widget.onAnswered case final answered?) {
+        answered(accept);
+      } else {
+        navigator.pop();
+      }
       messenger.showSnackBar(SnackBar(content: Text(done)));
     } catch (_) {
       if (mounted) {
@@ -170,6 +186,7 @@ class _OfferSheetState extends State<_OfferSheet> {
           key: const Key('offer-sheet'),
           shrinkWrap: true,
           children: [
+            ?widget.header,
             Text(offer.name, style: theme.textTheme.titleLarge),
             Text(
               [

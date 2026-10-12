@@ -158,6 +158,20 @@ class _FitFlexAppState extends State<FitFlexApp> {
   /// A tapped push opens its message, or the screen it links to.
   Future<void> _openFromPush(Map<String, dynamic> data) async {
     final message = await _inbox.openFromPush(data);
+    final role = widget.auth.user?['userType']?.toString() ?? widget.auth.role;
+    // A plan from their trainer opens on the plan itself, where they answer.
+    if (role == 'member' &&
+        opensScreenDirectly(data['type']?.toString() ?? '')) {
+      final direct = memberRouteFor(
+        deepLink: '',
+        type: data['type']?.toString() ?? '',
+        planId: data['planId']?.toString(),
+      );
+      if (direct != null) {
+        _router.go(direct);
+        return;
+      }
+    }
     if (message != null) {
       // A friend request is answered on its card in the list.
       _router.push(
@@ -165,13 +179,13 @@ class _FitFlexAppState extends State<FitFlexApp> {
       );
       return;
     }
-    final role = widget.auth.user?['userType']?.toString() ?? widget.auth.role;
     final route = role == 'member'
         ? memberRouteFor(
             deepLink: data['deepLink']?.toString() ?? '',
             type: data['type']?.toString() ?? '',
             gymId: data['gymId']?.toString(),
             trainerId: data['trainerId']?.toString(),
+            planId: data['planId']?.toString(),
           )
         : null;
     if (route != null) {
