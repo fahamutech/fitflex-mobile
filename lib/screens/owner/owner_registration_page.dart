@@ -737,15 +737,12 @@ class _TrainerSearchDialogState extends State<_TrainerSearchDialog> {
         children: [
           Padding(
             padding: const EdgeInsets.all(FFTokens.spacingMd),
-            child: TextField(
+            child: FFTextField(
               controller: _searchCtrl,
-              autofocus: true,
-              decoration: InputDecoration(
-                hintText: context.tr('ownerReg.searchTrainers'),
-                prefixIcon: const Icon(Icons.search, size: 20),
-                border: const OutlineInputBorder(),
-              ),
+              hint: context.tr('ownerReg.searchTrainers'),
               onChanged: (_) => setState(() {}),
+              autofocus: true,
+              prefixIcon: const Icon(Icons.search, size: 20),
             ),
           ),
           Expanded(

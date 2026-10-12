@@ -3,11 +3,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../app_scope.dart';
 import '../../router.dart';
-import '../../shared/components/theme_toggle_button.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import 'member_onboarding_controller.dart';
 import '../../shared/widgets/terms_agreement.dart';
+import '../../shared/components/components.dart';
 
 class MemberOnboardingPage extends StatefulWidget {
   const MemberOnboardingPage({super.key});
@@ -572,18 +572,16 @@ class _DarkTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField(
+    return FFTextField(
       controller: controller,
-      readOnly: readOnly,
-      keyboardType: keyboardType,
+      label: label,
+      suffixText: suffixText,
       validator: validator,
+      keyboardType: keyboardType,
+      readOnly: readOnly,
       onTap: onTap,
       autovalidateMode: AutovalidateMode.onUserInteraction,
-      decoration: InputDecoration(
-        labelText: label,
-        suffixIcon: suffixIcon,
-        suffixText: suffixText,
-      ),
+      suffixIcon: suffixIcon,
     );
   }
 }

@@ -544,18 +544,15 @@ class _AddGoalSheetState extends State<_AddGoalSheet> {
             ),
           ),
           const SizedBox(height: FFTokens.spacingMd),
-          TextField(
+          FFTextField(
             key: const Key('goal-target'),
             controller: _target,
+            label: context.tr('goal.target'),
+            errorText: _error,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             inputFormatters: [
               FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
             ],
-            decoration: InputDecoration(
-              labelText: context.tr('goal.target'),
-              errorText: _error,
-              border: const OutlineInputBorder(),
-            ),
           ),
           const SizedBox(height: FFTokens.spacingMd),
           SizedBox(

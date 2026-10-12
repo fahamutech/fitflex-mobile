@@ -232,12 +232,9 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
           style: Theme.of(context).textTheme.bodySmall,
         ),
         const SizedBox(height: 20),
-        TextFormField(
+        FFTextField(
           controller: _nameCtrl,
-          decoration: InputDecoration(
-            labelText: context.tr('trainerReg.displayName'),
-            border: const OutlineInputBorder(),
-          ),
+          label: context.tr('trainerReg.displayName'),
           validator: (v) => (v == null || v.trim().isEmpty)
               ? context.tr('onboarding.required')
               : null,
@@ -320,17 +317,14 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
           style: Theme.of(context).textTheme.bodySmall,
         ),
         const SizedBox(height: 20),
-        TextFormField(
+        FFTextField(
           controller: _sessionRateCtrl,
-          keyboardType: TextInputType.number,
-          decoration: InputDecoration(
-            labelText: context.tr('trainerReg.sessionRate'),
-            suffixText: 'TZS${context.tr('trainerReg.perSession')}',
-            border: const OutlineInputBorder(),
-          ),
+          label: context.tr('trainerReg.sessionRate'),
+          suffixText: 'TZS${context.tr('trainerReg.perSession')}',
           validator: (v) => (v == null || v.trim().isEmpty)
               ? context.tr('onboarding.required')
               : null,
+          keyboardType: TextInputType.number,
         ),
         const SizedBox(height: 16),
         Text(

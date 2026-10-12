@@ -105,43 +105,31 @@ class _AddMemberSheetState extends State<AddMemberSheet> {
                 ),
               ),
               const SizedBox(height: 16),
-              TextFormField(
+              FFTextField(
                 controller: _nameCtrl,
-                decoration: InputDecoration(
-                  labelText: context.tr('member.fullName'),
-                  border: const OutlineInputBorder(),
-                ),
+                label: context.tr('member.fullName'),
                 validator: (v) => (v == null || v.trim().isEmpty)
                     ? context.tr('onboarding.required')
                     : null,
               ),
               const SizedBox(height: 12),
-              TextFormField(
+              FFTextField(
                 controller: _emailCtrl,
+                label: context.tr('auth.email'),
                 keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
-                  labelText: context.tr('auth.email'),
-                  border: const OutlineInputBorder(),
-                ),
               ),
               const SizedBox(height: 12),
-              TextFormField(
+              FFTextField(
                 controller: _phoneCtrl,
+                label: context.tr('auth.phone'),
                 keyboardType: TextInputType.phone,
-                decoration: InputDecoration(
-                  labelText: context.tr('auth.phone'),
-                  border: const OutlineInputBorder(),
-                ),
               ),
               const SizedBox(height: 12),
-              TextFormField(
+              FFTextField(
                 controller: _amountCtrl,
+                label: context.tr('owner.paidAmount'),
+                suffixText: 'TZS',
                 keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: context.tr('owner.paidAmount'),
-                  suffixText: 'TZS',
-                  border: const OutlineInputBorder(),
-                ),
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(

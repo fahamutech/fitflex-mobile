@@ -463,20 +463,17 @@ class _MemberWorkoutPageState extends State<MemberWorkoutPage> {
         for (final e in w.exercises) _exerciseCard(context, e, live),
         if (live) ...[
           const SizedBox(height: FFTokens.spacingSm),
-          TextField(
+          FFTextField(
             key: const Key('workout-notes'),
             controller: _field('workout-notes', w.notes),
+            label: context.tr('workout.notes'),
             maxLines: 3,
             minLines: 1,
-            maxLength: 1000,
-            decoration: InputDecoration(
-              labelText: context.tr('workout.notes'),
-              border: const OutlineInputBorder(),
-            ),
             onChanged: (v) {
               w.notes = v.trim().isEmpty ? null : v;
               _changed();
             },
+            maxLength: 1000,
           ),
           const SizedBox(height: FFTokens.spacingSm),
           SizedBox(

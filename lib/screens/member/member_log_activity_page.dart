@@ -357,25 +357,23 @@ class _MemberLogActivityPageState extends State<MemberLogActivityPage> {
     bool digits = false,
     bool decimal = false,
     int lines = 1,
-  }) => TextField(
+  }) => FFTextField(
     key: Key(key),
     controller: controller,
-    maxLines: lines,
+    label: label,
+    hint: hint,
+    errorText: error,
+    suffixText: suffix,
     keyboardType: digits
         ? TextInputType.number
         : decimal
         ? const TextInputType.numberWithOptions(decimal: true)
         : TextInputType.text,
+    maxLines: lines,
     inputFormatters: [
       if (digits) FilteringTextInputFormatter.digitsOnly,
       if (decimal) FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
     ],
-    decoration: InputDecoration(
-      labelText: label,
-      hintText: hint,
-      suffixText: suffix,
-      errorText: error,
-    ),
   );
 }
 

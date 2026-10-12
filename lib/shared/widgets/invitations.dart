@@ -570,19 +570,17 @@ class _InvitePersonSheetState extends State<_InvitePersonSheet> {
               style: theme.textTheme.bodySmall,
             ),
             const SizedBox(height: FFTokens.spacingMd),
-            TextField(
+            FFTextField(
               key: const Key('invite-contact'),
               controller: _contact,
-              enabled: !sent,
+              label: context.tr('invite.contact'),
               keyboardType: TextInputType.emailAddress,
-              decoration: InputDecoration(
-                labelText: context.tr('invite.contact'),
-                suffixIcon: IconButton(
-                  key: const Key('invite-check'),
-                  tooltip: context.tr('invite.check'),
-                  icon: const Icon(Icons.person_search_outlined),
-                  onPressed: _busy || sent ? null : _check,
-                ),
+              enabled: !sent,
+              suffixIcon: IconButton(
+                key: const Key('invite-check'),
+                tooltip: context.tr('invite.check'),
+                icon: const Icon(Icons.person_search_outlined),
+                onPressed: _busy || sent ? null : _check,
               ),
             ),
             if (widget.orgType == 'vendor') ...[
@@ -662,15 +660,13 @@ class _InvitePersonSheetState extends State<_InvitePersonSheet> {
                     : (v) => setState(() => _durationUnit = v ?? 'M'),
               ),
               const SizedBox(height: FFTokens.spacingSm),
-              TextField(
+              FFTextField(
                 key: const Key('invite-amount'),
                 controller: _amount,
-                enabled: !sent,
+                label: context.tr('owner.paidAmount'),
+                helperText: context.tr('invite.paidHint'),
                 keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: context.tr('owner.paidAmount'),
-                  helperText: context.tr('invite.paidHint'),
-                ),
+                enabled: !sent,
               ),
             ],
             if (_notice != null) ...[

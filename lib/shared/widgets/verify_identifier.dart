@@ -392,34 +392,30 @@ class _VerifyIdentifierScreenState extends State<VerifyIdentifierScreen> {
               context.tr(_isPhone ? 'verify.phoneBody' : 'verify.emailBody'),
             ),
             const SizedBox(height: FFTokens.spacingMd),
-            TextField(
+            FFTextField(
               key: const Key('verify-value'),
               controller: _value,
-              enabled: !_sent && !_busy,
+              label: context.tr(
+                _isPhone ? 'verify.phoneLabel' : 'verify.emailLabel',
+              ),
+              hint: _isPhone ? '0712 345 678' : null,
               keyboardType: _isPhone
                   ? TextInputType.phone
                   : TextInputType.emailAddress,
-              decoration: InputDecoration(
-                labelText: context.tr(
-                  _isPhone ? 'verify.phoneLabel' : 'verify.emailLabel',
-                ),
-                hintText: _isPhone ? '0712 345 678' : null,
-              ),
+              enabled: !_sent && !_busy,
             ),
             if (_sent) ...[
               const SizedBox(height: FFTokens.spacingMd),
-              TextField(
+              FFTextField(
                 key: const Key('verify-code'),
                 controller: _code,
-                enabled: !_busy,
-                autofocus: true,
+                label: context.tr('verify.code'),
                 keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                enabled: !_busy,
                 maxLength: 6,
-                decoration: InputDecoration(
-                  labelText: context.tr('verify.code'),
-                ),
-                onSubmitted: (_) => _confirm(),
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                autofocus: true,
+                onFieldSubmitted: (_) => _confirm(),
               ),
             ],
             if (_notice != null) ...[
@@ -591,19 +587,17 @@ class _ChangeIdentifierScreenState extends State<ChangeIdentifierScreen> {
               context.tr('change.body').replaceAll('{current}', widget.current),
             ),
             const SizedBox(height: FFTokens.spacingMd),
-            TextField(
+            FFTextField(
               key: const Key('change-value'),
               controller: _value,
-              enabled: !_sent && !_busy,
+              label: context.tr(
+                _isPhone ? 'change.newPhone' : 'change.newEmail',
+              ),
+              hint: _isPhone ? '0712 345 678' : null,
               keyboardType: _isPhone
                   ? TextInputType.phone
                   : TextInputType.emailAddress,
-              decoration: InputDecoration(
-                labelText: context.tr(
-                  _isPhone ? 'change.newPhone' : 'change.newEmail',
-                ),
-                hintText: _isPhone ? '0712 345 678' : null,
-              ),
+              enabled: !_sent && !_busy,
             ),
             const SizedBox(height: FFTokens.spacingSm),
             TextField(
@@ -621,18 +615,16 @@ class _ChangeIdentifierScreenState extends State<ChangeIdentifierScreen> {
             ),
             if (_sent) ...[
               const SizedBox(height: FFTokens.spacingSm),
-              TextField(
+              FFTextField(
                 key: const Key('change-code'),
                 controller: _code,
-                enabled: !_busy,
-                autofocus: true,
+                label: context.tr('verify.code'),
                 keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                enabled: !_busy,
                 maxLength: 6,
-                decoration: InputDecoration(
-                  labelText: context.tr('verify.code'),
-                ),
-                onSubmitted: (_) => _confirm(),
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                autofocus: true,
+                onFieldSubmitted: (_) => _confirm(),
               ),
             ],
             if (_notice != null) ...[

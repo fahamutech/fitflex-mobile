@@ -158,13 +158,11 @@ class _MemberRecordRunPageState extends State<MemberRecordRunPage> {
                 const SizedBox(height: FFTokens.spacingMd),
                 RunSplits(splits: m.splits),
                 const SizedBox(height: FFTokens.spacingMd),
-                TextField(
+                FFTextField(
                   controller: _notes,
+                  label: context.tr('run.notes'),
+                  hint: context.tr('run.notesHint'),
                   maxLength: 200,
-                  decoration: InputDecoration(
-                    labelText: context.tr('run.notes'),
-                    hintText: context.tr('run.notesHint'),
-                  ),
                 ),
                 FFActionTile(
                   key: const Key('run-share'),

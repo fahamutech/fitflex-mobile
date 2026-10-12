@@ -142,14 +142,14 @@ class _AssignedGoalCard extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(ctx.tr('trainerGoal.changeTarget')),
-        content: TextField(
+        content: FFTextField(
           key: const Key('trainer-goal-target-edit'),
           controller: ctl,
-          autofocus: true,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           inputFormatters: [
             FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
           ],
+          autofocus: true,
         ),
         actions: [
           TextButton(
@@ -518,13 +518,11 @@ class _AssignGoalSheetState extends State<AssignGoalSheet> {
                 ),
               if (_kind == _Kind.coaching) ...[
                 label('trainerGoal.coachingTitle'),
-                TextField(
+                FFTextField(
                   key: const Key('goal-title'),
                   controller: _title,
+                  hint: context.tr('trainerGoal.coachingHint'),
                   maxLength: 120,
-                  decoration: InputDecoration(
-                    hintText: context.tr('trainerGoal.coachingHint'),
-                  ),
                 ),
               ],
               if (_kind == _Kind.challenge && canChallenge) ...[
@@ -560,16 +558,16 @@ class _AssignGoalSheetState extends State<AssignGoalSheet> {
                   ),
               ],
               label('trainerGoal.target'),
-              TextField(
+              FFTextField(
                 key: const Key('goal-target'),
                 controller: _target,
+                suffixText: unit,
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
                 ],
-                decoration: InputDecoration(suffixText: unit),
               ),
               if (_kind != _Kind.challenge) ...[
                 label('trainerGoal.when'),

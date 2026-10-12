@@ -711,28 +711,22 @@ class _ChallengeSheetState extends State<_ChallengeSheet> {
               ),
             ],
             const SizedBox(height: FFTokens.spacingMd),
-            TextFormField(
+            FFTextField(
               key: const Key('challenge-name'),
               controller: _name,
-              maxLength: 80,
-              decoration: InputDecoration(
-                labelText: context.tr('challenge.name'),
-                border: const OutlineInputBorder(),
-              ),
+              label: context.tr('challenge.name'),
               validator: (v) => (v ?? '').trim().isEmpty
                   ? context.tr('plans.required')
                   : null,
+              maxLength: 80,
             ),
-            TextFormField(
+            FFTextField(
               key: const Key('challenge-description'),
               controller: _description,
-              maxLength: 500,
+              label: context.tr('plans.description'),
               maxLines: 2,
               minLines: 1,
-              decoration: InputDecoration(
-                labelText: context.tr('plans.description'),
-                border: const OutlineInputBorder(),
-              ),
+              maxLength: 500,
             ),
             Text(
               context.tr('challenge.type'),
@@ -758,26 +752,23 @@ class _ChallengeSheetState extends State<_ChallengeSheet> {
               ],
             ),
             const SizedBox(height: FFTokens.spacingMd),
-            TextFormField(
+            FFTextField(
               key: const Key('challenge-target'),
               controller: _target,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-              ],
-              decoration: InputDecoration(
-                labelText: context.tr('challenge.goal'),
-                suffixText: challengeUnit(context, _type),
-                border: const OutlineInputBorder(),
-              ),
+              label: context.tr('challenge.goal'),
+              suffixText: challengeUnit(context, _type),
               validator: (v) {
                 final n = num.tryParse(v ?? '');
                 return n == null || n <= 0
                     ? context.tr('plans.invalidNumber')
                     : null;
               },
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+              ],
             ),
             const SizedBox(height: FFTokens.spacingSm),
             FFButton(
@@ -788,14 +779,11 @@ class _ChallengeSheetState extends State<_ChallengeSheet> {
               icon: Icons.date_range,
             ),
             const SizedBox(height: FFTokens.spacingSm),
-            TextFormField(
+            FFTextField(
               key: const Key('challenge-rewards'),
               controller: _rewards,
-              decoration: InputDecoration(
-                labelText: context.tr('challenge.rewardsField'),
-                helperText: context.tr('challenge.rewardsHelp'),
-                border: const OutlineInputBorder(),
-              ),
+              label: context.tr('challenge.rewardsField'),
+              helperText: context.tr('challenge.rewardsHelp'),
             ),
             // Teams are set up when the challenge is created.
             if (_existing == null)
@@ -808,14 +796,11 @@ class _ChallengeSheetState extends State<_ChallengeSheet> {
                 subtitle: Text(context.tr('leaderboard.teamChallengeHint')),
               ),
             if (_teams)
-              TextFormField(
+              FFTextField(
                 key: const Key('challenge-team-names'),
                 controller: _teamNames,
-                decoration: InputDecoration(
-                  labelText: context.tr('leaderboard.teamNames'),
-                  helperText: context.tr('leaderboard.teamNamesHelp'),
-                  border: const OutlineInputBorder(),
-                ),
+                label: context.tr('leaderboard.teamNames'),
+                helperText: context.tr('leaderboard.teamNamesHelp'),
               ),
             SwitchListTile(
               key: const Key('challenge-public'),

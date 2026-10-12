@@ -611,14 +611,12 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
         children: [
           Text(context.tr('pin.forgotBody'), textAlign: TextAlign.center),
           const SizedBox(height: FFTokens.spacingMd),
-          TextField(
+          FFTextField(
             key: const Key('pin-flow-contact'),
             controller: _contact,
-            enabled: !_busy,
+            label: context.tr('auth.emailOrPhone'),
             keyboardType: TextInputType.emailAddress,
-            decoration: InputDecoration(
-              labelText: context.tr('auth.emailOrPhone'),
-            ),
+            enabled: !_busy,
           ),
           if (_error != null) ...[
             const SizedBox(height: FFTokens.spacingSm),
@@ -998,15 +996,13 @@ class _InviteStartScreenState extends State<InviteStartScreen> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: FFTokens.spacingMd),
-                TextField(
+                FFTextField(
                   key: const Key('start-name'),
                   controller: _name,
+                  label: context.tr('start.name'),
                   autofocus: true,
                   textCapitalization: TextCapitalization.words,
-                  decoration: InputDecoration(
-                    labelText: context.tr('start.name'),
-                  ),
-                  onSubmitted: (_) => _nameEntered(),
+                  onFieldSubmitted: (_) => _nameEntered(),
                 ),
                 if (_error != null) ...[
                   const SizedBox(height: FFTokens.spacingSm),

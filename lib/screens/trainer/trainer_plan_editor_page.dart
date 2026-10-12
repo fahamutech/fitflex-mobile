@@ -149,28 +149,22 @@ class _TrainerPlanEditorPageState extends State<TrainerPlanEditorPage> {
         child: ListView(
           padding: const EdgeInsets.all(FFTokens.spacingLg),
           children: [
-            TextFormField(
+            FFTextField(
               key: const Key('plan-name'),
               initialValue: _plan.name,
-              maxLength: 80,
-              decoration: InputDecoration(
-                labelText: context.tr('plans.name'),
-                border: const OutlineInputBorder(),
-              ),
+              label: context.tr('plans.name'),
               validator: _required,
               onChanged: (v) => _plan.name = v,
+              maxLength: 80,
             ),
-            TextFormField(
+            FFTextField(
               key: const Key('plan-description'),
               initialValue: _plan.description,
-              maxLength: 500,
+              label: context.tr('plans.description'),
               maxLines: 2,
               minLines: 1,
-              decoration: InputDecoration(
-                labelText: context.tr('plans.description'),
-                border: const OutlineInputBorder(),
-              ),
               onChanged: (v) => _plan.description = v,
+              maxLength: 500,
             ),
             Text(context.tr('plans.type'), style: theme.textTheme.labelLarge),
             const SizedBox(height: FFTokens.spacingXs),
@@ -189,16 +183,11 @@ class _TrainerPlanEditorPageState extends State<TrainerPlanEditorPage> {
               ],
             ),
             const SizedBox(height: FFTokens.spacingMd),
-            TextFormField(
+            FFTextField(
               key: const Key('plan-duration'),
               initialValue: _plan.estimatedDuration?.toString(),
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: InputDecoration(
-                labelText: context.tr('plans.duration'),
-                suffixText: context.tr('activity.min'),
-                border: const OutlineInputBorder(),
-              ),
+              label: context.tr('plans.duration'),
+              suffixText: context.tr('activity.min'),
               validator: (v) {
                 if ((v ?? '').isEmpty) return null;
                 final n = int.tryParse(v!);
@@ -206,7 +195,9 @@ class _TrainerPlanEditorPageState extends State<TrainerPlanEditorPage> {
                     ? context.tr('plans.invalidNumber')
                     : null;
               },
+              keyboardType: TextInputType.number,
               onChanged: (v) => _plan.estimatedDuration = int.tryParse(v),
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             ),
             FFSectionTitle(context.tr('plans.exercises')),
             for (var i = 0; i < _plan.exercises.length; i++)

@@ -484,14 +484,12 @@ class _RefundRequestSheetState extends State<_RefundRequestSheet> {
                     : (v) => setState(() => _reason = v ?? 'other'),
               ),
               const SizedBox(height: FFTokens.spacingMd),
-              TextField(
+              FFTextField(
                 key: const Key('refund-note'),
                 controller: _note,
+                label: context.tr('refunds.note'),
                 maxLines: 3,
                 maxLength: 500,
-                decoration: InputDecoration(
-                  labelText: context.tr('refunds.note'),
-                ),
               ),
               if (_error != null)
                 Padding(

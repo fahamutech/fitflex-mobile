@@ -213,12 +213,12 @@ class _AccountRecoveryScreenState extends State<AccountRecoveryScreen> {
     final List<Widget> children;
     if (_sentTo != null) {
       children = [
-        TextField(
+        FFTextField(
           key: const Key('recovery-name'),
           controller: _name,
+          label: context.tr('rec.name'),
           enabled: !_busy,
           textCapitalization: TextCapitalization.words,
-          decoration: InputDecoration(labelText: context.tr('rec.name')),
         ),
         const SizedBox(height: FFTokens.spacingMd),
         CodeStep(
@@ -234,20 +234,20 @@ class _AccountRecoveryScreenState extends State<AccountRecoveryScreen> {
       children = [
         Text(context.tr('rec.intro'), textAlign: TextAlign.center),
         const SizedBox(height: FFTokens.spacingMd),
-        TextField(
+        FFTextField(
           key: const Key('recovery-old'),
           controller: _old,
-          enabled: !_busy,
+          label: context.tr('rec.old'),
           keyboardType: TextInputType.emailAddress,
-          decoration: InputDecoration(labelText: context.tr('rec.old')),
+          enabled: !_busy,
         ),
         const SizedBox(height: FFTokens.spacingSm),
-        TextField(
+        FFTextField(
           key: const Key('recovery-new'),
           controller: _new,
-          enabled: !_busy,
+          label: context.tr('rec.new'),
           keyboardType: TextInputType.emailAddress,
-          decoration: InputDecoration(labelText: context.tr('rec.new')),
+          enabled: !_busy,
         ),
         _errorText(context, _error),
         const SizedBox(height: FFTokens.spacingMd),
@@ -355,12 +355,12 @@ class _RecoveryQuestionsScreenState extends State<RecoveryQuestionsScreen> {
         Text(context.tr('rec.questionsIntro'), textAlign: TextAlign.center),
         for (final key in _questionKeys) ...[
           const SizedBox(height: FFTokens.spacingSm),
-          TextField(
+          FFTextField(
             key: Key('recovery-answer-$key'),
             controller: _fields[key],
+            label: context.tr(labels[key]!),
             enabled: !_busy,
             maxLength: 300,
-            decoration: InputDecoration(labelText: context.tr(labels[key]!)),
           ),
         ],
         _errorText(context, _error),

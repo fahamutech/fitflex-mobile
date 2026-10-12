@@ -801,19 +801,17 @@ class _PeopleTabState extends State<PeopleTab> {
             ),
           ),
           const SizedBox(height: FFTokens.spacingMd),
-          TextField(
+          FFTextField(
             key: const Key('people-search'),
             controller: _search,
+            hint: context.tr('community.searchHint'),
             textInputAction: TextInputAction.search,
-            onSubmitted: (_) => _find(),
-            decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.search),
-              hintText: context.tr('community.searchHint'),
-              suffixIcon: IconButton(
-                tooltip: context.tr('a11y.search'),
-                icon: const Icon(Icons.arrow_forward),
-                onPressed: _find,
-              ),
+            onFieldSubmitted: (_) => _find(),
+            prefixIcon: const Icon(Icons.search),
+            suffixIcon: IconButton(
+              tooltip: context.tr('a11y.search'),
+              icon: const Icon(Icons.arrow_forward),
+              onPressed: _find,
             ),
           ),
           if (_contactBusy) const LinearProgressIndicator(),
@@ -1009,13 +1007,11 @@ class _GroupsTabState extends State<GroupsTab> {
               },
             ),
           FFSectionTitle(context.tr('community.findGroups')),
-          TextField(
+          FFTextField(
             controller: _q,
-            onSubmitted: (_) => _load(),
-            decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.search),
-              hintText: context.tr('community.findGroupsHint'),
-            ),
+            hint: context.tr('community.findGroupsHint'),
+            onFieldSubmitted: (_) => _load(),
+            prefixIcon: const Icon(Icons.search),
           ),
           const SizedBox(height: FFTokens.spacingSm),
           if (_found.isEmpty)
@@ -1088,11 +1084,11 @@ Future<String?> _askText(
     context: context,
     builder: (ctx) => AlertDialog(
       title: Text(title),
-      content: TextField(
+      content: FFTextField(
         key: const Key('ask-text'),
         controller: c,
+        hint: hint,
         autofocus: true,
-        decoration: InputDecoration(hintText: hint),
       ),
       actions: [
         TextButton(
@@ -1190,21 +1186,17 @@ class _GroupFormState extends State<_GroupForm> {
               padding: const EdgeInsets.only(top: FFTokens.spacingSm),
               child: FFAlert(message: _error!, tone: FFAlertTone.error),
             ),
-          TextField(
+          FFTextField(
             key: const Key('group-name'),
             controller: _name,
+            label: context.tr('community.groupName'),
             maxLength: 60,
-            decoration: InputDecoration(
-              labelText: context.tr('community.groupName'),
-            ),
           ),
-          TextField(
+          FFTextField(
             controller: _desc,
-            maxLength: 300,
+            label: context.tr('community.groupDescription'),
             maxLines: 2,
-            decoration: InputDecoration(
-              labelText: context.tr('community.groupDescription'),
-            ),
+            maxLength: 300,
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,

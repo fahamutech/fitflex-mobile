@@ -103,20 +103,17 @@ Widget _text(
   String? Function(String)? check,
 }) => Padding(
   padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
-  child: TextFormField(
+  child: FFTextField(
     key: Key('kyc-field-$key'),
     controller: c,
-    keyboardType: keyboard,
-    decoration: InputDecoration(
-      labelText: context.tr('kyc.field.$key') + (required ? ' *' : ''),
-      helperText: hintKey == null ? null : context.tr(hintKey),
-      border: const OutlineInputBorder(),
-    ),
+    label: context.tr('kyc.field.$key') + (required ? ' *' : ''),
+    helperText: hintKey == null ? null : context.tr(hintKey),
     validator: (v) {
       final value = v ?? '';
       if (required && value.trim().isEmpty) return context.tr('kyc.required');
       return check?.call(value);
     },
+    keyboardType: keyboard,
   ),
 );
 
@@ -694,15 +691,12 @@ class _VendorKycProfilePageState extends State<VendorKycProfilePage> {
     String? Function(String)? check,
   }) => Padding(
     padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
-    child: TextFormField(
+    child: FFTextField(
       key: Key('kyc-vendor-$key'),
       controller: c,
-      keyboardType: keyboard,
-      decoration: InputDecoration(
-        labelText: label,
-        border: const OutlineInputBorder(),
-      ),
+      label: label,
       validator: check == null ? null : (v) => check(v ?? ''),
+      keyboardType: keyboard,
     ),
   );
 

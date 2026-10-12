@@ -368,34 +368,26 @@ class _GymFormPageState extends State<GymFormPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
+              FFTextField(
                 key: const Key('gym-class-name'),
                 controller: name,
-                decoration: InputDecoration(
-                  labelText: context.tr('ownerReg.className'),
-                ),
+                label: context.tr('ownerReg.className'),
               ),
-              TextField(
+              FFTextField(
                 key: const Key('gym-class-schedule'),
                 controller: schedule,
-                decoration: InputDecoration(
-                  labelText: context.tr('ownerReg.classSchedule'),
-                ),
+                label: context.tr('ownerReg.classSchedule'),
               ),
-              TextField(
+              FFTextField(
                 key: const Key('gym-class-price'),
                 controller: price,
+                label: context.tr('ownerReg.classPrice'),
                 keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: context.tr('ownerReg.classPrice'),
-                ),
               ),
-              TextField(
+              FFTextField(
                 key: const Key('gym-class-location'),
                 controller: location,
-                decoration: InputDecoration(
-                  labelText: context.tr('ownerReg.classLocation'),
-                ),
+                label: context.tr('ownerReg.classLocation'),
               ),
             ],
           ),

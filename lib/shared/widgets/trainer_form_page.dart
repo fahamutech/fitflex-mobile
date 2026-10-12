@@ -421,20 +421,16 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
+            FFTextField(
               key: const Key('trainer-availability-day'),
               controller: day,
-              decoration: InputDecoration(
-                labelText: dialogContext.tr('trainer.availabilityDay'),
-              ),
+              label: dialogContext.tr('trainer.availabilityDay'),
             ),
-            TextField(
+            FFTextField(
               key: const Key('trainer-availability-slots'),
               controller: slots,
-              decoration: InputDecoration(
-                labelText: dialogContext.tr('trainer.availabilitySlots'),
-                hintText: '09:00, 10:00',
-              ),
+              label: dialogContext.tr('trainer.availabilitySlots'),
+              hint: '09:00, 10:00',
             ),
           ],
         ),

@@ -454,13 +454,11 @@ Future<bool?> showTrainerEnquiryDialog(
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
+              FFTextField(
                 key: const Key('trainer-enquiry-message'),
                 controller: ctrl,
+                hint: ctx.tr('member.enquiryHint'),
                 maxLines: 3,
-                decoration: InputDecoration(
-                  hintText: ctx.tr('member.enquiryHint'),
-                ),
               ),
               if (error != null) ...[
                 const SizedBox(height: 10),
