@@ -23,6 +23,7 @@ class PassSummaryCard extends StatelessWidget {
         child: SizedBox(height: 120, child: Center(child: FFSpinner(size: 32))),
       );
     }
+    final theme = Theme.of(context);
     final sub = data.subscription;
     final pending = data.pendingPayment;
     final visitsUsed = data.me?.visitsUsed ?? 0;
@@ -51,28 +52,40 @@ class PassSummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            context.tr('member.yourPass').toUpperCase(),
-            style: FFTokens.monoLabel(
-              Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            title,
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 4),
-          FFBadge(
-            label: status,
-            tone: data.hasActivePass
-                ? FFBadgeTone.success
-                : pending != null
-                ? FFBadgeTone.warning
-                : FFBadgeTone.gray,
-            dot: true,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      context.tr('member.yourPass'),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      title,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: FFTokens.spacingSm),
+              FFBadge(
+                label: status,
+                tone: data.hasActivePass
+                    ? FFBadgeTone.success
+                    : pending != null
+                    ? FFBadgeTone.warning
+                    : FFBadgeTone.gray,
+                dot: true,
+              ),
+            ],
           ),
           if (sub?.isDirect == true) ...[
             const SizedBox(height: 10),
@@ -116,8 +129,8 @@ class PassSummaryCard extends StatelessWidget {
                   child: Text(
                     context.tr('home.visits'),
                     style: TextStyle(
-                      color: Theme.of(context).textTheme.bodySmall?.color,
-                      fontSize: 12,
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontSize: 14,
                     ),
                   ),
                 ),
@@ -126,8 +139,8 @@ class PassSummaryCard extends StatelessWidget {
                       ? '$visitsUsed / ${context.tr('pass.unlimited')}'
                       : '$visitsUsed / $visitCap',
                   style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurface,
-                    fontSize: 12,
+                    color: theme.colorScheme.onSurface,
+                    fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -142,59 +155,40 @@ class PassSummaryCard extends StatelessWidget {
               ),
             ],
           ],
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton(
-                  onPressed: () async {
-                    // Refresh QR and user data before navigation
-                    final shellState = context
-                        .findAncestorStateOfType<MemberShellState>();
-                    await shellState?.refreshQr();
-                    await shellState?.refreshMe();
-                    if (!context.mounted) return;
-                    if (data.hasActivePass) {
-                      context.go(AppRoutes.memberQr);
-                    } else {
-                      context.go(AppRoutes.memberPasses);
-                    }
-                  },
-                  // One line in every language: shrink rather than wrap.
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      data.hasActivePass
-                          ? context.tr('member.showQr')
-                          : context.tr('member.subscribe'),
-                      maxLines: 1,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () async {
-                    // Refresh QR and user data before navigation
-                    final shellState = context
-                        .findAncestorStateOfType<MemberShellState>();
-                    await shellState?.refreshQr();
-                    await shellState?.refreshMe();
-                    if (!context.mounted) return;
-                    context.go(AppRoutes.memberPasses);
-                  },
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(context.tr('member.upgradePlan'), maxLines: 1),
-                  ),
-                ),
-              ),
-            ],
+          const SizedBox(height: FFTokens.spacingMd),
+          FFButton(
+            key: const Key('pass-primary-action'),
+            fullWidth: true,
+            label: data.hasActivePass
+                ? context.tr('member.showQr')
+                : context.tr('member.subscribe'),
+            icon: data.hasActivePass ? Icons.qr_code_2 : null,
+            onPressed: () => _go(
+              context,
+              data.hasActivePass ? AppRoutes.memberQr : AppRoutes.memberPasses,
+            ),
+          ),
+          const SizedBox(height: FFTokens.spacingXs),
+          FFButton(
+            key: const Key('pass-upgrade-action'),
+            fullWidth: true,
+            variant: FFButtonVariant.ghost,
+            size: FFButtonSize.sm,
+            label: context.tr('member.upgradePlan'),
+            onPressed: () => _go(context, AppRoutes.memberPasses),
           ),
         ],
       ),
     );
+  }
+
+  /// Refreshes the QR and profile first so the next screen is current.
+  static Future<void> _go(BuildContext context, String route) async {
+    final shellState = context.findAncestorStateOfType<MemberShellState>();
+    await shellState?.refreshQr();
+    await shellState?.refreshMe();
+    if (!context.mounted) return;
+    context.go(route);
   }
 
   /// Translated status, falling back to the raw value for new ones.

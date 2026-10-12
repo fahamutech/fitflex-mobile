@@ -109,15 +109,21 @@ void _ignoreTestFontOverflow() {
 
 /// Chips sit in a lazily built horizontal list: scroll to one before tapping it.
 /// `back` scrolls towards the start of the list instead of the end.
-Future<void> _tapChip(WidgetTester tester, Finder chip, {bool back = false}) async {
+Future<void> _tapChip(
+  WidgetTester tester,
+  Finder chip, {
+  bool back = false,
+}) async {
   final keyed = find.byKey(const Key('gym-filter-scroll'));
   final row = keyed.evaluate().isNotEmpty
       ? find.descendant(of: keyed, matching: find.byType(Scrollable))
-      : find.byWidgetPredicate(
-          (w) => w is Scrollable && w.axisDirection == AxisDirection.right,
-        ).first;
+      : find
+            .byWidgetPredicate(
+              (w) => w is Scrollable && w.axisDirection == AxisDirection.right,
+            )
+            .first;
   await tester.scrollUntilVisible(chip, back ? -120 : 120, scrollable: row);
-  await tester.ensureVisible(chip);                                        // fully on screen, not just in the list
+  await tester.ensureVisible(chip); // fully on screen, not just in the list
   await tester.pump();
   await tester.tap(chip);
   await tester.pump();
@@ -160,21 +166,24 @@ Future<void> _pump(
 
 void main() {
   group('models and request', () {
-    test('a promotion tag is read from the card, and absent when there is none', () {
-      final gym = Gym.fromJson(_gym('g', 'Gym', promotion: _sponsoredTag));
-      expect(gym.promotion?.type, 'sponsored');
-      expect(gym.promotion?.label, 'Sponsored');
-      expect(gym.promotion?.commercial, isTrue);
-      expect(Gym.fromJson(_gym('g', 'Gym')).promotion, isNull);
-      expect(PromotionTag.fromJson('nonsense'), isNull);
-      expect(PromotionTag.fromJson({'label': 'x'}), isNull);
-      expect(
-        TrainerProfile.fromJson(_trainer('t', 'T', promotion: _featuredTag))
-            .promotion
-            ?.type,
-        'featured',
-      );
-    });
+    test(
+      'a promotion tag is read from the card, and absent when there is none',
+      () {
+        final gym = Gym.fromJson(_gym('g', 'Gym', promotion: _sponsoredTag));
+        expect(gym.promotion?.type, 'sponsored');
+        expect(gym.promotion?.label, 'Sponsored');
+        expect(gym.promotion?.commercial, isTrue);
+        expect(Gym.fromJson(_gym('g', 'Gym')).promotion, isNull);
+        expect(PromotionTag.fromJson('nonsense'), isNull);
+        expect(PromotionTag.fromJson({'label': 'x'}), isNull);
+        expect(
+          TrainerProfile.fromJson(
+            _trainer('t', 'T', promotion: _featuredTag),
+          ).promotion?.type,
+          'featured',
+        );
+      },
+    );
 
     test('a ranked answer is split into the Featured section and the list', () {
       final r = DiscoverResult.fromJson<Gym>(
@@ -195,40 +204,40 @@ void main() {
       expect(empty.promotionsApplied, isTrue);
     });
 
-    test('only what is set is sent, so the server applies its own defaults', () {
-      expect(const DiscoverQuery().toQueryString(), '');
-      expect(const DiscoverQuery(q: '  ').toQueryString(), '');
-      expect(
-        const DiscoverQuery(
-          q: 'boxing gym',
-          lat: -6.8,
-          lng: 39.2,
-          sort: 'distance',
-          filters: {'tier': 'premium', 'verified': 'true', 'brand': ''},
-          limit: 50,
-          cursor: 50,
-        ).toParams(),
-        {
-          'q': 'boxing gym',
-          'lat': '-6.80000',
-          'lng': '39.20000',
-          'sort': 'distance',
-          'tier': 'premium',
-          'verified': 'true',
-          'limit': '50',
-          'cursor': '50',
-        },
-      );
-      // The default sort is the server's; a position needs both halves.
-      expect(
-        const DiscoverQuery(sort: 'relevance', lat: -6.8).toParams(),
-        isEmpty,
-      );
-      expect(
-        const DiscoverQuery(q: 'a b').toQueryString(),
-        '?q=a+b',
-      );
-    });
+    test(
+      'only what is set is sent, so the server applies its own defaults',
+      () {
+        expect(const DiscoverQuery().toQueryString(), '');
+        expect(const DiscoverQuery(q: '  ').toQueryString(), '');
+        expect(
+          const DiscoverQuery(
+            q: 'boxing gym',
+            lat: -6.8,
+            lng: 39.2,
+            sort: 'distance',
+            filters: {'tier': 'premium', 'verified': 'true', 'brand': ''},
+            limit: 50,
+            cursor: 50,
+          ).toParams(),
+          {
+            'q': 'boxing gym',
+            'lat': '-6.80000',
+            'lng': '39.20000',
+            'sort': 'distance',
+            'tier': 'premium',
+            'verified': 'true',
+            'limit': '50',
+            'cursor': '50',
+          },
+        );
+        // The default sort is the server's; a position needs both halves.
+        expect(
+          const DiscoverQuery(sort: 'relevance', lat: -6.8).toParams(),
+          isEmpty,
+        );
+        expect(const DiscoverQuery(q: 'a b').toQueryString(), '?q=a+b');
+      },
+    );
   });
 
   group('discovery loader', () {
@@ -252,7 +261,10 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
       expect(asked, ['box']);
       expect(results, hasLength(1));
-      loader.request(const DiscoverQuery(q: 'box', sort: 'distance'), immediate: true);
+      loader.request(
+        const DiscoverQuery(q: 'box', sort: 'distance'),
+        immediate: true,
+      );
       await tester.pump();
       expect(asked, ['box', 'box']);
       loader.dispose();
@@ -269,8 +281,10 @@ void main() {
         fetch: (q) => q.q == 'old' ? first.future : second.future,
         onResult: (r) => shown.add(r?.items.first.name ?? 'none'),
       );
-      DiscoverResult<Gym> one(String name) =>
-          DiscoverResult.fromJson<Gym>(_answer(items: [_gym('x', name)]), Gym.fromJson);
+      DiscoverResult<Gym> one(String name) => DiscoverResult.fromJson<Gym>(
+        _answer(items: [_gym('x', name)]),
+        Gym.fromJson,
+      );
       loader.request(const DiscoverQuery(q: 'old'));
       loader.request(const DiscoverQuery(q: 'new'));
       second.complete(one('New'));
@@ -322,52 +336,68 @@ void main() {
         tester.pumpWidget(
           FFLocaleScope(
             notifier: FFLocale(),
-            child: MaterialApp(home: Scaffold(body: FFPromotionBadge(tag: tag))),
+            child: MaterialApp(
+              home: Scaffold(body: FFPromotionBadge(tag: tag)),
+            ),
           ),
         );
 
-    testWidgets('each kind is labelled so a customer can tell it from an organic result', (
-      tester,
-    ) async {
-      for (final (type, text) in [
-        ('featured', 'Featured'),
-        ('promoted', 'Promoted'),
-        ('sponsored', 'Sponsored'),
-        ('recommended', 'Recommended by FitFlex'),
-        ('campaign', 'Campaign'),
-      ]) {
-        await badge(tester, PromotionTag(id: 'p', type: type, label: text));
-        expect(find.text(text), findsOneWidget, reason: type);
-        expect(find.byKey(Key('promo-badge-$type')), findsOneWidget);
-      }
-    });
+    testWidgets(
+      'each kind is labelled so a customer can tell it from an organic result',
+      (tester) async {
+        for (final (type, text) in [
+          ('featured', 'Featured'),
+          ('promoted', 'Promoted'),
+          ('sponsored', 'Sponsored'),
+          ('recommended', 'Recommended by FitFlex'),
+          ('campaign', 'Campaign'),
+        ]) {
+          await badge(tester, PromotionTag(id: 'p', type: type, label: text));
+          expect(find.text(text), findsOneWidget, reason: type);
+          expect(find.byKey(Key('promo-badge-$type')), findsOneWidget);
+        }
+      },
+    );
 
     testWidgets('a custom label chosen by FitFlex is shown as it is', (
       tester,
     ) async {
-      await badge(tester, const PromotionTag(id: 'p', type: 'sponsored', label: 'Partner pick'));
+      await badge(
+        tester,
+        const PromotionTag(id: 'p', type: 'sponsored', label: 'Partner pick'),
+      );
       expect(find.text('Partner pick'), findsOneWidget);
       expect(find.text('Sponsored'), findsNothing);
     });
 
-    testWidgets('an empty label falls back to the standard words', (tester) async {
-      await badge(tester, const PromotionTag(id: 'p', type: 'sponsored', label: ''));
+    testWidgets('an empty label falls back to the standard words', (
+      tester,
+    ) async {
+      await badge(
+        tester,
+        const PromotionTag(id: 'p', type: 'sponsored', label: ''),
+      );
       expect(find.text('Sponsored'), findsOneWidget);
     });
 
-    testWidgets('the Featured row takes no room when there is nothing featured', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: FFFeaturedStrip(title: 'Featured', count: 0, itemBuilder: _never),
+    testWidgets(
+      'the Featured row takes no room when there is nothing featured',
+      (tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: FFFeaturedStrip(
+                title: 'Featured',
+                count: 0,
+                itemBuilder: _never,
+              ),
+            ),
           ),
-        ),
-      );
-      expect(find.byKey(const Key('featured-strip')), findsNothing);
-      expect(find.text('Featured'), findsNothing);
-    });
+        );
+        expect(find.byKey(const Key('featured-strip')), findsNothing);
+        expect(find.text('Featured'), findsNothing);
+      },
+    );
   });
 
   group('gym tab', () {
@@ -377,24 +407,27 @@ void main() {
         Gym.fromJson(_gym('calm', 'Calm Yoga', amenities: ['yoga'])),
       ];
 
-    testWidgets('shows the Featured section with its label, and the list below without repeating it', (
+    testWidgets(
+      'shows the Featured section with its label, and the list below without repeating it',
+      (tester) async {
+        final api = _Api()
+          ..handler = (_, _) => _answer(
+            featured: [_gym('calm', 'Calm Yoga', promotion: _featuredTag)],
+            items: [_gym('iron', 'Iron Paradise')],
+          );
+        await _pump(tester, const MemberGymsTab(), api: api, data: data());
+        expect(find.text('Featured gyms'), findsOneWidget);
+        expect(find.byKey(const Key('gym-featured-calm')), findsOneWidget);
+        expect(find.text('Featured'), findsOneWidget); // the badge
+        expect(find.byKey(const Key('gym-card-iron')), findsOneWidget);
+        expect(find.byKey(const Key('gym-card-calm')), findsNothing);
+        expect(api.queries.first.kind, 'gyms');
+      },
+    );
+
+    testWidgets('a sponsored gym in the list is labelled Sponsored', (
       tester,
     ) async {
-      final api = _Api()
-        ..handler = (_, _) => _answer(
-          featured: [_gym('calm', 'Calm Yoga', promotion: _featuredTag)],
-          items: [_gym('iron', 'Iron Paradise')],
-        );
-      await _pump(tester, const MemberGymsTab(), api: api, data: data());
-      expect(find.text('Featured gyms'), findsOneWidget);
-      expect(find.byKey(const Key('gym-featured-calm')), findsOneWidget);
-      expect(find.text('Featured'), findsOneWidget);                      // the badge
-      expect(find.byKey(const Key('gym-card-iron')), findsOneWidget);
-      expect(find.byKey(const Key('gym-card-calm')), findsNothing);
-      expect(api.queries.first.kind, 'gyms');
-    });
-
-    testWidgets('a sponsored gym in the list is labelled Sponsored', (tester) async {
       final api = _Api()
         ..handler = (_, _) => _answer(
           items: [_gym('iron', 'Iron Paradise', promotion: _sponsoredTag)],
@@ -404,24 +437,40 @@ void main() {
       expect(find.byKey(const Key('featured-strip')), findsNothing);
     });
 
-    testWidgets('typing a search asks the server, and shows what it returns even when the words are spread out', (
-      tester,
-    ) async {
-      final api = _Api()
-        ..handler = (_, q) => (q.q ?? '').isEmpty
-            ? _answer(items: [_gym('iron', 'Iron Paradise'), _gym('calm', 'Calm Yoga')])
-            : _answer(items: [_gym('ko', 'Knockout Gym', amenities: ['boxing'])]);
-      await _pump(tester, const MemberGymsTab(), api: api, data: data());
-      await tester.enterText(find.byKey(const Key('gym-search')), 'boxing gym');
-      await tester.pump(const Duration(milliseconds: 100));
-      expect(api.queries.where((q) => q.query.q == 'boxing gym'), isEmpty);   // debounced
-      await tester.pump(const Duration(milliseconds: 400));
-      expect(api.queries.last.query.q, 'boxing gym');
-      await tester.pump();
-      // "boxing gym" is not in the name; the phone does not filter the server's answer again.
-      expect(find.byKey(const Key('gym-card-ko')), findsOneWidget);
-      expect(find.byKey(const Key('gym-card-iron')), findsNothing);
-    });
+    testWidgets(
+      'typing a search asks the server, and shows what it returns even when the words are spread out',
+      (tester) async {
+        final api = _Api()
+          ..handler = (_, q) => (q.q ?? '').isEmpty
+              ? _answer(
+                  items: [
+                    _gym('iron', 'Iron Paradise'),
+                    _gym('calm', 'Calm Yoga'),
+                  ],
+                )
+              : _answer(
+                  items: [
+                    _gym('ko', 'Knockout Gym', amenities: ['boxing']),
+                  ],
+                );
+        await _pump(tester, const MemberGymsTab(), api: api, data: data());
+        await tester.enterText(
+          find.byKey(const Key('gym-search')),
+          'boxing gym',
+        );
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(
+          api.queries.where((q) => q.query.q == 'boxing gym'),
+          isEmpty,
+        ); // debounced
+        await tester.pump(const Duration(milliseconds: 400));
+        expect(api.queries.last.query.q, 'boxing gym');
+        await tester.pump();
+        // "boxing gym" is not in the name; the phone does not filter the server's answer again.
+        expect(find.byKey(const Key('gym-card-ko')), findsOneWidget);
+        expect(find.byKey(const Key('gym-card-iron')), findsNothing);
+      },
+    );
 
     testWidgets('the tier chip, verified switch and nearest go to the server', (
       tester,
@@ -435,109 +484,143 @@ void main() {
       await tester.pump();
       expect(api.queries.last.query.filters['verified'], 'true');
       expect(api.queries.last.query.filters['tier'], 'premium');
-      await _tapChip(tester, find.byKey(const Key('gym-filter-all')), back: true);
+      await _tapChip(
+        tester,
+        find.byKey(const Key('gym-filter-all')),
+        back: true,
+      );
       expect(api.queries.last.query.filters.containsKey('tier'), isFalse);
     });
 
-    testWidgets('a Featured gym that fails a filter applied on the phone is not shown', (
-      tester,
-    ) async {
-      final api = _Api()
-        ..handler = (_, _) => _answer(
-          featured: [_gym('calm', 'Calm Yoga', promotion: _featuredTag, amenities: ['yoga'])],
-          items: [_gym('iron', 'Iron Paradise', amenities: ['sauna'])],
-        );
-      await _pump(tester, const MemberGymsTab(), api: api, data: data());
-      expect(find.byKey(const Key('gym-featured-calm')), findsOneWidget);
-      await _tapChip(tester, find.byKey(const Key('gym-filter-more')));
-      await tester.tap(find.widgetWithText(FilterChip, 'sauna'));
-      await tester.pump();
-      expect(find.byKey(const Key('gym-featured-calm')), findsNothing);
-      expect(find.byKey(const Key('featured-strip')), findsNothing);
-      expect(find.byKey(const Key('gym-card-iron')), findsOneWidget);
-    });
+    testWidgets(
+      'a Featured gym that fails a filter applied on the phone is not shown',
+      (tester) async {
+        final api = _Api()
+          ..handler = (_, _) => _answer(
+            featured: [
+              _gym(
+                'calm',
+                'Calm Yoga',
+                promotion: _featuredTag,
+                amenities: ['yoga'],
+              ),
+            ],
+            items: [
+              _gym('iron', 'Iron Paradise', amenities: ['sauna']),
+            ],
+          );
+        await _pump(tester, const MemberGymsTab(), api: api, data: data());
+        expect(find.byKey(const Key('gym-featured-calm')), findsOneWidget);
+        await _tapChip(tester, find.byKey(const Key('gym-filter-more')));
+        await tester.tap(find.widgetWithText(FilterChip, 'sauna'));
+        await tester.pump();
+        expect(find.byKey(const Key('gym-featured-calm')), findsNothing);
+        expect(find.byKey(const Key('featured-strip')), findsNothing);
+        expect(find.byKey(const Key('gym-card-iron')), findsOneWidget);
+      },
+    );
 
-    testWidgets('only a Featured match is still shown instead of an empty page', (
-      tester,
-    ) async {
-      final api = _Api()
-        ..handler = (_, _) => _answer(
-          featured: [_gym('calm', 'Calm Yoga', promotion: _featuredTag)],
-        );
-      await _pump(tester, const MemberGymsTab(), api: api, data: data());
-      expect(find.byKey(const Key('gym-featured-calm')), findsOneWidget);
-      expect(find.text('No data yet'), findsNothing);
-    });
+    testWidgets(
+      'only a Featured match is still shown instead of an empty page',
+      (tester) async {
+        final api = _Api()
+          ..handler = (_, _) => _answer(
+            featured: [_gym('calm', 'Calm Yoga', promotion: _featuredTag)],
+          );
+        await _pump(tester, const MemberGymsTab(), api: api, data: data());
+        expect(find.byKey(const Key('gym-featured-calm')), findsOneWidget);
+        expect(find.text('No data yet'), findsNothing);
+      },
+    );
 
-    testWidgets('if the server cannot be reached the plain list works exactly as before', (
-      tester,
-    ) async {
-      final api = _Api()..error = ApiException(503, 'down');
-      await _pump(tester, const MemberGymsTab(), api: api, data: data());
-      expect(find.byKey(const Key('gym-card-iron')), findsOneWidget);
-      expect(find.byKey(const Key('gym-card-calm')), findsOneWidget);
-      expect(find.byKey(const Key('featured-strip')), findsNothing);
-      await tester.enterText(find.byKey(const Key('gym-search')), 'iron');
-      await tester.pump(const Duration(milliseconds: 500));
-      expect(find.byKey(const Key('gym-card-iron')), findsOneWidget);
-      expect(find.byKey(const Key('gym-card-calm')), findsNothing);       // filtered on the phone
-    });
+    testWidgets(
+      'if the server cannot be reached the plain list works exactly as before',
+      (tester) async {
+        final api = _Api()..error = ApiException(503, 'down');
+        await _pump(tester, const MemberGymsTab(), api: api, data: data());
+        expect(find.byKey(const Key('gym-card-iron')), findsOneWidget);
+        expect(find.byKey(const Key('gym-card-calm')), findsOneWidget);
+        expect(find.byKey(const Key('featured-strip')), findsNothing);
+        await tester.enterText(find.byKey(const Key('gym-search')), 'iron');
+        await tester.pump(const Duration(milliseconds: 500));
+        expect(find.byKey(const Key('gym-card-iron')), findsOneWidget);
+        expect(
+          find.byKey(const Key('gym-card-calm')),
+          findsNothing,
+        ); // filtered on the phone
+      },
+    );
 
-    testWidgets('Saved lists saved gyms including Featured ones, with no Featured row', (
-      tester,
-    ) async {
-      final api = _Api()
-        ..handler = (_, _) => _answer(
-          featured: [_gym('calm', 'Calm Yoga', promotion: _featuredTag)],
-          items: [_gym('iron', 'Iron Paradise')],
-        );
-      final d = data()..favoriteGymIds = {'calm'};
-      await _pump(tester, const MemberGymsTab(), api: api, data: d);
-      await _tapChip(tester, find.byKey(const Key('gym-filter-saved')));
-      expect(find.byKey(const Key('featured-strip')), findsNothing);
-      expect(find.byKey(const Key('gym-card-calm')), findsOneWidget);
-      expect(find.byKey(const Key('gym-card-iron')), findsNothing);
-    });
+    testWidgets(
+      'Saved lists saved gyms including Featured ones, with no Featured row',
+      (tester) async {
+        final api = _Api()
+          ..handler = (_, _) => _answer(
+            featured: [_gym('calm', 'Calm Yoga', promotion: _featuredTag)],
+            items: [_gym('iron', 'Iron Paradise')],
+          );
+        final d = data()..favoriteGymIds = {'calm'};
+        await _pump(tester, const MemberGymsTab(), api: api, data: d);
+        await _tapChip(tester, find.byKey(const Key('gym-filter-saved')));
+        expect(find.byKey(const Key('featured-strip')), findsNothing);
+        expect(find.byKey(const Key('gym-card-calm')), findsOneWidget);
+        expect(find.byKey(const Key('gym-card-iron')), findsNothing);
+      },
+    );
   });
 
   group('trainer tab', () {
     MemberData data() => MemberData()
       ..trainers = [
         TrainerProfile.fromJson(_trainer('ann', 'Ann Boxer')),
-        TrainerProfile.fromJson(_trainer('bo', 'Bo Yogi', specialties: ['yoga'])),
+        TrainerProfile.fromJson(
+          _trainer('bo', 'Bo Yogi', specialties: ['yoga']),
+        ),
       ];
 
-    testWidgets('shows Featured trainers with their label, and the rest below', (
-      tester,
-    ) async {
-      final api = _Api()
-        ..handler = (_, _) => {
-          'featured': [_trainer('bo', 'Bo Yogi', promotion: _featuredTag, specialties: ['yoga'])],
-          'items': [_trainer('ann', 'Ann Boxer')],
-          'total': 1,
-        };
-      await _pump(tester, const MemberTrainersTab(), api: api, data: data());
-      expect(find.text('Featured trainers'), findsOneWidget);
-      expect(find.byKey(const Key('trainer-featured-bo')), findsOneWidget);
-      expect(find.text('Featured'), findsOneWidget);
-      expect(find.byKey(const Key('trainer-card-ann')), findsOneWidget);
-      expect(find.byKey(const Key('trainer-card-bo')), findsNothing);
-      expect(api.queries.first.kind, 'trainers');
-    });
+    testWidgets(
+      'shows Featured trainers with their label, and the rest below',
+      (tester) async {
+        final api = _Api()
+          ..handler = (_, _) => {
+            'featured': [
+              _trainer(
+                'bo',
+                'Bo Yogi',
+                promotion: _featuredTag,
+                specialties: ['yoga'],
+              ),
+            ],
+            'items': [_trainer('ann', 'Ann Boxer')],
+            'total': 1,
+          };
+        await _pump(tester, const MemberTrainersTab(), api: api, data: data());
+        expect(find.text('Featured trainers'), findsOneWidget);
+        expect(find.byKey(const Key('trainer-featured-bo')), findsOneWidget);
+        expect(find.text('Featured'), findsOneWidget);
+        expect(find.byKey(const Key('trainer-card-ann')), findsOneWidget);
+        expect(find.byKey(const Key('trainer-card-bo')), findsNothing);
+        expect(api.queries.first.kind, 'trainers');
+      },
+    );
 
-    testWidgets('a specialty chip is sent to the server, and a failure falls back to the phone', (
-      tester,
-    ) async {
-      final api = _Api();
-      await _pump(tester, const MemberTrainersTab(), api: api, data: data());
-      await _tapChip(tester, find.text('Boxing'));
-      expect(api.queries.last.query.filters['specialty'], 'boxing');
-      api.error = ApiException(500, 'x');
-      await _tapChip(tester, find.text('Yoga'));
-      await tester.pump(const Duration(milliseconds: 50));
-      expect(find.byKey(const Key('trainer-card-bo')), findsOneWidget);
-      expect(find.byKey(const Key('trainer-card-ann')), findsNothing);    // plain filter on the phone
-    });
+    testWidgets(
+      'a specialty chip is sent to the server, and a failure falls back to the phone',
+      (tester) async {
+        final api = _Api();
+        await _pump(tester, const MemberTrainersTab(), api: api, data: data());
+        await _tapChip(tester, find.text('Boxing'));
+        expect(api.queries.last.query.filters['specialty'], 'boxing');
+        api.error = ApiException(500, 'x');
+        await _tapChip(tester, find.text('Yoga'));
+        await tester.pump(const Duration(milliseconds: 50));
+        expect(find.byKey(const Key('trainer-card-bo')), findsOneWidget);
+        expect(
+          find.byKey(const Key('trainer-card-ann')),
+          findsNothing,
+        ); // plain filter on the phone
+      },
+    );
   });
 }
 

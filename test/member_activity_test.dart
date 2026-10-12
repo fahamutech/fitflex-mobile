@@ -179,6 +179,24 @@ void main() {
     expect(find.byKey(const Key('activity-sample-badge')), findsNothing);
   });
 
+  testWidgets('Activity has one Log activity action, in the header', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+
+    final data = _data(sample: true);
+    await tester.pumpWidget(_wrap(MemberActivityTab(now: _now), data));
+    expect(find.byKey(const Key('activity-log-open')), findsOneWidget);
+    expect(find.text('Log activity'), findsOneWidget);
+
+    await tester.tap(find.text('Training'));
+    await tester.pump();
+    expect(find.byKey(const Key('activity-log-open')), findsOneWidget);
+    expect(find.byKey(const Key('workouts-log-open')), findsNothing);
+  });
+
   testWidgets('Activity tab overview and section switching', (tester) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 3;
@@ -190,7 +208,7 @@ void main() {
     for (final label in ['Today', 'Training', 'Challenges', 'Progress']) {
       expect(find.text(label), findsWidgets);
     }
-    expect(find.text('6,240'), findsWidgets);
+    expect(find.textContaining('6,240'), findsWidgets);
     expect(find.text('120'), findsOneWidget); // calories
     expect(find.byKey(const Key('activity-daily-goal')), findsOneWidget);
     await tester.scrollUntilVisible(
