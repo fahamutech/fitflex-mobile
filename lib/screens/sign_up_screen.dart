@@ -257,6 +257,12 @@ class _SignUpScreenState extends State<SignUpScreen>
                                         .textTheme
                                         .labelLarge
                                         ?.copyWith(
+                                          // The text style carries the body
+                                          // colour; on the primary fill the
+                                          // label must use on-primary.
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onPrimary,
                                           fontWeight: FontWeight.w800,
                                           letterSpacing: 1.2,
                                         ),
