@@ -423,12 +423,14 @@ GoRouter buildRouter(AuthState auth) {
       GoRoute(
         path: AppRoutes.trainerHome,
         name: 'trainerHome',
-        builder: (context, state) => const TrainerHomePage(),
+        builder: (context, state) =>
+            TrainerHomePage(open: state.uri.queryParameters['open']),
       ),
       GoRoute(
         path: AppRoutes.vendorHome,
         name: 'vendorHome',
-        builder: (context, state) => const VendorHomePage(),
+        builder: (context, state) =>
+            VendorHomePage(open: state.uri.queryParameters['open']),
       ),
       // Owner routes
       GoRoute(

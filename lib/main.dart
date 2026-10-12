@@ -172,6 +172,19 @@ class _FitFlexAppState extends State<FitFlexApp> {
         return;
       }
     }
+    // Trainers, vendors and gyms go straight to the screen the news is about.
+    if (partnerSide(role) case final side?) {
+      final direct = partnerRouteFor(
+        side: side,
+        type: data['type']?.toString() ?? '',
+        gymId: data['gymId']?.toString(),
+        memberId: data['memberId']?.toString(),
+      );
+      if (direct != null) {
+        _router.go(direct);
+        return;
+      }
+    }
     if (message != null) {
       // A friend request is answered on its card in the list.
       _router.push(

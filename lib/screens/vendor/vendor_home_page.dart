@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../shared/inbox/inbox_pages.dart';
 import '../../shared/file-export.dart';
 import 'package:go_router/go_router.dart';
 
@@ -20,7 +21,11 @@ import '../../shared/widgets/terms_agreement.dart';
 import '../pin_flows.dart';
 
 class VendorHomePage extends StatefulWidget {
-  const VendorHomePage({super.key});
+  const VendorHomePage({super.key, this.open});
+
+  /// The section to show first — where a notification leads: `orders`,
+  /// `enquiries`, `products` or `payments`.
+  final String? open;
 
   @override
   State<VendorHomePage> createState() => _VendorHomePageState();
@@ -64,6 +69,26 @@ class _VendorHomePageState extends State<VendorHomePage> {
       ? apiErrorMessage(FFLocaleScope.of(context), e)
       : context.tr('vendor.saveFailed');
 
+  static const _sectionOf = {
+    'products': 0,
+    'orders': 1,
+    'payments': 2,
+    'enquiries': 3,
+  };
+
+  /// Shows the section a notification is about, if this person may see it.
+  void _show(String? part) {
+    final section = _sectionOf[part];
+    if (section == null || !_sections.contains(section)) return;
+    setState(() => _tab = section);
+  }
+
+  @override
+  void didUpdateWidget(VendorHomePage old) {
+    super.didUpdateWidget(old);
+    if (widget.open != old.open) _show(widget.open);
+  }
+
   List<int> get _sections {
     final sections = <int>[
       if (_can('products')) 0,
@@ -82,6 +107,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refresh();
+      if (mounted) _show(widget.open);
       // Vendors have no sign-up form of their own, so the vendor terms are
       // asked here the first time (and again if a new version is published).
       askToAgreeTerms(context, quiet: true);
@@ -270,6 +296,8 @@ class _VendorHomePageState extends State<VendorHomePage> {
       appBar: AppBar(
         title: Text(context.tr('vendor.title')),
         actions: [
+          // Orders, questions and decisions arrive here as well as by push.
+          const InboxBellButton(),
           const PersonaSwitchButton(),
           // The vendor and their staff change their own PIN here.
           const ChangePinButton(),

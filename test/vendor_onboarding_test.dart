@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fitflexmobile/app_scope.dart';
 import 'package:fitflexmobile/router.dart';
 import 'package:fitflexmobile/screens/vendor/vendor_home_page.dart';
+import 'package:fitflexmobile/shared/inbox/inbox_pages.dart';
 import 'package:fitflexmobile/shared/api_client.dart';
 import 'package:fitflexmobile/shared/auth_state.dart';
 import 'package:fitflexmobile/shared/design_tokens.dart';
@@ -326,6 +327,38 @@ void main() {
         find.textContaining('Choose a category from the list.'),
         findsOneWidget,
       );
+    });
+
+    testWidgets('a notification opens the section it is about', (tester) async {
+      final auth = await _signedIn(_Api(), 'vendor');
+      int selected() => tester
+          .widget<NavigationBar>(find.byType(NavigationBar))
+          .selectedIndex;
+      await tester.pumpWidget(_wrap(auth, const VendorHomePage()));
+      await tester.pumpAndSettle();
+      // A shop whose profile isn't finished opens on Business.
+      final start = selected();
+      expect(find.byType(InboxBellButton), findsOneWidget);
+
+      await tester.pumpWidget(
+        _wrap(auth, const VendorHomePage(open: 'orders')),
+      );
+      await tester.pumpAndSettle();
+      expect(selected(), isNot(start));
+      expect(selected(), 1, reason: 'a new order opens Orders');
+
+      await tester.pumpWidget(
+        _wrap(auth, const VendorHomePage(open: 'enquiries')),
+      );
+      await tester.pumpAndSettle();
+      expect(selected(), 3, reason: 'a customer question opens Enquiries');
+
+      // Something this build doesn't know leaves them where they are.
+      await tester.pumpWidget(
+        _wrap(auth, const VendorHomePage(open: 'mystery')),
+      );
+      await tester.pumpAndSettle();
+      expect(selected(), 3);
     });
 
     testWidgets('an approved vendor has no banner', (tester) async {
