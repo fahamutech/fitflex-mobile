@@ -69,16 +69,18 @@ class GoalsBlock extends StatelessWidget {
             Expanded(
               child: FFSectionTitle(context.tr('progress.currentGoals')),
             ),
-            TextButton.icon(
+            FFButton(
               key: const Key('goal-add'),
+              label: context.tr('progress.addGoal'),
               onPressed: () => showAddGoalSheet(context),
-              icon: const Icon(Icons.add, size: 18),
-              label: Text(context.tr('progress.addGoal')),
+              variant: FFButtonVariant.ghost,
+              size: FFButtonSize.sm,
+              icon: Icons.add,
             ),
           ],
         ),
         if (!data.goalsLoaded)
-          const Center(child: CircularProgressIndicator())
+          const Center(child: FFSpinner(size: 32))
         else if (goals.isEmpty)
           FFEmptyState(
             title: context.tr('progress.noGoals'),
@@ -105,7 +107,7 @@ class GoalsBlock extends StatelessWidget {
 Future<void> _mark(BuildContext context, Goal g, {bool undo = false}) async {
   final repo = AppScope.of(context).goals;
   final data = MemberDataScope.of(context);
-  final messenger = ScaffoldMessenger.of(context);
+  final messenger = FFSnack.of(context);
   final failed = context.tr('goal.saveFailed');
   try {
     final saved = await repo.checkIn(g.id, undo: undo);
@@ -113,7 +115,7 @@ Future<void> _mark(BuildContext context, Goal g, {bool undo = false}) async {
       (d) => d.goals = [for (final x in d.goals) x.id == saved.id ? saved : x],
     );
   } catch (_) {
-    messenger.showSnackBar(SnackBar(content: Text(failed)));
+    messenger.error(failed);
   }
 }
 
@@ -262,10 +264,12 @@ class GoalCard extends StatelessWidget {
                     ),
                     if (p.current > 0) ...[
                       const SizedBox(width: FFTokens.spacingSm),
-                      TextButton(
+                      FFButton(
                         key: Key('goal-undo-${g.id}'),
+                        label: context.tr('goal.undoDone'),
                         onPressed: () => _mark(context, g, undo: true),
-                        child: Text(context.tr('goal.undoDone')),
+                        variant: FFButtonVariant.ghost,
+                        size: FFButtonSize.sm,
                       ),
                     ],
                   ],
@@ -286,13 +290,13 @@ class _GoalMenu extends StatelessWidget {
   Future<void> _set(BuildContext context, GoalStatus status) async {
     final repo = AppScope.of(context).goals;
     final shell = context.findAncestorStateOfType<MemberShellState>();
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final failed = context.tr('goal.saveFailed');
     try {
       await repo.update(goal.id, status: status);
       await shell?.refreshGoals();
     } catch (_) {
-      messenger.showSnackBar(SnackBar(content: Text(failed)));
+      messenger.error(failed);
     }
   }
 
@@ -540,26 +544,23 @@ class _AddGoalSheetState extends State<_AddGoalSheet> {
             ),
           ),
           const SizedBox(height: FFTokens.spacingMd),
-          TextField(
+          FFTextField(
             key: const Key('goal-target'),
             controller: _target,
+            label: context.tr('goal.target'),
+            errorText: _error,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             inputFormatters: [
               FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
             ],
-            decoration: InputDecoration(
-              labelText: context.tr('goal.target'),
-              errorText: _error,
-              border: const OutlineInputBorder(),
-            ),
           ),
           const SizedBox(height: FFTokens.spacingMd),
           SizedBox(
             width: double.infinity,
-            child: FilledButton(
+            child: FFButton(
               key: const Key('goal-save'),
+              label: context.tr('goal.save'),
               onPressed: _saving ? null : _save,
-              child: Text(context.tr('goal.save')),
             ),
           ),
         ],

@@ -178,7 +178,7 @@ class _SharePickerState extends State<_SharePicker> {
             if (_mine == null)
               const Padding(
                 padding: EdgeInsets.all(FFTokens.spacingSm),
-                child: Center(child: CircularProgressIndicator()),
+                child: Center(child: FFSpinner(size: 32)),
               )
             else
               for (final g in _mine!)
@@ -219,10 +219,10 @@ class _SharePickerState extends State<_SharePicker> {
               ],
             ),
             const SizedBox(height: FFTokens.spacingMd),
-            FilledButton(
+            FFButton(
               key: const Key('share-done'),
+              label: context.tr('audience.done'),
               onPressed: () => Navigator.pop(context, (share: _choice)),
-              child: Text(context.tr('audience.done')),
             ),
           ],
         ),
@@ -264,7 +264,7 @@ Future<void> editActivitySharing(BuildContext context, Activity a) async {
   final data = context
       .getInheritedWidgetOfExactType<MemberDataScope>()
       ?.notifier;
-  final messenger = ScaffoldMessenger.of(context);
+  final messenger = FFSnack.of(context);
   final shell = context.findAncestorStateOfType<MemberShellState>();
   final done = context.tr('audience.savedToast');
   final failed = context.tr('community.error.generic');
@@ -283,11 +283,11 @@ Future<void> editActivitySharing(BuildContext context, Activity a) async {
               : x,
       ],
     );
-    messenger.showSnackBar(SnackBar(content: Text(done)));
+    messenger.success(done);
     // The shell keeps the server's list; bring it up to date too.
     await shell?.refreshAfterWorkout();
   } catch (_) {
-    messenger.showSnackBar(SnackBar(content: Text(failed)));
+    messenger.error(failed);
   }
 }
 
@@ -307,26 +307,16 @@ Future<bool> deleteOwnActivity(BuildContext context, Activity a) async {
       .getInheritedWidgetOfExactType<MemberDataScope>()
       ?.notifier;
   final shell = context.findAncestorStateOfType<MemberShellState>();
-  final messenger = ScaffoldMessenger.of(context);
+  final messenger = FFSnack.of(context);
   final done = context.tr('logActivity.deleted');
   final failed = context.tr('logActivity.deleteFailed');
-  final ok = await showDialog<bool>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: Text(ctx.tr('logActivity.deleteTitle')),
-      content: Text(ctx.tr('logActivity.deleteBody')),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(ctx, false),
-          child: Text(ctx.tr('trainer.cancel')),
-        ),
-        FilledButton(
-          key: const Key('activity-delete-confirm'),
-          onPressed: () => Navigator.pop(ctx, true),
-          child: Text(ctx.tr('logActivity.delete')),
-        ),
-      ],
-    ),
+  final ok = await showFFConfirmDialog(
+    context,
+    title: context.tr('logActivity.deleteTitle'),
+    message: context.tr('logActivity.deleteBody'),
+    cancelLabel: context.tr('trainer.cancel'),
+    confirmLabel: context.tr('logActivity.delete'),
+    confirmKey: const Key('activity-delete-confirm'),
   );
   if (ok != true) return false;
   try {
@@ -337,11 +327,11 @@ Future<bool> deleteOwnActivity(BuildContext context, Activity a) async {
           if (x.id != a.id) x,
       ],
     );
-    messenger.showSnackBar(SnackBar(content: Text(done)));
+    messenger.success(done);
     await shell?.refreshAfterWorkout();
     return true;
   } catch (_) {
-    messenger.showSnackBar(SnackBar(content: Text(failed)));
+    messenger.error(failed);
     return false;
   }
 }
@@ -473,12 +463,14 @@ class _SocialPrivacySectionState extends State<SocialPrivacySection> {
                           for (final p in s.blocked)
                             ListTile(
                               title: Text(p.name),
-                              trailing: TextButton(
+                              trailing: FFButton(
+                                label: t('audience.unblock'),
                                 onPressed: () async {
                                   await api.unblock(p.id);
                                   if (ctx.mounted) Navigator.pop(ctx);
                                 },
-                                child: Text(t('audience.unblock')),
+                                variant: FFButtonVariant.ghost,
+                                size: FFButtonSize.sm,
                               ),
                             ),
                         ],

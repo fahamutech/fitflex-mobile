@@ -427,7 +427,12 @@ void main() {
     expect(find.text('Reset your PIN'), findsOneWidget);
     expect(
       tester
-          .widget<TextField>(find.byKey(const Key('pin-flow-contact')))
+          .widget<TextField>(
+            find.descendant(
+              of: find.byKey(const Key('pin-flow-contact')),
+              matching: find.byType(TextField),
+            ),
+          )
           .controller!
           .text,
       '+255712345678',

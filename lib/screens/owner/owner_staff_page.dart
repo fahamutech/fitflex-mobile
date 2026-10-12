@@ -76,9 +76,7 @@ class _OwnerStaffPageState extends State<OwnerStaffPage> {
     // B8: the owner must see (and pick from) their available gyms before
     // saving a staff account.
     if (_ownerGyms.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('staff.noGymsToAssign'))),
-      );
+      FFSnack.info(context, context.tr('staff.noGymsToAssign'));
       return;
     }
     // Identity V2: staff are invited and sign in with their own account.
@@ -107,9 +105,7 @@ class _OwnerStaffPageState extends State<OwnerStaffPage> {
       ).showSnackBar(SnackBar(content: Text(context.tr('staff.staffAdded'))));
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_staffApiErrorMessage(context, e))),
-      );
+      FFSnack.error(context, _staffApiErrorMessage(context, e));
     }
   }
 
@@ -133,9 +129,7 @@ class _OwnerStaffPageState extends State<OwnerStaffPage> {
       ).showSnackBar(SnackBar(content: Text(context.tr('staff.staffUpdated'))));
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_staffApiErrorMessage(context, e))),
-      );
+      FFSnack.error(context, _staffApiErrorMessage(context, e));
     }
   }
 
@@ -163,14 +157,10 @@ class _OwnerStaffPageState extends State<OwnerStaffPage> {
                 if (!mounted) return;
                 await _refresh();
                 if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(context.tr('staff.staffRemoved'))),
-                );
+                FFSnack.success(context, context.tr('staff.staffRemoved'));
               } on ApiException catch (e) {
                 if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(_staffApiErrorMessage(context, e))),
-                );
+                FFSnack.error(context, _staffApiErrorMessage(context, e));
               }
             },
             child: Text(context.tr('staff.removeStaff')),
@@ -225,7 +215,7 @@ class _OwnerStaffPageState extends State<OwnerStaffPage> {
       body: RefreshIndicator(
         onRefresh: _refresh,
         child: _loading
-            ? const Center(child: CircularProgressIndicator())
+            ? const Center(child: FFSpinner(size: 32))
             : _staff.isEmpty
             ? ListView(
                 padding: const EdgeInsets.all(FFTokens.spacingLg),

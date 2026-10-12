@@ -48,8 +48,41 @@ class FFSnack {
     String? actionLabel,
     VoidCallback? onAction,
   ) {
-    final theme = Theme.of(context);
-    final tones = FFToneTheme.of(context);
+    _present(
+      ScaffoldMessenger.of(context),
+      Theme.of(context),
+      FFToneTheme.of(context),
+      tone,
+      message,
+      actionLabel,
+      onAction,
+    );
+  }
+
+  /// Captures the messenger and the current theme now, for code that shows
+  /// a snackbar after an `await` (when the context may no longer be safe to
+  /// use).
+  ///
+  /// ```dart
+  /// final snack = FFSnack.of(context);
+  /// await save();
+  /// snack.success('Saved');
+  /// ```
+  static FFSnackMessenger of(BuildContext context) => FFSnackMessenger._(
+    ScaffoldMessenger.of(context),
+    Theme.of(context),
+    FFToneTheme.of(context),
+  );
+
+  static void _present(
+    ScaffoldMessengerState messenger,
+    ThemeData theme,
+    FFToneTheme tones,
+    _SnackTone tone,
+    String message,
+    String? actionLabel,
+    VoidCallback? onAction,
+  ) {
     final (IconData icon, FFToneColors c) = switch (tone) {
       _SnackTone.success => (Icons.check_circle_outline, tones.success),
       _SnackTone.error => (Icons.error_outline, tones.danger),
@@ -61,7 +94,6 @@ class FFSnack {
     final iconColor = c.fg;
     final border = c.border;
 
-    final messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(
       SnackBar(
@@ -99,4 +131,58 @@ class FFSnack {
       ),
     );
   }
+}
+
+/// A snackbar presenter that already holds its messenger and theme. See
+/// [FFSnack.of].
+class FFSnackMessenger {
+  FFSnackMessenger._(this._messenger, this._theme, this._tones);
+
+  final ScaffoldMessengerState _messenger;
+  final ThemeData _theme;
+  final FFToneTheme _tones;
+
+  void success(String message, {String? actionLabel, VoidCallback? onAction}) =>
+      FFSnack._present(
+        _messenger,
+        _theme,
+        _tones,
+        _SnackTone.success,
+        message,
+        actionLabel,
+        onAction,
+      );
+
+  void error(String message, {String? actionLabel, VoidCallback? onAction}) =>
+      FFSnack._present(
+        _messenger,
+        _theme,
+        _tones,
+        _SnackTone.error,
+        message,
+        actionLabel,
+        onAction,
+      );
+
+  void info(String message, {String? actionLabel, VoidCallback? onAction}) =>
+      FFSnack._present(
+        _messenger,
+        _theme,
+        _tones,
+        _SnackTone.info,
+        message,
+        actionLabel,
+        onAction,
+      );
+
+  void warning(String message, {String? actionLabel, VoidCallback? onAction}) =>
+      FFSnack._present(
+        _messenger,
+        _theme,
+        _tones,
+        _SnackTone.warning,
+        message,
+        actionLabel,
+        onAction,
+      );
 }

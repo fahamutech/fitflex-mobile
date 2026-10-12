@@ -5,7 +5,6 @@ import '../../app_scope.dart';
 import '../../router.dart';
 import '../../shared/api_client.dart';
 import '../../shared/api_error_message.dart';
-import '../../shared/components/theme_toggle_button.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
@@ -14,6 +13,7 @@ import '../../shared/widgets/ff_photo_picker_field.dart';
 import '../../shared/widgets/social_links.dart';
 import '../../shared/widgets/terms_agreement.dart';
 import '../../shared/widgets/trainer_form_page.dart';
+import '../../shared/components/components.dart';
 
 class TrainerRegistrationPage extends StatefulWidget {
   const TrainerRegistrationPage({super.key});
@@ -109,9 +109,7 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
       context.go(AppRoutes.pending);
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(apiErrorMessage(FFLocaleScope.of(context), e))),
-      );
+      FFSnack.error(context, apiErrorMessage(FFLocaleScope.of(context), e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -181,29 +179,20 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
                   children: [
                     if (_step > 0)
                       Expanded(
-                        child: OutlinedButton(
+                        child: FFButton(
+                          label: context.tr('onboarding.back'),
                           onPressed: _back,
-                          child: Text(context.tr('onboarding.back')),
+                          variant: FFButtonVariant.secondary,
                         ),
                       ),
                     if (_step > 0) const SizedBox(width: 12),
                     Expanded(
-                      child: FilledButton(
+                      child: FFButton(
+                        label: _step < 1
+                            ? context.tr('onboarding.next')
+                            : context.tr('trainerReg.submit'),
                         onPressed: _busy ? null : _next,
-                        child: _busy
-                            ? const SizedBox(
-                                height: 18,
-                                width: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : Text(
-                                _step < 1
-                                    ? context.tr('onboarding.next')
-                                    : context.tr('trainerReg.submit'),
-                              ),
+                        loading: _busy,
                       ),
                     ),
                   ],
@@ -243,12 +232,9 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
           style: Theme.of(context).textTheme.bodySmall,
         ),
         const SizedBox(height: 20),
-        TextFormField(
+        FFTextField(
           controller: _nameCtrl,
-          decoration: InputDecoration(
-            labelText: context.tr('trainerReg.displayName'),
-            border: const OutlineInputBorder(),
-          ),
+          label: context.tr('trainerReg.displayName'),
           validator: (v) => (v == null || v.trim().isEmpty)
               ? context.tr('onboarding.required')
               : null,
@@ -331,17 +317,14 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
           style: Theme.of(context).textTheme.bodySmall,
         ),
         const SizedBox(height: 20),
-        TextFormField(
+        FFTextField(
           controller: _sessionRateCtrl,
-          keyboardType: TextInputType.number,
-          decoration: InputDecoration(
-            labelText: context.tr('trainerReg.sessionRate'),
-            suffixText: 'TZS${context.tr('trainerReg.perSession')}',
-            border: const OutlineInputBorder(),
-          ),
+          label: context.tr('trainerReg.sessionRate'),
+          suffixText: 'TZS${context.tr('trainerReg.perSession')}',
           validator: (v) => (v == null || v.trim().isEmpty)
               ? context.tr('onboarding.required')
               : null,
+          keyboardType: TextInputType.number,
         ),
         const SizedBox(height: 16),
         Text(

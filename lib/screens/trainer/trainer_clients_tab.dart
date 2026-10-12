@@ -61,14 +61,14 @@ class _TrainerClientsTabState extends State<TrainerClientsTab> {
 
   Future<void> _decide(TrainerConnection c, bool accept) async {
     final api = AppScope.of(context).api;
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final failed = context.tr('owner.errorGeneric');
     setState(() => _busyId = c.id);
     try {
       await api.trainerDecideClient(c.id, accept: accept);
       await _load();
     } catch (_) {
-      messenger.showSnackBar(SnackBar(content: Text(failed)));
+      messenger.error(failed);
     } finally {
       if (mounted) setState(() => _busyId = null);
     }
@@ -97,18 +97,19 @@ class _TrainerClientsTabState extends State<TrainerClientsTab> {
         children: [
           FFEmptyState(
             title: context.tr('owner.errorGeneric'),
-            action: OutlinedButton(
+            action: FFButton(
+              label: context.tr('clients.retry'),
               onPressed: () {
                 setState(() => _failed = false);
                 _load();
               },
-              child: Text(context.tr('clients.retry')),
+              variant: FFButtonVariant.secondary,
             ),
           ),
         ],
       );
     }
-    if (!_loaded) return const Center(child: CircularProgressIndicator());
+    if (!_loaded) return const Center(child: FFSpinner(size: 32));
     final pending = _clients
         .where((c) => c.status == TrainerConnectionStatus.pending)
         .toList();
@@ -159,20 +160,22 @@ class _TrainerClientsTabState extends State<TrainerClientsTab> {
                     const SizedBox(height: FFTokens.spacingSm),
                     Row(
                       children: [
-                        FilledButton(
+                        FFButton(
                           key: Key('client-accept-${c.id}'),
+                          label: context.tr('clients.accept'),
                           onPressed: _busyId == c.id
                               ? null
                               : () => _decide(c, true),
-                          child: Text(context.tr('clients.accept')),
                         ),
                         const SizedBox(width: FFTokens.spacingSm),
-                        TextButton(
+                        FFButton(
                           key: Key('client-decline-${c.id}'),
+                          label: context.tr('clients.decline'),
                           onPressed: _busyId == c.id
                               ? null
                               : () => _decide(c, false),
-                          child: Text(context.tr('clients.decline')),
+                          variant: FFButtonVariant.ghost,
+                          size: FFButtonSize.sm,
                         ),
                       ],
                     ),
@@ -222,11 +225,13 @@ class _TrainerClientsTabState extends State<TrainerClientsTab> {
           Row(
             children: [
               Expanded(child: FFSectionTitle(context.tr('plans.title'))),
-              TextButton.icon(
+              FFButton(
                 key: const Key('plan-new'),
+                label: context.tr('plans.new'),
                 onPressed: () => _editPlan(),
-                icon: const Icon(Icons.add, size: 18),
-                label: Text(context.tr('plans.new')),
+                variant: FFButtonVariant.ghost,
+                size: FFButtonSize.sm,
+                icon: Icons.add,
               ),
             ],
           ),

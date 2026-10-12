@@ -88,7 +88,7 @@ class _MemberScanGymPageState extends State<MemberScanGymPage> {
             ),
             if (_busy) ...[
               const SizedBox(height: 16),
-              const Center(child: CircularProgressIndicator()),
+              const Center(child: FFSpinner(size: 32)),
             ],
           ],
           if (result != null)
@@ -114,16 +114,17 @@ class _MemberScanGymPageState extends State<MemberScanGymPage> {
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton(
+                  child: FFButton(
+                    label: context.tr('member.scanAgain'),
                     onPressed: _scanAgain,
-                    child: Text(context.tr('member.scanAgain')),
+                    variant: FFButtonVariant.secondary,
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: FilledButton(
+                  child: FFButton(
+                    label: context.tr('member.done'),
                     onPressed: () => Navigator.pop(context, result != null),
-                    child: Text(context.tr('member.done')),
                   ),
                 ),
               ],

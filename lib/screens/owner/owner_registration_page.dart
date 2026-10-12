@@ -188,9 +188,7 @@ class _OwnerRegistrationPageState extends State<OwnerRegistrationPage> {
       context.go(AppRoutes.pending);
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(apiErrorMessage(FFLocaleScope.of(context), e))),
-      );
+      FFSnack.error(context, apiErrorMessage(FFLocaleScope.of(context), e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -215,23 +213,13 @@ class _OwnerRegistrationPageState extends State<OwnerRegistrationPage> {
 
   Future<void> _removeGym(int index) async {
     if (_gyms.length <= 1) return;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(context.tr('ownerReg.removeGym')),
-        content: Text(context.tr('ownerReg.confirmRemoveGym')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(context.tr('member.cancel')),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: FFTokens.error500),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(context.tr('ownerReg.removeGym')),
-          ),
-        ],
-      ),
+    final confirmed = await showFFConfirmDialog(
+      context,
+      title: context.tr('ownerReg.removeGym'),
+      message: context.tr('ownerReg.confirmRemoveGym'),
+      cancelLabel: context.tr('member.cancel'),
+      confirmLabel: context.tr('ownerReg.removeGym'),
+      destructive: true,
     );
     if (confirmed != true || !mounted) return;
     setState(() {
@@ -292,31 +280,20 @@ class _OwnerRegistrationPageState extends State<OwnerRegistrationPage> {
                   children: [
                     if (_step > 0)
                       Expanded(
-                        child: OutlinedButton(
+                        child: FFButton(
+                          label: context.tr('onboarding.back'),
                           onPressed: _back,
-                          child: Text(context.tr('onboarding.back')),
+                          variant: FFButtonVariant.secondary,
                         ),
                       ),
                     if (_step > 0) const SizedBox(width: 12),
                     Expanded(
-                      child: FilledButton(
+                      child: FFButton(
+                        label: _step < 1
+                            ? context.tr('onboarding.next')
+                            : context.tr('ownerReg.submit'),
                         onPressed: _busy ? null : _next,
-                        child: _busy
-                            ? SizedBox(
-                                height: 18,
-                                width: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onPrimary,
-                                ),
-                              )
-                            : Text(
-                                _step < 1
-                                    ? context.tr('onboarding.next')
-                                    : context.tr('ownerReg.submit'),
-                              ),
+                        loading: _busy,
                       ),
                     ),
                   ],
@@ -404,10 +381,11 @@ class _OwnerRegistrationPageState extends State<OwnerRegistrationPage> {
           );
         }),
         const SizedBox(height: 12),
-        OutlinedButton.icon(
+        FFButton(
+          label: context.tr('ownerReg.addGym'),
           onPressed: _addGym,
-          icon: const Icon(Icons.add),
-          label: Text(context.tr('ownerReg.addGym')),
+          variant: FFButtonVariant.secondary,
+          icon: Icons.add,
         ),
         const SizedBox(height: 16),
         TermsAgreementField(key: _termsKey),
@@ -580,10 +558,11 @@ class _GymCardWidgetState extends State<_GymCardWidget> {
                 ),
               ),
             // Select trainer button — opens fullscreen search dialog
-            OutlinedButton.icon(
+            FFButton(
+              label: context.tr('ownerReg.searchTrainers'),
               onPressed: () => _openTrainerSearchDialog(context, gym),
-              icon: const Icon(Icons.person_add_alt_1, size: 18),
-              label: Text(context.tr('ownerReg.searchTrainers')),
+              variant: FFButtonVariant.secondary,
+              icon: Icons.person_add_alt_1,
             ),
             const SizedBox(height: 16),
 
@@ -660,10 +639,11 @@ class _GymCardWidgetState extends State<_GymCardWidget> {
                 ),
               ),
             const SizedBox(height: 8),
-            OutlinedButton.icon(
+            FFButton(
+              label: context.tr('ownerReg.pickImage'),
               onPressed: _pickImage,
-              icon: const Icon(Icons.add_a_photo, size: 18),
-              label: Text(context.tr('ownerReg.pickImage')),
+              variant: FFButtonVariant.secondary,
+              icon: Icons.add_a_photo,
             ),
           ],
         ),
@@ -757,15 +737,12 @@ class _TrainerSearchDialogState extends State<_TrainerSearchDialog> {
         children: [
           Padding(
             padding: const EdgeInsets.all(FFTokens.spacingMd),
-            child: TextField(
+            child: FFTextField(
               controller: _searchCtrl,
-              autofocus: true,
-              decoration: InputDecoration(
-                hintText: context.tr('ownerReg.searchTrainers'),
-                prefixIcon: const Icon(Icons.search, size: 20),
-                border: const OutlineInputBorder(),
-              ),
+              hint: context.tr('ownerReg.searchTrainers'),
               onChanged: (_) => setState(() {}),
+              autofocus: true,
+              prefixIcon: const Icon(Icons.search, size: 20),
             ),
           ),
           Expanded(

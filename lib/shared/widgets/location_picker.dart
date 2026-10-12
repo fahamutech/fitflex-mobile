@@ -5,6 +5,7 @@ import 'package:geolocator/geolocator.dart';
 
 import '../design_tokens.dart';
 import '../i18n.dart';
+import '../components/components.dart';
 
 class LocationPicker extends StatefulWidget {
   final double? initialLat;
@@ -51,9 +52,7 @@ class _LocationPickerState extends State<LocationPicker> {
       if (perm == LocationPermission.denied ||
           perm == LocationPermission.deniedForever) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(context.tr('ownerReg.locationDenied'))),
-          );
+          FFSnack.error(context, context.tr('ownerReg.locationDenied'));
         }
         return;
       }
@@ -68,9 +67,7 @@ class _LocationPickerState extends State<LocationPicker> {
       widget.onChanged(latlng);
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.tr('ownerReg.locationError'))),
-        );
+        FFSnack.error(context, context.tr('ownerReg.locationError'));
       }
     } finally {
       if (mounted) setState(() => _locating = false);
@@ -139,11 +136,7 @@ class _LocationPickerState extends State<LocationPicker> {
                     onPressed: _locating ? null : _getCurrentLocation,
                     backgroundColor: Theme.of(context).colorScheme.surface,
                     child: _locating
-                        ? const SizedBox(
-                            height: 18,
-                            width: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
+                        ? FFSpinner(size: 18)
                         : Icon(
                             Icons.my_location,
                             color: Theme.of(context).colorScheme.primary,

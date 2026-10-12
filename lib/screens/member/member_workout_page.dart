@@ -232,23 +232,13 @@ class _MemberWorkoutPageState extends State<MemberWorkoutPage> {
   }
 
   Future<bool?> _confirm(String title, String body, String action) =>
-      showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(title),
-          content: Text(body),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(ctx.tr('workout.keepGoing')),
-            ),
-            FilledButton(
-              key: const Key('workout-confirm'),
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(action),
-            ),
-          ],
-        ),
+      showFFConfirmDialog(
+        context,
+        title: title,
+        message: body,
+        cancelLabel: context.tr('workout.keepGoing'),
+        confirmLabel: action,
+        confirmKey: const Key('workout-confirm'),
       );
 
   TextEditingController _field(String key, String? initial) =>
@@ -370,11 +360,11 @@ class _MemberWorkoutPageState extends State<MemberWorkoutPage> {
   Widget build(BuildContext context) {
     final data = MemberDataScope.of(context);
     if (!data.workoutsLoaded) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: FFSpinner(size: 32));
     }
     final w = _w;
     if (w == null && _fetching) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: FFSpinner(size: 32));
     }
     if (w == null) {
       return ListView(
@@ -447,18 +437,20 @@ class _MemberWorkoutPageState extends State<MemberWorkoutPage> {
         if (w.status == WorkoutStatus.planned) ...[
           SizedBox(
             width: double.infinity,
-            child: FilledButton.icon(
+            child: FFButton(
               key: const Key('workout-start'),
+              label: context.tr('workout.start'),
               onPressed: _busy ? null : _start,
-              icon: const Icon(Icons.play_arrow),
-              label: Text(context.tr('workout.start')),
+              icon: Icons.play_arrow,
             ),
           ),
           Center(
-            child: TextButton(
+            child: FFButton(
               key: const Key('workout-skip'),
+              label: context.tr('workout.skip'),
               onPressed: _busy ? null : _skip,
-              child: Text(context.tr('workout.skip')),
+              variant: FFButtonVariant.ghost,
+              size: FFButtonSize.sm,
             ),
           ),
           const SizedBox(height: FFTokens.spacingSm),
@@ -471,29 +463,26 @@ class _MemberWorkoutPageState extends State<MemberWorkoutPage> {
         for (final e in w.exercises) _exerciseCard(context, e, live),
         if (live) ...[
           const SizedBox(height: FFTokens.spacingSm),
-          TextField(
+          FFTextField(
             key: const Key('workout-notes'),
             controller: _field('workout-notes', w.notes),
+            label: context.tr('workout.notes'),
             maxLines: 3,
             minLines: 1,
-            maxLength: 1000,
-            decoration: InputDecoration(
-              labelText: context.tr('workout.notes'),
-              border: const OutlineInputBorder(),
-            ),
             onChanged: (v) {
               w.notes = v.trim().isEmpty ? null : v;
               _changed();
             },
+            maxLength: 1000,
           ),
           const SizedBox(height: FFTokens.spacingSm),
           SizedBox(
             width: double.infinity,
-            child: FilledButton.icon(
+            child: FFButton(
               key: const Key('workout-finish'),
+              label: context.tr('workout.finish'),
               onPressed: _busy ? null : _finish,
-              icon: const Icon(Icons.flag_outlined),
-              label: Text(context.tr('workout.finish')),
+              icon: Icons.flag_outlined,
             ),
           ),
         ],
@@ -622,11 +611,13 @@ class _MemberWorkoutPageState extends State<MemberWorkoutPage> {
                   )
                 : Align(
                     alignment: Alignment.centerLeft,
-                    child: TextButton.icon(
+                    child: FFButton(
                       key: Key('exercise-add-note-${e.id}'),
+                      label: context.tr('workout.addNote'),
                       onPressed: () => setState(() => _noteOpen.add(e.id)),
-                      icon: const Icon(Icons.edit_note, size: 18),
-                      label: Text(context.tr('workout.addNote')),
+                      variant: FFButtonVariant.ghost,
+                      size: FFButtonSize.sm,
+                      icon: Icons.edit_note,
                     ),
                   )
           else if ((e.notes ?? '').isNotEmpty)
@@ -790,7 +781,7 @@ class _AlternativesSheetState extends State<_AlternativesSheet> {
                 else if (items == null)
                   const Padding(
                     padding: EdgeInsets.all(FFTokens.spacingLg),
-                    child: Center(child: CircularProgressIndicator()),
+                    child: Center(child: FFSpinner(size: 32)),
                   )
                 else if (items.isEmpty)
                   Text(
@@ -824,11 +815,13 @@ class _BackRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Align(
       alignment: Alignment.centerLeft,
-      child: TextButton.icon(
+      child: FFButton(
         key: const Key('workout-back'),
+        label: context.tr('activity.title'),
         onPressed: () => context.go(AppRoutes.memberActivity),
-        icon: const Icon(Icons.arrow_back, size: 18),
-        label: Text(context.tr('activity.title')),
+        variant: FFButtonVariant.ghost,
+        size: FFButtonSize.sm,
+        icon: Icons.arrow_back,
       ),
     );
   }
@@ -1076,10 +1069,10 @@ class _CompleteView extends StatelessWidget {
           style: theme.textTheme.bodySmall,
         ),
         const SizedBox(height: FFTokens.spacingMd),
-        FilledButton(
+        FFButton(
           key: const Key('workout-done'),
+          label: context.tr('workout.done'),
           onPressed: () => context.go(AppRoutes.memberActivity),
-          child: Text(context.tr('workout.done')),
         ),
       ],
     );

@@ -247,7 +247,12 @@ void main() {
       );
       expect(
         tester
-            .widget<TextField>(find.byKey(const Key('verify-code')))
+            .widget<TextField>(
+              find.descendant(
+                of: find.byKey(const Key('verify-code')),
+                matching: find.byType(TextField),
+              ),
+            )
             .controller!
             .text,
         isEmpty,

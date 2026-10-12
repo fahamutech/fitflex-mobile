@@ -190,14 +190,20 @@ void main() {
       expect(find.byKey(const Key('gym-plan-monthly')), findsOneWidget);
 
       final button = tester.widget<FilledButton>(
-        find.byKey(const Key('gym-plan-subscribe')),
+        find.descendant(
+          of: find.byKey(const Key('gym-plan-subscribe')),
+          matching: find.byType(FilledButton),
+        ),
       );
       expect(button.onPressed, isNull);
 
       await tester.tap(find.byKey(const Key('gym-plan-weekly')));
       await tester.pump();
       final afterSelect = tester.widget<FilledButton>(
-        find.byKey(const Key('gym-plan-subscribe')),
+        find.descendant(
+          of: find.byKey(const Key('gym-plan-subscribe')),
+          matching: find.byType(FilledButton),
+        ),
       );
       expect(afterSelect.onPressed, isNotNull);
     });

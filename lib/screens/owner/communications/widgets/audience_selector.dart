@@ -52,9 +52,11 @@ class AudienceSelector extends StatelessWidget {
             tone: FFAlertTone.info,
           ),
         if (c.hasCustomFilter)
-          TextButton(
+          FFButton(
+            label: context.tr('comms.audience.clearCustom'),
             onPressed: c.clearCustomFilter,
-            child: Text(context.tr('comms.audience.clearCustom')),
+            variant: FFButtonVariant.ghost,
+            size: FFButtonSize.sm,
           )
         else ...[
           _ChoiceRow(
@@ -177,12 +179,7 @@ class AudienceCountBanner extends StatelessWidget {
           Icon(Icons.groups_outlined, color: theme.colorScheme.primary),
           const SizedBox(width: FFTokens.spacingSm),
           Expanded(child: child),
-          if (c.countLoading && count != null)
-            const SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
+          if (c.countLoading && count != null) FFSpinner(size: 16),
         ],
       ),
     );

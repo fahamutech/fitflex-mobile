@@ -187,10 +187,12 @@ class ChallengeCard extends StatelessWidget {
                 ),
               ),
               if (showView)
-                TextButton(
+                FFButton(
                   key: Key('challenge-view-${c.id}'),
+                  label: context.tr('challenge.view'),
                   onPressed: () => context.go(challengeRoute(c.id)),
-                  child: Text(context.tr('challenge.view')),
+                  variant: FFButtonVariant.ghost,
+                  size: FFButtonSize.sm,
                 ),
             ],
           ),
@@ -207,7 +209,7 @@ List<Widget> buildChallengesSection(
   DateTime now,
 ) {
   if (!data.challengesLoaded) {
-    return const [Center(child: CircularProgressIndicator())];
+    return const [Center(child: FFSpinner(size: 32))];
   }
   final g = groupChallenges(
     data.challenges,

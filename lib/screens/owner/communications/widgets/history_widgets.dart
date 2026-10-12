@@ -599,12 +599,14 @@ class _MemberMessagesCardState extends State<MemberMessagesCard> {
                   ),
                 ),
                 if (page != null && page.items.isNotEmpty)
-                  TextButton(
+                  FFButton(
                     key: const Key('member-messages-all'),
+                    label: context.tr('members.viewAll'),
                     onPressed: () => context.push(
                       '/owner/members/${widget.memberId}/messages',
                     ),
-                    child: Text(context.tr('members.viewAll')),
+                    variant: FFButtonVariant.ghost,
+                    size: FFButtonSize.sm,
                   ),
               ],
             ),

@@ -516,7 +516,12 @@ void main() {
 
       bool canSave() =>
           tester
-              .widget<FilledButton>(find.byKey(const Key('tpl-save')))
+              .widget<FilledButton>(
+                find.descendant(
+                  of: find.byKey(const Key('tpl-save')),
+                  matching: find.byType(FilledButton),
+                ),
+              )
               .onPressed !=
           null;
       expect(canSave(), isFalse);

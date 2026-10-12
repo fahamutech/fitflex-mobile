@@ -226,8 +226,12 @@ void main() {
     expect(find.textContaining('team challenge'), findsOneWidget);
     await tester.tap(find.byKey(const Key('challenge-join')));
     await tester.pumpAndSettle();
-    FilledButton confirm() =>
-        tester.widget<FilledButton>(find.byKey(const Key('join-confirm')));
+    FilledButton confirm() => tester.widget<FilledButton>(
+      find.descendant(
+        of: find.byKey(const Key('join-confirm')),
+        matching: find.byType(FilledButton),
+      ),
+    );
     expect(confirm().onPressed, isNull);
     await tester.tap(find.byKey(const Key('join-team-t_red')));
     await tester.tap(find.byKey(const Key('join-leaderboard')));

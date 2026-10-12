@@ -44,14 +44,14 @@ class _MemberPersonPageState extends State<MemberPersonPage> {
   }
 
   Future<void> _do(Future<Object?> Function() call, String done) async {
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final failed = context.tr('community.error.generic');
     setState(() => _busy = true);
     try {
       await call();
-      messenger.showSnackBar(SnackBar(content: Text(done)));
+      messenger.success(done);
     } catch (_) {
-      messenger.showSnackBar(SnackBar(content: Text(failed)));
+      messenger.error(failed);
     }
     await _load();
     if (mounted) setState(() => _busy = false);
@@ -107,7 +107,7 @@ class _MemberPersonPageState extends State<MemberPersonPage> {
               body: t('community.profileGoneBody'),
             )
           : p == null
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: FFSpinner(size: 32))
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView(
@@ -151,37 +151,34 @@ class _MemberPersonPageState extends State<MemberPersonPage> {
                   const SizedBox(height: FFTokens.spacingMd),
                   if (rel != Relationship.you)
                     followingThem
-                        ? OutlinedButton(
+                        ? FFButton(
                             key: const Key('person-unfollow'),
+                            label: t(
+                              rel == Relationship.friends
+                                  ? 'community.friendsUnfollow'
+                                  : 'community.followingUnfollow',
+                            ),
                             onPressed: _busy
                                 ? null
                                 : () => _do(
                                     () => api.unfollow(widget.userId),
                                     t('community.unfollowedToast'),
                                   ),
-                            child: Text(
-                              t(
-                                rel == Relationship.friends
-                                    ? 'community.friendsUnfollow'
-                                    : 'community.followingUnfollow',
-                              ),
-                            ),
+                            variant: FFButtonVariant.secondary,
                           )
-                        : FilledButton(
+                        : FFButton(
                             key: const Key('person-follow'),
+                            label: t(
+                              rel == Relationship.followsYou
+                                  ? 'community.followBack'
+                                  : 'community.follow',
+                            ),
                             onPressed: _busy
                                 ? null
                                 : () => _do(
                                     () => api.follow(widget.userId),
                                     t('community.followedToast'),
                                   ),
-                            child: Text(
-                              t(
-                                rel == Relationship.followsYou
-                                    ? 'community.followBack'
-                                    : 'community.follow',
-                              ),
-                            ),
                           ),
                   FFSectionTitle(t('community.posts')),
                   if (p.items.isEmpty)

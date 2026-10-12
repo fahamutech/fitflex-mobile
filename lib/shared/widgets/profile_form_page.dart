@@ -132,11 +132,7 @@ class _ProfileFormPageState extends State<ProfileFormPage> {
           TextButton(
             onPressed: _busy ? null : _save,
             child: _busy
-                ? const SizedBox(
-                    height: 18,
-                    width: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
+                ? FFSpinner(size: 18)
                 : Text(context.tr('member.save')),
           ),
         ],

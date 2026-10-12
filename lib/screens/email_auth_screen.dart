@@ -363,18 +363,22 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
                       _resetOffered(context) &&
                       AppScope.of(context).auth.pinResetEnabled) ...[
                     Center(
-                      child: TextButton(
+                      child: FFButton(
                         key: const Key('recovery-link'),
+                        label: context.tr('rec.link'),
                         onPressed: _busy ? null : _recover,
-                        child: Text(context.tr('rec.link')),
+                        variant: FFButtonVariant.ghost,
+                        size: FFButtonSize.sm,
                       ),
                     ),
                     if (_recoveryToken != null)
                       Center(
-                        child: TextButton(
+                        child: FFButton(
                           key: const Key('recovery-check'),
+                          label: context.tr('rec.check'),
                           onPressed: _busy ? null : _checkRecovery,
-                          child: Text(context.tr('rec.check')),
+                          variant: FFButtonVariant.ghost,
+                          size: FFButtonSize.sm,
                         ),
                       ),
                   ],

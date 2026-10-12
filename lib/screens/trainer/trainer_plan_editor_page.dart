@@ -83,23 +83,13 @@ class _TrainerPlanEditorPageState extends State<TrainerPlanEditorPage> {
   }
 
   Future<void> _delete() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(ctx.tr('plans.deleteTitle')),
-        content: Text(ctx.tr('plans.deleteBody')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(ctx.tr('workout.keepGoing')),
-          ),
-          FilledButton(
-            key: const Key('plan-delete-confirm'),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(ctx.tr('plans.delete')),
-          ),
-        ],
-      ),
+    final ok = await showFFConfirmDialog(
+      context,
+      title: context.tr('plans.deleteTitle'),
+      message: context.tr('plans.deleteBody'),
+      cancelLabel: context.tr('workout.keepGoing'),
+      confirmLabel: context.tr('plans.delete'),
+      confirmKey: const Key('plan-delete-confirm'),
     );
     if (ok != true || !mounted) return;
     final api = AppScope.of(context).api;
@@ -159,28 +149,22 @@ class _TrainerPlanEditorPageState extends State<TrainerPlanEditorPage> {
         child: ListView(
           padding: const EdgeInsets.all(FFTokens.spacingLg),
           children: [
-            TextFormField(
+            FFTextField(
               key: const Key('plan-name'),
               initialValue: _plan.name,
-              maxLength: 80,
-              decoration: InputDecoration(
-                labelText: context.tr('plans.name'),
-                border: const OutlineInputBorder(),
-              ),
+              label: context.tr('plans.name'),
               validator: _required,
               onChanged: (v) => _plan.name = v,
+              maxLength: 80,
             ),
-            TextFormField(
+            FFTextField(
               key: const Key('plan-description'),
               initialValue: _plan.description,
-              maxLength: 500,
+              label: context.tr('plans.description'),
               maxLines: 2,
               minLines: 1,
-              decoration: InputDecoration(
-                labelText: context.tr('plans.description'),
-                border: const OutlineInputBorder(),
-              ),
               onChanged: (v) => _plan.description = v,
+              maxLength: 500,
             ),
             Text(context.tr('plans.type'), style: theme.textTheme.labelLarge),
             const SizedBox(height: FFTokens.spacingXs),
@@ -199,16 +183,11 @@ class _TrainerPlanEditorPageState extends State<TrainerPlanEditorPage> {
               ],
             ),
             const SizedBox(height: FFTokens.spacingMd),
-            TextFormField(
+            FFTextField(
               key: const Key('plan-duration'),
               initialValue: _plan.estimatedDuration?.toString(),
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: InputDecoration(
-                labelText: context.tr('plans.duration'),
-                suffixText: context.tr('activity.min'),
-                border: const OutlineInputBorder(),
-              ),
+              label: context.tr('plans.duration'),
+              suffixText: context.tr('activity.min'),
               validator: (v) {
                 if ((v ?? '').isEmpty) return null;
                 final n = int.tryParse(v!);
@@ -216,7 +195,9 @@ class _TrainerPlanEditorPageState extends State<TrainerPlanEditorPage> {
                     ? context.tr('plans.invalidNumber')
                     : null;
               },
+              keyboardType: TextInputType.number,
               onChanged: (v) => _plan.estimatedDuration = int.tryParse(v),
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             ),
             FFSectionTitle(context.tr('plans.exercises')),
             for (var i = 0; i < _plan.exercises.length; i++)
@@ -245,22 +226,23 @@ class _TrainerPlanEditorPageState extends State<TrainerPlanEditorPage> {
                   icon: const Icon(Icons.library_add_outlined),
                   label: Text(context.tr('exercisePicker.add')),
                 ),
-                OutlinedButton.icon(
+                FFButton(
                   key: const Key('plan-add-exercise'),
+                  label: context.tr('plans.addExercise'),
                   onPressed: _plan.exercises.length >= 20
                       ? null
                       : () =>
                             setState(() => _plan.exercises.add(PlanExercise())),
-                  icon: const Icon(Icons.add),
-                  label: Text(context.tr('plans.addExercise')),
+                  variant: FFButtonVariant.secondary,
+                  icon: Icons.add,
                 ),
               ],
             ),
             const SizedBox(height: FFTokens.spacingLg),
-            FilledButton(
+            FFButton(
               key: const Key('plan-save'),
+              label: context.tr('plans.save'),
               onPressed: _busy ? null : _save,
-              child: Text(context.tr('plans.save')),
             ),
           ],
         ),
@@ -337,20 +319,20 @@ class _ExerciseEditor extends StatelessWidget {
           ),
           Align(
             alignment: Alignment.centerLeft,
-            child: TextButton.icon(
+            child: FFButton(
               key: Key('exercise-pick-$index'),
+              label: context.tr(
+                e.fromLibrary
+                    ? 'exercisePicker.change'
+                    : 'exercisePicker.choose',
+              ),
               onPressed: () async {
                 final picked = await showExercisePicker(context);
                 if (picked != null) onPicked(picked.toPlanExercise());
               },
-              icon: const Icon(Icons.library_books_outlined, size: 18),
-              label: Text(
-                context.tr(
-                  e.fromLibrary
-                      ? 'exercisePicker.change'
-                      : 'exercisePicker.choose',
-                ),
-              ),
+              variant: FFButtonVariant.ghost,
+              size: FFButtonSize.sm,
+              icon: Icons.library_books_outlined,
             ),
           ),
           if (e.fromLibrary)

@@ -95,19 +95,15 @@ class _OwnerMembersPageState extends State<OwnerMembersPage> {
     }
     final payload = await openAddMemberSheet(context, gyms: gyms);
     if (payload == null || !mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     try {
       await _controller!.repository.createMember(payload);
       await _controller!.refresh();
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text(context.tr('owner.memberAdded'))),
-      );
+      messenger.success(context.tr('owner.memberAdded'));
     } on ApiException {
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text(context.tr('owner.errorGeneric'))),
-      );
+      messenger.error(context.tr('owner.errorGeneric'));
     }
   }
 
@@ -157,10 +153,10 @@ class _OwnerMembersPageState extends State<OwnerMembersPage> {
         ),
         const SizedBox(height: FFTokens.spacingMd),
         if (c.typeFilter != MemberTypeFilter.fitflex) ...[
-          FilledButton.icon(
+          FFButton(
+            label: context.tr('members.addMember'),
             onPressed: _addMember,
-            icon: const Icon(Icons.add, size: FFTokens.iconMd),
-            label: Text(context.tr('members.addMember')),
+            icon: Icons.add,
           ),
           const SizedBox(height: FFTokens.spacingMd),
         ],
@@ -510,19 +506,20 @@ class _EmptyMembers extends StatelessWidget {
             if (onAdd != null) ...[
               SizedBox(
                 width: double.infinity,
-                child: FilledButton(
+                child: FFButton(
+                  label: context.tr('members.addMember'),
                   onPressed: onAdd,
-                  child: Text(context.tr('members.addMember')),
                 ),
               ),
               const SizedBox(height: FFTokens.spacingSm),
             ],
             SizedBox(
               width: double.infinity,
-              child: OutlinedButton.icon(
+              child: FFButton(
+                label: context.tr('members.scanQr'),
                 onPressed: onScan,
-                icon: const Icon(Icons.qr_code_scanner, size: FFTokens.iconMd),
-                label: Text(context.tr('members.scanQr')),
+                variant: FFButtonVariant.secondary,
+                icon: Icons.qr_code_scanner,
               ),
             ),
           ],
@@ -543,9 +540,10 @@ class _ErrorState extends StatelessWidget {
       padding: const EdgeInsets.only(top: FFTokens.spacingXl),
       child: FFEmptyState(
         title: context.tr('members.errorLoading'),
-        action: OutlinedButton(
+        action: FFButton(
+          label: context.tr('members.retry'),
           onPressed: onRetry,
-          child: Text(context.tr('members.retry')),
+          variant: FFButtonVariant.secondary,
         ),
       ),
     );

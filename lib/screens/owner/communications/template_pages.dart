@@ -78,7 +78,7 @@ class _TemplateDetailPageState extends State<TemplateDetailPage> {
   }
 
   Future<void> _copy() async {
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     setState(() => _busy = true);
     try {
       final copy = await _repo.duplicateTemplate(
@@ -87,19 +87,13 @@ class _TemplateDetailPageState extends State<TemplateDetailPage> {
         name: templateName(context, _template!),
       );
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text(context.tr('comms.tpl.copied'))),
-      );
+      messenger.success(context.tr('comms.tpl.copied'));
       context.pushReplacement(
         '/owner/communications/templates/${copy.id}/edit${_gymQuery()}',
       );
     } on ApiException catch (e) {
       if (mounted) {
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text(apiErrorMessage(FFLocaleScope.of(context), e)),
-          ),
-        );
+        messenger.error(apiErrorMessage(FFLocaleScope.of(context), e));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -107,40 +101,24 @@ class _TemplateDetailPageState extends State<TemplateDetailPage> {
   }
 
   Future<void> _archive() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(ctx.tr('comms.tpl.archiveTitle')),
-        content: Text(ctx.tr('comms.tpl.archiveBody')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(ctx.tr('comms.keep')),
-          ),
-          FilledButton(
-            key: const Key('dialog-confirm'),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(ctx.tr('comms.yes')),
-          ),
-        ],
-      ),
+    final ok = await showFFConfirmDialog(
+      context,
+      title: context.tr('comms.tpl.archiveTitle'),
+      message: context.tr('comms.tpl.archiveBody'),
+      cancelLabel: context.tr('comms.keep'),
+      confirmLabel: context.tr('comms.yes'),
+      confirmKey: const Key('dialog-confirm'),
     );
     if (ok != true || !mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     try {
       await _repo.archiveTemplate(widget.templateId);
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text(context.tr('comms.tpl.archived'))),
-      );
+      messenger.info(context.tr('comms.tpl.archived'));
       context.pop(true);
     } on ApiException catch (e) {
       if (mounted) {
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text(apiErrorMessage(FFLocaleScope.of(context), e)),
-          ),
-        );
+        messenger.error(apiErrorMessage(FFLocaleScope.of(context), e));
       }
     }
   }
@@ -161,9 +139,9 @@ class _TemplateDetailPageState extends State<TemplateDetailPage> {
                 : FFEmptyState(
                     title: context.tr('comms.loadFailed'),
                     body: errorMessage(FFLocaleScope.of(context), _error!),
-                    action: FilledButton(
+                    action: FFButton(
+                      label: context.tr('comms.retry'),
                       onPressed: _load,
-                      child: Text(context.tr('comms.retry')),
                     ),
                   ))
           : _body(context, t, p),
@@ -244,26 +222,28 @@ class _TemplateDetailPageState extends State<TemplateDetailPage> {
           ),
         ],
         const SizedBox(height: FFTokens.spacingLg),
-        FilledButton.icon(
+        FFButton(
           key: const Key('tpl-use'),
+          label: context.tr('comms.tpl.use'),
           onPressed: _busy
               ? null
               : () => context.push(
                   '/owner/communications/new${_gymQuery({'templateId': t.id})}',
                 ),
-          icon: const Icon(Icons.send_outlined),
-          label: Text(context.tr('comms.tpl.use')),
+          icon: Icons.send_outlined,
         ),
         const SizedBox(height: FFTokens.spacingSm),
         if (t.system)
-          OutlinedButton(
+          FFButton(
             key: const Key('tpl-copy'),
+            label: context.tr('comms.tpl.copy'),
             onPressed: _busy ? null : _copy,
-            child: Text(context.tr('comms.tpl.copy')),
+            variant: FFButtonVariant.secondary,
           )
         else ...[
-          OutlinedButton(
+          FFButton(
             key: const Key('tpl-edit'),
+            label: context.tr('comms.tpl.edit'),
             onPressed: _busy
                 ? null
                 : () async {
@@ -272,13 +252,15 @@ class _TemplateDetailPageState extends State<TemplateDetailPage> {
                     );
                     if (mounted) await _load();
                   },
-            child: Text(context.tr('comms.tpl.edit')),
+            variant: FFButtonVariant.secondary,
           ),
           const SizedBox(height: FFTokens.spacingSm),
-          TextButton(
+          FFButton(
             key: const Key('tpl-archive'),
+            label: context.tr('comms.tpl.archive'),
             onPressed: _busy ? null : _archive,
-            child: Text(context.tr('comms.tpl.archive')),
+            variant: FFButtonVariant.ghost,
+            size: FFButtonSize.sm,
           ),
         ],
       ],
@@ -406,7 +388,7 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
       });
 
   Future<void> _save() async {
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     setState(() => _saving = true);
     try {
       final body = _payload;
@@ -417,17 +399,11 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
         await _repo.updateTemplate(widget.templateId!, body);
       }
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text(context.tr('comms.tpl.saved'))),
-      );
+      messenger.success(context.tr('comms.tpl.saved'));
       context.pop(true);
     } on ApiException catch (e) {
       if (mounted) {
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text(apiErrorMessage(FFLocaleScope.of(context), e)),
-          ),
-        );
+        messenger.error(apiErrorMessage(FFLocaleScope.of(context), e));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -460,10 +436,10 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(FFTokens.spacingMd),
-          child: FilledButton(
+          child: FFButton(
             key: const Key('tpl-save'),
+            label: context.tr('comms.tpl.save'),
             onPressed: _ready && _valid && !_saving ? _save : null,
-            child: Text(context.tr('comms.tpl.save')),
           ),
         ),
       ),

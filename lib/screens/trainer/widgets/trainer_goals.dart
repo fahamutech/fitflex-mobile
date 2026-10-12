@@ -44,12 +44,9 @@ class TrainerGoalsSection extends StatelessWidget {
       onSave: (body) => api.trainerAssignGoal(relationshipId, body),
     );
     if (ok == true && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            context.tr('trainerGoal.saved').replaceAll('{name}', clientName),
-          ),
-        ),
+      FFSnack.success(
+        context,
+        context.tr('trainerGoal.saved').replaceAll('{name}', clientName),
       );
       await onChanged();
     }
@@ -67,11 +64,13 @@ class TrainerGoalsSection extends StatelessWidget {
         Row(
           children: [
             Expanded(child: FFSectionTitle(context.tr('trainerGoal.section'))),
-            TextButton.icon(
+            FFButton(
               key: const Key('trainer-goal-add'),
+              label: context.tr('trainerGoal.add'),
               onPressed: () => _set(context),
-              icon: const Icon(Icons.flag_outlined, size: 18),
-              label: Text(context.tr('trainerGoal.add')),
+              variant: FFButtonVariant.ghost,
+              size: FFButtonSize.sm,
+              icon: Icons.flag_outlined,
             ),
           ],
         ),
@@ -127,13 +126,13 @@ class _AssignedGoalCard extends StatelessWidget {
 
   Future<void> _update(BuildContext context, Map<String, dynamic> body) async {
     final api = AppScope.of(context).api;
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final locale = FFLocaleScope.of(context);
     try {
       await api.trainerUpdateGoal(relationshipId, assigned.goal.id, body);
       await onChanged();
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(errorMessage(locale, e))));
+      messenger.error(errorMessage(locale, e));
     }
   }
 
@@ -143,14 +142,14 @@ class _AssignedGoalCard extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(ctx.tr('trainerGoal.changeTarget')),
-        content: TextField(
+        content: FFTextField(
           key: const Key('trainer-goal-target-edit'),
           controller: ctl,
-          autofocus: true,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           inputFormatters: [
             FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
           ],
+          autofocus: true,
         ),
         actions: [
           TextButton(
@@ -519,13 +518,11 @@ class _AssignGoalSheetState extends State<AssignGoalSheet> {
                 ),
               if (_kind == _Kind.coaching) ...[
                 label('trainerGoal.coachingTitle'),
-                TextField(
+                FFTextField(
                   key: const Key('goal-title'),
                   controller: _title,
+                  hint: context.tr('trainerGoal.coachingHint'),
                   maxLength: 120,
-                  decoration: InputDecoration(
-                    hintText: context.tr('trainerGoal.coachingHint'),
-                  ),
                 ),
               ],
               if (_kind == _Kind.challenge && canChallenge) ...[
@@ -561,16 +558,16 @@ class _AssignGoalSheetState extends State<AssignGoalSheet> {
                   ),
               ],
               label('trainerGoal.target'),
-              TextField(
+              FFTextField(
                 key: const Key('goal-target'),
                 controller: _target,
+                suffixText: unit,
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
                 ],
-                decoration: InputDecoration(suffixText: unit),
               ),
               if (_kind != _Kind.challenge) ...[
                 label('trainerGoal.when'),
@@ -592,11 +589,13 @@ class _AssignGoalSheetState extends State<AssignGoalSheet> {
                   ],
                 ),
                 if (_when == _When.dates)
-                  TextButton.icon(
+                  FFButton(
                     key: const Key('goal-dates'),
+                    label: context.tr('trainerGoal.changeDates'),
                     onPressed: _pickRange,
-                    icon: const Icon(Icons.date_range, size: 18),
-                    label: Text(context.tr('trainerGoal.changeDates')),
+                    variant: FFButtonVariant.ghost,
+                    size: FFButtonSize.sm,
+                    icon: Icons.date_range,
                   ),
               ],
               if (_error case final e?)
@@ -620,10 +619,10 @@ class _AssignGoalSheetState extends State<AssignGoalSheet> {
               const SizedBox(height: FFTokens.spacingSm),
               SizedBox(
                 width: double.infinity,
-                child: FilledButton(
+                child: FFButton(
                   key: const Key('assign-goal-save'),
+                  label: context.tr('trainerGoal.save'),
                   onPressed: _saving ? null : _save,
-                  child: Text(context.tr('trainerGoal.save')),
                 ),
               ),
             ],

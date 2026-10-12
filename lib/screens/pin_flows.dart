@@ -215,27 +215,25 @@ class _CodeStepState extends State<CodeStep> {
           ),
         ],
         const SizedBox(height: FFTokens.spacingMd),
-        FilledButton(
+        FFButton(
           key: const Key('pin-flow-code-continue'),
+          label: context.tr('verify.confirm'),
           onPressed: widget.busy ? null : () => widget.onSubmit(_code.text),
-          child: Text(context.tr('verify.confirm')),
         ),
         if (widget.onResend != null)
-          TextButton(
+          FFButton(
             key: const Key('pin-flow-resend'),
+            label: _resendIn > 0
+                ? context.tr('verify.resendIn').replaceAll('{n}', '$_resendIn')
+                : context.tr('verify.resend'),
             onPressed: widget.busy || _resendIn > 0
                 ? null
                 : () async {
                     final wait = await widget.onResend!();
                     if (mounted && wait != null) _wait(wait);
                   },
-            child: Text(
-              _resendIn > 0
-                  ? context
-                        .tr('verify.resendIn')
-                        .replaceAll('{n}', '$_resendIn')
-                  : context.tr('verify.resend'),
-            ),
+            variant: FFButtonVariant.ghost,
+            size: FFButtonSize.sm,
           ),
       ],
     );
@@ -468,7 +466,7 @@ class _RegisterFlowScreenState extends State<RegisterFlowScreen> {
       step = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (_busy) const Center(child: CircularProgressIndicator()),
+          if (_busy) const Center(child: FFSpinner(size: 32)),
           if (_error != null)
             Text(
               _error!,
@@ -477,17 +475,18 @@ class _RegisterFlowScreenState extends State<RegisterFlowScreen> {
             ),
           if (_alreadyRegistered) ...[
             const SizedBox(height: FFTokens.spacingMd),
-            FilledButton(
+            FFButton(
               key: const Key('pin-flow-go-sign-in'),
+              label: context.tr('pin.signInInstead'),
               onPressed: () => context.go(AppRoutes.auth),
-              child: Text(context.tr('pin.signInInstead')),
             ),
           ] else if (!_busy) ...[
             const SizedBox(height: FFTokens.spacingMd),
-            OutlinedButton(
+            FFButton(
               key: const Key('pin-flow-retry'),
+              label: context.tr('verify.send'),
               onPressed: _send,
-              child: Text(context.tr('verify.send')),
+              variant: FFButtonVariant.secondary,
             ),
           ],
         ],
@@ -612,24 +611,22 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
         children: [
           Text(context.tr('pin.forgotBody'), textAlign: TextAlign.center),
           const SizedBox(height: FFTokens.spacingMd),
-          TextField(
+          FFTextField(
             key: const Key('pin-flow-contact'),
             controller: _contact,
-            enabled: !_busy,
+            label: context.tr('auth.emailOrPhone'),
             keyboardType: TextInputType.emailAddress,
-            decoration: InputDecoration(
-              labelText: context.tr('auth.emailOrPhone'),
-            ),
+            enabled: !_busy,
           ),
           if (_error != null) ...[
             const SizedBox(height: FFTokens.spacingSm),
             Text(_error!, key: const Key('pin-flow-error')),
           ],
           const SizedBox(height: FFTokens.spacingMd),
-          FilledButton(
+          FFButton(
             key: const Key('pin-flow-send'),
+            label: context.tr('verify.send'),
             onPressed: _busy ? null : _send,
-            child: Text(context.tr('verify.send')),
           ),
         ],
       );
@@ -999,15 +996,13 @@ class _InviteStartScreenState extends State<InviteStartScreen> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: FFTokens.spacingMd),
-                TextField(
+                FFTextField(
                   key: const Key('start-name'),
                   controller: _name,
+                  label: context.tr('start.name'),
                   autofocus: true,
                   textCapitalization: TextCapitalization.words,
-                  decoration: InputDecoration(
-                    labelText: context.tr('start.name'),
-                  ),
-                  onSubmitted: (_) => _nameEntered(),
+                  onFieldSubmitted: (_) => _nameEntered(),
                 ),
                 if (_error != null) ...[
                   const SizedBox(height: FFTokens.spacingSm),
@@ -1020,10 +1015,10 @@ class _InviteStartScreenState extends State<InviteStartScreen> {
                   ),
                 ],
                 const SizedBox(height: FFTokens.spacingMd),
-                FilledButton(
+                FFButton(
                   key: const Key('start-name-continue'),
+                  label: context.tr('start.continue'),
                   onPressed: _nameEntered,
-                  child: Text(context.tr('start.continue')),
                 ),
               ],
             ),
@@ -1098,26 +1093,27 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           Row(
             children: [
               Expanded(
-                child: OutlinedButton(
+                child: FFButton(
                   key: Key('onboarding-decline-$id'),
+                  label: context.tr('invite.decline'),
                   onPressed: _busy
                       ? null
                       : () => _run(
                           () => api.onboardingAnswer(_token, id, accept: false),
                         ),
-                  child: Text(context.tr('invite.decline')),
+                  variant: FFButtonVariant.secondary,
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: FilledButton(
+                child: FFButton(
                   key: Key('onboarding-accept-$id'),
+                  label: context.tr('invite.accept'),
                   onPressed: _busy
                       ? null
                       : () => _run(
                           () => api.onboardingAnswer(_token, id, accept: true),
                         ),
-                  child: Text(context.tr('invite.accept')),
                 ),
               ),
             ],

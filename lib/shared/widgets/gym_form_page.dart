@@ -368,34 +368,26 @@ class _GymFormPageState extends State<GymFormPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
+              FFTextField(
                 key: const Key('gym-class-name'),
                 controller: name,
-                decoration: InputDecoration(
-                  labelText: context.tr('ownerReg.className'),
-                ),
+                label: context.tr('ownerReg.className'),
               ),
-              TextField(
+              FFTextField(
                 key: const Key('gym-class-schedule'),
                 controller: schedule,
-                decoration: InputDecoration(
-                  labelText: context.tr('ownerReg.classSchedule'),
-                ),
+                label: context.tr('ownerReg.classSchedule'),
               ),
-              TextField(
+              FFTextField(
                 key: const Key('gym-class-price'),
                 controller: price,
+                label: context.tr('ownerReg.classPrice'),
                 keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: context.tr('ownerReg.classPrice'),
-                ),
               ),
-              TextField(
+              FFTextField(
                 key: const Key('gym-class-location'),
                 controller: location,
-                decoration: InputDecoration(
-                  labelText: context.tr('ownerReg.classLocation'),
-                ),
+                label: context.tr('ownerReg.classLocation'),
               ),
             ],
           ),
@@ -461,11 +453,7 @@ class _GymFormPageState extends State<GymFormPage> {
             key: const Key('gym-form-save'),
             onPressed: _busy ? null : _save,
             child: _busy
-                ? const SizedBox(
-                    height: 18,
-                    width: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
+                ? FFSpinner(size: 18)
                 : Text(context.tr('member.save')),
           ),
         ],
@@ -565,11 +553,12 @@ class _GymFormPageState extends State<GymFormPage> {
                     ),
                   ),
                 ),
-              OutlinedButton.icon(
+              FFButton(
                 key: const Key('gym-add-class'),
+                label: context.tr('ownerReg.addClass'),
                 onPressed: _showClassEditor,
-                icon: const Icon(Icons.add, size: 18),
-                label: Text(context.tr('ownerReg.addClass')),
+                variant: FFButtonVariant.secondary,
+                icon: Icons.add,
               ),
               const SizedBox(height: FFTokens.spacingMd),
               FFFieldLabel(context.tr('ownerReg.trainerPassLabel')),
@@ -698,10 +687,11 @@ class _GymFormPageState extends State<GymFormPage> {
                   ),
                 ),
               const SizedBox(height: 8),
-              OutlinedButton.icon(
+              FFButton(
+                label: context.tr('ownerReg.pickImage'),
                 onPressed: _pickImage,
-                icon: const Icon(Icons.add_a_photo, size: 18),
-                label: Text(context.tr('ownerReg.pickImage')),
+                variant: FFButtonVariant.secondary,
+                icon: Icons.add_a_photo,
               ),
               const SizedBox(height: 24),
             ],

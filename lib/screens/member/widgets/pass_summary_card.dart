@@ -20,10 +20,7 @@ class PassSummaryCard extends StatelessWidget {
     if (data.me == null && !data.offline) {
       return const FFCard(
         key: Key('pass-summary-loading'),
-        child: SizedBox(
-          height: 120,
-          child: Center(child: CircularProgressIndicator()),
-        ),
+        child: SizedBox(height: 120, child: Center(child: FFSpinner(size: 32))),
       );
     }
     final sub = data.subscription;

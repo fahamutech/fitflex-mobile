@@ -117,9 +117,9 @@ class _CommunicationCenterPageState extends State<CommunicationCenterPage> {
                 FFEmptyState(
                   title: context.tr('comms.loadFailed'),
                   body: errorMessage(FFLocaleScope.of(context), c.error!),
-                  action: FilledButton(
+                  action: FFButton(
+                    label: context.tr('comms.retry'),
                     onPressed: c.load,
-                    child: Text(context.tr('comms.retry')),
                   ),
                 )
               else if (_tab == 'overview')
@@ -265,9 +265,9 @@ class _CommunicationCenterPageState extends State<CommunicationCenterPage> {
         FFEmptyState(
           title: context.tr('comms.loadFailed'),
           body: errorMessage(FFLocaleScope.of(context), c.templatesError!),
-          action: FilledButton(
+          action: FFButton(
+            label: context.tr('comms.retry'),
             onPressed: c.loadTemplates,
-            child: Text(context.tr('comms.retry')),
           ),
         ),
       ];
@@ -301,16 +301,17 @@ class _CommunicationCenterPageState extends State<CommunicationCenterPage> {
         ),
       ),
       const SizedBox(height: FFTokens.spacingSm),
-      OutlinedButton.icon(
+      FFButton(
         key: const Key('tpl-new'),
+        label: context.tr('comms.tpl.new'),
         onPressed: () async {
           await context.push(
             '/owner/communications/templates/new${_gymQuery()}',
           );
           if (mounted) await c.loadTemplates();
         },
-        icon: const Icon(Icons.add),
-        label: Text(context.tr('comms.tpl.new')),
+        variant: FFButtonVariant.secondary,
+        icon: Icons.add,
       ),
       const SizedBox(height: FFTokens.spacingSm),
       for (final t in shown)

@@ -191,7 +191,12 @@ void main() {
     // Nothing to post until a star is chosen.
     expect(
       tester
-          .widget<FilledButton>(find.byKey(const Key('review-submit')))
+          .widget<FilledButton>(
+            find.descendant(
+              of: find.byKey(const Key('review-submit')),
+              matching: find.byType(FilledButton),
+            ),
+          )
           .onPressed,
       isNull,
     );

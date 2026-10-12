@@ -113,8 +113,9 @@ class _PromptState extends State<_Prompt> {
                   child: Text(context.tr('phoneSteps.openSettings')),
                 )
               else
-                FilledButton(
+                FFButton(
                   key: const Key('phone-steps-enable'),
+                  label: context.tr('phoneSteps.enable'),
                   onPressed: _busy
                       ? null
                       : () async {
@@ -122,13 +123,14 @@ class _PromptState extends State<_Prompt> {
                           await turnOnPhoneSteps(context, s);
                           if (mounted) setState(() => _busy = false);
                         },
-                  child: Text(context.tr('phoneSteps.enable')),
                 ),
               if (widget.dismissible)
-                TextButton(
+                FFButton(
                   key: const Key('phone-steps-dismiss'),
+                  label: context.tr('phoneSteps.notNow'),
                   onPressed: s.dismissPrompt,
-                  child: Text(context.tr('phoneSteps.notNow')),
+                  variant: FFButtonVariant.ghost,
+                  size: FFButtonSize.sm,
                 ),
             ],
           ),

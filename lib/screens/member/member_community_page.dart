@@ -83,8 +83,7 @@ final compactButton = FilledButton.styleFrom(
   visualDensity: VisualDensity.compact,
 );
 
-void _toast(BuildContext context, String text) =>
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+void _toast(BuildContext context, String text) => FFSnack.info(context, text);
 
 // ── Feed ─────────────────────────────────────────────────────────────────
 
@@ -163,7 +162,7 @@ class _FeedTabState extends State<FeedTab> {
   @override
   Widget build(BuildContext context) {
     final items = _items;
-    if (items == null) return const Center(child: CircularProgressIndicator());
+    if (items == null) return const Center(child: FFSpinner(size: 32));
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(
@@ -199,9 +198,11 @@ class _FeedTabState extends State<FeedTab> {
             ),
           if (_next != null)
             Center(
-              child: TextButton(
+              child: FFButton(
+                label: context.tr('community.more'),
                 onPressed: _loadingMore ? null : () => _load(more: true),
-                child: Text(context.tr('community.more')),
+                variant: FFButtonVariant.ghost,
+                size: FFButtonSize.sm,
               ),
             ),
         ],
@@ -327,10 +328,12 @@ class FeedCard extends StatelessWidget {
                   ),
                   label: Text('${item.kudos}'),
                 ),
-                TextButton.icon(
+                FFButton(
+                  label: '${item.comments}',
                   onPressed: onOpen,
-                  icon: const Icon(Icons.chat_bubble_outline, size: 18),
-                  label: Text('${item.comments}'),
+                  variant: FFButtonVariant.ghost,
+                  size: FFButtonSize.sm,
+                  icon: Icons.chat_bubble_outline,
                 ),
                 if (you && item.views != null) ...[
                   const Spacer(),
@@ -454,9 +457,7 @@ class _PeopleTabState extends State<PeopleTab> {
         _contactQuery = c;
         _contactFound = null;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(errorText(context, e))),
-      );
+      FFSnack.error(context, errorText(context, e));
     } finally {
       if (mounted) setState(() => _contactBusy = false);
     }
@@ -486,9 +487,13 @@ class _PeopleTabState extends State<PeopleTab> {
           link: share['link'].toString(),
           subject: share['subject']?.toString(),
         );
-        messenger.showSnackBar(SnackBar(content: Text(t('friendInvite.created'))));
+        messenger.showSnackBar(
+          SnackBar(content: Text(t('friendInvite.created'))),
+        );
       } else {
-        messenger.showSnackBar(SnackBar(content: Text(t('friendInvite.requestSent'))));
+        messenger.showSnackBar(
+          SnackBar(content: Text(t('friendInvite.requestSent'))),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -533,7 +538,9 @@ class _PeopleTabState extends State<PeopleTab> {
         action = FilledButton.tonal(
           key: const Key('friend-request-send'),
           style: compactButton,
-          onPressed: _contactBusy ? null : () => _invite(userId: r['userId'].toString()),
+          onPressed: _contactBusy
+              ? null
+              : () => _invite(userId: r['userId'].toString()),
           child: Text(t('friendInvite.sendRequest')),
         );
       }
@@ -588,18 +595,22 @@ class _PeopleTabState extends State<PeopleTab> {
                   child: Text(
                     (i['name']?.toString().isNotEmpty ?? false)
                         ? i['name'].toString()
-                        : t('friendInvite.linkShared.${i['contactType'] ?? 'email'}'),
+                        : t(
+                            'friendInvite.linkShared.${i['contactType'] ?? 'email'}',
+                          ),
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
                 ),
                 if (i['status'] == 'pending')
-                  TextButton(
+                  FFButton(
                     key: Key('sent-cancel-${i['id']}'),
+                    label: t('friendInvite.cancel'),
                     onPressed: () => _act(
                       () => api.revokeFriendInvitation(i['id'].toString()),
                       t('friendInvite.cancelled'),
                     ),
-                    child: Text(t('friendInvite.cancel')),
+                    variant: FFButtonVariant.ghost,
+                    size: FFButtonSize.sm,
                   ),
                 FFBadge(
                   label: t('friendInvite.status.${i['status']}'),
@@ -644,13 +655,13 @@ class _PeopleTabState extends State<PeopleTab> {
   }
 
   Future<void> _act(Future<Object?> Function() call, String done) async {
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final failed = errorText(context, '');
     try {
       await call();
-      messenger.showSnackBar(SnackBar(content: Text(done)));
+      messenger.success(done);
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(failed)));
+      messenger.error(failed);
     }
     await _load();
     if (_found != null) await _find();
@@ -744,7 +755,7 @@ class _PeopleTabState extends State<PeopleTab> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_loaded) return const Center(child: CircularProgressIndicator());
+    if (!_loaded) return const Center(child: FFSpinner(size: 32));
     final theme = Theme.of(context);
     return RefreshIndicator(
       onRefresh: _load,
@@ -790,19 +801,17 @@ class _PeopleTabState extends State<PeopleTab> {
             ),
           ),
           const SizedBox(height: FFTokens.spacingMd),
-          TextField(
+          FFTextField(
             key: const Key('people-search'),
             controller: _search,
+            hint: context.tr('community.searchHint'),
             textInputAction: TextInputAction.search,
-            onSubmitted: (_) => _find(),
-            decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.search),
-              hintText: context.tr('community.searchHint'),
-              suffixIcon: IconButton(
-                tooltip: context.tr('a11y.search'),
-                icon: const Icon(Icons.arrow_forward),
-                onPressed: _find,
-              ),
+            onFieldSubmitted: (_) => _find(),
+            prefixIcon: const Icon(Icons.search),
+            suffixIcon: IconButton(
+              tooltip: context.tr('a11y.search'),
+              icon: const Icon(Icons.arrow_forward),
+              onPressed: _find,
             ),
           ),
           if (_contactBusy) const LinearProgressIndicator(),
@@ -897,6 +906,7 @@ class _GroupsTabState extends State<GroupsTab> {
 
   Future<void> _join({String? groupId, String? code}) async {
     final messenger = ScaffoldMessenger.of(context);
+    final messengerSnack = FFSnack.of(context);
     final t = context.tr;
     try {
       final r = await AppScope.of(
@@ -912,7 +922,7 @@ class _GroupsTabState extends State<GroupsTab> {
       );
     } catch (e) {
       if (mounted) {
-        messenger.showSnackBar(SnackBar(content: Text(errorText(context, e))));
+        messengerSnack.error(errorText(context, e));
       }
     }
     await _load();
@@ -944,7 +954,7 @@ class _GroupsTabState extends State<GroupsTab> {
   @override
   Widget build(BuildContext context) {
     final mine = _mine;
-    if (mine == null) return const Center(child: CircularProgressIndicator());
+    if (mine == null) return const Center(child: FFSpinner(size: 32));
     final theme = Theme.of(context);
     return RefreshIndicator(
       onRefresh: _load,
@@ -954,20 +964,21 @@ class _GroupsTabState extends State<GroupsTab> {
           Row(
             children: [
               Expanded(
-                child: FilledButton.icon(
+                child: FFButton(
                   key: const Key('group-create'),
+                  label: context.tr('community.createGroup'),
                   onPressed: _create,
-                  icon: const Icon(Icons.add),
-                  label: Text(context.tr('community.createGroup')),
+                  icon: Icons.add,
                 ),
               ),
               const SizedBox(width: FFTokens.spacingSm),
               Expanded(
-                child: OutlinedButton.icon(
+                child: FFButton(
                   key: const Key('group-join-code'),
+                  label: context.tr('community.joinByCode'),
                   onPressed: _joinByCode,
-                  icon: const Icon(Icons.vpn_key_outlined),
-                  label: Text(context.tr('community.joinByCode')),
+                  variant: FFButtonVariant.secondary,
+                  icon: Icons.vpn_key_outlined,
                 ),
               ),
             ],
@@ -996,13 +1007,11 @@ class _GroupsTabState extends State<GroupsTab> {
               },
             ),
           FFSectionTitle(context.tr('community.findGroups')),
-          TextField(
+          FFTextField(
             controller: _q,
-            onSubmitted: (_) => _load(),
-            decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.search),
-              hintText: context.tr('community.findGroupsHint'),
-            ),
+            hint: context.tr('community.findGroupsHint'),
+            onFieldSubmitted: (_) => _load(),
+            prefixIcon: const Icon(Icons.search),
           ),
           const SizedBox(height: FFTokens.spacingSm),
           if (_found.isEmpty)
@@ -1075,11 +1084,11 @@ Future<String?> _askText(
     context: context,
     builder: (ctx) => AlertDialog(
       title: Text(title),
-      content: TextField(
+      content: FFTextField(
         key: const Key('ask-text'),
         controller: c,
+        hint: hint,
         autofocus: true,
-        decoration: InputDecoration(hintText: hint),
       ),
       actions: [
         TextButton(
@@ -1177,21 +1186,17 @@ class _GroupFormState extends State<_GroupForm> {
               padding: const EdgeInsets.only(top: FFTokens.spacingSm),
               child: FFAlert(message: _error!, tone: FFAlertTone.error),
             ),
-          TextField(
+          FFTextField(
             key: const Key('group-name'),
             controller: _name,
+            label: context.tr('community.groupName'),
             maxLength: 60,
-            decoration: InputDecoration(
-              labelText: context.tr('community.groupName'),
-            ),
           ),
-          TextField(
+          FFTextField(
             controller: _desc,
-            maxLength: 300,
+            label: context.tr('community.groupDescription'),
             maxLines: 2,
-            decoration: InputDecoration(
-              labelText: context.tr('community.groupDescription'),
-            ),
+            maxLength: 300,
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
@@ -1208,10 +1213,10 @@ class _GroupFormState extends State<_GroupForm> {
             subtitle: Text(context.tr('community.listedHint')),
           ),
           const SizedBox(height: FFTokens.spacingSm),
-          FilledButton(
+          FFButton(
             key: const Key('group-save'),
+            label: context.tr('community.saveGroup'),
             onPressed: _busy ? null : _save,
-            child: Text(context.tr('community.saveGroup')),
           ),
         ],
       ),

@@ -174,9 +174,10 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
                       padding: const EdgeInsets.all(FFTokens.spacingLg),
                       child: FFEmptyState(
                         title: context.tr('members.errorLoading'),
-                        action: OutlinedButton(
+                        action: FFButton(
+                          label: context.tr('members.retry'),
                           onPressed: controller.load,
-                          child: Text(context.tr('members.retry')),
+                          variant: FFButtonVariant.secondary,
                         ),
                       ),
                     ),
@@ -520,11 +521,7 @@ class _CheckInSummaryCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (controller.summaryLoading)
-              const SizedBox(
-                width: 12,
-                height: 12,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
+              FFSpinner(size: 12)
             else
               Text(
                 _periodLabel(context, controller.period),
@@ -815,18 +812,20 @@ class _ActionBar extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton.icon(
+                  child: FFButton(
+                    label: context.tr('members.checkIn'),
                     onPressed: busy ? null : onCheckIn,
-                    icon: const Icon(Icons.qr_code, size: FFTokens.iconSm),
-                    label: Text(context.tr('members.checkIn')),
+                    variant: FFButtonVariant.secondary,
+                    icon: Icons.qr_code,
                   ),
                 ),
                 const SizedBox(width: FFTokens.spacingSm),
                 Expanded(
-                  child: OutlinedButton.icon(
+                  child: FFButton(
+                    label: context.tr('members.renew'),
                     onPressed: busy ? null : onRenew,
-                    icon: const Icon(Icons.autorenew, size: FFTokens.iconSm),
-                    label: Text(context.tr('members.renew')),
+                    variant: FFButtonVariant.secondary,
+                    icon: Icons.autorenew,
                   ),
                 ),
               ],
@@ -835,13 +834,11 @@ class _ActionBar extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton.icon(
+                  child: FFButton(
+                    label: context.tr('members.editMember'),
                     onPressed: busy ? null : onEdit,
-                    icon: const Icon(
-                      Icons.edit_outlined,
-                      size: FFTokens.iconSm,
-                    ),
-                    label: Text(context.tr('members.editMember')),
+                    variant: FFButtonVariant.secondary,
+                    icon: Icons.edit_outlined,
                   ),
                 ),
                 const SizedBox(width: FFTokens.spacingSm),

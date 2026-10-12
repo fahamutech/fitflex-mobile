@@ -85,10 +85,11 @@ class OwnerManageGymsPage extends StatelessWidget {
                   FFTokens.spacingLg,
                   FFTokens.spacingLg,
                 ),
-                child: OutlinedButton.icon(
+                child: FFButton(
+                  label: context.tr('owner.addGym'),
                   onPressed: () => _showAddGymDialog(context),
-                  icon: const Icon(Icons.add),
-                  label: Text(context.tr('owner.addGym')),
+                  variant: FFButtonVariant.secondary,
+                  icon: Icons.add,
                 ),
               ),
             ),
@@ -115,9 +116,7 @@ class OwnerManageGymsPage extends StatelessWidget {
       ).showSnackBar(SnackBar(content: Text(message)));
     } on ApiException catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(apiErrorMessage(FFLocaleScope.of(context), e))),
-      );
+      FFSnack.error(context, apiErrorMessage(FFLocaleScope.of(context), e));
     }
   }
 
@@ -141,9 +140,7 @@ class OwnerManageGymsPage extends StatelessWidget {
       ).showSnackBar(SnackBar(content: Text(message)));
     } on ApiException catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(apiErrorMessage(FFLocaleScope.of(context), e))),
-      );
+      FFSnack.error(context, apiErrorMessage(FFLocaleScope.of(context), e));
     }
   }
 
@@ -179,12 +176,9 @@ class OwnerManageGymsPage extends StatelessWidget {
                 ).showSnackBar(SnackBar(content: Text(message)));
               } on ApiException catch (e) {
                 if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      apiErrorMessage(FFLocaleScope.of(context), e),
-                    ),
-                  ),
+                FFSnack.error(
+                  context,
+                  apiErrorMessage(FFLocaleScope.of(context), e),
                 );
               }
             },
@@ -354,7 +348,7 @@ Future<void> showGymEntranceQr(
           if (payload == null) {
             return const SizedBox(
               height: 240,
-              child: Center(child: CircularProgressIndicator()),
+              child: Center(child: FFSpinner(size: 32)),
             );
           }
           return Column(

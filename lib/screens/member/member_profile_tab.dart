@@ -92,30 +92,18 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
       ).showSnackBar(SnackBar(content: Text(successMessage)));
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(apiErrorMessage(FFLocaleScope.of(context), e))),
-      );
+      FFSnack.error(context, apiErrorMessage(FFLocaleScope.of(context), e));
     }
   }
 
   Future<void> _confirmSignOut() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(context.tr('home.signout')),
-        content: Text(context.tr('confirm.signout')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(context.tr('member.cancel')),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: FFTokens.error500),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(context.tr('home.signout')),
-          ),
-        ],
-      ),
+    final confirmed = await showFFConfirmDialog(
+      context,
+      title: context.tr('home.signout'),
+      message: context.tr('confirm.signout'),
+      cancelLabel: context.tr('member.cancel'),
+      confirmLabel: context.tr('home.signout'),
+      destructive: true,
     );
     if (confirmed != true || !mounted) return;
     await AppScope.of(context).auth.signOut();
@@ -149,9 +137,7 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
         await _refreshMemberData(data);
       } catch (_) {}
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.tr('member.profileUpdated'))),
-        );
+        FFSnack.success(context, context.tr('member.profileUpdated'));
       }
     }
   }
@@ -165,12 +151,12 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
     // FitFlex keeps the PIN: change it there. An account whose PIN is still
     // with Firebase (false) falls through to the old dialog below.
     if (AppScope.of(context).auth.pinLoginEnabled) {
-      final messenger = ScaffoldMessenger.of(context);
+      final messenger = FFSnack.of(context);
       final changedText = context.tr('pin.changed');
       final changed = await showChangePinDialog(context);
       if (changed == null || !mounted) return;
       if (changed) {
-        messenger.showSnackBar(SnackBar(content: Text(changedText)));
+        messenger.info(changedText);
         return;
       }
     }
@@ -281,11 +267,7 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
                         }
                       },
                 child: busy
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
+                    ? FFSpinner(size: 18)
                     : Text(context.tr('member.save')),
               ),
             ],

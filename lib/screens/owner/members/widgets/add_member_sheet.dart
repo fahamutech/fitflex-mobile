@@ -253,14 +253,12 @@ class _MemberFormSheetState extends State<_MemberFormSheet> {
                   ),
                 ],
                 const SizedBox(height: FFTokens.spacingLg),
-                FilledButton(
+                FFButton(
                   key: const Key('add-member-save'),
-                  onPressed: _submit,
-                  child: Text(
-                    context.tr(
-                      isEdit ? 'members.updateMember' : 'members.saveMember',
-                    ),
+                  label: context.tr(
+                    isEdit ? 'members.updateMember' : 'members.saveMember',
                   ),
+                  onPressed: _submit,
                 ),
               ],
             ),

@@ -46,23 +46,13 @@ class _MemberRecordRunPageState extends State<MemberRecordRunPage> {
   }
 
   Future<void> _finish(RunRecorder r) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(ctx.tr('run.finishTitle')),
-        content: Text(ctx.tr('run.finishBody')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(ctx.tr('run.keepGoing')),
-          ),
-          FilledButton(
-            key: const Key('run-finish-confirm'),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(ctx.tr('run.finish')),
-          ),
-        ],
-      ),
+    final ok = await showFFConfirmDialog(
+      context,
+      title: context.tr('run.finishTitle'),
+      message: context.tr('run.finishBody'),
+      cancelLabel: context.tr('run.keepGoing'),
+      confirmLabel: context.tr('run.finish'),
+      confirmKey: const Key('run-finish-confirm'),
     );
     if (ok == true) await r.finish();
   }
@@ -71,6 +61,7 @@ class _MemberRecordRunPageState extends State<MemberRecordRunPage> {
     final scope = AppScope.of(context);
     final shell = context.findAncestorStateOfType<MemberShellState>();
     final messenger = ScaffoldMessenger.of(context);
+    final messengerSnack = FFSnack.of(context);
     final saved = context.tr('run.savedToast');
     final failed = context.tr('run.saveFailed');
     final tooShort = context.tr('run.tooShort');
@@ -83,7 +74,7 @@ class _MemberRecordRunPageState extends State<MemberRecordRunPage> {
         shareChosen: _shareChosen,
       );
       await shell?.refreshAfterWorkout();
-      messenger.showSnackBar(SnackBar(content: Text(saved)));
+      messengerSnack.success(saved);
       if (mounted) context.go(AppRoutes.memberActivity);
     } catch (e) {
       final short = e.toString().contains('too_short');
@@ -96,23 +87,13 @@ class _MemberRecordRunPageState extends State<MemberRecordRunPage> {
   }
 
   Future<void> _discard(RunRecorder r) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(ctx.tr('run.discardTitle')),
-        content: Text(ctx.tr('run.discardBody')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(ctx.tr('trainer.cancel')),
-          ),
-          FilledButton(
-            key: const Key('run-discard-confirm'),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(ctx.tr('run.discard')),
-          ),
-        ],
-      ),
+    final ok = await showFFConfirmDialog(
+      context,
+      title: context.tr('run.discardTitle'),
+      message: context.tr('run.discardBody'),
+      cancelLabel: context.tr('trainer.cancel'),
+      confirmLabel: context.tr('run.discard'),
+      confirmKey: const Key('run-discard-confirm'),
     );
     if (ok == true) await r.discard();
   }
@@ -177,13 +158,11 @@ class _MemberRecordRunPageState extends State<MemberRecordRunPage> {
                 const SizedBox(height: FFTokens.spacingMd),
                 RunSplits(splits: m.splits),
                 const SizedBox(height: FFTokens.spacingMd),
-                TextField(
+                FFTextField(
                   controller: _notes,
+                  label: context.tr('run.notes'),
+                  hint: context.tr('run.notesHint'),
                   maxLength: 200,
-                  decoration: InputDecoration(
-                    labelText: context.tr('run.notes'),
-                    hintText: context.tr('run.notesHint'),
-                  ),
                 ),
                 FFActionTile(
                   key: const Key('run-share'),
@@ -212,18 +191,19 @@ class _MemberRecordRunPageState extends State<MemberRecordRunPage> {
                 Row(
                   children: [
                     Expanded(
-                      child: OutlinedButton(
+                      child: FFButton(
                         key: const Key('run-discard'),
+                        label: context.tr('run.discard'),
                         onPressed: _saving ? null : () => _discard(r),
-                        child: Text(context.tr('run.discard')),
+                        variant: FFButtonVariant.secondary,
                       ),
                     ),
                     const SizedBox(width: FFTokens.spacingSm),
                     Expanded(
-                      child: FilledButton(
+                      child: FFButton(
                         key: const Key('run-save'),
+                        label: context.tr('run.save'),
                         onPressed: _saving ? null : () => _save(r),
-                        child: Text(context.tr('run.save')),
                       ),
                     ),
                   ],
@@ -375,11 +355,13 @@ class _AccessAlert extends StatelessWidget {
               off ? 'run.locationOffBody' : 'run.permissionBody',
             ),
           ),
-          TextButton(
+          FFButton(
+            label: context.tr('phoneSteps.openSettings'),
             onPressed: off
                 ? recorder.gps.openLocationSettings
                 : recorder.gps.openAppSettings,
-            child: Text(context.tr('phoneSteps.openSettings')),
+            variant: FFButtonVariant.ghost,
+            size: FFButtonSize.sm,
           ),
         ],
       ),

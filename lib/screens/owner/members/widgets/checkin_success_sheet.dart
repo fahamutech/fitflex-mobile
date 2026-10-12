@@ -114,9 +114,9 @@ class _CheckInSuccessSheet extends StatelessWidget {
             const SizedBox(height: FFTokens.spacingLg),
             SizedBox(
               width: double.infinity,
-              child: FilledButton(
+              child: FFButton(
+                label: context.tr('members.done'),
                 onPressed: () => Navigator.pop(context),
-                child: Text(context.tr('members.done')),
               ),
             ),
           ],

@@ -57,11 +57,11 @@ class OwnerTrainersPage extends StatelessWidget {
               sliver: SliverToBoxAdapter(
                 child: Align(
                   alignment: Alignment.centerRight,
-                  child: FilledButton.icon(
+                  child: FFButton(
                     key: const Key('owner-add-trainer'),
+                    label: context.tr('owner.addTrainer'),
                     onPressed: () => _createTrainer(context, data.ownerGyms),
-                    icon: const Icon(Icons.person_add_alt_1),
-                    label: Text(context.tr('owner.addTrainer')),
+                    icon: Icons.person_add_alt_1,
                   ),
                 ),
               ),
@@ -221,9 +221,7 @@ class OwnerTrainersPage extends StatelessWidget {
                 ).showSnackBar(SnackBar(content: Text(message)));
               } on ApiException catch (e) {
                 if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(_apiErrorMessage(context, e))),
-                );
+                FFSnack.error(context, _apiErrorMessage(context, e));
               }
             },
             child: Text(context.tr('owner.removeTrainer')),
@@ -649,11 +647,7 @@ class _PendingTrainerCardState extends State<_PendingTrainerCard> {
             ),
           ),
           if (_busy)
-            const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
+            FFSpinner(size: 20)
           else ...[
             IconButton(
               icon: Icon(

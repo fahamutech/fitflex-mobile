@@ -185,15 +185,18 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                 label: Text(context.tr('auth.verifyEmailContinue')),
               ),
               const SizedBox(height: FFTokens.spacingSm),
-              TextButton(
+              FFButton(
                 key: const Key('verify-email-resend'),
+                label: context.tr('auth.verifyEmailResend'),
                 onPressed: _sending ? null : _send,
-                child: Text(context.tr('auth.verifyEmailResend')),
+                variant: FFButtonVariant.ghost,
+                size: FFButtonSize.sm,
               ),
               const Spacer(),
-              OutlinedButton(
+              FFButton(
+                label: context.tr('auth.verifyEmailOtherAccount'),
                 onPressed: _useOtherAccount,
-                child: Text(context.tr('auth.verifyEmailOtherAccount')),
+                variant: FFButtonVariant.secondary,
               ),
             ],
           ),

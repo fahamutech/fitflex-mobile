@@ -70,34 +70,24 @@ class _TrainerSessionsSheetState extends State<TrainerSessionsSheet> {
 
   /// Cancel a session I can't take. A member who paid is refunded in full.
   Future<void> _cancelBooking(Map<String, dynamic> s) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(context.tr('trainer.cancelSession')),
-        content: Text(context.tr('trainer.cancelSessionConfirm')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(context.tr('sessions.keep')),
-          ),
-          FilledButton(
-            key: const Key('trainer-cancel-confirm'),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(context.tr('trainer.cancelSession')),
-          ),
-        ],
-      ),
+    final confirmed = await showFFConfirmDialog(
+      context,
+      title: context.tr('trainer.cancelSession'),
+      message: context.tr('trainer.cancelSessionConfirm'),
+      cancelLabel: context.tr('sessions.keep'),
+      confirmLabel: context.tr('trainer.cancelSession'),
+      confirmKey: const Key('trainer-cancel-confirm'),
     );
     if (confirmed != true || !mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final locale = FFLocaleScope.of(context);
     final done = context.tr('trainer.sessionCancelled');
     try {
       await AppScope.of(context).api.trainerCancelBooking(s['id'].toString());
       await _load();
-      messenger.showSnackBar(SnackBar(content: Text(done)));
+      messenger.success(done);
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(errorMessage(locale, e))));
+      messenger.error(errorMessage(locale, e));
     }
   }
 
@@ -138,10 +128,12 @@ class _TrainerSessionsSheetState extends State<TrainerSessionsSheet> {
                     ),
                   ),
                 ),
-                TextButton.icon(
+                FFButton(
+                  label: _dateOnly(_date),
                   onPressed: _pickDate,
-                  icon: const Icon(Icons.calendar_today_outlined, size: 16),
-                  label: Text(_dateOnly(_date)),
+                  variant: FFButtonVariant.ghost,
+                  size: FFButtonSize.sm,
+                  icon: Icons.calendar_today_outlined,
                 ),
               ],
             ),
@@ -213,11 +205,12 @@ class _TrainerSessionsSheetState extends State<TrainerSessionsSheet> {
             const SizedBox(height: 10),
             SizedBox(
               width: double.infinity,
-              child: OutlinedButton.icon(
+              child: FFButton(
                 key: const Key('trainer-add-session'),
+                label: context.tr('trainer.addSession'),
                 onPressed: _addManualSession,
-                icon: const Icon(Icons.add),
-                label: Text(context.tr('trainer.addSession')),
+                variant: FFButtonVariant.secondary,
+                icon: Icons.add,
               ),
             ),
           ],
@@ -399,16 +392,11 @@ class _TrainerAddSessionSheetState extends State<TrainerAddSessionSheet> {
                 FFAlert(message: _error!, tone: FFAlertTone.error),
               ],
               const SizedBox(height: 14),
-              FilledButton(
+              FFButton(
                 key: const Key('session-save'),
+                label: context.tr('member.save'),
                 onPressed: _busy ? null : _save,
-                child: _busy
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Text(context.tr('member.save')),
+                loading: _busy,
               ),
             ],
           ),

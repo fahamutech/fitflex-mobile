@@ -81,26 +81,14 @@ class _MemberTrainingSetupPageState extends State<MemberTrainingSetupPage> {
     _set(p.copyWith(equipment: have));
   }
 
-  Future<bool> _confirmReplace() async =>
-      await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(ctx.tr('training.replaceTitle')),
-          content: Text(ctx.tr('training.replaceBody')),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(ctx.tr('training.keepPlan')),
-            ),
-            FilledButton(
-              key: const Key('training-replace-confirm'),
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(ctx.tr('training.replace')),
-            ),
-          ],
-        ),
-      ) ??
-      false;
+  Future<bool> _confirmReplace() => showFFConfirmDialog(
+    context,
+    title: context.tr('training.replaceTitle'),
+    message: context.tr('training.replaceBody'),
+    cancelLabel: context.tr('training.keepPlan'),
+    confirmLabel: context.tr('training.replace'),
+    confirmKey: const Key('training-replace-confirm'),
+  );
 
   Future<void> _create() async {
     final p = _p;
@@ -176,11 +164,13 @@ class _MemberTrainingSetupPageState extends State<MemberTrainingSetupPage> {
     final p = _p;
     final back = Align(
       alignment: Alignment.centerLeft,
-      child: TextButton.icon(
+      child: FFButton(
         key: const Key('training-back'),
+        label: context.tr('activity.title'),
         onPressed: () => context.go(AppRoutes.memberActivity),
-        icon: const Icon(Icons.arrow_back, size: 18),
-        label: Text(context.tr('activity.title')),
+        variant: FFButtonVariant.ghost,
+        size: FFButtonSize.sm,
+        icon: Icons.arrow_back,
       ),
     );
     if (p == null) {
@@ -190,7 +180,7 @@ class _MemberTrainingSetupPageState extends State<MemberTrainingSetupPage> {
           back,
           const Padding(
             padding: EdgeInsets.all(FFTokens.spacingXl),
-            child: Center(child: CircularProgressIndicator()),
+            child: Center(child: FFSpinner(size: 32)),
           ),
         ],
       );
@@ -337,16 +327,11 @@ class _MemberTrainingSetupPageState extends State<MemberTrainingSetupPage> {
         SizedBox(
           width: double.infinity,
           height: 52,
-          child: FilledButton(
+          child: FFButton(
             key: const Key('training-generate'),
+            label: context.tr('training.create'),
             onPressed: _busy ? null : _create,
-            child: _busy
-                ? const SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Text(context.tr('training.create')),
+            loading: _busy,
           ),
         ),
         const SizedBox(height: FFTokens.spacingSm),

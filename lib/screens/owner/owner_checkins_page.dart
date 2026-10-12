@@ -117,7 +117,7 @@ class _OwnerCheckinsPageState extends State<OwnerCheckinsPage> {
             future: AppScope.of(context).api.ownerGymCheckins(activeGymId),
             builder: (context, snap) {
               if (snap.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
+                return const Center(child: FFSpinner(size: 32));
               }
               var items = (snap.data ?? []).cast<Map<String, dynamic>>();
               if (_statsFrom != null && _statsTo != null) {

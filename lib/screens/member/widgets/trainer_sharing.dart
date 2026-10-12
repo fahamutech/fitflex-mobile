@@ -107,14 +107,12 @@ class _SharingSheetState extends State<_SharingSheet> {
             const SizedBox(height: FFTokens.spacingSm),
             SizedBox(
               width: double.infinity,
-              child: FilledButton(
+              child: FFButton(
                 key: const Key('share-save'),
-                onPressed: () => Navigator.pop(context, _perms),
-                child: Text(
-                  context.tr(
-                    widget.isRequest ? 'share.sendRequest' : 'share.save',
-                  ),
+                label: context.tr(
+                  widget.isRequest ? 'share.sendRequest' : 'share.save',
                 ),
+                onPressed: () => Navigator.pop(context, _perms),
               ),
             ),
           ],
@@ -157,6 +155,7 @@ class _TrainerConnectCardState extends State<TrainerConnectCard> {
     final api = AppScope.of(context).api;
     final shell = context.findAncestorStateOfType<MemberShellState>();
     final messenger = ScaffoldMessenger.of(context);
+    final messengerSnack = FFSnack.of(context);
     final sent = context.tr('connect.sent');
     final failed = context.tr('connect.failed');
     final notVerified = context.tr('unverified.trainerPublic');
@@ -164,7 +163,7 @@ class _TrainerConnectCardState extends State<TrainerConnectCard> {
     try {
       await api.requestTrainerConnection(widget.trainerId, perms.toJson());
       await shell?.refreshConnections();
-      messenger.showSnackBar(SnackBar(content: Text(sent)));
+      messengerSnack.success(sent);
     } on ApiException catch (e) {
       messenger.showSnackBar(
         SnackBar(
@@ -174,7 +173,7 @@ class _TrainerConnectCardState extends State<TrainerConnectCard> {
         ),
       );
     } catch (_) {
-      messenger.showSnackBar(SnackBar(content: Text(failed)));
+      messengerSnack.error(failed);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -208,10 +207,11 @@ class _TrainerConnectCardState extends State<TrainerConnectCard> {
       );
       body =
           '${context.tr('share.canSee')}: ${sharedSummary(context, c.permissions)}';
-      action = OutlinedButton(
+      action = FFButton(
         key: const Key('trainer-manage-sharing'),
+        label: context.tr('connect.manage'),
         onPressed: () => context.go(AppRoutes.memberActivitySharing),
-        child: Text(context.tr('connect.manage')),
+        variant: FFButtonVariant.secondary,
       );
     }
     return FFCard(

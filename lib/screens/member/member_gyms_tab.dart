@@ -250,14 +250,13 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
                       title: context.tr('member.discoverGyms'),
                       // Trainer discovery moved here from the bottom nav
                       // when Activity took that slot.
-                      actions: TextButton.icon(
+                      actions: FFButton(
                         key: const Key('member-find-trainer'),
+                        label: context.tr('member.trainers'),
                         onPressed: () => context.go(AppRoutes.memberTrainers),
-                        icon: const Icon(
-                          Icons.sports_gymnastics_outlined,
-                          size: 18,
-                        ),
-                        label: Text(context.tr('member.trainers')),
+                        variant: FFButtonVariant.ghost,
+                        size: FFButtonSize.sm,
+                        icon: Icons.sports_gymnastics_outlined,
                       ),
                     ),
                     TextField(

@@ -110,7 +110,7 @@ class _MemberLogActivityPageState extends State<MemberLogActivityPage> {
     final scope = AppScope.of(context);
     final data = MemberDataScope.of(context);
     final locale = FFLocaleScope.of(context);
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final router = GoRouter.of(context);
     final done = context.tr('logActivity.saved');
     setState(() => _saving = true);
@@ -123,7 +123,7 @@ class _MemberLogActivityPageState extends State<MemberLogActivityPage> {
             d.activities = [...d.activities, saved]
               ..sort((a, b) => b.startedAt.compareTo(a.startedAt)),
       );
-      messenger.showSnackBar(SnackBar(content: Text(done)));
+      messenger.success(done);
       if (router.canPop()) {
         router.pop(true);
       } else {
@@ -155,12 +155,14 @@ class _MemberLogActivityPageState extends State<MemberLogActivityPage> {
       children: [
         Align(
           alignment: Alignment.centerLeft,
-          child: TextButton.icon(
+          child: FFButton(
+            label: context.tr('activity.title'),
             onPressed: () => context.canPop()
                 ? context.pop()
                 : context.go(AppRoutes.memberActivity),
-            icon: const Icon(Icons.arrow_back, size: 18),
-            label: Text(context.tr('activity.title')),
+            variant: FFButtonVariant.ghost,
+            size: FFButtonSize.sm,
+            icon: Icons.arrow_back,
           ),
         ),
         FFPageHeader(title: context.tr('logActivity.title')),
@@ -193,20 +195,22 @@ class _MemberLogActivityPageState extends State<MemberLogActivityPage> {
         Row(
           children: [
             Expanded(
-              child: OutlinedButton.icon(
+              child: FFButton(
                 key: const Key('log-date'),
+                label: dateLabel,
                 onPressed: _pickDay,
-                icon: const Icon(Icons.event_outlined, size: 18),
-                label: Text(dateLabel),
+                variant: FFButtonVariant.secondary,
+                icon: Icons.event_outlined,
               ),
             ),
             const SizedBox(width: FFTokens.spacingSm),
             Expanded(
-              child: OutlinedButton.icon(
+              child: FFButton(
                 key: const Key('log-time'),
+                label: _time.format(context),
                 onPressed: _pickTime,
-                icon: const Icon(Icons.schedule, size: 18),
-                label: Text(_time.format(context)),
+                variant: FFButtonVariant.secondary,
+                icon: Icons.schedule,
               ),
             ),
           ],
@@ -332,16 +336,11 @@ class _MemberLogActivityPageState extends State<MemberLogActivityPage> {
         const SizedBox(height: FFTokens.spacingLg),
         SizedBox(
           width: double.infinity,
-          child: FilledButton(
+          child: FFButton(
             key: const Key('log-save'),
+            label: context.tr('logActivity.save'),
             onPressed: _saving ? null : _save,
-            child: _saving
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Text(context.tr('logActivity.save')),
+            loading: _saving,
           ),
         ),
       ],
@@ -358,25 +357,23 @@ class _MemberLogActivityPageState extends State<MemberLogActivityPage> {
     bool digits = false,
     bool decimal = false,
     int lines = 1,
-  }) => TextField(
+  }) => FFTextField(
     key: Key(key),
     controller: controller,
-    maxLines: lines,
+    label: label,
+    hint: hint,
+    errorText: error,
+    suffixText: suffix,
     keyboardType: digits
         ? TextInputType.number
         : decimal
         ? const TextInputType.numberWithOptions(decimal: true)
         : TextInputType.text,
+    maxLines: lines,
     inputFormatters: [
       if (digits) FilteringTextInputFormatter.digitsOnly,
       if (decimal) FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
     ],
-    decoration: InputDecoration(
-      labelText: label,
-      hintText: hint,
-      suffixText: suffix,
-      errorText: error,
-    ),
   );
 }
 

@@ -81,16 +81,11 @@ class _FormScaffold extends StatelessWidget {
     ),
     bottomNavigationBar: SafeArea(
       minimum: const EdgeInsets.all(FFTokens.spacingLg),
-      child: FilledButton(
+      child: FFButton(
         key: const Key('kyc-form-save'),
+        label: context.tr('kyc.save'),
         onPressed: busy ? null : onSave,
-        child: busy
-            ? const SizedBox(
-                height: 18,
-                width: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : Text(context.tr('kyc.save')),
+        loading: busy,
       ),
     ),
   );
@@ -108,20 +103,17 @@ Widget _text(
   String? Function(String)? check,
 }) => Padding(
   padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
-  child: TextFormField(
+  child: FFTextField(
     key: Key('kyc-field-$key'),
     controller: c,
-    keyboardType: keyboard,
-    decoration: InputDecoration(
-      labelText: context.tr('kyc.field.$key') + (required ? ' *' : ''),
-      helperText: hintKey == null ? null : context.tr(hintKey),
-      border: const OutlineInputBorder(),
-    ),
+    label: context.tr('kyc.field.$key') + (required ? ' *' : ''),
+    helperText: hintKey == null ? null : context.tr(hintKey),
     validator: (v) {
       final value = v ?? '';
       if (required && value.trim().isEmpty) return context.tr('kyc.required');
       return check?.call(value);
     },
+    keyboardType: keyboard,
   ),
 );
 
@@ -699,15 +691,12 @@ class _VendorKycProfilePageState extends State<VendorKycProfilePage> {
     String? Function(String)? check,
   }) => Padding(
     padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
-    child: TextFormField(
+    child: FFTextField(
       key: Key('kyc-vendor-$key'),
       controller: c,
-      keyboardType: keyboard,
-      decoration: InputDecoration(
-        labelText: label,
-        border: const OutlineInputBorder(),
-      ),
+      label: label,
       validator: check == null ? null : (v) => check(v ?? ''),
+      keyboardType: keyboard,
     ),
   );
 
@@ -719,7 +708,7 @@ class _VendorKycProfilePageState extends State<VendorKycProfilePage> {
       busy: _busy || _loading,
       onSave: _save,
       children: _loading
-          ? [const Center(child: CircularProgressIndicator())]
+          ? [const Center(child: FFSpinner(size: 32))]
           : [
               Text(context.tr('kyc.vendorProfile.hint')),
               _gap(),
@@ -1010,29 +999,32 @@ class _DocumentPageState extends State<DocumentPage> {
                 spacing: FFTokens.spacingSm,
                 runSpacing: FFTokens.spacingSm,
                 children: [
-                  OutlinedButton.icon(
+                  FFButton(
                     key: const Key('kyc-doc-camera'),
+                    label: context.tr('photo.camera'),
                     onPressed: _busy
                         ? null
                         : () => _upload(DocumentSource.camera),
-                    icon: const Icon(Icons.photo_camera_outlined),
-                    label: Text(context.tr('photo.camera')),
+                    variant: FFButtonVariant.secondary,
+                    icon: Icons.photo_camera_outlined,
                   ),
-                  OutlinedButton.icon(
+                  FFButton(
                     key: const Key('kyc-doc-gallery'),
+                    label: context.tr('photo.gallery'),
                     onPressed: _busy
                         ? null
                         : () => _upload(DocumentSource.gallery),
-                    icon: const Icon(Icons.photo_library_outlined),
-                    label: Text(context.tr('photo.gallery')),
+                    variant: FFButtonVariant.secondary,
+                    icon: Icons.photo_library_outlined,
                   ),
-                  OutlinedButton.icon(
+                  FFButton(
                     key: const Key('kyc-doc-pdf'),
+                    label: context.tr('kyc.doc.choosePdf'),
                     onPressed: _busy
                         ? null
                         : () => _upload(DocumentSource.file),
-                    icon: const Icon(Icons.picture_as_pdf_outlined),
-                    label: Text(context.tr('kyc.doc.choosePdf')),
+                    variant: FFButtonVariant.secondary,
+                    icon: Icons.picture_as_pdf_outlined,
                   ),
                 ],
               ),
@@ -1084,15 +1076,7 @@ class _DocumentPageState extends State<DocumentPage> {
       builder: (context, snap) {
         if (snap.hasError) return icon(Icons.image_outlined);
         if (!snap.hasData) {
-          return frame(
-            const Center(
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            ),
-          );
+          return frame(const Center(child: FFSpinner(size: 20)));
         }
         return picture(snap.data!);
       },
@@ -1239,11 +1223,11 @@ class _PayoutAccountsPageState extends State<PayoutAccountsPage> {
     ),
     bottomNavigationBar: SafeArea(
       minimum: const EdgeInsets.all(FFTokens.spacingLg),
-      child: FilledButton.icon(
+      child: FFButton(
         key: const Key('kyc-account-add'),
+        label: context.tr('kyc.accounts.add'),
         onPressed: _busy ? null : _add,
-        icon: const Icon(Icons.add),
-        label: Text(context.tr('kyc.accounts.add')),
+        icon: Icons.add,
       ),
     ),
   );
@@ -1456,7 +1440,7 @@ class _AgreementPageState extends State<AgreementPage> {
       body: a == null
           ? Center(
               child: _loadError == null
-                  ? const CircularProgressIndicator()
+                  ? FFSpinner(size: 32)
                   : Padding(
                       padding: const EdgeInsets.all(FFTokens.spacingLg),
                       child: Text(context.tr('kyc.agreement.loadFailed')),
@@ -1516,16 +1500,11 @@ class _AgreementPageState extends State<AgreementPage> {
           ? null
           : SafeArea(
               minimum: const EdgeInsets.all(FFTokens.spacingLg),
-              child: FilledButton(
+              child: FFButton(
                 key: const Key('kyc-agreement-accept'),
+                label: context.tr('kyc.agreement.accept'),
                 onPressed: _busy || !_agreed ? null : _accept,
-                child: _busy
-                    ? const SizedBox(
-                        height: 18,
-                        width: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Text(context.tr('kyc.agreement.accept')),
+                loading: _busy,
               ),
             ),
     );

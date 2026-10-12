@@ -192,11 +192,7 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
             key: const Key('trainerFormSave'),
             onPressed: _busy ? null : _save,
             child: _busy
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
+                ? FFSpinner(size: 18)
                 : Text(context.tr('member.save')),
           ),
         ],
@@ -401,11 +397,12 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
                   ),
                 );
               }),
-              OutlinedButton.icon(
+              FFButton(
                 key: const Key('trainer-availability-add'),
+                label: context.tr('trainer.addAvailability'),
                 onPressed: _addAvailability,
-                icon: const Icon(Icons.add),
-                label: Text(context.tr('trainer.addAvailability')),
+                variant: FFButtonVariant.secondary,
+                icon: Icons.add,
               ),
             ],
           ),
@@ -424,20 +421,16 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
+            FFTextField(
               key: const Key('trainer-availability-day'),
               controller: day,
-              decoration: InputDecoration(
-                labelText: dialogContext.tr('trainer.availabilityDay'),
-              ),
+              label: dialogContext.tr('trainer.availabilityDay'),
             ),
-            TextField(
+            FFTextField(
               key: const Key('trainer-availability-slots'),
               controller: slots,
-              decoration: InputDecoration(
-                labelText: dialogContext.tr('trainer.availabilitySlots'),
-                hintText: '09:00, 10:00',
-              ),
+              label: dialogContext.tr('trainer.availabilitySlots'),
+              hint: '09:00, 10:00',
             ),
           ],
         ),

@@ -425,11 +425,7 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
                   elevation: 0,
                 ),
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(context.tr('owner.reportsComingSoon')),
-                    ),
-                  );
+                  FFSnack.info(context, context.tr('owner.reportsComingSoon'));
                 },
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -1281,18 +1277,10 @@ class _DateFilterSheetState extends State<_DateFilterSheet> {
                     ),
                   ),
                   const SizedBox(height: FFTokens.spacingMd),
-                  FilledButton(
+                  FFButton(
+                    label: context.tr('owner.applyFilter'),
                     onPressed: _applying ? null : _apply,
-                    child: _applying
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : Text(context.tr('owner.applyFilter')),
+                    loading: _applying,
                   ),
                 ],
               ),

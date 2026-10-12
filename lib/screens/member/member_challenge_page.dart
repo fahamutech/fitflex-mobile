@@ -39,6 +39,7 @@ class _MemberChallengePageState extends State<MemberChallengePage> {
     final data = MemberDataScope.of(context);
     final shell = context.findAncestorStateOfType<MemberShellState>();
     final messenger = ScaffoldMessenger.of(context);
+    final messengerSnack = FFSnack.of(context);
     final done = context.tr(
       c.joined ? 'challenge.leftToast' : 'challenge.joinedToast',
     );
@@ -83,7 +84,7 @@ class _MemberChallengePageState extends State<MemberChallengePage> {
           ],
         );
       }
-      messenger.showSnackBar(SnackBar(content: Text(done)));
+      messengerSnack.success(done);
     } on ApiException catch (e) {
       // Paused while it was on screen: say so, and let the list catch up.
       final paused = e.code == 'challenge_paused';
@@ -92,7 +93,7 @@ class _MemberChallengePageState extends State<MemberChallengePage> {
       );
       if (paused) await shell?.refreshChallenges();
     } catch (_) {
-      messenger.showSnackBar(SnackBar(content: Text(failed)));
+      messengerSnack.error(failed);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -130,10 +131,12 @@ class _MemberChallengePageState extends State<MemberChallengePage> {
         .firstOrNull;
     final back = Align(
       alignment: Alignment.centerLeft,
-      child: TextButton.icon(
+      child: FFButton(
+        label: context.tr('activity.title'),
         onPressed: () => context.go(AppRoutes.memberActivity),
-        icon: const Icon(Icons.arrow_back, size: 18),
-        label: Text(context.tr('activity.title')),
+        variant: FFButtonVariant.ghost,
+        size: FFButtonSize.sm,
+        icon: Icons.arrow_back,
       ),
     );
     if (c == null) {
@@ -142,7 +145,7 @@ class _MemberChallengePageState extends State<MemberChallengePage> {
         children: [
           back,
           if (!data.challengesLoaded)
-            const Center(child: CircularProgressIndicator())
+            const Center(child: FFSpinner(size: 32))
           else
             FFEmptyState(title: context.tr('challenge.notFound')),
         ],
@@ -259,15 +262,16 @@ class _MemberChallengePageState extends State<MemberChallengePage> {
           SizedBox(
             width: double.infinity,
             child: c.joined
-                ? OutlinedButton(
+                ? FFButton(
                     key: const Key('challenge-leave'),
+                    label: context.tr('challenge.leave'),
                     onPressed: _busy ? null : () => _toggle(c),
-                    child: Text(context.tr('challenge.leave')),
+                    variant: FFButtonVariant.secondary,
                   )
-                : FilledButton(
+                : FFButton(
                     key: const Key('challenge-join'),
+                    label: context.tr('challenge.join'),
                     onPressed: _busy ? null : () => _toggle(c),
-                    child: Text(context.tr('challenge.join')),
                   ),
           ),
       ],

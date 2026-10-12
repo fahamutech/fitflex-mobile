@@ -103,16 +103,17 @@ class FriendInvitationActions extends StatelessWidget {
   final InboxController inbox;
 
   Future<void> _answer(BuildContext context, bool approve) async {
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final t = context.tr;
-    final done = await inbox.answerFriendInvitation(message.id, approve: approve);
+    final done = await inbox.answerFriendInvitation(
+      message.id,
+      approve: approve,
+    );
     if (done == null) {
-      messenger.showSnackBar(SnackBar(content: Text(t('friendInvite.answerFailed'))));
+      messenger.error(t('friendInvite.answerFailed'));
       return;
     }
-    messenger.showSnackBar(
-      SnackBar(content: Text(t('friendInvite.answered.$done'))),
-    );
+    messenger.success(t('friendInvite.answered.$done'));
   }
 
   @override
@@ -135,16 +136,11 @@ class FriendInvitationActions extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: FilledButton(
+            child: FFButton(
               key: Key('invite-approve-${message.id}'),
+              label: context.tr('friendInvite.approve'),
               onPressed: busy ? null : () => _answer(context, true),
-              child: busy
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Text(context.tr('friendInvite.approve')),
+              loading: busy,
             ),
           ),
           const SizedBox(width: FFTokens.spacingSm),
@@ -202,7 +198,8 @@ class _FriendInvitePageState extends State<FriendInvitePage> {
         final res = await scope.api.claimFriendInvitation(widget.token);
         await scope.inbox?.load();
         if (!mounted) return;
-        _status = ((res['invitation'] as Map?)?['status'] ?? 'pending').toString();
+        _status = ((res['invitation'] as Map?)?['status'] ?? 'pending')
+            .toString();
         if (_status == 'pending') {
           context.go(AppRoutes.inbox);
           return;
@@ -245,7 +242,7 @@ class _FriendInvitePageState extends State<FriendInvitePage> {
       body = FFEmptyState(
         title: t('friendInvite.loadFailed'),
         body: errorMessage(FFLocaleScope.of(context), _error!),
-        action: FilledButton(onPressed: _load, child: Text(t('comms.retry'))),
+        action: FFButton(label: t('comms.retry'), onPressed: _load),
       );
     } else if (_mismatch != null) {
       body = FFEmptyState(
@@ -278,12 +275,11 @@ class _FriendInvitePageState extends State<FriendInvitePage> {
               style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: FFTokens.spacingLg),
-            FilledButton(
+            FFButton(
               key: const Key('invite-continue'),
-              onPressed: () => context.go(
-                signedIn ? AppRoutes.inbox : AppRoutes.language,
-              ),
-              child: Text(t('friendInvite.continue')),
+              label: t('friendInvite.continue'),
+              onPressed: () =>
+                  context.go(signedIn ? AppRoutes.inbox : AppRoutes.language),
             ),
           ],
         ),

@@ -188,24 +188,14 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
   }
 
   Future<void> _signOut() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(context.tr('home.signout')),
-        content: Text(context.tr('confirm.signout')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(context.tr('member.cancel')),
-          ),
-          FilledButton(
-            key: const Key('trainer-confirm-sign-out'),
-            style: FilledButton.styleFrom(backgroundColor: FFTokens.error500),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(context.tr('home.signout')),
-          ),
-        ],
-      ),
+    final confirmed = await showFFConfirmDialog(
+      context,
+      title: context.tr('home.signout'),
+      message: context.tr('confirm.signout'),
+      cancelLabel: context.tr('member.cancel'),
+      confirmLabel: context.tr('home.signout'),
+      destructive: true,
+      confirmKey: const Key('trainer-confirm-sign-out'),
     );
     if (confirmed != true || !mounted) return;
     await AppScope.of(context).auth.signOut();
@@ -231,9 +221,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
     if (!mounted) return;
     final trainer = _myProfile;
     if (trainer == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('trainer.profileNotLoaded'))),
-      );
+      FFSnack.info(context, context.tr('trainer.profileNotLoaded'));
       return;
     }
     final payload = await openTrainerForm(
@@ -257,9 +245,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
               .toList();
         });
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('member.profileUpdated'))),
-      );
+      FFSnack.success(context, context.tr('member.profileUpdated'));
       await _syncAccount(payload);
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -487,11 +473,13 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
               ],
             ),
             if (trainer != null && socials.isEmpty)
-              TextButton.icon(
+              FFButton(
                 key: const Key('trainer-add-socials'),
+                label: context.tr('social.addPrompt'),
                 onPressed: _editProfessionalProfile,
-                icon: const Icon(Icons.add_link, size: 18),
-                label: Text(context.tr('social.addPrompt')),
+                variant: FFButtonVariant.ghost,
+                size: FFButtonSize.sm,
+                icon: Icons.add_link,
               ),
           ],
         ),
@@ -612,11 +600,12 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
     const ChangePinTile(),
     const PersonaSwitcherTile(),
     const SizedBox(height: 16),
-    OutlinedButton.icon(
+    FFButton(
       key: const Key('trainer-sign-out'),
+      label: context.tr('home.signout'),
       onPressed: _signOut,
-      icon: const Icon(Icons.logout),
-      label: Text(context.tr('home.signout')),
+      variant: FFButtonVariant.secondary,
+      icon: Icons.logout,
     ),
   ]);
 

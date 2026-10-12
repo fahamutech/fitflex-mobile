@@ -294,7 +294,7 @@ class _PlanWorkoutSheetState extends State<_PlanWorkoutSheet> {
             if (snap.connectionState != ConnectionState.done) {
               return const SizedBox(
                 height: 200,
-                child: Center(child: CircularProgressIndicator()),
+                child: Center(child: FFSpinner(size: 32)),
               );
             }
             final templates = snap.data ?? const <WorkoutTemplate>[];
@@ -366,10 +366,10 @@ class _PlanWorkoutSheetState extends State<_PlanWorkoutSheet> {
                 const SizedBox(height: FFTokens.spacingMd),
                 SizedBox(
                   width: double.infinity,
-                  child: FilledButton(
+                  child: FFButton(
                     key: const Key('workout-plan-save'),
+                    label: context.tr('workout.planSave'),
                     onPressed: _selected == null || _saving ? null : _plan,
-                    child: Text(context.tr('workout.planSave')),
                   ),
                 ),
               ],

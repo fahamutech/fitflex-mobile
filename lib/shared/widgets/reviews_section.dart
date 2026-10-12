@@ -96,38 +96,26 @@ class _ReviewsSectionState extends State<ReviewsSection> {
   }
 
   Future<void> _delete() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(ctx.tr('reviews.deleteConfirmTitle')),
-        content: Text(ctx.tr('reviews.deleteConfirmBody')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(ctx.tr('reviews.cancel')),
-          ),
-          FilledButton(
-            key: const Key('review-delete-confirm'),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(ctx.tr('reviews.delete')),
-          ),
-        ],
-      ),
+    final confirmed = await showFFConfirmDialog(
+      context,
+      title: context.tr('reviews.deleteConfirmTitle'),
+      message: context.tr('reviews.deleteConfirmBody'),
+      cancelLabel: context.tr('reviews.cancel'),
+      confirmLabel: context.tr('reviews.delete'),
+      confirmKey: const Key('review-delete-confirm'),
     );
     if (confirmed != true || !mounted) return;
     final locale = FFLocaleScope.of(context);
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     try {
       final result = await AppScope.of(
         context,
       ).api.deleteMyReview(widget.subject, widget.subjectId);
       widget.onRatingChanged?.call(result.average, result.count);
-      messenger.showSnackBar(
-        SnackBar(content: Text(locale.t('reviews.deleted'))),
-      );
+      messenger.success(locale.t('reviews.deleted'));
       if (mounted) _load();
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(errorMessage(locale, e))));
+      messenger.error(errorMessage(locale, e));
     }
   }
 
@@ -158,11 +146,11 @@ class _ReviewsSectionState extends State<ReviewsSection> {
           if (mine.hasReview)
             _MyReviewCard(mine: mine, onEdit: _write, onDelete: _delete)
           else if (mine.eligible)
-            FilledButton.icon(
+            FFButton(
               key: const Key('review-write'),
+              label: context.tr('reviews.write'),
               onPressed: _write,
-              icon: const Icon(Icons.rate_review_outlined, size: 18),
-              label: Text(context.tr('reviews.write')),
+              icon: Icons.rate_review_outlined,
             )
           else
             Text(
@@ -307,15 +295,19 @@ class _MyReviewCard extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            TextButton(
+            FFButton(
               key: const Key('review-edit'),
+              label: context.tr('reviews.edit'),
               onPressed: onEdit,
-              child: Text(context.tr('reviews.edit')),
+              variant: FFButtonVariant.ghost,
+              size: FFButtonSize.sm,
             ),
-            TextButton(
+            FFButton(
               key: const Key('review-delete'),
+              label: context.tr('reviews.delete'),
               onPressed: onDelete,
-              child: Text(context.tr('reviews.delete')),
+              variant: FFButtonVariant.ghost,
+              size: FFButtonSize.sm,
             ),
           ],
         ),
@@ -556,14 +548,11 @@ class _ReviewSheetState extends State<ReviewSheet> {
           FFAlert(message: _submitError!, tone: FFAlertTone.error),
         ],
         const SizedBox(height: 16),
-        FilledButton(
+        FFButton(
           key: const Key('review-submit'),
+          label: context.tr(_editing ? 'reviews.update' : 'reviews.submit'),
           onPressed: _rating == 0 || _busy ? null : _submit,
-          child: _busy
-              ? const FFSpinner(size: 18)
-              : Text(
-                  context.tr(_editing ? 'reviews.update' : 'reviews.submit'),
-                ),
+          loading: _busy,
         ),
       ],
     ),

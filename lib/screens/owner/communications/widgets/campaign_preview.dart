@@ -92,7 +92,7 @@ class InAppMessageCard extends StatelessWidget {
           Text(message.body, style: theme.textTheme.bodyMedium),
           if (message.ctaLabel != null && message.ctaLabel!.isNotEmpty) ...[
             const SizedBox(height: FFTokens.spacingSm),
-            FilledButton(onPressed: null, child: Text(message.ctaLabel!)),
+            FFButton(label: message.ctaLabel!, onPressed: null),
           ],
         ],
       ),

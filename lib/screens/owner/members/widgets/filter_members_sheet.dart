@@ -8,6 +8,7 @@ import '../../../../shared/i18n.dart';
 import '../data/member_models.dart';
 import '../member_controller.dart';
 import 'member_presentation.dart';
+import '../../../../shared/components/components.dart';
 
 class MemberFilterResult {
   final MemberTypeFilter type;
@@ -109,15 +110,16 @@ class _FilterMembersSheetState extends State<_FilterMembersSheet> {
               ],
             ),
             const SizedBox(height: FFTokens.spacingXl),
-            FilledButton(
+            FFButton(
+              label: context.tr('members.applyFilters'),
               onPressed: () => Navigator.pop(
                 context,
                 MemberFilterResult(type: _type, status: _status),
               ),
-              child: Text(context.tr('members.applyFilters')),
             ),
             const SizedBox(height: FFTokens.spacingSm),
-            TextButton(
+            FFButton(
+              label: context.tr('members.clearFilters'),
               onPressed: () => Navigator.pop(
                 context,
                 const MemberFilterResult(
@@ -125,7 +127,8 @@ class _FilterMembersSheetState extends State<_FilterMembersSheet> {
                   status: null,
                 ),
               ),
-              child: Text(context.tr('members.clearFilters')),
+              variant: FFButtonVariant.ghost,
+              size: FFButtonSize.sm,
             ),
           ],
         ),

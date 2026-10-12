@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../design_tokens.dart';
 import '../i18n.dart';
+import '../components/components.dart';
 
 /// Longest message the backend accepts (ENQUIRY_TEXT_MAX).
 const enquiryTextMax = 1000;
@@ -209,13 +210,7 @@ class _EnquiryReplyBoxState extends State<EnquiryReplyBox> {
               key: const Key('enquiry-send'),
               tooltip: context.tr('member.send'),
               onPressed: _busy ? null : _send,
-              icon: _busy
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.send),
+              icon: _busy ? FFSpinner(size: 18) : const Icon(Icons.send),
             ),
           ],
         ),

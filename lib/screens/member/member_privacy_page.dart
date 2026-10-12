@@ -111,7 +111,7 @@ class _MemberActivitySharingPageState extends State<MemberActivitySharingPage> {
   Future<void> _apply(TrainerConnection c, TrainerPermissions next) async {
     final api = AppScope.of(context).api;
     final data = MemberDataScope.of(context);
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final failed = context.tr('sharing.failed');
     setState(() {
       _pending[c.id] = next;
@@ -129,7 +129,7 @@ class _MemberActivitySharingPageState extends State<MemberActivitySharingPage> {
       );
       if (mounted) setState(() => _saved.add(c.id));
     } catch (_) {
-      messenger.showSnackBar(SnackBar(content: Text(failed)));
+      messenger.error(failed);
     } finally {
       if (mounted) {
         setState(() {
@@ -141,23 +141,13 @@ class _MemberActivitySharingPageState extends State<MemberActivitySharingPage> {
   }
 
   Future<bool> _confirm(String title, String body, String action) async =>
-      await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(title),
-          content: Text(body),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(ctx.tr('workout.keepGoing')),
-            ),
-            FilledButton(
-              key: const Key('sharing-confirm'),
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(action),
-            ),
-          ],
-        ),
+      await showFFConfirmDialog(
+        context,
+        title: title,
+        message: body,
+        cancelLabel: context.tr('workout.keepGoing'),
+        confirmLabel: action,
+        confirmKey: const Key('sharing-confirm'),
       ) ==
       true;
 
@@ -181,14 +171,14 @@ class _MemberActivitySharingPageState extends State<MemberActivitySharingPage> {
     );
     if (!ok || !mounted) return;
     final api = AppScope.of(context).api;
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final failed = context.tr('sharing.failed');
     setState(() => _saving.add(c.id));
     try {
       await api.endTrainerConnection(c.id);
       await _shell?.refreshConnections();
     } catch (_) {
-      messenger.showSnackBar(SnackBar(content: Text(failed)));
+      messenger.error(failed);
     } finally {
       if (mounted) setState(() => _saving.remove(c.id));
     }
@@ -216,9 +206,10 @@ class _MemberActivitySharingPageState extends State<MemberActivitySharingPage> {
           FFEmptyState(
             title: context.tr('sharing.noTrainers'),
             body: context.tr('connect.noneBody'),
-            action: OutlinedButton(
+            action: FFButton(
+              label: context.tr('member.findTrainer'),
               onPressed: () => context.go(AppRoutes.memberTrainers),
-              child: Text(context.tr('member.findTrainer')),
+              variant: FFButtonVariant.secondary,
             ),
           )
         else
@@ -344,14 +335,14 @@ class _MemberActivitySharingPageState extends State<MemberActivitySharingPage> {
           ),
           Align(
             alignment: Alignment.centerLeft,
-            child: TextButton(
+            child: FFButton(
               key: Key('sharing-activity-expand-${c.id}'),
+              label: context.tr(expanded ? 'sharing.fewer' : 'sharing.choose'),
               onPressed: () => setState(
                 () => expanded ? _expanded.remove(c.id) : _expanded.add(c.id),
               ),
-              child: Text(
-                context.tr(expanded ? 'sharing.fewer' : 'sharing.choose'),
-              ),
+              variant: FFButtonVariant.ghost,
+              size: FFButtonSize.sm,
             ),
           ),
           if (expanded)
@@ -383,10 +374,11 @@ class _MemberActivitySharingPageState extends State<MemberActivitySharingPage> {
             spacing: FFTokens.spacingSm,
             children: [
               if (!perms.isEmpty)
-                OutlinedButton(
+                FFButton(
                   key: Key('sharing-stop-${c.id}'),
+                  label: context.tr('sharing.stop'),
                   onPressed: busy ? null : () => _stopAll(c, name),
-                  child: Text(context.tr('sharing.stop')),
+                  variant: FFButtonVariant.secondary,
                 ),
               TextButton(
                 key: Key('sharing-disconnect-${c.id}'),
@@ -419,10 +411,12 @@ class _BackRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Align(
     alignment: Alignment.centerLeft,
-    child: TextButton.icon(
+    child: FFButton(
+      label: label,
       onPressed: () => context.go(to),
-      icon: const Icon(Icons.arrow_back, size: 18),
-      label: Text(label),
+      variant: FFButtonVariant.ghost,
+      size: FFButtonSize.sm,
+      icon: Icons.arrow_back,
     ),
   );
 }
@@ -443,7 +437,7 @@ class _GymSharingSectionState extends State<GymSharingSection> {
   Future<void> _set(GymSharing g, GymPermission p, bool on) async {
     final api = AppScope.of(context).api;
     final data = MemberDataScope.of(context);
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final failed = context.tr('sharing.failed');
     final next = {...g.permissions};
     on ? next.add(p) : next.remove(p);
@@ -461,7 +455,7 @@ class _GymSharingSectionState extends State<GymSharingSection> {
       );
       if (mounted) setState(() => _saved.add(g.gym.id));
     } catch (_) {
-      messenger.showSnackBar(SnackBar(content: Text(failed)));
+      messenger.error(failed);
     } finally {
       if (mounted) setState(() => _pending.remove(g.gym.id));
     }

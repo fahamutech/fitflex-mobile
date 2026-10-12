@@ -41,11 +41,12 @@ class MemberQrTab extends StatelessWidget {
           if (data.canCheckIn) ...[
             const SizedBox(height: 12),
             // Tech Brief §5: self check-in by scanning the gym's entrance QR.
-            OutlinedButton.icon(
+            FFButton(
               key: const Key('member-scan-gym-qr'),
-              icon: const Icon(Icons.qr_code_scanner),
-              label: Text(context.tr('member.scanGymQr')),
+              label: context.tr('member.scanGymQr'),
               onPressed: () => _scanGym(context, data),
+              variant: FFButtonVariant.secondary,
+              icon: Icons.qr_code_scanner,
             ),
           ],
           const SizedBox(height: 12),
@@ -183,10 +184,10 @@ class _QrLockedCard extends StatelessWidget {
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
-              child: FilledButton.icon(
+              child: FFButton(
+                label: context.tr('member.subscribe'),
                 onPressed: () => context.go(AppRoutes.memberPasses),
-                icon: const Icon(Icons.card_membership, size: 18),
-                label: Text(context.tr('member.subscribe')),
+                icon: Icons.card_membership,
               ),
             ),
           ],

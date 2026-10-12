@@ -133,10 +133,7 @@ class _RenewMemberSheetState extends State<_RenewMemberSheet> {
                 keyboardType: TextInputType.number,
               ),
               const SizedBox(height: FFTokens.spacingLg),
-              FilledButton(
-                onPressed: _submit,
-                child: Text(context.tr('members.renew')),
-              ),
+              FFButton(label: context.tr('members.renew'), onPressed: _submit),
             ],
           ),
         ),

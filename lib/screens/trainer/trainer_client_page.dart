@@ -301,43 +301,32 @@ class _TrainerClientPageState extends State<TrainerClientPage> {
       ),
     );
     if (assigned == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(context.tr('assign.done').replaceAll('{name}', _name)),
-        ),
+      FFSnack.success(
+        context,
+        context.tr('assign.done').replaceAll('{name}', _name),
       );
       await _load();
     }
   }
 
   Future<void> _cancel(ClientWorkout w) async {
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final failed = context.tr('owner.errorGeneric');
     try {
       await AppScope.of(context).api.trainerCancelWorkout(w.id);
       await _load();
     } catch (_) {
-      messenger.showSnackBar(SnackBar(content: Text(failed)));
+      messenger.error(failed);
     }
   }
 
   Future<void> _end() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(ctx.tr('clients.endTitle')),
-        content: Text(ctx.tr('clients.endBody').replaceAll('{name}', _name)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(ctx.tr('workout.keepGoing')),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(ctx.tr('connect.end')),
-          ),
-        ],
-      ),
+    final ok = await showFFConfirmDialog(
+      context,
+      title: context.tr('clients.endTitle'),
+      message: context.tr('clients.endBody').replaceAll('{name}', _name),
+      cancelLabel: context.tr('workout.keepGoing'),
+      confirmLabel: context.tr('connect.end'),
     );
     if (ok != true || !mounted) return;
     final navigator = Navigator.of(context);
@@ -346,9 +335,7 @@ class _TrainerClientPageState extends State<TrainerClientPage> {
       navigator.pop();
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.tr('owner.errorGeneric'))),
-        );
+        FFSnack.error(context, context.tr('owner.errorGeneric'));
       }
     }
   }
@@ -379,7 +366,7 @@ class _TrainerClientPageState extends State<TrainerClientPage> {
       body: _failed
           ? Center(child: FFEmptyState(title: context.tr('owner.errorGeneric')))
           : _o == null
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: FFSpinner(size: 32))
           : RefreshIndicator(onRefresh: _load, child: _body(context, _o!)),
     );
   }
@@ -818,14 +805,16 @@ class _AssignWorkoutSheetState extends State<AssignWorkoutSheet> {
                   ),
                 ),
               ),
-            TextButton.icon(
+            FFButton(
               key: const Key('assign-new-plan'),
+              label: context.tr('plans.new'),
               onPressed: () async {
                 final plans = await widget.onNewPlan();
                 if (mounted) setState(() => _plans = plans);
               },
-              icon: const Icon(Icons.add, size: 18),
-              label: Text(context.tr('plans.new')),
+              variant: FFButtonVariant.ghost,
+              size: FFButtonSize.sm,
+              icon: Icons.add,
             ),
             const SizedBox(height: FFTokens.spacingSm),
             Text(
@@ -862,16 +851,14 @@ class _AssignWorkoutSheetState extends State<AssignWorkoutSheet> {
             const SizedBox(height: FFTokens.spacingMd),
             SizedBox(
               width: double.infinity,
-              child: FilledButton(
+              child: FFButton(
                 key: const Key('assign-save'),
+                label: context
+                    .tr(_dates.length > 1 ? 'assign.saveMany' : 'assign.save')
+                    .replaceAll('{n}', '${_dates.length}'),
                 onPressed: _planId == null || _dates.isEmpty || _busy
                     ? null
                     : _submit,
-                child: Text(
-                  context
-                      .tr(_dates.length > 1 ? 'assign.saveMany' : 'assign.save')
-                      .replaceAll('{n}', '${_dates.length}'),
-                ),
               ),
             ),
           ],

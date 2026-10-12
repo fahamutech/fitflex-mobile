@@ -134,11 +134,13 @@ class TrainerScheduleCardState extends State<TrainerScheduleCard> {
                 ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
               ),
             ),
-            TextButton.icon(
+            FFButton(
               key: const Key('trainer-edit-hours'),
+              label: context.tr('hours.edit'),
               onPressed: _loading ? null : _editHours,
-              icon: const Icon(Icons.edit_calendar_outlined, size: 18),
-              label: Text(context.tr('hours.edit')),
+              variant: FFButtonVariant.ghost,
+              size: FFButtonSize.sm,
+              icon: Icons.edit_calendar_outlined,
             ),
           ],
         ),
@@ -157,10 +159,10 @@ class TrainerScheduleCardState extends State<TrainerScheduleCard> {
               children: [
                 Text(context.tr('cal.noHours')),
                 const SizedBox(height: 8),
-                FilledButton(
+                FFButton(
                   key: const Key('trainer-set-hours'),
+                  label: context.tr('hours.setUp'),
                   onPressed: _editHours,
-                  child: Text(context.tr('hours.setUp')),
                 ),
               ],
             ),
@@ -260,16 +262,11 @@ class _WeeklyHoursEditorPageState extends State<WeeklyHoursEditorPage> {
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(FFTokens.spacingMd),
-          child: FilledButton(
+          child: FFButton(
             key: const Key('hours-save'),
+            label: context.tr('hours.save'),
             onPressed: _busy ? null : _save,
-            child: _busy
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Text(context.tr('hours.save')),
+            loading: _busy,
           ),
         ),
       ),

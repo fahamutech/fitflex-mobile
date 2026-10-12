@@ -111,7 +111,7 @@ class _ChallengeManagerPageState extends State<ChallengeManagerPage> {
       body: _failed
           ? Center(child: FFEmptyState(title: context.tr('owner.errorGeneric')))
           : items == null
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: FFSpinner(size: 32))
           : ListView(
               padding: const EdgeInsets.fromLTRB(
                 FFTokens.spacingLg,
@@ -237,28 +237,18 @@ class _ParticipantsPageState extends State<_ParticipantsPage> {
     bool leave = false,
   }) async {
     if (body != null) {
-      final ok = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(title ?? _c.name),
-          content: Text(body),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(ctx.tr('workout.keepGoing')),
-            ),
-            FilledButton(
-              key: Key('challenge-$action-confirm'),
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(confirm ?? title ?? ''),
-            ),
-          ],
-        ),
+      final ok = await showFFConfirmDialog(
+        context,
+        title: title ?? _c.name,
+        message: body,
+        cancelLabel: context.tr('workout.keepGoing'),
+        confirmLabel: confirm ?? title ?? '',
+        confirmKey: Key('challenge-$action-confirm'),
       );
       if (ok != true || !mounted) return;
     }
     final navigator = Navigator.of(context);
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final generic = context.tr('owner.errorGeneric');
     final tr = context.tr;
     setState(() => _busy = true);
@@ -273,11 +263,9 @@ class _ParticipantsPageState extends State<_ParticipantsPage> {
         _adopt(res);
       }
     } on ApiException catch (e) {
-      messenger.showSnackBar(
-        SnackBar(content: Text(challengeErrorText(tr, e, generic))),
-      );
+      messenger.error(challengeErrorText(tr, e, generic));
     } catch (_) {
-      messenger.showSnackBar(SnackBar(content: Text(generic)));
+      messenger.error(generic);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -392,7 +380,7 @@ class _ParticipantsPageState extends State<_ParticipantsPage> {
         ],
       ),
       body: rows == null
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: FFSpinner(size: 32))
           : ListView(
               padding: const EdgeInsets.all(FFTokens.spacingLg),
               children: [
@@ -723,28 +711,22 @@ class _ChallengeSheetState extends State<_ChallengeSheet> {
               ),
             ],
             const SizedBox(height: FFTokens.spacingMd),
-            TextFormField(
+            FFTextField(
               key: const Key('challenge-name'),
               controller: _name,
-              maxLength: 80,
-              decoration: InputDecoration(
-                labelText: context.tr('challenge.name'),
-                border: const OutlineInputBorder(),
-              ),
+              label: context.tr('challenge.name'),
               validator: (v) => (v ?? '').trim().isEmpty
                   ? context.tr('plans.required')
                   : null,
+              maxLength: 80,
             ),
-            TextFormField(
+            FFTextField(
               key: const Key('challenge-description'),
               controller: _description,
-              maxLength: 500,
+              label: context.tr('plans.description'),
               maxLines: 2,
               minLines: 1,
-              decoration: InputDecoration(
-                labelText: context.tr('plans.description'),
-                border: const OutlineInputBorder(),
-              ),
+              maxLength: 500,
             ),
             Text(
               context.tr('challenge.type'),
@@ -770,45 +752,38 @@ class _ChallengeSheetState extends State<_ChallengeSheet> {
               ],
             ),
             const SizedBox(height: FFTokens.spacingMd),
-            TextFormField(
+            FFTextField(
               key: const Key('challenge-target'),
               controller: _target,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-              ],
-              decoration: InputDecoration(
-                labelText: context.tr('challenge.goal'),
-                suffixText: challengeUnit(context, _type),
-                border: const OutlineInputBorder(),
-              ),
+              label: context.tr('challenge.goal'),
+              suffixText: challengeUnit(context, _type),
               validator: (v) {
                 final n = num.tryParse(v ?? '');
                 return n == null || n <= 0
                     ? context.tr('plans.invalidNumber')
                     : null;
               },
-            ),
-            const SizedBox(height: FFTokens.spacingSm),
-            OutlinedButton.icon(
-              key: const Key('challenge-dates'),
-              onPressed: _pickDates,
-              icon: const Icon(Icons.date_range),
-              label: Text(
-                '${fmt.format(_range.start)} – ${fmt.format(_range.end)}',
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
               ),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+              ],
             ),
             const SizedBox(height: FFTokens.spacingSm),
-            TextFormField(
+            FFButton(
+              key: const Key('challenge-dates'),
+              label: '${fmt.format(_range.start)} – ${fmt.format(_range.end)}',
+              onPressed: _pickDates,
+              variant: FFButtonVariant.secondary,
+              icon: Icons.date_range,
+            ),
+            const SizedBox(height: FFTokens.spacingSm),
+            FFTextField(
               key: const Key('challenge-rewards'),
               controller: _rewards,
-              decoration: InputDecoration(
-                labelText: context.tr('challenge.rewardsField'),
-                helperText: context.tr('challenge.rewardsHelp'),
-                border: const OutlineInputBorder(),
-              ),
+              label: context.tr('challenge.rewardsField'),
+              helperText: context.tr('challenge.rewardsHelp'),
             ),
             // Teams are set up when the challenge is created.
             if (_existing == null)
@@ -821,14 +796,11 @@ class _ChallengeSheetState extends State<_ChallengeSheet> {
                 subtitle: Text(context.tr('leaderboard.teamChallengeHint')),
               ),
             if (_teams)
-              TextFormField(
+              FFTextField(
                 key: const Key('challenge-team-names'),
                 controller: _teamNames,
-                decoration: InputDecoration(
-                  labelText: context.tr('leaderboard.teamNames'),
-                  helperText: context.tr('leaderboard.teamNamesHelp'),
-                  border: const OutlineInputBorder(),
-                ),
+                label: context.tr('leaderboard.teamNames'),
+                helperText: context.tr('leaderboard.teamNamesHelp'),
               ),
             SwitchListTile(
               key: const Key('challenge-public'),
@@ -842,22 +814,23 @@ class _ChallengeSheetState extends State<_ChallengeSheet> {
               Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
             const SizedBox(height: FFTokens.spacingSm),
             if (_existing == null) ...[
-              OutlinedButton(
+              FFButton(
                 key: const Key('challenge-save-draft'),
+                label: context.tr('challenge.saveDraft'),
                 onPressed: _busy ? null : () => _save(draft: true),
-                child: Text(context.tr('challenge.saveDraft')),
+                variant: FFButtonVariant.secondary,
               ),
               const SizedBox(height: FFTokens.spacingXs),
-              FilledButton(
+              FFButton(
                 key: const Key('challenge-create'),
+                label: context.tr('challenge.create'),
                 onPressed: _busy ? null : _save,
-                child: Text(context.tr('challenge.create')),
               ),
             ] else
-              FilledButton(
+              FFButton(
                 key: const Key('challenge-save'),
+                label: context.tr('challenge.saveChanges'),
                 onPressed: _busy ? null : _save,
-                child: Text(context.tr('challenge.saveChanges')),
               ),
           ],
         ),

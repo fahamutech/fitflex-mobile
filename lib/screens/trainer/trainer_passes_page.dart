@@ -53,9 +53,7 @@ class _TrainerPassesPageState extends State<TrainerPassesPage> {
     try {
       await AppScope.of(context).api.trainerCancelPass(pass['id'].toString());
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('trainerPass.cancelled'))),
-      );
+      FFSnack.info(context, context.tr('trainerPass.cancelled'));
       await _load();
     } catch (e) {
       if (!mounted) return;
@@ -92,15 +90,15 @@ class _TrainerPassesPageState extends State<TrainerPassesPage> {
               FFEmptyState(title: context.tr('trainerPass.none'))
             else ...[
               if (active.isNotEmpty) ...[
-                FilledButton.icon(
+                FFButton(
                   key: const Key('trainer-passes-show-qr'),
+                  label: context.tr('trainerPass.showQr'),
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
                       builder: (_) => const TrainerQrPage(),
                     ),
                   ),
-                  icon: const Icon(Icons.qr_code_2),
-                  label: Text(context.tr('trainerPass.showQr')),
+                  icon: Icons.qr_code_2,
                 ),
                 FFSectionTitle(context.tr('trainerPass.active')),
                 ...active.map((p) => _PassTile(pass: p)),
@@ -115,10 +113,12 @@ class _TrainerPassesPageState extends State<TrainerPassesPage> {
                 ...pending.map(
                   (p) => _PassTile(
                     pass: p,
-                    trailing: TextButton(
+                    trailing: FFButton(
                       key: Key('trainer-pass-cancel-${p['id']}'),
+                      label: context.tr('trainer.cancel'),
                       onPressed: _busyId == null ? () => _cancel(p) : null,
-                      child: Text(context.tr('trainer.cancel')),
+                      variant: FFButtonVariant.ghost,
+                      size: FFButtonSize.sm,
                     ),
                   ),
                 ),
@@ -296,20 +296,19 @@ class _TrainerQrPageState extends State<TrainerQrPage> {
           ),
           const SizedBox(height: 12),
           // No reception scanner? Scan the QR posted at the entrance instead.
-          OutlinedButton.icon(
+          FFButton(
             key: const Key('trainer-qr-scan-gym'),
+            label: context.tr('checkin.scanInstead'),
             onPressed: () async {
               final checkedIn = await Navigator.of(context).push<bool>(
                 MaterialPageRoute(builder: (_) => const MemberScanGymPage()),
               );
               if (checkedIn == true && context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(context.tr('checkin.done'))),
-                );
+                FFSnack.success(context, context.tr('checkin.done'));
               }
             },
-            icon: const Icon(Icons.qr_code_scanner),
-            label: Text(context.tr('checkin.scanInstead')),
+            variant: FFButtonVariant.secondary,
+            icon: Icons.qr_code_scanner,
           ),
         ],
       ),

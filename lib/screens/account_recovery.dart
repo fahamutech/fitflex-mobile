@@ -8,6 +8,7 @@ import '../shared/api_client.dart';
 import '../shared/design_tokens.dart';
 import '../shared/i18n.dart';
 import 'pin_flows.dart';
+import '../shared/components/components.dart';
 
 // Identity V2 · account recovery (member path): someone who lost every
 // verified number and email, and forgot the PIN, asks FitFlex to move the
@@ -212,12 +213,12 @@ class _AccountRecoveryScreenState extends State<AccountRecoveryScreen> {
     final List<Widget> children;
     if (_sentTo != null) {
       children = [
-        TextField(
+        FFTextField(
           key: const Key('recovery-name'),
           controller: _name,
+          label: context.tr('rec.name'),
           enabled: !_busy,
           textCapitalization: TextCapitalization.words,
-          decoration: InputDecoration(labelText: context.tr('rec.name')),
         ),
         const SizedBox(height: FFTokens.spacingMd),
         CodeStep(
@@ -233,27 +234,27 @@ class _AccountRecoveryScreenState extends State<AccountRecoveryScreen> {
       children = [
         Text(context.tr('rec.intro'), textAlign: TextAlign.center),
         const SizedBox(height: FFTokens.spacingMd),
-        TextField(
+        FFTextField(
           key: const Key('recovery-old'),
           controller: _old,
-          enabled: !_busy,
+          label: context.tr('rec.old'),
           keyboardType: TextInputType.emailAddress,
-          decoration: InputDecoration(labelText: context.tr('rec.old')),
+          enabled: !_busy,
         ),
         const SizedBox(height: FFTokens.spacingSm),
-        TextField(
+        FFTextField(
           key: const Key('recovery-new'),
           controller: _new,
-          enabled: !_busy,
+          label: context.tr('rec.new'),
           keyboardType: TextInputType.emailAddress,
-          decoration: InputDecoration(labelText: context.tr('rec.new')),
+          enabled: !_busy,
         ),
         _errorText(context, _error),
         const SizedBox(height: FFTokens.spacingMd),
-        FilledButton(
+        FFButton(
           key: const Key('recovery-request'),
+          label: context.tr('rec.request'),
           onPressed: _busy ? null : _send,
-          child: Text(context.tr('rec.request')),
         ),
       ];
     }
@@ -354,25 +355,27 @@ class _RecoveryQuestionsScreenState extends State<RecoveryQuestionsScreen> {
         Text(context.tr('rec.questionsIntro'), textAlign: TextAlign.center),
         for (final key in _questionKeys) ...[
           const SizedBox(height: FFTokens.spacingSm),
-          TextField(
+          FFTextField(
             key: Key('recovery-answer-$key'),
             controller: _fields[key],
+            label: context.tr(labels[key]!),
             enabled: !_busy,
             maxLength: 300,
-            decoration: InputDecoration(labelText: context.tr(labels[key]!)),
           ),
         ],
         _errorText(context, _error),
         const SizedBox(height: FFTokens.spacingMd),
-        FilledButton(
+        FFButton(
           key: const Key('recovery-send-answers'),
+          label: context.tr('rec.send'),
           onPressed: _busy ? null : _send,
-          child: Text(context.tr('rec.send')),
         ),
-        TextButton(
+        FFButton(
           key: const Key('recovery-answer-later'),
+          label: context.tr('rec.later'),
           onPressed: _busy ? null : () => _leave(Navigator.of(context), false),
-          child: Text(context.tr('rec.later')),
+          variant: FFButtonVariant.ghost,
+          size: FFButtonSize.sm,
         ),
       ],
     );
@@ -431,23 +434,13 @@ class _RecoveryStatusScreenState extends State<RecoveryStatusScreen> {
   }
 
   Future<void> _cancel() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        content: Text(context.tr('rec.cancelAsk')),
-        actions: [
-          TextButton(
-            key: const Key('recovery-cancel-no'),
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(context.tr('rec.cancelNo')),
-          ),
-          TextButton(
-            key: const Key('recovery-cancel-yes'),
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(context.tr('rec.cancelYes')),
-          ),
-        ],
-      ),
+    final ok = await showFFConfirmDialog(
+      context,
+      message: context.tr('rec.cancelAsk'),
+      cancelLabel: context.tr('rec.cancelNo'),
+      confirmLabel: context.tr('rec.cancelYes'),
+      cancelKey: const Key('recovery-cancel-no'),
+      confirmKey: const Key('recovery-cancel-yes'),
     );
     if (ok != true || !mounted) return;
     final api = AppScope.of(context).api;
@@ -496,7 +489,7 @@ class _RecoveryStatusScreenState extends State<RecoveryStatusScreen> {
     final state = status?['status']?.toString();
     final List<Widget> body;
     if (_loading && status == null) {
-      body = [const Center(child: CircularProgressIndicator())];
+      body = [const Center(child: FFSpinner(size: 32))];
     } else if (_gone) {
       body = [
         Text(
@@ -505,15 +498,20 @@ class _RecoveryStatusScreenState extends State<RecoveryStatusScreen> {
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: FFTokens.spacingMd),
-        FilledButton(
+        FFButton(
+          label: context.tr('rec.done'),
           onPressed: () => Navigator.of(context).pop(),
-          child: Text(context.tr('rec.done')),
         ),
       ];
     } else if (status == null) {
       body = [
         _errorText(context, _error),
-        TextButton(onPressed: _load, child: Text(context.tr('verify.resend'))),
+        FFButton(
+          label: context.tr('verify.resend'),
+          onPressed: _load,
+          variant: FFButtonVariant.ghost,
+          size: FFButtonSize.sm,
+        ),
       ];
     } else if (state == 'open') {
       final answered = ((status['answered'] as List?) ?? const [])
@@ -538,15 +536,17 @@ class _RecoveryStatusScreenState extends State<RecoveryStatusScreen> {
         ),
         _errorText(context, _error),
         const SizedBox(height: FFTokens.spacingMd),
-        FilledButton(
+        FFButton(
           key: const Key('recovery-add-answers'),
+          label: context.tr('rec.addAnswers'),
           onPressed: _busy ? null : _addAnswers,
-          child: Text(context.tr('rec.addAnswers')),
         ),
-        TextButton(
+        FFButton(
           key: const Key('recovery-cancel'),
+          label: context.tr('rec.cancel'),
           onPressed: _busy ? null : _cancel,
-          child: Text(context.tr('rec.cancel')),
+          variant: FFButtonVariant.ghost,
+          size: FFButtonSize.sm,
         ),
       ];
     } else if (state == 'refused') {
@@ -574,10 +574,10 @@ class _RecoveryStatusScreenState extends State<RecoveryStatusScreen> {
           ),
         ],
         const SizedBox(height: FFTokens.spacingMd),
-        FilledButton(
+        FFButton(
           key: const Key('recovery-ack'),
+          label: context.tr('rec.done'),
           onPressed: _acknowledge,
-          child: Text(context.tr('rec.done')),
         ),
       ];
     } else if (state == 'completed') {
@@ -589,10 +589,10 @@ class _RecoveryStatusScreenState extends State<RecoveryStatusScreen> {
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: FFTokens.spacingMd),
-        FilledButton(
+        FFButton(
           key: const Key('recovery-set-pin'),
+          label: context.tr('rec.setPin'),
           onPressed: () => _acknowledge(setPinFor: to),
-          child: Text(context.tr('rec.setPin')),
         ),
       ];
     } else {
@@ -603,10 +603,10 @@ class _RecoveryStatusScreenState extends State<RecoveryStatusScreen> {
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: FFTokens.spacingMd),
-        FilledButton(
+        FFButton(
           key: const Key('recovery-ack'),
+          label: context.tr('rec.done'),
           onPressed: _acknowledge,
-          child: Text(context.tr('rec.done')),
         ),
       ];
     }
@@ -740,10 +740,10 @@ class _RecoveryBannerHostState extends State<RecoveryBannerHost>
                       ),
                     ),
                     const SizedBox(width: FFTokens.spacingSm),
-                    FilledButton(
+                    FFButton(
                       key: const Key('recovery-banner-cancel'),
+                      label: context.tr('rec.bannerCancel'),
                       onPressed: _busy ? null : _cancel,
-                      child: Text(context.tr('rec.bannerCancel')),
                     ),
                   ],
                 ),

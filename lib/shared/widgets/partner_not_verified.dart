@@ -56,10 +56,10 @@ class PartnerNotVerifiedNotice extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: FFTokens.spacingSm),
-                FilledButton(
+                FFButton(
                   key: const Key('partner-not-verified-cta'),
+                  label: context.tr('kyc.pending.cta'),
                   onPressed: () => context.push(AppRoutes.verification),
-                  child: Text(context.tr('kyc.pending.cta')),
                 ),
               ],
             ),

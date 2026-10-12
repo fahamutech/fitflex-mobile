@@ -312,11 +312,13 @@ class _AuthScreenState extends State<AuthScreen>
                                   ).textTheme.bodySmall?.color,
                                 ),
                           ),
-                          TextButton(
+                          FFButton(
+                            label: context.tr('auth.createAccount'),
                             onPressed: loading
                                 ? null
                                 : () => context.push(AppRoutes.role),
-                            child: Text(context.tr('auth.createAccount')),
+                            variant: FFButtonVariant.ghost,
+                            size: FFButtonSize.sm,
                           ),
                         ],
                       ),
@@ -384,9 +386,7 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
         _polling = false;
         context.go(routeForSignedInUser(scope.auth));
       } else if (!silent) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.tr('auth.stillPending'))),
-        );
+        FFSnack.info(context, context.tr('auth.stillPending'));
       }
     } catch (_) {
       if (!silent && mounted) {
@@ -471,11 +471,11 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
                     ),
                     const SizedBox(height: 24),
                     if (_isPartner) ...[
-                      FilledButton.icon(
+                      FFButton(
                         key: const Key('pending-verification'),
+                        label: context.tr('kyc.pending.cta'),
                         onPressed: () => context.push(AppRoutes.verification),
-                        icon: const Icon(Icons.verified_user_outlined),
-                        label: Text(context.tr('kyc.pending.cta')),
+                        icon: Icons.verified_user_outlined,
                       ),
                       const SizedBox(height: FFTokens.spacingSm),
                       Text(
@@ -503,9 +503,10 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
                     // Only shows when the person has another role to use meanwhile.
                     const PersonaSwitcherTile(),
                     const Spacer(),
-                    OutlinedButton(
+                    FFButton(
+                      label: context.tr('auth.backToRoles'),
                       onPressed: _backToRoles,
-                      child: Text(context.tr('auth.backToRoles')),
+                      variant: FFButtonVariant.secondary,
                     ),
                   ],
                 ),
@@ -595,9 +596,10 @@ class _GoogleWebCallbackScreenState extends State<GoogleWebCallbackScreen> {
                       children: [
                         FFAlert(message: _error!, tone: FFAlertTone.error),
                         const SizedBox(height: 16),
-                        OutlinedButton(
+                        FFButton(
+                          label: context.tr('auth.backToSignIn'),
                           onPressed: () => context.go(AppRoutes.auth),
-                          child: Text(context.tr('auth.backToSignIn')),
+                          variant: FFButtonVariant.secondary,
                         ),
                       ],
                     ),

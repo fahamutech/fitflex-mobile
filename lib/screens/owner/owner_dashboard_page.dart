@@ -78,9 +78,10 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  OutlinedButton(
+                  FFButton(
+                    label: context.tr('home.retry'),
                     onPressed: _loadDashboard,
-                    child: Text(context.tr('home.retry')),
+                    variant: FFButtonVariant.secondary,
                   ),
                 ],
               ),
@@ -305,12 +306,10 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(context.tr('owner.editLocation')),
-        content: TextField(
+        content: FFTextField(
           controller: locationCtrl,
-          decoration: InputDecoration(
-            labelText: context.tr('ownerReg.gymLocation'),
-            hintText: 'e.g. Masaki, Dar es Salaam',
-          ),
+          label: context.tr('ownerReg.gymLocation'),
+          hint: 'e.g. Masaki, Dar es Salaam',
         ),
         actions: [
           TextButton(
@@ -320,9 +319,7 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
           FilledButton(
             onPressed: () {
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(context.tr('owner.gymUpdated'))),
-              );
+              FFSnack.success(context, context.tr('owner.gymUpdated'));
             },
             child: Text(context.tr('member.save')),
           ),
@@ -343,25 +340,19 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
+              FFTextField(
                 controller: bankNameCtrl,
-                decoration: InputDecoration(
-                  labelText: context.tr('owner.bankName'),
-                ),
+                label: context.tr('owner.bankName'),
               ),
               const SizedBox(height: 12),
-              TextField(
+              FFTextField(
                 controller: branchCtrl,
-                decoration: InputDecoration(
-                  labelText: context.tr('owner.bankBranch'),
-                ),
+                label: context.tr('owner.bankBranch'),
               ),
               const SizedBox(height: 12),
-              TextField(
+              FFTextField(
                 controller: accountCtrl,
-                decoration: InputDecoration(
-                  labelText: context.tr('owner.accountNumber'),
-                ),
+                label: context.tr('owner.accountNumber'),
               ),
             ],
           ),
@@ -374,9 +365,7 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
           FilledButton(
             onPressed: () {
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(context.tr('owner.bankUpdated'))),
-              );
+              FFSnack.success(context, context.tr('owner.bankUpdated'));
             },
             child: Text(context.tr('member.save')),
           ),

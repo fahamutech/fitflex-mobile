@@ -47,7 +47,7 @@ class _MemberMessageSettingsPageState extends State<MemberMessageSettingsPage> {
   }
 
   Future<void> _set(String key, bool value) async {
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final before = _prefs![key];
     setState(() {
       _prefs = {..._prefs!, key: value};
@@ -61,9 +61,7 @@ class _MemberMessageSettingsPageState extends State<MemberMessageSettingsPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _prefs = {..._prefs!, key: before});
-      messenger.showSnackBar(
-        SnackBar(content: Text(errorMessage(FFLocaleScope.of(context), e))),
-      );
+      messenger.error(errorMessage(FFLocaleScope.of(context), e));
     } finally {
       if (mounted) setState(() => _saving = null);
     }
@@ -79,23 +77,13 @@ class _MemberMessageSettingsPageState extends State<MemberMessageSettingsPage> {
   // switched on after they agree.
   Future<void> _setOffers(String channel, String key, bool value) async {
     if (!value) return _set(key, false);
-    final agreed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(ctx.tr('msgPrefs.${channel}Consent.title')),
-        content: Text(ctx.tr('msgPrefs.${channel}Consent.body')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(ctx.tr('comms.keep')),
-          ),
-          FilledButton(
-            key: Key('$channel-agree'),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(ctx.tr('msgPrefs.${channel}Consent.agree')),
-          ),
-        ],
-      ),
+    final agreed = await showFFConfirmDialog(
+      context,
+      title: context.tr('msgPrefs.${channel}Consent.title'),
+      message: context.tr('msgPrefs.${channel}Consent.body'),
+      cancelLabel: context.tr('comms.keep'),
+      confirmLabel: context.tr('msgPrefs.${channel}Consent.agree'),
+      confirmKey: Key('$channel-agree'),
     );
     if (agreed == true) await _set(key, true);
   }
@@ -111,9 +99,9 @@ class _MemberMessageSettingsPageState extends State<MemberMessageSettingsPage> {
                 : FFEmptyState(
                     title: context.tr('inbox.loadFailed'),
                     body: errorMessage(FFLocaleScope.of(context), _error!),
-                    action: FilledButton(
+                    action: FFButton(
+                      label: context.tr('comms.retry'),
                       onPressed: _load,
-                      child: Text(context.tr('comms.retry')),
                     ),
                   ))
           : ListView(

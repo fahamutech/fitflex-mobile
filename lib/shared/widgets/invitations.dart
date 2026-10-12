@@ -6,11 +6,11 @@ import '../../app_scope.dart';
 import '../../router.dart';
 import '../api_client.dart';
 import '../api_error_message.dart';
-import '../components/ff_action_tile.dart';
 import '../design_tokens.dart';
 import '../i18n.dart';
 import 'persona_switcher.dart';
 import 'verify_identifier.dart';
+import '../components/components.dart';
 
 /// Where an invitation link opens (the web build of this app).
 const kInviteLinkBase = 'https://fitflex-af-app.web.app';
@@ -141,7 +141,7 @@ class _InvitationsScreenState extends State<InvitationsScreen> {
 
   Future<void> _respond(Map<String, dynamic> invitation, bool accept) async {
     final scope = AppScope.of(context);
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final id = invitation['id'].toString();
     setState(() => _busyId = id);
     try {
@@ -149,9 +149,7 @@ class _InvitationsScreenState extends State<InvitationsScreen> {
         await scope.api.declineInvitation(id);
         await scope.auth.refreshInvitations();
         if (mounted) {
-          messenger.showSnackBar(
-            SnackBar(content: Text(context.tr('invite.declined'))),
-          );
+          messenger.info(context.tr('invite.declined'));
         }
         return;
       }
@@ -159,9 +157,7 @@ class _InvitationsScreenState extends State<InvitationsScreen> {
       await scope.auth.refreshInvitations();
       await scope.auth.refreshPersonas();
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text(context.tr('invite.accepted'))),
-      );
+      messenger.success(context.tr('invite.accepted'));
       // A new role (for example gym staff): continue as it.
       final personaId = res['personaId']?.toString();
       final canSwitch = scope.auth.switchablePersonas.any(
@@ -172,9 +168,7 @@ class _InvitationsScreenState extends State<InvitationsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        messenger.showSnackBar(
-          SnackBar(content: Text(inviteErrorMessage(context, e))),
-        );
+        messenger.error(inviteErrorMessage(context, e));
       }
     } finally {
       if (mounted) setState(() => _busyId = null);
@@ -191,7 +185,7 @@ class _InvitationsScreenState extends State<InvitationsScreen> {
           listenable: auth,
           builder: (context, _) {
             if (_loading) {
-              return const Center(child: CircularProgressIndicator());
+              return const Center(child: FFSpinner(size: 32));
             }
             final items = auth.invitations;
             return ListView(
@@ -209,16 +203,14 @@ class _InvitationsScreenState extends State<InvitationsScreen> {
                 if (_needsVerified != null && auth.identifiersEnabled)
                   Padding(
                     padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
-                    child: FilledButton(
+                    child: FFButton(
                       key: const Key('invitations-verify'),
-                      onPressed: () => _verifyThenRetry(_needsVerified!),
-                      child: Text(
-                        context.tr(
-                          _needsVerified == 'phone'
-                              ? 'verify.phoneTitle'
-                              : 'verify.emailTitle',
-                        ),
+                      label: context.tr(
+                        _needsVerified == 'phone'
+                            ? 'verify.phoneTitle'
+                            : 'verify.emailTitle',
                       ),
+                      onPressed: () => _verifyThenRetry(_needsVerified!),
                     ),
                   ),
                 if (items.isEmpty)
@@ -314,16 +306,18 @@ class _InvitationCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                TextButton(
+                FFButton(
                   key: Key('decline-$id'),
+                  label: context.tr('invite.decline'),
                   onPressed: busy ? null : onDecline,
-                  child: Text(context.tr('invite.decline')),
+                  variant: FFButtonVariant.ghost,
+                  size: FFButtonSize.sm,
                 ),
                 const SizedBox(width: FFTokens.spacingSm),
-                FilledButton(
+                FFButton(
                   key: Key('accept-$id'),
+                  label: context.tr('invite.accept'),
                   onPressed: busy ? null : onAccept,
-                  child: Text(context.tr('invite.accept')),
                 ),
               ],
             ),
@@ -576,19 +570,17 @@ class _InvitePersonSheetState extends State<_InvitePersonSheet> {
               style: theme.textTheme.bodySmall,
             ),
             const SizedBox(height: FFTokens.spacingMd),
-            TextField(
+            FFTextField(
               key: const Key('invite-contact'),
               controller: _contact,
-              enabled: !sent,
+              label: context.tr('invite.contact'),
               keyboardType: TextInputType.emailAddress,
-              decoration: InputDecoration(
-                labelText: context.tr('invite.contact'),
-                suffixIcon: IconButton(
-                  key: const Key('invite-check'),
-                  tooltip: context.tr('invite.check'),
-                  icon: const Icon(Icons.person_search_outlined),
-                  onPressed: _busy || sent ? null : _check,
-                ),
+              enabled: !sent,
+              suffixIcon: IconButton(
+                key: const Key('invite-check'),
+                tooltip: context.tr('invite.check'),
+                icon: const Icon(Icons.person_search_outlined),
+                onPressed: _busy || sent ? null : _check,
               ),
             ),
             if (widget.orgType == 'vendor') ...[
@@ -668,15 +660,13 @@ class _InvitePersonSheetState extends State<_InvitePersonSheet> {
                     : (v) => setState(() => _durationUnit = v ?? 'M'),
               ),
               const SizedBox(height: FFTokens.spacingSm),
-              TextField(
+              FFTextField(
                 key: const Key('invite-amount'),
                 controller: _amount,
-                enabled: !sent,
+                label: context.tr('owner.paidAmount'),
+                helperText: context.tr('invite.paidHint'),
                 keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: context.tr('owner.paidAmount'),
-                  helperText: context.tr('invite.paidHint'),
-                ),
+                enabled: !sent,
               ),
             ],
             if (_notice != null) ...[
@@ -685,30 +675,31 @@ class _InvitePersonSheetState extends State<_InvitePersonSheet> {
             ],
             const SizedBox(height: FFTokens.spacingMd),
             if (!sent)
-              FilledButton(
+              FFButton(
                 key: const Key('invite-send'),
+                label: context.tr('invite.send'),
                 onPressed: _busy ? null : _send,
-                child: Text(context.tr('invite.send')),
               )
             else ...[
-              OutlinedButton.icon(
+              FFButton(
                 key: const Key('invite-copy-link'),
-                icon: const Icon(Icons.link),
-                label: Text(context.tr('invite.copyLink')),
+                label: context.tr('invite.copyLink'),
                 onPressed: () async {
-                  final messenger = ScaffoldMessenger.of(context);
+                  final messenger = FFSnack.of(context);
                   final copied = context.tr('invite.linkCopied');
                   await Clipboard.setData(
                     ClipboardData(text: inviteLink(_token!)),
                   );
-                  messenger.showSnackBar(SnackBar(content: Text(copied)));
+                  messenger.success(copied);
                 },
+                variant: FFButtonVariant.secondary,
+                icon: Icons.link,
               ),
               const SizedBox(height: FFTokens.spacingSm),
-              FilledButton(
+              FFButton(
                 key: const Key('invite-done'),
+                label: context.tr('invite.done'),
                 onPressed: () => Navigator.of(context).pop(true),
-                child: Text(context.tr('invite.done')),
               ),
             ],
           ],
@@ -778,7 +769,7 @@ class _GymInvitationsPageState extends State<GymInvitationsPage> {
 
   Future<void> _act(Map<String, dynamic> inv, String action) async {
     final api = AppScope.of(context).api;
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final done = context.tr('invite.actionDone');
     try {
       await api.gymInvitationAction(
@@ -787,13 +778,11 @@ class _GymInvitationsPageState extends State<GymInvitationsPage> {
         action,
         orgType: widget.orgType,
       );
-      messenger.showSnackBar(SnackBar(content: Text(done)));
+      messenger.success(done);
       await _load();
     } catch (e) {
       if (mounted) {
-        messenger.showSnackBar(
-          SnackBar(content: Text(inviteErrorMessage(context, e))),
-        );
+        messenger.error(inviteErrorMessage(context, e));
       }
     }
   }
@@ -804,7 +793,7 @@ class _GymInvitationsPageState extends State<GymInvitationsPage> {
       appBar: AppBar(title: Text(context.tr('invite.sentTitle'))),
       body: SafeArea(
         child: _loading
-            ? const Center(child: CircularProgressIndicator())
+            ? const Center(child: FFSpinner(size: 32))
             : ListView(
                 padding: const EdgeInsets.all(FFTokens.spacingMd),
                 children: [
@@ -859,28 +848,36 @@ class _GymInvitationsPageState extends State<GymInvitationsPage> {
                 spacing: 8,
                 children: [
                   if (open)
-                    TextButton(
+                    FFButton(
                       key: Key('resend-$id'),
+                      label: context.tr('invite.resend'),
                       onPressed: () => _act(inv, 'resend'),
-                      child: Text(context.tr('invite.resend')),
+                      variant: FFButtonVariant.ghost,
+                      size: FFButtonSize.sm,
                     ),
                   if (open)
-                    TextButton(
+                    FFButton(
                       key: Key('cancel-$id'),
+                      label: context.tr('invite.cancel'),
                       onPressed: () => _act(inv, 'cancel'),
-                      child: Text(context.tr('invite.cancel')),
+                      variant: FFButtonVariant.ghost,
+                      size: FFButtonSize.sm,
                     ),
                   if (lapsedPaid)
-                    TextButton(
+                    FFButton(
                       key: Key('reissue-$id'),
+                      label: context.tr('invite.reissue'),
                       onPressed: () => _act(inv, 'reissue'),
-                      child: Text(context.tr('invite.reissue')),
+                      variant: FFButtonVariant.ghost,
+                      size: FFButtonSize.sm,
                     ),
                   if (lapsedPaid)
-                    TextButton(
+                    FFButton(
                       key: Key('refunded-$id'),
+                      label: context.tr('invite.markRefunded'),
                       onPressed: () => _act(inv, 'refunded'),
-                      child: Text(context.tr('invite.markRefunded')),
+                      variant: FFButtonVariant.ghost,
+                      size: FFButtonSize.sm,
                     ),
                 ],
               ),

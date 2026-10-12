@@ -247,9 +247,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
       );
       setState(() => _orders = latest);
       if (changed) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.tr('shop.trackingUpdated'))),
-        );
+        FFSnack.success(context, context.tr('shop.trackingUpdated'));
       }
     } on ApiException {
       // Preserve the last successful timeline and retry on the next interval.
@@ -383,52 +381,38 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
         _ordering = false;
         _section = 1;
       });
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(context.tr('shop.orderPlaced'))));
+      FFSnack.success(context, context.tr('shop.orderPlaced'));
       await _load();
     } on ApiException {
       if (!mounted) return;
       setState(() => _ordering = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(context.tr('shop.orderFailed'))));
+      FFSnack.error(context, context.tr('shop.orderFailed'));
     }
   }
 
   /// Cancel an order that is not on its way yet; a paid one is refunded.
   Future<void> _cancelOrder(Map<String, dynamic> order) async {
     final paid = order['paymentStatus'] == 'paid';
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(context.tr('shop.cancelOrder')),
-        content: Text(
-          context.tr(paid ? 'shop.cancelConfirmPaid' : 'shop.cancelConfirm'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(context.tr('sessions.keep')),
-          ),
-          FilledButton(
-            key: const Key('order-cancel-confirm'),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(context.tr('shop.cancelOrder')),
-          ),
-        ],
+    final confirmed = await showFFConfirmDialog(
+      context,
+      title: context.tr('shop.cancelOrder'),
+      message: context.tr(
+        paid ? 'shop.cancelConfirmPaid' : 'shop.cancelConfirm',
       ),
+      cancelLabel: context.tr('sessions.keep'),
+      confirmLabel: context.tr('shop.cancelOrder'),
+      confirmKey: const Key('order-cancel-confirm'),
     );
     if (confirmed != true || !mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final locale = FFLocaleScope.of(context);
     final done = context.tr(paid ? 'shop.cancelledRefund' : 'shop.cancelled');
     try {
       await AppScope.of(context).api.cancelMyShopOrder(order['id'].toString());
       await _load();
-      messenger.showSnackBar(SnackBar(content: Text(done)));
+      messenger.success(done);
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(errorMessage(locale, e))));
+      messenger.error(errorMessage(locale, e));
     }
   }
 
@@ -518,8 +502,10 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
         title: Text(context.tr('shop.invoice')),
         content: SelectableText(invoice),
         actions: [
-          TextButton(
+          FFButton(
             key: const Key('shop-download-receipt'),
+            label: context.tr('shop.downloadReceipt'),
+            variant: FFButtonVariant.ghost,
             onPressed: () async {
               try {
                 await saveTextExport(
@@ -529,14 +515,12 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
                 if (dialogContext.mounted) Navigator.pop(dialogContext);
               } catch (_) {
                 if (!dialogContext.mounted) return;
-                ScaffoldMessenger.of(dialogContext).showSnackBar(
-                  SnackBar(
-                    content: Text(dialogContext.tr('shop.exportFailed')),
-                  ),
+                FFSnack.error(
+                  dialogContext,
+                  dialogContext.tr('shop.exportFailed'),
                 );
               }
             },
-            child: Text(context.tr('shop.downloadReceipt')),
           ),
         ],
       ),
@@ -592,15 +576,10 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
         .toSet()
         .toList();
     return [
-      TextField(
+      FFTextField(
         key: const Key('shop-search'),
-        decoration: InputDecoration(
-          hintText: context.tr('shop.searchHint'),
-          prefixIcon: const Icon(Icons.search, size: 20),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(FFTokens.radiusLg),
-          ),
-        ),
+        hint: context.tr('shop.searchHint'),
+        prefixIcon: const Icon(Icons.search, size: 20),
         onChanged: (value) => setState(() => _search = value),
       ),
       const SizedBox(height: FFTokens.spacingSm),
@@ -632,10 +611,10 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
       Row(
         children: [
           Expanded(
-            child: DropdownButtonFormField<String>(
+            child: FFDropdownField<String>(
               key: const Key('shop-sort'),
-              initialValue: _sort,
-              decoration: InputDecoration(labelText: context.tr('shop.sort')),
+              value: _sort,
+              label: context.tr('shop.sort'),
               items: [
                 DropdownMenuItem(
                   value: 'newest',
@@ -741,18 +720,12 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
       ],
       if (!_cart.isEmpty) ...[
         const SizedBox(height: FFTokens.spacingMd),
-        FilledButton(
+        FFButton(
           key: const Key('shop-checkout'),
+          label:
+              '${context.tr('shop.checkout')} · ${formatCurrency(_cart.totalTzs)}',
           onPressed: _ordering ? null : _checkout,
-          child: _ordering
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Text(
-                  '${context.tr('shop.checkout')} · ${formatCurrency(_cart.totalTzs)}',
-                ),
+          loading: _ordering,
         ),
       ],
     ];
@@ -796,24 +769,32 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
               Wrap(
                 children: [
                   if (order['canCancel'] == true)
-                    TextButton(
+                    FFButton(
                       key: Key('order-cancel-${order['id']}'),
+                      label: context.tr('shop.cancelOrder'),
                       onPressed: () => _cancelOrder(order),
-                      child: Text(context.tr('shop.cancelOrder')),
+                      variant: FFButtonVariant.ghost,
+                      size: FFButtonSize.sm,
                     ),
-                  TextButton(
+                  FFButton(
+                    label: context.tr('shop.invoice'),
                     onPressed: () => _showInvoice(order),
-                    child: Text(context.tr('shop.invoice')),
+                    variant: FFButtonVariant.ghost,
+                    size: FFButtonSize.sm,
                   ),
-                  TextButton(
+                  FFButton(
                     key: Key('shop-reorder-${order['id']}'),
+                    label: context.tr('shop.reorder'),
                     onPressed: () => _reorder(order),
-                    child: Text(context.tr('shop.reorder')),
+                    variant: FFButtonVariant.ghost,
+                    size: FFButtonSize.sm,
                   ),
                   if (status == 'delivered')
-                    TextButton(
+                    FFButton(
+                      label: context.tr('shop.review'),
                       onPressed: () => _review(order),
-                      child: Text(context.tr('shop.review')),
+                      variant: FFButtonVariant.ghost,
+                      size: FFButtonSize.sm,
                     ),
                 ],
               ),
@@ -837,6 +818,8 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Kept as the compact rating picker: FFDropdownField is a full-width
+              // bordered field and would crowd the comment box below it.
               DropdownButton<int>(
                 value: rating,
                 items: [1, 2, 3, 4, 5]
@@ -855,18 +838,16 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
                     .toList(),
                 onChanged: (value) => setDialogState(() => rating = value ?? 5),
               ),
-              TextField(
+              FFTextField(
                 controller: controller,
-                decoration: InputDecoration(
-                  labelText: context.tr('shop.comment'),
-                ),
+                label: context.tr('shop.comment'),
               ),
             ],
           ),
           actions: [
-            FilledButton(
+            FFButton(
+              label: context.tr('shop.submitReview'),
               onPressed: () => Navigator.pop(dialogContext, true),
-              child: Text(context.tr('shop.submitReview')),
             ),
           ],
         ),
@@ -957,8 +938,6 @@ class _MarketplaceFiltersSheetState extends State<_MarketplaceFiltersSheet> {
 
   @override
   Widget build(BuildContext context) {
-    InputDecoration decoration(String key) =>
-        InputDecoration(labelText: context.tr(key));
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.fromLTRB(
@@ -975,63 +954,66 @@ class _MarketplaceFiltersSheetState extends State<_MarketplaceFiltersSheet> {
                 context.tr('shop.filters'),
                 style: Theme.of(context).textTheme.titleLarge,
               ),
-              TextField(
+              FFTextField(
                 key: const Key('shop-filter-brand'),
                 controller: _brand,
-                decoration: decoration('shop.brand'),
+                label: context.tr('shop.brand'),
               ),
-              TextField(
+              FFTextField(
                 key: const Key('shop-filter-vendor'),
                 controller: _vendor,
-                decoration: decoration('shop.vendor'),
+                label: context.tr('shop.vendor'),
               ),
               Row(
                 children: [
                   Expanded(
-                    child: TextField(
+                    child: FFTextField(
                       key: const Key('shop-filter-min-price'),
                       controller: _minPrice,
                       keyboardType: TextInputType.number,
-                      decoration: decoration('shop.minPrice'),
+                      label: context.tr('shop.minPrice'),
                     ),
                   ),
                   const SizedBox(width: FFTokens.spacingSm),
                   Expanded(
-                    child: TextField(
+                    child: FFTextField(
                       key: const Key('shop-filter-max-price'),
                       controller: _maxPrice,
                       keyboardType: TextInputType.number,
-                      decoration: decoration('shop.maxPrice'),
+                      label: context.tr('shop.maxPrice'),
                     ),
                   ),
                 ],
               ),
-              TextField(
+              FFTextField(
                 key: const Key('shop-filter-rating'),
                 controller: _rating,
                 keyboardType: TextInputType.number,
-                decoration: decoration('shop.minimumRating'),
+                label: context.tr('shop.minimumRating'),
               ),
-              TextField(
+              FFTextField(
                 key: const Key('shop-filter-distance'),
                 controller: _distance,
                 keyboardType: TextInputType.number,
-                decoration: decoration('shop.maximumDistance'),
+                label: context.tr('shop.maximumDistance'),
               ),
               const SizedBox(height: FFTokens.spacingLg),
               Row(
                 children: [
-                  TextButton(
+                  FFButton(
                     key: const Key('shop-clear-filters'),
+                    label: context.tr('shop.clearFilters'),
                     onPressed: () => Navigator.pop(
                       context,
                       const _MarketplaceFilterValues(),
                     ),
-                    child: Text(context.tr('shop.clearFilters')),
+                    variant: FFButtonVariant.ghost,
+                    size: FFButtonSize.sm,
                   ),
                   const Spacer(),
-                  FilledButton(
+                  FFButton(
                     key: const Key('shop-apply-filters'),
+                    label: context.tr('shop.applyFilters'),
                     onPressed: () => Navigator.pop(
                       context,
                       _MarketplaceFilterValues(
@@ -1043,7 +1025,6 @@ class _MarketplaceFiltersSheetState extends State<_MarketplaceFiltersSheet> {
                         maxDistanceKm: _number(_distance),
                       ),
                     ),
-                    child: Text(context.tr('shop.applyFilters')),
                   ),
                 ],
               ),
@@ -1341,9 +1322,7 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
       });
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('shop.locationUnavailable'))),
-      );
+      FFSnack.error(context, context.tr('shop.locationUnavailable'));
     }
   }
 
@@ -1417,33 +1396,29 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
                 ),
               ),
               if (_delivery == 'home_delivery')
-                TextField(
+                FFTextField(
                   key: const Key('shop-delivery-address'),
                   controller: _address,
-                  decoration: InputDecoration(
-                    labelText: context.tr('shop.deliveryAddress'),
-                  ),
+                  label: context.tr('shop.deliveryAddress'),
                 )
               else ...[
-                TextField(
+                FFTextField(
                   key: const Key('shop-pickup-search'),
-                  decoration: InputDecoration(
-                    labelText: context.tr('shop.searchPickup'),
-                  ),
+                  label: context.tr('shop.searchPickup'),
                   onChanged: (value) =>
                       setState(() => _gymSearch = value.trim().toLowerCase()),
                 ),
-                TextButton.icon(
+                FFButton(
+                  label: context.tr('shop.nearestGyms'),
                   onPressed: _nearestGyms,
-                  icon: const Icon(Icons.near_me_outlined),
-                  label: Text(context.tr('shop.nearestGyms')),
+                  variant: FFButtonVariant.ghost,
+                  size: FFButtonSize.sm,
+                  icon: Icons.near_me_outlined,
                 ),
-                DropdownButtonFormField<String>(
+                FFDropdownField<String>(
                   key: const Key('shop-pickup-gym'),
-                  initialValue: _gymId,
-                  decoration: InputDecoration(
-                    labelText: context.tr('shop.selectGym'),
-                  ),
+                  value: _gymId,
+                  label: context.tr('shop.selectGym'),
                   items: _gyms
                       .where(
                         (gym) =>
@@ -1468,12 +1443,10 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
                 ),
               ],
               const SizedBox(height: FFTokens.spacingMd),
-              DropdownButtonFormField<String>(
+              FFDropdownField<String>(
                 key: const Key('shop-payment-method'),
-                initialValue: _payment,
-                decoration: InputDecoration(
-                  labelText: context.tr('shop.paymentMethod'),
-                ),
+                value: _payment,
+                label: context.tr('shop.paymentMethod'),
                 items: const [
                   DropdownMenuItem(value: 'mpesa', child: Text('M-Pesa')),
                   DropdownMenuItem(
@@ -1490,10 +1463,10 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
               const SizedBox(height: FFTokens.spacingLg),
               SizedBox(
                 width: double.infinity,
-                child: FilledButton(
+                child: FFButton(
                   key: const Key('shop-place-order'),
+                  label: context.tr('shop.payAndOrder'),
                   onPressed: _submit,
-                  child: Text(context.tr('shop.payAndOrder')),
                 ),
               ),
             ],
@@ -1515,17 +1488,17 @@ class _ProductDetailsSheet extends StatelessWidget {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(context.tr('shop.chatVendor')),
-        content: TextField(
+        content: FFTextField(
           key: const Key('shop-enquiry-message'),
           controller: controller,
           maxLines: 3,
-          decoration: InputDecoration(hintText: context.tr('shop.enquiryHint')),
+          hint: context.tr('shop.enquiryHint'),
         ),
         actions: [
-          FilledButton(
+          FFButton(
             key: const Key('shop-enquiry-send'),
+            label: context.tr('shop.send'),
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: Text(context.tr('shop.send')),
           ),
         ],
       ),
@@ -1553,9 +1526,7 @@ class _ProductDetailsSheet extends StatelessWidget {
       );
     } on ApiException {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('shop.storeLoadFailed'))),
-      );
+      FFSnack.error(context, context.tr('shop.storeLoadFailed'));
     }
   }
 
@@ -1655,29 +1626,34 @@ class _ProductDetailsSheet extends StatelessWidget {
               ),
             ],
             const SizedBox(height: FFTokens.spacingLg),
-            FilledButton(
+            FFButton(
               key: Key('shop-detail-add-${product.id}'),
+              label: context.tr('shop.addToCart'),
               onPressed: product.inStock ? onAdd : null,
-              child: Text(context.tr('shop.addToCart')),
             ),
-            OutlinedButton(
+            FFButton(
+              label: context.tr('shop.buyNow'),
               onPressed: product.inStock
                   ? () {
                       onAdd();
                       Navigator.pop(context, true);
                     }
                   : null,
-              child: Text(context.tr('shop.buyNow')),
+              variant: FFButtonVariant.secondary,
             ),
-            TextButton(
+            FFButton(
               key: const Key('shop-chat-vendor'),
+              label: context.tr('shop.chatVendor'),
               onPressed: () => _chat(context),
-              child: Text(context.tr('shop.chatVendor')),
+              variant: FFButtonVariant.ghost,
+              size: FFButtonSize.sm,
             ),
-            TextButton(
+            FFButton(
               key: const Key('shop-visit-store'),
+              label: context.tr('shop.visitStore'),
               onPressed: () => _visitStore(context),
-              child: Text(context.tr('shop.visitStore')),
+              variant: FFButtonVariant.ghost,
+              size: FFButtonSize.sm,
             ),
           ],
         ),
@@ -1795,12 +1771,10 @@ class _VendorStoreSheetState extends State<VendorStoreSheet> {
             if (categories.isNotEmpty)
               Text('${context.tr('shop.categories')}: $categories'),
             const SizedBox(height: FFTokens.spacingMd),
-            TextField(
+            FFTextField(
               key: const Key('shop-store-search'),
-              decoration: InputDecoration(
-                labelText: context.tr('shop.searchStore'),
-                prefixIcon: const Icon(Icons.search),
-              ),
+              label: context.tr('shop.searchStore'),
+              prefixIcon: const Icon(Icons.search),
               onChanged: (value) => setState(() => _search = value),
             ),
             const SizedBox(height: FFTokens.spacingMd),

@@ -154,18 +154,15 @@ class _AvailabilityCalendarState extends State<AvailabilityCalendar> {
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           if (next != null)
-            TextButton.icon(
+            FFButton(
               key: const Key('calendar-next-available'),
+              label: context
+                  .tr('cal.nextAvailable')
+                  .replaceAll('{date}', formatScheduleDate(context, next.date)),
               onPressed: () => _select(widget.days.indexOf(next)),
-              icon: const Icon(Icons.arrow_forward, size: 16),
-              label: Text(
-                context
-                    .tr('cal.nextAvailable')
-                    .replaceAll(
-                      '{date}',
-                      formatScheduleDate(context, next.date),
-                    ),
-              ),
+              variant: FFButtonVariant.ghost,
+              size: FFButtonSize.sm,
+              icon: Icons.arrow_forward,
             ),
         ],
       ),

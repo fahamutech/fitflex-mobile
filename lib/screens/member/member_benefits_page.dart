@@ -51,16 +51,16 @@ class _MemberBenefitsPageState extends State<MemberBenefitsPage> {
   /// Ask to pay the member's share of a sponsored pass. The pass starts when
   /// FitFlex confirms the payment.
   Future<void> _unlock(String entitlementId) async {
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final locale = FFLocaleScope.of(context);
     final requested = context.tr('benefits.pass.requested');
     setState(() => _unlocking = entitlementId);
     try {
       await AppScope.of(context).api.unlockSponsoredPass(entitlementId);
       await _load();
-      messenger.showSnackBar(SnackBar(content: Text(requested)));
+      messenger.info(requested);
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(errorMessage(locale, e))));
+      messenger.error(errorMessage(locale, e));
     } finally {
       if (mounted) setState(() => _unlocking = null);
     }
@@ -77,9 +77,9 @@ class _MemberBenefitsPageState extends State<MemberBenefitsPage> {
                 : FFEmptyState(
                     title: context.tr('inbox.loadFailed'),
                     body: errorMessage(FFLocaleScope.of(context), _error!),
-                    action: FilledButton(
+                    action: FFButton(
+                      label: context.tr('comms.retry'),
                       onPressed: _load,
-                      child: Text(context.tr('comms.retry')),
                     ),
                   ))
           : rows.isEmpty
@@ -245,12 +245,12 @@ class _BenefitCard extends StatelessWidget {
     return [
       Text(context.tr('benefits.pass.unlockBody')),
       const SizedBox(height: FFTokens.spacingSm),
-      FilledButton(
+      FFButton(
         key: Key('unlock-${pass?['entitlementId']}'),
+        label: context
+            .tr('benefits.pass.unlock')
+            .replaceAll('{amount}', amount),
         onPressed: busy ? null : () => onUnlock('${pass?['entitlementId']}'),
-        child: Text(
-          context.tr('benefits.pass.unlock').replaceAll('{amount}', amount),
-        ),
       ),
     ];
   }

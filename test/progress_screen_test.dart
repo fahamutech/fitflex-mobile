@@ -161,7 +161,12 @@ void main() {
     await tester.pump();
     expect(
       tester
-          .widget<TextField>(find.byKey(const Key('goal-target')))
+          .widget<TextField>(
+            find.descendant(
+              of: find.byKey(const Key('goal-target')),
+              matching: find.byType(TextField),
+            ),
+          )
           .controller!
           .text,
       '80',

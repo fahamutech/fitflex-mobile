@@ -238,9 +238,7 @@ class _TrainerEnquiryPageState extends State<TrainerEnquiryPage> {
       return true;
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage(FFLocaleScope.of(context), e))),
-        );
+        FFSnack.error(context, errorMessage(FFLocaleScope.of(context), e));
       }
       return false;
     }

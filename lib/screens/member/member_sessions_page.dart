@@ -67,32 +67,20 @@ class _MemberSessionsPageState extends State<MemberSessionsPage> {
     final rule = (booking['cancellation'] as Map?) ?? const {};
     final refundable = rule['refundable'] == true;
     final amount = formatCurrency(booking['amountTzs'] as num? ?? 0);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(context.tr('sessions.cancelTitle')),
-        content: Text(
-          refundable
-              ? context
-                    .tr('sessions.cancelConfirmRefund')
-                    .replaceFirst('{amount}', amount)
-              : context.tr('sessions.cancelConfirm'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(context.tr('sessions.keep')),
-          ),
-          FilledButton(
-            key: const Key('session-cancel-confirm'),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(context.tr('sessions.cancel')),
-          ),
-        ],
-      ),
+    final confirmed = await showFFConfirmDialog(
+      context,
+      title: context.tr('sessions.cancelTitle'),
+      message: refundable
+          ? context
+                .tr('sessions.cancelConfirmRefund')
+                .replaceFirst('{amount}', amount)
+          : context.tr('sessions.cancelConfirm'),
+      cancelLabel: context.tr('sessions.keep'),
+      confirmLabel: context.tr('sessions.cancel'),
+      confirmKey: const Key('session-cancel-confirm'),
     );
     if (confirmed != true || !mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final locale = FFLocaleScope.of(context);
     final done = context.tr(
       refundable ? 'sessions.cancelledRefund' : 'sessions.cancelled',
@@ -103,9 +91,9 @@ class _MemberSessionsPageState extends State<MemberSessionsPage> {
         context,
       ).api.cancelMyTrainerBooking(booking['id'].toString());
       await _load();
-      messenger.showSnackBar(SnackBar(content: Text(done)));
+      messenger.success(done);
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(errorMessage(locale, e))));
+      messenger.error(errorMessage(locale, e));
       await _load();
     } finally {
       if (mounted) setState(() => _busyId = null);
@@ -120,9 +108,7 @@ class _MemberSessionsPageState extends State<MemberSessionsPage> {
       builder: (_) => const _RefundRequestSheet(),
     );
     if (sent == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('refunds.requestSent'))),
-      );
+      FFSnack.success(context, context.tr('refunds.requestSent'));
       await _load();
     }
   }
@@ -138,9 +124,9 @@ class _MemberSessionsPageState extends State<MemberSessionsPage> {
                 : FFEmptyState(
                     title: context.tr('inbox.loadFailed'),
                     body: errorMessage(FFLocaleScope.of(context), _error!),
-                    action: FilledButton(
+                    action: FFButton(
+                      label: context.tr('comms.retry'),
                       onPressed: _load,
-                      child: Text(context.tr('comms.retry')),
                     ),
                   ))
           : RefreshIndicator(
@@ -183,10 +169,11 @@ class _MemberSessionsPageState extends State<MemberSessionsPage> {
                       const SizedBox(height: FFTokens.spacingSm),
                     ],
                   const SizedBox(height: FFTokens.spacingMd),
-                  OutlinedButton(
+                  FFButton(
                     key: const Key('refund-ask'),
+                    label: context.tr('refunds.ask'),
                     onPressed: _askRefund,
-                    child: Text(context.tr('refunds.ask')),
+                    variant: FFButtonVariant.secondary,
                   ),
                   const SizedBox(height: FFTokens.spacingSm),
                   Text(
@@ -263,10 +250,12 @@ class _SessionCard extends StatelessWidget {
           if (canCancel)
             Align(
               alignment: Alignment.centerLeft,
-              child: TextButton(
+              child: FFButton(
                 key: Key('session-cancel-${booking['id']}'),
+                label: context.tr('sessions.cancel'),
                 onPressed: busy ? null : onCancel,
-                child: Text(context.tr('sessions.cancel')),
+                variant: FFButtonVariant.ghost,
+                size: FFButtonSize.sm,
               ),
             ),
         ],
@@ -495,14 +484,12 @@ class _RefundRequestSheetState extends State<_RefundRequestSheet> {
                     : (v) => setState(() => _reason = v ?? 'other'),
               ),
               const SizedBox(height: FFTokens.spacingMd),
-              TextField(
+              FFTextField(
                 key: const Key('refund-note'),
                 controller: _note,
+                label: context.tr('refunds.note'),
                 maxLines: 3,
                 maxLength: 500,
-                decoration: InputDecoration(
-                  labelText: context.tr('refunds.note'),
-                ),
               ),
               if (_error != null)
                 Padding(
@@ -516,10 +503,10 @@ class _RefundRequestSheetState extends State<_RefundRequestSheet> {
                 ),
               SizedBox(
                 width: double.infinity,
-                child: FilledButton(
+                child: FFButton(
                   key: const Key('refund-send'),
+                  label: context.tr('refunds.send'),
                   onPressed: _busy || _paymentId == null ? null : _send,
-                  child: Text(context.tr('refunds.send')),
                 ),
               ),
             ],

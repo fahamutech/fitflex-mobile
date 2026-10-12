@@ -16,12 +16,12 @@ import '../../shared/activity/training_plan.dart';
 import '../../shared/activity/workout.dart';
 import '../../shared/api_error_message.dart';
 import '../../shared/auth_state.dart';
-import '../../shared/components/theme_toggle_button.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
 import '../../shared/root_back_navigation.dart';
 import '../../shared/inbox/inbox_pages.dart';
+import '../../shared/components/components.dart';
 
 export 'member_home_tab.dart';
 export 'member_activity_tab.dart';
@@ -722,10 +722,12 @@ class _OfflineBanner extends StatelessWidget {
                 ),
               ),
             ),
-            TextButton(
+            FFButton(
               key: const Key('member-offline-retry'),
+              label: context.tr('home.retry'),
               onPressed: onRetry,
-              child: Text(context.tr('home.retry')),
+              variant: FFButtonVariant.ghost,
+              size: FFButtonSize.sm,
             ),
           ],
         ),
