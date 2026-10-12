@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../app_scope.dart';
@@ -229,6 +230,14 @@ class _UpgradeGateState extends State<_UpgradeGate> {
             .whereType<Map>()
             .toList();
         final theme = Theme.of(context);
+        // The upgrade keeps the plan's end date: show it, and warn when it is close.
+        final endsAt = DateTime.tryParse(
+          '${current['expiresAt'] ?? ''}',
+        )?.toLocal();
+        final endsLabel = endsAt == null
+            ? ''
+            : DateFormat('dd MMM yyyy').format(endsAt);
+        final daysLeft = endsAt?.difference(DateTime.now()).inDays;
         Map? chosen;
         for (final o in options) {
           if (o['tier'] == _selected) chosen = o;
@@ -323,9 +332,20 @@ class _UpgradeGateState extends State<_UpgradeGate> {
             }),
             const SizedBox(height: 4),
             FFAlert(
-              message: context.tr('upgrade.explain'),
+              message: context
+                  .tr('upgrade.explain')
+                  .replaceFirst('{date}', endsLabel),
               tone: FFAlertTone.info,
             ),
+            if (daysLeft != null && daysLeft <= 7) ...[
+              const SizedBox(height: 8),
+              FFAlert(
+                message: context
+                    .tr('upgrade.late')
+                    .replaceFirst('{days}', '${daysLeft < 0 ? 0 : daysLeft}'),
+                tone: FFAlertTone.warning,
+              ),
+            ],
             const SizedBox(height: 16),
             FilledButton(
               onPressed: chosen == null || _sending ? null : _submit,

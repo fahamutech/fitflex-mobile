@@ -583,7 +583,9 @@ class FFLocale extends ChangeNotifier {
       'upgrade.choose': 'Choose a higher plan',
       'upgrade.pay': 'Pay {amount} more',
       'upgrade.explain':
-          'You only pay the difference between your current plan and the new one. The new plan starts when your payment is approved and runs for 30 days.',
+          'You pay only the difference. Your new plan runs until {date}, the same end date as your current plan, and the visits you have used still count.',
+      'upgrade.late':
+          'Your plan ends in {days} days. You can also wait and renew at the higher plan after it ends.',
       'upgrade.highest': 'You are already on our highest plan.',
       'upgrade.request': 'Request upgrade',
       'upgrade.submitted':
@@ -4417,7 +4419,9 @@ class FFLocale extends ChangeNotifier {
       'upgrade.choose': 'Chagua mpango wa juu zaidi',
       'upgrade.pay': 'Lipa {amount} zaidi',
       'upgrade.explain':
-          'Unalipa tofauti tu kati ya mpango wako wa sasa na mpya. Mpango mpya unaanza malipo yako yakikubaliwa na hudumu siku 30.',
+          'Unalipa tofauti tu. Mpango wako mpya unaendelea hadi {date}, tarehe ile ile ya mwisho ya mpango wako wa sasa, na ziara ulizotumia bado zinahesabiwa.',
+      'upgrade.late':
+          'Mpango wako unaisha baada ya siku {days}. Unaweza pia kusubiri na kuhuisha kwa mpango wa juu baada ya kuisha.',
       'upgrade.highest': 'Tayari uko kwenye mpango wetu wa juu kabisa.',
       'upgrade.request': 'Omba kuboresha',
       'upgrade.submitted':
