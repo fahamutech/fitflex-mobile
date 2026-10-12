@@ -325,7 +325,8 @@ void main() {
     );
     await tester.pump();
     final order = [
-      for (final k in ['streak', 'todayWorkout', 'todayActivity', 'passport'])
+      // The pass (check-in QR) always leads; the rest keep their ranking.
+      for (final k in ['passport', 'streak', 'todayWorkout', 'todayActivity'])
         tester.getTopLeft(find.byKey(Key('home-card-$k'))).dy,
     ];
     expect(order, [...order]..sort());

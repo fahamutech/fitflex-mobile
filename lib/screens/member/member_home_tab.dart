@@ -78,27 +78,25 @@ class _MemberHomeTabState extends State<MemberHomeTab> {
     final me = data.me;
     final displayName = me?.user.resolvedName ?? context.tr('home.welcome');
     final now = widget.now ?? DateTime.now();
-    final picks = pickHomeCards(data, now, lat: _userLat, lng: _userLng);
+    final picks = _presentationOrder(
+      pickHomeCards(data, now, lat: _userLat, lng: _userLng),
+    );
     bool has(HomeCardKind k) => picks.any((p) => p.kind == k);
 
     return ListView(
       key: const Key('member-home'),
       padding: const EdgeInsets.all(FFTokens.spacingLg),
       children: [
-        Text(
-          context.tr(
+        FFPageHeader(
+          title: displayName,
+          description: context.tr(
             now.hour < 12
                 ? 'member.goodMorning'
                 : now.hour < 17
                 ? 'member.goodAfternoon'
                 : 'member.goodEvening',
           ),
-          style: TextStyle(
-            color: Theme.of(context).textTheme.bodySmall?.color,
-            fontSize: 14,
-          ),
         ),
-        FFPageHeader(title: displayName),
         for (final p in picks)
           KeyedSubtree(
             key: Key('home-card-${p.kind.name}'),
@@ -201,6 +199,22 @@ class _MemberHomeTabState extends State<MemberHomeTab> {
         );
     }
   }
+}
+
+/// The pass (it holds the check-in QR) leads and the recommendation closes
+/// the page; everything else keeps the ranking order from [pickHomeCards].
+List<HomeCardPick> _presentationOrder(List<HomeCardPick> picks) {
+  int slot(HomeCardPick p) => switch (p.kind) {
+    HomeCardKind.passport => 0,
+    HomeCardKind.recommendation => 2,
+    _ => 1,
+  };
+  final indexed = picks.indexed.toList()
+    ..sort((a, b) {
+      final s = slot(a.$2).compareTo(slot(b.$2));
+      return s != 0 ? s : a.$1.compareTo(b.$1);
+    });
+  return [for (final e in indexed) e.$2];
 }
 
 List<Gym> memberHomeNearGyms(
