@@ -89,6 +89,19 @@ class _FakeApi extends ApiClient {
   }
 
   @override
+  Future<Map<String, dynamic>> trainerUpdateTrainingPlan(
+    String planId,
+    Map<String, dynamic> body,
+  ) async {
+    calls.add(('update', body));
+    if (offerError != null) throw ApiException(400, {'error': offerError});
+    made = [
+      {...made.first, 'name': ?body['name']},
+    ];
+    return {'plan': made.first};
+  }
+
+  @override
   Future<void> trainerCancelTrainingPlan(String planId) async {
     calls.add(('cancel', planId));
     made = [
@@ -332,5 +345,146 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Stop plan'), findsOneWidget);
+  });
+
+  Map<String, dynamic> sent({String status = 'offered'}) => {
+    'id': 'tpn_1',
+    'name': 'Strength block',
+    'note': 'Go steady.',
+    'status': status,
+    'durationWeeks': 3,
+    'daysPerWeek': 3,
+    'layout': [
+      {'day': 1, 'name': 'Push day', 'planId': 'wpl_a'},
+      {'day': 3, 'name': 'Cardio', 'suggested': true},
+      // Made before the source was recorded: matched by name.
+      {'day': 5, 'name': 'Leg day'},
+    ],
+  };
+
+  Widget editor(Map<String, dynamic> plan) => TrainerTrainingPlanPage(
+    connection: _connection,
+    savedWorkouts: _saved,
+    existing: TrainerMadePlan.tryParse(plan),
+  );
+
+  String? chosen(WidgetTester tester, int day) => tester
+      .widget<DropdownButtonFormField<String>>(
+        find.byKey(Key('trainer-plan-day-$day')),
+      )
+      .initialValue;
+
+  testWidgets('editing opens on the plan as it was sent', (tester) async {
+    await _tall(tester);
+    final api = _FakeApi()..made = [sent()];
+    await tester.pumpWidget(_app(api, editor(sent())));
+    await tester.pumpAndSettle();
+    expect(find.text("Edit Amina's plan"), findsOneWidget);
+    expect(find.textContaining("hasn't answered yet"), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'Strength block'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'Go steady.'), findsOneWidget);
+    expect(chosen(tester, 1), 'wpl_a');
+    expect(chosen(tester, 2), 'rest');
+    expect(chosen(tester, 3), 'suggested');
+    expect(chosen(tester, 5), 'wpl_b', reason: 'matched by name');
+    expect(find.text('FitFlex: Cardio'), findsOneWidget);
+    // Three weeks isn't one of the usual lengths, but it is this plan's.
+    expect(
+      tester
+          .widget<ChoiceChip>(find.byKey(const Key('trainer-plan-weeks-3')))
+          .selected,
+      isTrue,
+    );
+    expect(find.text('Save changes'), findsOneWidget);
+  });
+
+  testWidgets('a rename alone never sends the week', (tester) async {
+    await _tall(tester);
+    final api = _FakeApi()..made = [sent(status: 'active')];
+    await tester.pumpWidget(_app(api, editor(sent(status: 'active'))));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('apply from today'), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const Key('trainer-plan-name')),
+      'Strength block v2',
+    );
+    await tester.enterText(find.byKey(const Key('trainer-plan-note')), '');
+    await tester.tap(find.byKey(const Key('trainer-plan-send')));
+    await tester.pumpAndSettle();
+    expect(api.calls.single.$1, 'update');
+    expect(api.calls.single.$2, {'name': 'Strength block v2', 'note': null});
+  });
+
+  testWidgets('changing a day sends the whole week', (tester) async {
+    await _tall(tester);
+    final api = _FakeApi()..made = [sent(status: 'active')];
+    await tester.pumpWidget(_app(api, editor(sent(status: 'active'))));
+    await tester.pumpAndSettle();
+    await _pick(tester, 2, 'Leg day');
+    await _pick(tester, 5, 'Rest');
+    await tester.tap(find.byKey(const Key('trainer-plan-send')));
+    await tester.pumpAndSettle();
+    final body = api.calls.single.$2 as Map;
+    expect(api.calls.single.$1, 'update');
+    expect(body['durationWeeks'], 3);
+    expect(body['days'], [
+      {'day': 1, 'planId': 'wpl_a'},
+      {'day': 2, 'planId': 'wpl_b'},
+      {'day': 3, 'suggested': true},
+    ]);
+    expect(body['preferences'], {'daysPerWeek': 3});
+  });
+
+  testWidgets('a failed save keeps the editor open and says so', (
+    tester,
+  ) async {
+    await _tall(tester);
+    final api = _FakeApi()
+      ..made = [sent()]
+      ..offerError = 'boom';
+    await tester.pumpWidget(_app(api, editor(sent())));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('trainer-plan-weeks-6')));
+    await tester.tap(find.byKey(const Key('trainer-plan-send')));
+    await tester.pumpAndSettle();
+    expect(find.textContaining("Couldn't save the changes"), findsOneWidget);
+    expect(find.byKey(const Key('trainer-plan-builder')), findsOneWidget);
+  });
+
+  testWidgets('the client page offers Edit on a plan that is still open', (
+    tester,
+  ) async {
+    await _tall(tester);
+    final api = _FakeApi()..made = [sent(status: 'active')];
+    await tester.pumpWidget(
+      _app(api, TrainerClientPage(connection: _connection, plans: _saved)),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('client-plan-edit')));
+    await tester.pumpAndSettle();
+    expect(find.text("Edit Amina's plan"), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const Key('trainer-plan-name')),
+      'Renamed block',
+    );
+    await tester.tap(find.byKey(const Key('trainer-plan-send')));
+    await tester.pumpAndSettle();
+    expect(find.text('Plan updated. Amina has been told.'), findsOneWidget);
+    expect(find.text('Renamed block'), findsOneWidget);
+
+    // A plan that is over can't be edited.
+    api.made = [sent(status: 'declined')];
+    await tester.pumpWidget(
+      _app(
+        api,
+        TrainerClientPage(
+          key: const ValueKey('closed'),
+          connection: _connection,
+          plans: _saved,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('client-plan-edit')), findsNothing);
   });
 }

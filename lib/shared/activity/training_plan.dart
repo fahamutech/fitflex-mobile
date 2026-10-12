@@ -375,10 +375,45 @@ class TrainingPlanOffer {
   }
 }
 
+/// One day of the week a trainer laid out: which of their saved workouts
+/// it is, or that it is FitFlex's session.
+class PlanLayoutDay {
+  /// 1 = Monday … 7 = Sunday.
+  final int day;
+  final String name;
+
+  /// The trainer's saved workout, when it came from one.
+  final String? planId;
+  final bool suggested;
+
+  const PlanLayoutDay({
+    required this.day,
+    required this.name,
+    this.planId,
+    this.suggested = false,
+  });
+
+  static PlanLayoutDay? tryParse(Object? raw) {
+    if (raw is! Map) return null;
+    final day = (raw['day'] as num?)?.toInt();
+    if (day == null) return null;
+    return PlanLayoutDay(
+      day: day,
+      name: raw['name'] as String? ?? '',
+      planId: raw['planId'] as String?,
+      suggested: raw['suggested'] == true,
+    );
+  }
+}
+
 /// A plan as the trainer who made it sees it.
 class TrainerMadePlan {
   final String id;
   final String name;
+  final String? note;
+
+  /// The week as it was laid out, for opening the plan again to edit it.
+  final List<PlanLayoutDay> layout;
 
   /// `offered`, `active`, `completed`, `cancelled` or `declined`.
   final String status;
@@ -394,6 +429,8 @@ class TrainerMadePlan {
   const TrainerMadePlan({
     required this.id,
     required this.name,
+    this.note,
+    this.layout = const [],
     required this.status,
     required this.durationWeeks,
     required this.daysPerWeek,
@@ -413,6 +450,11 @@ class TrainerMadePlan {
     return TrainerMadePlan(
       id: id,
       name: raw['name'] as String? ?? '',
+      note: raw['note'] as String?,
+      layout: [
+        for (final d in (raw['layout'] as List? ?? const []))
+          ?PlanLayoutDay.tryParse(d),
+      ],
       status: raw['status'] as String? ?? 'offered',
       durationWeeks: (raw['durationWeeks'] as num?)?.toInt() ?? 0,
       daysPerWeek: (raw['daysPerWeek'] as num?)?.toInt() ?? 0,
