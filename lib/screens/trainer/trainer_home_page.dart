@@ -35,7 +35,11 @@ import '../pin_flows.dart';
 
 /// Standalone trainer dashboard shown after trainer is onboarded.
 class TrainerHomePage extends StatefulWidget {
-  const TrainerHomePage({super.key});
+  const TrainerHomePage({super.key, this.open});
+
+  /// The part to show first — where a notification leads: `clients`,
+  /// `sessions`, `enquiries` or `payouts`.
+  final String? open;
 
   @override
   State<TrainerHomePage> createState() => _TrainerHomePageState();
@@ -60,6 +64,36 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
     if (_started) return;
     _started = true;
     _refreshAll();
+    _show(widget.open);
+  }
+
+  @override
+  void didUpdateWidget(TrainerHomePage old) {
+    super.didUpdateWidget(old);
+    // A notification tapped while already here.
+    if (widget.open != old.open) _show(widget.open);
+  }
+
+  /// Opens the part of the home screen a notification is about.
+  void _show(String? part) {
+    if (part == null) return;
+    if (part == 'clients') {
+      setState(() => _tabIndex = 1);
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      switch (part) {
+        case 'sessions':
+          showTrainerSessionsSheet(context);
+        case 'enquiries':
+          _openEnquiries();
+        case 'payouts':
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const TrainerPayoutsPage()),
+          );
+      }
+    });
   }
 
   Future<void> _refreshAll() async {

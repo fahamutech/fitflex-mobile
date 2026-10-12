@@ -48,12 +48,20 @@ String _when(DateTime? at) {
       : DateFormat('d MMM').format(at);
 }
 
-/// Where a message's button goes, for the signed-in role. Members get app
-/// screens; everyone else stays on the message.
+/// Where a message's button goes, for the signed-in role: members,
+/// trainers, vendors and gyms each get their own screens.
 String? routeForMessage(BuildContext context, InboxMessage m) {
   final role =
       AppScope.of(context).auth.user?['userType']?.toString() ??
       AppScope.of(context).auth.role;
+  if (partnerSide(role) case final side?) {
+    return partnerRouteFor(
+      side: side,
+      type: m.type,
+      gymId: m.data['gymId']?.toString() ?? m.gymId,
+      memberId: m.data['memberId']?.toString(),
+    );
+  }
   if (role != 'member') return null;
   return memberRouteFor(
     deepLink: m.deepLink,
@@ -66,7 +74,13 @@ String? routeForMessage(BuildContext context, InboxMessage m) {
 
 /// The words on a message's button, for where it leads.
 String inboxButtonLabel(BuildContext context, InboxMessage m) {
-  final link = memberLinkFor(deepLink: m.deepLink, type: m.type);
+  final role =
+      AppScope.of(context).auth.user?['userType']?.toString() ??
+      AppScope.of(context).auth.role;
+  final side = partnerSide(role);
+  final link = side == null
+      ? memberLinkFor(deepLink: m.deepLink, type: m.type)
+      : partnerLinkFor(side: side, type: m.type);
   final key = 'inbox.open.${link.isEmpty ? 'message' : link}';
   final label = context.tr(key);
   return label == key ? context.tr('inbox.open.message') : label;

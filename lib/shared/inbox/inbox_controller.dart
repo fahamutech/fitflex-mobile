@@ -38,6 +38,7 @@ class InboxMessage {
   final DateTime? readAt;
 
   bool get unread => readAt == null;
+
   /// A request to connect: answered with Approve / Reject on the card.
   bool get isFriendInvitation => type == 'friend_invitation';
   String get friendStatus => data['status']?.toString() ?? 'pending';
@@ -65,17 +66,17 @@ class InboxMessage {
 
   InboxMessage copyWith({DateTime? readAt, Map<String, dynamic>? data}) =>
       InboxMessage(
-    id: id,
-    type: type,
-    title: title,
-    body: body,
-    data: data ?? this.data,
-    category: category,
-    gymId: gymId,
-    campaignId: campaignId,
-    createdAt: createdAt,
-    readAt: readAt ?? this.readAt,
-  );
+        id: id,
+        type: type,
+        title: title,
+        body: body,
+        data: data ?? this.data,
+        category: category,
+        gymId: gymId,
+        campaignId: campaignId,
+        createdAt: createdAt,
+        readAt: readAt ?? this.readAt,
+      );
 
   factory InboxMessage.fromJson(Map<String, dynamic> j) => InboxMessage(
     id: j['id'].toString(),
@@ -142,6 +143,81 @@ String? memberRouteFor({
 }
 
 final _safeId = RegExp(r'^[A-Za-z0-9_-]{1,64}$');
+
+// ── Trainers, vendors and gyms ──────────────────────────────────────────────
+
+/// The side of FitFlex a signed-in partner works on, from their account
+/// type: `trainer`, `vendor` (and vendor staff) or `gym` (owner and staff).
+/// Null for members and anyone else.
+String? partnerSide(String? userType) => switch (userType) {
+  'trainer' => 'trainer',
+  'vendor' || 'vendor_staff' => 'vendor',
+  'gym_operator' || 'gym_staff' => 'gym',
+  _ => null,
+};
+
+/// The kind of screen a partner's message leads to — also the name of its
+/// button (`inbox.open.<link>`). Empty when the message leads nowhere, or
+/// isn't one this side of the app receives.
+String partnerLinkFor({required String side, required String type}) =>
+    switch (side) {
+      'trainer' => switch (type) {
+        'trainer_client_request' ||
+        'training_plan_accepted' ||
+        'training_plan_declined' ||
+        'training_plan_stopped' => 'clients',
+        'trainer_booking_requested' ||
+        'trainer_booking_confirmed' ||
+        'trainer_booking_cancelled' => 'sessions',
+        'trainer_enquiry' || 'trainer_interest' => 'enquiries',
+        'trainer_payout_paid' => 'payouts',
+        _ => '',
+      },
+      'vendor' => switch (type) {
+        'vendor_new_order' || 'vendor_order_cancelled' => 'orders',
+        'vendor_customer_enquiry' => 'customerQuestions',
+        'vendor_product_approved' || 'vendor_product_rejected' => 'products',
+        'vendor_payout_paid' => 'payments',
+        _ => '',
+      },
+      'gym' => switch (type) {
+        'gym_checkin' => 'checkins',
+        'gym_member_joined' => 'member',
+        'gym_trainer_request' => 'gymTrainers',
+        'gym_review' => 'gyms',
+        'gym_statement_approved' || 'gym_payout_paid' => 'earnings',
+        _ => '',
+      },
+      _ => '',
+    };
+
+/// Where a partner's message (or a tap on its push) takes them. Null means
+/// "show the message itself". Only fixed app screens; ids are checked.
+String? partnerRouteFor({
+  required String side,
+  required String type,
+  String? gymId,
+  String? memberId,
+}) {
+  bool ok(String? id) => id != null && _safeId.hasMatch(id);
+  return switch (partnerLinkFor(side: side, type: type)) {
+    // Trainers and vendors work from one home screen: say which part.
+    'clients' => '/trainer/home?open=clients',
+    'sessions' => '/trainer/home?open=sessions',
+    'enquiries' => '/trainer/home?open=enquiries',
+    'payouts' => '/trainer/home?open=payouts',
+    'orders' => '/vendor/home?open=orders',
+    'customerQuestions' => '/vendor/home?open=enquiries',
+    'products' => '/vendor/home?open=products',
+    'payments' => '/vendor/home?open=payments',
+    'checkins' when ok(gymId) => '/owner/gyms/$gymId/checkins',
+    'member' when ok(memberId) => '/owner/members/$memberId',
+    'gymTrainers' => '/owner/trainers',
+    'gyms' => '/owner/gyms',
+    'earnings' => '/owner/earnings',
+    _ => null,
+  };
+}
 
 class InboxController extends ChangeNotifier {
   InboxController(this._api);
@@ -241,10 +317,15 @@ class InboxController extends ChangeNotifier {
   /// Approve or reject a friend invitation from its card. Returns the
   /// invitation's status afterwards, or null if it couldn't be answered
   /// (the card then stays as it was and the member can retry).
-  Future<String?> answerFriendInvitation(String id, {required bool approve}) async {
+  Future<String?> answerFriendInvitation(
+    String id, {
+    required bool approve,
+  }) async {
     final m = byId(id);
     final invitationId = m?.invitationId;
-    if (m == null || invitationId == null || _answering.contains(id)) return null;
+    if (m == null || invitationId == null || _answering.contains(id)) {
+      return null;
+    }
     _answering.add(id);
     notifyListeners();
     try {
@@ -252,7 +333,8 @@ class InboxController extends ChangeNotifier {
           ? await _api.approveFriendInvitation(invitationId)
           : await _api.rejectFriendInvitation(invitationId);
       final status =
-          ((res['invitation'] as Map?)?['status'] ?? (approve ? 'accepted' : 'rejected'))
+          ((res['invitation'] as Map?)?['status'] ??
+                  (approve ? 'accepted' : 'rejected'))
               .toString();
       _setStatus(id, status);
       return status;
