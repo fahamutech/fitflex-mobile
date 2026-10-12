@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../app_scope.dart';
@@ -7,6 +8,8 @@ import '../../router.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/formatters.dart';
+import '../../shared/api_client.dart';
+import '../../shared/api_error_message.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
 import '../../shared/payment_labels.dart';
@@ -51,6 +54,29 @@ class MemberPassesPage extends StatelessWidget {
       data.passes.any((p) => p.id == data.selectedTier)
       ? data.selectedTier
       : data.passes.first.id;
+
+  /// The full catalogue and the continue button, for a member buying a pass.
+  static List<Widget> normalList(BuildContext context, MemberData data) => [
+    ...data.passes.map(
+      (p) => _SelectablePass(
+        pass: p,
+        selected: p.id == _effectiveTier(data),
+        gyms: data.gyms,
+        onTap: () => data.update((d) => d.selectedTier = p.id),
+      ),
+    ),
+    const SizedBox(height: 12),
+    FFAlert(message: context.tr('pass.note'), tone: FFAlertTone.info),
+    const SizedBox(height: 16),
+    FilledButton(
+      onPressed: () {
+        // Never carry a stale or default tier into checkout.
+        data.update((d) => d.selectedTier = _effectiveTier(data));
+        context.go(AppRoutes.memberPayment);
+      },
+      child: Text(context.tr('member.continuePayment')),
+    ),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -107,29 +133,241 @@ class MemberPassesPage extends StatelessWidget {
                 ),
               ),
             )
-          else ...[
-            ...data.passes.map(
-              (p) => _SelectablePass(
-                pass: p,
-                selected: p.id == _effectiveTier(data),
-                gyms: data.gyms,
-                onTap: () => data.update((d) => d.selectedTier = p.id),
-              ),
-            ),
-            const SizedBox(height: 12),
-            FFAlert(message: context.tr('pass.note'), tone: FFAlertTone.info),
-            const SizedBox(height: 16),
-            FilledButton(
-              onPressed: () {
-                // Never carry a stale or default tier into checkout.
-                data.update((d) => d.selectedTier = _effectiveTier(data));
-                context.go(AppRoutes.memberPayment);
-              },
-              child: Text(context.tr('member.continuePayment')),
-            ),
-          ],
+          else if (data.hasActivePass)
+            // A member with a paid pass moves up by paying the difference;
+            // when there is nothing to upgrade the full list is shown.
+            _UpgradeGate(fallback: Column(children: normalList(context, data)))
+          else
+            ...normalList(context, data),
         ],
       ),
+    );
+  }
+}
+
+/// Asks the server what the member can move up to. A member with a paid pass
+/// sees the higher plans and what each costs them (the difference); anyone
+/// else, or a member with nothing to upgrade from, gets [fallback].
+class _UpgradeGate extends StatefulWidget {
+  const _UpgradeGate({required this.fallback});
+
+  final Widget fallback;
+
+  @override
+  State<_UpgradeGate> createState() => _UpgradeGateState();
+}
+
+class _UpgradeGateState extends State<_UpgradeGate> {
+  late Future<Map<String, dynamic>> _future;
+  String? _selected;
+  bool _sending = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = AppScope.of(context).api.upgradeOptions();
+  }
+
+  void _reload() {
+    setState(() => _future = AppScope.of(context).api.upgradeOptions());
+  }
+
+  Future<void> _submit() async {
+    final tier = _selected;
+    if (tier == null || _sending) return; // a second tap must not send twice
+    setState(() => _sending = true);
+    try {
+      await AppScope.of(context).api.upgradePass(tier);
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.tr('upgrade.submitted'))));
+      final shellState = context.findAncestorStateOfType<MemberShellState>();
+      await shellState?.refreshQr();
+      await shellState?.refreshMe();
+      if (!mounted) return;
+      context.go(AppRoutes.memberHome);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage(FFLocaleScope.of(context), e))),
+      );
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _future,
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final error = snap.error;
+        // The server answered "nothing to upgrade from": buy a pass as usual.
+        if (error is ApiException) return widget.fallback;
+        // Never fall back on a bad connection: that would sell the full price.
+        if (error != null || !snap.hasData) {
+          return Column(
+            children: [
+              Text(
+                context.tr('home.passesLoadError'),
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton(
+                onPressed: _reload,
+                child: Text(context.tr('home.retry')),
+              ),
+            ],
+          );
+        }
+        final current = (snap.data!['current'] as Map?) ?? const {};
+        final options = (snap.data!['options'] as List? ?? const [])
+            .whereType<Map>()
+            .toList();
+        final theme = Theme.of(context);
+        // The upgrade keeps the plan's end date: show it, and warn when it is close.
+        final endsAt = DateTime.tryParse(
+          '${current['expiresAt'] ?? ''}',
+        )?.toLocal();
+        final endsLabel = endsAt == null
+            ? ''
+            : DateFormat('dd MMM yyyy').format(endsAt);
+        final daysLeft = endsAt?.difference(DateTime.now()).inDays;
+        Map? chosen;
+        for (final o in options) {
+          if (o['tier'] == _selected) chosen = o;
+        }
+        final currentCard = FFCard(
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      context.tr('upgrade.currentPlan'),
+                      style: theme.textTheme.labelSmall,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      context.tr('pass.${current['tier']}'),
+                      style: theme.textTheme.titleMedium,
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                formatCurrency(((current['priceTzs'] as num?) ?? 0).toInt()),
+                style: theme.textTheme.titleSmall,
+              ),
+            ],
+          ),
+        );
+        if (options.isEmpty) {
+          return Column(
+            children: [
+              currentCard,
+              const SizedBox(height: 12),
+              FFAlert(
+                message: context.tr('upgrade.highest'),
+                tone: FFAlertTone.info,
+              ),
+            ],
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            currentCard,
+            const SizedBox(height: 16),
+            Text(
+              context.tr('upgrade.choose'),
+              style: theme.textTheme.titleSmall,
+            ),
+            const SizedBox(height: 8),
+            ...options.map((o) {
+              final selected = o['tier'] == _selected;
+              final diff = ((o['differenceTzs'] as num?) ?? 0).toInt();
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: InkWell(
+                  onTap: () => setState(() => _selected = o['tier'] as String),
+                  borderRadius: BorderRadius.circular(FFTokens.radiusXl),
+                  child: Container(
+                    padding: const EdgeInsets.all(FFTokens.spacingMd),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? theme.colorScheme.primary.withValues(alpha: 0.1)
+                          : theme.colorScheme.surface,
+                      border: Border.all(
+                        color: selected
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.outline,
+                        width: selected ? 2 : 1,
+                      ),
+                      borderRadius: BorderRadius.circular(FFTokens.radiusXl),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            context.tr('pass.${o['tier']}'),
+                            style: theme.textTheme.titleMedium,
+                          ),
+                        ),
+                        Text(
+                          '+ ${formatCurrency(diff)}',
+                          style: theme.textTheme.titleSmall,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
+            const SizedBox(height: 4),
+            FFAlert(
+              message: context
+                  .tr('upgrade.explain')
+                  .replaceFirst('{date}', endsLabel),
+              tone: FFAlertTone.info,
+            ),
+            if (daysLeft != null && daysLeft <= 7) ...[
+              const SizedBox(height: 8),
+              FFAlert(
+                message: context
+                    .tr('upgrade.late')
+                    .replaceFirst('{days}', '${daysLeft < 0 ? 0 : daysLeft}'),
+                tone: FFAlertTone.warning,
+              ),
+            ],
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: chosen == null || _sending ? null : _submit,
+              child: _sending
+                  ? FFSpinner(size: 18, color: theme.colorScheme.onPrimary)
+                  : Text(
+                      chosen == null
+                          ? context.tr('upgrade.request')
+                          : context
+                                .tr('upgrade.pay')
+                                .replaceFirst(
+                                  '{amount}',
+                                  formatCurrency(
+                                    ((chosen['differenceTzs'] as num?) ?? 0)
+                                        .toInt(),
+                                  ),
+                                ),
+                    ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

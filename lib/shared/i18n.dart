@@ -579,6 +579,21 @@ class FFLocale extends ChangeNotifier {
       'member.profile': 'Profile',
       'member.yourPass': 'Your pass',
       'member.upgradePlan': 'Upgrade plan',
+      'upgrade.currentPlan': 'Your current plan',
+      'upgrade.choose': 'Choose a higher plan',
+      'upgrade.pay': 'Pay {amount} more',
+      'upgrade.explain':
+          'You pay only the difference. Your new plan runs until {date}, the same end date as your current plan, and the visits you have used still count.',
+      'upgrade.late':
+          'Your plan ends in {days} days. You can also wait and renew at the higher plan after it ends.',
+      'upgrade.highest': 'You are already on our highest plan.',
+      'upgrade.request': 'Request upgrade',
+      'upgrade.submitted':
+          'Upgrade requested. It starts once your payment is approved.',
+      'error.reason.notAnUpgrade':
+          'That plan is not higher than your current one.',
+      'error.reason.sponsoredPass':
+          'Your pass is paid for by your company, so it cannot be upgraded here.',
       'member.showQr': 'Show my QR',
       'member.nearGyms': 'Gyms near you',
       'member.featuredTrainers': 'Featured trainers',
@@ -4400,6 +4415,20 @@ class FFLocale extends ChangeNotifier {
       'member.profile': 'Wasifu',
       'member.yourPass': 'Pasi yako',
       'member.upgradePlan': 'Boresha mpango',
+      'upgrade.currentPlan': 'Mpango wako wa sasa',
+      'upgrade.choose': 'Chagua mpango wa juu zaidi',
+      'upgrade.pay': 'Lipa {amount} zaidi',
+      'upgrade.explain':
+          'Unalipa tofauti tu. Mpango wako mpya unaendelea hadi {date}, tarehe ile ile ya mwisho ya mpango wako wa sasa, na ziara ulizotumia bado zinahesabiwa.',
+      'upgrade.late':
+          'Mpango wako unaisha baada ya siku {days}. Unaweza pia kusubiri na kuhuisha kwa mpango wa juu baada ya kuisha.',
+      'upgrade.highest': 'Tayari uko kwenye mpango wetu wa juu kabisa.',
+      'upgrade.request': 'Omba kuboresha',
+      'upgrade.submitted':
+          'Ombi la kuboresha limetumwa. Litaanza malipo yako yakikubaliwa.',
+      'error.reason.notAnUpgrade': 'Mpango huo si wa juu kuliko wako wa sasa.',
+      'error.reason.sponsoredPass':
+          'Pasi yako inalipwa na kampuni yako, kwa hivyo haiwezi kuboreshwa hapa.',
       'member.showQr': 'Onyesha QR',
       'member.nearGyms': 'Gym zilizo karibu',
       'member.featuredTrainers': 'Ma-trainer waliopendekezwa',

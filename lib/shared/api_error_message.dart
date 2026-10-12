@@ -112,6 +112,8 @@ String? _knownReason(FFLocale locale, String reason) {
     'gym_not_available': 'error.reason.gymNotAvailable',
     'tier_not_available': 'error.reason.tierNotAvailable',
     'invalid_tier': 'error.reason.tierNotAvailable',
+    'not_an_upgrade': 'error.reason.notAnUpgrade',
+    'sponsored_pass': 'error.reason.sponsoredPass',
     // Accounts.
     'email_already_used': 'error.reason.emailAlreadyUsed',
     'invalid_credentials': 'error.reason.invalidCredentials',
