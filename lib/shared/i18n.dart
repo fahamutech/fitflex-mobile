@@ -1828,6 +1828,14 @@ class FFLocale extends ChangeNotifier {
       'inbox.open.gymTrainers': "View trainers",
       'inbox.open.gyms': "View my gyms",
       'inbox.open.earnings': "View earnings",
+      'checkinAlerts.title': "Check-in notifications",
+      'checkinAlerts.on':
+          "You get a notification each time a member checks in.",
+      'checkinAlerts.off':
+          "Off. Check-ins still appear in the app; you just are not notified.",
+      'checkinAlerts.failed':
+          "Couldn't save that. Check your connection and try again.",
+      'inbox.open.memberPayments': "View payments",
       'phoneSteps.title': 'Count your steps with this phone',
       'audience.title': 'Who can see this',
       'audience.private': 'Only you',
@@ -5662,6 +5670,13 @@ class FFLocale extends ChangeNotifier {
       'inbox.open.gymTrainers': "Angalia wakufunzi",
       'inbox.open.gyms': "Angalia gym zangu",
       'inbox.open.earnings': "Angalia mapato",
+      'checkinAlerts.title': "Arifa za kuingia",
+      'checkinAlerts.on': "Unapata arifa kila mwanachama anapoingia.",
+      'checkinAlerts.off':
+          "Zimezimwa. Walioingia bado wanaonekana kwenye programu; ila hupati arifa.",
+      'checkinAlerts.failed':
+          "Imeshindikana kuhifadhi. Angalia mtandao wako kisha ujaribu tena.",
+      'inbox.open.memberPayments': "Angalia malipo",
       'phoneSteps.title': 'Hesabu hatua zako kwa simu hii',
       'audience.title': 'Nani anaweza kuona',
       'audience.private': 'Wewe tu',

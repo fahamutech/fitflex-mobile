@@ -9,6 +9,7 @@ import '../../shared/i18n.dart';
 import '../../shared/widgets/profile_form_page.dart';
 import '../language_screen.dart';
 import 'owner_shell.dart';
+import 'widgets/checkin_alerts_switch.dart';
 import '../../shared/widgets/persona_switcher.dart';
 import '../../shared/widgets/invitations.dart';
 import '../../shared/widgets/verify_identifier.dart';
@@ -170,6 +171,8 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
             title: context.tr('member.help'),
             onTap: _openWhatsAppSupport,
           ),
+          // Each owner and staff member chooses this for themselves.
+          const CheckinAlertsSwitch(),
           const InvitationsTile(),
           const ContactDetailsTile(),
           const ChangePinTile(),
