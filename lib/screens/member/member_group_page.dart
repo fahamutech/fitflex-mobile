@@ -219,6 +219,7 @@ class _GroupPageState extends State<GroupPage> {
                             ),
                           ),
                           IconButton(
+                            tooltip: context.tr('a11y.copy'),
                             icon: const Icon(Icons.copy),
                             onPressed: () {
                               Clipboard.setData(

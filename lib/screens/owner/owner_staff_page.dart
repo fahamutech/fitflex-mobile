@@ -204,6 +204,7 @@ class _OwnerStaffPageState extends State<OwnerStaffPage> {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
+          tooltip: context.tr('a11y.back'),
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
             if (context.canPop()) {
@@ -214,7 +215,7 @@ class _OwnerStaffPageState extends State<OwnerStaffPage> {
           },
         ),
         title: Text(context.tr('staff.title')),
-        actions: const [ThemeToggleButton()],
+        actions: const [AppPrefsButtons()],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAddStaffDialog,

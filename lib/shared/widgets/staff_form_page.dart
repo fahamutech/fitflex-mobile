@@ -141,6 +141,7 @@ class _StaffFormPageState extends State<StaffFormPage> {
       appBar: AppBar(
         title: Text(widget.title),
         leading: IconButton(
+          tooltip: context.tr('common.close'),
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.of(context).pop(),
         ),
@@ -187,6 +188,9 @@ class _StaffFormPageState extends State<StaffFormPage> {
                   children: [
                     PinInputRow(pin: _pin, obscure: _obscurePin),
                     IconButton(
+                      tooltip: _obscurePin
+                          ? context.tr('a11y.showPin')
+                          : context.tr('a11y.hidePin'),
                       icon: Icon(
                         _obscurePin ? Icons.visibility : Icons.visibility_off,
                       ),

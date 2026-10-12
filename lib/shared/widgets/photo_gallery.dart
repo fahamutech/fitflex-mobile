@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../components/components.dart';
 import '../design_tokens.dart';
+import '../i18n.dart';
 
 /// A swipeable row of photos; tapping one opens it full screen with zoom,
 /// previous / next and a counter. Used for gyms and for trainers.
@@ -64,6 +65,7 @@ class PhotoGallery extends StatelessWidget {
                   top: 0,
                   bottom: 0,
                   child: IconButton.filled(
+                    tooltip: context.tr('a11y.previous'),
                     key: Key('$keyPrefix-photo-previous'),
                     onPressed: currentIndex == 0
                         ? null
@@ -79,6 +81,7 @@ class PhotoGallery extends StatelessWidget {
                   top: 0,
                   bottom: 0,
                   child: IconButton.filled(
+                    tooltip: context.tr('a11y.next'),
                     key: Key('$keyPrefix-photo-next'),
                     onPressed: currentIndex == images.length - 1
                         ? null

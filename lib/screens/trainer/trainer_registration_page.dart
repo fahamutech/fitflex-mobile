@@ -135,6 +135,7 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
       appBar: AppBar(
         title: Text(context.tr('trainerReg.title')),
         leading: IconButton(
+          tooltip: context.tr('a11y.back'),
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
             if (_step > 0) {
@@ -144,7 +145,7 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
             }
           },
         ),
-        actions: const [PersonaSwitchButton(), ThemeToggleButton()],
+        actions: const [PersonaSwitchButton(), AppPrefsButtons()],
       ),
       body: SafeArea(
         child: Padding(

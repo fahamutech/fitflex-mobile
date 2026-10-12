@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../design_tokens.dart';
+import '../i18n.dart';
 import 'theme_toggle_button.dart';
 import '../inbox/inbox_pages.dart';
 
@@ -56,6 +57,7 @@ class FFOwnerDashboardBar extends StatelessWidget
       automaticallyImplyLeading: false,
       leading: showBackButton
           ? IconButton(
+              tooltip: context.tr('a11y.back'),
               icon: const Icon(Icons.arrow_back),
               onPressed: () => Navigator.of(context).maybePop(),
             )
@@ -79,40 +81,51 @@ class FFOwnerDashboardBar extends StatelessWidget
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        selectedGymName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                if (ownerGyms.isEmpty)
+                  Text(
+                    selectedGymName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
-                    if (ownerGyms.isNotEmpty) ...[
-                      const SizedBox(width: 2),
-                      PopupMenuButton<String>(
-                        padding: EdgeInsets.zero,
-                        iconSize: 16,
-                        icon: const Icon(Icons.keyboard_arrow_down),
-                        itemBuilder: (ctx) => ownerGyms
-                            .map(
-                              (gym) => PopupMenuItem<String>(
-                                value: gym['id']?.toString(),
-                                child: Text(gym['name']?.toString() ?? ''),
-                              ),
-                            )
-                            .toList(),
-                        onSelected: (value) => onGymSelected?.call(value),
-                      ),
-                    ],
-                  ],
-                ),
+                  )
+                else
+                  // The name and the arrow are one tap target: a separate
+                  // popup button keeps a 48dp minimum and used to leave the
+                  // name only a few characters.
+                  PopupMenuButton<String>(
+                    padding: EdgeInsets.zero,
+                    itemBuilder: (ctx) => ownerGyms
+                        .map(
+                          (gym) => PopupMenuItem<String>(
+                            value: gym['id']?.toString(),
+                            child: Text(gym['name']?.toString() ?? ''),
+                          ),
+                        )
+                        .toList(),
+                    onSelected: (value) => onGymSelected?.call(value),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            selectedGymName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const Icon(Icons.keyboard_arrow_down, size: 18),
+                      ],
+                    ),
+                  ),
                 Text(
                   subtitleLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -125,21 +138,27 @@ class FFOwnerDashboardBar extends StatelessWidget
       actions: [
         // The inbox bell, with a real unread count.
         const InboxBellButton(),
-        const ThemeToggleButton(),
+        const AppPrefsButtons(),
         const SizedBox(width: 4),
         // Avatar
-        GestureDetector(
-          key: const Key('owner-profile-button'),
+        Semantics(
+          button: true,
+          label: context.tr('owner.profile'),
+          excludeSemantics: true,
           onTap: onAvatarTap,
-          child: CircleAvatar(
-            radius: 16,
-            backgroundColor: FFTokens.brand500,
-            child: Text(
-              initials,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 11,
+          child: GestureDetector(
+            key: const Key('owner-profile-button'),
+            onTap: onAvatarTap,
+            child: CircleAvatar(
+              radius: 16,
+              backgroundColor: FFTokens.brand500,
+              child: Text(
+                initials,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 11,
+                ),
               ),
             ),
           ),

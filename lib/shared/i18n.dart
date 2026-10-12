@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Lightweight i18n provider with English + Swahili.
 /// All user-facing strings live here.
 class FFLocale extends ChangeNotifier {
+  static const prefsKey = 'ff.locale';
+
   Locale _locale = const Locale('en');
   Locale get locale => _locale;
 
@@ -10,6 +13,32 @@ class FFLocale extends ChangeNotifier {
     if (_supported.contains(l.languageCode)) {
       _locale = l;
       notifyListeners();
+      _save();
+    }
+  }
+
+  /// Restores the language chosen on this device, if any.
+  Future<void> load() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getString(prefsKey);
+      if (saved != null &&
+          _supported.contains(saved) &&
+          saved != _locale.languageCode) {
+        _locale = Locale(saved);
+        notifyListeners();
+      }
+    } catch (_) {
+      // Keep the default.
+    }
+  }
+
+  Future<void> _save() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(prefsKey, _locale.languageCode);
+    } catch (_) {
+      // Not saved; the choice still applies for this session.
     }
   }
 
@@ -30,6 +59,37 @@ class FFLocale extends ChangeNotifier {
   static const Map<String, Map<String, String>> _messages = {
     'en': {
       'app.title': 'FitFlex',
+      'common.cancel': 'Cancel',
+      'common.confirm': 'Confirm',
+      'common.close': 'Close',
+      'common.retry': 'Try again',
+      'common.loading': 'Loading…',
+      'common.errorTitle': 'Something went wrong',
+      'common.errorBody':
+          'We could not load this. Check your connection and try again.',
+      'a11y.search': 'Search',
+      'a11y.showPin': 'Show PIN',
+      'a11y.hidePin': 'Hide PIN',
+      'a11y.delete': 'Delete',
+      'a11y.back': 'Back',
+      'a11y.showPassword': 'Show password',
+      'a11y.hidePassword': 'Hide password',
+      'a11y.refresh': 'Refresh',
+      'a11y.copy': 'Copy',
+      'a11y.send': 'Send',
+      'a11y.previous': 'Previous',
+      'a11y.next': 'Next',
+      'a11y.increase': 'Increase quantity',
+      'a11y.decrease': 'Decrease quantity',
+      'a11y.open': 'Open',
+      'theme.title': 'Theme',
+      'theme.dark': 'Dark',
+      'theme.light': 'Light',
+      'theme.auto': 'Auto (dark at night)',
+      'lang.switchToSwahili': 'Switch to Swahili',
+      'lang.switchToEnglish': 'Switch to English',
+      'a11y.lightMode': 'Switch to light mode',
+      'a11y.darkMode': 'Switch to dark mode',
       'lang.title': 'Choose language',
       'lang.slogan': 'Choose your preferred language',
       'lang.continue': 'Continue',
@@ -3800,6 +3860,38 @@ class FFLocale extends ChangeNotifier {
     },
     'sw': {
       'app.title': 'FitFlex',
+      'common.cancel': 'Ghairi',
+      'common.confirm': 'Thibitisha',
+      'common.close': 'Funga',
+      'common.retry': 'Jaribu tena',
+      'common.loading': 'Inapakia…',
+      'common.errorTitle': 'Hitilafu imetokea',
+      'common.errorBody':
+          'Hatukuweza kupakia hili. Angalia mtandao wako kisha jaribu tena.',
+      'a11y.search': 'Tafuta',
+      'a11y.showPin': 'Onyesha PIN',
+      'a11y.hidePin': 'Ficha PIN',
+      'a11y.delete': 'Futa',
+      'a11y.back': 'Rudi',
+      'a11y.showPassword': 'Onyesha nenosiri',
+      'a11y.hidePassword': 'Ficha nenosiri',
+      'a11y.refresh': 'Onyesha upya',
+      'a11y.copy': 'Nakili',
+      'a11y.send': 'Tuma',
+      'a11y.previous': 'Iliyotangulia',
+      'a11y.next': 'Inayofuata',
+      'a11y.increase': 'Ongeza idadi',
+      'a11y.decrease': 'Punguza idadi',
+      'a11y.open': 'Fungua',
+      // Kept in English until native Swahili review.
+      'theme.title': 'Theme',
+      'theme.dark': 'Dark',
+      'theme.light': 'Light',
+      'theme.auto': 'Auto (dark at night)',
+      'lang.switchToSwahili': 'Switch to Swahili',
+      'lang.switchToEnglish': 'Switch to English',
+      'a11y.lightMode': 'Tumia hali ya mwanga',
+      'a11y.darkMode': 'Tumia hali ya giza',
       'lang.title': 'Chagua Lugha',
       'lang.slogan': 'Chagua lugha unayopendelea',
       'lang.continue': 'Endelea',

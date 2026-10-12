@@ -323,7 +323,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
               icon: const Icon(Icons.qr_code_2),
             ),
             const InboxBellButton(),
-            const ThemeToggleButton(),
+            const AppPrefsButtons(),
           ],
         ),
         body: RefreshIndicator(

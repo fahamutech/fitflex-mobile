@@ -217,11 +217,15 @@ void main() {
       3000,
     );
     await tester.pumpAndSettle();
+    // The section control may scroll sideways at phone width.
+    await tester.ensureVisible(section('Training'));
     await tester.tap(section('Training'));
     await tester.pumpAndSettle();
     expect(find.text('Running'), findsOneWidget);
     expect(find.text('Walking'), findsNothing);
 
+    // The section control may scroll sideways at phone width.
+    await tester.ensureVisible(section('Progress'));
     await tester.tap(section('Progress'));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('progress-goals')), findsOneWidget);

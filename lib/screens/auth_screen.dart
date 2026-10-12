@@ -201,10 +201,11 @@ class _AuthScreenState extends State<AuthScreen>
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
+          tooltip: context.tr('a11y.back'),
           icon: const Icon(Icons.arrow_back),
           onPressed: loading ? null : () => context.go(AppRoutes.language),
         ),
-        actions: const [ThemeToggleButton()],
+        actions: const [AppPrefsButtons()],
       ),
       body: SafeArea(
         child: FadeTransition(
@@ -275,6 +276,12 @@ class _AuthScreenState extends State<AuthScreen>
                                         .textTheme
                                         .labelLarge
                                         ?.copyWith(
+                                          // The text style carries the body
+                                          // colour; on the primary fill the
+                                          // label must use on-primary.
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onPrimary,
                                           fontWeight: FontWeight.w800,
                                           letterSpacing: 1.2,
                                         ),
@@ -427,7 +434,7 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
         title: Text(context.tr('app.title')),
         // A person whose other role is already approved (say a member who
         // applied as a vendor) must not be stuck here while they wait.
-        actions: const [PersonaSwitchButton(), ThemeToggleButton()],
+        actions: const [PersonaSwitchButton(), AppPrefsButtons()],
       ),
       body: SafeArea(
         // Scrolls when the extra role tile does not fit a small screen.

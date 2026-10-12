@@ -185,6 +185,7 @@ class _SignUpScreenState extends State<SignUpScreen>
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
+          tooltip: context.tr('a11y.back'),
           icon: const Icon(Icons.arrow_back),
           onPressed: loading
               ? null
@@ -192,7 +193,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                     ? context.pop()
                     : context.go(AppRoutes.auth),
         ),
-        actions: const [ThemeToggleButton()],
+        actions: const [AppPrefsButtons()],
       ),
       body: SafeArea(
         child: FadeTransition(
@@ -257,6 +258,12 @@ class _SignUpScreenState extends State<SignUpScreen>
                                         .textTheme
                                         .labelLarge
                                         ?.copyWith(
+                                          // The text style carries the body
+                                          // colour; on the primary fill the
+                                          // label must use on-primary.
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onPrimary,
                                           fontWeight: FontWeight.w800,
                                           letterSpacing: 1.2,
                                         ),

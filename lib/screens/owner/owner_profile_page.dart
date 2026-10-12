@@ -76,6 +76,7 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
+          tooltip: context.tr('a11y.back'),
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
             if (context.canPop()) {
@@ -86,7 +87,7 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
           },
         ),
         title: Text(context.tr('member.profile')),
-        actions: const [ThemeToggleButton()],
+        actions: const [AppPrefsButtons()],
       ),
       body: ListView(
         padding: const EdgeInsets.all(FFTokens.spacingLg),
