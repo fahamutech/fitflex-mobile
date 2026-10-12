@@ -81,40 +81,51 @@ class FFOwnerDashboardBar extends StatelessWidget
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        selectedGymName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                if (ownerGyms.isEmpty)
+                  Text(
+                    selectedGymName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
-                    if (ownerGyms.isNotEmpty) ...[
-                      const SizedBox(width: 2),
-                      PopupMenuButton<String>(
-                        padding: EdgeInsets.zero,
-                        iconSize: 16,
-                        icon: const Icon(Icons.keyboard_arrow_down),
-                        itemBuilder: (ctx) => ownerGyms
-                            .map(
-                              (gym) => PopupMenuItem<String>(
-                                value: gym['id']?.toString(),
-                                child: Text(gym['name']?.toString() ?? ''),
-                              ),
-                            )
-                            .toList(),
-                        onSelected: (value) => onGymSelected?.call(value),
-                      ),
-                    ],
-                  ],
-                ),
+                  )
+                else
+                  // The name and the arrow are one tap target: a separate
+                  // popup button keeps a 48dp minimum and used to leave the
+                  // name only a few characters.
+                  PopupMenuButton<String>(
+                    padding: EdgeInsets.zero,
+                    itemBuilder: (ctx) => ownerGyms
+                        .map(
+                          (gym) => PopupMenuItem<String>(
+                            value: gym['id']?.toString(),
+                            child: Text(gym['name']?.toString() ?? ''),
+                          ),
+                        )
+                        .toList(),
+                    onSelected: (value) => onGymSelected?.call(value),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            selectedGymName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const Icon(Icons.keyboard_arrow_down, size: 18),
+                      ],
+                    ),
+                  ),
                 Text(
                   subtitleLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
