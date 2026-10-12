@@ -1066,6 +1066,13 @@ class ApiClient {
     '/trainer/workouts/${Uri.encodeComponent(workoutId)}',
   );
 
+  /// The FitFlex exercise library, in [lang] where translated.
+  Future<List<dynamic>> trainingExercises({String? lang}) async {
+    final q = lang == null ? '' : '?lang=${Uri.encodeQueryComponent(lang)}';
+    final res = await _request('GET', '/training/exercises$q');
+    return (res as Map)['exercises'] as List? ?? const [];
+  }
+
   Future<List<dynamic>> trainerPlans() async {
     final res = await _request('GET', '/trainer/plans');
     return (res as Map)['plans'] as List? ?? const [];

@@ -1911,6 +1911,23 @@ class FFLocale extends ChangeNotifier {
       'checkinAlerts.failed':
           "Couldn't save that. Check your connection and try again.",
       'inbox.open.memberPayments': "View payments",
+      'exercisePicker.title': "FitFlex exercise library",
+      'exercisePicker.body':
+          "Pick an exercise to fill in its sets, reps and how to do it. You can change anything afterwards.",
+      'exercisePicker.search': "Search exercises",
+      'exercisePicker.allAreas': "All",
+      'exercisePicker.none': "No exercise matches",
+      'exercisePicker.noneBody':
+          "Try another word or area, or type the exercise in yourself.",
+      'exercisePicker.failed':
+          "Couldn't load the library. Check your connection.",
+      'exercisePicker.retry': "Try again",
+      'exercisePicker.add': "Add from library",
+      'exercisePicker.choose': "Choose from the FitFlex library",
+      'exercisePicker.change': "Choose a different one",
+      'exercisePicker.linked':
+          "From the FitFlex library. Your client can swap it for a similar exercise if they need to.",
+      'training.equipment.other': "Other equipment",
       'phoneSteps.title': 'Count your steps with this phone',
       'audience.title': 'Who can see this',
       'audience.private': 'Only you',
@@ -5796,6 +5813,23 @@ class FFLocale extends ChangeNotifier {
       'checkinAlerts.failed':
           "Imeshindikana kuhifadhi. Angalia mtandao wako kisha ujaribu tena.",
       'inbox.open.memberPayments': "Angalia malipo",
+      'exercisePicker.title': "Maktaba ya mazoezi ya FitFlex",
+      'exercisePicker.body':
+          "Chagua zoezi ili kujaza seti, marudio na jinsi ya kulifanya. Unaweza kubadilisha chochote baadaye.",
+      'exercisePicker.search': "Tafuta mazoezi",
+      'exercisePicker.allAreas': "Yote",
+      'exercisePicker.none': "Hakuna zoezi linalolingana",
+      'exercisePicker.noneBody':
+          "Jaribu neno au sehemu nyingine, au andika zoezi mwenyewe.",
+      'exercisePicker.failed':
+          "Imeshindikana kupakia maktaba. Angalia mtandao wako.",
+      'exercisePicker.retry': "Jaribu tena",
+      'exercisePicker.add': "Ongeza kutoka maktaba",
+      'exercisePicker.choose': "Chagua kutoka maktaba ya FitFlex",
+      'exercisePicker.change': "Chagua jingine",
+      'exercisePicker.linked':
+          "Kutoka maktaba ya FitFlex. Mteja wako anaweza kulibadilisha kwa zoezi linalofanana akihitaji.",
+      'training.equipment.other': "Vifaa vingine",
       'phoneSteps.title': 'Hesabu hatua zako kwa simu hii',
       'audience.title': 'Nani anaweza kuona',
       'audience.private': 'Wewe tu',
