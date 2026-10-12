@@ -172,7 +172,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(api.calls, contains('read:tng_1'), reason: 'opening marks it read');
     expect(find.text('Do you train beginners?'), findsOneWidget);
-    expect(find.byKey(const Key('enquiry-call')), findsOneWidget);
+    // Talking stays in the app: no call or email, even if contact details
+    // are in the data.
+    expect(find.byKey(const Key('enquiry-call')), findsNothing);
+    expect(find.byKey(const Key('enquiry-email')), findsNothing);
+    expect(find.byIcon(Icons.phone_outlined), findsNothing);
+    expect(find.byIcon(Icons.email_outlined), findsNothing);
 
     await tester.enterText(
       find.byKey(const Key('enquiry-reply-field')),
@@ -202,7 +207,7 @@ void main() {
       'en',
     ).where((k) => k.startsWith('checkin.') || k.startsWith('enquiry.'));
     final sw = FFLocale.keysOf('sw');
-    expect(en.length, greaterThanOrEqualTo(25));
+    expect(en.length, greaterThanOrEqualTo(23));
     expect(en.where((k) => !sw.contains(k)), isEmpty);
   });
 }

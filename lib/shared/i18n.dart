@@ -3481,8 +3481,6 @@ class FFLocale extends ChangeNotifier {
           'You closed this conversation. If the member writes again, it reopens.',
       'enquiry.close': 'Close',
       'enquiry.closed': 'Conversation closed',
-      'enquiry.call': 'Call',
-      'enquiry.email': 'Email',
       'enquiry.quick1':
           'Thanks for reaching out! When would you like to start?',
       'enquiry.quick2':
@@ -7241,8 +7239,6 @@ class FFLocale extends ChangeNotifier {
           'Umefunga mazungumzo haya. Mwanachama akiandika tena, yatafunguka.',
       'enquiry.close': 'Funga',
       'enquiry.closed': 'Mazungumzo yamefungwa',
-      'enquiry.call': 'Piga simu',
-      'enquiry.email': 'Barua pepe',
       'enquiry.quick1': 'Asante kwa kuwasiliana! Ungependa kuanza lini?',
       'enquiry.quick2':
           'Ndiyo — unaweza kuweka kipindi kwenye kalenda yangu ndani ya app.',
