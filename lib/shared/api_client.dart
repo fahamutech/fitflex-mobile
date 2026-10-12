@@ -972,6 +972,16 @@ class ApiClient {
     return (res as Map)['plans'] as List? ?? const [];
   }
 
+  /// Changes a plan the trainer made. `{ name?, note?, days?, … }`.
+  Future<Map<String, dynamic>> trainerUpdateTrainingPlan(
+    String planId,
+    Map<String, dynamic> body,
+  ) async => await _request(
+    'PUT',
+    '/trainer/training-plans/${Uri.encodeComponent(planId)}',
+    body: body,
+  );
+
   Future<void> trainerCancelTrainingPlan(String planId) async => await _request(
     'POST',
     '/trainer/training-plans/${Uri.encodeComponent(planId)}/cancel',

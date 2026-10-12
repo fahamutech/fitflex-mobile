@@ -9,16 +9,19 @@ import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import '../member/widgets/training_offer.dart' show weekdayLabel;
 
-/// Opens the plan builder; resolves to true when a plan was sent.
+/// Opens the plan builder — to make a plan, or to change [existing].
+/// Resolves to true when the plan was sent or saved.
 Future<bool?> openTrainerTrainingPlan(
   BuildContext context, {
   required TrainerConnection connection,
   required List<TrainerPlan> savedWorkouts,
+  TrainerMadePlan? existing,
 }) => Navigator.of(context).push<bool>(
   MaterialPageRoute(
     builder: (_) => TrainerTrainingPlanPage(
       connection: connection,
       savedWorkouts: savedWorkouts,
+      existing: existing,
     ),
   ),
 );
@@ -36,10 +39,14 @@ class TrainerTrainingPlanPage extends StatefulWidget {
     super.key,
     required this.connection,
     required this.savedWorkouts,
+    this.existing,
   });
 
   final TrainerConnection connection;
   final List<TrainerPlan> savedWorkouts;
+
+  /// The plan being changed; null when making a new one.
+  final TrainerMadePlan? existing;
 
   @override
   State<TrainerTrainingPlanPage> createState() =>
@@ -47,9 +54,45 @@ class TrainerTrainingPlanPage extends StatefulWidget {
 }
 
 class _TrainerTrainingPlanPageState extends State<TrainerTrainingPlanPage> {
-  final _name = TextEditingController();
-  final _note = TextEditingController();
-  int _weeks = 4;
+  TrainerMadePlan? get _existing => widget.existing;
+  late final _name = TextEditingController(text: _existing?.name);
+  late final _note = TextEditingController(text: _existing?.note);
+  late int _weeks = _existing?.durationWeeks ?? 4;
+
+  /// The week was changed (or it's a new plan), so it must be sent.
+  late bool _weekChanged = _existing == null;
+
+  @override
+  void initState() {
+    super.initState();
+    final plan = _existing;
+    if (plan == null) return;
+    // Open on the week as it was laid out.
+    final suggestion = <int, PlanSessionOutline>{};
+    for (final d in plan.layout) {
+      if (d.suggested) {
+        _days[d.day] = _suggested;
+        suggestion[d.day] = PlanSessionOutline(day: d.day, name: d.name);
+      } else {
+        // By id; for plans made before the source was recorded, by name.
+        final saved = widget.savedWorkouts
+            .where((p) => p.id != null)
+            .where(
+              (p) => d.planId != null ? p.id == d.planId : p.name == d.name,
+            )
+            .firstOrNull;
+        if (saved != null) _days[d.day] = saved.id!;
+      }
+    }
+    _suggestion = suggestion;
+    if (suggestion.isNotEmpty) {
+      _suggestDays = plan.daysPerWeek.clamp(
+        trainingDaysPerWeek.first,
+        trainingDaysPerWeek.last,
+      );
+    }
+  }
+
   int _suggestDays = 3;
 
   /// What each weekday (1 = Monday) holds: [_rest], [_suggested], or the id
@@ -97,6 +140,7 @@ class _TrainerTrainingPlanPageState extends State<TrainerTrainingPlanPage> {
       if (!mounted) return;
       setState(() {
         _suggestion = sessions;
+        _weekChanged = true;
         _usedClientPreferences = res['usedClientPreferences'] == true;
         // FitFlex's days take its sessions; the trainer's own choices on
         // other days stay as they are.
@@ -129,27 +173,43 @@ class _TrainerTrainingPlanPageState extends State<TrainerTrainingPlanPage> {
     final api = AppScope.of(context).api;
     final navigator = Navigator.of(context);
     final lang = Localizations.localeOf(context).languageCode;
-    final failed = context.tr('trainerPlan.sendFailed');
+    final existing = _existing;
+    final failed = context.tr(
+      existing == null ? 'trainerPlan.sendFailed' : 'trainerPlan.saveFailed',
+    );
     final stale = context.tr('trainerPlan.suggestionChanged');
     setState(() {
       _busy = true;
       _error = null;
     });
+    final week = {
+      'durationWeeks': _weeks,
+      'preferences': _preferences,
+      'lang': lang,
+      'days': [
+        for (final e in _days.entries)
+          if (e.value == _suggested)
+            {'day': e.key, 'suggested': true}
+          else if (e.value != _rest)
+            {'day': e.key, 'planId': e.value},
+      ],
+    };
     try {
-      await api.trainerOfferTrainingPlan(widget.connection.id, {
-        if (_name.text.trim().isNotEmpty) 'name': _name.text.trim(),
-        if (_note.text.trim().isNotEmpty) 'note': _note.text.trim(),
-        'durationWeeks': _weeks,
-        'preferences': _preferences,
-        'lang': lang,
-        'days': [
-          for (final e in _days.entries)
-            if (e.value == _suggested)
-              {'day': e.key, 'suggested': true}
-            else if (e.value != _rest)
-              {'day': e.key, 'planId': e.value},
-        ],
-      });
+      if (existing == null) {
+        await api.trainerOfferTrainingPlan(widget.connection.id, {
+          if (_name.text.trim().isNotEmpty) 'name': _name.text.trim(),
+          if (_note.text.trim().isNotEmpty) 'note': _note.text.trim(),
+          ...week,
+        });
+      } else {
+        await api.trainerUpdateTrainingPlan(existing.id, {
+          if (_name.text.trim().isNotEmpty) 'name': _name.text.trim(),
+          'note': _note.text.trim().isEmpty ? null : _note.text.trim(),
+          // The week is sent only when it changed, so a rename or a new
+          // note never reschedules anything.
+          if (_weekChanged) ...week,
+        });
+      }
       navigator.pop(true);
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -175,7 +235,13 @@ class _TrainerTrainingPlanPageState extends State<TrainerTrainingPlanPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          context.tr('trainerPlan.title').replaceAll('{name}', _client),
+          context
+              .tr(
+                _existing == null
+                    ? 'trainerPlan.title'
+                    : 'trainerPlan.editTitle',
+              )
+              .replaceAll('{name}', _client),
         ),
       ),
       body: ListView(
@@ -183,7 +249,16 @@ class _TrainerTrainingPlanPageState extends State<TrainerTrainingPlanPage> {
         padding: const EdgeInsets.all(FFTokens.spacingLg),
         children: [
           Text(
-            context.tr('trainerPlan.intro').replaceAll('{name}', _client),
+            context
+                .tr(
+                  _existing == null
+                      ? 'trainerPlan.intro'
+                      : _existing!.status == 'active'
+                      ? 'trainerPlan.editActive'
+                      : 'trainerPlan.editOffered',
+                )
+                .replaceAll('{name}', _client),
+            key: const Key('trainer-plan-intro'),
             style: theme.textTheme.bodyMedium,
           ),
           const SizedBox(height: FFTokens.spacingMd),
@@ -204,14 +279,19 @@ class _TrainerTrainingPlanPageState extends State<TrainerTrainingPlanPage> {
           Wrap(
             spacing: FFTokens.spacingSm,
             children: [
-              for (final w in trainingPlanWeeks)
+              for (final w in {...trainingPlanWeeks, _weeks}.toList()..sort())
                 ChoiceChip(
                   key: Key('trainer-plan-weeks-$w'),
                   label: Text(
                     context.tr('training.weeks').replaceAll('{n}', '$w'),
                   ),
                   selected: _weeks == w,
-                  onSelected: _busy ? null : (_) => setState(() => _weeks = w),
+                  onSelected: _busy
+                      ? null
+                      : (_) => setState(() {
+                          _weeks = w;
+                          _weekChanged = true;
+                        }),
                 ),
             ],
           ),
@@ -339,6 +419,7 @@ class _TrainerTrainingPlanPageState extends State<TrainerTrainingPlanPage> {
                           ? null
                           : (v) => setState(() {
                               _days[d] = v ?? _rest;
+                              _weekChanged = true;
                               _error = null;
                             }),
                     ),
@@ -376,15 +457,24 @@ class _TrainerTrainingPlanPageState extends State<TrainerTrainingPlanPage> {
               key: const Key('trainer-plan-send'),
               onPressed: _busy ? null : _send,
               child: Text(
-                context.tr('trainerPlan.send').replaceAll('{name}', _client),
+                context
+                    .tr(
+                      _existing == null
+                          ? 'trainerPlan.send'
+                          : 'trainerPlan.save',
+                    )
+                    .replaceAll('{name}', _client),
               ),
             ),
           ),
-          const SizedBox(height: FFTokens.spacingSm),
-          Text(
-            context.tr('trainerPlan.sendNote').replaceAll('{name}', _client),
-            style: theme.textTheme.bodySmall,
-          ),
+          // When editing, the top of the page already says what a save does.
+          if (_existing == null) ...[
+            const SizedBox(height: FFTokens.spacingSm),
+            Text(
+              context.tr('trainerPlan.sendNote').replaceAll('{name}', _client),
+              style: theme.textTheme.bodySmall,
+            ),
+          ],
         ],
       ),
     );

@@ -1797,6 +1797,17 @@ class FFLocale extends ChangeNotifier {
       'trainerPlan.stopBody':
           "Sessions {name} hasn't started are removed. Workouts they have done stay in their history.",
       'trainerPlan.keep': "Keep it",
+      'trainerPlan.edit': "Edit plan",
+      'trainerPlan.editTitle': "Edit {name}'s plan",
+      'trainerPlan.editOffered':
+          "{name} hasn't answered yet, so they will simply see the plan as you leave it.",
+      'trainerPlan.editActive':
+          "{name} is on this plan. Changes to the week apply from today: sessions they have done, started or skipped stay as they are. They are told you updated it.",
+      'trainerPlan.save': "Save changes",
+      'trainerPlan.saveFailed':
+          "Couldn't save the changes. Check your connection and try again.",
+      'trainerPlan.saved': "Plan updated.",
+      'trainerPlan.savedActive': "Plan updated. {name} has been told.",
       'phoneSteps.title': 'Count your steps with this phone',
       'audience.title': 'Who can see this',
       'audience.private': 'Only you',
@@ -5600,6 +5611,17 @@ class FFLocale extends ChangeNotifier {
       'trainerPlan.stopBody':
           "Vipindi ambavyo {name} hajaanza vinaondolewa. Mazoezi aliyofanya yanabaki kwenye historia yake.",
       'trainerPlan.keep': "Uache",
+      'trainerPlan.edit': "Hariri mpango",
+      'trainerPlan.editTitle': "Hariri mpango wa {name}",
+      'trainerPlan.editOffered':
+          "{name} bado hajajibu, kwa hiyo ataona mpango kama utakavyouacha.",
+      'trainerPlan.editActive':
+          "{name} anatumia mpango huu. Mabadiliko ya wiki yanaanza leo: vipindi alivyokamilisha, alivyoanza au alivyoruka vinabaki vilivyo. Ataarifiwa kuwa umeubadilisha.",
+      'trainerPlan.save': "Hifadhi mabadiliko",
+      'trainerPlan.saveFailed':
+          "Imeshindikana kuhifadhi mabadiliko. Angalia mtandao wako kisha ujaribu tena.",
+      'trainerPlan.saved': "Mpango umesasishwa.",
+      'trainerPlan.savedActive': "Mpango umesasishwa. {name} amearifiwa.",
       'phoneSteps.title': 'Hesabu hatua zako kwa simu hii',
       'audience.title': 'Nani anaweza kuona',
       'audience.private': 'Wewe tu',

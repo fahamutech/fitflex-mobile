@@ -101,6 +101,30 @@ class _TrainerClientPageState extends State<TrainerClientPage> {
     await _loadMadePlans();
   }
 
+  Future<void> _editPlan(TrainerMadePlan plan) async {
+    final saved = await openTrainerTrainingPlan(
+      context,
+      connection: widget.connection,
+      savedWorkouts: _plans,
+      existing: plan,
+    );
+    if (saved != true || !mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          context
+              .tr(
+                plan.status == 'active'
+                    ? 'trainerPlan.savedActive'
+                    : 'trainerPlan.saved',
+              )
+              .replaceAll('{name}', _name),
+        ),
+      ),
+    );
+    await _loadMadePlans();
+  }
+
   Future<void> _withdrawPlan(TrainerMadePlan plan) async {
     final offered = plan.status == 'offered';
     final ok = await showDialog<bool>(
@@ -218,6 +242,12 @@ class _TrainerClientPageState extends State<TrainerClientPage> {
                       ),
                     ),
                   ),
+                  if (plan != null && plan.isOpen)
+                    OutlinedButton(
+                      key: const Key('client-plan-edit'),
+                      onPressed: () => _editPlan(plan),
+                      child: Text(context.tr('trainerPlan.edit')),
+                    ),
                   if (plan != null && plan.isOpen)
                     TextButton(
                       key: const Key('client-plan-withdraw'),
