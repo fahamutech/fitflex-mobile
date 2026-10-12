@@ -5,10 +5,20 @@ import 'package:fitflexmobile/shared/components/components.dart';
 import 'package:fitflexmobile/shared/i18n.dart';
 import 'package:fitflexmobile/shared/theme_notifier.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'support/ff_harness.dart';
+
+/// Real Inter metrics (the default test font has very wide glyphs, so nothing
+/// would "fit" and the segmented control would always scroll).
+Future<void> _loadInter() async {
+  final loader = FontLoader('Inter')
+    ..addFont(rootBundle.load('assets/fonts/Inter-400.ttf'))
+    ..addFont(rootBundle.load('assets/fonts/Inter-700.ttf'));
+  await loader.load();
+}
 
 void main() {
   testWidgets('app clamps system text scale to 1.3', (t) async {
@@ -84,7 +94,7 @@ void main() {
       expect(value, 'b');
     });
 
-    testWidgets('FFSegmented wraps a long Swahili label at 1.3x scale', (
+    testWidgets('FFSegmented wraps long labels at spaces at 1.3x scale', (
       t,
     ) async {
       await pumpFF(
@@ -102,6 +112,103 @@ void main() {
       );
       expect(t.takeException(), isNull);
       expect(find.byType(FittedBox), findsNothing);
+    });
+
+    testWidgets(
+      'FFSegmented tightens before it scrolls: Swahili labels fit at phone width',
+      (t) async {
+        await _loadInter();
+        await pumpFF(
+          t,
+          FFSegmented(
+            value: 'leo',
+            options: const [
+              ('leo', 'Leo'),
+              ('past', 'Mazoezi'),
+              ('ch', 'Challenges'),
+              ('prog', 'Maendeleo'),
+            ],
+            onChanged: (_) {},
+          ),
+          width: 327,
+          lang: 'sw',
+        );
+        expect(t.takeException(), isNull);
+        // Everything is visible at once: no scroller, no wrapped word.
+        expect(
+          find.descendant(
+            of: find.byType(FFSegmented),
+            matching: find.byType(SingleChildScrollView),
+          ),
+          findsNothing,
+        );
+        for (final label in ['Challenges', 'Maendeleo']) {
+          expect(t.getSize(find.text(label)).height, lessThan(26));
+        }
+      },
+    );
+
+    testWidgets(
+      'FFSegmented scrolls instead of breaking a word at large text scale',
+      (t) async {
+        await _loadInter();
+        String value = 'leo';
+        await pumpFF(
+          t,
+          StatefulBuilder(
+            builder: (c, set) => FFSegmented(
+              value: value,
+              options: const [
+                ('leo', 'Leo'),
+                ('past', 'Mazoezi'),
+                ('ch', 'Challenges'),
+                ('prog', 'Maendeleo'),
+              ],
+              onChanged: (v) => set(() => value = v),
+            ),
+          ),
+          width: 327,
+          lang: 'sw',
+          textScale: 1.3,
+        );
+        expect(t.takeException(), isNull);
+        expect(
+          find.descendant(
+            of: find.byType(FFSegmented),
+            matching: find.byType(SingleChildScrollView),
+          ),
+          findsOneWidget,
+        );
+        for (final label in ['Challenges', 'Maendeleo']) {
+          expect(t.getSize(find.text(label)).height, lessThan(34));
+        }
+        await t.tap(find.text('Leo'));
+        await t.pump();
+        expect(value, 'leo');
+      },
+    );
+
+    testWidgets('FFSegmented keeps equal segments when every word fits', (
+      t,
+    ) async {
+      await _loadInter();
+      await pumpFF(
+        t,
+        FFSegmented(
+          value: 'a',
+          options: const [('a', 'Bidhaa'), ('b', 'Oda zangu')],
+          onChanged: (_) {},
+        ),
+        width: 327,
+        lang: 'sw',
+      );
+      expect(
+        find.descendant(
+          of: find.byType(FFSegmented),
+          matching: find.byType(SingleChildScrollView),
+        ),
+        findsNothing,
+      );
     });
   });
 
