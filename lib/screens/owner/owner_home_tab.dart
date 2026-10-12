@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
+import '../../shared/tone_theme.dart';
 import '../../shared/i18n.dart';
 import 'owner_shell.dart';
 import '../../shared/widgets/challenge_manager_page.dart';
@@ -360,15 +361,9 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
         Container(
           padding: const EdgeInsets.all(FFTokens.spacingMd),
           decoration: BoxDecoration(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
-                : FFTokens.brand50,
+            color: FFToneTheme.of(context).brand.bg,
             borderRadius: BorderRadius.circular(FFTokens.radiusXl),
-            border: Border.all(
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.2)
-                  : FFTokens.brand100,
-            ),
+            border: Border.all(color: FFToneTheme.of(context).brand.border),
           ),
           child: Row(
             children: [
@@ -504,11 +499,11 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      const Center(
+                      Center(
                         child: Icon(
                           Icons.bar_chart_outlined,
                           size: 48,
-                          color: Colors.grey,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -536,13 +531,13 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
                   children: [
                     _buildLegendItem(
                       context,
-                      FFTokens.brand600,
+                      Theme.of(context).colorScheme.primary,
                       context.tr('owner.directMembers'),
                     ),
                     const SizedBox(width: 16),
                     _buildLegendItem(
                       context,
-                      FFTokens.brand200,
+                      FFToneTheme.of(context).info.dot,
                       context.tr('owner.fitflexRoaming'),
                     ),
                   ],
@@ -558,6 +553,13 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
                       fitflexPoints: chartFitflex,
                       labels: chartLabels,
                       isDark: Theme.of(context).brightness == Brightness.dark,
+                      directColor: Theme.of(context).colorScheme.primary,
+                      roamingColor: FFToneTheme.of(context).info.dot,
+                      gridColor: Theme.of(context).colorScheme.outlineVariant,
+                      labelColor: Theme.of(
+                        context,
+                      ).colorScheme.onSurfaceVariant,
+                      ringColor: Theme.of(context).colorScheme.surface,
                     ),
                   ),
                 ),
@@ -585,7 +587,7 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
                     Expanded(
                       child: _buildChartDetail(
                         context,
-                        bulletColor: FFTokens.brand200,
+                        bulletColor: FFToneTheme.of(context).info.dot,
                         title: context.tr('owner.fitflexRoaming'),
                         value: '$fitflexCount',
                         trendDir: visitsTrendDir,
@@ -691,8 +693,8 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
         badgeIcon = Icons.remove;
       case FFTrendDirection.up:
       case null:
-        badgeBg = FFTokens.success50;
-        badgeFg = FFTokens.success700;
+        badgeBg = FFToneTheme.of(context).success.bg;
+        badgeFg = FFToneTheme.of(context).success.fg;
         badgeIcon = Icons.arrow_upward;
     }
 
@@ -792,12 +794,22 @@ class MembershipLineChartPainter extends CustomPainter {
     required this.fitflexPoints,
     required this.labels,
     required this.isDark,
+    required this.directColor,
+    required this.roamingColor,
+    required this.gridColor,
+    required this.labelColor,
+    required this.ringColor,
   });
 
   final List<double> directPoints;
   final List<double> fitflexPoints;
   final List<String> labels;
   final bool isDark;
+  final Color directColor;
+  final Color roamingColor;
+  final Color gridColor;
+  final Color labelColor;
+  final Color ringColor;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -833,11 +845,10 @@ class MembershipLineChartPainter extends CustomPainter {
     final double adjustedMax = (maxVal / step).ceil() * step;
 
     final gridPaint = Paint()
-      ..color = isDark ? Colors.white10 : Colors.grey.shade200
+      ..color = gridColor
       ..strokeWidth = 1.0;
 
     final textPainter = TextPainter(textDirection: TextDirection.ltr);
-    final labelColor = isDark ? Colors.grey.shade500 : Colors.grey.shade600;
 
     // Horizontal grid lines + Y-axis labels
     int gridLines = (adjustedMax / step).round();
@@ -887,8 +898,8 @@ class MembershipLineChartPainter extends CustomPainter {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                FFTokens.brand500.withValues(alpha: 0.15),
-                FFTokens.brand500.withValues(alpha: 0.0),
+                directColor.withValues(alpha: 0.15),
+                directColor.withValues(alpha: 0.0),
               ],
             ).createShader(
               Rect.fromLTWH(paddingLeft, paddingTop, chartWidth, chartHeight),
@@ -897,7 +908,7 @@ class MembershipLineChartPainter extends CustomPainter {
 
     // Direct members — solid line
     final directLinePaint = Paint()
-      ..color = FFTokens.brand600
+      ..color = directColor
       ..strokeWidth = 2.0
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
@@ -915,10 +926,10 @@ class MembershipLineChartPainter extends CustomPainter {
 
     // Direct dots
     final dotOuterPaint = Paint()
-      ..color = isDark ? const Color(0xFF0D1B2A) : Colors.white
+      ..color = ringColor
       ..style = PaintingStyle.fill;
     final dotPaintDirect = Paint()
-      ..color = FFTokens.brand600
+      ..color = directColor
       ..style = PaintingStyle.fill;
 
     for (int i = 0; i < n; i++) {
@@ -929,7 +940,7 @@ class MembershipLineChartPainter extends CustomPainter {
 
     // FitFlex — dashed line
     final fitflexLinePaint = Paint()
-      ..color = FFTokens.brand200
+      ..color = roamingColor
       ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
@@ -947,7 +958,7 @@ class MembershipLineChartPainter extends CustomPainter {
 
     // FitFlex dots
     final dotPaintFitflex = Paint()
-      ..color = FFTokens.brand200
+      ..color = roamingColor
       ..style = PaintingStyle.fill;
 
     for (int i = 0; i < n; i++) {
@@ -994,7 +1005,12 @@ class MembershipLineChartPainter extends CustomPainter {
       old.directPoints != directPoints ||
       old.fitflexPoints != fitflexPoints ||
       old.labels != labels ||
-      old.isDark != isDark;
+      old.isDark != isDark ||
+      old.directColor != directColor ||
+      old.roamingColor != roamingColor ||
+      old.gridColor != gridColor ||
+      old.labelColor != labelColor ||
+      old.ringColor != ringColor;
 }
 
 // ─────────────────────────── Date Filter Bottom Sheet ────────────────────────
