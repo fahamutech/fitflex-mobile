@@ -262,6 +262,14 @@ class ClientSummary {
 /// One exercise in a trainer's plan: what to do, not what was done.
 class PlanExercise {
   String exerciseName;
+
+  /// The FitFlex library exercise this is, when the trainer picked it from
+  /// the library. A client can swap such an exercise for an alternative.
+  String? libraryId;
+
+  /// The name the library exercise had when picked: renaming the exercise
+  /// to something else means it is no longer that exercise.
+  final String? libraryName;
   String? muscleGroup;
   int sets;
 
@@ -273,16 +281,27 @@ class PlanExercise {
 
   PlanExercise({
     this.exerciseName = '',
+    this.libraryId,
     this.muscleGroup,
     this.sets = 3,
     this.reps = 10,
     this.duration,
     this.instructions,
     this.tracksWeight = false,
-  });
+  }) : libraryName = libraryId == null ? null : exerciseName.trim();
+
+  /// Whether a client will be able to swap this for an alternative.
+  bool get fromLibrary => libraryId != null;
+
+  /// Call when the name is typed over: a different name drops the link.
+  void renamed(String name) {
+    exerciseName = name;
+    if (libraryId != null && name.trim() != libraryName) libraryId = null;
+  }
 
   factory PlanExercise.fromJson(Map<String, dynamic> json) => PlanExercise(
     exerciseName: json['exerciseName'] as String? ?? '',
+    libraryId: json['libraryId'] as String?,
     muscleGroup: json['muscleGroup'] as String?,
     sets: (json['sets'] as num?)?.toInt() ?? 1,
     reps: (json['reps'] as num?)?.toInt(),
@@ -295,6 +314,7 @@ class PlanExercise {
 
   Map<String, dynamic> toJson() => {
     'exerciseName': exerciseName.trim(),
+    'libraryId': ?libraryId,
     'muscleGroup': ?muscleGroup,
     'sets': sets,
     'reps': ?reps,
@@ -625,4 +645,75 @@ class ClientOverview {
           : null,
     );
   }
+}
+
+/// An exercise in the FitFlex library, as a trainer sees it when choosing
+/// one for a workout.
+class LibraryExercise {
+  final String id;
+  final String name;
+  final String? description;
+  final List<String> targetAreas;
+  final List<String> equipment;
+  final String difficulty;
+  final int sets;
+  final int? reps;
+
+  /// Seconds, for timed exercises.
+  final int? duration;
+  final bool tracksWeight;
+  final List<String> instructions;
+
+  const LibraryExercise({
+    required this.id,
+    required this.name,
+    this.description,
+    this.targetAreas = const [],
+    this.equipment = const [],
+    this.difficulty = 'beginner',
+    this.sets = 3,
+    this.reps,
+    this.duration,
+    this.tracksWeight = false,
+    this.instructions = const [],
+  });
+
+  static List<String> _strings(Object? v) => [
+    for (final x in (v as List? ?? const [])) x.toString(),
+  ];
+
+  static LibraryExercise? tryParse(Object? raw) {
+    if (raw is! Map) return null;
+    final id = raw['id'] as String?;
+    final name = raw['name'] as String?;
+    if (id == null || name == null || name.isEmpty) return null;
+    final reps = (raw['defaultReps'] as num?)?.toInt();
+    final duration = (raw['defaultDuration'] as num?)?.toInt();
+    return LibraryExercise(
+      id: id,
+      name: name,
+      description: raw['description'] as String?,
+      targetAreas: _strings(raw['targetAreas']),
+      equipment: _strings(raw['equipment']),
+      difficulty: raw['difficulty'] as String? ?? 'beginner',
+      sets: (raw['defaultSets'] as num?)?.toInt() ?? 3,
+      reps: reps,
+      duration: reps == null ? duration : null,
+      tracksWeight: raw['tracksWeight'] == true,
+      instructions: _strings(raw['instructions']),
+    );
+  }
+
+  /// The exercise as a line in a trainer's workout, ready to adjust.
+  PlanExercise toPlanExercise() => PlanExercise(
+    exerciseName: name,
+    libraryId: id,
+    muscleGroup: targetAreas.firstOrNull,
+    // A saved workout holds at most 10 sets an exercise.
+    sets: sets.clamp(1, 10),
+    reps: reps ?? (duration == null ? 10 : null),
+    duration: reps == null ? duration : null,
+    instructions: instructions.isEmpty ? null : instructions.join(' '),
+    tracksWeight: tracksWeight,
+  );
 }

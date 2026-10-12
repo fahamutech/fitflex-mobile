@@ -9,6 +9,7 @@ import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import '../member/widgets/activity_widgets.dart' show activityTypeLabel;
 import '../member/widgets/workout_widgets.dart' show muscleLabel;
+import 'widgets/exercise_picker.dart';
 
 /// Opens the editor; resolves to true when the plan was saved or deleted.
 Future<bool?> openTrainerPlanEditor(
@@ -117,6 +118,23 @@ class _TrainerPlanEditorPageState extends State<TrainerPlanEditorPage> {
     context,
   ).showSnackBar(SnackBar(content: Text(context.tr(key))));
 
+  Future<void> _addFromLibrary() async {
+    final picked = await showExercisePicker(context);
+    if (picked == null || !mounted) return;
+    setState(() {
+      // A blank first line is what a new workout starts with: fill it
+      // instead of leaving it empty above the picked one.
+      final first = _plan.exercises.firstOrNull;
+      if (_plan.exercises.length == 1 &&
+          first != null &&
+          first.exerciseName.trim().isEmpty) {
+        _plan.exercises[0] = picked.toPlanExercise();
+      } else {
+        _plan.exercises.add(picked.toPlanExercise());
+      }
+    });
+  }
+
   String? _required(String? v) =>
       (v ?? '').trim().isEmpty ? context.tr('plans.required') : null;
 
@@ -211,14 +229,32 @@ class _TrainerPlanEditorPageState extends State<TrainerPlanEditorPage> {
                     ? () => setState(() => _plan.exercises.removeAt(i))
                     : null,
                 onChanged: () => setState(() {}),
+                // A new object, so the card's fields start again from it.
+                onPicked: (picked) =>
+                    setState(() => _plan.exercises[i] = picked),
               ),
-            OutlinedButton.icon(
-              key: const Key('plan-add-exercise'),
-              onPressed: _plan.exercises.length >= 20
-                  ? null
-                  : () => setState(() => _plan.exercises.add(PlanExercise())),
-              icon: const Icon(Icons.add),
-              label: Text(context.tr('plans.addExercise')),
+            Wrap(
+              spacing: FFTokens.spacingSm,
+              runSpacing: FFTokens.spacingXs,
+              children: [
+                FilledButton.tonalIcon(
+                  key: const Key('plan-add-from-library'),
+                  onPressed: _plan.exercises.length >= 20
+                      ? null
+                      : _addFromLibrary,
+                  icon: const Icon(Icons.library_add_outlined),
+                  label: Text(context.tr('exercisePicker.add')),
+                ),
+                OutlinedButton.icon(
+                  key: const Key('plan-add-exercise'),
+                  onPressed: _plan.exercises.length >= 20
+                      ? null
+                      : () =>
+                            setState(() => _plan.exercises.add(PlanExercise())),
+                  icon: const Icon(Icons.add),
+                  label: Text(context.tr('plans.addExercise')),
+                ),
+              ],
             ),
             const SizedBox(height: FFTokens.spacingLg),
             FilledButton(
@@ -241,6 +277,7 @@ class _ExerciseEditor extends StatelessWidget {
     required this.required,
     required this.onRemove,
     required this.onChanged,
+    required this.onPicked,
   });
 
   final int index;
@@ -248,6 +285,9 @@ class _ExerciseEditor extends StatelessWidget {
   final String? Function(String?) required;
   final VoidCallback? onRemove;
   final VoidCallback onChanged;
+
+  /// The trainer chose a library exercise for this line.
+  final void Function(PlanExercise picked) onPicked;
 
   @override
   Widget build(BuildContext context) {
@@ -278,7 +318,12 @@ class _ExerciseEditor extends StatelessWidget {
                     isDense: true,
                   ),
                   validator: required,
-                  onChanged: (v) => e.exerciseName = v,
+                  onChanged: (v) {
+                    final linked = e.fromLibrary;
+                    e.renamed(v);
+                    // Typed over into something else: the note goes.
+                    if (linked != e.fromLibrary) onChanged();
+                  },
                 ),
               ),
               if (onRemove != null)
@@ -290,6 +335,35 @@ class _ExerciseEditor extends StatelessWidget {
                 ),
             ],
           ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              key: Key('exercise-pick-$index'),
+              onPressed: () async {
+                final picked = await showExercisePicker(context);
+                if (picked != null) onPicked(picked.toPlanExercise());
+              },
+              icon: const Icon(Icons.library_books_outlined, size: 18),
+              label: Text(
+                context.tr(
+                  e.fromLibrary
+                      ? 'exercisePicker.change'
+                      : 'exercisePicker.choose',
+                ),
+              ),
+            ),
+          ),
+          if (e.fromLibrary)
+            Padding(
+              padding: const EdgeInsets.only(bottom: FFTokens.spacingXs),
+              child: Text(
+                context.tr('exercisePicker.linked'),
+                key: Key('exercise-linked-$index'),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+            ),
           const SizedBox(height: FFTokens.spacingSm),
           DropdownButtonFormField<String?>(
             key: Key('exercise-muscle-$index'),
@@ -304,7 +378,11 @@ class _ExerciseEditor extends StatelessWidget {
                 value: null,
                 child: Text(context.tr('plans.noMuscle')),
               ),
-              for (final m in planMuscleGroups)
+              for (final m in {
+                ...planMuscleGroups,
+                // A library exercise names a finer area (quadriceps…).
+                ?e.muscleGroup,
+              })
                 DropdownMenuItem(
                   value: m,
                   child: Text(muscleLabel(context, m)),
