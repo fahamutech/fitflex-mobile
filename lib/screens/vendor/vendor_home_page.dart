@@ -292,6 +292,10 @@ class _VendorHomePageState extends State<VendorHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final sections = _sections;
+    // The tab starts at Products; show the first section this user may use
+    // when Products is not one of them.
+    final tab = sections.contains(_tab) ? _tab : sections.first;
     return Scaffold(
       appBar: AppBar(
         title: Text(context.tr('vendor.title')),
@@ -321,7 +325,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
                 ? const Center(child: FFSpinner())
                 : RefreshIndicator(
                     onRefresh: _refresh,
-                    child: switch (_tab) {
+                    child: switch (tab) {
                       0 => _productsTab(),
                       1 => _ordersTab(),
                       2 => _paymentsTab(),
@@ -333,7 +337,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
           ),
         ],
       ),
-      floatingActionButton: _tab == 0
+      floatingActionButton: tab == 0
           ? FloatingActionButton.extended(
               key: const Key('vendor-add-product'),
               onPressed: _busy ? null : () => _editProduct(),
@@ -341,53 +345,57 @@ class _VendorHomePageState extends State<VendorHomePage> {
               label: Text(context.tr('vendor.addProduct')),
             )
           : null,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _sections.indexOf(_tab).clamp(0, _sections.length - 1),
-        onDestinationSelected: (index) =>
-            setState(() => _tab = _sections[index]),
-        destinations: [
-          if (_sections.contains(0))
-            NavigationDestination(
-              key: const Key('vendor-nav-products'),
-              icon: const Icon(Icons.inventory_2_outlined),
-              selectedIcon: const Icon(Icons.inventory_2),
-              label: context.tr('vendor.products'),
+      // A navigation bar needs two or more destinations; with one section
+      // (or none: the "no access" page) there is nothing to switch between.
+      bottomNavigationBar: sections.length < 2
+          ? null
+          : NavigationBar(
+              selectedIndex: sections.indexOf(tab),
+              onDestinationSelected: (index) =>
+                  setState(() => _tab = sections[index]),
+              destinations: [
+                if (sections.contains(0))
+                  NavigationDestination(
+                    key: const Key('vendor-nav-products'),
+                    icon: const Icon(Icons.inventory_2_outlined),
+                    selectedIcon: const Icon(Icons.inventory_2),
+                    label: context.tr('vendor.products'),
+                  ),
+                if (sections.contains(1))
+                  NavigationDestination(
+                    key: const Key('vendor-nav-orders'),
+                    icon: const Icon(Icons.receipt_long_outlined),
+                    selectedIcon: const Icon(Icons.receipt_long),
+                    label: context.tr('vendor.orders'),
+                  ),
+                if (sections.contains(2))
+                  NavigationDestination(
+                    key: const Key('vendor-nav-payments'),
+                    icon: const Icon(Icons.account_balance_wallet_outlined),
+                    selectedIcon: const Icon(Icons.account_balance_wallet),
+                    label: context.tr('vendor.payments'),
+                  ),
+                if (sections.contains(3))
+                  NavigationDestination(
+                    key: const Key('vendor-nav-enquiries'),
+                    icon: const Icon(Icons.forum_outlined),
+                    selectedIcon: const Icon(Icons.forum),
+                    label: context.tr('vendor.enquiries'),
+                  ),
+                if (sections.contains(4))
+                  NavigationDestination(
+                    key: const Key('vendor-nav-business'),
+                    icon: const Icon(Icons.store_outlined),
+                    selectedIcon: const Icon(Icons.store),
+                    label: context.tr('vendor.business'),
+                  ),
+                if (sections.contains(5))
+                  NavigationDestination(
+                    icon: const Icon(Icons.lock_outline),
+                    label: context.tr('vendor.noAccess'),
+                  ),
+              ],
             ),
-          if (_sections.contains(1))
-            NavigationDestination(
-              key: const Key('vendor-nav-orders'),
-              icon: const Icon(Icons.receipt_long_outlined),
-              selectedIcon: const Icon(Icons.receipt_long),
-              label: context.tr('vendor.orders'),
-            ),
-          if (_sections.contains(2))
-            NavigationDestination(
-              key: const Key('vendor-nav-payments'),
-              icon: const Icon(Icons.account_balance_wallet_outlined),
-              selectedIcon: const Icon(Icons.account_balance_wallet),
-              label: context.tr('vendor.payments'),
-            ),
-          if (_sections.contains(3))
-            NavigationDestination(
-              key: const Key('vendor-nav-enquiries'),
-              icon: const Icon(Icons.forum_outlined),
-              selectedIcon: const Icon(Icons.forum),
-              label: context.tr('vendor.enquiries'),
-            ),
-          if (_sections.contains(4))
-            NavigationDestination(
-              key: const Key('vendor-nav-business'),
-              icon: const Icon(Icons.store_outlined),
-              selectedIcon: const Icon(Icons.store),
-              label: context.tr('vendor.business'),
-            ),
-          if (_sections.contains(5))
-            NavigationDestination(
-              icon: const Icon(Icons.lock_outline),
-              label: context.tr('vendor.noAccess'),
-            ),
-        ],
-      ),
     );
   }
 
