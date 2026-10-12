@@ -1,5 +1,6 @@
 // Where a notification takes a trainer, a vendor or a gym when they tap it.
 import 'package:fitflexmobile/app_scope.dart';
+import 'package:fitflexmobile/screens/owner/widgets/checkin_alerts_switch.dart';
 import 'package:fitflexmobile/shared/api_client.dart';
 import 'package:fitflexmobile/shared/auth_state.dart';
 import 'package:fitflexmobile/shared/design_tokens.dart';
@@ -143,6 +144,12 @@ void main() {
       _route('gym', 'gym_trainer_request', gymId: 'g1'),
       '/owner/trainers',
     );
+    // A renewal is a payment notice: it opens what that member has paid.
+    expect(
+      _route('gym', 'gym_membership_renewed', gymId: 'g1', memberId: 'm1'),
+      '/owner/members/m1/payments',
+    );
+    expect(_route('gym', 'gym_membership_renewed', gymId: 'g1'), isNull);
     expect(_route('gym', 'gym_review', gymId: 'g1'), '/owner/gyms');
     expect(_route('gym', 'gym_statement_approved'), '/owner/earnings');
     expect(_route('gym', 'gym_payout_paid'), '/owner/earnings');
@@ -222,6 +229,7 @@ void main() {
       'gymTrainers',
       'gyms',
       'earnings',
+      'memberPayments',
     ]) {
       for (final lang in ['en', 'sw']) {
         expect(
@@ -232,4 +240,87 @@ void main() {
       }
     }
   });
+
+  group('check-in notifications switch', () {
+    Future<_PrefsApi> pump(WidgetTester tester, _PrefsApi api) async {
+      await tester.pumpWidget(
+        AppScope(
+          key: UniqueKey(),
+          api: api,
+          auth: AuthState(api),
+          child: FFLocaleScope(
+            notifier: FFLocale(),
+            child: MaterialApp(
+              theme: buildTheme(),
+              home: const Scaffold(body: CheckinAlertsSwitch()),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      return api;
+    }
+
+    bool value(WidgetTester tester) => tester
+        .widget<SwitchListTile>(find.byKey(const Key('checkin-alerts-switch')))
+        .value;
+
+    testWidgets('is on by default and saves when switched off', (tester) async {
+      final api = await pump(tester, _PrefsApi({}));
+      expect(value(tester), isTrue, reason: 'on until they say otherwise');
+      expect(
+        find.text('You get a notification each time a member checks in.'),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const Key('checkin-alerts-switch')));
+      await tester.pumpAndSettle();
+      expect(api.saved.single, {'gymCheckinAlerts': false});
+      expect(value(tester), isFalse);
+      expect(find.textContaining('you just are not notified'), findsOneWidget);
+    });
+
+    testWidgets('shows what was chosen before', (tester) async {
+      await pump(tester, _PrefsApi({'gymCheckinAlerts': false}));
+      expect(value(tester), isFalse);
+    });
+
+    testWidgets('a failed save puts the switch back', (tester) async {
+      final api = await pump(tester, _PrefsApi({})..failSave = true);
+      await tester.tap(find.byKey(const Key('checkin-alerts-switch')));
+      await tester.pumpAndSettle();
+      expect(value(tester), isTrue);
+      expect(find.textContaining("Couldn't save that"), findsOneWidget);
+      expect(api.saved, isEmpty);
+    });
+
+    testWidgets('stays hidden if the choice cannot be loaded', (tester) async {
+      await pump(tester, _PrefsApi({})..failLoad = true);
+      expect(find.byKey(const Key('checkin-alerts-switch')), findsNothing);
+    });
+  });
+}
+
+class _PrefsApi extends ApiClient {
+  _PrefsApi(this.prefs);
+
+  final Map<String, dynamic> prefs;
+  final saved = <Map<String, dynamic>>[];
+  bool failLoad = false;
+  bool failSave = false;
+
+  @override
+  Future<Map<String, dynamic>> communicationPreferences() async {
+    if (failLoad) throw ApiException(500, null);
+    return {'preferences': prefs};
+  }
+
+  @override
+  Future<Map<String, dynamic>> updateCommunicationPreferences(
+    Map<String, dynamic> changes,
+  ) async {
+    if (failSave) throw ApiException(500, null);
+    saved.add(changes);
+    prefs.addAll(changes);
+    return {'preferences': prefs};
+  }
 }

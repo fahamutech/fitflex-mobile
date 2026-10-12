@@ -183,6 +183,8 @@ String partnerLinkFor({required String side, required String type}) =>
       'gym' => switch (type) {
         'gym_checkin' => 'checkins',
         'gym_member_joined' => 'member',
+        // A renewal is a payment: open what that member has paid.
+        'gym_membership_renewed' => 'memberPayments',
         'gym_trainer_request' => 'gymTrainers',
         'gym_review' => 'gyms',
         'gym_statement_approved' || 'gym_payout_paid' => 'earnings',
@@ -212,6 +214,7 @@ String? partnerRouteFor({
     'payments' => '/vendor/home?open=payments',
     'checkins' when ok(gymId) => '/owner/gyms/$gymId/checkins',
     'member' when ok(memberId) => '/owner/members/$memberId',
+    'memberPayments' when ok(memberId) => '/owner/members/$memberId/payments',
     'gymTrainers' => '/owner/trainers',
     'gyms' => '/owner/gyms',
     'earnings' => '/owner/earnings',
