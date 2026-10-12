@@ -1,5 +1,4 @@
 import 'package:fitflexmobile/app_scope.dart';
-import 'package:fitflexmobile/screens/owner/owner_home_tab.dart';
 import 'package:fitflexmobile/screens/owner/owner_shell.dart';
 import 'package:fitflexmobile/shared/api_client.dart';
 import 'package:fitflexmobile/shared/auth_state.dart';
