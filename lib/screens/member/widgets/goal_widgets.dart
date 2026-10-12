@@ -223,6 +223,22 @@ class GoalCard extends StatelessWidget {
                           key: Key('goal-origin-${g.id}'),
                           style: theme.textTheme.bodySmall,
                         ),
+                      const SizedBox(height: FFTokens.spacingSm),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(
+                          FFTokens.radiusFull,
+                        ),
+                        child: LinearProgressIndicator(
+                          value: p.fraction.clamp(0.0, 1.0),
+                          minHeight: 8,
+                        ),
+                      ),
+                      const SizedBox(height: FFTokens.spacingXs),
+                      Text(
+                        '${context.tr('goal.progressOf').replaceAll('{current}', _amount(g.type, p.current)).replaceAll('{target}', _amount(g.type, g.target))}'
+                        ' · ${(p.fraction * 100).round()}%',
+                        style: theme.textTheme.bodySmall,
+                      ),
                     ],
                   ),
                 ),
@@ -236,20 +252,6 @@ class GoalCard extends StatelessWidget {
                   ),
                 _GoalMenu(goal: g),
               ],
-            ),
-            const SizedBox(height: FFTokens.spacingSm),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(FFTokens.radiusFull),
-              child: LinearProgressIndicator(
-                value: p.fraction.clamp(0.0, 1.0),
-                minHeight: 8,
-              ),
-            ),
-            const SizedBox(height: FFTokens.spacingXs),
-            Text(
-              '${context.tr('goal.progressOf').replaceAll('{current}', _amount(g.type, p.current)).replaceAll('{target}', _amount(g.type, g.target))}'
-              ' · ${(p.fraction * 100).round()}%',
-              style: theme.textTheme.bodySmall,
             ),
             if (g.isCoaching && g.status == GoalStatus.active)
               Padding(

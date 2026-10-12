@@ -8,7 +8,12 @@ import '../../../shared/promotion_events.dart';
 import '../../../shared/widgets/partner_not_verified.dart';
 
 class GymCard extends StatelessWidget {
-  const GymCard({super.key, required this.gym, this.distanceKm, this.placement});
+  const GymCard({
+    super.key,
+    required this.gym,
+    this.distanceKm,
+    this.placement,
+  });
 
   final Gym gym;
   final double? distanceKm;
@@ -29,7 +34,12 @@ class GymCard extends StatelessWidget {
     return FFCard(
       child: InkWell(
         onTap: () {
-          trackPromotionClick('gym', gym.id, gym.promotion, placement: placement);
+          trackPromotionClick(
+            'gym',
+            gym.id,
+            gym.promotion,
+            placement: placement,
+          );
           context.go('/member/gyms/${gym.id}');
         },
         borderRadius: BorderRadius.circular(FFTokens.radiusXl),

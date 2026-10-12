@@ -52,8 +52,27 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
       children: [
         FFPageHeader(
           title: context.tr('activity.title'),
-          actions: data.activityIsSample ? const ActivitySampleBadge() : null,
+          actions:
+              data.activityLoaded &&
+                  (data.activities.isNotEmpty || _section != 'overview')
+              ? FFButton(
+                  key: const Key('activity-log-open'),
+                  label: context.tr('logActivity.open'),
+                  onPressed: () => openLogActivity(context),
+                  variant: FFButtonVariant.secondary,
+                  size: FFButtonSize.sm,
+                  icon: Icons.add,
+                )
+              : null,
         ),
+        if (data.activityIsSample)
+          const Padding(
+            padding: EdgeInsets.only(bottom: FFTokens.spacingSm),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: ActivitySampleBadge(),
+            ),
+          ),
         SizedBox(
           width: double.infinity,
           child: FFSegmented(
@@ -105,95 +124,54 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
       // workout that's actually on for today.
       if (todaysWorkouts(data.workouts, today).isNotEmpty)
         TodayWorkoutCard(data: data, now: today),
-      Row(
-        children: [
-          Expanded(child: FFSectionTitle(context.tr('activity.today'))),
-          if (activities.isNotEmpty)
-            FFButton(
-              key: const Key('activity-log-open'),
-              label: context.tr('logActivity.open'),
-              onPressed: () => openLogActivity(context),
-              variant: FFButtonVariant.ghost,
-              size: FFButtonSize.sm,
-              icon: Icons.add,
-            ),
-        ],
-      ),
+      FFSectionTitle(context.tr('activity.today')),
       const PhoneStepsCard(),
       const RecordRunButton(),
       if (activities.isEmpty)
         const ActivityGetStartedCard()
       else ...[
-        _TileRow(
-          left: FFStatTile(
-            icon: Icons.directions_walk,
-            value: formatSteps(s.steps),
-            label: context.tr('activity.steps'),
-          ),
-          right: FFStatTile(
-            icon: Icons.straighten,
-            value: formatKm(s.distanceKm),
-            // The phone counts steps only; its distance is estimated.
-            label: context.tr(
-              activities.any(
-                    (a) =>
-                        a.devicePlatform == DevicePlatform.phoneSensor &&
-                        (a.distanceKm ?? 0) > 0 &&
-                        dayOf(a.startedAt) == dayOf(today),
-                  )
-                  ? 'activity.distanceEstimated'
-                  : 'activity.distance',
+        _TodaySummary(
+          steps: s.steps,
+          stepGoal: stepGoal,
+          cells: [
+            (
+              Icons.straighten,
+              formatKm(s.distanceKm),
+              context.tr(
+                activities.any(
+                      (a) =>
+                          a.devicePlatform == DevicePlatform.phoneSensor &&
+                          (a.distanceKm ?? 0) > 0 &&
+                          dayOf(a.startedAt) == dayOf(today),
+                    )
+                    ? 'activity.distanceEstimated'
+                    : 'activity.distance',
+              ),
             ),
-          ),
-        ),
-        _TileRow(
-          left: FFStatTile(
-            icon: Icons.timer_outlined,
-            value: '${s.activeMinutes}',
-            label: context.tr('activity.activeMinutes'),
-          ),
-          right: FFStatTile(
-            icon: Icons.local_fire_department_outlined,
-            value: s.calories == null ? '—' : formatSteps(s.calories!),
-            label: context.tr('activity.calories'),
-          ),
-        ),
-        _TileRow(
-          left: FFStatTile(
-            icon: Icons.timeline,
-            value: '${s.activityCount}',
-            label: context.tr('activity.activities'),
-          ),
-          right: FFStatTile(
-            icon: Icons.fitness_center,
-            value: '${s.workoutCount}',
-            label: context.tr('activity.workoutCount'),
-          ),
+            (
+              Icons.timer_outlined,
+              '${s.activeMinutes}',
+              context.tr('activity.activeMinutes'),
+            ),
+            (
+              Icons.local_fire_department_outlined,
+              s.calories == null ? '—' : formatSteps(s.calories!),
+              context.tr('activity.calories'),
+            ),
+            (
+              Icons.timeline,
+              '${s.activityCount}',
+              context.tr('activity.activities'),
+            ),
+            (
+              Icons.fitness_center,
+              '${s.workoutCount}',
+              context.tr('activity.workoutCount'),
+            ),
+          ],
         ),
       ],
       const SizedBox(height: FFTokens.spacingSm),
-      if (stepGoal != null)
-        FFCard(
-          key: const Key('activity-daily-goal'),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                context.tr('activity.dailyGoal'),
-                style: Theme.of(context).textTheme.labelLarge,
-              ),
-              const SizedBox(height: FFTokens.spacingXs),
-              Text(
-                '${formatSteps(s.steps)} / ${formatSteps(stepGoal)}',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: FFTokens.spacingSm),
-              ActivityGoalBar(steps: s.steps, goal: stepGoal),
-            ],
-          ),
-        ),
       StreakCard(key: const Key('activity-streak'), streak: streak),
       FFSectionTitle(context.tr('activity.currentChallenge')),
       currentChallengeBlock(context, data, today),
@@ -236,10 +214,29 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
     final other = data.activities
         .where((a) => a.isWorkout && a.workoutId == null)
         .toList();
+    final noPlanNoWorkout =
+        data.trainingLoaded &&
+        data.workoutsLoaded &&
+        data.trainingPlan == null &&
+        todayIds.isEmpty;
     return [
       for (final offer in data.trainingOffers) TrainingOfferCard(offer: offer),
       TrainingPlanCard(data: data, now: now),
-      TodayWorkoutCard(data: data, now: now),
+      if (noPlanNoWorkout)
+        // One invitation, two actions: the plan card above already offers
+        // "Create my plan", so the empty workout card becomes a quiet link.
+        Padding(
+          padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
+          child: FFButton(
+            key: const Key('workout-plan'),
+            fullWidth: true,
+            variant: FFButtonVariant.secondary,
+            label: context.tr('workout.plan'),
+            onPressed: () => showPlanWorkoutSheet(context),
+          ),
+        )
+      else
+        TodayWorkoutCard(data: data, now: now),
       TrainerPlanBlock(data: data, now: now),
       if (todayIds.isNotEmpty || upcoming.isNotEmpty)
         Align(
@@ -261,19 +258,7 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
         FFSectionTitle(context.tr('workout.completedList')),
         for (final w in done) WorkoutTile(workout: w),
       ],
-      Row(
-        children: [
-          Expanded(child: FFSectionTitle(context.tr('workout.otherActivity'))),
-          FFButton(
-            key: const Key('workouts-log-open'),
-            label: context.tr('logActivity.open'),
-            onPressed: () => openLogActivity(context),
-            variant: FFButtonVariant.ghost,
-            size: FFButtonSize.sm,
-            icon: Icons.add,
-          ),
-        ],
-      ),
+      FFSectionTitle(context.tr('workout.otherActivity')),
       if (other.isEmpty)
         FFEmptyState(title: context.tr('activity.noWorkouts'))
       else
@@ -282,25 +267,107 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
   }
 }
 
-class _TileRow extends StatelessWidget {
-  const _TileRow({required this.left, required this.right});
+/// Today's numbers in one card: steps (with the daily goal bar when there
+/// is one) on top, the other measures in a compact grid below.
+class _TodaySummary extends StatelessWidget {
+  const _TodaySummary({
+    required this.steps,
+    required this.stepGoal,
+    required this.cells,
+  });
 
-  final Widget left;
-  final Widget right;
+  final int steps;
+  final int? stepGoal;
+  final List<(IconData, String, String)> cells;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(child: left),
-            const SizedBox(width: FFTokens.spacingSm),
-            Expanded(child: right),
+    final theme = Theme.of(context);
+    return FFCard(
+      key: stepGoal != null ? const Key('activity-daily-goal') : null,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            context.tr(
+              stepGoal != null ? 'activity.dailyGoal' : 'activity.steps',
+            ),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: FFTokens.spacingXs),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.directions_walk,
+                size: 20,
+                color: theme.colorScheme.primary,
+              ),
+              const SizedBox(width: FFTokens.spacingXs),
+              Expanded(
+                child: Text.rich(
+                  TextSpan(
+                    text: formatSteps(steps),
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                    children: [
+                      if (stepGoal != null)
+                        TextSpan(
+                          text: ' / ${formatSteps(stepGoal!)}',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (stepGoal != null) ...[
+            const SizedBox(height: FFTokens.spacingSm),
+            ActivityGoalBar(steps: steps, goal: stepGoal!),
           ],
-        ),
+          const Divider(height: FFTokens.spacingLg * 2),
+          Wrap(
+            runSpacing: FFTokens.spacingMd,
+            children: [
+              for (final c in cells)
+                FractionallySizedBox(
+                  widthFactor: 0.5,
+                  child: Row(
+                    children: [
+                      Icon(c.$1, size: 18, color: theme.colorScheme.primary),
+                      const SizedBox(width: FFTokens.spacingSm),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              c.$2,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            Text(
+                              c.$3,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }

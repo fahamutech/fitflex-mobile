@@ -35,9 +35,14 @@ class TrainerGridCard extends StatelessWidget {
 
     return GestureDetector(
       onTap: () {
-          trackPromotionClick('trainer', trainer.id, trainer.promotion, placement: placement);
-          context.go('/member/trainers/${trainer.id}');
-        },
+        trackPromotionClick(
+          'trainer',
+          trainer.id,
+          trainer.promotion,
+          placement: placement,
+        );
+        context.go('/member/trainers/${trainer.id}');
+      },
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: cs.surface,
@@ -181,7 +186,12 @@ class TrainerCard extends StatelessWidget {
     return FFCard(
       child: InkWell(
         onTap: () {
-          trackPromotionClick('trainer', trainer.id, trainer.promotion, placement: placement);
+          trackPromotionClick(
+            'trainer',
+            trainer.id,
+            trainer.promotion,
+            placement: placement,
+          );
           context.go('/member/trainers/${trainer.id}');
         },
         borderRadius: BorderRadius.circular(FFTokens.radiusXl),

@@ -31,10 +31,11 @@ List<Widget> buildProgressSection(
       const ActivityGetStartedCard(),
     ];
   }
+  // The week comes first: it's read often; goals are edited rarely.
   return [
+    _WeeklyBlock(activities: acts, now: now),
     GoalsBlock(data: data, now: now),
     if (data.trainingPlan case final plan?) _TrainingBlock(plan: plan),
-    _WeeklyBlock(activities: acts, now: now),
     _MonthlyBlock(activities: acts, now: now),
     _TrendsBlock(activities: acts, now: now),
     _ConsistencyBlock(activities: acts, now: now),

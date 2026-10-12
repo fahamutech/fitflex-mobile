@@ -41,14 +41,18 @@ class _FakeApi extends ApiClient {
   Future<Map<String, dynamic>> approveFriendInvitation(String id) async {
     calls.add('approve:$id');
     if (failWith != null) throw ApiException(409, {'error': failWith});
-    return {'invitation': {'id': id, 'status': 'accepted'}};
+    return {
+      'invitation': {'id': id, 'status': 'accepted'},
+    };
   }
 
   @override
   Future<Map<String, dynamic>> rejectFriendInvitation(String id) async {
     calls.add('reject:$id');
     if (failWith != null) throw ApiException(409, {'error': failWith});
-    return {'invitation': {'id': id, 'status': 'rejected'}};
+    return {
+      'invitation': {'id': id, 'status': 'rejected'},
+    };
   }
 
   @override
@@ -77,31 +81,45 @@ void main() {
     final inbox = InboxController(api);
     await inbox.load();
     expect(inbox.byId('ntf_fi_1')!.isFriendInvitation, isTrue);
-    final status = await inbox.answerFriendInvitation('ntf_fi_1', approve: true);
+    final status = await inbox.answerFriendInvitation(
+      'ntf_fi_1',
+      approve: true,
+    );
     expect(status, 'accepted');
     expect(inbox.byId('ntf_fi_1')!.friendStatus, 'accepted');
     expect(inbox.unread, 0);
     expect(api.calls, ['approve:fri_1']);
   });
 
-  test('an invitation already answered elsewhere shows its real state', () async {
-    final api = _FakeApi()..failWith = 'invitation_rejected';
-    final inbox = InboxController(api);
-    await inbox.load();
-    final status = await inbox.answerFriendInvitation('ntf_fi_1', approve: true);
-    expect(status, 'rejected');
-    expect(inbox.byId('ntf_fi_1')!.friendStatus, 'rejected');
-  });
+  test(
+    'an invitation already answered elsewhere shows its real state',
+    () async {
+      final api = _FakeApi()..failWith = 'invitation_rejected';
+      final inbox = InboxController(api);
+      await inbox.load();
+      final status = await inbox.answerFriendInvitation(
+        'ntf_fi_1',
+        approve: true,
+      );
+      expect(status, 'rejected');
+      expect(inbox.byId('ntf_fi_1')!.friendStatus, 'rejected');
+    },
+  );
 
   test('a network failure leaves the card pending for a retry', () async {
     final api = _FakeApi()..failWith = 'boom';
     final inbox = InboxController(api);
     await inbox.load();
-    expect(await inbox.answerFriendInvitation('ntf_fi_1', approve: false), isNull);
+    expect(
+      await inbox.answerFriendInvitation('ntf_fi_1', approve: false),
+      isNull,
+    );
     expect(inbox.byId('ntf_fi_1')!.friendStatus, 'pending');
   });
 
-  testWidgets('Approve and Reject are on the notification card', (tester) async {
+  testWidgets('Approve and Reject are on the notification card', (
+    tester,
+  ) async {
     final api = _FakeApi();
     final inbox = InboxController(api);
     await tester.pumpWidget(_app(api, inbox));
