@@ -96,6 +96,28 @@ class InboxMessage {
   }
 }
 
+/// The kind of screen a message leads to (`membership`, `trainer`,
+/// `trainingOffer`…), from its own link or, failing that, its type. Empty
+/// when it leads nowhere. Also names the button: `inbox.open.<link>`.
+String memberLinkFor({required String deepLink, required String type}) =>
+    deepLink.isNotEmpty
+    ? deepLink
+    : switch (type) {
+        'subscription_renewal' || 'subscription_activated' => 'membership',
+        // A trainer answered the member's enquiry: open that trainer.
+        'trainer_enquiry_reply' => 'trainer',
+        // A trainer made the member a plan: open the offer to answer it.
+        'training_plan_offered' => 'trainingOffer',
+        // Their trainer changed or stopped the plan they are on.
+        'training_plan_updated' || 'training_plan_stopped' => 'trainingPlan',
+        _ => '',
+      };
+
+/// Messages whose push opens their screen directly, not the message: the
+/// screen says everything the message does, and is where the member acts.
+bool opensScreenDirectly(String type) =>
+    memberLinkFor(deepLink: '', type: type).startsWith('training');
+
 /// Where a message's button (or a tap on its push) takes a member. Null
 /// means "show the message itself". Only fixed app screens are allowed.
 String? memberRouteFor({
@@ -103,21 +125,18 @@ String? memberRouteFor({
   required String type,
   String? gymId,
   String? trainerId,
+  String? planId,
 }) {
-  final link = deepLink.isNotEmpty
-      ? deepLink
-      : switch (type) {
-          'subscription_renewal' || 'subscription_activated' => 'membership',
-          // A trainer answered the member's enquiry: open that trainer.
-          'trainer_enquiry_reply' => 'trainer',
-          _ => '',
-        };
+  final link = memberLinkFor(deepLink: deepLink, type: type);
   return switch (link) {
     'membership' || 'renewal' => '/member/passes',
     'payment' => '/member/payment',
     'gym' when gymId != null && gymId.isNotEmpty => '/member/gyms/$gymId',
     'trainer' when trainerId != null && _safeId.hasMatch(trainerId) =>
       '/member/trainers/$trainerId',
+    'trainingOffer' when planId != null && _safeId.hasMatch(planId) =>
+      '/member/activity/training/offers/$planId',
+    'trainingPlan' => '/member/activity/training',
     _ => null,
   };
 }

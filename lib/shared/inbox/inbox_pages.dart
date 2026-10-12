@@ -60,7 +60,16 @@ String? routeForMessage(BuildContext context, InboxMessage m) {
     type: m.type,
     gymId: m.gymId,
     trainerId: m.data['trainerId']?.toString(),
+    planId: m.data['planId']?.toString(),
   );
+}
+
+/// The words on a message's button, for where it leads.
+String inboxButtonLabel(BuildContext context, InboxMessage m) {
+  final link = memberLinkFor(deepLink: m.deepLink, type: m.type);
+  final key = 'inbox.open.${link.isEmpty ? 'message' : link}';
+  final label = context.tr(key);
+  return label == key ? context.tr('inbox.open.message') : label;
 }
 
 class InboxPage extends StatefulWidget {
@@ -368,12 +377,7 @@ class _InboxMessagePageState extends State<InboxMessagePage> {
               // of the app does, rather than stacking the shell on the inbox.
               if (context.mounted) context.go(route);
             },
-            child: Text(
-              m.ctaLabel ??
-                  context.tr(
-                    'inbox.open.${m.deepLink.isEmpty ? 'membership' : m.deepLink}',
-                  ),
-            ),
+            child: Text(m.ctaLabel ?? inboxButtonLabel(context, m)),
           ),
         ],
         if (m.kind == InboxCategory.offers) ...[
