@@ -284,7 +284,12 @@ void main() {
       expect(api.added, isEmpty);
       expect(
         tester
-            .widget<FilledButton>(find.byKey(const Key('terms-page-agree')))
+            .widget<FilledButton>(
+              find.descendant(
+                of: find.byKey(const Key('terms-page-agree')),
+                matching: find.byType(FilledButton),
+              ),
+            )
             .onPressed,
         isNull,
         reason: 'must tick first',
