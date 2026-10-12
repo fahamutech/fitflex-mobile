@@ -722,6 +722,16 @@ class ApiClient {
   Future<Map<String, dynamic>> subscribe(String tier) async =>
       await requestPass(tier);
 
+  /// The higher FitFlex Pass tiers the member can move up to, each with the
+  /// difference they would pay. A 409 means there is no paid pass to upgrade.
+  Future<Map<String, dynamic>> upgradeOptions() async =>
+      await _request('GET', '/me/upgrade-options') as Map<String, dynamic>;
+
+  /// Upgrade the FitFlex Pass by paying the price difference.
+  Future<Map<String, dynamic>> upgradePass(String tier) async =>
+      await _request('POST', '/me/upgrade', body: {'tier': tier})
+          as Map<String, dynamic>;
+
   /// A7: subscribe to a gym's own Daily/Weekly/Monthly plan.
   Future<Map<String, dynamic>> subscribeDirect({
     required String gymId,
