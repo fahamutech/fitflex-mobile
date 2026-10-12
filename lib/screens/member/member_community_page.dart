@@ -457,9 +457,7 @@ class _PeopleTabState extends State<PeopleTab> {
         _contactQuery = c;
         _contactFound = null;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(errorText(context, e))),
-      );
+      FFSnack.error(context, errorText(context, e));
     } finally {
       if (mounted) setState(() => _contactBusy = false);
     }
@@ -489,9 +487,13 @@ class _PeopleTabState extends State<PeopleTab> {
           link: share['link'].toString(),
           subject: share['subject']?.toString(),
         );
-        messenger.showSnackBar(SnackBar(content: Text(t('friendInvite.created'))));
+        messenger.showSnackBar(
+          SnackBar(content: Text(t('friendInvite.created'))),
+        );
       } else {
-        messenger.showSnackBar(SnackBar(content: Text(t('friendInvite.requestSent'))));
+        messenger.showSnackBar(
+          SnackBar(content: Text(t('friendInvite.requestSent'))),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -536,7 +538,9 @@ class _PeopleTabState extends State<PeopleTab> {
         action = FilledButton.tonal(
           key: const Key('friend-request-send'),
           style: compactButton,
-          onPressed: _contactBusy ? null : () => _invite(userId: r['userId'].toString()),
+          onPressed: _contactBusy
+              ? null
+              : () => _invite(userId: r['userId'].toString()),
           child: Text(t('friendInvite.sendRequest')),
         );
       }
@@ -591,18 +595,22 @@ class _PeopleTabState extends State<PeopleTab> {
                   child: Text(
                     (i['name']?.toString().isNotEmpty ?? false)
                         ? i['name'].toString()
-                        : t('friendInvite.linkShared.${i['contactType'] ?? 'email'}'),
+                        : t(
+                            'friendInvite.linkShared.${i['contactType'] ?? 'email'}',
+                          ),
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
                 ),
                 if (i['status'] == 'pending')
-                  TextButton(
+                  FFButton(
                     key: Key('sent-cancel-${i['id']}'),
+                    label: t('friendInvite.cancel'),
                     onPressed: () => _act(
                       () => api.revokeFriendInvitation(i['id'].toString()),
                       t('friendInvite.cancelled'),
                     ),
-                    child: Text(t('friendInvite.cancel')),
+                    variant: FFButtonVariant.ghost,
+                    size: FFButtonSize.sm,
                   ),
                 FFBadge(
                   label: t('friendInvite.status.${i['status']}'),

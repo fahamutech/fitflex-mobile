@@ -95,10 +95,10 @@ class TrainingPlanCard extends StatelessWidget {
             const SizedBox(height: FFTokens.spacingMd),
             SizedBox(
               width: double.infinity,
-              child: FilledButton(
+              child: FFButton(
                 key: const Key('training-create'),
+                label: context.tr('training.create'),
                 onPressed: () => context.go(AppRoutes.memberTrainingSetup),
-                child: Text(context.tr('training.create')),
               ),
             ),
           ],
@@ -168,10 +168,11 @@ class TrainingPlanCard extends StatelessWidget {
           const SizedBox(height: FFTokens.spacingMd),
           SizedBox(
             width: double.infinity,
-            child: OutlinedButton(
+            child: FFButton(
               key: const Key('training-view-plan'),
+              label: context.tr('training.viewPlan'),
               onPressed: () => context.go(AppRoutes.memberTrainingPlan),
-              child: Text(context.tr('training.viewPlan')),
+              variant: FFButtonVariant.secondary,
             ),
           ),
         ],

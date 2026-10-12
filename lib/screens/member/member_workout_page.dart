@@ -364,7 +364,7 @@ class _MemberWorkoutPageState extends State<MemberWorkoutPage> {
     }
     final w = _w;
     if (w == null && _fetching) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: FFSpinner(size: 32));
     }
     if (w == null) {
       return ListView(
@@ -784,7 +784,7 @@ class _AlternativesSheetState extends State<_AlternativesSheet> {
                 else if (items == null)
                   const Padding(
                     padding: EdgeInsets.all(FFTokens.spacingLg),
-                    child: Center(child: CircularProgressIndicator()),
+                    child: Center(child: FFSpinner(size: 32)),
                   )
                 else if (items.isEmpty)
                   Text(

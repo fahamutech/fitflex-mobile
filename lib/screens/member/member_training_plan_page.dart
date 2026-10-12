@@ -28,29 +28,19 @@ class _MemberTrainingPlanPageState extends State<MemberTrainingPlanPage> {
   bool _busy = false;
 
   Future<void> _stop(TrainingPlan plan) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(ctx.tr('training.stopTitle')),
-        content: Text(ctx.tr('training.stopBody')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(ctx.tr('training.keepPlan')),
-          ),
-          FilledButton(
-            key: const Key('training-stop-confirm'),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(ctx.tr('training.stop')),
-          ),
-        ],
-      ),
+    final ok = await showFFConfirmDialog(
+      context,
+      title: context.tr('training.stopTitle'),
+      message: context.tr('training.stopBody'),
+      cancelLabel: context.tr('training.keepPlan'),
+      confirmLabel: context.tr('training.stop'),
+      confirmKey: const Key('training-stop-confirm'),
     );
     if (ok != true || !mounted) return;
     final repo = AppScope.of(context).training;
     final data = MemberDataScope.of(context);
     final shell = context.findAncestorStateOfType<MemberShellState>();
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = FFSnack.of(context);
     final failed = context.tr('training.failed');
     setState(() => _busy = true);
     try {
@@ -62,7 +52,7 @@ class _MemberTrainingPlanPageState extends State<MemberTrainingPlanPage> {
         data.update((d) => d.trainingPlan = null);
       }
     } catch (_) {
-      messenger.showSnackBar(SnackBar(content: Text(failed)));
+      messenger.error(failed);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -84,16 +74,18 @@ class _MemberTrainingPlanPageState extends State<MemberTrainingPlanPage> {
     final plan = data.trainingPlan;
     final back = Align(
       alignment: Alignment.centerLeft,
-      child: TextButton.icon(
+      child: FFButton(
         key: const Key('training-back'),
+        label: context.tr('activity.title'),
         onPressed: () => context.go(AppRoutes.memberActivity),
-        icon: const Icon(Icons.arrow_back, size: 18),
-        label: Text(context.tr('activity.title')),
+        variant: FFButtonVariant.ghost,
+        size: FFButtonSize.sm,
+        icon: Icons.arrow_back,
       ),
     );
 
     if (!data.trainingLoaded) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: FFSpinner(size: 32));
     }
     if (plan == null) {
       return ListView(
@@ -104,10 +96,10 @@ class _MemberTrainingPlanPageState extends State<MemberTrainingPlanPage> {
             key: const Key('training-plan-empty'),
             title: context.tr('training.noneTitle'),
             body: context.tr('training.noneBody'),
-            action: FilledButton(
+            action: FFButton(
               key: const Key('training-create'),
+              label: context.tr('training.create'),
               onPressed: () => context.go(AppRoutes.memberTrainingSetup),
-              child: Text(context.tr('training.create')),
             ),
           ),
         ],

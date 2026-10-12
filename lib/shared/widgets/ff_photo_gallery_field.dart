@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../design_tokens.dart';
 import '../i18n.dart';
+import '../components/components.dart';
 
 /// Several photos for a profile: add from the gallery or camera, remove, and
 /// choose which one is the profile picture (always the first).
@@ -87,12 +88,9 @@ class _FFPhotoGalleryFieldState extends State<FFPhotoGalleryField> {
       if (!mounted) return;
       widget.onChanged([...widget.values, ...added]);
       if (picked.length > added.length) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              context.tr('photos.max').replaceAll('{n}', '${widget.max}'),
-            ),
-          ),
+        FFSnack.info(
+          context,
+          context.tr('photos.max').replaceAll('{n}', '${widget.max}'),
         );
       }
     } finally {
@@ -246,11 +244,7 @@ class _FFPhotoGalleryFieldState extends State<FFPhotoGalleryField> {
                   ),
                   child: Center(
                     child: _loading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
+                        ? FFSpinner(size: 20)
                         : Icon(
                             Icons.add_a_photo_outlined,
                             color: scheme.primary,

@@ -102,9 +102,9 @@ class _PartnerPayoutsPageState extends State<PartnerPayoutsPage> {
                 : FFEmptyState(
                     title: context.tr('inbox.loadFailed'),
                     body: errorMessage(FFLocaleScope.of(context), _error!),
-                    action: FilledButton(
+                    action: FFButton(
+                      label: context.tr('comms.retry'),
                       onPressed: _load,
-                      child: Text(context.tr('comms.retry')),
                     ),
                   ))
           : RefreshIndicator(
@@ -124,10 +124,11 @@ class _PartnerPayoutsPageState extends State<PartnerPayoutsPage> {
                       message: context.tr('payouts.notReady'),
                     ),
                     const SizedBox(height: FFTokens.spacingSm),
-                    OutlinedButton(
+                    FFButton(
                       key: const Key('payouts-verify'),
+                      label: context.tr('payouts.openVerification'),
                       onPressed: () => context.push(AppRoutes.verification),
-                      child: Text(context.tr('payouts.openVerification')),
+                      variant: FFButtonVariant.secondary,
                     ),
                     const SizedBox(height: FFTokens.spacingMd),
                   ],

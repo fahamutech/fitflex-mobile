@@ -123,12 +123,12 @@ class _TermsPageState extends State<TermsPage> {
                       onChanged: (v) => setState(() => _agreed = v ?? false),
                       title: Text(context.tr('terms.agreeRead')),
                     ),
-                    FilledButton(
+                    FFButton(
                       key: const Key('terms-page-agree'),
+                      label: context.tr('terms.agreeContinue'),
                       onPressed: _agreed
                           ? () => Navigator.of(context).pop(true)
                           : null,
-                      child: Text(context.tr('terms.agreeContinue')),
                     ),
                   ],
                 ),
@@ -158,7 +158,7 @@ Future<String?> askToAgreeTerms(
   bool quiet = false,
 }) async {
   final api = AppScope.of(context).api;
-  final messenger = ScaffoldMessenger.of(context);
+  final messenger = FFSnack.of(context);
   final failed = context.tr('terms.loadFailed');
   final TermsInfo terms;
   try {
@@ -166,7 +166,7 @@ Future<String?> askToAgreeTerms(
       await api.myTerms(lang: _lang(context), role: role),
     );
   } catch (_) {
-    if (!quiet) messenger.showSnackBar(SnackBar(content: Text(failed)));
+    if (!quiet) messenger.error(failed);
     return null;
   }
   if (!terms.mustAccept) return '';
@@ -179,7 +179,7 @@ Future<String?> askToAgreeTerms(
   );
   if (agreed != true) return null;
   if (role == null && !await recordTermsAccepted(api, terms.version)) {
-    messenger.showSnackBar(SnackBar(content: Text(failed)));
+    messenger.error(failed);
     return null;
   }
   return terms.version;
@@ -291,7 +291,12 @@ class TermsAgreementFieldState extends State<TermsAgreementField> {
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ),
-          TextButton(onPressed: _load, child: Text(context.tr('terms.retry'))),
+          FFButton(
+            label: context.tr('terms.retry'),
+            onPressed: _load,
+            variant: FFButtonVariant.ghost,
+            size: FFButtonSize.sm,
+          ),
         ],
       );
     }
@@ -302,10 +307,12 @@ class TermsAgreementFieldState extends State<TermsAgreementField> {
       );
     }
     if (!t.required) return const SizedBox.shrink();
-    final readLink = TextButton(
+    final readLink = FFButton(
       key: const Key('terms-read'),
+      label: context.tr('terms.read'),
       onPressed: _read,
-      child: Text(context.tr('terms.read')),
+      variant: FFButtonVariant.ghost,
+      size: FFButtonSize.sm,
     );
     if (t.accepted) {
       return Row(

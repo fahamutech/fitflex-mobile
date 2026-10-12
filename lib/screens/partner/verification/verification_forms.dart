@@ -1082,15 +1082,7 @@ class _DocumentPageState extends State<DocumentPage> {
       builder: (context, snap) {
         if (snap.hasError) return icon(Icons.image_outlined);
         if (!snap.hasData) {
-          return frame(
-            const Center(
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            ),
-          );
+          return frame(const Center(child: FFSpinner(size: 20)));
         }
         return picture(snap.data!);
       },
