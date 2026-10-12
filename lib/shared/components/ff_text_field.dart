@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../design_tokens.dart';
 
 /// Standard text input — relies on the app's [InputDecorationTheme] so all
@@ -24,6 +25,15 @@ class FFTextField extends StatelessWidget {
     this.textInputAction,
     this.onFieldSubmitted,
     this.autofillHints,
+    this.maxLength,
+    this.inputFormatters,
+    this.autofocus = false,
+    this.textCapitalization = TextCapitalization.none,
+    this.readOnly = false,
+    this.onTap,
+    this.helperText,
+    this.suffixText,
+    this.autovalidateMode,
   });
 
   final TextEditingController? controller;
@@ -46,6 +56,15 @@ class FFTextField extends StatelessWidget {
   final TextInputAction? textInputAction;
   final ValueChanged<String>? onFieldSubmitted;
   final Iterable<String>? autofillHints;
+  final int? maxLength;
+  final List<TextInputFormatter>? inputFormatters;
+  final bool autofocus;
+  final TextCapitalization textCapitalization;
+  final bool readOnly;
+  final VoidCallback? onTap;
+  final String? helperText;
+  final String? suffixText;
+  final AutovalidateMode? autovalidateMode;
 
   @override
   Widget build(BuildContext context) {
@@ -62,10 +81,19 @@ class FFTextField extends StatelessWidget {
       textInputAction: textInputAction,
       onFieldSubmitted: onFieldSubmitted,
       autofillHints: autofillHints,
+      maxLength: maxLength,
+      inputFormatters: inputFormatters,
+      autofocus: autofocus,
+      textCapitalization: textCapitalization,
+      readOnly: readOnly,
+      onTap: onTap,
+      autovalidateMode: autovalidateMode,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
         errorText: errorText,
+        helperText: helperText,
+        suffixText: suffixText,
         prefixIcon: prefixIcon,
         suffixIcon: suffixIcon,
         alignLabelWithHint: maxLines > 1,

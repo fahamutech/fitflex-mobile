@@ -1,5 +1,6 @@
 import 'package:fitflexmobile/shared/components/components.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/ff_harness.dart';
@@ -20,6 +21,51 @@ void main() {
     final field = tester.widget<TextField>(find.byType(TextField));
     expect(field.minLines, isNull);
     expect(field.maxLines, 1);
+  });
+
+  testWidgets('FFTextField passes the extra TextField options through', (
+    tester,
+  ) async {
+    var tapped = 0;
+    await pumpFF(
+      tester,
+      FFTextField(
+        label: 'Code',
+        maxLength: 6,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        autofocus: true,
+        textCapitalization: TextCapitalization.characters,
+        readOnly: true,
+        onTap: () => tapped++,
+        helperText: 'Six digits',
+        suffixText: 'TZS',
+      ),
+    );
+    final field = tester.widget<TextField>(find.byType(TextField));
+    expect(field.maxLength, 6);
+    expect(field.inputFormatters, isNotEmpty);
+    expect(field.autofocus, isTrue);
+    expect(field.textCapitalization, TextCapitalization.characters);
+    expect(field.readOnly, isTrue);
+    expect(field.decoration?.helperText, 'Six digits');
+    expect(field.decoration?.suffixText, 'TZS');
+    await tester.tap(find.byType(TextField));
+    expect(tapped, 1);
+  });
+
+  testWidgets('FFTextField digits-only formatter filters typed text', (
+    tester,
+  ) async {
+    final c = TextEditingController();
+    await pumpFF(
+      tester,
+      FFTextField(
+        controller: c,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      ),
+    );
+    await tester.enterText(find.byType(TextField), 'a1b2');
+    expect(c.text, '12');
   });
 
   testWidgets('FFDropdownField isExpanded is passed through', (tester) async {
