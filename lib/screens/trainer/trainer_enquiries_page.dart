@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../app_scope.dart';
 import '../../shared/api_error_message.dart';
@@ -196,8 +195,8 @@ class _EnquiryTile extends StatelessWidget {
   }
 }
 
-/// One conversation with a member: read it, reply (with quick replies), call
-/// or email them, or close it.
+/// One conversation with a member: read it, reply (with quick replies) or
+/// close it. Everything stays in the app: there is no call or email option.
 class TrainerEnquiryPage extends StatefulWidget {
   const TrainerEnquiryPage({super.key, required this.engagement});
 
@@ -270,31 +269,12 @@ class _TrainerEnquiryPageState extends State<TrainerEnquiryPage> {
     final member = _e['member'] as Map?;
     final name =
         member?['displayName']?.toString() ?? context.tr('trainer.member');
-    final email = member?['email']?.toString().trim() ?? '';
-    final phone = member?['phone']?.toString().trim() ?? '';
     final messages = EnquiryMessage.listFrom(_e);
     final closed = _e['status'] == 'closed';
     return Scaffold(
       appBar: AppBar(
         title: Text(name),
         actions: [
-          if (phone.isNotEmpty)
-            IconButton(
-              key: const Key('enquiry-call'),
-              tooltip: context.tr('enquiry.call'),
-              onPressed: () => launchUrl(Uri(scheme: 'tel', path: phone)),
-              icon: const Icon(Icons.phone_outlined),
-            ),
-          if (email.isNotEmpty)
-            IconButton(
-              key: const Key('enquiry-email'),
-              tooltip: context.tr('enquiry.email'),
-              onPressed: () => launchUrl(
-                Uri(scheme: 'mailto', path: email),
-                mode: LaunchMode.externalApplication,
-              ),
-              icon: const Icon(Icons.email_outlined),
-            ),
           if (!closed)
             TextButton(
               key: const Key('enquiry-close'),
