@@ -47,7 +47,8 @@ class FFFeaturedStrip extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: FFTokens.spacingLg),
             itemCount: count,
-            separatorBuilder: (_, _) => const SizedBox(width: FFTokens.spacingMd),
+            separatorBuilder: (_, _) =>
+                const SizedBox(width: FFTokens.spacingMd),
             itemBuilder: (context, i) =>
                 SizedBox(width: itemWidth, child: itemBuilder(context, i)),
           ),

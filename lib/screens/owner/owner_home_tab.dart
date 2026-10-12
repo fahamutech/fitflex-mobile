@@ -13,7 +13,10 @@ import 'widgets/gym_engagement_widgets.dart';
 
 /// Owner dashboard home tab — shows stats, quick actions, and gym summary.
 class OwnerHomeTab extends StatefulWidget {
-  const OwnerHomeTab({super.key});
+  const OwnerHomeTab({super.key, this.now});
+
+  /// Injectable clock for tests.
+  final DateTime? now;
 
   @override
   State<OwnerHomeTab> createState() => _OwnerHomeTabState();
@@ -160,7 +163,18 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
 
     final rawName = data.displayName;
     final cleanName = rawName.split('@').first.split(' ').first;
-    final greeting = context.tr('member.goodMorning');
+    final hour = (widget.now ?? DateTime.now()).hour;
+    final greeting = context.tr(
+      hour < 12
+          ? 'member.goodMorning'
+          : hour < 17
+          ? 'member.goodAfternoon'
+          : 'member.goodEvening',
+    );
+    final gymName = data.ownerGyms
+        .where((g) => g['id']?.toString() == data.activeGymId)
+        .map((g) => g['name']?.toString())
+        .firstOrNull;
 
     final bool showChart = directCount > 0 || fitflexCount > 0;
 
@@ -171,39 +185,20 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
       ),
       children: [
         const PartnerNotVerifiedNotice(),
-        // 2. Greeting / Overview
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '$greeting, $cleanName \ud83d\udc4b',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    context.tr('owner.gymSnapshot'),
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Filter Picker
-            InkWell(
-              onTap: _showDateFilter,
-              borderRadius: BorderRadius.circular(FFTokens.radiusMd),
+        // Greeting follows the time of day; the date filter is the one
+        // control that scopes everything below it.
+        FFPageHeader(
+          title: '$greeting, $cleanName',
+          description: gymName,
+          actions: InkWell(
+            key: const Key('owner-date-filter'),
+            onTap: _showDateFilter,
+            borderRadius: BorderRadius.circular(FFTokens.radiusMd),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 48),
               child: Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 8,
+                  horizontal: FFTokens.spacingSm,
                 ),
                 decoration: BoxDecoration(
                   border: Border.all(
@@ -214,25 +209,64 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.calendar_today_outlined, size: 14),
+                    const Icon(Icons.calendar_today_outlined, size: 16),
                     const SizedBox(width: 6),
                     Text(
                       _presetLabel(context),
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    const Icon(Icons.keyboard_arrow_down, size: 14),
+                    const Icon(Icons.keyboard_arrow_down, size: 18),
                   ],
                 ),
               ),
             ),
-          ],
+          ),
+        ),
+
+        // The daily job first; the rest are one tap away below it.
+        FFButton(
+          key: const Key('owner-checkin-primary'),
+          fullWidth: true,
+          size: FFButtonSize.lg,
+          icon: Icons.qr_code_scanner,
+          label: context.tr('owner.checkin'),
+          onPressed: () => context.push('/owner/scan'),
+        ),
+        const SizedBox(height: FFTokens.spacingSm),
+        FFCard(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: IntrinsicHeight(
+            child: Row(
+              children: [
+                _buildQuickAction(
+                  context,
+                  icon: Icons.wallet_outlined,
+                  title: context.tr('owner.earnings'),
+                  onTap: () => context.push('/owner/earnings'),
+                ),
+                _buildActionDivider(context),
+                _buildQuickAction(
+                  context,
+                  icon: Icons.shopping_bag_outlined,
+                  title: context.tr('owner.shop'),
+                  onTap: () => context.push('/owner/shop'),
+                ),
+                _buildActionDivider(context),
+                _buildQuickAction(
+                  context,
+                  icon: Icons.people_outline,
+                  title: context.tr('owner.members'),
+                  onTap: () => context.go('/owner/members'),
+                ),
+              ],
+            ),
+          ),
         ),
         const SizedBox(height: FFTokens.spacingLg),
 
-        // 3. Summary cards — B5/B10: active, tap through to their screens.
+        // Summary cards — active, tap through to their screens.
         Row(
           children: [
             Expanded(
@@ -265,6 +299,8 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
                 child: FFMetricCard(
                   label: context.tr('owner.checkins'),
                   value: '$periodVisits',
+                  trendDirection: visitsTrendDir,
+                  trendLabel: visitsTrendLabel,
                   icon: const Icon(
                     Icons.check_circle_outline,
                     color: FFTokens.brand600,
@@ -277,211 +313,26 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
         ),
         const SizedBox(height: FFTokens.spacingLg),
 
-        // 4. Quick actions
-        FFCard(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          child: IntrinsicHeight(
-            child: Row(
-              children: [
-                _buildQuickAction(
-                  context,
-                  icon: Icons.qr_code_scanner,
-                  title: context.tr('owner.checkin'),
-                  onTap: () => context.push('/owner/scan'),
-                ),
-                _buildActionDivider(context),
-                _buildQuickAction(
-                  context,
-                  icon: Icons.wallet_outlined,
-                  title: context.tr('owner.earnings'),
-                  onTap: () => context.push('/owner/earnings'),
-                ),
-                _buildActionDivider(context),
-                _buildQuickAction(
-                  context,
-                  icon: Icons.shopping_bag_outlined,
-                  title: context.tr('owner.shop'),
-                  onTap: () => context.push('/owner/shop'),
-                ),
-                _buildActionDivider(context),
-                _buildQuickAction(
-                  context,
-                  icon: Icons.people_outline,
-                  title: context.tr('owner.members'),
-                  onTap: () => context.go('/owner/members'),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: FFTokens.spacingLg),
-
-        // Membership engagement from the gym's own check-ins.
-        GymEngagementCard(
-          gymId: data.activeGymId,
-          onOpenMember: (id) => context.push('/owner/members/$id'),
-        ),
-        if (data.canAccess('communications'))
-          FFActionTile(
-            key: const Key('owner-communications'),
-            icon: Icons.campaign_outlined,
-            title: context.tr('comms.title'),
-            subtitle: context.tr('comms.homeTile'),
-            onTap: () => context.push(
-              data.activeGymId == null
-                  ? '/owner/communications'
-                  : '/owner/communications?gymId=${data.activeGymId}',
-            ),
-          ),
-        FFActionTile(
-          key: const Key('owner-challenges'),
-          icon: Icons.emoji_events_outlined,
-          title: context.tr('challenge.manageTitle'),
-          subtitle: context.tr('challenge.manageBody.owner'),
-          onTap: () => openChallengeManager(
-            context,
-            scope: 'owner',
-            gymId: data.activeGymId,
-          ),
-        ),
-        FFActionTile(
-          key: const Key('owner-groups'),
-          icon: Icons.groups_outlined,
-          title: context.tr('community.yourGroups'),
-          subtitle: context.tr('community.ownerTile.owner'),
-          onTap: () => openGroupManager(
-            context,
-            scope: 'owner',
-            gymId: data.activeGymId,
-          ),
-        ),
-        const SizedBox(height: FFTokens.spacingMd),
-
-        // 5. Grow your gym card
-        Container(
-          padding: const EdgeInsets.all(FFTokens.spacingMd),
-          decoration: BoxDecoration(
-            color: FFToneTheme.of(context).brand.bg,
-            borderRadius: BorderRadius.circular(FFTokens.radiusXl),
-            border: Border.all(color: FFToneTheme.of(context).brand.border),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.trending_up,
-                  color: Theme.of(context).colorScheme.primary,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      context.tr('owner.growGym'),
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? Colors.white
-                            : FFTokens.brand800,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      context.tr('owner.growGymSubtitle'),
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? Colors.white.withValues(alpha: 0.8)
-                            : FFTokens.brand700,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: FFTokens.brand600,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 8,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(FFTokens.radiusMd),
-                  ),
-                  elevation: 0,
-                ),
-                onPressed: () {
-                  FFSnack.info(context, context.tr('owner.reportsComingSoon'));
-                },
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      context.tr('owner.viewReports'),
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const Icon(Icons.chevron_right, size: 12),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: FFTokens.spacingLg),
-
-        // 6. Membership insight graph
+        // Membership insight: the one trend view, so it sits high.
         FFCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    context.tr('owner.membershipOverview'),
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
+                  Expanded(
+                    child: Text(
+                      context.tr('owner.membershipOverview'),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: Theme.of(context).colorScheme.outlineVariant,
-                      ),
-                      borderRadius: BorderRadius.circular(FFTokens.radiusMd),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          _presetLabel(context),
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(width: 4),
-                        const Icon(Icons.keyboard_arrow_down, size: 12),
-                      ],
+                  const SizedBox(width: FFTokens.spacingSm),
+                  Text(
+                    _presetLabel(context),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -523,14 +374,15 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
                 ),
               ] else ...[
                 // Legends
-                Row(
+                Wrap(
+                  spacing: 16,
+                  runSpacing: 8,
                   children: [
                     _buildLegendItem(
                       context,
                       Theme.of(context).colorScheme.primary,
                       context.tr('owner.directMembers'),
                     ),
-                    const SizedBox(width: 16),
                     _buildLegendItem(
                       context,
                       FFToneTheme.of(context).info.dot,
@@ -596,7 +448,77 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
             ],
           ),
         ),
+        const SizedBox(height: FFTokens.spacingLg),
+        // Membership engagement from the gym's own check-ins.
+        GymEngagementCard(
+          gymId: data.activeGymId,
+          onOpenMember: (id) => context.push('/owner/members/$id'),
+        ),
+        const SizedBox(height: FFTokens.spacingLg),
+        // Secondary management jobs share one grouped card.
+        FFCard(
+          padding: EdgeInsets.zero,
+          child: Column(
+            children: [
+              if (data.canAccess('communications')) ...[
+                _manageRow(
+                  key: const Key('owner-communications'),
+                  icon: Icons.campaign_outlined,
+                  title: context.tr('comms.title'),
+                  subtitle: context.tr('comms.homeTile'),
+                  onTap: () => context.push(
+                    data.activeGymId == null
+                        ? '/owner/communications'
+                        : '/owner/communications?gymId=${data.activeGymId}',
+                  ),
+                ),
+                const Divider(height: 1),
+              ],
+              _manageRow(
+                key: const Key('owner-challenges'),
+                icon: Icons.emoji_events_outlined,
+                title: context.tr('challenge.manageTitle'),
+                subtitle: context.tr('challenge.manageBody.owner'),
+                onTap: () => openChallengeManager(
+                  context,
+                  scope: 'owner',
+                  gymId: data.activeGymId,
+                ),
+              ),
+              const Divider(height: 1),
+              _manageRow(
+                key: const Key('owner-groups'),
+                icon: Icons.groups_outlined,
+                title: context.tr('community.yourGroups'),
+                subtitle: context.tr('community.ownerTile.owner'),
+                onTap: () => openGroupManager(
+                  context,
+                  scope: 'owner',
+                  gymId: data.activeGymId,
+                ),
+              ),
+            ],
+          ),
+        ),
       ],
+    );
+  }
+
+  Widget _manageRow({
+    required Key key,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      key: key,
+      minVerticalPadding: FFTokens.spacingSm,
+      leading: Icon(icon, color: Theme.of(context).colorScheme.primary),
+      title: Text(title),
+      subtitle: Text(subtitle),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: onTap,
     );
   }
 
