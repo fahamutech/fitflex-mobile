@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../app_scope.dart';
 import '../../router.dart';
+import '../../shared/api_client.dart';
+import '../../shared/api_error_message.dart';
 import '../../shared/activity/gps_source.dart';
 import '../../shared/activity/run_metrics.dart';
 import '../../shared/activity/run_recorder.dart';
@@ -65,6 +67,7 @@ class _MemberRecordRunPageState extends State<MemberRecordRunPage> {
     final saved = context.tr('run.savedToast');
     final failed = context.tr('run.saveFailed');
     final tooShort = context.tr('run.tooShort');
+    final locale = FFLocaleScope.of(context);
     setState(() => _saving = true);
     try {
       await r.save(
@@ -78,8 +81,19 @@ class _MemberRecordRunPageState extends State<MemberRecordRunPage> {
       if (mounted) context.go(AppRoutes.memberActivity);
     } catch (e) {
       final short = e.toString().contains('too_short');
+      // Say why when the server gave a reason (for example a profile that
+      // cannot record runs), instead of one message for every failure.
+      final reason = e is ApiException ? apiErrorMessage(locale, e) : '';
       messenger.showSnackBar(
-        SnackBar(content: Text(short ? tooShort : failed)),
+        SnackBar(
+          content: Text(
+            short
+                ? tooShort
+                : reason.isEmpty
+                ? failed
+                : '$failed $reason',
+          ),
+        ),
       );
     } finally {
       if (mounted) setState(() => _saving = false);
