@@ -63,8 +63,7 @@ class _MemberRecordRunPageState extends State<MemberRecordRunPage> {
     final messenger = ScaffoldMessenger.of(context);
     final messengerSnack = FFSnack.of(context);
     final saved = context.tr('run.savedToast');
-    final failed = context.tr('run.saveFailed');
-    final tooShort = context.tr('run.tooShort');
+    final tr = FFLocaleScope.of(context).t;
     setState(() => _saving = true);
     try {
       await r.save(
@@ -73,13 +72,19 @@ class _MemberRecordRunPageState extends State<MemberRecordRunPage> {
         shareWith: _share?.toJson(),
         shareChosen: _shareChosen,
       );
-      await shell?.refreshAfterWorkout();
+      // The run is saved by now: a refresh that fails must not say it wasn't.
+      try {
+        await shell?.refreshAfterWorkout();
+      } catch (_) {}
       messengerSnack.success(saved);
       if (mounted) context.go(AppRoutes.memberActivity);
     } catch (e) {
-      final short = e.toString().contains('too_short');
       messenger.showSnackBar(
-        SnackBar(content: Text(short ? tooShort : failed)),
+        SnackBar(
+          key: const Key('run-save-failed'),
+          content: Text(tr(runSaveFailureKey(e))),
+          duration: const Duration(seconds: 6),
+        ),
       );
     } finally {
       if (mounted) setState(() => _saving = false);
