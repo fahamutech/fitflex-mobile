@@ -13,7 +13,9 @@ import '../../shared/api_client.dart';
 import '../../shared/api_error_message.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
+import '../../shared/pass_gyms.dart';
 import '../../shared/payment_labels.dart';
+import 'widgets/pass_gyms_sheet.dart';
 import 'member_shell.dart';
 
 class MemberPassesPage extends StatelessWidget {
@@ -234,6 +236,15 @@ class _UpgradeGateState extends State<_UpgradeGate> {
             .whereType<Map>()
             .toList();
         final theme = Theme.of(context);
+        final memberData = MemberDataScope.of(context);
+        // What the member's current plan opens, to show what each upgrade adds.
+        final currentAccess = memberData.passes
+            .where((p) => p.id == current['tier'])
+            .map((p) => p.gymAccess)
+            .firstOrNull;
+        final knowsCurrent =
+            memberData.gyms.isNotEmpty &&
+            memberData.passes.any((p) => p.id == current['tier']);
         // The upgrade keeps the plan's end date: show it, and warn when it is close.
         final endsAt = DateTime.tryParse(
           '${current['expiresAt'] ?? ''}',
@@ -297,6 +308,10 @@ class _UpgradeGateState extends State<_UpgradeGate> {
             ...options.map((o) {
               final selected = o['tier'] == _selected;
               final diff = ((o['differenceTzs'] as num?) ?? 0).toInt();
+              final access = o['gymAccess'] as String?;
+              final added = knowsCurrent
+                  ? gymsAddedByUpgrade(currentAccess, access, memberData.gyms)
+                  : const <Gym>[];
               return Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: InkWell(
@@ -319,9 +334,53 @@ class _UpgradeGateState extends State<_UpgradeGate> {
                     child: Row(
                       children: [
                         Expanded(
-                          child: Text(
-                            context.tr('pass.${o['tier']}'),
-                            style: theme.textTheme.titleMedium,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                context.tr('pass.${o['tier']}'),
+                                style: theme.textTheme.titleMedium,
+                              ),
+                              if (added.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: Text(
+                                    context
+                                        .tr('passGyms.added')
+                                        .replaceFirst('{n}', '${added.length}'),
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: theme.colorScheme.primary,
+                                    ),
+                                  ),
+                                ),
+                              if (memberData.gyms.isNotEmpty)
+                                TextButton.icon(
+                                  style: TextButton.styleFrom(
+                                    padding: EdgeInsets.zero,
+                                    minimumSize: const Size(0, 36),
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                    alignment: Alignment.centerLeft,
+                                  ),
+                                  onPressed: () => showPassGymsSheet(
+                                    context,
+                                    tierId: o['tier'] as String,
+                                    gymAccess: access,
+                                    gyms: memberData.gyms,
+                                    highlightIds: added
+                                        .map((g) => g.id)
+                                        .toSet(),
+                                    onChoose: () => setState(
+                                      () => _selected = o['tier'] as String,
+                                    ),
+                                  ),
+                                  icon: const Icon(
+                                    Icons.fitness_center,
+                                    size: 16,
+                                  ),
+                                  label: Text(context.tr('passGyms.view')),
+                                ),
+                            ],
                           ),
                         ),
                         Text(
@@ -504,16 +563,9 @@ class _SelectablePass extends StatelessWidget {
   final VoidCallback onTap;
   final List<Gym> gyms;
 
-  List<Gym> _getAccessibleGyms() {
-    if (pass.gymAccess == null || pass.gymAccess!.isEmpty) {
-      return gyms;
-    }
-    return gyms.where((g) => pass.gymAccess!.contains(g.tier)).toList();
-  }
-
   @override
   Widget build(BuildContext context) {
-    final accessibleGyms = _getAccessibleGyms();
+    final accessibleGyms = gymsForPass(pass.gymAccess, gyms);
     final gymCount = accessibleGyms.length;
 
     return Padding(
@@ -557,27 +609,40 @@ class _SelectablePass extends StatelessWidget {
                     if (pass.gymAccess != null && pass.gymAccess!.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(top: 2),
-                        child: Row(
-                          children: [
-                            Flexible(
-                              child: Text(
-                                pass.gymAccessLabel,
-                                style: Theme.of(context).textTheme.labelSmall
-                                    ?.copyWith(
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.primary,
-                                    ),
-                                overflow: TextOverflow.ellipsis,
+                        child: Text(
+                          pass.gymAccessLabel,
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                color: Theme.of(context).colorScheme.primary,
                               ),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '($gymCount ${gymCount == 1 ? context.tr('gym.gym') : context.tr('gym.gyms')})',
-                              style: Theme.of(context).textTheme.labelSmall,
-                            ),
-                          ],
+                          overflow: TextOverflow.ellipsis,
                         ),
+                      ),
+                    if (gymCount > 0)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          '$gymCount ${gymCount == 1 ? context.tr('gym.gym') : context.tr('gym.gyms')} · ${gymSplitSummary(context, accessibleGyms)}',
+                          style: Theme.of(context).textTheme.labelSmall,
+                        ),
+                      ),
+                    if (gyms.isNotEmpty)
+                      TextButton.icon(
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          minimumSize: const Size(0, 36),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          alignment: Alignment.centerLeft,
+                        ),
+                        onPressed: () => showPassGymsSheet(
+                          context,
+                          tierId: pass.id,
+                          gymAccess: pass.gymAccess,
+                          gyms: gyms,
+                          onChoose: onTap,
+                        ),
+                        icon: const Icon(Icons.fitness_center, size: 16),
+                        label: Text(context.tr('passGyms.view')),
                       ),
                   ],
                 ),

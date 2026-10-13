@@ -165,7 +165,9 @@ void main() {
 
     // Both seeded gyms are 'standard' tier → the standard plan unlocks 2 gyms.
     expect(find.text('Standard gyms'), findsOneWidget);
-    expect(find.textContaining('(2 gym'), findsOneWidget);
+    expect(find.textContaining('2 gyms · 2 Standard'), findsOneWidget);
+    // …and the member can open the list of those gyms before paying.
+    expect(find.text('View gyms'), findsOneWidget);
   });
 
   // ───────────────────────── B7: member photo from gallery or camera ─────────────────────────
