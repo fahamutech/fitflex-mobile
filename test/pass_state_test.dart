@@ -39,7 +39,11 @@ Map<String, dynamic> _pass({String status = 'active', int daysLeft = 30}) => {
       .toIso8601String(),
 };
 
-Future<void> _pumpCard(WidgetTester tester, MemberData data) async {
+Future<void> _pumpCard(
+  WidgetTester tester,
+  MemberData data, {
+  Widget Function(MemberData)? body,
+}) async {
   await tester.pumpWidget(
     FFLocaleScope(
       notifier: FFLocale(),
@@ -51,7 +55,12 @@ Future<void> _pumpCard(WidgetTester tester, MemberData data) async {
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
         ],
-        home: Scaffold(body: PassSummaryCard(data: data)),
+        home: MemberDataScope(
+          data: data,
+          child: Scaffold(
+            body: body?.call(data) ?? PassSummaryCard(data: data),
+          ),
+        ),
       ),
     ),
   );
@@ -140,6 +149,34 @@ void main() {
       await _pumpCard(tester, _data(subscription: _pass(status: 'expired')));
       expect(find.text('Pay again'), findsOneWidget);
       expect(find.text('Show my QR'), findsNothing);
+    });
+  });
+
+  group('My QR reads the same state', () {
+    Widget qr(MemberData _) => const MemberQrTab();
+
+    testWidgets('low visits: the QR stays and an amber notice says why', (
+      tester,
+    ) async {
+      final d = _data(subscription: _pass(), used: 16)..qrToken = 'tok';
+      await _pumpCard(tester, d, body: qr);
+      expect(find.byKey(const Key('qr-state-notice')), findsOneWidget);
+      expect(find.text('2 visits left'), findsOneWidget);
+    });
+
+    testWidgets('an active pass shows no notice', (tester) async {
+      final d = _data(subscription: _pass(), used: 2)..qrToken = 'tok';
+      await _pumpCard(tester, d, body: qr);
+      expect(find.byKey(const Key('qr-state-notice')), findsNothing);
+    });
+
+    testWidgets('an ended pass says when it ended and offers Pay again', (
+      tester,
+    ) async {
+      final d = _data(subscription: _pass(status: 'expired'));
+      await _pumpCard(tester, d, body: qr);
+      expect(find.textContaining('Your pass ended'), findsOneWidget);
+      expect(find.text('Pay again'), findsOneWidget);
     });
   });
 }

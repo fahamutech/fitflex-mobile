@@ -74,15 +74,7 @@ class PassSummaryCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: FFTokens.spacingSm),
-              FFBadge(
-                label: status,
-                tone: switch (state.tone) {
-                  PassTone.success => FFBadgeTone.success,
-                  PassTone.warning => FFBadgeTone.warning,
-                  PassTone.neutral => FFBadgeTone.gray,
-                },
-                dot: true,
-              ),
+              FFBadge(label: status, tone: state.badgeTone, dot: true),
             ],
           ),
           if (sub?.isDirect == true) ...[
@@ -97,12 +89,12 @@ class PassSummaryCard extends StatelessWidget {
             _DirectDateRow(
               key: const Key('direct-membership-start'),
               label: context.tr('member.membershipStart'),
-              value: _formatDate(sub.startedAt),
+              value: passDate(sub.startedAt),
             ),
             _DirectDateRow(
               key: const Key('direct-membership-expiry'),
               label: context.tr('member.membershipExpiry'),
-              value: _formatDate(sub.expiresAt),
+              value: passDate(sub.expiresAt),
             ),
             if (directDaysLeft != null) ...[
               _DirectDateRow(
@@ -162,23 +154,9 @@ class PassSummaryCard extends StatelessWidget {
     final sub = data.subscription;
     final left = visitsLeft(data);
     final cap = data.me?.visitCap;
-    final ends = _formatDate(sub?.expiresAt);
+    final ends = passDate(sub?.expiresAt);
 
-    String? message = switch (state) {
-      PassState.none => context.tr('pass.state.none'),
-      PassState.pending => context.tr('pass.state.pending'),
-      PassState.ended =>
-        context.tr('pass.state.ended').replaceAll('{date}', ends),
-      PassState.endingSoon =>
-        context.tr('pass.state.endingSoon').replaceAll('{date}', ends),
-      PassState.lowVisits =>
-        left == 0
-            ? context.tr('pass.state.noVisits')
-            : context
-                  .tr('pass.state.lowVisits')
-                  .replaceAll('{n}', '${left ?? 0}'),
-      PassState.active => null,
-    };
+    final message = passStateMessage(context, data, state);
 
     if (!state.canShowQr) {
       return Text(
@@ -267,13 +245,6 @@ class PassSummaryCard extends StatelessWidget {
     if (start == null || end == null) return null;
     final days = end.difference(start).inHours ~/ 24;
     return days <= 0 ? null : days;
-  }
-
-  static String _formatDate(String? iso) {
-    final date = DateTime.tryParse(iso ?? '')?.toLocal();
-    if (date == null) return '-';
-    return '${date.day.toString().padLeft(2, '0')}/'
-        '${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 }
 

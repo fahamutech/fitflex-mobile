@@ -2351,6 +2351,7 @@ class FFLocale extends ChangeNotifier {
           'Pilot payments are reviewed by a FitFlex admin before your pass activates.',
       'pass.pending': 'Payment pending admin approval',
       'pass.state.none': 'Pick a pass to open gyms across the network.',
+      'pass.state.noPass': 'No pass',
       'pass.state.pending':
           "We're confirming your payment. Your QR unlocks as soon as it's confirmed.",
       'pass.state.viewPayment': 'View payment',
@@ -6284,6 +6285,7 @@ class FFLocale extends ChangeNotifier {
           'Malipo ya majaribio hukaguliwa na admin wa FitFlex kabla pasi yako haijaanza kutumika.',
       'pass.pending': 'Malipo yanasubiri idhini ya admin',
       'pass.state.none': 'Pick a pass to open gyms across the network.',
+      'pass.state.noPass': 'No pass',
       'pass.state.pending':
           "We're confirming your payment. Your QR unlocks as soon as it's confirmed.",
       'pass.state.viewPayment': 'View payment',

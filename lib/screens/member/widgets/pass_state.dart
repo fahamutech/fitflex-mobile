@@ -1,3 +1,7 @@
+import 'package:flutter/widgets.dart';
+
+import '../../../shared/components/components.dart';
+import '../../../shared/i18n.dart';
 import '../member_shell.dart';
 
 /// What the member's pass is doing right now. One place decides this, so
@@ -71,4 +75,41 @@ PassState passStateFor(MemberData d) {
     return PassState.ended;
   }
   return PassState.none;
+}
+
+extension PassStateBadge on PassState {
+  FFBadgeTone get badgeTone => switch (tone) {
+    PassTone.success => FFBadgeTone.success,
+    PassTone.warning => FFBadgeTone.warning,
+    PassTone.neutral => FFBadgeTone.gray,
+  };
+}
+
+/// dd/MM/yyyy, or "-" when there is no date.
+String passDate(String? iso) {
+  final date = DateTime.tryParse(iso ?? '')?.toLocal();
+  if (date == null) return '-';
+  return '${date.day.toString().padLeft(2, '0')}/'
+      '${date.month.toString().padLeft(2, '0')}/${date.year}';
+}
+
+/// The one sentence that explains a state, or null when the pass is simply
+/// fine. Home, My QR and Profile all say the same thing.
+String? passStateMessage(BuildContext context, MemberData d, PassState state) {
+  final ends = passDate(d.subscription?.expiresAt);
+  return switch (state) {
+    PassState.none => context.tr('pass.state.none'),
+    PassState.pending => context.tr('pass.state.pending'),
+    PassState.ended =>
+      context.tr('pass.state.ended').replaceAll('{date}', ends),
+    PassState.endingSoon =>
+      context.tr('pass.state.endingSoon').replaceAll('{date}', ends),
+    PassState.lowVisits =>
+      visitsLeft(d) == 0
+          ? context.tr('pass.state.noVisits')
+          : context
+                .tr('pass.state.lowVisits')
+                .replaceAll('{n}', '${visitsLeft(d) ?? 0}'),
+    PassState.active => null,
+  };
 }
