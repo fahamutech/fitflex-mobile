@@ -61,7 +61,8 @@ PassState passStateFor(MemberData d) {
   final sub = d.subscription;
   if (d.hasActivePass) {
     final days = sub?.daysLeft;
-    final left = visitsLeft(d);
+    // A gym membership runs on dates, not visits, even if the API sends a cap.
+    final left = sub?.isDirect == true ? null : visitsLeft(d);
     if (days != null && days >= 0 && days <= endingSoonDays) {
       return PassState.endingSoon;
     }

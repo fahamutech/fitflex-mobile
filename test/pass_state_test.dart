@@ -28,6 +28,31 @@ MemberData _data({
     });
 }
 
+Map<String, dynamic> _direct({String status = 'active', int daysLeft = 20}) => {
+  'id': 's2',
+  'type': 'direct_sub',
+  'plan': 'monthly',
+  'status': status,
+  'homeGymId': 'g1',
+  'homeGym': {
+    'id': 'g1',
+    'name': 'Mikocheni Fitness',
+    'tier': 'standard',
+    'location': 'Mikocheni',
+    'perVisitRate': 5000,
+    'commissionRate': 10,
+    'status': 'active',
+  },
+  'startedAt': DateTime.now()
+      .subtract(const Duration(days: 10))
+      .toUtc()
+      .toIso8601String(),
+  'expiresAt': DateTime.now()
+      .add(Duration(days: daysLeft, hours: 12))
+      .toUtc()
+      .toIso8601String(),
+};
+
 Map<String, dynamic> _pass({String status = 'active', int daysLeft = 30}) => {
   'id': 's1',
   'type': 'platform_pass',
@@ -186,6 +211,57 @@ void main() {
       await _pumpCard(tester, d, body: qr);
       expect(find.textContaining('Your pass ended'), findsOneWidget);
       expect(find.text('Pay again'), findsOneWidget);
+    });
+  });
+
+  group('direct gym membership', () {
+    test('runs on dates, so a visit cap never makes it low', () {
+      final d = _data(subscription: _direct(), used: 11, cap: 12);
+      expect(passStateFor(d), PassState.active);
+    });
+
+    test('ending within three days, and ended', () {
+      expect(
+        passStateFor(_data(subscription: _direct(daysLeft: 2))),
+        PassState.endingSoon,
+      );
+      expect(
+        passStateFor(_data(subscription: _direct(status: 'expired'))),
+        PassState.ended,
+      );
+    });
+
+    testWidgets('keeps its dates and shows no ring or visit counts', (
+      tester,
+    ) async {
+      await _pumpCard(
+        tester,
+        _data(subscription: _direct(), used: 11, cap: 12),
+      );
+      expect(find.text('Mikocheni Fitness'), findsOneWidget);
+      expect(find.byKey(const Key('direct-membership-expiry')), findsOneWidget);
+      expect(find.byKey(const Key('pass-visits-ring')), findsNothing);
+      expect(find.textContaining('visits left'), findsNothing);
+      expect(find.byKey(const Key('pass-state-message')), findsNothing);
+      expect(find.text('Show my QR'), findsOneWidget);
+    });
+
+    testWidgets('ending soon adds the sentence under the dates', (
+      tester,
+    ) async {
+      await _pumpCard(tester, _data(subscription: _direct(daysLeft: 2)));
+      expect(
+        find.byKey(const Key('direct-membership-days-left')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('pass-state-message')), findsOneWidget);
+      expect(find.textContaining('Your pass ends'), findsOneWidget);
+    });
+
+    testWidgets('ended offers Pay again', (tester) async {
+      await _pumpCard(tester, _data(subscription: _direct(status: 'expired')));
+      expect(find.text('Pay again'), findsOneWidget);
+      expect(find.text('Show my QR'), findsNothing);
     });
   });
 }

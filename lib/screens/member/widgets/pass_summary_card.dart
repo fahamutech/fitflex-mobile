@@ -111,6 +111,16 @@ class PassSummaryCard extends StatelessWidget {
                 ),
               ],
             ],
+            if (passStateMessage(context, data, state) case final m?) ...[
+              const SizedBox(height: FFTokens.spacingSm),
+              Text(
+                m,
+                key: const Key('pass-state-message'),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
           ] else ...[
             const SizedBox(height: FFTokens.spacingMd),
             _stateBody(context, state),
