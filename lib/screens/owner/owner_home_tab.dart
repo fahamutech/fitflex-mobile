@@ -247,13 +247,15 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
                   onTap: () => context.push('/owner/earnings'),
                 ),
                 _buildActionDivider(context),
-                _buildQuickAction(
-                  context,
-                  icon: Icons.shopping_bag_outlined,
-                  title: context.tr('owner.shop'),
-                  onTap: () => context.push('/owner/shop'),
-                ),
-                _buildActionDivider(context),
+                if (data.canAccess('trainers')) ...[
+                  _buildQuickAction(
+                    context,
+                    icon: Icons.sports_gymnastics_outlined,
+                    title: context.tr('owner.trainers'),
+                    onTap: () => context.go('/owner/trainers'),
+                  ),
+                  _buildActionDivider(context),
+                ],
                 _buildQuickAction(
                   context,
                   icon: Icons.people_outline,

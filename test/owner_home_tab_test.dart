@@ -80,6 +80,9 @@ void main() {
       top(const Key('owner-challenges')),
     ];
     expect(order, [...order]..sort());
+    // Shop is a bottom tab now; Trainers is reached from Home.
+    expect(find.text('Trainers'), findsOneWidget);
+    expect(find.text('Shop'), findsNothing);
     // The grow-your-gym promo (a dead end) is gone.
     expect(find.byIcon(Icons.trending_up), findsNothing);
   });
