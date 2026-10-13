@@ -106,7 +106,8 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
         context,
       ).auth.signIn(AppScope.of(context).auth.token!, user);
       if (!mounted) return;
-      context.go(AppRoutes.pending);
+      // Active at once: straight on to where this role lands now.
+      context.go(routeForSignedInUser(AppScope.of(context).auth));
     } on ApiException catch (e) {
       if (!mounted) return;
       FFSnack.error(context, apiErrorMessage(FFLocaleScope.of(context), e));
