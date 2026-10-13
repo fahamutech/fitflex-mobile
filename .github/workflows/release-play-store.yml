@@ -20,8 +20,8 @@ on:
       track:
         description: 'Play track'
         type: choice
-        options: [internal, alpha, beta, production]
-        default: internal
+        options: [production, beta, alpha, internal]
+        default: production
       status:
         description: 'completed = roll out now; draft = leave for manual review in Play Console'
         type: choice
@@ -61,9 +61,9 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Tag pushes: version comes from the tag and the track is `internal`
-      # (promote to production in Play Console, or re-run by hand with a
-      # different track). Manual runs: inputs, falling back to pubspec.yaml.
+      # Tag pushes: version comes from the tag and the track is `production`
+      # (every merge to main is already tested through Firebase App
+      # Distribution). Manual runs: inputs, falling back to pubspec.yaml.
       #
       # versionCode must strictly increase for every upload Play ever
       # accepts. It is VERSION_CODE_OFFSET + this workflow's run number, which
@@ -83,11 +83,11 @@ jobs:
           set -euo pipefail
           if [ "$EVENT" = "push" ]; then
             NAME="${REF_NAME#play-v}"
-            TRACK="internal"
+            TRACK="production"
             STATUS="completed"
           else
             NAME="${IN_VERSION:-$(grep -E '^version:' pubspec.yaml | sed -E 's/version:[[:space:]]*([0-9]+\.[0-9]+\.[0-9]+).*/\1/')}"
-            TRACK="${IN_TRACK:-internal}"
+            TRACK="${IN_TRACK:-production}"
             STATUS="${IN_STATUS:-draft}"
           fi
           if ! printf '%s' "$NAME" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
@@ -103,8 +103,9 @@ jobs:
           } >> "$GITHUB_OUTPUT"
           echo "Releasing $NAME (versionCode $CODE) to track '$TRACK' as '$STATUS'"
 
-      # Anything past internal testing must come from main (production code).
-      # Internal testing may also come from release-candidate.
+      # Production (and beta/alpha) must come from main, i.e. code that has
+      # already been through Firebase distribution. Internal testing may also
+      # come from release-candidate.
       - name: Check the commit is on an allowed branch
         env:
           TRACK: ${{ steps.ver.outputs.track }}
