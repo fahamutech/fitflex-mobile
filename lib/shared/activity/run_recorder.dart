@@ -11,6 +11,34 @@ import 'run_metrics.dart';
 
 enum RunState { idle, recording, paused, finished }
 
+// Why the server refuses a run, and the line that tells the member.
+const _runRefusals = {
+  'too_short': 'run.tooShort',
+  'invalid_route': 'run.fail.weakGps',
+  'too_fast': 'run.fail.tooFast',
+  'too_long': 'run.fail.tooLong',
+  'started_in_future': 'run.fail.clock',
+  'too_old': 'run.fail.tooOld',
+};
+
+/// The message (an i18n key) for a run that couldn't be saved: the server's
+/// own reason when it gave one, "no connection" when it was never reached,
+/// and the general line otherwise.
+String runSaveFailureKey(Object error) {
+  if (error is ApiException) {
+    return _runRefusals[error.code] ?? 'run.saveFailed';
+  }
+  // Timed out, or the phone couldn't reach the server at all.
+  final kind = error.runtimeType.toString();
+  if (error is TimeoutException ||
+      kind.contains('SocketException') ||
+      kind.contains('ClientException') ||
+      kind.contains('HandshakeException')) {
+    return 'run.fail.offline';
+  }
+  return 'run.saveFailed';
+}
+
 /// Records a run with GPS: start, pause/resume, finish, then save or
 /// discard. Live numbers come from [trackMetrics]; the saved ones are
 /// worked out by the server from the same track.

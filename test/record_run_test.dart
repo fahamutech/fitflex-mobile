@@ -360,6 +360,86 @@ void main() {
       expect(find.textContaining('Your route is private'), findsOneWidget);
     });
 
+    testWidgets('a refused save says why, and keeps the run', (tester) async {
+      tall(tester);
+      final gps = _Gps();
+      final api = _Api();
+      final r = RunRecorder(gps: gps, store: _Store());
+      await tester.pumpWidget(app(r, const MemberRecordRunPage(), api: api));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('run-start')));
+      await tester.pump();
+      await tester.runAsync(
+        () => _feed(gps, run(1000, start: DateTime.now().toUtc())),
+      );
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('run-pause')));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 20)),
+      );
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('run-finish')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('run-finish-confirm')));
+      await tester.pumpAndSettle();
+
+      Future<void> saveExpecting(Object error, String says) async {
+        api.fail = error;
+        await tester.ensureVisible(find.byKey(const Key('run-save')));
+        await tester.tap(find.byKey(const Key('run-save')));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(find.textContaining(says), findsOneWidget, reason: says);
+        expect(r.state, RunState.finished, reason: 'the run is kept');
+        ScaffoldMessenger.of(
+          tester.element(find.byKey(const Key('run-save'))),
+        ).removeCurrentSnackBar();
+        await tester.pumpAndSettle();
+      }
+
+      await saveExpecting(
+        ApiException(400, {'error': 'invalid_route'}),
+        'GPS signal was too weak',
+      );
+      await saveExpecting(
+        ApiException(400, {'error': 'too_fast'}),
+        'faster than running',
+      );
+      await saveExpecting(
+        ApiException(400, {'error': 'too_short'}),
+        'too short to save',
+      );
+      await saveExpecting(
+        TimeoutException('slow network'),
+        'No internet connection',
+      );
+      await saveExpecting(ApiException(500, null), 'Couldn\'t save the run');
+    });
+
+    test('every reason a run can be refused has its own line', () {
+      const reasons = {
+        'too_short': 'run.tooShort',
+        'invalid_route': 'run.fail.weakGps',
+        'too_fast': 'run.fail.tooFast',
+        'too_long': 'run.fail.tooLong',
+        'started_in_future': 'run.fail.clock',
+        'too_old': 'run.fail.tooOld',
+      };
+      for (final e in reasons.entries) {
+        expect(runSaveFailureKey(ApiException(400, {'error': e.key})), e.value);
+      }
+      expect(runSaveFailureKey(TimeoutException('x')), 'run.fail.offline');
+      expect(
+        runSaveFailureKey(ApiException(400, {'error': 'invalid_type'})),
+        'run.saveFailed',
+      );
+      expect(runSaveFailureKey(StateError('x')), 'run.saveFailed');
+      for (final key in [...reasons.values, 'run.fail.offline']) {
+        expect(FFLocale.keysOf('en'), contains(key));
+        expect(FFLocale.keysOf('sw'), contains(key));
+      }
+    });
+
     testWidgets('location refused: explains and offers Settings', (
       tester,
     ) async {

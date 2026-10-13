@@ -2152,6 +2152,18 @@ class FFLocale extends ChangeNotifier {
       'run.saveFailed': 'Couldn\'t save the run. It\'s kept here, try again.',
       'run.tooShort':
           'That run is too short to save (at least 50 m and a minute).',
+      'run.fail.weakGps':
+          'The GPS signal was too weak to save this run. Try again outdoors, away from tall buildings.',
+      'run.fail.tooFast':
+          'This is faster than running (over 25 km/h on average), so it can\'t be saved as a run.',
+      'run.fail.tooLong':
+          'This run is too long to save (over 300 km or 24 hours).',
+      'run.fail.clock':
+          'Your phone\'s date and time look wrong. Set them to automatic, then try again.',
+      'run.fail.tooOld':
+          'This run was recorded more than 7 days ago, so it can no longer be saved.',
+      'run.fail.offline':
+          'No internet connection. Your run is kept here; try again when you\'re back online.',
       'run.restoredBody':
           'Your run was interrupted. Resume it, or finish and save what was recorded.',
       'run.permissionBody':
@@ -6079,6 +6091,18 @@ class FFLocale extends ChangeNotifier {
           'Imeshindikana kuhifadhi mbio. Zimebaki hapa, jaribu tena.',
       'run.tooShort':
           'Mbio hizi ni fupi mno kuhifadhiwa (angalau mita 50 na dakika moja).',
+      'run.fail.weakGps':
+          'Mawimbi ya GPS yalikuwa dhaifu mno kuhifadhi mbio hizi. Jaribu tena nje, mbali na majengo marefu.',
+      'run.fail.tooFast':
+          'Mwendo huu ni wa kasi kuliko kukimbia (zaidi ya km 25 kwa saa kwa wastani), kwa hiyo hauwezi kuhifadhiwa kama mbio.',
+      'run.fail.tooLong':
+          'Mbio hizi ni ndefu mno kuhifadhiwa (zaidi ya km 300 au saa 24).',
+      'run.fail.clock':
+          'Tarehe na saa za simu yako zinaonekana si sahihi. Ziweke ziwe za kiotomatiki, kisha jaribu tena.',
+      'run.fail.tooOld':
+          'Mbio hizi zilirekodiwa zaidi ya siku 7 zilizopita, kwa hiyo haziwezi kuhifadhiwa tena.',
+      'run.fail.offline':
+          'Hakuna intaneti. Mbio zako zimebaki hapa; jaribu tena ukipata mtandao.',
       'run.restoredBody':
           'Mbio zako zilikatizwa. Endelea, au maliza na uhifadhi kilichorekodiwa.',
       'run.permissionBody':
