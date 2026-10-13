@@ -162,9 +162,10 @@ bool _isOnboarded(AuthState auth, String role) {
     return true;
   }
   if (role == 'trainer') {
-    if (auth.user?['onboardingCompleted'] == true) return true;
-    if (auth.user?['approvalStatus']?.toString() == 'approved') return true;
-    return false;
+    // Trainers are approved at once, so approval no longer says whether they
+    // registered. The server marks onboardingCompleted when a trainer has a
+    // profile (and claims one an admin made); without one they register.
+    return auth.user?['onboardingCompleted'] == true;
   }
   // Member
   return auth.user?['onboardingCompleted'] == true;
