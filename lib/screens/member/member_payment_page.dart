@@ -11,7 +11,9 @@ import '../../shared/i18n.dart';
 import '../../shared/api_client.dart';
 import '../../shared/api_error_message.dart';
 import '../../shared/models.dart';
+import '../../shared/pass_gyms.dart';
 import 'member_shell.dart';
+import 'widgets/pass_gyms_sheet.dart';
 
 class MemberPaymentPage extends StatelessWidget {
   const MemberPaymentPage({super.key});
@@ -203,34 +205,9 @@ class _AvailableGymsSection extends StatelessWidget {
   final PassTier? pass;
   final List<Gym> gyms;
 
-  List<Gym> _getAccessibleGyms() {
-    if (pass == null || pass!.gymAccess == null || pass!.gymAccess!.isEmpty) {
-      return gyms;
-    }
-    return gyms.where((g) {
-      final tier = g.tier
-          .toLowerCase()
-          .replaceAll('-', '_')
-          .replaceAll(' ', '_');
-      switch (pass!.gymAccess) {
-        case 'standard':
-          return tier == 'standard';
-        case 'midtier':
-          return tier == 'standard' || tier == 'mid_tier' || tier == 'midtier';
-        case 'premium':
-          return tier == 'standard' ||
-              tier == 'mid_tier' ||
-              tier == 'midtier' ||
-              tier == 'premium';
-        default:
-          return true;
-      }
-    }).toList();
-  }
-
   @override
   Widget build(BuildContext context) {
-    final accessible = _getAccessibleGyms();
+    final accessible = gymsForPass(pass?.gymAccess, gyms);
     if (accessible.isEmpty) return const SizedBox.shrink();
 
     return FFCard(
@@ -275,13 +252,25 @@ class _AvailableGymsSection extends StatelessWidget {
                   ),
                 ),
               ),
-          if (accessible.length > 5)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(
-                '+${accessible.length - 5} ${context.tr('member.moreGyms')}',
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.primary,
+          if (pass != null)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.only(top: 4),
+                  minimumSize: const Size(0, 36),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                onPressed: () => showPassGymsSheet(
+                  context,
+                  tierId: pass!.id,
+                  gymAccess: pass!.gymAccess,
+                  gyms: gyms,
+                ),
+                child: Text(
+                  accessible.length > 5
+                      ? '${context.tr('passGyms.view')} (+${accessible.length - 5} ${context.tr('member.moreGyms')})'
+                      : context.tr('passGyms.view'),
                 ),
               ),
             ),
