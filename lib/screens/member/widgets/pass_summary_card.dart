@@ -198,7 +198,8 @@ class PassSummaryCard extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-              if (sub?.expiresAt != null)
+              // The ending-soon sentence already carries the date.
+              if (sub?.expiresAt != null && state != PassState.endingSoon)
                 Text(
                   context.tr('pass.state.endsOn').replaceAll('{date}', ends),
                   style: theme.textTheme.bodyMedium?.copyWith(

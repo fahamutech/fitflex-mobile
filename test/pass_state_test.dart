@@ -131,6 +131,15 @@ void main() {
       expect(find.text('Show my QR'), findsOneWidget);
     });
 
+    testWidgets('ending soon says the date once, in the sentence', (
+      tester,
+    ) async {
+      await _pumpCard(tester, _data(subscription: _pass(daysLeft: 2)));
+      expect(find.textContaining('Your pass ends'), findsOneWidget);
+      expect(find.textContaining('Ends '), findsNothing);
+      expect(find.text('Show my QR'), findsOneWidget);
+    });
+
     testWidgets('pending payment: no QR, no ring, a clear sentence', (
       tester,
     ) async {
