@@ -80,7 +80,9 @@ flutter {
 }
 
 dependencies {
-    implementation(project(":integration_test"))
-    implementation(project(":patrol"))
+    // Test tooling only: keep it out of the release bundle so the shipped
+    // manifest carries no test services or extra permissions.
+    debugImplementation(project(":integration_test"))
+    debugImplementation(project(":patrol"))
     androidTestUtil("androidx.test:orchestrator:1.5.1")
 }

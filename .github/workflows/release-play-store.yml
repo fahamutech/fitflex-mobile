@@ -61,9 +61,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Tag pushes: version comes from the tag and the track is `production`
-      # (every merge to main is already tested through Firebase App
-      # Distribution). Manual runs: inputs, falling back to pubspec.yaml.
+      # Tag pushes: version comes from the tag. `play-v1.2.0` goes to the
+      # `production` track (every merge to main is already tested through
+      # Firebase App Distribution); `play-v1.2.0-internal` goes to internal
+      # testing. Manual runs: inputs, falling back to pubspec.yaml.
       #
       # versionCode must strictly increase for every upload Play ever
       # accepts. It is VERSION_CODE_OFFSET + this workflow's run number, which
@@ -85,6 +86,10 @@ jobs:
             NAME="${REF_NAME#play-v}"
             TRACK="production"
             STATUS="completed"
+            # play-v1.2.0-internal -> internal testing track, same version.
+            case "$NAME" in
+              *-internal) NAME="${NAME%-internal}"; TRACK="internal" ;;
+            esac
           else
             NAME="${IN_VERSION:-$(grep -E '^version:' pubspec.yaml | sed -E 's/version:[[:space:]]*([0-9]+\.[0-9]+\.[0-9]+).*/\1/')}"
             TRACK="${IN_TRACK:-production}"
