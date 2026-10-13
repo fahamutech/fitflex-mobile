@@ -86,4 +86,19 @@ void main() {
     // The grow-your-gym promo (a dead end) is gone.
     expect(find.byIcon(Icons.trending_up), findsNothing);
   });
+
+  testWidgets('trend chips show one arrow, not two', (tester) async {
+    await _pump(tester, DateTime(2026, 10, 12, 9));
+    final labels = [
+      for (final w in tester.widgetList<Text>(find.byType(Text)))
+        if ((w.data ?? w.textSpan?.toPlainText() ?? '').contains(
+          'vs prev period',
+        ))
+          w.data ?? w.textSpan!.toPlainText(),
+    ];
+    expect(labels, isNotEmpty);
+    for (final l in labels) {
+      expect(RegExp(r'[↑↓→].*[↑↓→]').hasMatch(l), isFalse, reason: l);
+    }
+  });
 }

@@ -10,6 +10,7 @@ import '../../shared/widgets/challenge_manager_page.dart';
 import '../../shared/widgets/partner_not_verified.dart';
 import '../member/member_group_page.dart' show openGroupManager;
 import 'widgets/gym_engagement_widgets.dart';
+import 'widgets/latest_checkins_card.dart';
 
 /// Owner dashboard home tab — shows stats, quick actions, and gym summary.
 class OwnerHomeTab extends StatefulWidget {
@@ -321,6 +322,16 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
           ],
         ),
         const SizedBox(height: FFTokens.spacingLg),
+
+        if (data.activeGymId != null && data.canAccess('checkins')) ...[
+          LatestCheckinsCard(
+            gymId: data.activeGymId!,
+            version: identityHashCode(dashboard),
+            onSeeAll: () =>
+                context.push('/owner/gyms/${data.activeGymId}/checkins'),
+          ),
+          const SizedBox(height: FFTokens.spacingLg),
+        ],
 
         // Membership insight: the one trend view, so it sits high.
         FFCard(
