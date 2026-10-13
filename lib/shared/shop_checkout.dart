@@ -1,0 +1,129 @@
+// Marketplace checkout rules that do not depend on a screen: the idempotency
+// key that makes a retried checkout safe, how an order's payment is described,
+// and which failures mean "we do not know whether the order was placed".
+import 'dart:math';
+
+import 'api_client.dart';
+import 'i18n.dart';
+
+/// One checkout attempt: the key the server uses to recognise a retry, and the
+/// signature of what was being bought. The same key is reused while the cart
+/// and delivery details are unchanged, so a timeout followed by a second tap
+/// returns the first order instead of creating another.
+class CheckoutAttempt {
+  CheckoutAttempt({required this.key, required this.signature});
+  final String key;
+  final String signature;
+
+  /// The attempt to use for [signature]: the current one if it is for the same
+  /// purchase, otherwise a fresh one.
+  static CheckoutAttempt forPurchase(
+    CheckoutAttempt? current,
+    String signature, {
+    String Function()? makeKey,
+  }) {
+    if (current != null && current.signature == signature) return current;
+    return CheckoutAttempt(
+      key: (makeKey ?? newCheckoutKey)(),
+      signature: signature,
+    );
+  }
+}
+
+/// 128 random bits as hex, prefixed so it is recognisable in logs. Matches the
+/// server's rule (8-100 characters of letters, digits and ._:-).
+String newCheckoutKey([Random? random]) {
+  final r = random ?? Random.secure();
+  final bytes = List<int>.generate(16, (_) => r.nextInt(256));
+  return 'chk_${bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join()}';
+}
+
+/// What is being bought, in a form that changes whenever the order would.
+String checkoutSignature({
+  required List<Map<String, dynamic>> items,
+  required String deliveryMethod,
+  String? pickupGymId,
+  String? deliveryAddress,
+  required String paymentMethod,
+}) {
+  final lines =
+      items
+          .map((i) => '${i['productId']}|${i['variant'] ?? ''}|${i['qty']}')
+          .toList()
+        ..sort();
+  return [
+    lines.join(','),
+    deliveryMethod,
+    pickupGymId ?? '',
+    deliveryAddress ?? '',
+    paymentMethod,
+  ].join('#');
+}
+
+/// The request may have reached the server and the order may exist: a timeout,
+/// a dropped connection, or a server error. The cart must be kept and the same
+/// key used for the retry. A clear 4xx answer means no order was made.
+bool orderOutcomeUnknown(Object error) {
+  if (error is ApiException) return error.status >= 500;
+  return true;
+}
+
+/// How the customer's money stands for an order.
+enum ShopOrderPayment {
+  awaitingConfirmation,
+  paid,
+  refundPending,
+  refunded,
+  notConfirmed,
+  cancelled,
+}
+
+ShopOrderPayment shopOrderPayment(Map<dynamic, dynamic> order) {
+  switch (order['paymentStatus']?.toString()) {
+    case 'paid':
+      return ShopOrderPayment.paid;
+    case 'refund_pending':
+      return ShopOrderPayment.refundPending;
+    case 'refunded':
+      return ShopOrderPayment.refunded;
+    case 'failed':
+      return ShopOrderPayment.notConfirmed;
+    case 'cancelled':
+      return ShopOrderPayment.cancelled;
+    default:
+      return ShopOrderPayment.awaitingConfirmation;
+  }
+}
+
+/// i18n key for the line shown under an order's total, or null when the order
+/// needs no payment note (paid, or cancelled before any payment).
+String? shopOrderPaymentKey(Map<dynamic, dynamic> order) =>
+    switch (shopOrderPayment(order)) {
+      ShopOrderPayment.awaitingConfirmation => 'shop.awaitingPayment',
+      ShopOrderPayment.refundPending => 'shop.refundPending',
+      ShopOrderPayment.refunded => 'shop.refunded',
+      ShopOrderPayment.notConfirmed => 'shop.paymentNotConfirmed',
+      _ => null,
+    };
+
+/// i18n key for a checkout the server refused, or null to use the generic message.
+String? shopCheckoutErrorKey(Object error) {
+  if (error is! ApiException) return null;
+  return switch (error.code) {
+    'insufficient_stock' => 'shop.errInsufficientStock',
+    'price_changed' => 'shop.errPriceChanged',
+    'product_not_found' => 'shop.errUnavailable',
+    'variant_not_found' => 'shop.errUnavailable',
+    'variant_required' => 'shop.errVariantRequired',
+    'idempotency_key_reused' => 'shop.errChanged',
+    _ => null,
+  };
+}
+
+/// A message for a failed checkout, in the customer's language.
+String shopCheckoutErrorMessage(FFLocale locale, Object error) {
+  final key = shopCheckoutErrorKey(error);
+  if (key != null) return locale.t(key);
+  if (orderOutcomeUnknown(error)) return locale.t('shop.orderUncertain');
+  return locale.t('shop.orderFailed');
+}
