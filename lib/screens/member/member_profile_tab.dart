@@ -17,6 +17,7 @@ import '../../shared/widgets/profile_form_page.dart';
 import 'member_shell.dart';
 import 'widgets/checkin_list.dart';
 import 'widgets/membership_card.dart';
+import 'widgets/pass_state.dart';
 import '../../shared/widgets/persona_switcher.dart';
 import '../../shared/widgets/invitations.dart';
 import '../../shared/widgets/verify_identifier.dart';
@@ -422,6 +423,11 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
     final displayName = me?.user.resolvedName ?? 'Member';
     final visitsUsed = me?.visitsUsed ?? 0;
     final visitCap = me?.visitCap;
+    final passState = passStateFor(data);
+    final stateMessage = passState == PassState.active
+        ? null
+        : passStateMessage(context, data, passState);
+    final tier = data.subscription?.tier;
 
     return ListView(
       padding: const EdgeInsets.all(FFTokens.spacingLg),
@@ -452,11 +458,12 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
                           ? context.tr(
                               'member.plan_${data.subscription?.plan ?? 'monthly'}',
                             )
-                          : data.subscription?.tier ??
-                                context.tr('pass.pending'),
-                      tone: data.hasActivePass
-                          ? FFBadgeTone.success
-                          : FFBadgeTone.gray,
+                          : passState == PassState.pending
+                          ? context.tr('pass.pending')
+                          : tier != null && tier.isNotEmpty
+                          ? _tierLabel(context, tier)
+                          : context.tr('pass.state.noPass'),
+                      tone: passState.badgeTone,
                       dot: true,
                     ),
                   ],
@@ -466,6 +473,17 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
           ),
         ),
         const SizedBox(height: 12),
+
+        if (stateMessage != null) ...[
+          FFAlert(
+            key: const Key('profile-pass-state'),
+            message: stateMessage,
+            tone: passState.tone == PassTone.neutral
+                ? FFAlertTone.info
+                : FFAlertTone.warning,
+          ),
+          const SizedBox(height: 12),
+        ],
 
         // Membership (A2/A3): plan, expiry date, days left, subscribed gym
         MembershipCard(subscription: data.subscription),
@@ -573,4 +591,11 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
       ],
     );
   }
+}
+
+/// "Premium" for a known tier, the raw value for one we have no label for.
+String _tierLabel(BuildContext context, String tier) {
+  final key = 'pass.$tier';
+  final label = context.tr(key);
+  return label == key ? tier : label;
 }

@@ -2350,6 +2350,20 @@ class FFLocale extends ChangeNotifier {
       'pass.note':
           'Pilot payments are reviewed by a FitFlex admin before your pass activates.',
       'pass.pending': 'Payment pending admin approval',
+      'pass.state.none': 'Pick a pass to open gyms across the network.',
+      'pass.state.noPass': 'No pass',
+      'pass.state.pending':
+          "We're confirming your payment. Your QR unlocks as soon as it's confirmed.",
+      'pass.state.viewPayment': 'View payment',
+      'pass.state.lowVisits': '{n} visits left',
+      'pass.state.noVisits': 'No visits left on this pass',
+      'pass.state.lowVisitsHint': 'Plan your next pass before it runs out.',
+      'pass.state.endingSoon':
+          'Your pass ends {date}. Nothing renews by itself; pay when you are ready.',
+      'pass.state.ended': 'Your pass ended {date}.',
+      'pass.state.payAgain': 'Pay again',
+      'pass.state.visitsOf': 'of {total} visits',
+      'pass.state.endsOn': 'Ends {date}',
       'pass.gymAccess': 'Gym access',
       'pass.gymAccess.standard': 'Standard gyms',
       'pass.gymAccess.midtier': 'Standard + Mid-tier gyms',
@@ -6270,6 +6284,20 @@ class FFLocale extends ChangeNotifier {
       'pass.note':
           'Malipo ya majaribio hukaguliwa na admin wa FitFlex kabla pasi yako haijaanza kutumika.',
       'pass.pending': 'Malipo yanasubiri idhini ya admin',
+      'pass.state.none': 'Pick a pass to open gyms across the network.',
+      'pass.state.noPass': 'No pass',
+      'pass.state.pending':
+          "We're confirming your payment. Your QR unlocks as soon as it's confirmed.",
+      'pass.state.viewPayment': 'View payment',
+      'pass.state.lowVisits': '{n} visits left',
+      'pass.state.noVisits': 'No visits left on this pass',
+      'pass.state.lowVisitsHint': 'Plan your next pass before it runs out.',
+      'pass.state.endingSoon':
+          'Your pass ends {date}. Nothing renews by itself; pay when you are ready.',
+      'pass.state.ended': 'Your pass ended {date}.',
+      'pass.state.payAgain': 'Pay again',
+      'pass.state.visitsOf': 'of {total} visits',
+      'pass.state.endsOn': 'Ends {date}',
       'pass.gymAccess': 'Ufikiaji wa gym',
       'pass.gymAccess.standard': 'Gym za kawaida',
       'pass.gymAccess.midtier': 'Gym za kawaida + kati',

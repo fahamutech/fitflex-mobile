@@ -13,6 +13,7 @@ import '../../shared/i18n.dart';
 import 'member_scan_gym_page.dart';
 import 'member_shell.dart';
 import 'widgets/checkin_list.dart';
+import 'widgets/pass_state.dart';
 
 class MemberQrTab extends StatelessWidget {
   const MemberQrTab({super.key});
@@ -20,6 +21,10 @@ class MemberQrTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final data = MemberDataScope.of(context);
+    final state = passStateFor(data);
+    final notice = state == PassState.lowVisits || state == PassState.endingSoon
+        ? passStateMessage(context, data, state)
+        : null;
 
     return Scaffold(
       appBar: AppBar(
@@ -34,10 +39,19 @@ class MemberQrTab extends StatelessWidget {
         padding: const EdgeInsets.all(FFTokens.spacingLg),
         children: [
           if (data.pendingPayment != null) _PendingPaymentCard(data: data),
+          // Amber heads-up while the QR still works: running low or ending.
+          if (notice != null && data.canCheckIn) ...[
+            FFAlert(
+              key: const Key('qr-state-notice'),
+              message: notice,
+              tone: FFAlertTone.warning,
+            ),
+            const SizedBox(height: 12),
+          ],
           if (data.canCheckIn)
             _QrCard(data: data)
           else
-            _QrLockedCard(data: data),
+            _QrLockedCard(data: data, state: state),
           if (data.canCheckIn) ...[
             const SizedBox(height: 12),
             // Tech Brief §5: self check-in by scanning the gym's entrance QR.
@@ -125,9 +139,10 @@ class _QrCard extends StatelessWidget {
 }
 
 class _QrLockedCard extends StatelessWidget {
-  const _QrLockedCard({required this.data});
+  const _QrLockedCard({required this.data, required this.state});
 
   final MemberData data;
+  final PassState state;
 
   @override
   Widget build(BuildContext context) {
@@ -135,8 +150,12 @@ class _QrLockedCard extends StatelessWidget {
     final title = isPending
         ? context.tr('home.qr.pendingTitle')
         : context.tr('home.qr.lockedTitle');
+    // An ended pass says so (and when) instead of the generic locked copy.
+    final ended = state == PassState.ended;
     final body = isPending
         ? context.tr('home.qr.pendingBody')
+        : ended
+        ? passStateMessage(context, data, state)!
         : context.tr('home.qr.lockedBody');
 
     return FFCard(
@@ -185,7 +204,9 @@ class _QrLockedCard extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: FFButton(
-                label: context.tr('member.subscribe'),
+                label: ended
+                    ? context.tr('pass.state.payAgain')
+                    : context.tr('member.subscribe'),
                 onPressed: () => context.go(AppRoutes.memberPasses),
                 icon: Icons.card_membership,
               ),
