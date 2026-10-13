@@ -187,43 +187,60 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
         const PartnerNotVerifiedNotice(),
         // Greeting follows the time of day; the date filter is the one
         // control that scopes everything below it.
-        FFPageHeader(
-          title: '$greeting, $cleanName',
-          description: gymName,
-          actions: InkWell(
-            key: const Key('owner-date-filter'),
-            onTap: _showDateFilter,
-            borderRadius: BorderRadius.circular(FFTokens.radiusMd),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 48),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: FFTokens.spacingSm,
+        Text(
+          '$greeting, $cleanName',
+          style: Theme.of(
+            context,
+          ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: FFTokens.spacing2xs),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                gymName ?? context.tr('owner.gymSnapshot'),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: Theme.of(context).colorScheme.outlineVariant,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: FFTokens.spacingSm),
+            InkWell(
+              key: const Key('owner-date-filter'),
+              onTap: _showDateFilter,
+              borderRadius: BorderRadius.circular(FFTokens.radiusMd),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 48),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: FFTokens.spacingSm,
                   ),
-                  borderRadius: BorderRadius.circular(FFTokens.radiusMd),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.calendar_today_outlined, size: 16),
-                    const SizedBox(width: 6),
-                    Text(
-                      _presetLabel(context),
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.outlineVariant,
                     ),
-                    const Icon(Icons.keyboard_arrow_down, size: 18),
-                  ],
+                    borderRadius: BorderRadius.circular(FFTokens.radiusMd),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.calendar_today_outlined, size: 16),
+                      const SizedBox(width: 6),
+                      Text(
+                        _presetLabel(context),
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                      const Icon(Icons.keyboard_arrow_down, size: 18),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
+          ],
         ),
+        const SizedBox(height: FFTokens.spacingMd),
 
         // The daily job first; the rest are one tap away below it.
         FFButton(
@@ -279,11 +296,6 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
                 child: FFMetricCard(
                   label: context.tr('owner.totalMembers'),
                   value: '$totalMembers',
-                  icon: const Icon(
-                    Icons.people_outline,
-                    color: FFTokens.brand600,
-                    size: 20,
-                  ),
                 ),
               ),
             ),
@@ -303,11 +315,6 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
                   value: '$periodVisits',
                   trendDirection: visitsTrendDir,
                   trendLabel: visitsTrendLabel,
-                  icon: const Icon(
-                    Icons.check_circle_outline,
-                    color: FFTokens.brand600,
-                    size: 20,
-                  ),
                 ),
               ),
             ),
