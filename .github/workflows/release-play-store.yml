@@ -1,0 +1,212 @@
+name: Release Android to Google Play
+
+# Play Store releases are deliberate, never a side effect of merging.
+#
+#   * Tag a commit `play-v<major>.<minor>.<patch>` (e.g. play-v1.2.0), or
+#   * run this workflow by hand (Actions -> Release Android to Google Play).
+#
+# It is fully separate from distribute-android.yml, which pushes every merge
+# to main to Firebase App Distribution. A `play-v*` tag is not a branch push,
+# so it never triggers that workflow, and build-flutter.yml only reacts to
+# `v*` tags, which `play-v*` does not match.
+on:
+  push:
+    tags: ['play-v*.*.*']
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: 'Version name shown to users, e.g. 1.2.0 (defaults to the version in pubspec.yaml)'
+        required: false
+      track:
+        description: 'Play track'
+        type: choice
+        options: [internal, alpha, beta, production]
+        default: internal
+      status:
+        description: 'completed = roll out now; draft = leave for manual review in Play Console'
+        type: choice
+        options: [completed, draft]
+        default: draft
+      release_notes_en:
+        description: 'What is new (English)'
+        required: false
+      release_notes_sw:
+        description: 'What is new (Kiswahili)'
+        required: false
+
+concurrency:
+  group: play-store-release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  PACKAGE_NAME: com.fitflexafrica.mobile
+
+jobs:
+  release:
+    name: Build signed AAB and upload to Google Play
+    runs-on: ubuntu-latest
+    # Add required reviewers to the `play-store` environment (Settings ->
+    # Environments) to gate every Play upload behind a manual approval.
+    environment: play-store
+
+    env:
+      API_BASE: ${{ vars.API_BASE || 'https://fitflex-faas.bfast.smartstock.co.tz' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Tag pushes: version comes from the tag and the track is `internal`
+      # (promote to production in Play Console, or re-run by hand with a
+      # different track). Manual runs: inputs, falling back to pubspec.yaml.
+      #
+      # versionCode must strictly increase for every upload Play ever
+      # accepts. It is VERSION_CODE_OFFSET + this workflow's run number, which
+      # only ever grows, so it never depends on the pubspec build number or on
+      # the Firebase builds (those use 100 + their own run number).
+      - name: Resolve version and track
+        id: ver
+        env:
+          EVENT: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          IN_VERSION: ${{ github.event.inputs.version_name }}
+          IN_TRACK: ${{ github.event.inputs.track }}
+          IN_STATUS: ${{ github.event.inputs.status }}
+          OFFSET: ${{ vars.PLAY_VERSION_CODE_OFFSET || '1000' }}
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" = "push" ]; then
+            NAME="${REF_NAME#play-v}"
+            TRACK="internal"
+            STATUS="completed"
+          else
+            NAME="${IN_VERSION:-$(grep -E '^version:' pubspec.yaml | sed -E 's/version:[[:space:]]*([0-9]+\.[0-9]+\.[0-9]+).*/\1/')}"
+            TRACK="${IN_TRACK:-internal}"
+            STATUS="${IN_STATUS:-draft}"
+          fi
+          if ! printf '%s' "$NAME" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Version name '$NAME' is not major.minor.patch."
+            exit 1
+          fi
+          CODE=$((OFFSET + RUN_NUMBER))
+          {
+            echo "name=$NAME"
+            echo "code=$CODE"
+            echo "track=$TRACK"
+            echo "status=$STATUS"
+          } >> "$GITHUB_OUTPUT"
+          echo "Releasing $NAME (versionCode $CODE) to track '$TRACK' as '$STATUS'"
+
+      # Anything past internal testing must come from main (production code).
+      # Internal testing may also come from release-candidate.
+      - name: Check the commit is on an allowed branch
+        env:
+          TRACK: ${{ steps.ver.outputs.track }}
+        run: |
+          set -euo pipefail
+          if git merge-base --is-ancestor HEAD origin/main; then
+            exit 0
+          fi
+          if [ "$TRACK" = "internal" ] && git merge-base --is-ancestor HEAD origin/release-candidate; then
+            exit 0
+          fi
+          echo "::error::This commit is not on main (track '$TRACK'); only internal releases may come from release-candidate."
+          exit 1
+
+      # pubspec.yaml requires Dart ^3.10.8, i.e. Flutter 3.38 or newer.
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.2'
+          channel: stable
+          cache: true
+
+      - name: Write build-time config files
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          echo "API_BASE=$API_BASE" > .env
+          if [ -z "$GOOGLE_SERVICES_JSON" ]; then
+            echo "::error::Secret GOOGLE_SERVICES_JSON is not set."
+            exit 1
+          fi
+          printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+
+      # Play only accepts bundles signed with the registered upload key
+      # (scripts/generate_release_keystore.sh), NOT the App Distribution key
+      # used by distribute-android.yml. Without android/key.properties the
+      # Gradle build silently falls back to the debug key, so fail here.
+      - name: Restore Play upload keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS || 'fitflexaf-upload' }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEYSTORE_PASSWORD" ]; then
+            echo "::error::Set ANDROID_UPLOAD_KEYSTORE_BASE64 and ANDROID_UPLOAD_KEYSTORE_PASSWORD (the Play upload key)."
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 --decode > android/fitflexaf-upload-keystore.jks
+          {
+            echo "storePassword=$KEYSTORE_PASSWORD"
+            echo "keyPassword=${KEY_PASSWORD:-$KEYSTORE_PASSWORD}"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "storeFile=../fitflexaf-upload-keystore.jks"
+          } > android/key.properties
+
+      # android/gradle.properties asks for an 8 GB heap; private-repo runners
+      # have ~7 GB of RAM, so R8 in release builds swaps for 30+ minutes.
+      - name: Fit Gradle to the runner
+        run: |
+          mkdir -p ~/.gradle
+          echo "org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError" >> ~/.gradle/gradle.properties
+
+      - name: Get Flutter dependencies
+        run: flutter pub get
+
+      - name: Build release app bundle
+        run: |
+          flutter build appbundle --release \
+            --build-name="${{ steps.ver.outputs.name }}" \
+            --build-number="${{ steps.ver.outputs.code }}" \
+            --dart-define=API_BASE="$API_BASE"
+
+      - name: Write release notes
+        env:
+          NOTES_EN: ${{ github.event.inputs.release_notes_en }}
+          NOTES_SW: ${{ github.event.inputs.release_notes_sw }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/whatsnew"
+          printf '%s' "${NOTES_EN:-Bug fixes and improvements.}" | head -c 480 > "$RUNNER_TEMP/whatsnew/whatsnew-en-US"
+          printf '%s' "${NOTES_SW:-Marekebisho na maboresho mbalimbali.}" | head -c 480 > "$RUNNER_TEMP/whatsnew/whatsnew-sw"
+
+      - name: Keep the bundle as a build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fitflex-release-aab-${{ steps.ver.outputs.name }}-${{ steps.ver.outputs.code }}
+          path: build/app/outputs/bundle/release/app-release.aab
+          retention-days: 90
+
+      - name: Upload to Google Play
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: ${{ env.PACKAGE_NAME }}
+          releaseFiles: build/app/outputs/bundle/release/app-release.aab
+          track: ${{ steps.ver.outputs.track }}
+          status: ${{ steps.ver.outputs.status }}
+          releaseName: ${{ steps.ver.outputs.name }} (${{ steps.ver.outputs.code }})
+          whatsNewDirectory: ${{ runner.temp }}/whatsnew
