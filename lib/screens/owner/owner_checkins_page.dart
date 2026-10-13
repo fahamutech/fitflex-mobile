@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../app_scope.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import 'owner_shell.dart';
+import 'widgets/latest_checkins_card.dart';
 
 /// Owner — view check-ins for a specific gym (or all checkins in active gym if loaded as tab).
 class OwnerCheckinsPage extends StatefulWidget {
@@ -154,18 +156,26 @@ class _OwnerCheckinsPageState extends State<OwnerCheckinsPage> {
                   ),
                   const SizedBox(height: 8),
                   ...items.take(50).map((c) {
-                    final member = c['member'] as Map?;
-                    final memberName =
-                        c['memberPublicId']?.toString() ??
-                        member?['displayName']?.toString() ??
-                        member?['email']?.toString() ??
-                        c['memberName']?.toString() ??
-                        c['memberId']?.toString() ??
-                        '';
+                    final name = checkinVisitorLabel(c);
+                    final publicId = c['memberPublicId']?.toString() ?? '';
+                    final at = DateTime.tryParse(
+                      c['timestamp']?.toString() ?? '',
+                    )?.toLocal();
+                    final lang = Localizations.localeOf(context).languageCode;
+                    final when = at == null
+                        ? (c['timestamp']?.toString() ?? '')
+                        : DateFormat('EEE d MMM · HH:mm', lang).format(at);
+                    // A name leads when there is one; the public ID stays
+                    // visible so staff can still match it to the Members list.
+                    final hasName = name != publicId && publicId.isNotEmpty;
                     return FFActionTile(
                       icon: Icons.check_circle_outline,
-                      title: memberName,
-                      subtitle: c['timestamp']?.toString() ?? '',
+                      title: name,
+                      subtitle: [
+                        if (hasName) publicId,
+                        checkinPlanLabel(context, c),
+                        when,
+                      ].join(' · '),
                       onTap: () {},
                     );
                   }),

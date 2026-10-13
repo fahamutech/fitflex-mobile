@@ -1,4 +1,5 @@
 import 'package:fitflexmobile/app_scope.dart';
+import 'package:fitflexmobile/screens/owner/owner_checkins_page.dart';
 import 'package:fitflexmobile/screens/owner/widgets/latest_checkins_card.dart';
 import 'package:fitflexmobile/shared/api_client.dart';
 import 'package:fitflexmobile/shared/auth_state.dart';
@@ -28,9 +29,11 @@ Map<String, dynamic> _row(
   String at, {
   String type = 'platform_pass',
   String? tier = 'pro',
+  String? name,
 }) => {
   'id': id,
   'memberPublicId': id,
+  'displayName': ?name,
   'timestamp': at,
   'subscriptionType': type,
   'passTier': tier,
@@ -112,5 +115,72 @@ void main() {
     );
     await tester.tap(find.byKey(const Key('owner-latest-checkins-all')));
     expect(tapped, isTrue);
+  });
+
+  testWidgets('a name leads when the server sends one, public ID otherwise', (
+    tester,
+  ) async {
+    final api = _FakeApi([
+      _row('FM001', '2026-10-13T15:00:00', name: 'Amina Said'),
+      _row('FM002', '2026-10-13T14:00:00'),
+      _row('FM003', '2026-10-13T13:00:00', name: '   '),
+    ]);
+    await _pump(tester, api);
+    expect(find.textContaining('Amina Said'), findsOneWidget);
+    expect(find.textContaining('FM001'), findsNothing);
+    expect(find.textContaining('FM002'), findsOneWidget);
+    expect(find.textContaining('FM003'), findsOneWidget);
+  });
+
+  test('checkinVisitorLabel falls back through the identifiers', () {
+    expect(
+      checkinVisitorLabel({
+        'displayName': ' Amani ',
+        'memberPublicId': 'FT001',
+      }),
+      'Amani',
+    );
+    expect(
+      checkinVisitorLabel({'displayName': null, 'memberPublicId': 'FT001'}),
+      'FT001',
+    );
+    expect(checkinVisitorLabel({'memberName': 'FM9'}), 'FM9');
+    expect(checkinVisitorLabel({'memberId': 'usr_1'}), 'usr_1');
+    expect(checkinVisitorLabel({}), '');
+  });
+
+  testWidgets('the full list shows the name, then public ID, plan and time', (
+    tester,
+  ) async {
+    final api = _FakeApi([
+      _row('FM001', '2026-10-13T15:00:00', name: 'Amina Said'),
+      _row('FT002', '2026-10-13T14:00:00', type: 'trainer_home', tier: null),
+    ]);
+    await tester.pumpWidget(
+      AppScope(
+        api: api,
+        auth: AuthState(api),
+        child: FFLocaleScope(
+          notifier: FFLocale(),
+          child: MaterialApp(
+            theme: buildTheme(),
+            supportedLocales: const [Locale('en'), Locale('sw')],
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            home: const OwnerCheckinsPage(gymId: 'g1'),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Amina Said'), findsOneWidget);
+    expect(find.textContaining('FM001 · FitFlex Pro'), findsOneWidget);
+    // No name: the public ID is the title and is not repeated below.
+    expect(find.text('FT002'), findsOneWidget);
+    expect(find.textContaining('FT002 ·'), findsNothing);
+    expect(find.textContaining('Trainer pass'), findsOneWidget);
   });
 }

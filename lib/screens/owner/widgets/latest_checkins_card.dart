@@ -8,6 +8,37 @@ import '../../../shared/i18n.dart';
 
 /// Owner Home: the last few check-ins at the active gym, so the screen shows
 /// the gym is live. Members appear by their public ID, as on the full list.
+/// "FitFlex Pro", "Your own plan", "Trainer pass" or "Company benefit".
+String checkinPlanLabel(BuildContext context, Map<String, dynamic> c) {
+  final type = c['subscriptionType']?.toString();
+  final tier = c['passTier']?.toString();
+  switch (type) {
+    case 'direct_sub':
+      return context.tr('owner.latest.ownPlan');
+    case 'trainer_pass':
+    case 'trainer_home':
+      return context.tr('owner.latest.trainer');
+    case 'b2b_benefit':
+      return context.tr('owner.latest.company');
+  }
+  if (tier == null || tier.isEmpty) return context.tr('owner.latest.fitflex');
+  final key = 'pass.$tier';
+  final name = context.tr(key);
+  return context
+      .tr('owner.latest.fitflexTier')
+      .replaceAll('{tier}', name == key ? tier : name);
+}
+
+/// Who checked in: their name when the server sent one, else the public ID.
+String checkinVisitorLabel(Map<String, dynamic> c) {
+  final name = c['displayName']?.toString().trim();
+  if (name != null && name.isNotEmpty) return name;
+  return c['memberPublicId']?.toString() ??
+      c['memberName']?.toString() ??
+      c['memberId']?.toString() ??
+      '';
+}
+
 class LatestCheckinsCard extends StatefulWidget {
   const LatestCheckinsCard({
     super.key,
@@ -66,27 +97,6 @@ class _LatestCheckinsCardState extends State<LatestCheckinsCard> {
       // Optional block: Home stands without it.
       if (mounted) setState(() => _failed = true);
     }
-  }
-
-  /// "FitFlex Pro", "Your own plan", "Trainer pass" or "Company benefit".
-  static String planLabel(BuildContext context, Map<String, dynamic> c) {
-    final type = c['subscriptionType']?.toString();
-    final tier = c['passTier']?.toString();
-    switch (type) {
-      case 'direct_sub':
-        return context.tr('owner.latest.ownPlan');
-      case 'trainer_pass':
-      case 'trainer_home':
-        return context.tr('owner.latest.trainer');
-      case 'b2b_benefit':
-        return context.tr('owner.latest.company');
-    }
-    if (tier == null || tier.isEmpty) return context.tr('owner.latest.fitflex');
-    final key = 'pass.$tier';
-    final name = context.tr(key);
-    return context
-        .tr('owner.latest.fitflexTier')
-        .replaceAll('{tier}', name == key ? tier : name);
   }
 
   String _when(DateTime at) {
@@ -157,17 +167,14 @@ class _LatestCheckinsCardState extends State<LatestCheckinsCard> {
                         Expanded(
                           child: Text.rich(
                             TextSpan(
-                              text:
-                                  latest[i].row['memberPublicId']?.toString() ??
-                                  latest[i].row['memberName']?.toString() ??
-                                  '',
+                              text: checkinVisitorLabel(latest[i].row),
                               style: const TextStyle(
                                 fontWeight: FontWeight.w600,
                               ),
                               children: [
                                 TextSpan(
                                   text:
-                                      ' · ${planLabel(context, latest[i].row)}',
+                                      ' · ${checkinPlanLabel(context, latest[i].row)}',
                                   style: TextStyle(
                                     fontWeight: FontWeight.w400,
                                     color: theme.colorScheme.onSurfaceVariant,
