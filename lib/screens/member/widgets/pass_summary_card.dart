@@ -6,7 +6,9 @@ import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
 import '../../../shared/i18n.dart';
 import '../../../shared/models.dart';
+import '../../../shared/tone_theme.dart';
 import '../member_shell.dart';
+import 'pass_state.dart';
 
 class PassSummaryCard extends StatelessWidget {
   const PassSummaryCard({super.key, required this.data});
@@ -24,13 +26,9 @@ class PassSummaryCard extends StatelessWidget {
       );
     }
     final theme = Theme.of(context);
+    final state = passStateFor(data);
     final sub = data.subscription;
     final pending = data.pendingPayment;
-    final visitsUsed = data.me?.visitsUsed ?? 0;
-    final visitCap = data.me?.visitCap;
-    final visitProgress = visitCap == null || visitCap <= 0
-        ? null
-        : (visitsUsed / visitCap).clamp(0, 1).toDouble();
     final directDaysLeft = sub?.isDirect == true ? sub?.daysLeft : null;
     final directDurationDays = _durationDays(sub);
     final directProgress = directDaysLeft == null || directDurationDays == null
@@ -78,11 +76,11 @@ class PassSummaryCard extends StatelessWidget {
               const SizedBox(width: FFTokens.spacingSm),
               FFBadge(
                 label: status,
-                tone: data.hasActivePass
-                    ? FFBadgeTone.success
-                    : pending != null
-                    ? FFBadgeTone.warning
-                    : FFBadgeTone.gray,
+                tone: switch (state.tone) {
+                  PassTone.success => FFBadgeTone.success,
+                  PassTone.warning => FFBadgeTone.warning,
+                  PassTone.neutral => FFBadgeTone.gray,
+                },
                 dot: true,
               ),
             ],
@@ -121,64 +119,129 @@ class PassSummaryCard extends StatelessWidget {
                 ),
               ],
             ],
-          ] else if (sub != null) ...[
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    context.tr('home.visits'),
-                    style: TextStyle(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-                Text(
-                  visitCap == null
-                      ? '$visitsUsed / ${context.tr('pass.unlimited')}'
-                      : '$visitsUsed / $visitCap',
-                  style: TextStyle(
-                    color: theme.colorScheme.onSurface,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-            if (visitProgress != null) ...[
-              const SizedBox(height: 6),
-              LinearProgressIndicator(
-                value: visitProgress,
-                color: Theme.of(context).colorScheme.primary,
-                borderRadius: BorderRadius.circular(FFTokens.radiusFull),
-              ),
-            ],
+          ] else ...[
+            const SizedBox(height: FFTokens.spacingMd),
+            _stateBody(context, state),
           ],
           const SizedBox(height: FFTokens.spacingMd),
           FFButton(
             key: const Key('pass-primary-action'),
             fullWidth: true,
-            label: data.hasActivePass
-                ? context.tr('member.showQr')
-                : context.tr('member.subscribe'),
-            icon: data.hasActivePass ? Icons.qr_code_2 : null,
+            label: switch (state) {
+              PassState.pending => context.tr('pass.state.viewPayment'),
+              PassState.ended => context.tr('pass.state.payAgain'),
+              _ when state.canShowQr => context.tr('member.showQr'),
+              _ => context.tr('member.subscribe'),
+            },
+            icon: state.canShowQr ? Icons.qr_code_2 : null,
             onPressed: () => _go(
               context,
-              data.hasActivePass ? AppRoutes.memberQr : AppRoutes.memberPasses,
+              state.canShowQr ? AppRoutes.memberQr : AppRoutes.memberPasses,
             ),
           ),
-          const SizedBox(height: FFTokens.spacingXs),
-          FFButton(
-            key: const Key('pass-upgrade-action'),
-            fullWidth: true,
-            variant: FFButtonVariant.ghost,
-            size: FFButtonSize.sm,
-            label: context.tr('member.upgradePlan'),
-            onPressed: () => _go(context, AppRoutes.memberPasses),
-          ),
+          if (state.canShowQr) ...[
+            const SizedBox(height: FFTokens.spacingXs),
+            FFButton(
+              key: const Key('pass-upgrade-action'),
+              fullWidth: true,
+              variant: FFButtonVariant.ghost,
+              size: FFButtonSize.sm,
+              label: context.tr('member.upgradePlan'),
+              onPressed: () => _go(context, AppRoutes.memberPasses),
+            ),
+          ],
         ],
       ),
+    );
+  }
+
+  /// The platform-pass body: the ring and what's next while the pass works,
+  /// a plain sentence otherwise.
+  Widget _stateBody(BuildContext context, PassState state) {
+    final theme = Theme.of(context);
+    final sub = data.subscription;
+    final left = visitsLeft(data);
+    final cap = data.me?.visitCap;
+    final ends = _formatDate(sub?.expiresAt);
+
+    String? message = switch (state) {
+      PassState.none => context.tr('pass.state.none'),
+      PassState.pending => context.tr('pass.state.pending'),
+      PassState.ended =>
+        context.tr('pass.state.ended').replaceAll('{date}', ends),
+      PassState.endingSoon =>
+        context.tr('pass.state.endingSoon').replaceAll('{date}', ends),
+      PassState.lowVisits =>
+        left == 0
+            ? context.tr('pass.state.noVisits')
+            : context
+                  .tr('pass.state.lowVisits')
+                  .replaceAll('{n}', '${left ?? 0}'),
+      PassState.active => null,
+    };
+
+    if (!state.canShowQr) {
+      return Text(
+        message ?? '',
+        key: const Key('pass-state-message'),
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      );
+    }
+
+    final tone = FFToneTheme.of(context);
+    final ringColor = state.tone == PassTone.warning
+        ? tone.warning.dot
+        : theme.colorScheme.primary;
+    return Row(
+      children: [
+        if (left != null && cap != null)
+          _VisitsRing(
+            key: const Key('pass-visits-ring'),
+            left: left,
+            total: cap,
+            color: ringColor,
+            ofLabel: context
+                .tr('pass.state.visitsOf')
+                .replaceAll('{total}', '$cap'),
+          )
+        else
+          Icon(Icons.all_inclusive, size: 40, color: ringColor),
+        const SizedBox(width: FFTokens.spacingMd),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (left == null)
+                Text(
+                  context.tr('pass.unlimited'),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              if (sub?.expiresAt != null)
+                Text(
+                  context.tr('pass.state.endsOn').replaceAll('{date}', ends),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              if (message != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: FFTokens.spacing2xs),
+                  child: Text(
+                    message,
+                    key: const Key('pass-state-message'),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -237,4 +300,65 @@ class _DirectDateRow extends StatelessWidget {
       ],
     ),
   );
+}
+
+/// Visits left as a ring: the number in the middle, "of N visits" under it.
+class _VisitsRing extends StatelessWidget {
+  const _VisitsRing({
+    super.key,
+    required this.left,
+    required this.total,
+    required this.color,
+    required this.ofLabel,
+  });
+
+  final int left;
+  final int total;
+  final Color color;
+  final String ofLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final fraction = total <= 0 ? 0.0 : (left / total).clamp(0.0, 1.0);
+    return Semantics(
+      label: '$left $ofLabel',
+      child: SizedBox(
+        width: 96,
+        height: 96,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            SizedBox.expand(
+              child: CircularProgressIndicator(
+                value: fraction,
+                strokeWidth: 9,
+                strokeCap: StrokeCap.round,
+                color: color,
+                backgroundColor: theme.colorScheme.outlineVariant,
+              ),
+            ),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '$left',
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    height: 1.1,
+                  ),
+                ),
+                Text(
+                  ofLabel,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
