@@ -19,8 +19,14 @@ const trainingGoals = [
 
 /// Where training is focused, in the groups the picker shows.
 const trainingAreaGroups = <String, List<String>>{
-  'upper_body': ['chest', 'back', 'shoulders', 'biceps', 'triceps'],
-  'lower_body': ['glutes', 'quadriceps', 'hamstrings', 'calves'],
+  'upper_body': ['chest', 'back', 'shoulders', 'biceps', 'triceps', 'forearms'],
+  'lower_body': [
+    'glutes',
+    'quadriceps',
+    'hamstrings',
+    'inner_thighs',
+    'calves',
+  ],
   'core': ['abs', 'obliques', 'lower_back'],
   'general': ['full_body', 'mobility', 'cardio'],
 };
