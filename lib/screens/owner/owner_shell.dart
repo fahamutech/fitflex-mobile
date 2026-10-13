@@ -156,12 +156,11 @@ const _kOwnerTabs = [
     scope: 'members',
   ),
   _OwnerTabDef(
-    route: '/owner/trainers',
-    icon: Icons.sports_gymnastics_outlined,
-    selectedIcon: Icons.sports_gymnastics,
-    labelKey: 'owner.trainers',
-    titleKey: 'owner.trainers',
-    scope: 'trainers',
+    route: '/owner/shop',
+    icon: Icons.storefront_outlined,
+    selectedIcon: Icons.storefront,
+    labelKey: 'owner.shop',
+    titleKey: 'owner.shop',
   ),
 ];
 
@@ -194,7 +193,12 @@ class OwnerShellState extends State<OwnerShell> {
     return 0;
   }
 
-  String get _title => context.tr(_visibleTabs[_tabIndex].titleKey);
+  String get _title {
+    // Trainers is reached from Home, not a tab, but still needs its title.
+    final loc = GoRouterState.of(context).matchedLocation;
+    if (loc.startsWith('/owner/trainers')) return context.tr('owner.trainers');
+    return context.tr(_visibleTabs[_tabIndex].titleKey);
+  }
 
   @override
   void didChangeDependencies() {

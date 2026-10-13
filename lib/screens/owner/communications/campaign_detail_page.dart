@@ -80,15 +80,14 @@ class _CampaignDetailPageState extends State<CampaignDetailPage> {
     }
   }
 
-  Future<bool> _confirm(String titleKey, String bodyKey) =>
-      showFFConfirmDialog(
-        context,
-        title: context.tr(titleKey),
-        message: context.tr(bodyKey),
-        cancelLabel: context.tr('comms.keep'),
-        confirmLabel: context.tr('comms.yes'),
-        confirmKey: const Key('dialog-confirm'),
-      );
+  Future<bool> _confirm(String titleKey, String bodyKey) => showFFConfirmDialog(
+    context,
+    title: context.tr(titleKey),
+    message: context.tr(bodyKey),
+    cancelLabel: context.tr('comms.keep'),
+    confirmLabel: context.tr('comms.yes'),
+    confirmKey: const Key('dialog-confirm'),
+  );
 
   Future<void> _edit(Campaign c) async {
     await context.push('/owner/communications/campaigns/${c.id}/edit');

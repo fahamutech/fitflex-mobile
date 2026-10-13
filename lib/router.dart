@@ -449,11 +449,6 @@ GoRouter buildRouter(AuthState auth) {
         builder: (context, state) => const OwnerEarningsPage(),
       ),
       GoRoute(
-        path: AppRoutes.ownerShop,
-        name: 'ownerShop',
-        builder: (context, state) => const OwnerShopPage(),
-      ),
-      GoRoute(
         path: AppRoutes.ownerStaff,
         name: 'ownerStaff',
         builder: (context, state) => const OwnerStaffPage(),
@@ -619,6 +614,12 @@ GoRouter buildRouter(AuthState auth) {
             name: 'ownerMembers',
             builder: (context, state) => const OwnerMembersPage(),
           ),
+          GoRoute(
+            path: AppRoutes.ownerShop,
+            name: 'ownerShop',
+            builder: (context, state) => const OwnerShopPage(),
+          ),
+          // Reached from Home (and inbox deep links); not a bottom tab.
           GoRoute(
             path: AppRoutes.ownerTrainers,
             name: 'ownerTrainers',

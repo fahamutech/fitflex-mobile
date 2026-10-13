@@ -8,8 +8,7 @@ import 'models.dart';
 /// shop order. Never a bare tier/plan code, which reads the same for products
 /// that are not the same.
 String paymentProductLabel(BuildContext context, PaymentRequest p) {
-  String plan(String? id) =>
-      id == null ? '' : context.tr('member.plan_$id');
+  String plan(String? id) => id == null ? '' : context.tr('member.plan_$id');
   switch (p.productType) {
     case 'FITFLEX_PASS':
       return '${context.tr('pay.product.fitflexPass')} · ${context.tr('pass.${p.tier}')}';
