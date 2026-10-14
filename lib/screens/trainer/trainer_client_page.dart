@@ -49,7 +49,7 @@ class _TrainerClientPageState extends State<TrainerClientPage> {
   late List<TrainerPlan> _plans = widget.plans;
 
   String get _name =>
-      widget.connection.member?.displayName ?? context.tr('clients.client');
+      widget.connection.member?.label ?? context.tr('clients.client');
 
   @override
   void didChangeDependencies() {

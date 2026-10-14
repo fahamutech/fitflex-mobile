@@ -408,8 +408,11 @@ class SharedChallengeProgress {
 class LeaderboardEntry {
   final int rank;
 
-  /// First name and last initial.
+  /// First name and last initial (or the username, when they have one).
   final String name;
+
+  /// The member's username, when they have one.
+  final String? username;
   final num progress;
   final double fraction;
   final bool completed;
@@ -418,11 +421,15 @@ class LeaderboardEntry {
   const LeaderboardEntry({
     required this.rank,
     required this.name,
+    this.username,
     required this.progress,
     required this.fraction,
     this.completed = false,
     this.isYou = false,
   });
+
+  /// "@amina_k" for someone with a username, else their first name and initial.
+  String get label => (username ?? '').isNotEmpty ? '@$username' : name;
 }
 
 class TeamStanding {
@@ -477,6 +484,7 @@ class ChallengeLeaderboard {
           LeaderboardEntry(
             rank: (i['rank'] as num?)?.toInt() ?? 0,
             name: i['name'] as String? ?? '',
+            username: i['username'] as String?,
             progress: i['progress'] as num? ?? 0,
             fraction: (i['fraction'] as num?)?.toDouble() ?? 0,
             completed: i['completed'] == true,

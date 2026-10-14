@@ -144,7 +144,7 @@ class _TrainerClientsTabState extends State<TrainerClientsTab> {
                         const SizedBox(width: FFTokens.spacingMd),
                         Expanded(
                           child: Text(
-                            c.member?.displayName ?? '',
+                            c.member?.label ?? '',
                             style: theme.textTheme.titleSmall?.copyWith(
                               fontWeight: FontWeight.w600,
                             ),
@@ -195,7 +195,7 @@ class _TrainerClientsTabState extends State<TrainerClientsTab> {
                   ? FFActionTile(
                       key: Key('client-${c.id}'),
                       icon: Icons.person_outline,
-                      title: c.member?.displayName ?? '',
+                      title: c.member?.label ?? '',
                       subtitle:
                           '${context.tr('share.canSee')}: ${sharedSummary(context, c.permissions)}',
                       onTap: () => _openClient(c),

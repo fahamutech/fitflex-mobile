@@ -3,6 +3,8 @@ import 'package:fitflexmobile/screens/member/widgets/username_sheet.dart';
 import 'package:fitflexmobile/screens/owner/members/data/member_models.dart';
 import 'package:fitflexmobile/screens/owner/members/widgets/member_list_tile.dart';
 import 'package:fitflexmobile/screens/owner/widgets/latest_checkins_card.dart';
+import 'package:fitflexmobile/shared/activity/challenge.dart';
+import 'package:fitflexmobile/shared/activity/trainer_connection.dart';
 import 'package:fitflexmobile/shared/api_client.dart';
 import 'package:fitflexmobile/shared/auth_state.dart';
 import 'package:fitflexmobile/shared/design_tokens.dart';
@@ -265,6 +267,71 @@ void main() {
       await tester.tap(find.byKey(const Key('username-clear')));
       await tester.pump();
       expect(api.cleared, 1);
+    });
+  });
+
+  group('@username where the server sends a separate field', () {
+    test('group members', () {
+      expect(
+        GroupMember.fromJson({
+          'id': '1',
+          'displayName': 'amina_k',
+          'username': 'amina_k',
+        }).name,
+        '@amina_k',
+      );
+      expect(
+        GroupMember.fromJson({'id': '1', 'displayName': 'Amina Said'}).name,
+        'Amina Said',
+      );
+    });
+
+    test('reviews', () {
+      final withHandle = Review.fromJson({
+        'id': 'r1',
+        'rating': 5,
+        'memberName': 'amina_k',
+        'memberUsername': 'amina_k',
+      });
+      expect(withHandle.memberLabel, '@amina_k');
+      final plain = Review.fromJson({
+        'id': 'r2',
+        'rating': 5,
+        'memberName': 'Aisha M.',
+      });
+      expect(plain.memberLabel, 'Aisha M.');
+    });
+
+    test('leaderboard rows', () {
+      final board = ChallengeLeaderboard.fromJson({
+        'participants': 2,
+        'individuals': [
+          {
+            'rank': 1,
+            'name': 'amina_k',
+            'username': 'amina_k',
+            'progress': 10,
+            'fraction': 0.5,
+          },
+          {'rank': 2, 'name': 'Baraka J.', 'progress': 5, 'fraction': 0.25},
+        ],
+      });
+      expect(board.individuals[0].label, '@amina_k');
+      expect(board.individuals[1].label, 'Baraka J.');
+    });
+
+    test("a trainer's client: name with the username beside it", () {
+      final both = ConnectionPerson.tryParse({
+        'id': 'm1',
+        'displayName': 'Amina Said',
+        'username': 'amina_k',
+      })!;
+      expect(both.label, 'Amina Said (@amina_k)');
+      final plain = ConnectionPerson.tryParse({
+        'id': 'm2',
+        'displayName': 'Juma Shaban',
+      })!;
+      expect(plain.label, 'Juma Shaban');
     });
   });
 }
