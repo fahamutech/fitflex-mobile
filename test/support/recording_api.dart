@@ -32,8 +32,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// One request the app sent.
 class RecordedRequest {
-  RecordedRequest(this.method, this.path, this.query, this.body);
+  RecordedRequest(
+    this.method,
+    this.path,
+    this.query,
+    this.body, [
+    this.headers = const {},
+  ]);
   final String method;
+
+  /// Request headers, lower-cased names.
+  final Map<String, String> headers;
   final String path;
   final String query;
 
@@ -103,6 +112,7 @@ class RecordingApi {
       req.url.path,
       req.url.query,
       raw.isEmpty ? null : jsonDecode(raw),
+      req.headers.map((k, v) => MapEntry(k.toLowerCase(), v)),
     );
     requests.add(rec);
     final hold = _holds[rec.key];

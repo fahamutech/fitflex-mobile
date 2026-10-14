@@ -678,7 +678,8 @@ void main() {
         'paymentMethod': 'airtel_money',
         'paymentOutcome': 'success',
       });
-      expect(host.snack(host.tr('shop.orderPlaced')), findsOneWidget);
+      // The server has not confirmed payment: the customer is told so.
+      expect(host.snack(host.tr('shop.orderPending')), findsOneWidget);
       // The cart is cleared, My orders is showing, and data was reloaded.
       expect(_key('shop-checkout'), findsNothing);
       expect(find.text(host.tr('shop.noOrders')), findsOneWidget);
@@ -800,9 +801,230 @@ void main() {
       await typeInto(tester, _key('shop-delivery-address'), 'Masaki');
       await tapVisible(tester, _key('shop-place-order'));
       expect(host.snack(host.tr('shop.orderFailed')), findsOneWidget);
-      expect(host.snack(host.tr('shop.orderPlaced')), findsNothing);
+      expect(host.snack(host.tr('shop.orderPending')), findsNothing);
       expect(_key('shop-checkout'), findsOneWidget);
       expect(isEnabled(tester, _key('shop-checkout')), isTrue);
+    });
+  });
+
+  group('checkout safety', () {
+    Future<void> placeWith(WidgetTester tester, String address) async {
+      await typeInto(tester, _key('shop-delivery-address'), address);
+      await tapVisible(tester, _key('shop-place-order'));
+    }
+
+    /// The message snack bar covers the checkout button until it times out.
+    Future<void> reopenCheckout(WidgetTester tester) async {
+      await tester.pump(const Duration(seconds: 12));
+      await tester.pumpAndSettle();
+      await _openCheckout(tester);
+    }
+
+    apiTest('every order carries an Idempotency-Key', (tester, api) async {
+      _seed(api);
+      await _pump(tester, api);
+      await _add(tester, 'p1');
+      await _openCheckout(tester);
+      await placeWith(tester, 'Masaki');
+      final key = api
+          .only('POST', '/me/shop-orders')
+          .headers['idempotency-key'];
+      expect(key, isNotNull);
+      expect(key, matches(RegExp(r'^[A-Za-z0-9._:-]{8,100}$')));
+    });
+
+    apiTest('a timeout keeps the cart and the retry sends the same key', (
+      tester,
+      api,
+    ) async {
+      _seed(api);
+      api.fail('POST /me/shop-orders', 503);
+      final host = await _pump(tester, api);
+      await _add(tester, 'p1', 2);
+      await _openCheckout(tester);
+      await placeWith(tester, 'Masaki');
+      // The outcome is unknown: say so, keep the cart, never "failed".
+      expect(host.snack(host.tr('shop.orderUncertain')), findsOneWidget);
+      expect(_key('shop-checkout'), findsOneWidget);
+
+      api.heal('POST /me/shop-orders');
+      await reopenCheckout(tester);
+      await placeWith(tester, 'Masaki');
+      final posts = api.where('POST', '/me/shop-orders');
+      expect(posts, hasLength(2));
+      expect(
+        posts[1].headers['idempotency-key'],
+        posts[0].headers['idempotency-key'],
+        reason: 'the retry must be recognisable as the same order',
+      );
+      expect(_key('shop-checkout'), findsNothing); // cleared only once placed
+    });
+
+    apiTest('changed delivery details are a new order with a new key', (
+      tester,
+      api,
+    ) async {
+      _seed(api);
+      api.fail('POST /me/shop-orders', 503);
+      await _pump(tester, api);
+      await _add(tester, 'p1');
+      await _openCheckout(tester);
+      await placeWith(tester, 'Masaki');
+      api.heal('POST /me/shop-orders');
+      await reopenCheckout(tester);
+      await placeWith(tester, 'Mikocheni');
+      final posts = api.where('POST', '/me/shop-orders');
+      expect(
+        posts[1].headers['idempotency-key'],
+        isNot(posts[0].headers['idempotency-key']),
+      );
+    });
+
+    apiTest(
+      'a clear refusal keeps the cart and the next order is a new attempt',
+      (tester, api) async {
+        _seed(api);
+        api.fail('POST /me/shop-orders', 409, {'error': 'insufficient_stock'});
+        final host = await _pump(tester, api);
+        await _add(tester, 'p1');
+        await _openCheckout(tester);
+        await placeWith(tester, 'Masaki');
+        expect(
+          host.snack(host.tr('shop.errInsufficientStock')),
+          findsOneWidget,
+        );
+        expect(_key('shop-checkout'), findsOneWidget);
+        // The catalogue is read again so the customer sees current stock.
+        expect(api.where('GET', '/shop/products'), isNotEmpty);
+
+        api.heal('POST /me/shop-orders');
+        await reopenCheckout(tester);
+        await placeWith(tester, 'Masaki');
+        final posts = api.where('POST', '/me/shop-orders');
+        expect(
+          posts[1].headers['idempotency-key'],
+          isNot(posts[0].headers['idempotency-key']),
+        );
+      },
+    );
+
+    apiTest('a price change is explained, not shown as a generic failure', (
+      tester,
+      api,
+    ) async {
+      _seed(api);
+      api.fail('POST /me/shop-orders', 409, {'error': 'price_changed'});
+      final host = await _pump(tester, api);
+      await _add(tester, 'p1');
+      await _openCheckout(tester);
+      await placeWith(tester, 'Masaki');
+      expect(host.snack(host.tr('shop.errPriceChanged')), findsOneWidget);
+    });
+
+    apiTest('a paid order is confirmed; an unpaid one is reported as waiting', (
+      tester,
+      api,
+    ) async {
+      _seed(api);
+      api.on('POST /me/shop-orders', {
+        'id': 'o9',
+        'paymentStatus': 'paid',
+        'totalTzs': 85000,
+      });
+      final host = await _pump(tester, api);
+      await _add(tester, 'p1');
+      await _openCheckout(tester);
+      await placeWith(tester, 'Masaki');
+      expect(host.snack(host.tr('shop.paymentConfirmed')), findsOneWidget);
+    });
+
+    apiTest('the server total is reported when it differs from the cart', (
+      tester,
+      api,
+    ) async {
+      _seed(api);
+      api.on('POST /me/shop-orders', {
+        'id': 'o9',
+        'paymentStatus': 'pending',
+        'totalTzs': 90000,
+      });
+      final host = await _pump(tester, api);
+      await _add(tester, 'p1');
+      await _openCheckout(tester);
+      await placeWith(tester, 'Masaki');
+      expect(
+        find.textContaining(formatCurrency(90000)),
+        findsWidgets,
+        reason: host.tr('shop.orderTotalIs'),
+      );
+    });
+
+    apiTest('missing address or gym says what is needed', (tester, api) async {
+      _seed(api);
+      final host = await _pump(tester, api);
+      await _add(tester, 'p1');
+      await _openCheckout(tester);
+      await tapVisible(tester, _key('shop-place-order'));
+      expect(host.snack(host.tr('shop.addressRequired')), findsOneWidget);
+      await tapVisible(tester, find.text(host.tr('shop.gymPickup')));
+      await tapVisible(tester, _key('shop-place-order'));
+      expect(host.snack(host.tr('shop.pickupGymRequired')), findsOneWidget);
+      expect(api.sent('POST', '/me/shop-orders'), isFalse);
+    });
+
+    apiTest('a product with options asks which one and sends it', (
+      tester,
+      api,
+    ) async {
+      _seed(
+        api,
+        products: [
+          {
+            ..._p('p4', 'Protein Bar', price: 3000, stock: 10),
+            'variants': [
+              {'name': 'Vanilla', 'stock': 0},
+              {'name': 'Chocolate', 'stock': 5},
+            ],
+          },
+        ],
+      );
+      await _pump(tester, api);
+      await _add(tester, 'p4');
+      // A sold-out option cannot be picked; the other can.
+      expect(_key('shop-variant-p4-Vanilla'), findsOneWidget);
+      await tester.tap(_key('shop-variant-p4-Chocolate'));
+      await tester.pumpAndSettle();
+      await _openCheckout(tester);
+      await placeWith(tester, 'Masaki');
+      expect(
+        api.only('POST', '/me/shop-orders').body,
+        containsPair('items', [
+          {'productId': 'p4', 'qty': 1, 'variant': 'Chocolate'},
+        ]),
+      );
+    });
+
+    apiTest('a second tap while the order is in flight sends one order', (
+      tester,
+      api,
+    ) async {
+      _seed(api);
+      final gate = api.hold('POST /me/shop-orders');
+      await _pump(tester, api);
+      await _add(tester, 'p1');
+      await _openCheckout(tester);
+      await typeInto(tester, _key('shop-delivery-address'), 'Masaki');
+      await tester.tap(_key('shop-place-order'));
+      await tester.pump();
+      // Back on the page the checkout button is disabled while ordering.
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(api.where('POST', '/me/shop-orders'), hasLength(1));
+      if (_key('shop-checkout').evaluate().isNotEmpty) {
+        expect(isEnabled(tester, _key('shop-checkout')), isFalse);
+      }
+      gate.complete();
+      await tester.pumpAndSettle();
+      expect(api.where('POST', '/me/shop-orders'), hasLength(1));
     });
   });
 
@@ -825,6 +1047,52 @@ void main() {
       final host = await _pump(tester, api);
       await _openMyOrders(tester, host);
       expect(find.text(host.tr('shop.awaitingPayment')), findsOneWidget);
+    });
+
+    apiTest('a refund that is not sent yet is not shown as refunded', (
+      tester,
+      api,
+    ) async {
+      _seed(
+        api,
+        orders: [
+          _order(
+            'o1',
+            status: 'cancelled',
+            paymentStatus: 'refund_pending',
+            canCancel: false,
+          ),
+          _order(
+            'o2',
+            status: 'cancelled',
+            paymentStatus: 'refunded',
+            canCancel: false,
+          ),
+        ],
+      );
+      final host = await _pump(tester, api);
+      await _openMyOrders(tester, host);
+      expect(find.text(host.tr('shop.refundPending')), findsOneWidget);
+      expect(find.text(host.tr('shop.refunded')), findsOneWidget);
+      // No "check payment" button once the money is no longer awaited.
+      expect(_key('order-check-payment-o1'), findsNothing);
+      expect(_key('order-check-payment-o2'), findsNothing);
+    });
+
+    apiTest('check payment re-reads the order and reports what changed', (
+      tester,
+      api,
+    ) async {
+      _seed(api, orders: [_order('o1', paymentStatus: 'pending')]);
+      final host = await _pump(tester, api);
+      await _openMyOrders(tester, host);
+      await tapVisible(tester, _key('order-check-payment-o1'));
+      expect(host.snack(host.tr('shop.stillAwaiting')), findsOneWidget);
+      // It never places or pays anything.
+      expect(api.sent('POST', '/me/shop-orders'), isFalse);
+
+      api.on('GET /me/shop-orders', [_order('o1')]);
+      await tester.pumpAndSettle(const Duration(seconds: 5));
     });
 
     apiTest('cancel asks first: keep sends nothing, confirm cancels (paid)', (
@@ -1073,8 +1341,11 @@ void main() {
         'paymentMethod': 'mpesa',
         'paymentOutcome': 'success',
       });
-      expect(host.snack(host.tr('shop.orderPlaced')), findsOneWidget);
-      expect(host.tr('shop.orderPlaced'), isNot('Order placed.'));
+      expect(host.snack(host.tr('shop.orderPending')), findsOneWidget);
+      expect(
+        host.tr('shop.orderPending'),
+        isNot(host.tr('shop.orderUncertain')),
+      );
     });
   });
 }

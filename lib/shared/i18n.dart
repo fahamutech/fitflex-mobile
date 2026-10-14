@@ -1274,13 +1274,38 @@ class FFLocale extends ChangeNotifier {
       'shop.orderPlaced':
           'Order placed. It goes to the vendor once FitFlex confirms your payment.',
       'shop.awaitingPayment': 'Awaiting payment confirmation',
+      'shop.orderPending':
+          'Order placed. We are waiting for your payment to be confirmed; it goes to the vendor after that.',
+      'shop.orderUncertain':
+          'We could not confirm whether your order was placed. Your cart is kept; tap Place order again, you will not be charged twice. Or check My orders.',
+      'shop.errInsufficientStock':
+          'Some items are no longer available in the quantity you chose. Please review your cart.',
+      'shop.errPriceChanged':
+          'A price changed while you were checking out. Please review your cart and try again.',
+      'shop.errUnavailable':
+          'An item in your cart is no longer available. Please remove it and try again.',
+      'shop.errVariantRequired': 'Please choose an option for every item.',
+      'shop.errChanged':
+          'Your order details changed. Please place the order again.',
+      'shop.addressRequired': 'Enter a delivery address to continue.',
+      'shop.pickupGymRequired': 'Choose a pickup gym to continue.',
+      'shop.refundPending':
+          'Order cancelled. Your refund is being processed; it is not sent yet.',
+      'shop.refunded': 'Refund sent.',
+      'shop.paymentNotConfirmed': 'Payment was not confirmed; order cancelled.',
+      'shop.checkPayment': 'Check payment',
+      'shop.paymentConfirmed': 'Payment confirmed. The vendor has your order.',
+      'shop.stillAwaiting': 'Still waiting for payment confirmation.',
+      'shop.chooseOption': 'Choose an option',
+      'shop.optionOutOfStock': 'out of stock',
+      'shop.orderTotalIs': 'Order total',
       'shop.cancelOrder': 'Cancel order',
       'shop.cancelConfirm': 'Cancel this order? Its items go back on sale.',
       'shop.cancelConfirmPaid':
           'Cancel this order? You’ll be refunded in full to the account you paid from.',
       'shop.cancelled': 'Order cancelled.',
       'shop.cancelledRefund':
-          'Order cancelled. Your refund is on its way; follow it under Sessions & refunds.',
+          'Order cancelled. Your refund is being processed (not sent yet); follow it under Sessions & refunds.',
       'sessions.title': 'Sessions & refunds',
       'sessions.tile': 'Trainer sessions you booked, cancellations and refunds',
       'sessions.mine': 'My trainer sessions',
@@ -5223,13 +5248,38 @@ class FFLocale extends ChangeNotifier {
       'shop.orderPlaced':
           'Oda imewekwa. Itamfikia muuzaji baada ya FitFlex kuthibitisha malipo yako.',
       'shop.awaitingPayment': 'Inasubiri uthibitisho wa malipo',
+      'shop.orderPending':
+          'Oda imewekwa. Tunasubiri malipo yako yathibitishwe; itaenda kwa muuzaji baada ya hapo.',
+      'shop.orderUncertain':
+          'Hatukuweza kuthibitisha kama oda yako iliwekwa. Kikapu chako kimehifadhiwa; bonyeza Weka oda tena, hutatozwa mara mbili. Au angalia Oda zangu.',
+      'shop.errInsufficientStock':
+          'Baadhi ya bidhaa hazipatikani tena kwa kiasi ulichochagua. Tafadhali kagua kikapu chako.',
+      'shop.errPriceChanged':
+          'Bei ilibadilika ulipokuwa unalipia. Tafadhali kagua kikapu chako na ujaribu tena.',
+      'shop.errUnavailable':
+          'Bidhaa iliyo kwenye kikapu chako haipatikani tena. Tafadhali iondoe na ujaribu tena.',
+      'shop.errVariantRequired': 'Tafadhali chagua chaguo kwa kila bidhaa.',
+      'shop.errChanged':
+          'Maelezo ya oda yako yamebadilika. Tafadhali weka oda tena.',
+      'shop.addressRequired': 'Weka anwani ya kupelekewa ili kuendelea.',
+      'shop.pickupGymRequired': 'Chagua gym ya kuchukulia ili kuendelea.',
+      'shop.refundPending':
+          'Oda imeghairiwa. Marejesho yako yanashughulikiwa; bado hayajatumwa.',
+      'shop.refunded': 'Marejesho yametumwa.',
+      'shop.paymentNotConfirmed': 'Malipo hayakuthibitishwa; oda imeghairiwa.',
+      'shop.checkPayment': 'Angalia malipo',
+      'shop.paymentConfirmed': 'Malipo yamethibitishwa. Muuzaji ana oda yako.',
+      'shop.stillAwaiting': 'Bado tunasubiri uthibitisho wa malipo.',
+      'shop.chooseOption': 'Chagua chaguo',
+      'shop.optionOutOfStock': 'imeisha',
+      'shop.orderTotalIs': 'Jumla ya oda',
       'shop.cancelOrder': 'Ghairi oda',
       'shop.cancelConfirm': 'Ghairi oda hii? Bidhaa zake zitarudi sokoni.',
       'shop.cancelConfirmPaid':
           'Ghairi oda hii? Utarejeshewa fedha zote kwenye akaunti uliyotumia kulipa.',
       'shop.cancelled': 'Oda imeghairiwa.',
       'shop.cancelledRefund':
-          'Oda imeghairiwa. Fedha zako ziko njiani; fuatilia kwenye Vipindi na marejesho.',
+          'Oda imeghairiwa. Marejesho yako yanashughulikiwa (bado hayajatumwa); fuatilia kwenye Vipindi na marejesho.',
       'sessions.title': 'Vipindi na marejesho',
       'sessions.tile':
           'Vipindi ulivyoweka na ma-trainer, kughairi na marejesho',
