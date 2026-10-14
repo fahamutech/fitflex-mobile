@@ -115,8 +115,10 @@ class _Api extends ApiClient {
   @override
   Future<Map<String, dynamic>> friendInvitations() async => {
     'incoming': [],
-    'outgoing': [],
+    'outgoing': outgoing,
   };
+
+  List<Map<String, dynamic>> outgoing = [];
   @override
   Future<Map<String, dynamic>> socialSettings() async => {
     'defaultShare': null,
@@ -382,6 +384,30 @@ void main() {
       reason: 'a name search; invite codes are no longer searched',
     );
     expect(find.text('Dee Kweka'), findsOneWidget);
+  });
+
+  testWidgets('sent requests show the number you invited', (tester) async {
+    _tall(tester);
+    final api = _Api()
+      ..outgoing = [
+        {
+          'id': 'fri_1',
+          'status': 'pending',
+          'contactType': 'phone',
+          'contact': '+255650387211',
+          'name': null,
+        },
+      ];
+    await tester.pumpWidget(
+      _app(api, const MemberCommunityPage(initialTab: 2)),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('sent-fri_1')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('+255650387211'), findsOneWidget);
   });
 
   testWidgets('groups: join a listed group, or by code', (tester) async {
