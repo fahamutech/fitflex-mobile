@@ -767,6 +767,12 @@ class MemberMeResponse {
   final int visitsUsed;
   final int? visitCap;
 
+  /// The member's username, when they have one. [usernameEnabled] is true
+  /// when the server sent the username fields at all (feature on).
+  final String? username;
+  final DateTime? usernameChangeableAt;
+  final bool usernameEnabled;
+
   MemberMeResponse({
     required this.user,
     this.subscription,
@@ -774,6 +780,9 @@ class MemberMeResponse {
     this.pendingPayments = const [],
     required this.visitsUsed,
     this.visitCap,
+    this.username,
+    this.usernameChangeableAt,
+    this.usernameEnabled = false,
   });
 
   factory MemberMeResponse.fromJson(
@@ -794,6 +803,11 @@ class MemberMeResponse {
     ],
     visitsUsed: (json['visitsUsed'] as num?)?.toInt() ?? 0,
     visitCap: (json['visitCap'] as num?)?.toInt(),
+    username: json['username'] as String?,
+    usernameChangeableAt: DateTime.tryParse(
+      json['usernameChangeableAt']?.toString() ?? '',
+    )?.toLocal(),
+    usernameEnabled: json.containsKey('username'),
   );
 
   bool get hasActivePass => subscription?.isActive == true;

@@ -1333,6 +1333,16 @@ class ApiClient {
     body: {'targetType': targetType, 'targetId': targetId, 'reason': ?reason},
   );
 
+  // ── Member usernames (feature flag on the server) ──
+  Future<Map<String, dynamic>> usernameAvailable(String handle) => _map(
+    'GET',
+    '/me/username/available?${Uri(queryParameters: {'handle': handle}).query}',
+  );
+  Future<Map<String, dynamic>> setUsername(String handle) =>
+      _map('PUT', '/me/username', body: {'username': handle});
+  Future<Map<String, dynamic>> clearUsername() =>
+      _map('DELETE', '/me/username');
+
   Future<Map<String, dynamic>> myGroups() => _map('GET', '/me/groups');
   Future<Map<String, dynamic>> createMyGroup(Map<String, dynamic> body) =>
       _map('POST', '/me/groups', body: body);
