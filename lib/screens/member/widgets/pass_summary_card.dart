@@ -183,6 +183,14 @@ class PassSummaryCard extends StatelessWidget {
       message = context.tr('pass.state.lowVisitsHint');
     }
 
+    // Beside the ring: how many of the total they have used.
+    final usedOf = left == null || cap == null
+        ? null
+        : context
+              .tr('pass.state.usedOf')
+              .replaceAll('{used}', '${(cap - left).clamp(0, cap)}')
+              .replaceAll('{total}', '$cap');
+
     final tone = FFToneTheme.of(context);
     final ringColor = state.tone == PassTone.warning
         ? tone.warning.dot
@@ -196,9 +204,7 @@ class PassSummaryCard extends StatelessWidget {
             total: cap,
             color: ringColor,
             leftLabel: context.tr('pass.state.left'),
-            ofLabel: context
-                .tr('pass.state.visitsOf')
-                .replaceAll('{total}', '$cap'),
+            ofLabel: usedOf!,
           )
         else
           Icon(Icons.all_inclusive, size: 40, color: ringColor),
@@ -207,14 +213,10 @@ class PassSummaryCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Beside the ring's "18 left": what they are left of.
+              // Beside the ring's "11 left": "7 of 18 used".
               Text(
-                left == null || cap == null
-                    ? context.tr('pass.unlimited')
-                    : context
-                          .tr('pass.state.visitsOf')
-                          .replaceAll('{total}', '$cap'),
-                key: const Key('pass-visits-of'),
+                usedOf ?? context.tr('pass.unlimited'),
+                key: const Key('pass-visits-used'),
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
@@ -294,7 +296,7 @@ class _DirectDateRow extends StatelessWidget {
 }
 
 /// Visits left as a ring: the number in the middle with "left" under it.
-/// "of N visits" sits beside the ring, so the number is said once.
+/// "7 of 18 used" sits beside the ring, so no number is said twice.
 class _VisitsRing extends StatelessWidget {
   const _VisitsRing({
     super.key,

@@ -144,11 +144,11 @@ void main() {
     ) async {
       await _pumpCard(tester, _data(subscription: _pass(), used: 7));
       expect(find.byKey(const Key('pass-visits-ring')), findsOneWidget);
-      // "11 left" in the ring, "of 18 visits" beside it: the count once.
+      // "11 left" in the ring, "7 of 18 used" beside it: no number twice.
       expect(find.text('11'), findsOneWidget);
       expect(find.textContaining('11 '), findsNothing);
       expect(find.text('left'), findsOneWidget);
-      expect(find.text('of 18 visits'), findsOneWidget);
+      expect(find.text('7 of 18 used'), findsOneWidget);
       expect(find.text('Show my QR'), findsOneWidget);
       expect(find.byKey(const Key('pass-upgrade-action')), findsOneWidget);
     });
@@ -157,6 +157,7 @@ void main() {
       await _pumpCard(tester, _data(subscription: _pass(), used: 15));
       expect(find.text('3'), findsOneWidget);
       expect(find.text('left'), findsOneWidget);
+      expect(find.text('15 of 18 used'), findsOneWidget);
       // Not said twice: the line beside the ring is what to do about it.
       expect(find.text('3 visits left'), findsNothing);
       expect(
@@ -172,7 +173,7 @@ void main() {
       await _pumpCard(tester, _data(subscription: _pass(), used: 0));
       expect(find.text('18'), findsOneWidget);
       expect(find.text('left'), findsOneWidget);
-      expect(find.text('of 18 visits'), findsOneWidget);
+      expect(find.text('0 of 18 used'), findsOneWidget);
     });
 
     test('every pass-state line has its own Swahili', () {
