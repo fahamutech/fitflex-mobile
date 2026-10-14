@@ -2380,6 +2380,8 @@ class FFLocale extends ChangeNotifier {
       'pass.pending': 'Payment pending admin approval',
       'pass.state.none': 'Pick a pass to open gyms across the network.',
       'pass.state.noPass': 'No pass',
+      'pass.state.noPassYet': 'No pass yet',
+      'pass.state.choose': 'Choose a pass',
       'pass.state.pending':
           "We're confirming your payment. Your QR unlocks as soon as it's confirmed.",
       'pass.state.viewPayment': 'View payment',
@@ -6338,6 +6340,8 @@ class FFLocale extends ChangeNotifier {
       'pass.pending': 'Malipo yanasubiri idhini ya admin',
       'pass.state.none': 'Chagua pasi ili ufungue gym kote kwenye mtandao.',
       'pass.state.noPass': 'Huna pasi',
+      'pass.state.noPassYet': 'Bado huna pasi',
+      'pass.state.choose': 'Chagua pasi',
       'pass.state.pending':
           'Tunathibitisha malipo yako. QR yako itafunguka mara yatakapothibitishwa.',
       'pass.state.viewPayment': 'Angalia malipo',

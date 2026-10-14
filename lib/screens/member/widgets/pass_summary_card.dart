@@ -35,15 +35,19 @@ class PassSummaryCard extends StatelessWidget {
         ? null
         : (directDaysLeft / directDurationDays).clamp(0, 1).toDouble();
 
+    // With no pass the title says so once; the sentence and the button
+    // below carry the invitation, so the badge is left out.
     final title = sub == null
-        ? context.tr('home.subscribe')
+        ? (pending != null
+              ? _tierLabel(context, pending.tier)
+              : context.tr('pass.state.noPassYet'))
         : sub.isDirect
         ? (sub.homeGym?.name ?? context.tr('member.membership'))
         : context.tr('pass.${sub.tier}');
     final status = pending != null
         ? context.tr('pass.pending')
         : sub == null
-        ? context.tr('home.subscribe')
+        ? null
         : _statusLabel(context, sub.status);
 
     return FFCard(
@@ -73,8 +77,10 @@ class PassSummaryCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: FFTokens.spacingSm),
-              FFBadge(label: status, tone: state.badgeTone, dot: true),
+              if (status != null) ...[
+                const SizedBox(width: FFTokens.spacingSm),
+                FFBadge(label: status, tone: state.badgeTone, dot: true),
+              ],
             ],
           ),
           if (sub?.isDirect == true) ...[
@@ -133,7 +139,7 @@ class PassSummaryCard extends StatelessWidget {
               PassState.pending => context.tr('pass.state.viewPayment'),
               PassState.ended => context.tr('pass.state.payAgain'),
               _ when state.canShowQr => context.tr('member.showQr'),
-              _ => context.tr('member.subscribe'),
+              _ => context.tr('pass.state.choose'),
             },
             icon: state.canShowQr ? Icons.qr_code_2 : null,
             onPressed: () => _go(
@@ -252,6 +258,13 @@ class PassSummaryCard extends StatelessWidget {
     await shellState?.refreshMe();
     if (!context.mounted) return;
     context.go(route);
+  }
+
+  /// The pass name for a tier, or the tier itself for one the app doesn't know.
+  static String _tierLabel(BuildContext context, String tier) {
+    final key = 'pass.$tier';
+    final label = context.tr(key);
+    return label == key ? tier : label;
   }
 
   /// Translated status, falling back to the raw value for new ones.

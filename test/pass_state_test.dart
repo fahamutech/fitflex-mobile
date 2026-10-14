@@ -1,6 +1,7 @@
 import 'package:fitflexmobile/screens/member/member_shell.dart';
 import 'package:fitflexmobile/screens/member/widgets/pass_state.dart';
 import 'package:fitflexmobile/screens/member/widgets/pass_summary_card.dart';
+import 'package:fitflexmobile/shared/components/components.dart';
 import 'package:fitflexmobile/shared/design_tokens.dart';
 import 'package:fitflexmobile/shared/i18n.dart';
 import 'package:fitflexmobile/shared/models.dart';
@@ -212,6 +213,33 @@ void main() {
       expect(find.byKey(const Key('pass-state-message')), findsOneWidget);
       expect(find.text('View payment'), findsOneWidget);
       expect(find.byKey(const Key('pass-upgrade-action')), findsNothing);
+    });
+
+    testWidgets('no pass: says so once, one sentence, one button', (
+      tester,
+    ) async {
+      await _pumpCard(tester, _data());
+      expect(find.text('No pass yet'), findsOneWidget);
+      expect(find.textContaining('Platform Pass'), findsNothing);
+      expect(find.byType(FFBadge), findsNothing);
+      expect(
+        find.text('Pick a pass to open gyms across the network.'),
+        findsOneWidget,
+      );
+      expect(find.text('Choose a pass'), findsOneWidget);
+      expect(find.text('Subscribe'), findsNothing);
+    });
+
+    testWidgets('pending payment names the pass being paid for', (
+      tester,
+    ) async {
+      await _pumpCard(
+        tester,
+        _data(pending: {'id': 'p1', 'status': 'pending', 'tier': 'pro'}),
+      );
+      expect(find.text('Pro'), findsOneWidget);
+      expect(find.text('Payment pending admin approval'), findsOneWidget);
+      expect(find.textContaining('Platform Pass'), findsNothing);
     });
 
     testWidgets('ended pass offers Pay again, not the QR', (tester) async {
