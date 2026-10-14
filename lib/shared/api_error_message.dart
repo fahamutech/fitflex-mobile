@@ -114,6 +114,8 @@ String? _knownReason(FFLocale locale, String reason) {
     'invalid_tier': 'error.reason.tierNotAvailable',
     'not_an_upgrade': 'error.reason.notAnUpgrade',
     'invalid_phone': 'error.reason.invalidPhone',
+    'too_many_attempts': 'error.reason.tooManyAttempts',
+    'payment_in_progress': 'error.reason.paymentInProgress',
     'provider_unavailable': 'error.reason.providerUnavailable',
     'provider_rejected': 'error.reason.providerRejected',
     'payment_not_pending': 'error.reason.paymentNotPending',

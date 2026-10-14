@@ -681,6 +681,10 @@ class FFLocale extends ChangeNotifier {
           'Test mode: no real money is taken and plans are not real purchases.',
       'error.reason.invalidPhone':
           'Enter a Tanzanian mobile number, like 0712 345 678.',
+      'error.reason.tooManyAttempts':
+          'Too many payment requests. Please wait a few minutes and try again.',
+      'error.reason.paymentInProgress':
+          'A payment is waiting on your phone. Finish or wait for it before cancelling.',
       'error.reason.providerUnavailable':
           'Mobile money is not reachable right now. Please try again in a moment.',
       'error.reason.providerRejected':
@@ -4699,6 +4703,10 @@ class FFLocale extends ChangeNotifier {
           'Hali ya majaribio: hakuna pesa halisi inayokatwa na mipango si manunuzi halisi.',
       'error.reason.invalidPhone':
           'Weka namba ya simu ya Tanzania, kama 0712 345 678.',
+      'error.reason.tooManyAttempts':
+          'Maombi mengi ya malipo. Tafadhali subiri dakika chache kisha ujaribu tena.',
+      'error.reason.paymentInProgress':
+          'Malipo yanasubiri kwenye simu yako. Yamalize au subiri kabla ya kughairi.',
       'error.reason.providerUnavailable':
           'Pesa ya simu haipatikani kwa sasa. Tafadhali jaribu tena baada ya muda mfupi.',
       'error.reason.providerRejected':
