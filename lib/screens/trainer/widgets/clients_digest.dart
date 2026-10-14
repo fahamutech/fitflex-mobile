@@ -102,7 +102,7 @@ class _ClientsDigestState extends State<ClientsDigest> {
                       TextSpan(
                         children: [
                           TextSpan(
-                            text: '${c.member?.displayName ?? ''}: ',
+                            text: '${c.member?.label ?? ''}: ',
                             style: const TextStyle(fontWeight: FontWeight.w600),
                           ),
                           TextSpan(

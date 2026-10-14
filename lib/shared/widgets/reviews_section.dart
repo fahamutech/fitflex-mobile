@@ -346,7 +346,7 @@ class ReviewTile extends StatelessWidget {
                   children: [
                     Flexible(
                       child: Text(
-                        review.memberName,
+                        review.memberLabel,
                         style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                     ),

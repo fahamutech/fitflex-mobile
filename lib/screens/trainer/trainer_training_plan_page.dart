@@ -107,7 +107,7 @@ class _TrainerTrainingPlanPageState extends State<TrainerTrainingPlanPage> {
   String? _error;
 
   String get _client =>
-      widget.connection.member?.displayName ?? context.tr('clients.client');
+      widget.connection.member?.label ?? context.tr('clients.client');
 
   @override
   void dispose() {

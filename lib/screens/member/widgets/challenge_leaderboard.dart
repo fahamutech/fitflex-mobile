@@ -275,8 +275,8 @@ class _ChallengeLeaderboardSectionState
                       key: Key('leaderboard-row-${e.rank}'),
                       rank: e.rank,
                       label: e.isYou
-                          ? '${e.name} (${context.tr('leaderboard.you')})'
-                          : e.name,
+                          ? '${e.label} (${context.tr('leaderboard.you')})'
+                          : e.label,
                       value: challengeAmount(context, c.type, e.progress),
                       fraction: e.fraction,
                       highlight: e.isYou,

@@ -877,6 +877,9 @@ class Review {
   final int rating;
   final String? text;
   final String memberName;
+
+  /// The reviewer's username, when they have one.
+  final String? memberUsername;
   final String? memberPhotoUrl;
   final DateTime? createdAt;
 
@@ -885,15 +888,21 @@ class Review {
     required this.rating,
     this.text,
     required this.memberName,
+    this.memberUsername,
     this.memberPhotoUrl,
     this.createdAt,
   });
+
+  /// "@amina_k" for a reviewer with a username, else first name and initial.
+  String get memberLabel =>
+      (memberUsername ?? '').isNotEmpty ? '@$memberUsername' : memberName;
 
   factory Review.fromJson(Map<String, dynamic> json) => Review(
     id: json['id'] as String? ?? '',
     rating: (_numValue(json['rating']) ?? 0).toInt(),
     text: json['text'] as String?,
     memberName: json['memberName'] as String? ?? '',
+    memberUsername: json['memberUsername'] as String?,
     memberPhotoUrl: json['memberPhotoUrl'] as String?,
     createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? ''),
   );

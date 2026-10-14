@@ -287,22 +287,30 @@ class GroupMember {
   const GroupMember({
     required this.id,
     this.displayName,
+    this.username,
     this.role = 'member',
     this.status = 'active',
   });
 
   final String id;
   final String? displayName;
+  final String? username;
   final String role;
   final String status;
 
-  String get name => (displayName ?? '').trim().isEmpty
-      ? 'FitFlex member'
-      : displayName!.trim();
+  /// "@amina_k" when there is a username, otherwise the name.
+  String get name {
+    final u = (username ?? '').trim();
+    if (u.isNotEmpty) return '@$u';
+    return (displayName ?? '').trim().isEmpty
+        ? 'FitFlex member'
+        : displayName!.trim();
+  }
 
   factory GroupMember.fromJson(Map json) => GroupMember(
     id: json['id'] as String? ?? '',
     displayName: json['displayName'] as String?,
+    username: json['username'] as String?,
     role: json['role'] as String? ?? 'member',
     status: json['status'] as String? ?? 'active',
   );
