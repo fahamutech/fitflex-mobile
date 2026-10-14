@@ -118,6 +118,8 @@ flutter:
     - .env
     - assets/brand/fitflex-logo.png
     - assets/brand/fitflex-icon.png
+    - assets/brand/logo-pin.png
+    - assets/brand/logo-runner.png
 
   # FitFlex Africa design system type: Inter (UI + display) and JetBrains
   # Mono (uppercase data labels). Bundled so they work offline. SIL OFL,
