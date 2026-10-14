@@ -653,6 +653,42 @@ class FFLocale extends ChangeNotifier {
       'member.profile': 'Profile',
       'member.yourPass': 'Your pass',
       'member.upgradePlan': 'Upgrade plan',
+      'momo.title': 'Pay with mobile money',
+      'momo.payNow': 'Pay now',
+      'momo.intro':
+          'We will send a payment request to your phone. Approve it with your PIN to finish.',
+      'momo.phone': 'Mobile money number',
+      'momo.phoneHint': 'e.g. 0712 345 678',
+      'momo.send': 'Send payment request to {phone}',
+      'momo.waitingTitle': 'Check your phone',
+      'momo.waitingBody':
+          'Approve the payment of {amount} on your phone. This page updates by itself.',
+      'momo.checkNow': 'I have approved — check now',
+      'momo.successTitle': 'Payment received',
+      'momo.successBody': 'Thank you. Your plan is now active.',
+      'momo.failedTitle': 'Payment did not go through',
+      'momo.failedBody':
+          'No money was taken. You can try again, or contact support.',
+      'momo.heldTitle': 'We received your payment',
+      'momo.heldBody':
+          'It needs a quick check by our team before it is applied. You do not need to pay again.',
+      'momo.slowTitle': 'Still waiting',
+      'momo.slowBody':
+          'We have not heard back yet. If you approved it, your plan will update shortly. You can close this page.',
+      'momo.tryAgain': 'Try again',
+      'momo.done': 'Done',
+      'momo.testMode':
+          'Test mode: no real money is taken and plans are not real purchases.',
+      'error.reason.invalidPhone':
+          'Enter a Tanzanian mobile number, like 0712 345 678.',
+      'error.reason.providerUnavailable':
+          'Mobile money is not reachable right now. Please try again in a moment.',
+      'error.reason.providerRejected':
+          'The payment request was not accepted. Check the number and try again.',
+      'error.reason.paymentNotPending':
+          'This payment is no longer waiting to be paid.',
+      'error.reason.notPayableThisWay':
+          'This payment cannot be paid with mobile money yet.',
       'upgrade.currentPlan': 'Your current plan',
       'upgrade.choose': 'Choose a higher plan',
       'upgrade.pay': 'Pay {amount} more',
@@ -2029,8 +2065,7 @@ class FFLocale extends ChangeNotifier {
       'community.codeHint': 'Share it so friends can find and follow you.',
       'community.copy': 'Copy',
       'community.copied': 'Copied',
-      'community.searchHint':
-          'Name, username, email address or mobile number',
+      'community.searchHint': 'Name, username, email address or mobile number',
       'friendInvite.approve': 'Approve',
       'friendInvite.reject': 'Reject',
       'friendInvite.cardTitle': 'Friend invitation',
@@ -2088,9 +2123,11 @@ class FFLocale extends ChangeNotifier {
       'friendInvite.unavailableBody':
           'Ask your friend to send you a new one if you still want to connect.',
       'community.fromContacts': 'Choose from contacts',
-      'community.contactsDenied': 'Allow contacts access to pick someone from your address book, or type their number or email.',
+      'community.contactsDenied':
+          'Allow contacts access to pick someone from your address book, or type their number or email.',
       'community.contactNoNumber': 'That contact has no phone number or email.',
-      'community.contactsFailed': 'Could not open your contacts. Type their number or email instead.',
+      'community.contactsFailed':
+          'Could not open your contacts. Type their number or email instead.',
       'community.results': 'Results',
       'community.noResults': 'No one found. Try their invite code.',
       'community.followsYou': 'Follow you',
@@ -4634,6 +4671,41 @@ class FFLocale extends ChangeNotifier {
       'member.profile': 'Wasifu',
       'member.yourPass': 'Pasi yako',
       'member.upgradePlan': 'Boresha mpango',
+      'momo.title': 'Lipa kwa pesa ya simu',
+      'momo.payNow': 'Lipa sasa',
+      'momo.intro':
+          'Tutatuma ombi la malipo kwenye simu yako. Likubali kwa PIN yako ili kukamilisha.',
+      'momo.phone': 'Namba ya pesa ya simu',
+      'momo.phoneHint': 'mf. 0712 345 678',
+      'momo.send': 'Tuma ombi la malipo kwa {phone}',
+      'momo.waitingTitle': 'Angalia simu yako',
+      'momo.waitingBody':
+          'Kubali malipo ya {amount} kwenye simu yako. Ukurasa huu hujisasisha wenyewe.',
+      'momo.checkNow': 'Nimekubali — angalia sasa',
+      'momo.successTitle': 'Malipo yamepokelewa',
+      'momo.successBody': 'Asante. Mpango wako sasa unafanya kazi.',
+      'momo.failedTitle': 'Malipo hayakukamilika',
+      'momo.failedBody':
+          'Hakuna pesa iliyokatwa. Unaweza kujaribu tena, au wasiliana na msaada.',
+      'momo.heldTitle': 'Tumepokea malipo yako',
+      'momo.heldBody':
+          'Yanahitaji ukaguzi mfupi wa timu yetu kabla ya kutumika. Huhitaji kulipa tena.',
+      'momo.slowTitle': 'Bado tunasubiri',
+      'momo.slowBody':
+          'Bado hatujapata jibu. Ukiwa umekubali, mpango wako utasasishwa hivi punde. Unaweza kufunga ukurasa huu.',
+      'momo.tryAgain': 'Jaribu tena',
+      'momo.done': 'Maliza',
+      'momo.testMode':
+          'Hali ya majaribio: hakuna pesa halisi inayokatwa na mipango si manunuzi halisi.',
+      'error.reason.invalidPhone':
+          'Weka namba ya simu ya Tanzania, kama 0712 345 678.',
+      'error.reason.providerUnavailable':
+          'Pesa ya simu haipatikani kwa sasa. Tafadhali jaribu tena baada ya muda mfupi.',
+      'error.reason.providerRejected':
+          'Ombi la malipo halikukubaliwa. Hakikisha namba kisha ujaribu tena.',
+      'error.reason.paymentNotPending': 'Malipo haya hayasubiri kulipwa tena.',
+      'error.reason.notPayableThisWay':
+          'Malipo haya bado hayawezi kulipwa kwa pesa ya simu.',
       'upgrade.currentPlan': 'Mpango wako wa sasa',
       'upgrade.choose': 'Chagua mpango wa juu zaidi',
       'upgrade.pay': 'Lipa {amount} zaidi',
@@ -6085,9 +6157,12 @@ class FFLocale extends ChangeNotifier {
       'friendInvite.unavailableBody':
           'Mwombe rafiki yako akutumie mwingine kama bado unataka kuungana.',
       'community.fromContacts': 'Chagua kutoka kwenye anwani',
-      'community.contactsDenied': 'Ruhusu ufikiaji wa anwani ili kumchagua mtu kutoka kwenye simu yako, au andika namba au barua pepe yake.',
-      'community.contactNoNumber': 'Anwani hiyo haina namba ya simu wala barua pepe.',
-      'community.contactsFailed': 'Imeshindwa kufungua anwani zako. Andika namba au barua pepe yake badala yake.',
+      'community.contactsDenied':
+          'Ruhusu ufikiaji wa anwani ili kumchagua mtu kutoka kwenye simu yako, au andika namba au barua pepe yake.',
+      'community.contactNoNumber':
+          'Anwani hiyo haina namba ya simu wala barua pepe.',
+      'community.contactsFailed':
+          'Imeshindwa kufungua anwani zako. Andika namba au barua pepe yake badala yake.',
       'community.results': 'Matokeo',
       'community.noResults':
           'Hakuna aliyepatikana. Jaribu msimbo wake wa mwaliko.',

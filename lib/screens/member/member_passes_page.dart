@@ -15,6 +15,7 @@ import '../../shared/i18n.dart';
 import '../../shared/models.dart';
 import '../../shared/pass_gyms.dart';
 import '../../shared/payment_labels.dart';
+import 'widgets/mobile_money_pay.dart';
 import 'widgets/pass_gyms_sheet.dart';
 import 'member_shell.dart';
 
@@ -182,11 +183,21 @@ class _UpgradeGateState extends State<_UpgradeGate> {
     if (tier == null || _sending) return; // a second tap must not send twice
     setState(() => _sending = true);
     try {
-      await AppScope.of(context).api.upgradePass(tier);
+      final created = await AppScope.of(context).api.upgradePass(tier);
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(context.tr('upgrade.submitted'))));
+      // With mobile money switched on, pay the difference straight away.
+      final req = created['paymentRequest'];
+      if (req is Map) {
+        await offerMobileMoney(
+          context,
+          paymentRequestId: req['id'] as String?,
+          amountTzs: (req['amountTzs'] as num?) ?? 0,
+        );
+        if (!mounted) return;
+      }
       final shellState = context.findAncestorStateOfType<MemberShellState>();
       await shellState?.refreshQr();
       await shellState?.refreshMe();
@@ -508,6 +519,7 @@ class _PendingBlockCard extends StatelessWidget {
             value: context.tr('member.paymentPendingStatusValue'),
           ),
           const SizedBox(height: 16),
+          PayNowButton(request: pending),
           SizedBox(
             width: double.infinity,
             child: FFButton(
