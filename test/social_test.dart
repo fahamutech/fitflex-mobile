@@ -356,7 +356,7 @@ void main() {
     expect(find.byKey(const Key('feed-empty')), findsOneWidget);
   });
 
-  testWidgets('people: invite code, follow back, search by code', (
+  testWidgets('people: no invite-code card, follow back, search by name, contact picker button', (
     tester,
   ) async {
     _tall(tester);
@@ -365,7 +365,8 @@ void main() {
       _app(api, const MemberCommunityPage(initialTab: 2)),
     );
     await tester.pumpAndSettle();
-    expect(find.text('AB12CD34'), findsOneWidget);
+    expect(find.byKey(const Key('my-invite-code')), findsNothing);
+    expect(find.byKey(const Key('people-pick-contact')), findsOneWidget);
     expect(find.text('Follow back'), findsOneWidget);
     await tester.tap(find.byKey(const Key('follow-cy')));
     await tester.pumpAndSettle();
@@ -377,8 +378,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(
       api.calls,
-      contains('find::QW12ER34'),
-      reason: 'eight letters and digits are an invite code',
+      contains('find:QW12ER34:'),
+      reason: 'a name search; invite codes are no longer searched',
     );
     expect(find.text('Dee Kweka'), findsOneWidget);
   });

@@ -2030,7 +2030,7 @@ class FFLocale extends ChangeNotifier {
       'community.copy': 'Copy',
       'community.copied': 'Copied',
       'community.searchHint':
-          'Name, invite code, email address or mobile number',
+          'Name, username, email address or mobile number',
       'friendInvite.approve': 'Approve',
       'friendInvite.reject': 'Reject',
       'friendInvite.cardTitle': 'Friend invitation',
@@ -2087,6 +2087,10 @@ class FFLocale extends ChangeNotifier {
       'friendInvite.unavailable.invalid': 'This invitation is not valid',
       'friendInvite.unavailableBody':
           'Ask your friend to send you a new one if you still want to connect.',
+      'community.fromContacts': 'Choose from contacts',
+      'community.contactsDenied': 'Allow contacts access to pick someone from your address book, or type their number or email.',
+      'community.contactNoNumber': 'That contact has no phone number or email.',
+      'community.contactsFailed': 'Could not open your contacts. Type their number or email instead.',
       'community.results': 'Results',
       'community.noResults': 'No one found. Try their invite code.',
       'community.followsYou': 'Follow you',
@@ -6025,7 +6029,7 @@ class FFLocale extends ChangeNotifier {
       'community.copy': 'Nakili',
       'community.copied': 'Imenakiliwa',
       'community.searchHint':
-          'Jina, msimbo wa mwaliko, barua pepe au namba ya simu',
+          'Jina, jina la mtumiaji, barua pepe au namba ya simu',
       'friendInvite.approve': 'Kubali',
       'friendInvite.reject': 'Kataa',
       'friendInvite.cardTitle': 'Mwaliko wa urafiki',
@@ -6080,6 +6084,10 @@ class FFLocale extends ChangeNotifier {
       'friendInvite.unavailable.invalid': 'Mwaliko huu si halali',
       'friendInvite.unavailableBody':
           'Mwombe rafiki yako akutumie mwingine kama bado unataka kuungana.',
+      'community.fromContacts': 'Chagua kutoka kwenye anwani',
+      'community.contactsDenied': 'Ruhusu ufikiaji wa anwani ili kumchagua mtu kutoka kwenye simu yako, au andika namba au barua pepe yake.',
+      'community.contactNoNumber': 'Anwani hiyo haina namba ya simu wala barua pepe.',
+      'community.contactsFailed': 'Imeshindwa kufungua anwani zako. Andika namba au barua pepe yake badala yake.',
       'community.results': 'Matokeo',
       'community.noResults':
           'Hakuna aliyepatikana. Jaribu msimbo wake wa mwaliko.',
