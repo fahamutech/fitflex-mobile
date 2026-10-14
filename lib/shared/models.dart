@@ -767,6 +767,12 @@ class MemberMeResponse {
   final int visitsUsed;
   final int? visitCap;
 
+  /// The member's username, when they have one. [usernameEnabled] is true
+  /// when the server sent the username fields at all (feature on).
+  final String? username;
+  final DateTime? usernameChangeableAt;
+  final bool usernameEnabled;
+
   MemberMeResponse({
     required this.user,
     this.subscription,
@@ -774,6 +780,9 @@ class MemberMeResponse {
     this.pendingPayments = const [],
     required this.visitsUsed,
     this.visitCap,
+    this.username,
+    this.usernameChangeableAt,
+    this.usernameEnabled = false,
   });
 
   factory MemberMeResponse.fromJson(
@@ -794,6 +803,11 @@ class MemberMeResponse {
     ],
     visitsUsed: (json['visitsUsed'] as num?)?.toInt() ?? 0,
     visitCap: (json['visitCap'] as num?)?.toInt(),
+    username: json['username'] as String?,
+    usernameChangeableAt: DateTime.tryParse(
+      json['usernameChangeableAt']?.toString() ?? '',
+    )?.toLocal(),
+    usernameEnabled: json.containsKey('username'),
   );
 
   bool get hasActivePass => subscription?.isActive == true;
@@ -863,6 +877,9 @@ class Review {
   final int rating;
   final String? text;
   final String memberName;
+
+  /// The reviewer's username, when they have one.
+  final String? memberUsername;
   final String? memberPhotoUrl;
   final DateTime? createdAt;
 
@@ -871,15 +888,21 @@ class Review {
     required this.rating,
     this.text,
     required this.memberName,
+    this.memberUsername,
     this.memberPhotoUrl,
     this.createdAt,
   });
+
+  /// "@amina_k" for a reviewer with a username, else first name and initial.
+  String get memberLabel =>
+      (memberUsername ?? '').isNotEmpty ? '@$memberUsername' : memberName;
 
   factory Review.fromJson(Map<String, dynamic> json) => Review(
     id: json['id'] as String? ?? '',
     rating: (_numValue(json['rating']) ?? 0).toInt(),
     text: json['text'] as String?,
     memberName: json['memberName'] as String? ?? '',
+    memberUsername: json['memberUsername'] as String?,
     memberPhotoUrl: json['memberPhotoUrl'] as String?,
     createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? ''),
   );

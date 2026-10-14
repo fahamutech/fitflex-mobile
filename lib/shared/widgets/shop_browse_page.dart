@@ -14,6 +14,7 @@ import '../i18n.dart';
 import '../product_categories.dart';
 import '../promotion.dart';
 import '../promotion_events.dart';
+import '../shop_checkout.dart';
 
 num _shopNumber(dynamic value, [num fallback = 0]) {
   if (value is num) return value;
@@ -47,6 +48,7 @@ class ShopProduct {
     this.reviews = const [],
     this.similarProducts = const [],
     this.promotion,
+    this.variants = const [],
   });
 
   final String id;
@@ -70,6 +72,10 @@ class ShopProduct {
 
   /// Set when this product is promoted for what the customer is looking at.
   final PromotionTag? promotion;
+
+  /// Options the customer chooses between (size, flavour). `stock` is set only
+  /// when the vendor counts that option separately.
+  final List<ShopVariant> variants;
 
   factory ShopProduct.fromJson(Map<String, dynamic> json) => ShopProduct(
     id: json['id'] as String? ?? '',
@@ -103,6 +109,11 @@ class ShopProduct {
         .map((value) => ShopProduct.fromJson(Map<String, dynamic>.from(value)))
         .toList(),
     promotion: PromotionTag.fromJson(json['promotion']),
+    variants: (json['variants'] as List? ?? [])
+        .whereType<Map>()
+        .map((value) => ShopVariant.fromJson(Map<String, dynamic>.from(value)))
+        .where((value) => value.name.isNotEmpty)
+        .toList(),
   );
 
   bool get inStock => stock > 0;
@@ -114,9 +125,28 @@ class ShopProduct {
       : priceTzs;
 }
 
+class ShopVariant {
+  const ShopVariant({required this.name, this.stock});
+  final String name;
+  final int? stock;
+
+  bool get soldOut => stock != null && stock! <= 0;
+
+  factory ShopVariant.fromJson(Map<String, dynamic> json) => ShopVariant(
+    name: json['name']?.toString().trim() ?? '',
+    stock: json['stock'] is num ? (json['stock'] as num).toInt() : null,
+  );
+}
+
 class ShopCart {
   final Map<String, int> _qty = {};
   final Map<String, ShopProduct> _products = {};
+
+  /// The option chosen for a product. One option per product per order.
+  final Map<String, String> _variant = {};
+
+  String? variantOf(String productId) => _variant[productId];
+  void setVariant(String productId, String name) => _variant[productId] = name;
 
   int get itemCount => _qty.values.fold(0, (a, b) => a + b);
   bool get isEmpty => _qty.isEmpty;
@@ -130,6 +160,12 @@ class ShopCart {
   bool add(ShopProduct product) {
     final current = _qty[product.id] ?? 0;
     if (current >= product.stock) return false;
+    // An option the vendor counts separately is a second limit.
+    final chosen = _variant[product.id];
+    final variantStock = chosen == null
+        ? null
+        : product.variants.where((v) => v.name == chosen).firstOrNull?.stock;
+    if (variantStock != null && current >= variantStock) return false;
     _products[product.id] = product;
     _qty[product.id] = current + 1;
     return true;
@@ -140,6 +176,7 @@ class ShopCart {
     if (current <= 1) {
       _qty.remove(productId);
       _products.remove(productId);
+      _variant.remove(productId);
     } else {
       _qty[productId] = current - 1;
     }
@@ -148,15 +185,23 @@ class ShopCart {
   void remove(String productId) {
     _qty.remove(productId);
     _products.remove(productId);
+    _variant.remove(productId);
   }
 
   void clear() {
     _qty.clear();
     _products.clear();
+    _variant.clear();
   }
 
   List<Map<String, dynamic>> toOrderItems() => _qty.entries
-      .map((entry) => {'productId': entry.key, 'qty': entry.value})
+      .map(
+        (entry) => {
+          'productId': entry.key,
+          'qty': entry.value,
+          if (_variant[entry.key] != null) 'variant': _variant[entry.key],
+        },
+      )
       .toList();
 }
 
@@ -192,6 +237,10 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
   final Set<String> _saved = {};
   bool _loading = true;
   bool _ordering = false;
+
+  /// The checkout in progress, kept while the cart is unchanged so a retry is
+  /// recognised by the server and never makes a second order.
+  CheckoutAttempt? _attempt;
   String _search = '';
   String? _category;
   String _sort = 'newest';
@@ -358,35 +407,127 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
   }
 
   Future<void> _checkout() async {
-    if (_cart.isEmpty) return;
+    if (_cart.isEmpty || _ordering) return;
     final checkout = await showModalBottomSheet<Map<String, String>>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
       builder: (_) => const _CheckoutSheet(),
     );
-    if (checkout == null || !mounted) return;
-    setState(() => _ordering = true);
-    try {
-      await AppScope.of(context).api.createShopOrder(
-        _cart.toOrderItems(),
+    if (checkout == null || !mounted || _ordering) return;
+    final items = _cart.toOrderItems();
+    // The same key is reused while the purchase is unchanged: a timeout
+    // followed by another tap returns the first order, not a second one.
+    final attempt = _attempt = CheckoutAttempt.forPurchase(
+      _attempt,
+      checkoutSignature(
+        items: items,
         deliveryMethod: checkout['deliveryMethod']!,
         pickupGymId: checkout['pickupGymId'],
         deliveryAddress: checkout['deliveryAddress'],
         paymentMethod: checkout['paymentMethod']!,
+      ),
+    );
+    final cartTotal = _cart.totalTzs;
+    setState(() => _ordering = true);
+    final messenger = FFSnack.of(context);
+    final locale = FFLocaleScope.of(context);
+    try {
+      final order = await AppScope.of(context).api.createShopOrder(
+        items,
+        deliveryMethod: checkout['deliveryMethod']!,
+        pickupGymId: checkout['pickupGymId'],
+        deliveryAddress: checkout['deliveryAddress'],
+        paymentMethod: checkout['paymentMethod']!,
+        idempotencyKey: attempt.key,
       );
+      // The order exists on the server: only now is the cart given up.
+      _attempt = null;
       if (!mounted) return;
       setState(() {
         _cart.clear();
         _ordering = false;
         _section = 1;
       });
-      FFSnack.success(context, context.tr('shop.orderPlaced'));
+      final paid = shopOrderPayment(order) == ShopOrderPayment.paid;
+      final serverTotal = order['totalTzs'];
+      // The total the server priced is the one that counts; say so if it differs.
+      final differs = serverTotal is num && serverTotal != cartTotal;
+      if (paid) {
+        messenger.success(locale.t('shop.paymentConfirmed'));
+      } else if (differs) {
+        messenger.info(
+          '${locale.t('shop.orderPending')} '
+          '${locale.t('shop.orderTotalIs')}: ${formatCurrency(serverTotal)}.',
+        );
+      } else {
+        messenger.info(locale.t('shop.orderPending'));
+      }
       await _load();
-    } on ApiException {
+    } catch (e) {
       if (!mounted) return;
+      // A clear refusal means nothing was ordered, so the next attempt is a new one.
+      // When the outcome is unknown the key is kept: the retry cannot duplicate.
+      if (!orderOutcomeUnknown(e)) _attempt = null;
       setState(() => _ordering = false);
-      FFSnack.error(context, context.tr('shop.orderFailed'));
+      messenger.error(shopCheckoutErrorMessage(locale, e));
+      // Stock or prices moved: show the customer the current catalogue.
+      if (shopCheckoutErrorKey(e) != null) await _load();
+    }
+  }
+
+  /// Add one unit; a product with options asks which one first. Returns
+  /// whether a unit was added.
+  Future<bool> _addToCart(ShopProduct product) async {
+    if (product.variants.isNotEmpty && _cart.variantOf(product.id) == null) {
+      final chosen = await showDialog<String>(
+        context: context,
+        builder: (dialogContext) => SimpleDialog(
+          title: Text(dialogContext.tr('shop.chooseOption')),
+          children: [
+            for (final option in product.variants)
+              SimpleDialogOption(
+                key: Key('shop-variant-${product.id}-${option.name}'),
+                onPressed: option.soldOut
+                    ? null
+                    : () => Navigator.pop(dialogContext, option.name),
+                child: Text(
+                  option.soldOut
+                      ? '${option.name} · ${dialogContext.tr('shop.optionOutOfStock')}'
+                      : option.name,
+                ),
+              ),
+          ],
+        ),
+      );
+      if (chosen == null || !mounted) return false;
+      _cart.setVariant(product.id, chosen);
+    }
+    final added = _cart.add(product);
+    if (mounted) setState(() {});
+    return added;
+  }
+
+  /// Re-read an order that is waiting for payment confirmation. Never places
+  /// anything: the payment is confirmed by FitFlex, this only looks again.
+  Future<void> _checkPayment(Map<String, dynamic> order) async {
+    final messenger = FFSnack.of(context);
+    final locale = FFLocaleScope.of(context);
+    try {
+      await _load();
+      final fresh = _orders.where((o) => o['id'] == order['id']).firstOrNull;
+      if (fresh == null) return;
+      messenger.info(
+        locale.t(
+          shopOrderPayment(fresh) == ShopOrderPayment.awaitingConfirmation
+              ? 'shop.stillAwaiting'
+              : shopOrderPayment(fresh) == ShopOrderPayment.paid
+              ? 'shop.paymentConfirmed'
+              : shopOrderPaymentKey(fresh) ?? 'shop.stillAwaiting',
+        ),
+      );
+    } catch (e) {
+      messenger.error(errorMessage(locale, e));
     }
   }
 
@@ -437,7 +578,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
       showDragHandle: true,
       builder: (_) => _ProductDetailsSheet(
         product: detailedProduct,
-        onAdd: () => setState(() => _cart.add(detailedProduct)),
+        onAdd: () => _addToCart(detailedProduct),
       ),
     );
     if (!mounted) return;
@@ -705,9 +846,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
                 }
                 _cart.remove(product.id);
               }),
-              onAdd: product.inStock
-                  ? () => setState(() => _cart.add(product))
-                  : null,
+              onAdd: product.inStock ? () => _addToCart(product) : null,
               onRemove: _cart.qtyOf(product.id) > 0
                   ? () => setState(() => _cart.removeOne(product.id))
                   : null,
@@ -751,11 +890,20 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
               Text(
                 '${formatCurrency(order['totalTzs'] as num? ?? 0)} · $status',
               ),
-              if (order['paymentStatus'] == 'pending')
+              if (shopOrderPaymentKey(order) case final paymentKey?)
                 Text(
-                  context.tr('shop.awaitingPayment'),
-                  key: Key('order-awaiting-payment-${order['id']}'),
+                  context.tr(paymentKey),
+                  key: Key('order-payment-${order['id']}'),
                   style: Theme.of(context).textTheme.bodySmall,
+                ),
+              if (shopOrderPayment(order) ==
+                  ShopOrderPayment.awaitingConfirmation)
+                FFButton(
+                  key: Key('order-check-payment-${order['id']}'),
+                  label: context.tr('shop.checkPayment'),
+                  onPressed: () => _checkPayment(order),
+                  variant: FFButtonVariant.ghost,
+                  size: FFButtonSize.sm,
                 ),
               const SizedBox(height: 6),
               Wrap(
@@ -1350,8 +1498,14 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
   }
 
   void _submit() {
-    if (_delivery == 'home_delivery' && _address.text.trim().isEmpty) return;
-    if (_delivery == 'gym_pickup' && _gymId == null) return;
+    if (_delivery == 'home_delivery' && _address.text.trim().isEmpty) {
+      FFSnack.error(context, context.tr('shop.addressRequired'));
+      return;
+    }
+    if (_delivery == 'gym_pickup' && _gymId == null) {
+      FFSnack.error(context, context.tr('shop.pickupGymRequired'));
+      return;
+    }
     Navigator.pop(context, {
       'deliveryMethod': _delivery,
       if (_delivery == 'home_delivery') 'deliveryAddress': _address.text.trim(),
@@ -1480,7 +1634,7 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
 class _ProductDetailsSheet extends StatelessWidget {
   const _ProductDetailsSheet({required this.product, required this.onAdd});
   final ShopProduct product;
-  final VoidCallback onAdd;
+  final Future<bool> Function() onAdd;
 
   Future<void> _chat(BuildContext context) async {
     final controller = TextEditingController();
@@ -1629,14 +1783,16 @@ class _ProductDetailsSheet extends StatelessWidget {
             FFButton(
               key: Key('shop-detail-add-${product.id}'),
               label: context.tr('shop.addToCart'),
-              onPressed: product.inStock ? onAdd : null,
+              onPressed: product.inStock ? () => onAdd() : null,
             ),
             FFButton(
               label: context.tr('shop.buyNow'),
               onPressed: product.inStock
-                  ? () {
-                      onAdd();
-                      Navigator.pop(context, true);
+                  ? () async {
+                      // Only go on to checkout once a unit really is in the cart.
+                      if (await onAdd() && context.mounted) {
+                        Navigator.pop(context, true);
+                      }
                     }
                   : null,
               variant: FFButtonVariant.secondary,

@@ -4,6 +4,8 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <!-- Camera permission (QR scanner + image capture) -->
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Read only the one contact the member picks, to search for them on FitFlex. -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
     <!-- Internet (map tiles, API) -->
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Step counting with the phone's own step sensor (Android 10+; the

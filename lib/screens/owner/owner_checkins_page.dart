@@ -167,7 +167,10 @@ class _OwnerCheckinsPageState extends State<OwnerCheckinsPage> {
                         : DateFormat('EEE d MMM · HH:mm', lang).format(at);
                     // A name leads when there is one; the public ID stays
                     // visible so staff can still match it to the Members list.
-                    final hasName = name != publicId && publicId.isNotEmpty;
+                    final hasName =
+                        (c['displayName']?.toString().trim() ?? '')
+                            .isNotEmpty &&
+                        publicId.isNotEmpty;
                     return FFActionTile(
                       icon: Icons.check_circle_outline,
                       title: name,

@@ -1274,13 +1274,38 @@ class FFLocale extends ChangeNotifier {
       'shop.orderPlaced':
           'Order placed. It goes to the vendor once FitFlex confirms your payment.',
       'shop.awaitingPayment': 'Awaiting payment confirmation',
+      'shop.orderPending':
+          'Order placed. We are waiting for your payment to be confirmed; it goes to the vendor after that.',
+      'shop.orderUncertain':
+          'We could not confirm whether your order was placed. Your cart is kept; tap Place order again, you will not be charged twice. Or check My orders.',
+      'shop.errInsufficientStock':
+          'Some items are no longer available in the quantity you chose. Please review your cart.',
+      'shop.errPriceChanged':
+          'A price changed while you were checking out. Please review your cart and try again.',
+      'shop.errUnavailable':
+          'An item in your cart is no longer available. Please remove it and try again.',
+      'shop.errVariantRequired': 'Please choose an option for every item.',
+      'shop.errChanged':
+          'Your order details changed. Please place the order again.',
+      'shop.addressRequired': 'Enter a delivery address to continue.',
+      'shop.pickupGymRequired': 'Choose a pickup gym to continue.',
+      'shop.refundPending':
+          'Order cancelled. Your refund is being processed; it is not sent yet.',
+      'shop.refunded': 'Refund sent.',
+      'shop.paymentNotConfirmed': 'Payment was not confirmed; order cancelled.',
+      'shop.checkPayment': 'Check payment',
+      'shop.paymentConfirmed': 'Payment confirmed. The vendor has your order.',
+      'shop.stillAwaiting': 'Still waiting for payment confirmation.',
+      'shop.chooseOption': 'Choose an option',
+      'shop.optionOutOfStock': 'out of stock',
+      'shop.orderTotalIs': 'Order total',
       'shop.cancelOrder': 'Cancel order',
       'shop.cancelConfirm': 'Cancel this order? Its items go back on sale.',
       'shop.cancelConfirmPaid':
           'Cancel this order? You’ll be refunded in full to the account you paid from.',
       'shop.cancelled': 'Order cancelled.',
       'shop.cancelledRefund':
-          'Order cancelled. Your refund is on its way; follow it under Sessions & refunds.',
+          'Order cancelled. Your refund is being processed (not sent yet); follow it under Sessions & refunds.',
       'sessions.title': 'Sessions & refunds',
       'sessions.tile': 'Trainer sessions you booked, cancellations and refunds',
       'sessions.mine': 'My trainer sessions',
@@ -1569,6 +1594,24 @@ class FFLocale extends ChangeNotifier {
       'member.visitHistory': 'Visit history',
       'member.accountSettings': 'Account settings',
       'member.editDetails': 'Edit personal details',
+      'username.title': 'Username',
+      'username.hint': 'Username',
+      'username.chooseSubtitle': 'Others see this instead of your name',
+      'username.rules': '3 to 20 letters, numbers, dots or underscores.',
+      'username.visibility':
+          'People in Explore, groups and reviews see @username instead of your name. Gyms and trainers you work with see both.',
+      'username.checking': 'Checking…',
+      'username.available': 'Available',
+      'username.taken': 'Already taken',
+      'username.reserved': "This name can't be used",
+      'username.invalid': 'Use 3 to 20 letters, numbers, dots or underscores',
+      'username.releasedRecently': 'Someone used this recently. Try another',
+      'username.notAllowed': "You can't use this one again",
+      'username.cooldown': 'You can change it again on {date}',
+      'username.save': 'Save username',
+      'username.clear': 'Remove username',
+      'username.saved': 'Username saved',
+      'username.cleared': 'Username removed',
       'member.paymentMethods': 'Payment methods',
       'member.notifications': 'Notification preferences',
       'member.help': 'Help and support',
@@ -1987,7 +2030,7 @@ class FFLocale extends ChangeNotifier {
       'community.copy': 'Copy',
       'community.copied': 'Copied',
       'community.searchHint':
-          'Name, invite code, email address or mobile number',
+          'Name, username, email address or mobile number',
       'friendInvite.approve': 'Approve',
       'friendInvite.reject': 'Reject',
       'friendInvite.cardTitle': 'Friend invitation',
@@ -2044,6 +2087,10 @@ class FFLocale extends ChangeNotifier {
       'friendInvite.unavailable.invalid': 'This invitation is not valid',
       'friendInvite.unavailableBody':
           'Ask your friend to send you a new one if you still want to connect.',
+      'community.fromContacts': 'Choose from contacts',
+      'community.contactsDenied': 'Allow contacts access to pick someone from your address book, or type their number or email.',
+      'community.contactNoNumber': 'That contact has no phone number or email.',
+      'community.contactsFailed': 'Could not open your contacts. Type their number or email instead.',
       'community.results': 'Results',
       'community.noResults': 'No one found. Try their invite code.',
       'community.followsYou': 'Follow you',
@@ -5223,13 +5270,38 @@ class FFLocale extends ChangeNotifier {
       'shop.orderPlaced':
           'Oda imewekwa. Itamfikia muuzaji baada ya FitFlex kuthibitisha malipo yako.',
       'shop.awaitingPayment': 'Inasubiri uthibitisho wa malipo',
+      'shop.orderPending':
+          'Oda imewekwa. Tunasubiri malipo yako yathibitishwe; itaenda kwa muuzaji baada ya hapo.',
+      'shop.orderUncertain':
+          'Hatukuweza kuthibitisha kama oda yako iliwekwa. Kikapu chako kimehifadhiwa; bonyeza Weka oda tena, hutatozwa mara mbili. Au angalia Oda zangu.',
+      'shop.errInsufficientStock':
+          'Baadhi ya bidhaa hazipatikani tena kwa kiasi ulichochagua. Tafadhali kagua kikapu chako.',
+      'shop.errPriceChanged':
+          'Bei ilibadilika ulipokuwa unalipia. Tafadhali kagua kikapu chako na ujaribu tena.',
+      'shop.errUnavailable':
+          'Bidhaa iliyo kwenye kikapu chako haipatikani tena. Tafadhali iondoe na ujaribu tena.',
+      'shop.errVariantRequired': 'Tafadhali chagua chaguo kwa kila bidhaa.',
+      'shop.errChanged':
+          'Maelezo ya oda yako yamebadilika. Tafadhali weka oda tena.',
+      'shop.addressRequired': 'Weka anwani ya kupelekewa ili kuendelea.',
+      'shop.pickupGymRequired': 'Chagua gym ya kuchukulia ili kuendelea.',
+      'shop.refundPending':
+          'Oda imeghairiwa. Marejesho yako yanashughulikiwa; bado hayajatumwa.',
+      'shop.refunded': 'Marejesho yametumwa.',
+      'shop.paymentNotConfirmed': 'Malipo hayakuthibitishwa; oda imeghairiwa.',
+      'shop.checkPayment': 'Angalia malipo',
+      'shop.paymentConfirmed': 'Malipo yamethibitishwa. Muuzaji ana oda yako.',
+      'shop.stillAwaiting': 'Bado tunasubiri uthibitisho wa malipo.',
+      'shop.chooseOption': 'Chagua chaguo',
+      'shop.optionOutOfStock': 'imeisha',
+      'shop.orderTotalIs': 'Jumla ya oda',
       'shop.cancelOrder': 'Ghairi oda',
       'shop.cancelConfirm': 'Ghairi oda hii? Bidhaa zake zitarudi sokoni.',
       'shop.cancelConfirmPaid':
           'Ghairi oda hii? Utarejeshewa fedha zote kwenye akaunti uliyotumia kulipa.',
       'shop.cancelled': 'Oda imeghairiwa.',
       'shop.cancelledRefund':
-          'Oda imeghairiwa. Fedha zako ziko njiani; fuatilia kwenye Vipindi na marejesho.',
+          'Oda imeghairiwa. Marejesho yako yanashughulikiwa (bado hayajatumwa); fuatilia kwenye Vipindi na marejesho.',
       'sessions.title': 'Vipindi na marejesho',
       'sessions.tile':
           'Vipindi ulivyoweka na ma-trainer, kughairi na marejesho',
@@ -5518,6 +5590,26 @@ class FFLocale extends ChangeNotifier {
       'member.visitHistory': 'Historia ya mahudhurio',
       'member.accountSettings': 'Mipangilio ya akaunti',
       'member.editDetails': 'Hariri taarifa binafsi',
+      'username.title': 'Jina la mtumiaji',
+      'username.hint': 'Jina la mtumiaji',
+      'username.chooseSubtitle': 'Wengine wataona hili badala ya jina lako',
+      'username.rules': 'Herufi, namba, nukta au mstari wa chini: 3 hadi 20.',
+      'username.visibility':
+          'Watu kwenye Gundua, vikundi na maoni wataona @jina badala ya jina lako. Gym na trainer unaofanya nao kazi wataona vyote viwili.',
+      'username.checking': 'Inakagua…',
+      'username.available': 'Linapatikana',
+      'username.taken': 'Tayari limechukuliwa',
+      'username.reserved': 'Jina hili haliruhusiwi',
+      'username.invalid':
+          'Tumia herufi, namba, nukta au mstari wa chini (3 hadi 20)',
+      'username.releasedRecently':
+          'Mtu alilitumia hivi karibuni. Jaribu jingine',
+      'username.notAllowed': 'Huwezi kulitumia tena',
+      'username.cooldown': 'Unaweza kulibadilisha tena tarehe {date}',
+      'username.save': 'Hifadhi jina',
+      'username.clear': 'Ondoa jina',
+      'username.saved': 'Jina la mtumiaji limehifadhiwa',
+      'username.cleared': 'Jina la mtumiaji limeondolewa',
       'member.paymentMethods': 'Njia za malipo',
       'member.notifications': 'Mipangilio ya arifa',
       'member.help': 'Msaada',
@@ -5937,7 +6029,7 @@ class FFLocale extends ChangeNotifier {
       'community.copy': 'Nakili',
       'community.copied': 'Imenakiliwa',
       'community.searchHint':
-          'Jina, msimbo wa mwaliko, barua pepe au namba ya simu',
+          'Jina, jina la mtumiaji, barua pepe au namba ya simu',
       'friendInvite.approve': 'Kubali',
       'friendInvite.reject': 'Kataa',
       'friendInvite.cardTitle': 'Mwaliko wa urafiki',
@@ -5992,6 +6084,10 @@ class FFLocale extends ChangeNotifier {
       'friendInvite.unavailable.invalid': 'Mwaliko huu si halali',
       'friendInvite.unavailableBody':
           'Mwombe rafiki yako akutumie mwingine kama bado unataka kuungana.',
+      'community.fromContacts': 'Chagua kutoka kwenye anwani',
+      'community.contactsDenied': 'Ruhusu ufikiaji wa anwani ili kumchagua mtu kutoka kwenye simu yako, au andika namba au barua pepe yake.',
+      'community.contactNoNumber': 'Anwani hiyo haina namba ya simu wala barua pepe.',
+      'community.contactsFailed': 'Imeshindwa kufungua anwani zako. Andika namba au barua pepe yake badala yake.',
       'community.results': 'Matokeo',
       'community.noResults':
           'Hakuna aliyepatikana. Jaribu msimbo wake wa mwaliko.',

@@ -89,14 +89,30 @@ enum TrainerConnectionStatus {
 class ConnectionPerson {
   final String id;
   final String? displayName;
+
+  /// The member's username, when they have one (a trainer sees both).
+  final String? username;
   final String? photoUrl;
 
-  const ConnectionPerson({required this.id, this.displayName, this.photoUrl});
+  const ConnectionPerson({
+    required this.id,
+    this.displayName,
+    this.username,
+    this.photoUrl,
+  });
+
+  /// "Amina Said (@amina_k)" for a trainer's client with a username.
+  String? get label {
+    final name = displayName;
+    if ((username ?? '').isEmpty) return name;
+    return (name == null || name.isEmpty) ? '@$username' : '$name (@$username)';
+  }
 
   static ConnectionPerson? tryParse(Object? json) => json is Map
       ? ConnectionPerson(
           id: json['id'] as String? ?? '',
           displayName: json['displayName'] as String?,
+          username: json['username'] as String?,
           photoUrl: json['photoUrl'] as String?,
         )
       : null;

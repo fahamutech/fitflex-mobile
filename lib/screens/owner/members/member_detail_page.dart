@@ -346,6 +346,15 @@ class _ProfileCard extends StatelessWidget {
                       detail.resolvedName,
                       style: theme.textTheme.titleMedium,
                     ),
+                    if ((detail.username ?? '').isNotEmpty)
+                      Text(
+                        '@${detail.username}',
+                        key: const Key('member-detail-username'),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     const SizedBox(height: FFTokens.spacing2xs),
                     Text(
                       subtitleParts.join(' · '),

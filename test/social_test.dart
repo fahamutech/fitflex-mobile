@@ -115,8 +115,10 @@ class _Api extends ApiClient {
   @override
   Future<Map<String, dynamic>> friendInvitations() async => {
     'incoming': [],
-    'outgoing': [],
+    'outgoing': outgoing,
   };
+
+  List<Map<String, dynamic>> outgoing = [];
   @override
   Future<Map<String, dynamic>> socialSettings() async => {
     'defaultShare': null,
@@ -356,7 +358,7 @@ void main() {
     expect(find.byKey(const Key('feed-empty')), findsOneWidget);
   });
 
-  testWidgets('people: invite code, follow back, search by code', (
+  testWidgets('people: no invite-code card, follow back, search by name, contact picker button', (
     tester,
   ) async {
     _tall(tester);
@@ -365,7 +367,8 @@ void main() {
       _app(api, const MemberCommunityPage(initialTab: 2)),
     );
     await tester.pumpAndSettle();
-    expect(find.text('AB12CD34'), findsOneWidget);
+    expect(find.byKey(const Key('my-invite-code')), findsNothing);
+    expect(find.byKey(const Key('people-pick-contact')), findsOneWidget);
     expect(find.text('Follow back'), findsOneWidget);
     await tester.tap(find.byKey(const Key('follow-cy')));
     await tester.pumpAndSettle();
@@ -377,10 +380,34 @@ void main() {
     await tester.pumpAndSettle();
     expect(
       api.calls,
-      contains('find::QW12ER34'),
-      reason: 'eight letters and digits are an invite code',
+      contains('find:QW12ER34:'),
+      reason: 'a name search; invite codes are no longer searched',
     );
     expect(find.text('Dee Kweka'), findsOneWidget);
+  });
+
+  testWidgets('sent requests show the number you invited', (tester) async {
+    _tall(tester);
+    final api = _Api()
+      ..outgoing = [
+        {
+          'id': 'fri_1',
+          'status': 'pending',
+          'contactType': 'phone',
+          'contact': '+255650387211',
+          'name': null,
+        },
+      ];
+    await tester.pumpWidget(
+      _app(api, const MemberCommunityPage(initialTab: 2)),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('sent-fri_1')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('+255650387211'), findsOneWidget);
   });
 
   testWidgets('groups: join a listed group, or by code', (tester) async {

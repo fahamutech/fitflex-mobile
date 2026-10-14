@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
@@ -82,8 +82,6 @@ final compactButton = FilledButton.styleFrom(
   padding: const EdgeInsets.symmetric(horizontal: 12),
   visualDensity: VisualDensity.compact,
 );
-
-void _toast(BuildContext context, String text) => FFSnack.info(context, text);
 
 // ── Feed ─────────────────────────────────────────────────────────────────
 
@@ -379,7 +377,6 @@ class _PeopleTabState extends State<PeopleTab> {
   ({String? email, String? phone})? _contactQuery;
   List<Map<String, dynamic>> _sentRequests = const [];
   bool _contactBusy = false;
-  String _code = '';
   bool _loaded = false;
   bool _started = false;
   final _search = TextEditingController();
@@ -406,7 +403,7 @@ class _PeopleTabState extends State<PeopleTab> {
   Future<void> _load() async {
     final api = AppScope.of(context).api;
     try {
-      final r = await Future.wait([api.connections(), api.socialSettings()]);
+      final r = await Future.wait([api.connections()]);
       Object? sent;
       try {
         sent = (await api.friendInvitations())['outgoing'];
@@ -420,7 +417,6 @@ class _PeopleTabState extends State<PeopleTab> {
         _friends = _people(r[0]['friends']);
         _following = _people(r[0]['following']);
         _followers = _people(r[0]['followers']);
-        _code = r[1]['inviteCode'] as String? ?? '';
         _loaded = true;
       });
     } catch (_) {
@@ -436,6 +432,71 @@ class _PeopleTabState extends State<PeopleTab> {
       return (email: null, phone: q);
     }
     return null;
+  }
+
+  /// Pick one person from the phone's address book and search for them.
+  /// Only the chosen contact's number or email is read; nothing else leaves
+  /// the phone, and nothing is uploaded until the search itself.
+  Future<void> _pickFromContacts() async {
+    final t = context.tr;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final status = await FlutterContacts.permissions.request(
+        PermissionType.read,
+      );
+      if (status != PermissionStatus.granted &&
+          status != PermissionStatus.limited) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(t('community.contactsDenied'))),
+        );
+        return;
+      }
+      final picked = await FlutterContacts.native.showPicker(
+        properties: {ContactProperty.phone, ContactProperty.email},
+      );
+      if (picked == null || !mounted) return;
+      final options = <String>[
+        for (final p in picked.phones)
+          if (p.number.trim().isNotEmpty) p.number.trim(),
+        for (final e in picked.emails)
+          if (e.address.trim().isNotEmpty) e.address.trim(),
+      ];
+      if (options.isEmpty) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(t('community.contactNoNumber'))),
+        );
+        return;
+      }
+      var choice = options.first;
+      if (options.length > 1) {
+        final chosen = await showModalBottomSheet<String>(
+          context: context,
+          builder: (ctx) => SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final o in options)
+                  ListTile(
+                    leading: Icon(
+                      o.contains('@') ? Icons.email_outlined : Icons.phone,
+                    ),
+                    title: Text(o),
+                    onTap: () => Navigator.pop(ctx, o),
+                  ),
+              ],
+            ),
+          ),
+        );
+        if (chosen == null || !mounted) return;
+        choice = chosen;
+      }
+      _search.text = choice;
+      await _find();
+    } catch (_) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(t('community.contactsFailed'))),
+      );
+    }
   }
 
   Future<void> _findContact(({String? email, String? phone}) c) async {
@@ -578,6 +639,16 @@ class _PeopleTabState extends State<PeopleTab> {
     );
   }
 
+  /// Who a sent invitation was for: their (masked) name, else the number or
+  /// email you invited, else just the kind of contact.
+  String _sentTitle(Map<String, dynamic> i, String Function(String) t) {
+    final name = i['name']?.toString() ?? '';
+    if (name.isNotEmpty) return name;
+    final contact = i['contact']?.toString() ?? '';
+    if (contact.isNotEmpty) return contact;
+    return t('friendInvite.linkShared.${i['contactType'] ?? 'email'}');
+  }
+
   Widget _sentRequestsSection() {
     final t = context.tr;
     final api = AppScope.of(context).api;
@@ -592,13 +663,21 @@ class _PeopleTabState extends State<PeopleTab> {
             child: Row(
               children: [
                 Expanded(
-                  child: Text(
-                    (i['name']?.toString().isNotEmpty ?? false)
-                        ? i['name'].toString()
-                        : t(
-                            'friendInvite.linkShared.${i['contactType'] ?? 'email'}',
-                          ),
-                    style: Theme.of(context).textTheme.titleSmall,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _sentTitle(i, t),
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      // What you typed, so you can tell who it was for.
+                      if ((i['contact']?.toString() ?? '').isNotEmpty &&
+                          (i['name']?.toString() ?? '').isNotEmpty)
+                        Text(
+                          i['contact'].toString(),
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                    ],
                   ),
                 ),
                 if (i['status'] == 'pending')
@@ -642,11 +721,9 @@ class _PeopleTabState extends State<PeopleTab> {
     });
     final api = AppScope.of(context).api;
     // Invite codes are 8 letters/digits; anything else searches by name.
-    final isCode = RegExp(r'^[A-Za-z0-9]{8}$').hasMatch(q);
     try {
       final r = await api.findPeople(
-        q: isCode ? null : q,
-        code: isCode ? q : null,
+        q: q,
       );
       if (mounted) setState(() => _found = _people(r['people']));
     } catch (_) {
@@ -762,45 +839,6 @@ class _PeopleTabState extends State<PeopleTab> {
       child: ListView(
         padding: const EdgeInsets.all(FFTokens.spacingLg),
         children: [
-          FFCard(
-            key: const Key('my-invite-code'),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  context.tr('community.yourCode'),
-                  style: theme.textTheme.titleSmall,
-                ),
-                const SizedBox(height: FFTokens.spacingXs),
-                Row(
-                  children: [
-                    Expanded(
-                      child: SelectableText(
-                        _code,
-                        style: theme.textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 2,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: context.tr('community.copy'),
-                      icon: const Icon(Icons.copy),
-                      onPressed: () {
-                        Clipboard.setData(ClipboardData(text: _code));
-                        _toast(context, context.tr('community.copied'));
-                      },
-                    ),
-                  ],
-                ),
-                Text(
-                  context.tr('community.codeHint'),
-                  style: theme.textTheme.bodySmall,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: FFTokens.spacingMd),
           FFTextField(
             key: const Key('people-search'),
             controller: _search,
@@ -808,10 +846,21 @@ class _PeopleTabState extends State<PeopleTab> {
             textInputAction: TextInputAction.search,
             onFieldSubmitted: (_) => _find(),
             prefixIcon: const Icon(Icons.search),
-            suffixIcon: IconButton(
-              tooltip: context.tr('a11y.search'),
-              icon: const Icon(Icons.arrow_forward),
-              onPressed: _find,
+            suffixIcon: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  key: const Key('people-pick-contact'),
+                  tooltip: context.tr('community.fromContacts'),
+                  icon: const Icon(Icons.contacts_outlined),
+                  onPressed: _pickFromContacts,
+                ),
+                IconButton(
+                  tooltip: context.tr('a11y.search'),
+                  icon: const Icon(Icons.arrow_forward),
+                  onPressed: _find,
+                ),
+              ],
             ),
           ),
           if (_contactBusy) const LinearProgressIndicator(),

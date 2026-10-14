@@ -67,17 +67,29 @@ class ApiClient {
 
   void setToken(String? token) => _token = token;
 
-  Future<dynamic> _request(String method, String path, {Object? body}) =>
-      _doRequest(method, path, body: body, attempt: 0);
+  Future<dynamic> _request(
+    String method,
+    String path, {
+    Object? body,
+    Map<String, String>? extraHeaders,
+  }) => _doRequest(
+    method,
+    path,
+    body: body,
+    extraHeaders: extraHeaders,
+    attempt: 0,
+  );
 
   Future<dynamic> _doRequest(
     String method,
     String path, {
     Object? body,
+    Map<String, String>? extraHeaders,
     required int attempt,
   }) async {
     final uri = Uri.parse('$baseUrl$path');
     final headers = <String, String>{
+      ...?extraHeaders,
       'content-type': 'application/json',
       // Identity V2 (decision C3b): this build understands persons and
       // personas. The backend ignores it unless its V2 flags are on.
@@ -125,7 +137,13 @@ class ApiClient {
           '[REST] retrying $method $uri (attempt ${attempt + 1}) after ${delayMs}ms',
         );
         await Future.delayed(Duration(milliseconds: delayMs));
-        return _doRequest(method, path, body: body, attempt: attempt + 1);
+        return _doRequest(
+          method,
+          path,
+          body: body,
+          extraHeaders: extraHeaders,
+          attempt: attempt + 1,
+        );
       }
       rethrow;
     }
@@ -1315,6 +1333,16 @@ class ApiClient {
     body: {'targetType': targetType, 'targetId': targetId, 'reason': ?reason},
   );
 
+  // ── Member usernames (feature flag on the server) ──
+  Future<Map<String, dynamic>> usernameAvailable(String handle) => _map(
+    'GET',
+    '/me/username/available?${Uri(queryParameters: {'handle': handle}).query}',
+  );
+  Future<Map<String, dynamic>> setUsername(String handle) =>
+      _map('PUT', '/me/username', body: {'username': handle});
+  Future<Map<String, dynamic>> clearUsername() =>
+      _map('DELETE', '/me/username');
+
   Future<Map<String, dynamic>> myGroups() => _map('GET', '/me/groups');
   Future<Map<String, dynamic>> createMyGroup(Map<String, dynamic> body) =>
       _map('POST', '/me/groups', body: body);
@@ -1741,9 +1769,14 @@ class ApiClient {
     String? deliveryAddress,
     required String paymentMethod,
     String paymentOutcome = 'success',
+
+    /// Makes a retry safe: the server returns the order this key already made
+    /// instead of making another (the client also retries dropped connections).
+    String? idempotencyKey,
   }) async => await _request(
     'POST',
     '/me/shop-orders',
+    extraHeaders: {'Idempotency-Key': ?idempotencyKey},
     body: {
       'items': items,
       'note': ?note,
