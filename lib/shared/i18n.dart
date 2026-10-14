@@ -56,6 +56,11 @@ class FFLocale extends ChangeNotifier {
   static Set<String> keysOf(String lang) =>
       (_messages[lang] ?? const {}).keys.toSet();
 
+  /// The line for [key] in [lang] exactly as written, so tests can tell a
+  /// translation from English left in place.
+  @visibleForTesting
+  static String? textOf(String lang, String key) => _messages[lang]?[key];
+
   static const Map<String, Map<String, String>> _messages = {
     'en': {
       'app.title': 'FitFlex',
@@ -2375,6 +2380,8 @@ class FFLocale extends ChangeNotifier {
       'pass.pending': 'Payment pending admin approval',
       'pass.state.none': 'Pick a pass to open gyms across the network.',
       'pass.state.noPass': 'No pass',
+      'pass.state.noPassYet': 'No pass yet',
+      'pass.state.choose': 'Choose a pass',
       'pass.state.pending':
           "We're confirming your payment. Your QR unlocks as soon as it's confirmed.",
       'pass.state.viewPayment': 'View payment',
@@ -2385,7 +2392,8 @@ class FFLocale extends ChangeNotifier {
           'Your pass ends {date}. Nothing renews by itself; pay when you are ready.',
       'pass.state.ended': 'Your pass ended {date}.',
       'pass.state.payAgain': 'Pay again',
-      'pass.state.visitsOf': 'of {total} visits',
+      'pass.state.left': 'left',
+      'pass.state.usedOf': '{used} of {total} used',
       'pass.state.endsOn': 'Ends {date}',
       'pass.gymAccess': 'Gym access',
       'pass.gymAccess.standard': 'Standard gyms',
@@ -6330,20 +6338,23 @@ class FFLocale extends ChangeNotifier {
       'pass.note':
           'Malipo ya majaribio hukaguliwa na admin wa FitFlex kabla pasi yako haijaanza kutumika.',
       'pass.pending': 'Malipo yanasubiri idhini ya admin',
-      'pass.state.none': 'Pick a pass to open gyms across the network.',
-      'pass.state.noPass': 'No pass',
+      'pass.state.none': 'Chagua pasi ili ufungue gym kote kwenye mtandao.',
+      'pass.state.noPass': 'Huna pasi',
+      'pass.state.noPassYet': 'Bado huna pasi',
+      'pass.state.choose': 'Chagua pasi',
       'pass.state.pending':
-          "We're confirming your payment. Your QR unlocks as soon as it's confirmed.",
-      'pass.state.viewPayment': 'View payment',
-      'pass.state.lowVisits': '{n} visits left',
-      'pass.state.noVisits': 'No visits left on this pass',
-      'pass.state.lowVisitsHint': 'Plan your next pass before it runs out.',
+          'Tunathibitisha malipo yako. QR yako itafunguka mara yatakapothibitishwa.',
+      'pass.state.viewPayment': 'Angalia malipo',
+      'pass.state.lowVisits': 'Zimebaki ziara {n}',
+      'pass.state.noVisits': 'Hakuna ziara zilizobaki kwenye pasi hii',
+      'pass.state.lowVisitsHint': 'Panga pasi yako ijayo kabla hii haijaisha.',
       'pass.state.endingSoon':
-          'Your pass ends {date}. Nothing renews by itself; pay when you are ready.',
-      'pass.state.ended': 'Your pass ended {date}.',
-      'pass.state.payAgain': 'Pay again',
-      'pass.state.visitsOf': 'of {total} visits',
-      'pass.state.endsOn': 'Ends {date}',
+          'Pasi yako inaisha {date}. Haijirudii yenyewe; lipa ukiwa tayari.',
+      'pass.state.ended': 'Pasi yako iliisha {date}.',
+      'pass.state.payAgain': 'Lipa tena',
+      'pass.state.left': 'zimebaki',
+      'pass.state.usedOf': 'Umetumia {used} kati ya {total}',
+      'pass.state.endsOn': 'Inaisha {date}',
       'pass.gymAccess': 'Ufikiaji wa gym',
       'pass.gymAccess.standard': 'Gym za kawaida',
       'pass.gymAccess.midtier': 'Gym za kawaida + kati',

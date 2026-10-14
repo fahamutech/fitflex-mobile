@@ -1,6 +1,7 @@
 import 'package:fitflexmobile/screens/member/member_shell.dart';
 import 'package:fitflexmobile/screens/member/widgets/pass_state.dart';
 import 'package:fitflexmobile/screens/member/widgets/pass_summary_card.dart';
+import 'package:fitflexmobile/shared/components/components.dart';
 import 'package:fitflexmobile/shared/design_tokens.dart';
 import 'package:fitflexmobile/shared/i18n.dart';
 import 'package:fitflexmobile/shared/models.dart';
@@ -144,16 +145,51 @@ void main() {
     ) async {
       await _pumpCard(tester, _data(subscription: _pass(), used: 7));
       expect(find.byKey(const Key('pass-visits-ring')), findsOneWidget);
+      // "11 left" in the ring, "7 of 18 used" beside it: no number twice.
       expect(find.text('11'), findsOneWidget);
-      expect(find.text('of 18 visits'), findsOneWidget);
+      expect(find.textContaining('11 '), findsNothing);
+      expect(find.text('left'), findsOneWidget);
+      expect(find.text('7 of 18 used'), findsOneWidget);
       expect(find.text('Show my QR'), findsOneWidget);
       expect(find.byKey(const Key('pass-upgrade-action')), findsOneWidget);
     });
 
     testWidgets('low visits says how many are left', (tester) async {
       await _pumpCard(tester, _data(subscription: _pass(), used: 15));
-      expect(find.text('3 visits left'), findsOneWidget);
+      expect(find.text('3'), findsOneWidget);
+      expect(find.text('left'), findsOneWidget);
+      expect(find.text('15 of 18 used'), findsOneWidget);
+      // Not said twice: the line beside the ring is what to do about it.
+      expect(find.text('3 visits left'), findsNothing);
+      expect(
+        find.text('Plan your next pass before it runs out.'),
+        findsOneWidget,
+      );
       expect(find.text('Show my QR'), findsOneWidget);
+    });
+
+    testWidgets('a pass with nothing used reads as all visits left', (
+      tester,
+    ) async {
+      await _pumpCard(tester, _data(subscription: _pass(), used: 0));
+      expect(find.text('18'), findsOneWidget);
+      expect(find.text('left'), findsOneWidget);
+      expect(find.text('0 of 18 used'), findsOneWidget);
+    });
+
+    test('every pass-state line has its own Swahili', () {
+      final keys = FFLocale.keysOf(
+        'en',
+      ).where((k) => k.startsWith('pass.state.'));
+      expect(keys.length, greaterThanOrEqualTo(13));
+      for (final k in keys) {
+        expect(FFLocale.textOf('sw', k), isNotNull, reason: k);
+        expect(
+          FFLocale.textOf('sw', k),
+          isNot(FFLocale.textOf('en', k)),
+          reason: k,
+        );
+      }
     });
 
     testWidgets('ending soon says the date once, in the sentence', (
@@ -177,6 +213,33 @@ void main() {
       expect(find.byKey(const Key('pass-state-message')), findsOneWidget);
       expect(find.text('View payment'), findsOneWidget);
       expect(find.byKey(const Key('pass-upgrade-action')), findsNothing);
+    });
+
+    testWidgets('no pass: says so once, one sentence, one button', (
+      tester,
+    ) async {
+      await _pumpCard(tester, _data());
+      expect(find.text('No pass yet'), findsOneWidget);
+      expect(find.textContaining('Platform Pass'), findsNothing);
+      expect(find.byType(FFBadge), findsNothing);
+      expect(
+        find.text('Pick a pass to open gyms across the network.'),
+        findsOneWidget,
+      );
+      expect(find.text('Choose a pass'), findsOneWidget);
+      expect(find.text('Subscribe'), findsNothing);
+    });
+
+    testWidgets('pending payment names the pass being paid for', (
+      tester,
+    ) async {
+      await _pumpCard(
+        tester,
+        _data(pending: {'id': 'p1', 'status': 'pending', 'tier': 'pro'}),
+      );
+      expect(find.text('Pro'), findsOneWidget);
+      expect(find.text('Payment pending admin approval'), findsOneWidget);
+      expect(find.textContaining('Platform Pass'), findsNothing);
     });
 
     testWidgets('ended pass offers Pay again, not the QR', (tester) async {
