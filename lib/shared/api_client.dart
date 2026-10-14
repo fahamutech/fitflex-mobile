@@ -740,6 +740,34 @@ class ApiClient {
   Future<Map<String, dynamic>> subscribe(String tier) async =>
       await requestPass(tier);
 
+  /// Whether paying by mobile money is available: {enabled, environment}.
+  /// `environment` is 'sandbox' while it is being tested (no real money).
+  Future<Map<String, dynamic>> paymentOptions() async =>
+      await _request('GET', '/payments/options') as Map<String, dynamic>;
+
+  /// Ask the member's phone to approve a pending payment request.
+  Future<Map<String, dynamic>> payByMobileMoney(
+    String paymentRequestId,
+    String phone,
+  ) async =>
+      await _request(
+            'POST',
+            '/me/payments/$paymentRequestId/mobile-money',
+            body: {'phone': phone},
+          )
+          as Map<String, dynamic>;
+
+  /// Has the mobile-money payment gone through? state: in_progress |
+  /// completed | failed | held | none.
+  Future<Map<String, dynamic>> refreshMobileMoney(
+    String paymentRequestId,
+  ) async =>
+      await _request(
+            'POST',
+            '/me/payments/$paymentRequestId/mobile-money/refresh',
+          )
+          as Map<String, dynamic>;
+
   /// The higher FitFlex Pass tiers the member can move up to, each with the
   /// difference they would pay. A 409 means there is no paid pass to upgrade.
   Future<Map<String, dynamic>> upgradeOptions() async =>

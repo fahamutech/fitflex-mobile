@@ -13,6 +13,7 @@ import '../../shared/api_error_message.dart';
 import '../../shared/models.dart';
 import '../../shared/pass_gyms.dart';
 import 'member_shell.dart';
+import 'widgets/mobile_money_pay.dart';
 import 'widgets/pass_gyms_sheet.dart';
 
 class MemberPaymentPage extends StatelessWidget {
@@ -172,9 +173,19 @@ class _SubmitButtonState extends State<_SubmitButton> {
     if (_loading) return; // a second tap must not send a second request
     setState(() => _loading = true);
     try {
-      await AppScope.of(context).api.requestPass(widget.tier);
+      final created = await AppScope.of(context).api.requestPass(widget.tier);
       if (!mounted) return;
       FFSnack.success(context, context.tr('member.paymentSubmitted'));
+      // With mobile money switched on, pay straight away.
+      final req = created['paymentRequest'];
+      if (req is Map) {
+        await offerMobileMoney(
+          context,
+          paymentRequestId: req['id'] as String?,
+          amountTzs: (req['amountTzs'] as num?) ?? 0,
+        );
+        if (!mounted) return;
+      }
       // Refresh QR and user data after subscription
       final shellState = context.findAncestorStateOfType<MemberShellState>();
       await shellState?.refreshQr();

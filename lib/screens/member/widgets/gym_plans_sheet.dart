@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'mobile_money_pay.dart';
 
 import '../../../app_scope.dart';
 import '../../../shared/api_client.dart';
@@ -65,9 +66,19 @@ class _GymPlansSheetState extends State<GymPlansSheet> {
       _error = null;
     });
     try {
-      await AppScope.of(
+      final created = await AppScope.of(
         context,
       ).api.subscribeDirect(gymId: widget.gym.id, plan: plan);
+      if (!mounted) return;
+      // With mobile money switched on, pay straight away.
+      final req = created['paymentRequest'];
+      if (req is Map) {
+        await offerMobileMoney(
+          context,
+          paymentRequestId: req['id'] as String?,
+          amountTzs: (req['amountTzs'] as num?) ?? 0,
+        );
+      }
       if (mounted) Navigator.pop(context, true);
     } on ApiException catch (e) {
       if (!mounted) return;
