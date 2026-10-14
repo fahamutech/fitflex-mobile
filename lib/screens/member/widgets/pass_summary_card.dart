@@ -166,7 +166,7 @@ class PassSummaryCard extends StatelessWidget {
     final cap = data.me?.visitCap;
     final ends = passDate(sub?.expiresAt);
 
-    final message = passStateMessage(context, data, state);
+    var message = passStateMessage(context, data, state);
 
     if (!state.canShowQr) {
       return Text(
@@ -177,6 +177,19 @@ class PassSummaryCard extends StatelessWidget {
         ),
       );
     }
+
+    // The ring already says how many are left; say what to do about it.
+    if (state == PassState.lowVisits && (left ?? 0) > 0) {
+      message = context.tr('pass.state.lowVisitsHint');
+    }
+
+    // Beside the ring: how many of the total they have used.
+    final usedOf = left == null || cap == null
+        ? null
+        : context
+              .tr('pass.state.usedOf')
+              .replaceAll('{used}', '${(cap - left).clamp(0, cap)}')
+              .replaceAll('{total}', '$cap');
 
     final tone = FFToneTheme.of(context);
     final ringColor = state.tone == PassTone.warning
@@ -190,9 +203,8 @@ class PassSummaryCard extends StatelessWidget {
             left: left,
             total: cap,
             color: ringColor,
-            ofLabel: context
-                .tr('pass.state.visitsOf')
-                .replaceAll('{total}', '$cap'),
+            leftLabel: context.tr('pass.state.left'),
+            ofLabel: usedOf!,
           )
         else
           Icon(Icons.all_inclusive, size: 40, color: ringColor),
@@ -201,20 +213,19 @@ class PassSummaryCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (left == null)
-                Text(
-                  context.tr('pass.unlimited'),
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+              // Beside the ring's "11 left": "7 of 18 used".
+              Text(
+                usedOf ?? context.tr('pass.unlimited'),
+                key: const Key('pass-visits-used'),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
                 ),
+              ),
               // The ending-soon sentence already carries the date.
               if (sub?.expiresAt != null && state != PassState.endingSoon)
                 Text(
                   context.tr('pass.state.endsOn').replaceAll('{date}', ends),
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: theme.textTheme.bodyMedium,
                 ),
               if (message != null)
                 Padding(
@@ -284,19 +295,22 @@ class _DirectDateRow extends StatelessWidget {
   );
 }
 
-/// Visits left as a ring: the number in the middle, "of N visits" under it.
+/// Visits left as a ring: the number in the middle with "left" under it.
+/// "7 of 18 used" sits beside the ring, so no number is said twice.
 class _VisitsRing extends StatelessWidget {
   const _VisitsRing({
     super.key,
     required this.left,
     required this.total,
     required this.color,
+    required this.leftLabel,
     required this.ofLabel,
   });
 
   final int left;
   final int total;
   final Color color;
+  final String leftLabel;
   final String ofLabel;
 
   @override
@@ -304,7 +318,7 @@ class _VisitsRing extends StatelessWidget {
     final theme = Theme.of(context);
     final fraction = total <= 0 ? 0.0 : (left / total).clamp(0.0, 1.0);
     return Semantics(
-      label: '$left $ofLabel',
+      label: '$left $leftLabel $ofLabel',
       child: SizedBox(
         width: 96,
         height: 96,
@@ -331,7 +345,7 @@ class _VisitsRing extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  ofLabel,
+                  leftLabel,
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
