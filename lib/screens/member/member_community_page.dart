@@ -639,6 +639,16 @@ class _PeopleTabState extends State<PeopleTab> {
     );
   }
 
+  /// Who a sent invitation was for: their (masked) name, else the number or
+  /// email you invited, else just the kind of contact.
+  String _sentTitle(Map<String, dynamic> i, String Function(String) t) {
+    final name = i['name']?.toString() ?? '';
+    if (name.isNotEmpty) return name;
+    final contact = i['contact']?.toString() ?? '';
+    if (contact.isNotEmpty) return contact;
+    return t('friendInvite.linkShared.${i['contactType'] ?? 'email'}');
+  }
+
   Widget _sentRequestsSection() {
     final t = context.tr;
     final api = AppScope.of(context).api;
@@ -653,13 +663,21 @@ class _PeopleTabState extends State<PeopleTab> {
             child: Row(
               children: [
                 Expanded(
-                  child: Text(
-                    (i['name']?.toString().isNotEmpty ?? false)
-                        ? i['name'].toString()
-                        : t(
-                            'friendInvite.linkShared.${i['contactType'] ?? 'email'}',
-                          ),
-                    style: Theme.of(context).textTheme.titleSmall,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _sentTitle(i, t),
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      // What you typed, so you can tell who it was for.
+                      if ((i['contact']?.toString() ?? '').isNotEmpty &&
+                          (i['name']?.toString() ?? '').isNotEmpty)
+                        Text(
+                          i['contact'].toString(),
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                    ],
                   ),
                 ),
                 if (i['status'] == 'pending')
