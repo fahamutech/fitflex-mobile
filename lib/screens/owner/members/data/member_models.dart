@@ -47,6 +47,9 @@ class OwnerMember {
   final String id;
   final String publicId;
   final String? displayName;
+
+  /// The member's chosen username, shown beside their name to the gym.
+  final String? username;
   final String? phone;
   final String? photoUrl;
   final OwnerMemberType memberType;
@@ -61,6 +64,7 @@ class OwnerMember {
     required this.id,
     required this.publicId,
     this.displayName,
+    this.username,
     this.phone,
     this.photoUrl,
     required this.memberType,
@@ -76,6 +80,7 @@ class OwnerMember {
     id: json['id'] as String? ?? '',
     publicId: json['publicId'] as String? ?? '',
     displayName: json['displayName'] as String?,
+    username: json['username'] as String?,
     phone: json['phone'] as String?,
     photoUrl: json['photoUrl'] as String?,
     memberType: OwnerMemberType.fromJson(json['memberType'] as String?),
@@ -261,6 +266,7 @@ class MemberDetail {
   final String id;
   final String publicId;
   final String? displayName;
+  final String? username;
   final String? email;
   final String? phone;
   final String? photoUrl;
@@ -277,6 +283,7 @@ class MemberDetail {
     required this.id,
     required this.publicId,
     this.displayName,
+    this.username,
     this.email,
     this.phone,
     this.photoUrl,
@@ -294,6 +301,7 @@ class MemberDetail {
     id: json['id'] as String? ?? '',
     publicId: json['publicId'] as String? ?? '',
     displayName: json['displayName'] as String?,
+    username: json['username'] as String?,
     email: json['email'] as String?,
     phone: json['phone'] as String?,
     photoUrl: json['photoUrl'] as String?,

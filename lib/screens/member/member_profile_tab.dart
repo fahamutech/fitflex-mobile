@@ -18,6 +18,7 @@ import 'member_shell.dart';
 import 'widgets/checkin_list.dart';
 import 'widgets/membership_card.dart';
 import 'widgets/pass_state.dart';
+import 'widgets/username_sheet.dart';
 import '../../shared/widgets/persona_switcher.dart';
 import '../../shared/widgets/invitations.dart';
 import '../../shared/widgets/verify_identifier.dart';
@@ -139,6 +140,29 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
       } catch (_) {}
       if (mounted) {
         FFSnack.success(context, context.tr('member.profileUpdated'));
+      }
+    }
+  }
+
+  Future<void> _openUsername() async {
+    final data = MemberDataScope.of(context);
+    final me = data.me;
+    final changed = await showUsernameSheet(
+      context,
+      current: me?.username,
+      changeableAt: me?.usernameChangeableAt,
+    );
+    if (changed == true && mounted) {
+      try {
+        await _refreshMemberData(data);
+      } catch (_) {}
+      if (mounted) {
+        FFSnack.success(
+          context,
+          context.tr(
+            data.me?.username == null ? 'username.cleared' : 'username.saved',
+          ),
+        );
       }
     }
   }
@@ -526,6 +550,17 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
           title: context.tr('member.editDetails'),
           onTap: _openEditDetails,
         ),
+        // Only when the server has the feature on (it sends the fields).
+        if (me?.usernameEnabled == true)
+          FFActionTile(
+            key: const Key('profile-username'),
+            icon: Icons.alternate_email,
+            title: context.tr('username.title'),
+            subtitle: (me?.username ?? '').isEmpty
+                ? context.tr('username.chooseSubtitle')
+                : '@${me!.username}',
+            onTap: _openUsername,
+          ),
         FFActionTile(
           icon: Icons.flag_outlined,
           title: context.tr('member.changeGoals'),

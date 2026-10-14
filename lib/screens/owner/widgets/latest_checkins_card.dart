@@ -32,11 +32,15 @@ String checkinPlanLabel(BuildContext context, Map<String, dynamic> c) {
 /// Who checked in: their name when the server sent one, else the public ID.
 String checkinVisitorLabel(Map<String, dynamic> c) {
   final name = c['displayName']?.toString().trim();
-  if (name != null && name.isNotEmpty) return name;
-  return c['memberPublicId']?.toString() ??
-      c['memberName']?.toString() ??
-      c['memberId']?.toString() ??
-      '';
+  final handle = c['username']?.toString().trim();
+  final base = (name != null && name.isNotEmpty)
+      ? name
+      : (c['memberPublicId']?.toString() ??
+            c['memberName']?.toString() ??
+            c['memberId']?.toString() ??
+            '');
+  // A gym sees the name with the member's username beside it.
+  return (handle != null && handle.isNotEmpty) ? '$base (@$handle)' : base;
 }
 
 class LatestCheckinsCard extends StatefulWidget {

@@ -22,6 +22,7 @@ class MemberListTile extends StatelessWidget {
     final theme = Theme.of(context);
     final daysLeft = member.daysLeft;
     final subtitleParts = <String>[
+      if ((member.username ?? '').isNotEmpty) '@${member.username}',
       member.memberType.label(context),
       if (member.tier != null && member.tier!.isNotEmpty)
         _capitalize(member.tier!),
