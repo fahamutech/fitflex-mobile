@@ -1,0 +1,55 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:fitflexmobile/shared/splash/kinetic_splash.dart';
+
+Widget _host({required bool enabled, bool reduce = false}) => MaterialApp(
+  home: MediaQuery(
+    data: MediaQueryData(disableAnimations: reduce),
+    child: KineticSplashGate(
+      enabled: enabled,
+      tagline: 'Stronger Together',
+      child: const Scaffold(body: Text('HOME')),
+    ),
+  ),
+);
+
+void main() {
+  testWidgets('plays over the app, then removes itself', (tester) async {
+    await tester.pumpWidget(_host(enabled: true));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byType(KineticLogo), findsOneWidget);
+    expect(find.text('HOME'), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 1800));
+    expect(find.text('Stronger Together'), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 1500));
+    await tester.pumpAndSettle();
+    expect(find.byType(KineticLogo), findsNothing);
+    expect(find.text('HOME'), findsOneWidget);
+  });
+
+  testWidgets('tap skips the splash', (tester) async {
+    await tester.pumpWidget(_host(enabled: true));
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.tapAt(tester.getCenter(find.byType(KineticSplashGate)));
+    await tester.pump();
+    expect(find.byType(KineticLogo), findsNothing);
+  });
+
+  testWidgets('disabled shows the app straight away', (tester) async {
+    await tester.pumpWidget(_host(enabled: false));
+    expect(find.byType(KineticLogo), findsNothing);
+    expect(find.text('HOME'), findsOneWidget);
+  });
+
+  testWidgets('reduce motion: static logo then gone, no animation', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_host(enabled: true, reduce: true));
+    await tester.pump();
+    expect(find.byType(KineticLogo), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 800));
+    expect(find.byType(KineticLogo), findsNothing);
+  });
+}

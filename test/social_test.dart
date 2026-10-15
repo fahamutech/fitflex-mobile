@@ -119,6 +119,36 @@ class _Api extends ApiClient {
   };
 
   List<Map<String, dynamic>> outgoing = [];
+
+  Map<String, dynamic> inviteDelivery = {};
+  Map<String, dynamic> lookupDelivery = {'sms': false, 'whatsapp': false};
+
+  @override
+  Future<Map<String, dynamic>> friendLookup({String? email, String? phone}) async {
+    calls.add('lookup:${phone ?? email}');
+    return {
+      'result': {
+        'kind': 'unregistered',
+        'contactType': phone != null ? 'phone' : 'email',
+        'delivery': lookupDelivery,
+      },
+    };
+  }
+
+  @override
+  Future<Map<String, dynamic>> inviteFriend({
+    String? userId,
+    String? email,
+    String? phone,
+    String? locale,
+  }) async {
+    calls.add('invite:${phone ?? email}');
+    return {
+      'invitation': {'id': 'fri_9', 'status': 'pending'},
+      'share': {'text': 'Hi', 'link': 'https://x/y', 'subject': 's'},
+      if (inviteDelivery.isNotEmpty) 'delivery': inviteDelivery,
+    };
+  }
   @override
   Future<Map<String, dynamic>> socialSettings() async => {
     'defaultShare': null,
@@ -408,6 +438,30 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('+255650387211'), findsOneWidget);
+  });
+
+  testWidgets('invite by number: FitFlex sends it when SMS is on', (
+    tester,
+  ) async {
+    _tall(tester);
+    final api = _Api()
+      ..lookupDelivery = {'sms': true, 'whatsapp': false}
+      ..inviteDelivery = {'sms': 'sent'};
+    await tester.pumpWidget(
+      _app(api, const MemberCommunityPage(initialTab: 2)),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('people-search')), '0650387211');
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('FitFlex will send the invitation'),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const Key('friend-invite-share')));
+    await tester.pumpAndSettle();
+    expect(api.calls, contains('invite:0650387211'));
+    expect(find.textContaining('Invitation sent by SMS'), findsOneWidget);
   });
 
   testWidgets('groups: join a listed group, or by code', (tester) async {
