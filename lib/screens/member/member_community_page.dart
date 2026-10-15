@@ -540,8 +540,32 @@ class _PeopleTabState extends State<PeopleTab> {
         locale: locale,
       );
       final share = (r['share'] as Map?)?.cast<String, dynamic>();
-      if (share != null && mounted) {
-        // FitFlex sends nothing: the member picks the app and sends it.
+      final delivery = (r['delivery'] as Map?)?.cast<String, dynamic>() ?? {};
+      final sentBySms = delivery['sms'] == 'sent';
+      final sentByWhatsapp = delivery['whatsapp'] == 'sent';
+      if (sentBySms || sentByWhatsapp) {
+        // FitFlex sent it from its approved sender; "sent" means the
+        // provider accepted it, not that it arrived.
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              t(
+                sentByWhatsapp && sentBySms
+                    ? 'friendInvite.sentBoth'
+                    : sentByWhatsapp
+                    ? 'friendInvite.sentWhatsapp'
+                    : 'friendInvite.sentSms',
+              ),
+            ),
+          ),
+        );
+      } else if (delivery.values.any((v) => v == 'skipped:recently_sent')) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(t('friendInvite.alreadySent'))),
+        );
+      } else if (share != null && mounted) {
+        // Not sent by FitFlex (off, failed or capped): the member picks the
+        // app and sends it themselves.
         await shareFriendInvite(
           context,
           text: share['text'].toString(),
@@ -632,7 +656,15 @@ class _PeopleTabState extends State<PeopleTab> {
           Text(hint, style: theme.textTheme.bodySmall),
           if (!isMember) ...[
             const SizedBox(height: FFTokens.spacing2xs),
-            Text(t('friendInvite.smsNote'), style: theme.textTheme.bodySmall),
+            Text(
+              t(
+                (r['delivery'] as Map?)?['sms'] == true ||
+                        (r['delivery'] as Map?)?['whatsapp'] == true
+                    ? 'friendInvite.fitflexSendsNote'
+                    : 'friendInvite.smsNote',
+              ),
+              style: theme.textTheme.bodySmall,
+            ),
           ],
         ],
       ),
