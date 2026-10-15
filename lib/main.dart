@@ -20,6 +20,7 @@ import 'shared/design_tokens.dart';
 import 'shared/i18n.dart';
 import 'shared/promotion_events.dart';
 import 'shared/push_banner.dart';
+import 'shared/splash/kinetic_splash.dart';
 import 'shared/theme_notifier.dart';
 import 'firebase_options.dart';
 
@@ -301,8 +302,11 @@ class _FitFlexAppState extends State<FitFlexApp> with WidgetsBindingObserver {
                 builder: (context, child) => MediaQuery.withClampedTextScaling(
                   minScaleFactor: 1.0,
                   maxScaleFactor: 1.3,
-                  child: RecoveryBannerHost(
-                    child: child ?? const SizedBox.shrink(),
+                  child: KineticSplashGate(
+                    tagline: widget.locale.t('splash.tagline'),
+                    child: RecoveryBannerHost(
+                      child: child ?? const SizedBox.shrink(),
+                    ),
                   ),
                 ),
               );
