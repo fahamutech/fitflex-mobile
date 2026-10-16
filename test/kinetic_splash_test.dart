@@ -7,7 +7,7 @@ Widget _host({required bool enabled, bool reduce = false}) => MaterialApp(
     data: MediaQueryData(disableAnimations: reduce),
     child: KineticSplashGate(
       enabled: enabled,
-      tagline: 'Stronger Together',
+      tagline: 'Fitness Without Limits',
       child: const Scaffold(body: Text('HOME')),
     ),
   ),
@@ -21,7 +21,7 @@ void main() {
     expect(find.text('HOME'), findsOneWidget);
 
     await tester.pump(const Duration(milliseconds: 1800));
-    expect(find.text('Stronger Together'), findsOneWidget);
+    expect(find.text('Fitness Without Limits'), findsOneWidget);
 
     await tester.pump(const Duration(milliseconds: 1500));
     await tester.pumpAndSettle();

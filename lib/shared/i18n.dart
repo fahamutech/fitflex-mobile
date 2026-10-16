@@ -3241,7 +3241,7 @@ class FFLocale extends ChangeNotifier {
           '“Gym name” will read “FitFlex”: this message is from FitFlex, not a gym.',
       'comms.var.renewal_link': 'Renewal link',
       'push.open': 'Open',
-      'splash.tagline': 'Stronger Together',
+      'splash.tagline': 'Fitness Without Limits',
       'comms.confirm.audience': 'Audience',
       'comms.confirm.when': 'When',
       'comms.confirm.type': 'Type',
