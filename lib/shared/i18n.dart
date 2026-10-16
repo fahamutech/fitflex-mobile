@@ -7222,7 +7222,7 @@ class FFLocale extends ChangeNotifier {
           '“Jina la gym” litasomeka “FitFlex”: ujumbe huu unatoka FitFlex, si gym.',
       'comms.var.renewal_link': 'Kiungo cha kulipia tena',
       'push.open': 'Fungua',
-      'splash.tagline': 'Mazoezi Bila Mipaka',
+      'splash.tagline': 'Pamoja Tuna Nguvu',
       'comms.confirm.audience': 'Walengwa',
       'comms.confirm.when': 'Lini',
       'comms.confirm.type': 'Aina',
