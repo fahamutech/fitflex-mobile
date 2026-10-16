@@ -13,6 +13,7 @@ import '../../shared/i18n.dart';
 import '../../shared/models.dart';
 import '../../shared/tone_theme.dart';
 import '../../shared/widgets/ff_photo_picker_field.dart';
+import '../../shared/widgets/verify_identifier.dart';
 
 /// The translated line for a username reason code, or null for one we don't know.
 String? usernameReasonText(BuildContext context, String? code) {
@@ -40,8 +41,9 @@ Future<bool?> openMemberEditProfile(BuildContext context, MemberMeResponse me) {
 enum _Check { idle, checking, available, unavailable }
 
 /// One page for everything a member can change about themselves: photo,
-/// personal details, phone and email, username, fitness goals and level,
-/// and preferred workout times. One Save writes it all.
+/// personal details, username, fitness goals and level, and preferred
+/// workout times. One Save writes it all. Phone and email are shown but
+/// only change through Contact details, where the new one is verified.
 class MemberEditProfilePage extends StatefulWidget {
   const MemberEditProfilePage({super.key, required this.me});
 
@@ -64,8 +66,6 @@ class MemberEditProfilePage extends StatefulWidget {
 class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _name;
-  late final TextEditingController _phone;
-  late final TextEditingController _email;
   late final TextEditingController _username;
   late final TextEditingController _height;
   late final TextEditingController _weight;
@@ -102,8 +102,6 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
   void initState() {
     super.initState();
     _name = TextEditingController(text: _user.displayName ?? '');
-    _phone = TextEditingController(text: _user.phone ?? '');
-    _email = TextEditingController(text: _user.email ?? '');
     _username = TextEditingController(text: _currentUsername);
     _height = TextEditingController(text: _profile?.heightCm?.toString() ?? '');
     _weight = TextEditingController(text: _profile?.weightKg?.toString() ?? '');
@@ -122,8 +120,6 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
   void dispose() {
     _debounce?.cancel();
     _name.dispose();
-    _phone.dispose();
-    _email.dispose();
     _username.dispose();
     _height.dispose();
     _weight.dispose();
@@ -134,15 +130,6 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
   String? _required(String? v) => (v == null || v.trim().isEmpty)
       ? context.tr('onboarding.required')
       : null;
-
-  String? _emailValid(String? v) {
-    final text = (v ?? '').trim();
-    if (text.isEmpty) return null;
-    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(text)) {
-      return context.tr('member.emailInvalid');
-    }
-    return null;
-  }
 
   // ── Username availability ──
 
@@ -228,8 +215,6 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
     try {
       final payload = <String, dynamic>{
         'displayName': _name.text.trim(),
-        'phone': _phone.text.trim(),
-        'email': _email.text.trim().isEmpty ? null : _email.text.trim(),
         if (_photoUrl != null && _photoUrl!.isNotEmpty) 'photoUrl': _photoUrl,
         'heightCm': _height.text.trim().isEmpty
             ? null
@@ -327,20 +312,16 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
                 textCapitalization: TextCapitalization.words,
               ),
               const SizedBox(height: FFTokens.spacingSm),
-              FFTextField(
-                key: const Key('edit-profile-phone'),
-                controller: _phone,
-                keyboardType: TextInputType.phone,
+              _ContactField(
+                fieldKey: const Key('edit-profile-phone'),
                 label: context.tr('member.phone'),
-                hint: '+255...',
+                value: _user.phone ?? '',
               ),
               const SizedBox(height: FFTokens.spacingSm),
-              FFTextField(
-                key: const Key('edit-profile-email'),
-                controller: _email,
-                keyboardType: TextInputType.emailAddress,
+              _ContactField(
+                fieldKey: const Key('edit-profile-email'),
                 label: context.tr('member.email'),
-                validator: _emailValid,
+                value: _user.email ?? '',
               ),
               const SizedBox(height: FFTokens.spacingSm),
               FFDropdownField<String>(
@@ -543,5 +524,46 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
           ),
         ),
     ];
+  }
+}
+
+/// A phone number or email as it is on the account. Not editable here: a new
+/// one is added and verified under Contact details (when the backend has
+/// identifier verification on), which the field opens on tap.
+class _ContactField extends StatelessWidget {
+  const _ContactField({
+    required this.fieldKey,
+    required this.label,
+    required this.value,
+  });
+
+  final Key fieldKey;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = AppScope.of(context).auth;
+    return ListenableBuilder(
+      listenable: auth,
+      builder: (context, _) {
+        final canChange = auth.identifiersEnabled;
+        return FFTextField(
+          key: fieldKey,
+          initialValue: value,
+          label: label,
+          readOnly: true,
+          helperText: canChange ? context.tr('member.contactChangeHint') : null,
+          suffixIcon: canChange ? const Icon(Icons.chevron_right) : null,
+          onTap: canChange
+              ? () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const ContactDetailsScreen(),
+                  ),
+                )
+              : null,
+        );
+      },
+    );
   }
 }

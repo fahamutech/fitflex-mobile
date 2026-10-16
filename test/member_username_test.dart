@@ -234,10 +234,6 @@ void main() {
       final api = _FakeApi();
       await _pumpPage(tester, api, enabled: false);
       expect(find.byKey(const Key('username-field')), findsNothing);
-      await tester.enterText(
-        find.byKey(const Key('edit-profile-email')),
-        'amina.said@example.com',
-      );
       await tester.ensureVisible(find.byKey(const Key('goal-build_muscle')));
       await tester.tap(find.byKey(const Key('goal-build_muscle')));
       await tester.pump();
@@ -248,8 +244,11 @@ void main() {
       expect(api.profiles, hasLength(1));
       final sent = api.profiles.single;
       expect(sent['displayName'], 'Amina Said');
-      expect(sent['phone'], '+255700000001');
-      expect(sent['email'], 'amina.said@example.com');
+      expect(
+        sent.containsKey('phone') || sent.containsKey('email'),
+        isFalse,
+        reason: 'phone and email only change through verification',
+      );
       expect(
         sent['fitnessGoals'],
         unorderedEquals(['stay_fit', 'build_muscle']),
@@ -262,18 +261,22 @@ void main() {
       expect(api.saved, isEmpty, reason: 'no username change was made');
     });
 
-    testWidgets('a bad email is refused before anything is sent', (
+    testWidgets('phone and email are shown but cannot be typed into', (
       tester,
     ) async {
       final api = _FakeApi();
       await _pumpPage(tester, api, enabled: false);
-      await tester.enterText(
-        find.byKey(const Key('edit-profile-email')),
-        'not-an-email',
-      );
-      await _save(tester);
-      expect(find.text('Enter a valid email address'), findsOneWidget);
-      expect(api.profiles, isEmpty);
+      for (final key in const ['edit-profile-phone', 'edit-profile-email']) {
+        final field = tester.widget<EditableText>(
+          find.descendant(
+            of: find.byKey(Key(key)),
+            matching: find.byType(EditableText),
+          ),
+        );
+        expect(field.readOnly, isTrue, reason: key);
+      }
+      expect(find.text('+255700000001'), findsOneWidget);
+      expect(find.text('amina@example.com'), findsOneWidget);
     });
 
     testWidgets('typing a username checks availability, Save sends it', (

@@ -1636,11 +1636,12 @@ class FFLocale extends ChangeNotifier {
       'member.editDetails': 'Edit personal details',
       'member.editProfile': 'Edit profile',
       'member.editProfileSubtitle':
-          'Details, phone, email, username, goals and workout times',
+          'Details, username, goals and workout times',
       'member.section.personal': 'Personal details',
       'member.section.goals': 'Fitness goals and level',
       'member.section.workoutTimes': 'Preferred workout times',
-      'member.emailInvalid': 'Enter a valid email address',
+      'member.contactChangeHint':
+          'Change it under Mobile number and email, where the new one is verified',
       'username.emptyRemoves': 'Leave blank to remove your username',
       'username.title': 'Username',
       'username.hint': 'Username',
@@ -5691,11 +5692,12 @@ class FFLocale extends ChangeNotifier {
       'member.editDetails': 'Hariri taarifa binafsi',
       'member.editProfile': 'Hariri wasifu',
       'member.editProfileSubtitle':
-          'Taarifa, simu, barua pepe, jina la mtumiaji, malengo na muda wa mazoezi',
+          'Taarifa, jina la mtumiaji, malengo na muda wa mazoezi',
       'member.section.personal': 'Taarifa binafsi',
       'member.section.goals': 'Malengo na kiwango cha mazoezi',
       'member.section.workoutTimes': 'Muda unaopendelea kufanya mazoezi',
-      'member.emailInvalid': 'Weka barua pepe sahihi',
+      'member.contactChangeHint':
+          'Ibadilishe kwenye Namba ya simu na barua pepe, ambapo mpya huthibitishwa',
       'username.emptyRemoves': 'Acha wazi ili kuondoa jina la mtumiaji',
       'username.title': 'Jina la mtumiaji',
       'username.hint': 'Jina la mtumiaji',
