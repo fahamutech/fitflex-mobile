@@ -1634,6 +1634,14 @@ class FFLocale extends ChangeNotifier {
       'member.visitHistory': 'Visit history',
       'member.accountSettings': 'Account settings',
       'member.editDetails': 'Edit personal details',
+      'member.editProfile': 'Edit profile',
+      'member.editProfileSubtitle':
+          'Details, phone, email, username, goals and workout times',
+      'member.section.personal': 'Personal details',
+      'member.section.goals': 'Fitness goals and level',
+      'member.section.workoutTimes': 'Preferred workout times',
+      'member.emailInvalid': 'Enter a valid email address',
+      'username.emptyRemoves': 'Leave blank to remove your username',
       'username.title': 'Username',
       'username.hint': 'Username',
       'username.chooseSubtitle': 'Others see this instead of your name',
@@ -2132,11 +2140,16 @@ class FFLocale extends ChangeNotifier {
       'community.contactNoNumber': 'That contact has no phone number or email.',
       'community.contactsFailed':
           'Could not open your contacts. Type their number or email instead.',
-      'friendInvite.sentSms': 'Invitation sent by SMS from FitFlex. It may take a moment to arrive.',
-      'friendInvite.sentWhatsapp': 'Invitation sent on WhatsApp from FitFlex. It may take a moment to arrive.',
-      'friendInvite.sentBoth': 'Invitation sent by SMS and WhatsApp from FitFlex.',
-      'friendInvite.alreadySent': 'An invitation was already sent to this number recently.',
-      'friendInvite.fitflexSendsNote': 'FitFlex will send the invitation to this number by SMS or WhatsApp from its approved sender name.',
+      'friendInvite.sentSms':
+          'Invitation sent by SMS from FitFlex. It may take a moment to arrive.',
+      'friendInvite.sentWhatsapp':
+          'Invitation sent on WhatsApp from FitFlex. It may take a moment to arrive.',
+      'friendInvite.sentBoth':
+          'Invitation sent by SMS and WhatsApp from FitFlex.',
+      'friendInvite.alreadySent':
+          'An invitation was already sent to this number recently.',
+      'friendInvite.fitflexSendsNote':
+          'FitFlex will send the invitation to this number by SMS or WhatsApp from its approved sender name.',
       'community.results': 'Results',
       'community.noResults': 'No one found. Try their invite code.',
       'community.followsYou': 'Follow you',
@@ -5676,6 +5689,14 @@ class FFLocale extends ChangeNotifier {
       'member.visitHistory': 'Historia ya mahudhurio',
       'member.accountSettings': 'Mipangilio ya akaunti',
       'member.editDetails': 'Hariri taarifa binafsi',
+      'member.editProfile': 'Hariri wasifu',
+      'member.editProfileSubtitle':
+          'Taarifa, simu, barua pepe, jina la mtumiaji, malengo na muda wa mazoezi',
+      'member.section.personal': 'Taarifa binafsi',
+      'member.section.goals': 'Malengo na kiwango cha mazoezi',
+      'member.section.workoutTimes': 'Muda unaopendelea kufanya mazoezi',
+      'member.emailInvalid': 'Weka barua pepe sahihi',
+      'username.emptyRemoves': 'Acha wazi ili kuondoa jina la mtumiaji',
       'username.title': 'Jina la mtumiaji',
       'username.hint': 'Jina la mtumiaji',
       'username.chooseSubtitle': 'Wengine wataona hili badala ya jina lako',
@@ -6177,11 +6198,16 @@ class FFLocale extends ChangeNotifier {
           'Anwani hiyo haina namba ya simu wala barua pepe.',
       'community.contactsFailed':
           'Imeshindwa kufungua anwani zako. Andika namba au barua pepe yake badala yake.',
-      'friendInvite.sentSms': 'Mwaliko umetumwa kwa SMS kutoka FitFlex. Unaweza kuchelewa kidogo kufika.',
-      'friendInvite.sentWhatsapp': 'Mwaliko umetumwa kwa WhatsApp kutoka FitFlex. Unaweza kuchelewa kidogo kufika.',
-      'friendInvite.sentBoth': 'Mwaliko umetumwa kwa SMS na WhatsApp kutoka FitFlex.',
-      'friendInvite.alreadySent': 'Mwaliko ulishatumwa kwa namba hii hivi karibuni.',
-      'friendInvite.fitflexSendsNote': 'FitFlex itatuma mwaliko kwa namba hii kwa SMS au WhatsApp kupitia jina lake lililoidhinishwa.',
+      'friendInvite.sentSms':
+          'Mwaliko umetumwa kwa SMS kutoka FitFlex. Unaweza kuchelewa kidogo kufika.',
+      'friendInvite.sentWhatsapp':
+          'Mwaliko umetumwa kwa WhatsApp kutoka FitFlex. Unaweza kuchelewa kidogo kufika.',
+      'friendInvite.sentBoth':
+          'Mwaliko umetumwa kwa SMS na WhatsApp kutoka FitFlex.',
+      'friendInvite.alreadySent':
+          'Mwaliko ulishatumwa kwa namba hii hivi karibuni.',
+      'friendInvite.fitflexSendsNote':
+          'FitFlex itatuma mwaliko kwa namba hii kwa SMS au WhatsApp kupitia jina lake lililoidhinishwa.',
       'community.results': 'Matokeo',
       'community.noResults':
           'Hakuna aliyepatikana. Jaribu msimbo wake wa mwaliko.',
