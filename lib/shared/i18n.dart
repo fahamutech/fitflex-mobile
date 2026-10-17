@@ -2150,7 +2150,11 @@ class FFLocale extends ChangeNotifier {
       'friendInvite.alreadySent':
           'An invitation was already sent to this number recently.',
       'friendInvite.fitflexSendsNote':
-          'FitFlex will send the invitation to this number by SMS or WhatsApp from its approved sender name.',
+          'FitFlex will send the invitation to this number on WhatsApp, or by SMS if the number is not on WhatsApp.',
+      'friendInvite.sentBy.whatsapp': 'Sent by FitFlex on WhatsApp',
+      'friendInvite.sentBy.sms': 'Sent by FitFlex by SMS',
+      'friendInvite.sentBy.both': 'Sent by FitFlex on WhatsApp and SMS',
+      'friendInvite.sentBy.smsInstead': 'Not on WhatsApp, so FitFlex sent an SMS',
       'community.results': 'Results',
       'community.noResults': 'No one found. Try their invite code.',
       'community.followsYou': 'Follow you',
@@ -6209,7 +6213,11 @@ class FFLocale extends ChangeNotifier {
       'friendInvite.alreadySent':
           'Mwaliko ulishatumwa kwa namba hii hivi karibuni.',
       'friendInvite.fitflexSendsNote':
-          'FitFlex itatuma mwaliko kwa namba hii kwa SMS au WhatsApp kupitia jina lake lililoidhinishwa.',
+          'FitFlex itatuma mwaliko kwa namba hii kwa WhatsApp, au kwa SMS kama namba haipo WhatsApp.',
+      'friendInvite.sentBy.whatsapp': 'Imetumwa na FitFlex kwa WhatsApp',
+      'friendInvite.sentBy.sms': 'Imetumwa na FitFlex kwa SMS',
+      'friendInvite.sentBy.both': 'Imetumwa na FitFlex kwa WhatsApp na SMS',
+      'friendInvite.sentBy.smsInstead': 'Hayupo WhatsApp, kwa hiyo FitFlex ilituma SMS',
       'community.results': 'Matokeo',
       'community.noResults':
           'Hakuna aliyepatikana. Jaribu msimbo wake wa mwaliko.',
