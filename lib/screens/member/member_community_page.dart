@@ -681,6 +681,22 @@ class _PeopleTabState extends State<PeopleTab> {
     return t('friendInvite.linkShared.${i['contactType'] ?? 'email'}');
   }
 
+  /// "Sent by FitFlex on WhatsApp · 17 Oct", or SMS, or "no WhatsApp, sent by SMS".
+  String? _sentLine(Map<String, dynamic> i, String Function(String) t) {
+    final by = [for (final c in (i['sentBy'] as List? ?? const [])) c.toString()];
+    if (by.isEmpty) return null;
+    final at = DateTime.tryParse(i['sentAt']?.toString() ?? '')?.toLocal();
+    final when = at == null ? '' : ' · ${DateFormat('d MMM').format(at)}';
+    final key = i['whatsappFailed'] == true && by.contains('sms')
+        ? 'friendInvite.sentBy.smsInstead'
+        : by.contains('whatsapp') && by.contains('sms')
+        ? 'friendInvite.sentBy.both'
+        : by.contains('whatsapp')
+        ? 'friendInvite.sentBy.whatsapp'
+        : 'friendInvite.sentBy.sms';
+    return '${t(key)}$when';
+  }
+
   Widget _sentRequestsSection() {
     final t = context.tr;
     final api = AppScope.of(context).api;
@@ -707,6 +723,13 @@ class _PeopleTabState extends State<PeopleTab> {
                           (i['name']?.toString() ?? '').isNotEmpty)
                         Text(
                           i['contact'].toString(),
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      // FitFlex sent it for you: say how, and when.
+                      if (_sentLine(i, t) case final line?)
+                        Text(
+                          line,
+                          key: Key('sent-by-${i['id']}'),
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                     ],
