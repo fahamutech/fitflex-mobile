@@ -464,6 +464,47 @@ void main() {
     expect(find.textContaining('Invitation sent by SMS'), findsOneWidget);
   });
 
+  testWidgets('sent requests say how FitFlex sent them', (tester) async {
+    _tall(tester);
+    final api = _Api()
+      ..outgoing = [
+        {
+          'id': 'fri_a',
+          'status': 'pending',
+          'contactType': 'phone',
+          'contact': '+255650387211',
+          'sentBy': ['whatsapp'],
+          'sentAt': '2026-10-17T08:00:00.000Z',
+        },
+        {
+          'id': 'fri_b',
+          'status': 'pending',
+          'contactType': 'phone',
+          'contact': '+255650387299',
+          'sentBy': ['whatsapp', 'sms'],
+          'whatsappFailed': true,
+          'sentAt': '2026-10-17T08:00:00.000Z',
+        },
+      ];
+    await tester.pumpWidget(
+      _app(api, const MemberCommunityPage(initialTab: 2)),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('sent-fri_b')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(
+      find.textContaining('Sent by FitFlex on WhatsApp'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('Not on WhatsApp, so FitFlex sent an SMS'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('groups: join a listed group, or by code', (tester) async {
     _tall(tester);
     final api = _Api();

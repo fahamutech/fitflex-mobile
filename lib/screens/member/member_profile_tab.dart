@@ -5,7 +5,6 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../app_scope.dart';
 import '../../router.dart';
-import '../../shared/api_client.dart';
 import '../../shared/api_error_message.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
@@ -13,12 +12,11 @@ import '../../shared/firebase_auth_service.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
 import '../../shared/pin_credentials.dart';
-import '../../shared/widgets/profile_form_page.dart';
 import 'member_shell.dart';
 import 'widgets/checkin_list.dart';
 import 'widgets/membership_card.dart';
 import 'widgets/pass_state.dart';
-import 'widgets/username_sheet.dart';
+import 'member_edit_profile_page.dart';
 import '../../shared/widgets/persona_switcher.dart';
 import '../../shared/widgets/invitations.dart';
 import '../../shared/widgets/verify_identifier.dart';
@@ -32,16 +30,6 @@ class MemberProfileTab extends StatefulWidget {
 }
 
 class _MemberProfileTabState extends State<MemberProfileTab> {
-  static const _goals = [
-    'lose_weight',
-    'build_muscle',
-    'stay_fit',
-    'improve_flexibility',
-    'stress_relief',
-  ];
-  static const _levels = ['beginner', 'intermediate', 'advanced'];
-  static const _timeOptions = ['morning', 'afternoon', 'evening'];
-
   String? _pinError(String value) {
     if (value.trim().isEmpty) return context.tr('onboarding.required');
     if (!RegExp(r'^\d+$').hasMatch(value)) {
@@ -79,25 +67,6 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
     }
   }
 
-  Future<void> _saveMemberProfilePatch(
-    Map<String, dynamic> payload, {
-    required String successMessage,
-  }) async {
-    final data = MemberDataScope.of(context);
-    try {
-      await AppScope.of(context).api.updateProfile(payload);
-      if (!mounted) return;
-      await _refreshMemberData(data);
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(successMessage)));
-    } on ApiException catch (e) {
-      if (!mounted) return;
-      FFSnack.error(context, apiErrorMessage(FFLocaleScope.of(context), e));
-    }
-  }
-
   Future<void> _confirmSignOut() async {
     final confirmed = await showFFConfirmDialog(
       context,
@@ -113,56 +82,17 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
     context.go(AppRoutes.language);
   }
 
-  Future<void> _openEditDetails() async {
+  Future<void> _openEditProfile() async {
     final data = MemberDataScope.of(context);
     final me = data.me;
-    final user = <String, dynamic>{
-      'userType': 'member',
-      'displayName': me?.user.displayName,
-      'email': me?.user.email,
-      'phone': me?.user.phone,
-      'photoUrl': me?.user.photoUrl,
-      'memberProfile': {
-        'heightCm': me?.user.memberProfile?.heightCm,
-        'weightKg': me?.user.memberProfile?.weightKg,
-        'dateOfBirth': me?.user.memberProfile?.dateOfBirth,
-        'gender': me?.user.memberProfile?.gender,
-      },
-    };
-    final saved = await openProfileForm(
-      context,
-      title: context.tr('member.editDetails'),
-      initialUser: user,
-    );
+    if (me == null) return;
+    final saved = await openMemberEditProfile(context, me);
     if (saved == true && mounted) {
       try {
         await _refreshMemberData(data);
       } catch (_) {}
       if (mounted) {
         FFSnack.success(context, context.tr('member.profileUpdated'));
-      }
-    }
-  }
-
-  Future<void> _openUsername() async {
-    final data = MemberDataScope.of(context);
-    final me = data.me;
-    final changed = await showUsernameSheet(
-      context,
-      current: me?.username,
-      changeableAt: me?.usernameChangeableAt,
-    );
-    if (changed == true && mounted) {
-      try {
-        await _refreshMemberData(data);
-      } catch (_) {}
-      if (mounted) {
-        FFSnack.success(
-          context,
-          context.tr(
-            data.me?.username == null ? 'username.cleared' : 'username.saved',
-          ),
-        );
       }
     }
   }
@@ -311,142 +241,11 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
     confirmPinCtrl.dispose();
   }
 
-  Future<void> _openGoalsDialog() async {
-    final data = MemberDataScope.of(context);
-    final profile = data.me?.user.memberProfile;
-    final selected = <String>{
-      ...profile?.fitnessGoals ?? const [],
-      if ((profile?.fitnessGoal ?? '').isNotEmpty) profile!.fitnessGoal!,
-    };
-    var level = profile?.fitnessLevel;
-    final saved = await showDialog<Map<String, dynamic>>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: Text(context.tr('member.changeGoals')),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: _goals.map((goal) {
-                    final isSelected = selected.contains(goal);
-                    return FilterChip(
-                      label: Text(context.tr('onboarding.goal_$goal')),
-                      selected: isSelected,
-                      selectedColor: Theme.of(
-                        context,
-                      ).colorScheme.primary.withValues(alpha: 0.1),
-                      checkmarkColor: Theme.of(context).colorScheme.primary,
-                      onSelected: (value) => setDialogState(() {
-                        if (value) {
-                          selected.add(goal);
-                        } else {
-                          selected.remove(goal);
-                        }
-                      }),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  initialValue: level,
-                  decoration: InputDecoration(
-                    labelText: context.tr('onboarding.fitnessLevel'),
-                    border: const OutlineInputBorder(),
-                  ),
-                  items: _levels
-                      .map(
-                        (item) => DropdownMenuItem(
-                          value: item,
-                          child: Text(context.tr('onboarding.level_$item')),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) => setDialogState(() => level = value),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text(context.tr('member.cancel')),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx, {
-                'fitnessGoals': selected.toList(),
-                'fitnessLevel': level,
-              }),
-              child: Text(context.tr('member.save')),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (saved == null || !mounted) return;
-    await _saveMemberProfilePatch(
-      saved,
-      successMessage: context.tr('member.profileUpdated'),
-    );
-  }
-
-  Future<void> _openWorkoutPreferencesDialog() async {
-    final data = MemberDataScope.of(context);
-    final selected = <String>{
-      ...data.me?.user.memberProfile?.preferredWorkoutTimes ?? const [],
-    };
-    final saved = await showDialog<List<String>>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: Text(context.tr('member.workoutPreferences')),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: _timeOptions.map((time) {
-              return CheckboxListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(context.tr('onboarding.time_$time')),
-                value: selected.contains(time),
-                onChanged: (value) => setDialogState(() {
-                  if (value == true) {
-                    selected.add(time);
-                  } else {
-                    selected.remove(time);
-                  }
-                }),
-              );
-            }).toList(),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text(context.tr('member.cancel')),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx, selected.toList()),
-              child: Text(context.tr('member.save')),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (saved == null || !mounted) return;
-    await _saveMemberProfilePatch({
-      'preferredWorkoutTimes': saved,
-    }, successMessage: context.tr('member.profileUpdated'));
-  }
-
   @override
   Widget build(BuildContext context) {
     final data = MemberDataScope.of(context);
     final me = data.me;
     final displayName = me?.user.resolvedName ?? 'Member';
-    final visitsUsed = me?.visitsUsed ?? 0;
-    final visitCap = me?.visitCap;
     final passState = passStateFor(data);
     final stateMessage = passState == PassState.active
         ? null
@@ -513,32 +312,6 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
         MembershipCard(subscription: data.subscription),
         const SizedBox(height: 12),
 
-        // Stats
-        if (data.subscription?.isDirect == true)
-          FFMetricCard(
-            label: context.tr('member.membershipDaysLeft'),
-            value: '${(data.subscription?.daysLeft ?? 0).clamp(0, 99999)}',
-          )
-        else
-          Row(
-            children: [
-              Expanded(
-                child: FFMetricCard(
-                  label: context.tr('home.visits'),
-                  value: '$visitsUsed',
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: FFMetricCard(
-                  label: context.tr('pass.visits'),
-                  value: visitCap == null ? '-' : '$visitCap',
-                ),
-              ),
-            ],
-          ),
-        const SizedBox(height: 12),
-
         // Visit history
         FFSectionTitle(context.tr('member.visitHistory')),
         CheckinList(checkins: data.checkins, limit: 8),
@@ -546,25 +319,11 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
         // Settings
         FFSectionTitle(context.tr('member.accountSettings')),
         FFActionTile(
+          key: const Key('profile-edit'),
           icon: Icons.edit,
-          title: context.tr('member.editDetails'),
-          onTap: _openEditDetails,
-        ),
-        // Only when the server has the feature on (it sends the fields).
-        if (me?.usernameEnabled == true)
-          FFActionTile(
-            key: const Key('profile-username'),
-            icon: Icons.alternate_email,
-            title: context.tr('username.title'),
-            subtitle: (me?.username ?? '').isEmpty
-                ? context.tr('username.chooseSubtitle')
-                : '@${me!.username}',
-            onTap: _openUsername,
-          ),
-        FFActionTile(
-          icon: Icons.flag_outlined,
-          title: context.tr('member.changeGoals'),
-          onTap: _openGoalsDialog,
+          title: context.tr('member.editProfile'),
+          subtitle: context.tr('member.editProfileSubtitle'),
+          onTap: _openEditProfile,
         ),
         FFActionTile(
           key: const Key('profile-community'),
@@ -592,11 +351,6 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
           icon: Icons.privacy_tip_outlined,
           title: context.tr('privacy.title'),
           onTap: () => context.go(AppRoutes.memberPrivacy),
-        ),
-        FFActionTile(
-          icon: Icons.schedule_outlined,
-          title: context.tr('member.workoutPreferences'),
-          onTap: _openWorkoutPreferencesDialog,
         ),
         FFActionTile(
           icon: Icons.lock_outline,

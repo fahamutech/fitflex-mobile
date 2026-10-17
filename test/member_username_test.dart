@@ -1,5 +1,5 @@
 import 'package:fitflexmobile/app_scope.dart';
-import 'package:fitflexmobile/screens/member/widgets/username_sheet.dart';
+import 'package:fitflexmobile/screens/member/member_edit_profile_page.dart';
 import 'package:fitflexmobile/screens/owner/members/data/member_models.dart';
 import 'package:fitflexmobile/screens/owner/members/widgets/member_list_tile.dart';
 import 'package:fitflexmobile/screens/owner/widgets/latest_checkins_card.dart';
@@ -24,6 +24,15 @@ class _FakeApi extends ApiClient {
   final List<String> saved = [];
   int cleared = 0;
   final List<String> checked = [];
+  final List<Map<String, dynamic>> profiles = [];
+
+  @override
+  Future<Map<String, dynamic>> updateProfile(
+    Map<String, dynamic> profile,
+  ) async {
+    profiles.add(profile);
+    return {'user': {}};
+  }
 
   @override
   Future<Map<String, dynamic>> usernameAvailable(String handle) async {
@@ -46,12 +55,39 @@ class _FakeApi extends ApiClient {
   }
 }
 
-Future<void> _pumpSheet(
+MemberMeResponse _me({
+  String? current,
+  DateTime? changeableAt,
+  bool enabled = true,
+}) => MemberMeResponse.fromJson({
+  'user': {
+    'id': 'u1',
+    'displayName': 'Amina Said',
+    'phone': '+255700000001',
+    'email': 'amina@example.com',
+    'memberProfile': {
+      'fitnessGoals': ['stay_fit'],
+      'fitnessLevel': 'beginner',
+      'preferredWorkoutTimes': ['morning'],
+    },
+  },
+  if (enabled) 'username': current,
+  if (enabled && changeableAt != null)
+    'usernameChangeableAt': changeableAt.toIso8601String(),
+});
+
+Future<void> _pumpPage(
   WidgetTester tester,
   _FakeApi api, {
   String? current,
   DateTime? changeableAt,
+  bool enabled = true,
 }) async {
+  // The page is one long list; a tall viewport keeps every field built.
+  tester.view.physicalSize = const Size(800, 3200);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
   final loc = FFLocale();
   await tester.pumpWidget(
     AppScope(
@@ -67,12 +103,11 @@ Future<void> _pumpSheet(
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-          home: Scaffold(
-            body: SingleChildScrollView(
-              child: UsernameSheet(
-                current: current,
-                changeableAt: changeableAt,
-              ),
+          home: MemberEditProfilePage(
+            me: _me(
+              current: current,
+              changeableAt: changeableAt,
+              enabled: enabled,
             ),
           ),
         ),
@@ -83,17 +118,17 @@ Future<void> _pumpSheet(
 }
 
 Future<void> _type(WidgetTester tester, String text) async {
+  await tester.ensureVisible(find.byKey(const Key('username-field')));
   await tester.enterText(find.byKey(const Key('username-field')), text);
   await tester.pump(const Duration(milliseconds: 500));
   await tester.pump();
 }
 
-FilledButton _saveButton(WidgetTester tester) => tester.widget<FilledButton>(
-  find.descendant(
-    of: find.byKey(const Key('username-save')),
-    matching: find.byType(FilledButton),
-  ),
-);
+Future<void> _save(WidgetTester tester) async {
+  await tester.tap(find.byKey(const Key('edit-profile-save')));
+  await tester.pump();
+  await tester.pump();
+}
 
 void main() {
   group('parsing', () {
@@ -192,57 +227,116 @@ void main() {
     });
   });
 
-  group('UsernameSheet', () {
-    testWidgets('typing checks availability, then Save is enabled', (
+  group('MemberEditProfilePage', () {
+    testWidgets('one Save sends details, goals and workout times together', (
       tester,
     ) async {
       final api = _FakeApi();
-      await _pumpSheet(tester, api);
+      await _pumpPage(tester, api, enabled: false);
+      expect(find.byKey(const Key('username-field')), findsNothing);
+      await tester.ensureVisible(find.byKey(const Key('goal-build_muscle')));
+      await tester.tap(find.byKey(const Key('goal-build_muscle')));
+      await tester.pump();
+      await tester.ensureVisible(find.byKey(const Key('time-evening')));
+      await tester.tap(find.byKey(const Key('time-evening')));
+      await tester.pump();
+      await _save(tester);
+      expect(api.profiles, hasLength(1));
+      final sent = api.profiles.single;
+      expect(sent['displayName'], 'Amina Said');
       expect(
-        _saveButton(tester).onPressed,
-        isNull,
-        reason: 'nothing typed yet',
+        sent.containsKey('phone') || sent.containsKey('email'),
+        isFalse,
+        reason: 'phone and email only change through verification',
       );
+      expect(
+        sent['fitnessGoals'],
+        unorderedEquals(['stay_fit', 'build_muscle']),
+      );
+      expect(sent['fitnessLevel'], 'beginner');
+      expect(
+        sent['preferredWorkoutTimes'],
+        unorderedEquals(['morning', 'evening']),
+      );
+      expect(api.saved, isEmpty, reason: 'no username change was made');
+    });
+
+    testWidgets('phone and email are shown but cannot be typed into', (
+      tester,
+    ) async {
+      final api = _FakeApi();
+      await _pumpPage(tester, api, enabled: false);
+      for (final key in const ['edit-profile-phone', 'edit-profile-email']) {
+        final field = tester.widget<EditableText>(
+          find.descendant(
+            of: find.byKey(Key(key)),
+            matching: find.byType(EditableText),
+          ),
+        );
+        expect(field.readOnly, isTrue, reason: key);
+      }
+      expect(find.text('+255700000001'), findsOneWidget);
+      expect(find.text('amina@example.com'), findsOneWidget);
+    });
+
+    testWidgets('typing a username checks availability, Save sends it', (
+      tester,
+    ) async {
+      final api = _FakeApi();
+      await _pumpPage(tester, api);
       await _type(tester, 'amina_k');
       expect(api.checked, ['amina_k']);
       expect(find.text('Available'), findsOneWidget);
-      expect(_saveButton(tester).onPressed, isNotNull);
+      await _save(tester);
+      expect(api.profiles, hasLength(1));
+      expect(api.saved, ['amina_k']);
     });
 
-    testWidgets('a taken name says so and cannot be saved', (tester) async {
+    testWidgets('a taken name says so and blocks Save', (tester) async {
       final api = _FakeApi(taken: {'juma99'});
-      await _pumpSheet(tester, api);
+      await _pumpPage(tester, api);
       await _type(tester, 'Juma99');
       expect(find.text('Already taken'), findsOneWidget);
-      expect(_saveButton(tester).onPressed, isNull);
+      await _save(tester);
+      expect(api.profiles, isEmpty);
+      expect(api.saved, isEmpty);
     });
 
     testWidgets('saving sends the handle without any @', (tester) async {
       final api = _FakeApi();
-      await _pumpSheet(tester, api);
+      await _pumpPage(tester, api);
       await _type(tester, '@amina.k');
-      await tester.tap(find.byKey(const Key('username-save')));
-      await tester.pump();
+      await _save(tester);
       expect(api.saved, ['amina.k']);
     });
 
     testWidgets(
-      'within the 30-day limit: field is locked and the date is shown',
+      'within the 30-day limit: field is locked, the rest still saves',
       (tester) async {
         final api = _FakeApi();
-        await _pumpSheet(
+        await _pumpPage(
           tester,
           api,
           current: 'amina_k',
           changeableAt: DateTime.now().add(const Duration(days: 10)),
         );
+        await tester.ensureVisible(find.byKey(const Key('username-cooldown')));
         expect(find.byKey(const Key('username-cooldown')), findsOneWidget);
         expect(
           find.textContaining('You can change it again on'),
           findsOneWidget,
         );
-        expect(_saveButton(tester).onPressed, isNull);
-        expect(find.byKey(const Key('username-clear')), findsNothing);
+        final field = tester.widget<TextFormField>(
+          find.descendant(
+            of: find.byKey(const Key('username-field')),
+            matching: find.byType(TextFormField),
+          ),
+        );
+        expect(field.enabled, isFalse);
+        await _save(tester);
+        expect(api.profiles, hasLength(1));
+        expect(api.saved, isEmpty);
+        expect(api.cleared, 0);
       },
     );
 
@@ -252,21 +346,23 @@ void main() {
       final api = _FakeApi(
         setError: ApiException(400, {'error': 'username_reserved'}),
       );
-      await _pumpSheet(tester, api);
+      await _pumpPage(tester, api);
       await _type(tester, 'helper_x');
-      await tester.tap(find.byKey(const Key('username-save')));
-      await tester.pump();
-      await tester.pump();
+      await _save(tester);
+      await tester.ensureVisible(find.byKey(const Key('username-status')));
       expect(find.text("This name can't be used"), findsOneWidget);
       expect(find.textContaining('username_reserved'), findsNothing);
     });
 
-    testWidgets('Remove clears an existing username', (tester) async {
+    testWidgets('clearing the field removes an existing username', (
+      tester,
+    ) async {
       final api = _FakeApi();
-      await _pumpSheet(tester, api, current: 'amina_k');
-      await tester.tap(find.byKey(const Key('username-clear')));
-      await tester.pump();
+      await _pumpPage(tester, api, current: 'amina_k');
+      await _type(tester, '');
+      await _save(tester);
       expect(api.cleared, 1);
+      expect(api.saved, isEmpty);
     });
   });
 

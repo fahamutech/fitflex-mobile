@@ -6,9 +6,9 @@ import '../api_error_message.dart';
 import '../components/components.dart';
 import '../design_tokens.dart';
 import '../i18n.dart';
-import 'ff_photo_picker_field.dart';
 
-/// Fullscreen profile editor + sign-out. Used by gym owners and trainers.
+/// Fullscreen profile editor + sign-out for gym owners. Members use
+/// [MemberEditProfilePage] instead.
 class ProfileFormPage extends StatefulWidget {
   final String title;
   final Map<String, dynamic> initialUser;
@@ -29,14 +29,9 @@ class _ProfileFormPageState extends State<ProfileFormPage> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _name;
   late final TextEditingController _phone;
-  late final TextEditingController _height;
-  late final TextEditingController _weight;
-  late final TextEditingController _dateOfBirth;
-  late String _gender;
   String? _photoUrl;
   bool _busy = false;
   String? _error;
-  bool get _isMember => widget.initialUser['userType']?.toString() == 'member';
 
   @override
   void initState() {
@@ -48,26 +43,12 @@ class _ProfileFormPageState extends State<ProfileFormPage> {
       text: widget.initialUser['phone']?.toString() ?? '',
     );
     _photoUrl = widget.initialUser['photoUrl']?.toString();
-    final profile = widget.initialUser['memberProfile'] as Map? ?? const {};
-    _height = TextEditingController(
-      text: profile['heightCm']?.toString() ?? '',
-    );
-    _weight = TextEditingController(
-      text: profile['weightKg']?.toString() ?? '',
-    );
-    _dateOfBirth = TextEditingController(
-      text: profile['dateOfBirth']?.toString() ?? '',
-    );
-    _gender = profile['gender']?.toString() ?? '';
   }
 
   @override
   void dispose() {
     _name.dispose();
     _phone.dispose();
-    _height.dispose();
-    _weight.dispose();
-    _dateOfBirth.dispose();
     super.dispose();
   }
 
@@ -87,20 +68,6 @@ class _ProfileFormPageState extends State<ProfileFormPage> {
         'phone': _phone.text.trim(),
         if (_photoUrl != null && _photoUrl!.isNotEmpty) 'photoUrl': _photoUrl,
       };
-      if (_isMember) {
-        payload.addAll({
-          'heightCm': _height.text.trim().isEmpty
-              ? null
-              : num.tryParse(_height.text.trim()),
-          'weightKg': _weight.text.trim().isEmpty
-              ? null
-              : num.tryParse(_weight.text.trim()),
-          'dateOfBirth': _dateOfBirth.text.trim().isEmpty
-              ? null
-              : _dateOfBirth.text.trim(),
-          'gender': _gender.isEmpty ? null : _gender,
-        });
-      }
       await AppScope.of(context).api.updateProfile(payload);
       if (!mounted) return;
       Navigator.of(context).pop(true);
@@ -143,15 +110,6 @@ class _ProfileFormPageState extends State<ProfileFormPage> {
           child: ListView(
             padding: const EdgeInsets.all(FFTokens.spacingLg),
             children: [
-              if (_isMember) ...[
-                Center(
-                  child: FFPhotoPickerField(
-                    value: _photoUrl,
-                    onChanged: (value) => setState(() => _photoUrl = value),
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
               FFTextField(
                 controller: _name,
                 label: context.tr('ownerReg.displayName'),
@@ -165,56 +123,11 @@ class _ProfileFormPageState extends State<ProfileFormPage> {
                 hint: '+255...',
               ),
               const SizedBox(height: FFTokens.spacingSm),
-              FFTextField(initialValue: email, enabled: false, label: 'Email'),
-              if (_isMember) ...[
-                const SizedBox(height: FFTokens.spacingSm),
-                FFDropdownField<String>(
-                  value: _gender.isEmpty ? null : _gender,
-                  label: context.tr('onboarding.gender'),
-                  items: [
-                    DropdownMenuItem(
-                      value: 'male',
-                      child: Text(context.tr('onboarding.gender_male')),
-                    ),
-                    DropdownMenuItem(
-                      value: 'female',
-                      child: Text(context.tr('onboarding.gender_female')),
-                    ),
-                    DropdownMenuItem(
-                      value: 'other',
-                      child: Text(context.tr('onboarding.gender_other')),
-                    ),
-                  ],
-                  onChanged: (value) => setState(() => _gender = value ?? ''),
-                ),
-                const SizedBox(height: FFTokens.spacingSm),
-                FFTextField(
-                  controller: _dateOfBirth,
-                  keyboardType: TextInputType.datetime,
-                  label: context.tr('member.dateOfBirth'),
-                  hint: 'YYYY-MM-DD',
-                ),
-                const SizedBox(height: FFTokens.spacingSm),
-                Row(
-                  children: [
-                    Expanded(
-                      child: FFTextField(
-                        controller: _height,
-                        keyboardType: TextInputType.number,
-                        label: context.tr('member.height'),
-                      ),
-                    ),
-                    const SizedBox(width: FFTokens.spacingSm),
-                    Expanded(
-                      child: FFTextField(
-                        controller: _weight,
-                        keyboardType: TextInputType.number,
-                        label: context.tr('member.weight'),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+              FFTextField(
+                initialValue: email,
+                enabled: false,
+                label: context.tr('member.email'),
+              ),
               if (_error != null)
                 Padding(
                   padding: const EdgeInsets.only(top: FFTokens.spacingSm),
