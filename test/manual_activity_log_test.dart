@@ -14,6 +14,7 @@ import 'package:fitflexmobile/shared/api_client.dart';
 import 'package:fitflexmobile/shared/auth_state.dart';
 import 'package:fitflexmobile/shared/design_tokens.dart';
 import 'package:fitflexmobile/shared/i18n.dart';
+import 'package:fitflexmobile/shared/models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -66,6 +67,7 @@ Future<void> _pumpPage(
   WidgetTester tester, {
   required ManualActivityLog log,
   required MemberData data,
+  MemberLogActivityPage? page,
 }) async {
   tester.view.physicalSize = const Size(1080, 6000);
   tester.view.devicePixelRatio = 3;
@@ -79,7 +81,8 @@ Future<void> _pumpPage(
         routes: [
           GoRoute(
             path: 'log',
-            builder: (_, _) => Scaffold(body: MemberLogActivityPage(now: _now)),
+            builder: (_, _) =>
+                Scaffold(body: page ?? MemberLogActivityPage(now: _now)),
           ),
         ],
       ),
@@ -228,6 +231,17 @@ void main() {
         'steps': 6100,
         'notes': 'Morning loop',
       });
+    });
+
+    test('logged from a gym visit: the gym goes along', () {
+      final d = ManualActivityDraft(
+        type: ActivityType.strength,
+        startedAt: DateTime(2026, 9, 24, 7, 30),
+        durationMinutes: 50,
+        gymId: 'gym_1',
+      );
+      expect(d.toJson()['gymId'], 'gym_1');
+      expect(_walk().toJson().containsKey('gymId'), isFalse);
     });
 
     test('strength: the name leads the notes; no steps or distance', () {
@@ -481,5 +495,38 @@ void main() {
     );
     expect(find.text('Upper body'), findsOneWidget);
     expect(find.text('Manual'), findsOneWidget);
+  });
+
+  testWidgets('from a gym visit: names the gym, starts at check-in, saves it', (
+    tester,
+  ) async {
+    final log = _FakeLog();
+    final data = MemberData()
+      ..checkins = [
+        CheckIn(
+          id: 'ci1',
+          memberId: 'u1',
+          timestamp: DateTime(2026, 9, 24, 6, 40).toUtc().toIso8601String(),
+          gymTier: 'gold',
+          gymId: 'gym_1',
+          gym: Gym.fromJson({'id': 'gym_1', 'name': 'Iron House'}),
+        ),
+      ];
+    await _pumpPage(
+      tester,
+      log: log,
+      data: data,
+      page: MemberLogActivityPage(
+        now: _now,
+        gymId: 'gym_1',
+        startedAt: DateTime(2026, 9, 24, 6, 40),
+      ),
+    );
+    expect(find.text('At Iron House'), findsOneWidget);
+    await tester.enterText(find.byKey(const Key('log-duration')), '50');
+    await tester.tap(find.byKey(const Key('log-save')));
+    await tester.pumpAndSettle();
+    expect(log.drafts.single.gymId, 'gym_1');
+    expect(log.drafts.single.startedAt, DateTime(2026, 9, 24, 6, 30));
   });
 }

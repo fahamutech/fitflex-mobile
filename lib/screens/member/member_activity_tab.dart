@@ -15,6 +15,7 @@ import 'widgets/run_widgets.dart';
 import 'widgets/activity_widgets.dart';
 import 'widgets/challenge_widgets.dart';
 import 'widgets/goal_widgets.dart';
+import 'widgets/gym_visit_tile.dart';
 import 'widgets/progress_section.dart';
 import 'widgets/training_offer.dart';
 import 'widgets/training_widgets.dart';
@@ -117,8 +118,9 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
       today: today,
       activities: activities,
     )!;
-    final recent = activities.take(8).toList();
     final data = MemberDataScope.of(context);
+    // Gym visits sit in the same list, with what was logged during them.
+    final recent = recentTimeline(activities, data.checkins);
     return [
       // Planning lives on the Workouts tab; Overview only surfaces a
       // workout that's actually on for today.
@@ -191,7 +193,13 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
       if (recent.isEmpty)
         FFEmptyState(title: context.tr('activity.noActivity'))
       else
-        ...recent.map((a) => ActivityTimelineTile(activity: a)),
+        for (final e in recent)
+          switch (e) {
+            RecentActivityEntry(:final activity) => ActivityTimelineTile(
+              activity: activity,
+            ),
+            RecentVisitEntry() => GymVisitTile(entry: e),
+          },
     ];
   }
 

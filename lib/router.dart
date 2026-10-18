@@ -839,6 +839,10 @@ GoRouter buildRouter(AuthState auth) {
                   initialType: ActivityType.values
                       .where((t) => t.wire == state.uri.queryParameters['type'])
                       .firstOrNull,
+                  gymId: state.uri.queryParameters['gymId'],
+                  startedAt: DateTime.tryParse(
+                    state.uri.queryParameters['at'] ?? '',
+                  ),
                 ),
               ),
               GoRoute(

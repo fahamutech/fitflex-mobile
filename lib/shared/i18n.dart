@@ -1631,7 +1631,6 @@ class FFLocale extends ChangeNotifier {
       'member.marketplaceSoon': 'Coming soon',
       'member.marketplaceBody':
           'FitFlex shop and gym marketplace features will be available here.',
-      'member.visitHistory': 'Visit history',
       'member.accountSettings': 'Account settings',
       'member.editDetails': 'Edit personal details',
       'member.editProfile': 'Edit profile',
@@ -2418,6 +2417,14 @@ class FFLocale extends ChangeNotifier {
           'Saved as manual activity. It counts toward your goals, streaks and challenges.',
       'logActivity.save': 'Save activity',
       'logActivity.saved': 'Activity logged',
+      'logActivity.atGym': 'At {gym}',
+      'visit.title': 'Gym visit · {gym}',
+      'visit.nothingLogged': 'Nothing logged yet',
+      'visit.logged': '{n} logged',
+      'visit.prompt':
+          'What did you do during this visit? Log it to count it towards your goals.',
+      'visit.log': 'Log what you did',
+      'visit.logAnother': 'Log another activity',
       'logActivity.error.durationRequired':
           'Enter how long it lasted, in minutes.',
       'logActivity.error.durationRange':
@@ -5703,7 +5710,6 @@ class FFLocale extends ChangeNotifier {
       'member.marketplaceSoon': 'Inakuja hivi karibuni',
       'member.marketplaceBody':
           'Vipengele vya duka la FitFlex na soko la gym vitapatikana hapa.',
-      'member.visitHistory': 'Historia ya mahudhurio',
       'member.accountSettings': 'Mipangilio ya akaunti',
       'member.editDetails': 'Hariri taarifa binafsi',
       'member.editProfile': 'Hariri wasifu',
@@ -6497,6 +6503,15 @@ class FFLocale extends ChangeNotifier {
           'Imehifadhiwa kama shughuli uliyoiweka mwenyewe. Inahesabiwa kwenye malengo, mfululizo na challenge zako.',
       'logActivity.save': 'Hifadhi shughuli',
       'logActivity.saved': 'Shughuli imerekodiwa',
+      // TODO(sw-review): visit strings below are drafts for native review.
+      'logActivity.atGym': 'Katika {gym}',
+      'visit.title': 'Ziara ya gym · {gym}',
+      'visit.nothingLogged': 'Hakuna kilichorekodiwa bado',
+      'visit.logged': '{n} zimerekodiwa',
+      'visit.prompt':
+          'Ulifanya nini katika ziara hii? Rekodi ili ihesabiwe kwenye malengo yako.',
+      'visit.log': 'Rekodi ulichofanya',
+      'visit.logAnother': 'Rekodi shughuli nyingine',
       'logActivity.error.durationRequired': 'Weka muda iliochukua, kwa dakika.',
       'logActivity.error.durationRange': 'Muda uwe kati ya dakika 1 na saa 24.',
       'logActivity.error.future': 'Muda huo wa kuanza ni wa baadaye.',
