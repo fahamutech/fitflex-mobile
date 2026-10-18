@@ -1756,6 +1756,31 @@ class ApiClient {
   Future<Map<String, dynamic>> shopCategories() async =>
       await _request('GET', '/shop/categories');
 
+  /// Shop home V2: the sections for the role being shopped as. 404
+  /// `feature_disabled` means the screen falls back to the plain list; 403
+  /// `mode_not_allowed` means this account cannot shop in [mode].
+  Future<Map<String, dynamic>> shopHome({
+    required String mode,
+    String? region,
+    String? city,
+    List<String> recent = const [],
+  }) async {
+    final out = await _request(
+      'GET',
+      _withQuery('/shop/home', {
+        'mode': mode,
+        if (region != null && region.isNotEmpty) 'region': region,
+        if (city != null && city.isNotEmpty) 'city': city,
+        if (recent.isNotEmpty) 'recent': recent.join(','),
+      }),
+    );
+    return Map<String, dynamic>.from(out as Map);
+  }
+
+  /// One shop analytics event (see `ShopEvents`, which decides the fields).
+  Future<void> postShopEvent(Map<String, dynamic> event) async =>
+      await _request('POST', '/shop/events', body: event);
+
   // Shop (D1)
   Future<List<dynamic>> listShopProducts({
     String? category,
