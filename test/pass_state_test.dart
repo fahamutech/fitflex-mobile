@@ -8,6 +8,7 @@ import 'package:fitflexmobile/shared/models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 MemberData _data({
   Map<String, dynamic>? subscription,
@@ -69,12 +70,13 @@ Future<void> _pumpCard(
   WidgetTester tester,
   MemberData data, {
   Widget Function(MemberData)? body,
+  ThemeData? theme,
 }) async {
   await tester.pumpWidget(
     FFLocaleScope(
       notifier: FFLocale(),
       child: MaterialApp(
-        theme: buildTheme(),
+        theme: theme ?? buildTheme(),
         supportedLocales: const [Locale('en'), Locale('sw')],
         localizationsDelegates: const [
           GlobalMaterialLocalizations.delegate,
@@ -259,6 +261,18 @@ void main() {
       await _pumpCard(tester, d, body: qr);
       expect(find.byKey(const Key('qr-state-notice')), findsOneWidget);
       expect(find.text('2 visits left'), findsOneWidget);
+    });
+
+    testWidgets('dark theme: the QR is fixed dark ink on white, not Volt', (
+      tester,
+    ) async {
+      final d = _data(subscription: _pass(), used: 2)..qrToken = 'tok';
+      await _pumpCard(tester, d, body: qr, theme: buildDarkTheme());
+      final qrView = tester.widget<QrImageView>(find.byType(QrImageView));
+      expect(qrView.eyeStyle.color, FFTokens.qrInk);
+      expect(qrView.dataModuleStyle.color, FFTokens.qrInk);
+      expect(qrView.backgroundColor, FFTokens.qrBackground);
+      expect(qrView.eyeStyle.color, isNot(FFTokens.volt));
     });
 
     testWidgets('an active pass shows no notice', (tester) async {

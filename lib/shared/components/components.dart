@@ -18,6 +18,7 @@ export 'ff_remote_image.dart';
 export 'ff_segmented.dart';
 export 'ff_text_field.dart';
 export 'ff_pill.dart';
+export 'ff_qr_code.dart';
 export 'ff_spinner.dart';
 export 'theme_toggle_button.dart';
 export 'ff_gym_unapproved_card.dart';

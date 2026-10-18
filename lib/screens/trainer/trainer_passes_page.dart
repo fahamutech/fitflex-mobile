@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../app_scope.dart';
 import '../../shared/components/components.dart';
@@ -248,7 +247,6 @@ class _TrainerQrPageState extends State<TrainerQrPage> {
 
   @override
   Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
     return Scaffold(
       appBar: AppBar(title: Text(context.tr('trainerPass.qrTitle'))),
       body: ListView(
@@ -266,19 +264,10 @@ class _TrainerQrPageState extends State<TrainerQrPage> {
                     ),
                   )
                 else if (_token != null)
-                  QrImageView(
+                  FFQrCode(
                     key: const Key('trainer-qr'),
                     data: _token!,
                     size: 240,
-                    backgroundColor: Colors.white,
-                    eyeStyle: QrEyeStyle(
-                      eyeShape: QrEyeShape.square,
-                      color: primary,
-                    ),
-                    dataModuleStyle: QrDataModuleStyle(
-                      dataModuleShape: QrDataModuleShape.square,
-                      color: primary,
-                    ),
                   )
                 else
                   const SizedBox(
