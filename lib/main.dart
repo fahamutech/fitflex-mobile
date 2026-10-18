@@ -15,6 +15,7 @@ import 'shared/api_client.dart';
 import 'shared/auth_state.dart';
 import 'shared/friend_invites.dart';
 import 'shared/inbox/inbox_controller.dart';
+import 'shared/pending_org_invite.dart';
 import 'shared/push_service.dart';
 import 'shared/design_tokens.dart';
 import 'shared/i18n.dart';
@@ -25,7 +26,18 @@ import 'shared/theme_notifier.dart';
 import 'firebase_options.dart';
 
 Future<void> main() async {
+  // An organisation invitation link opened in the browser: take the token
+  // out of the address before the router reads it (it is kept on the
+  // device below), so the app opens /invitations with no token in history.
+  final linkToken = kIsWeb ? inviteTokenFromPageUri(Uri.base) : null;
+  if (linkToken != null) showInvitationsWithoutToken();
+
   WidgetsFlutterBinding.ensureInitialized();
+  if (linkToken != null) {
+    await PendingOrgInvite.save(linkToken);
+  } else {
+    await PendingOrgInvite.load();
+  }
   const mockAuth = bool.fromEnvironment('MOCK_AUTH');
 
   // GoRouter uses hash URL strategy by default on web (e.g. /#/member/gyms).
@@ -224,6 +236,8 @@ class _FitFlexAppState extends State<FitFlexApp> with WidgetsBindingObserver {
       _inbox.load();
       _syncLocale();
       _claimKeptInvite();
+      // Only on signing in, not on a persona switch or token refresh.
+      if (_lastToken == null) _openKeptOrgInvite();
     }
     _lastToken = token;
   }
@@ -242,6 +256,16 @@ class _FitFlexAppState extends State<FitFlexApp> with WidgetsBindingObserver {
     } catch (_) {
       // Wrong account, expired or withdrawn: the link page explains if reopened.
     }
+  }
+
+  /// Someone opened an organisation invitation link before signing in:
+  /// open the invitations screen, which takes the kept token. Onboarding,
+  /// approval or persona-choice redirects still win; the token then stays
+  /// kept (a day) until the person reaches the invitations screen.
+  Future<void> _openKeptOrgInvite() async {
+    if (await PendingOrgInvite.peek() == null) return;
+    if (widget.auth.token == null) return;
+    _router.go(AppRoutes.invitations);
   }
 
   @override

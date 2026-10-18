@@ -8,6 +8,7 @@ import '../api_client.dart';
 import '../api_error_message.dart';
 import '../design_tokens.dart';
 import '../i18n.dart';
+import '../pending_org_invite.dart';
 import 'persona_switcher.dart';
 import 'verify_identifier.dart';
 import '../components/components.dart';
@@ -15,8 +16,10 @@ import '../components/components.dart';
 /// Where an invitation link opens (the web build of this app).
 const kInviteLinkBase = 'https://fitflex-af-app.web.app';
 
+/// The token goes after `#`, so browsers never send it to the server (or
+/// its logs); the app keeps it on the device and drops it from the address.
 String inviteLink(String token) =>
-    '$kInviteLinkBase${AppRoutes.invitations}?token=${Uri.encodeQueryComponent(token)}';
+    '$kInviteLinkBase/#${AppRoutes.invitations}?token=${Uri.encodeQueryComponent(token)}';
 
 String inviteRoleLabel(BuildContext context, Object? role) {
   switch (role?.toString()) {
@@ -97,6 +100,11 @@ class _InvitationsScreenState extends State<InvitationsScreen> {
   // Set when the link was sent to a mobile number or email not verified here.
   String? _needsVerified;
 
+  // The link's token: given directly (tests) or kept on the device when the
+  // link was opened. Held here so a retry after verifying can reuse it.
+  String? _token;
+  bool _tokenRead = false;
+
   @override
   void initState() {
     super.initState();
@@ -107,7 +115,13 @@ class _InvitationsScreenState extends State<InvitationsScreen> {
     final scope = AppScope.of(context);
     String? notice;
     String? needsVerified;
-    final token = widget.token;
+    if (!_tokenRead) {
+      _tokenRead = true;
+      final kept = await PendingOrgInvite.take();
+      _token = widget.token ?? kept;
+      if (!mounted) return;
+    }
+    final token = _token;
     if (token != null && token.isNotEmpty) {
       try {
         await scope.api.openInvitation(token);
