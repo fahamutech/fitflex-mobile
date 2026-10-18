@@ -81,7 +81,11 @@ class ShopCategoryTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final lang = FFLocaleScope.of(context).locale.languageCode;
-    final full = category.label.of(lang);
+    // The server's name in this language, else the app's own for the key.
+    final server = lang == 'sw' ? category.label.sw : category.label.en;
+    final full = server.isNotEmpty
+        ? server
+        : shopCategoryText(category.key).of(lang);
     final shortKey = 'shop.cat.short.${category.key}';
     final short = context.tr(shortKey);
     final label = short == shortKey ? full : short;

@@ -12,6 +12,9 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:fitflexmobile/screens/vendor/vendor_home_page.dart';
+import 'package:fitflexmobile/shared/api_client.dart';
+import 'package:fitflexmobile/shared/i18n.dart';
+import 'package:fitflexmobile/shared/promotion_events.dart';
 import 'package:fitflexmobile/shared/formatters.dart';
 import 'package:fitflexmobile/shared/shop_home.dart';
 import 'package:fitflexmobile/shared/widgets/shop_browse_page.dart';
@@ -218,7 +221,10 @@ void main() {
     debugShopHomeV2Override = true;
     ShopEvents.reset();
   });
-  tearDown(() => debugShopHomeV2Override = null);
+  tearDown(() {
+    debugShopHomeV2Override = null;
+    debugShopEventsOverride = null;
+  });
 
   group('sections', () {
     apiTest('render in the server order, with the role sent as mode', (
@@ -229,7 +235,13 @@ void main() {
       await _pump(tester, api);
       expect(_key('shop-home'), findsOneWidget);
       final request = api.only('GET', '/shop/home');
-      expect(request.query, 'mode=member');
+      final query = Uri.splitQueryString(request.query);
+      expect(query['mode'], 'member');
+      // The promotion session, so Featured cards come back with tokens.
+      expect(query['session'], matches(RegExp(r'^[A-Za-z0-9_-]{8,64}$')));
+      // Phase 1 sends no location.
+      expect(query.keys, isNot(contains('region')));
+      expect(query.keys, isNot(contains('city')));
       expect(verticalOrder(tester, ['New arrivals', 'Best sellers', 'Deals']), [
         'Best sellers',
         'Deals',
@@ -246,7 +258,10 @@ void main() {
       ) async {
         _seed(api, home: _home(mode: mode.wire));
         await _pump(tester, api, mode: mode);
-        expect(api.only('GET', '/shop/home').query, 'mode=${mode.wire}');
+        expect(
+          Uri.splitQueryString(api.only('GET', '/shop/home').query)['mode'],
+          mode.wire,
+        );
         expect(_key('shop-home-section-best_sellers'), findsOneWidget);
       });
     }
@@ -726,7 +741,7 @@ void main() {
       expect(find.text('Best sellers'), findsNothing);
       expect(find.text('Virutubisho'), findsOneWidget);
       expect(find.text(host.tr('shop.home.categories')), findsOneWidget);
-      expect(find.text('Ona zote'), findsWidgets);
+      expect(find.text('Tazama zote'), findsWidgets);
       expect(host.tr('shop.home.viewAll'), isNot('View all'));
     });
 
@@ -786,10 +801,22 @@ void main() {
   });
 
   group('events', () {
+    apiTest('nothing is sent while SHOP_EVENTS is off (the default)', (
+      tester,
+      api,
+    ) async {
+      _seed(api, home: _home());
+      final host = await _pump(tester, api);
+      await tapVisible(tester, _key('shop-home-add-p1'));
+      expect(host.snack(host.tr('shop.home.added')), findsOneWidget);
+      expect(api.sent('POST', '/shop/events'), isFalse);
+    });
+
     apiTest('carry only type, section, productId, position and mode', (
       tester,
       api,
     ) async {
+      debugShopEventsOverride = true;
       _seed(api, home: _home());
       final host = await _pump(tester, api);
       await tapVisible(tester, _key('shop-home-add-p1'));
@@ -847,18 +874,251 @@ void main() {
       expect(p1, hasLength(1));
     });
 
-    apiTest('a 404 from /shop/events is tolerated and stops sending', (
+    apiTest('an HTML 404 from /shop/events is tolerated and stops sending', (
       tester,
       api,
     ) async {
+      debugShopEventsOverride = true;
       _seed(api, home: _home());
-      api.fail('POST /shop/events', 404, {'error': 'not_found'});
+      api.onCall(
+        'POST /shop/events',
+        (_) => const RawResponse(404, '<!DOCTYPE html><h1>Not Found</h1>'),
+      );
       final host = await _pump(tester, api);
       final before = api.where('POST', '/shop/events').length;
       expect(before, greaterThan(0));
       await tapVisible(tester, _key('shop-home-add-p1'));
       expect(host.snack(host.tr('shop.home.added')), findsOneWidget);
       expect(api.where('POST', '/shop/events').length, before);
+    });
+  });
+
+  group('review fixes', () {
+    apiTest('an HTML 404 from /shop/home falls back to today\'s shop', (
+      tester,
+      api,
+    ) async {
+      _seed(api);
+      api.onCall(
+        'GET /shop/home',
+        (_) => const RawResponse(
+          404,
+          '<!DOCTYPE html><html><body>Cannot GET /shop/home</body></html>',
+        ),
+      );
+      await _pump(tester, api);
+      expect(_key('shop-home'), findsNothing);
+      expect(_key('shop-product-p1'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    apiTest('403 mode_not_allowed: retried once without mode', (
+      tester,
+      api,
+    ) async {
+      _seed(api);
+      api.onCall(
+        'GET /shop/home',
+        (r) => Uri.splitQueryString(r.query).containsKey('mode')
+            ? const RawResponse(403, '{"error":"mode_not_allowed"}')
+            : _home(),
+      );
+      await _pump(tester, api, mode: ShopHomeMode.owner);
+      final calls = api.where('GET', '/shop/home');
+      expect(calls, hasLength(2));
+      expect(Uri.splitQueryString(calls[0].query)['mode'], 'owner');
+      expect(Uri.splitQueryString(calls[1].query).containsKey('mode'), isFalse);
+      expect(_key('shop-home-section-best_sellers'), findsOneWidget);
+    });
+
+    apiTest(
+      'promotion impressions and clicks carry the token and marketplace',
+      (tester, api) async {
+        final sent = <Map<String, dynamic>>[];
+        PromotionEvents.install(
+          ApiClient(baseUrl: 'http://fixtures.local'),
+          enabled: true,
+          sender: (events) async {
+            sent.addAll(events);
+            return {'accepted': events.length};
+          },
+          flushAt: 1000,
+        );
+        addTearDown(PromotionEvents.reset);
+        final promoted = {
+          ..._whey,
+          'promotion': {
+            'id': 'pr1',
+            'type': 'featured',
+            'label': 'Featured',
+            'token': 'tok_abc123',
+          },
+        };
+        _seed(
+          api,
+          home: _home(
+            sections: [
+              _section('featured', 'Featured', 'Zilizoangaziwa', ['p1']),
+            ],
+            products: {'p1': promoted},
+          ),
+        );
+        await _pump(tester, api);
+        await tapVisible(tester, _key('shop-home-card-p1'));
+        await tester.tap(_key('shop-product-close'));
+        await tester.pumpAndSettle();
+        await PromotionEvents.instance.flush();
+        final types = sent.map((e) => e['type']).toSet();
+        expect(types, containsAll(['impression', 'click']));
+        for (final e in sent.where(
+          (e) => e['type'] == 'impression' || e['type'] == 'click',
+        )) {
+          expect(e['token'], 'tok_abc123');
+          expect(e['placement'], 'marketplace');
+          expect(e['entityId'], 'p1');
+        }
+      },
+    );
+
+    apiTest('View all: hidden with no query and no more; never for recent', (
+      tester,
+      api,
+    ) async {
+      _seed(
+        api,
+        home: _home(
+          sections: [
+            _section('essentials', 'Essentials', 'Bidhaa muhimu', ['p1']),
+            {
+              ..._section('new_arrivals', 'New arrivals', 'Bidhaa mpya', [
+                'p2',
+              ]),
+              'hasMore': true,
+            },
+            _section(
+              'recently_viewed',
+              'Recently viewed',
+              'Ulizotazama',
+              ['p4'],
+              query: {'ids': 'p4'},
+            ),
+          ],
+        ),
+      );
+      await _pump(tester, api);
+      expect(_key('shop-home-viewall-essentials'), findsNothing);
+      expect(_key('shop-home-viewall-new_arrivals'), findsOneWidget);
+      expect(_key('shop-home-viewall-recently_viewed'), findsNothing);
+    });
+
+    apiTest('Deals View all matches the server: 0 < sale price < price', (
+      tester,
+      api,
+    ) async {
+      final zero = _p('p5', 'Zero Sale Band', price: 20000, discount: 0);
+      final notLower = _p(
+        'p6',
+        'Same Price Rope',
+        price: 15000,
+        discount: 15000,
+      );
+      _seed(
+        api,
+        home: _home(),
+        products: [_whey, _mat, _bell, _shoes, zero, notLower],
+      );
+      await _pump(tester, api);
+      await tapVisible(tester, _key('shop-home-viewall-deals'));
+      expect(_key('shop-product-p2'), findsOneWidget);
+      expect(_key('shop-product-p5'), findsNothing);
+      expect(_key('shop-product-p6'), findsNothing);
+      expect(_key('shop-product-p1'), findsNothing);
+    });
+
+    apiTest('no server title: the app\'s own section title (en + sw)', (
+      tester,
+      api,
+    ) async {
+      _seed(
+        api,
+        home: _home(
+          sections: [
+            {
+              'key': 'best_sellers',
+              'productIds': ['p1'],
+            },
+            {
+              'key': 'something_new',
+              'productIds': ['p2'],
+            },
+          ],
+        ),
+      );
+      final host = await _pump(tester, api, lang: 'sw');
+      expect(find.text(host.tr('shop.section.best_sellers')), findsOneWidget);
+      expect(host.tr('shop.section.best_sellers'), 'Zinazouzwa zaidi');
+      expect(
+        tester.widget<Text>(_key('shop-home-title-something_new')).data,
+        host.tr('shop.section.generic'),
+      );
+      expect(find.text('best_sellers'), findsNothing);
+    });
+
+    apiTest('no server category name: the app\'s own label for the key', (
+      tester,
+      api,
+    ) async {
+      _seed(
+        api,
+        home: {
+          ..._home(),
+          'categories': [
+            {'key': 'equipment'},
+          ],
+        },
+      );
+      await _pump(tester, api, lang: 'sw');
+      final handle = tester.ensureSemantics();
+      expect(
+        tester.getSemantics(_key('shop-home-category-equipment')).label,
+        'Aina: Vifaa vya gym na mazoezi',
+      );
+      handle.dispose();
+    });
+
+    apiTest('singular: "Only 1 left" and "Cart, 1 item"', (tester, api) async {
+      final one = _p('p7', 'Last Bottle', price: 5000, stock: 1);
+      _seed(
+        api,
+        home: _home(
+          sections: [
+            _section('essentials', 'Essentials', 'Bidhaa muhimu', ['p7']),
+          ],
+          products: {'p7': one},
+        ),
+      );
+      final host = await _pump(tester, api);
+      expect(find.text('Only 1 left'), findsOneWidget);
+      await tapVisible(tester, _key('shop-home-add-p7'));
+      await host.dismissSnacks();
+      expect(
+        tester.widget<IconButton>(_key('shop-home-cart')).tooltip,
+        'Cart, 1 item',
+      );
+      expect(
+        (FFLocale()..set(const Locale('sw'))).t('shop.home.onlyLeftOne'),
+        'Imebaki 1 tu',
+      );
+    });
+
+    apiTest('list rows use one "{n} in stock" line ("Zipo {n}")', (
+      tester,
+      api,
+    ) async {
+      debugShopHomeV2Override = false;
+      _seed(api);
+      await _pump(tester, api, lang: 'sw');
+      expect(find.text('Zipo 10'), findsWidgets);
     });
   });
 }

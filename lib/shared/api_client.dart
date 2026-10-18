@@ -1759,18 +1759,21 @@ class ApiClient {
   /// Shop home V2: the sections for the role being shopped as. 404
   /// `feature_disabled` means the screen falls back to the plain list; 403
   /// `mode_not_allowed` means this account cannot shop in [mode].
+  ///
+  /// [session] (the app's promotion session, as on `/discover/*`) lets the
+  /// server sign promotion tokens for Featured cards. [mode] null asks for
+  /// the server's default role.
   Future<Map<String, dynamic>> shopHome({
-    required String mode,
-    String? region,
-    String? city,
+    String? mode,
+    String? session,
     List<String> recent = const [],
   }) async {
     final out = await _request(
       'GET',
       _withQuery('/shop/home', {
-        'mode': mode,
-        if (region != null && region.isNotEmpty) 'region': region,
-        if (city != null && city.isNotEmpty) 'city': city,
+        if (mode != null && mode.isNotEmpty) 'mode': mode,
+        if (session != null && _discoverSession.hasMatch(session))
+          'session': session,
         if (recent.isNotEmpty) 'recent': recent.join(','),
       }),
     );
@@ -2252,6 +2255,8 @@ class ApiClient {
       await _request('POST', '/owner/staff/$id/remove');
 
   // ── Owner communications (messages to the gym's direct members) ─────────
+
+  static final _discoverSession = RegExp(r'^[A-Za-z0-9_-]{8,64}$');
 
   static String _withQuery(String path, Map<String, String> query) =>
       query.isEmpty ? path : '$path?${Uri(queryParameters: query).query}';

@@ -8,6 +8,7 @@ import '../../design_tokens.dart';
 import '../../formatters.dart';
 import '../../i18n.dart';
 import '../../product_categories.dart';
+import '../../promotion_events.dart' show discoverSessionId;
 import '../../shop_home.dart';
 import '../shop_browse_page.dart' show ShopCart, ShopProduct;
 import 'shop_category_row.dart';
@@ -22,6 +23,10 @@ import 'shop_product_rail.dart';
 /// reached through the callbacks. When the backend answers 404
 /// `feature_disabled` or 403 `mode_not_allowed`, [onUnavailable] tells the
 /// screen to show today's shop instead.
+/// The server's placement for the marketplace: promotion events from the
+/// home must use it (anything else is refused as `invalid_placement`).
+const kShopHomePlacement = 'marketplace';
+
 class ShopHomeView extends StatefulWidget {
   const ShopHomeView({
     super.key,
@@ -70,47 +75,57 @@ class ShopHomeViewState extends State<ShopHomeView> {
     });
   }
 
-  String? _profileValue(Map<String, dynamic>? user, String key) {
-    final direct = user?[key];
-    if (direct is String && direct.isNotEmpty) return direct;
-    final profile = user?['memberProfile'];
-    final nested = profile is Map ? profile[key] : null;
-    return nested is String && nested.isNotEmpty ? nested : null;
-  }
+  /// The role the last answer was for (the server's default after a
+  /// `mode_not_allowed` retry); events report this one.
+  ShopHomeMode _mode(ShopHomeData? data) => ShopHomeMode.values.firstWhere(
+    (m) => m.wire == data?.mode,
+    orElse: () => widget.mode,
+  );
 
   /// Fetches the home again. Content already shown stays while it loads.
+  ///
+  /// Region and city are not sent in Phase 1 (personalisation is Phase 2).
   Future<void> reload() async {
     final scope = AppScope.of(context);
     final id = ++_load;
     setState(() => _loading = true);
-    final user = scope.auth.user;
-    final recent = await RecentlyViewedProducts.load(user?['id']?.toString());
+    final recent = await RecentlyViewedProducts.load(
+      scope.auth.user?['id']?.toString(),
+    );
+    Future<Map<String, dynamic>> fetch(String? mode) => scope.api.shopHome(
+      mode: mode,
+      // Lets the server sign promotion tokens for Featured cards.
+      session: discoverSessionId(),
+      recent: recent,
+    );
     try {
-      final json = await scope.api.shopHome(
-        mode: widget.mode.wire,
-        region: _profileValue(user, 'region'),
-        city: _profileValue(user, 'city'),
-        recent: recent,
-      );
+      Map<String, dynamic> json;
+      try {
+        json = await fetch(widget.mode.wire);
+      } on ApiException catch (e) {
+        // Not allowed to shop as this role: try once with the default role.
+        if (e.status != 403 || e.code != 'mode_not_allowed') rethrow;
+        json = await fetch(null);
+      }
       if (!mounted || id != _load) return;
+      final data = ShopHomeData.fromJson(json);
       setState(() {
-        _data = ShopHomeData.fromJson(json);
+        _data = data;
         _error = null;
         _loading = false;
       });
       ShopEvents.newLoad();
-      ShopEvents.send(scope.api, 'shop_home_viewed', mode: widget.mode);
+      ShopEvents.send(scope.api, 'shop_home_viewed', mode: _mode(data));
     } on ApiException catch (e) {
       if (!mounted || id != _load) return;
-      if (e.status == 404 || e.status == 403) {
-        setState(() => _loading = false);
-        widget.onUnavailable();
-        return;
-      }
+      if (e.status == 404 || e.status == 403) return _unavailable();
       setState(() {
         _error = e;
         _loading = false;
       });
+    } on FormatException {
+      // Not JSON (a backend without /shop/home answers with an HTML page).
+      if (mounted && id == _load) _unavailable();
     } catch (e) {
       if (!mounted || id != _load) return;
       setState(() {
@@ -118,6 +133,11 @@ class ShopHomeViewState extends State<ShopHomeView> {
         _loading = false;
       });
     }
+  }
+
+  void _unavailable() {
+    setState(() => _loading = false);
+    widget.onUnavailable();
   }
 
   void _event(
@@ -129,7 +149,7 @@ class ShopHomeViewState extends State<ShopHomeView> {
   }) => ShopEvents.send(
     AppScope.of(context).api,
     type,
-    mode: widget.mode,
+    mode: _mode(_data),
     section: section,
     productId: productId,
     position: position,
@@ -175,6 +195,16 @@ class ShopHomeViewState extends State<ShopHomeView> {
     );
   }
 
+  /// The server's title; without one, the app's own `shop.section.<key>`,
+  /// and a plain "Products" for a key the app does not know.
+  String _title(BuildContext context, ShopHomeSection section, String lang) {
+    final server = section.title?.of(lang);
+    if (server != null && server.isNotEmpty) return server;
+    final key = 'shop.section.${section.key}';
+    final own = context.tr(key);
+    return own == key ? context.tr('shop.section.generic') : own;
+  }
+
   @override
   Widget build(BuildContext context) {
     final data = _data;
@@ -212,6 +242,8 @@ class ShopHomeViewState extends State<ShopHomeView> {
     final count = widget.cart.itemCount;
     final cartLabel = count == 0
         ? context.tr('shop.home.cart')
+        : count == 1
+        ? context.tr('shop.home.cartCountOne')
         : context.tr('shop.home.cartCount').replaceAll('{n}', '$count');
     return Padding(
       padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
@@ -321,7 +353,7 @@ class ShopHomeViewState extends State<ShopHomeView> {
         ShopProductRail(
           key: Key('shop-home-section-${section.key}'),
           sectionKey: section.key,
-          title: section.title.of(lang),
+          title: _title(context, section, lang),
           onShown: () => _event(
             'section_viewed',
             section: section.key,
@@ -330,10 +362,12 @@ class ShopHomeViewState extends State<ShopHomeView> {
           onWhy: section.reason == null
               ? null
               : () => _showWhy(section, section.reason!),
-          onViewAll: () {
-            _event('filter_applied', section: section.key);
-            widget.onViewAll(section.viewAll);
-          },
+          onViewAll: !section.showViewAll
+              ? null
+              : () {
+                  _event('filter_applied', section: section.key);
+                  widget.onViewAll(section.viewAll);
+                },
           children: [
             for (var i = 0; i < items.length; i++)
               _ImpressionOnce(
@@ -349,7 +383,7 @@ class ShopHomeViewState extends State<ShopHomeView> {
                   product: items[i],
                   width: width,
                   qty: widget.cart.qtyOf(items[i].id),
-                  placement: 'shop_home',
+                  placement: kShopHomePlacement,
                   onOpen: () {
                     _event(
                       'product_clicked',

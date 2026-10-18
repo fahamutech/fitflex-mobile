@@ -2,13 +2,16 @@
 // from, the build flag, the analytics events and the device's recently-viewed
 // list. Screens live in lib/shared/widgets/shop_home/.
 //
-// Contract: GET /shop/home, GET/PATCH /shop/preferences, POST /shop/events.
+// Contract (Phase 1): GET /shop/home only. The backend has no
+// /shop/preferences or /shop/events yet; the event model below is kept for
+// Phase 2 and sends nothing unless SHOP_EVENTS is switched on.
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'api_client.dart';
+import 'product_categories.dart';
 
 /// `--dart-define=SHOP_HOME_V2=true` turns the new shop home on. Off (the
 /// default) leaves today's shop screen exactly as it was.
@@ -22,6 +25,18 @@ const bool kShopHomeV2 = bool.fromEnvironment(
 bool? debugShopHomeV2Override;
 
 bool get shopHomeV2Enabled => debugShopHomeV2Override ?? kShopHomeV2;
+
+/// `--dart-define=SHOP_EVENTS=true` sends shop analytics to POST
+/// /shop/events. Off by default: that endpoint does not exist yet (Phase 2).
+const bool kShopEvents = bool.fromEnvironment(
+  'SHOP_EVENTS',
+  defaultValue: false,
+);
+
+@visibleForTesting
+bool? debugShopEventsOverride;
+
+bool get shopEventsEnabled => debugShopEventsOverride ?? kShopEvents;
 
 /// The role the customer is shopping as. A default for what is suggested,
 /// never a limit on what can be browsed.
@@ -65,31 +80,42 @@ class ShopHomeCategory {
 class ShopHomeSection {
   const ShopHomeSection({
     required this.key,
-    required this.title,
+    this.title,
     this.reason,
     this.viewAll = const {},
+    this.hasMore = false,
     this.productIds = const [],
   });
 
   /// featured, recommended, best_sellers, popular_near_you, essentials,
   /// recently_viewed, deals, new_arrivals (others are shown the same way).
   final String key;
-  final ShopText title;
+
+  /// Null when the server sent none: the app then uses `shop.section.<key>`.
+  final ShopText? title;
   final ShopText? reason;
 
   /// The filters "View all" opens the product list with.
   final Map<String, String> viewAll;
+
+  /// Whether the server has more products for this section than it sent.
+  final bool hasMore;
   final List<String> productIds;
+
+  /// "View all" only leads somewhere when there are filters to open the list
+  /// with, or more to see. Recently viewed is this device's own list: the
+  /// product list cannot show it, so it never has one.
+  bool get showViewAll =>
+      key != 'recently_viewed' && (viewAll.isNotEmpty || hasMore);
 
   factory ShopHomeSection.fromJson(Map<String, dynamic> json) {
     final viewAll = json['viewAll'];
     final query = viewAll is Map ? viewAll['query'] : null;
     return ShopHomeSection(
       key: json['key']?.toString() ?? '',
-      title:
-          ShopText.fromJson(json['title']) ??
-          ShopText(json['key']?.toString() ?? '', ''),
+      title: ShopText.fromJson(json['title']),
       reason: ShopText.fromJson(json['reason']),
+      hasMore: json['hasMore'] == true,
       viewAll: query is Map
           ? {
               for (final e in query.entries)
@@ -140,7 +166,7 @@ class ShopHomeData {
             final key = c['key']?.toString() ?? '';
             return ShopHomeCategory(
               key: key,
-              label: ShopText.fromJson(c) ?? ShopText(key, ''),
+              label: ShopText.fromJson(c) ?? shopCategoryText(key),
             );
           })
           .where((c) => c.key.isNotEmpty)
@@ -159,6 +185,15 @@ class ShopHomeData {
           : const {},
     );
   }
+}
+
+/// The app's own name for a category key (the compiled-in list), or the key
+/// itself when even that does not know it.
+ShopText shopCategoryText(String key) {
+  for (final c in ProductCategories.current) {
+    if (c.key == key) return ShopText(c.en, c.sw);
+  }
+  return ShopText(key, '');
 }
 
 /// Shop analytics: `POST /shop/events`, one event per call, fire and forget.
@@ -224,7 +259,7 @@ class ShopEvents {
     int? position,
     String? once,
   }) {
-    if (_disabled || !types.contains(type)) return;
+    if (!shopEventsEnabled || _disabled || !types.contains(type)) return;
     if (once != null && !_seen.add(once)) return;
     final body = build(
       type,
@@ -239,6 +274,9 @@ class ShopEvents {
           await api.postShopEvent(body);
         } on ApiException catch (e) {
           if (e.status == 404) _disabled = true;
+        } on FormatException {
+          // A non-JSON answer (an HTML 404 page): no such endpoint here.
+          _disabled = true;
         } catch (_) {
           // Analytics never get in the way of shopping.
         }

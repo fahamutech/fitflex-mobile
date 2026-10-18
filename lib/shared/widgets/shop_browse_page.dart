@@ -127,6 +127,10 @@ class ShopProduct {
       : priceTzs;
 }
 
+/// "4 in stock" / "Zipo 4", one placeholder line in both languages.
+String _inStock(BuildContext context, ShopProduct product) =>
+    context.tr('shop.inStockCount').replaceAll('{n}', '${product.stock}');
+
 class ShopVariant {
   const ShopVariant({required this.name, this.stock});
   final String name;
@@ -447,7 +451,8 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
       return searchMatch &&
           (_category == null || product.category == _category) &&
           (!_deliveryOnly || product.deliveryAvailable) &&
-          (!_promotionsOnly || product.discountPriceTzs != null) &&
+          // On sale exactly as the server counts it: 0 < sale < price.
+          (!_promotionsOnly || product.effectivePrice < product.priceTzs) &&
           (_brand.isEmpty ||
               (product.brand ?? '').toLowerCase().contains(
                 _brand.toLowerCase(),
@@ -1508,10 +1513,10 @@ class _ProductTile extends StatelessWidget {
                       if (product.reviewCount > 0 && product.rating > 0) ...[
                         const Icon(Icons.star, size: 16),
                         Text(
-                          ' ${product.rating.toStringAsFixed(1)} · ${product.stock} ${context.tr('shop.inStock')}',
+                          ' ${product.rating.toStringAsFixed(1)} · ${_inStock(context, product)}',
                         ),
                       ] else
-                        Text('${product.stock} ${context.tr('shop.inStock')}'),
+                        Text(_inStock(context, product)),
                     ],
                   ),
                 ],
@@ -1870,13 +1875,13 @@ class _ProductDetailsSheet extends StatelessWidget {
             Row(
               children: [
                 if (product.reviewCount > 0 && product.rating > 0) ...[
-                  Text('${product.stock} ${context.tr('shop.inStock')} · '),
+                  Text('${_inStock(context, product)} · '),
                   const Icon(Icons.star, size: 16),
                   Text(
                     ' ${product.rating.toStringAsFixed(1)} (${product.reviewCount})',
                   ),
                 ] else
-                  Text('${product.stock} ${context.tr('shop.inStock')}'),
+                  Text(_inStock(context, product)),
               ],
             ),
             if (product.distanceKm != null)

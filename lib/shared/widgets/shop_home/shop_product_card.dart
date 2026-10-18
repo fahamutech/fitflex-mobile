@@ -23,6 +23,11 @@ int shopDiscountPercent(ShopProduct product) {
       .floor();
 }
 
+/// "Only 3 left" / "Only 1 left" (Swahili: "Zimebaki 3 tu" / "Imebaki 1 tu").
+String shopOnlyLeft(BuildContext context, int n) => n == 1
+    ? context.tr('shop.home.onlyLeftOne')
+    : context.tr('shop.home.onlyLeft').replaceAll('{n}', '$n');
+
 /// Ratings are shown only when real reviews exist: never "0.0".
 bool shopHasRating(ShopProduct product) =>
     product.reviewCount > 0 && product.rating > 0;
@@ -56,7 +61,7 @@ String shopProductSemantics(
     if (!product.inStock)
       tr('shop.outOfStock')
     else if (product.stock <= 5)
-      tr('shop.home.onlyLeft').replaceAll('{n}', '${product.stock}'),
+      shopOnlyLeft(context, product.stock),
   ];
   return parts.join('. ');
 }
@@ -245,9 +250,7 @@ class ShopProductCard extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(top: FFTokens.spacing2xs),
             child: Text(
-              context
-                  .tr('shop.home.onlyLeft')
-                  .replaceAll('{n}', '${product.stock}'),
+              shopOnlyLeft(context, product.stock),
               style: theme.textTheme.labelSmall?.copyWith(
                 color: fuel,
                 fontWeight: FontWeight.w600,
