@@ -37,6 +37,18 @@ class _Api extends ApiClient {
   }
 }
 
+class _SwitchApi extends _Api {
+  @override
+  Future<Map<String, dynamic>> switchPersona(String personaId) async => {
+    'token': 'jwt-$personaId',
+    'user': {..._member(), 'id': personaId, 'userType': 'gym_staff'},
+    'personas': const [],
+  };
+
+  @override
+  Future<Map<String, dynamic>> me() async => {'user': _member()};
+}
+
 Future<GoRouter> _pumpRouter(WidgetTester tester, AuthState auth) async {
   final router = buildRouter(auth);
   addTearDown(router.dispose);
@@ -176,6 +188,38 @@ void main() {
       expect(routeForSignedInUser(auth), AppRoutes.memberHome);
     },
   );
+
+  group('signing out', () {
+    test('a real sign-out clears the kept token', () async {
+      final auth = AuthState(_Api());
+      await auth.signIn('jwt', _member());
+      await PendingOrgInvite.save('tok-a');
+      await auth.signOut();
+      expect(PendingOrgInvite.hasPending, isFalse);
+      PendingOrgInvite.resetMemory();
+      await PendingOrgInvite.load();
+      expect(await PendingOrgInvite.take(), isNull);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('pending_org_invite_token'), isNull);
+    });
+
+    test('a persona switch clears the kept token', () async {
+      final api = _SwitchApi();
+      final auth = AuthState(api);
+      await auth.signIn('jwt', _member());
+      await PendingOrgInvite.save('tok-b');
+      await auth.switchPersona('usr_staff');
+      expect(PendingOrgInvite.hasPending, isFalse);
+      expect(await PendingOrgInvite.take(), isNull);
+    });
+
+    test('a sign-in error before any session keeps the token', () async {
+      final auth = AuthState(_Api());
+      await PendingOrgInvite.save('tok-c');
+      await auth.signOut();
+      expect(await PendingOrgInvite.take(), 'tok-c');
+    });
+  });
 
   test('pending approval or onboarding still wins over a kept link', () async {
     await PendingOrgInvite.save('tok');

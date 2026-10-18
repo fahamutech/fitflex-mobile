@@ -231,6 +231,8 @@ class _FitFlexAppState extends State<FitFlexApp> with WidgetsBindingObserver {
       _runs?.discard();
       _inbox.clear();
       _syncedLocale = null;
+      // A kept organisation invitation link is not the next person's.
+      PendingOrgInvite.clear();
     }
     if (token != null && token != _lastToken) {
       _inbox.load();
