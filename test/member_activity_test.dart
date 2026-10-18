@@ -305,6 +305,77 @@ void main() {
       expect(t[1], isA<RecentVisitEntry>());
     });
 
+    test(
+      'the next day still counts; past 48 hours or well before does not',
+      () {
+        final visitAt = _daysAgo(3, 18);
+        final t = recentTimeline(
+          [
+            _act(
+              'next-day',
+              visitAt.add(const Duration(hours: 30)),
+              gymId: 'gym_1',
+            ),
+            _act(
+              'too-late',
+              visitAt.add(const Duration(hours: 49)),
+              gymId: 'gym_1',
+            ),
+            _act(
+              'too-early',
+              visitAt.subtract(const Duration(hours: 2)),
+              gymId: 'gym_1',
+            ),
+            _act(
+              'warm-up',
+              visitAt.subtract(const Duration(minutes: 30)),
+              gymId: 'gym_1',
+            ),
+          ],
+          [_visit('v1', visitAt)],
+          limit: null,
+        );
+        final visit = t.whereType<RecentVisitEntry>().single;
+        expect(visit.activities.map((a) => a.id), ['warm-up', 'next-day']);
+        expect(
+          t.whereType<RecentActivityEntry>().map((e) => e.activity.id).toSet(),
+          {'too-late', 'too-early'},
+        );
+      },
+    );
+
+    test('weeks of the month: W1 1–7 … W4 22 to month end', () {
+      expect(monthWeekOf(DateTime(2026, 1, 1)).week, 1);
+      expect(monthWeekOf(DateTime(2026, 1, 7)).week, 1);
+      expect(monthWeekOf(DateTime(2026, 1, 8)).week, 2);
+      expect(monthWeekOf(DateTime(2026, 1, 21)).week, 3);
+      expect(monthWeekOf(DateTime(2026, 1, 31)).week, 4);
+      expect(monthWeekRange((year: 2026, month: 1, week: 4)), (
+        DateTime(2026, 1, 22),
+        DateTime(2026, 1, 31),
+      ));
+      expect(
+        monthWeekRange((year: 2026, month: 2, week: 4)).$2,
+        DateTime(2026, 2, 28),
+      );
+    });
+
+    test('groups newest week first, entries keep their order', () {
+      final t = recentTimeline(
+        [
+          _act('feb2', DateTime(2026, 2, 3, 9)),
+          _act('jan31', DateTime(2026, 1, 31, 9)),
+          _act('jan23', DateTime(2026, 1, 23, 9)),
+          _act('jan2', DateTime(2026, 1, 2, 9)),
+        ],
+        const [],
+        limit: null,
+      );
+      final g = groupByMonthWeek(t);
+      expect(g.map((e) => (e.$1.month, e.$1.week)), [(2, 1), (1, 4), (1, 1)]);
+      expect(g[1].$2.map((e) => e.at.day), [31, 23]);
+    });
+
     test('an activity at the visit gym that day goes inside the visit', () {
       final lifted = _act(
         'lift',
@@ -345,6 +416,19 @@ void main() {
       );
       expect(t.length, 8);
     });
+  });
+
+  testWidgets('Recent activity offers View more', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(_wrap(MemberActivityTab(now: _now), _data()));
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('activity-view-more')),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('View more'), findsOneWidget);
   });
 
   testWidgets('a plain gym visit opens to log what was done', (tester) async {

@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../router.dart';
 
 import '../../shared/activity/activity.dart';
 import '../../shared/activity/activity_summary.dart';
@@ -192,14 +195,20 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
       ),
       if (recent.isEmpty)
         FFEmptyState(title: context.tr('activity.noActivity'))
-      else
-        for (final e in recent)
-          switch (e) {
-            RecentActivityEntry(:final activity) => ActivityTimelineTile(
-              activity: activity,
-            ),
-            RecentVisitEntry() => GymVisitTile(entry: e),
-          },
+      else ...[
+        for (final e in recent) recentEntryTile(e),
+        Align(
+          alignment: Alignment.centerRight,
+          child: FFButton(
+            key: const Key('activity-view-more'),
+            label: context.tr('activity.viewMore'),
+            onPressed: () => context.push(AppRoutes.memberActivityHistory),
+            variant: FFButtonVariant.ghost,
+            size: FFButtonSize.sm,
+            icon: Icons.history,
+          ),
+        ),
+      ],
     ];
   }
 

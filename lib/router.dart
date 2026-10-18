@@ -13,6 +13,7 @@ import 'screens/sign_up_screen.dart';
 import 'screens/email_auth_screen.dart';
 import 'screens/verify_email_screen.dart';
 import 'shared/widgets/persona_switcher.dart';
+import 'screens/member/member_activity_history_page.dart';
 import 'screens/member/member_shell.dart';
 import 'screens/member/member_training_offer_page.dart';
 import 'screens/member/member_training_plan_page.dart';
@@ -127,6 +128,7 @@ abstract class AppRoutes {
   static const memberHome = '/member';
   static const memberActivity = '/member/activity';
   static const memberActivityLog = '/member/activity/log';
+  static const memberActivityHistory = '/member/activity/history';
   static const memberRecordRun = '/member/activity/run';
   static const memberRunDetail = '/member/activity/runs/:activityId';
   static const memberProgress = '/member/activity/progress';
@@ -831,6 +833,11 @@ GoRouter buildRouter(AuthState auth) {
                 builder: (context, state) => MemberRunDetailPage(
                   activityId: state.pathParameters['activityId']!,
                 ),
+              ),
+              GoRoute(
+                path: 'history',
+                name: 'memberActivityHistory',
+                builder: (context, state) => const MemberActivityHistoryPage(),
               ),
               GoRoute(
                 path: 'log',

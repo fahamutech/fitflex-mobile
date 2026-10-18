@@ -2418,6 +2418,14 @@ class FFLocale extends ChangeNotifier {
       'logActivity.save': 'Save activity',
       'logActivity.saved': 'Activity logged',
       'logActivity.atGym': 'At {gym}',
+      'logActivity.error.visitWindow':
+          'Pick a time from the visit up to 48 hours after it.',
+      'activity.viewMore': 'View more',
+      'activity.history': 'Activity history',
+      'activity.week': 'W{n} · {month}',
+      'activity.showOlder': 'Show older',
+      'activity.historyStart': 'Nothing before {date}.',
+      'activity.historyLoadFailed': 'Couldn\'t load older activity. Try again.',
       'visit.title': 'Gym visit · {gym}',
       'visit.nothingLogged': 'Nothing logged yet',
       'visit.logged': '{n} logged',
@@ -6505,6 +6513,15 @@ class FFLocale extends ChangeNotifier {
       'logActivity.saved': 'Shughuli imerekodiwa',
       // TODO(sw-review): visit strings below are drafts for native review.
       'logActivity.atGym': 'Katika {gym}',
+      'logActivity.error.visitWindow':
+          'Chagua muda kuanzia ziara hadi saa 48 baada yake.',
+      'activity.viewMore': 'Ona zaidi',
+      'activity.history': 'Historia ya shughuli',
+      'activity.week': 'Wiki {n} · {month}',
+      'activity.showOlder': 'Onyesha za zamani',
+      'activity.historyStart': 'Hakuna kabla ya {date}.',
+      'activity.historyLoadFailed':
+          'Imeshindwa kupakia shughuli za zamani. Jaribu tena.',
       'visit.title': 'Ziara ya gym · {gym}',
       'visit.nothingLogged': 'Hakuna kilichorekodiwa bado',
       'visit.logged': '{n} zimerekodiwa',

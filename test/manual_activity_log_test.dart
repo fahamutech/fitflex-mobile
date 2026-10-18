@@ -529,4 +529,32 @@ void main() {
     expect(log.drafts.single.gymId, 'gym_1');
     expect(log.drafts.single.startedAt, DateTime(2026, 9, 24, 6, 30));
   });
+
+  testWidgets('from a gym visit: a time past 48 hours is refused', (
+    tester,
+  ) async {
+    final log = _FakeLog();
+    await _pumpPage(
+      tester,
+      log: log,
+      data: MemberData(),
+      page: MemberLogActivityPage(
+        now: _now,
+        gymId: 'gym_1',
+        // 21 Sep 18:00: more than 48 hours before "now" (24 Sep 18:00).
+        startedAt: DateTime(2026, 9, 21, 18),
+      ),
+    );
+    // Move the day on to the 24th, three days after the visit.
+    await tester.tap(find.byKey(const Key('log-date')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('24'));
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('log-duration')), '30');
+    await tester.tap(find.byKey(const Key('log-save')));
+    await tester.pumpAndSettle();
+    expect(log.drafts, isEmpty);
+    expect(find.byKey(const Key('log-time-error')), findsOneWidget);
+  });
 }

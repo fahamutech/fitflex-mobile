@@ -38,19 +38,28 @@ class RecentVisitEntry extends RecentEntry {
   final List<Activity> activities;
 }
 
-DateTime _day(DateTime t) {
-  final l = t.toLocal();
-  return DateTime(l.year, l.month, l.day);
-}
+/// How long after a check-in an activity still counts as done during that
+/// visit. Logging from a visit starts at the check-in time; this leaves room
+/// to adjust it, or to log a session the member forgot until later.
+const visitLinkWindow = Duration(hours: 48);
+
+/// An activity may start a little before the check-in is scanned.
+const visitLinkLead = Duration(hours: 1);
+
+/// Whether an activity starting at [startedAt] falls within a visit at [at].
+bool withinVisit(DateTime at, DateTime startedAt) =>
+    !startedAt.isBefore(at.subtract(visitLinkLead)) &&
+    !startedAt.isAfter(at.add(visitLinkWindow));
 
 /// Activities and gym visits, newest first. A check-in is still not an
 /// activity: it adds nothing to totals, goals or streaks. An activity with
-/// the visit's `gymId` on the same day sits inside that visit (the closest
-/// visit in time, if there were several) instead of being listed twice.
+/// the visit's `gymId` that starts within [visitLinkWindow] of the check-in
+/// sits inside that visit (the closest visit in time, if there were
+/// several) instead of being listed twice. [limit] null = everything.
 List<RecentEntry> recentTimeline(
   List<Activity> activities,
   List<CheckIn> checkins, {
-  int limit = 8,
+  int? limit = 8,
 }) {
   final visits = <(CheckIn, DateTime)>[
     for (final c in checkins)
@@ -64,7 +73,7 @@ List<RecentEntry> recentTimeline(
         ? const <(CheckIn, DateTime)>[]
         : visits
               .where(
-                (v) => v.$1.gymId == gymId && _day(v.$2) == _day(a.startedAt),
+                (v) => v.$1.gymId == gymId && withinVisit(v.$2, a.startedAt),
               )
               .toList();
     if (candidates.isEmpty) {
@@ -88,8 +97,51 @@ List<RecentEntry> recentTimeline(
         linked[v.$1]!..sort((x, y) => x.startedAt.compareTo(y.startedAt)),
       ),
   ]..sort((x, y) => y.at.compareTo(x.at));
-  return entries.take(limit).toList();
+  return limit == null ? entries : entries.take(limit).toList();
 }
+
+/// Week of the month for the history page: W1 = days 1–7, W2 = 8–14,
+/// W3 = 15–21, W4 = 22 to the month's end, so every month has four.
+typedef MonthWeek = ({int year, int month, int week});
+
+MonthWeek monthWeekOf(DateTime t) {
+  final l = t.toLocal();
+  final w = (l.day - 1) ~/ 7 + 1;
+  return (year: l.year, month: l.month, week: w > 4 ? 4 : w);
+}
+
+/// First and last day of a [MonthWeek].
+(DateTime, DateTime) monthWeekRange(MonthWeek w) {
+  final first = DateTime(w.year, w.month, (w.week - 1) * 7 + 1);
+  final last = w.week == 4
+      ? DateTime(w.year, w.month + 1, 0)
+      : DateTime(w.year, w.month, w.week * 7);
+  return (first, last);
+}
+
+/// [entries] (newest first) in week groups, newest week first.
+List<(MonthWeek, List<RecentEntry>)> groupByMonthWeek(
+  List<RecentEntry> entries,
+) {
+  final out = <(MonthWeek, List<RecentEntry>)>[];
+  for (final e in entries) {
+    final w = monthWeekOf(e.at);
+    if (out.isNotEmpty && out.last.$1 == w) {
+      out.last.$2.add(e);
+    } else {
+      out.add((w, [e]));
+    }
+  }
+  return out;
+}
+
+/// One timeline row.
+Widget recentEntryTile(RecentEntry e) => switch (e) {
+  RecentActivityEntry(:final activity) => ActivityTimelineTile(
+    activity: activity,
+  ),
+  RecentVisitEntry() => GymVisitTile(entry: e),
+};
 
 /// A gym visit in Recent activity. Tap to open it: what was logged during
 /// the visit, and a way to log what the member did.

@@ -15,6 +15,7 @@ import 'member_shell.dart';
 import '../../shared/social.dart';
 import 'widgets/share_picker.dart';
 import 'widgets/activity_widgets.dart';
+import 'widgets/gym_visit_tile.dart' show withinVisit;
 
 /// Activity → Log activity: a session the member did without FitFlex
 /// tracking it. Saved through the existing `POST /me/activities` contract
@@ -113,7 +114,14 @@ class _MemberLogActivityPageState extends State<MemberLogActivityPage> {
 
   Future<void> _save() async {
     final draft = _draft();
-    final errors = validateManualActivity(draft, _now);
+    final errors = {...validateManualActivity(draft, _now)};
+    // From a visit, the session has to fall within it to show under it.
+    final visitAt = widget.startedAt;
+    if (visitAt != null &&
+        !errors.containsKey('startedAt') &&
+        !withinVisit(visitAt, draft.startedAt)) {
+      errors['startedAt'] = 'logActivity.error.visitWindow';
+    }
     setState(() {
       _errors = errors;
       _submitError = null;
