@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../app_scope.dart';
 import '../../shared/api_client.dart';
@@ -357,10 +356,9 @@ Future<void> showGymEntranceQr(
               SizedBox(
                 width: 240,
                 height: 240,
-                child: QrImageView(
+                child: FFQrCode(
                   key: const Key('owner-entrance-qr-image'),
                   data: payload,
-                  backgroundColor: Colors.white,
                 ),
               ),
               const SizedBox(height: 12),

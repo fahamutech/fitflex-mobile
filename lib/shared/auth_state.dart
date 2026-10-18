@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_client.dart';
 import 'firebase_auth_service.dart';
+import 'held_nav_extras.dart';
 import 'push_service.dart';
 
 /// Global session state. In a larger app this would be DI'd via Riverpod/Provider.
@@ -419,6 +420,10 @@ class AuthState extends ChangeNotifier {
   }
 
   Future<void> signOut() async {
+    // Forget sign-in contacts held for browser history, so the next person
+    // cannot press Back into this user's email/phone screen. A screen still
+    // mounted (a 401 during sign-in lands here too) keeps its own.
+    HeldNavExtras.clear();
     // While the session token is still set, so the backend accepts the call.
     await push?.unregister();
     _token = null;

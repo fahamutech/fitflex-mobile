@@ -177,6 +177,33 @@ class FFTokens {
   // ── Vibrant brand green (dark-mode CTA + selection state) ──
   static const Color brandVibrant = Color(0xFF17B26A);
 
+  // ── V2 accents (Design System V2, approved) ──
+  // Volt is the member-app accent on the Pulse (dark) theme: primary CTAs,
+  // selection and focus. Always pair it with [onVolt] text (15.4:1).
+  static const Color volt = Color(0xFFC8F04A);
+  static const Color onVolt = Color(0xFF020617);
+  // Fuel is the warm "act soon" accent (expiring passes, streak heat).
+  // [fuel] for light surfaces, [fuelOnDark] for text/icons on dark.
+  static const Color fuel = Color(0xFFB8452C);
+  static const Color fuelOnDark = Color(0xFFFF8A6B);
+  static const Color fuel50 = Color(0xFFFFF4EE);
+  static const Color fuel200 = Color(0xFFFBD9CC);
+  // Calm is the warm light canvas used by operator (portal) surfaces.
+  static const Color calmGround = Color(0xFFF7F5F0);
+  static const Color calmBorder = Color(0xFFEBE7DE);
+
+  // ── Scannable codes ──
+  // QR modules/eyes are always this fixed dark ink on white, whatever the
+  // theme, so scanners get maximum contrast (never the theme primary).
+  static const Color qrInk = Color(0xFF020617);
+  static const Color qrBackground = Color(0xFFFFFFFF);
+
+  // ── Map markers ──
+  // Pins sit on light map tiles in both themes; brand-600 green (#067647)
+  // is >= 5:1 on white/near-white tiles. Paired with a white halo.
+  static const Color mapPin = brand500;
+  static const Color mapPinHalo = Color(0xFFFFFFFF);
+
   // ── On-dark text ──
   static const Color darkFgPrimary = Color(0xFFF1F5F9); // slate-100
   static const Color darkFgSecondary = Color(0xFFCBD5E1); // slate-300
@@ -188,11 +215,34 @@ class FFTokens {
   static const Color accentIndigo = Color(0xFF6366F1);
 }
 
+/// Keyboard focus ring for filled controls: a 2px ring drawn *outside* the
+/// button so it sits on the page ground, not on the fill. Material's default
+/// focus cue (a 10% overlay) is ~1.25:1 on Volt and practically invisible.
+/// [color] must contrast >= 3:1 with the page ground.
+WidgetStateProperty<BorderSide?> ffFocusRing(Color color) =>
+    WidgetStateProperty.resolveWith((states) {
+      if (states.contains(WidgetState.focused) &&
+          !states.contains(WidgetState.disabled)) {
+        return BorderSide(
+          color: color,
+          width: 2,
+          strokeAlign: BorderSide.strokeAlignOutside,
+        );
+      }
+      return null;
+    });
+
+/// Focus ring colour on the dark ground (slate-100 on slate-950: 17:1).
+const Color ffFocusRingDark = FFTokens.darkFgPrimary;
+
+/// Focus ring colour on the light ground (slate-900 on #EEF2F7: 15:1).
+const Color ffFocusRingLight = Color(0xFF0F172A);
+
 ThemeData buildDarkTheme() {
   const bg = FFTokens.darkBg;
   const surface = FFTokens.darkSurface;
   const onSurface = FFTokens.darkFgPrimary;
-  const primary = FFTokens.brandVibrant;
+  const primary = FFTokens.volt;
   const bord = FFTokens.darkBorder;
 
   return ThemeData(
@@ -203,9 +253,9 @@ ThemeData buildDarkTheme() {
     scaffoldBackgroundColor: bg,
     colorScheme: const ColorScheme.dark(
       primary: primary,
-      onPrimary: Colors.black,
+      onPrimary: FFTokens.onVolt,
       secondary: primary,
-      onSecondary: Colors.black,
+      onSecondary: FFTokens.onVolt,
       surface: surface,
       onSurface: onSurface,
       surfaceContainerHighest: surface,
@@ -369,9 +419,13 @@ ThemeData buildDarkTheme() {
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         backgroundColor: primary,
-        foregroundColor: Colors.black,
+        foregroundColor: FFTokens.onVolt,
+        // Disabled sits on the card colour, never grey-on-Volt.
         disabledBackgroundColor: surface,
         disabledForegroundColor: FFTokens.darkFgMuted,
+        // No colour tween: otherwise the label fades grey -> onVolt over
+        // Volt for 200ms when a button becomes enabled.
+        animationDuration: Duration.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(FFTokens.radiusMd),
         ),
@@ -382,7 +436,18 @@ ThemeData buildDarkTheme() {
           fontSize: 15,
           letterSpacing: 0.5,
         ),
-      ),
+      ).copyWith(side: ffFocusRing(ffFocusRingDark)),
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ButtonStyle(side: ffFocusRing(ffFocusRingDark)),
+    ),
+    iconButtonTheme: IconButtonThemeData(
+      style: ButtonStyle(side: ffFocusRing(ffFocusRingDark)),
+    ),
+    // FABs default to the Volt fill; a 45% onVolt overlay gives >= 3:1
+    // between the focused and unfocused fill.
+    floatingActionButtonTheme: FloatingActionButtonThemeData(
+      focusColor: FFTokens.onVolt.withValues(alpha: 0.45),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
@@ -501,12 +566,12 @@ ThemeData buildDarkTheme() {
         if (states.contains(WidgetState.selected)) return primary;
         return Colors.transparent;
       }),
-      checkColor: WidgetStateProperty.all(Colors.black),
+      checkColor: WidgetStateProperty.all(FFTokens.onVolt),
       side: const BorderSide(color: bord, width: 2),
     ),
     switchTheme: SwitchThemeData(
       thumbColor: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.selected)) return Colors.black;
+        if (states.contains(WidgetState.selected)) return FFTokens.onVolt;
         return FFTokens.darkFgMuted;
       }),
       trackColor: WidgetStateProperty.resolveWith((states) {
@@ -721,7 +786,10 @@ ThemeData buildTheme() {
           letterSpacing: 0.5,
           color: onPrimary,
         ),
-      ),
+      ).copyWith(side: ffFocusRing(ffFocusRingLight)),
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ButtonStyle(side: ffFocusRing(ffFocusRingLight)),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(

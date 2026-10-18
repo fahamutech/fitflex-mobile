@@ -182,8 +182,8 @@ class _EnquiryTile extends StatelessWidget {
                   width: 10,
                   height: 10,
                   margin: const EdgeInsets.only(left: 8),
-                  decoration: const BoxDecoration(
-                    color: FFTokens.brand500,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary,
                     shape: BoxShape.circle,
                   ),
                 ),

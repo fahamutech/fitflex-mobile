@@ -344,9 +344,11 @@ class _WeeklyHoursEditorPageState extends State<WeeklyHoursEditorPage> {
                       key: Key('hours-slot-$slot'),
                       showCheckmark: false,
                       selected: on,
-                      selectedColor: FFTokens.brand500,
+                      selectedColor: Theme.of(context).colorScheme.primary,
                       labelStyle: TextStyle(
-                        color: on ? Colors.white : null,
+                        color: on
+                            ? Theme.of(context).colorScheme.onPrimary
+                            : null,
                         fontWeight: FontWeight.w600,
                       ),
                       label: SizedBox(

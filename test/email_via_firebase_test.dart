@@ -144,7 +144,19 @@ Future<AuthState> _auth(_FakeApi api, {bool signedIn = false}) async {
 Widget _app(AuthState auth, Widget home) {
   final router = GoRouter(
     initialLocation: '/start',
-    routes: [GoRoute(path: '/start', builder: (_, _) => home)],
+    routes: [
+      GoRoute(path: '/start', builder: (_, _) => home),
+      // Shows what the email screen would receive: the URL and the
+      // in-memory args (the contact itself must never be in the URL).
+      GoRoute(
+        path: '/auth/email',
+        builder: (_, state) {
+          final args = state.extra;
+          final mode = args is EmailAuthArgs ? ' as ${args.mode.name}' : '';
+          return Scaffold(body: Text('opened ${state.uri}$mode'));
+        },
+      ),
+    ],
     errorBuilder: (_, state) => Scaffold(body: Text('opened ${state.uri}')),
   );
   return AppScope(
@@ -223,8 +235,9 @@ void main() {
     final api = _FakeApi();
     await _signUp(tester, api, 'amina@example.com');
     expect(api.calls, isEmpty);
-    expect(find.textContaining('opened /'), findsOneWidget);
-    expect(find.textContaining('mode=signup'), findsOneWidget);
+    // The email travels in memory, never in the URL.
+    expect(find.text('opened /auth/email as signUp'), findsOneWidget);
+    expect(find.textContaining('amina'), findsNothing);
   });
 
   testWidgets('sign-up: a number goes to the FitFlex code flow', (

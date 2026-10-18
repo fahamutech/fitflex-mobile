@@ -440,7 +440,7 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
                     Expanded(
                       child: _buildChartDetail(
                         context,
-                        bulletColor: FFTokens.brand600,
+                        bulletColor: Theme.of(context).colorScheme.primary,
                         title: context.tr('owner.directMembers'),
                         value: '$directCount',
                         trendDir: membersTrendDir,

@@ -505,6 +505,29 @@ void main() {
     );
   });
 
+  testWidgets('invite where FitFlex could not send: says why, then the share sheet', (
+    tester,
+  ) async {
+    _tall(tester);
+    final api = _Api()
+      ..lookupDelivery = {'sms': true, 'whatsapp': true}
+      ..inviteDelivery = {
+        'whatsapp': 'skipped:whatsapp_not_available',
+        'sms': 'skipped:sms_not_configured',
+      };
+    await tester.pumpWidget(
+      _app(api, const MemberCommunityPage(initialTab: 2)),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('people-search')), '0650387211');
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('friend-invite-share')));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.textContaining('SMS is not set up yet.'), findsOneWidget);
+    expect(find.textContaining('WhatsApp is not set up yet.'), findsOneWidget);
+  });
+
   testWidgets('groups: join a listed group, or by code', (tester) async {
     _tall(tester);
     final api = _Api();

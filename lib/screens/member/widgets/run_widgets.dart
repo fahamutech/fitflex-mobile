@@ -49,7 +49,9 @@ class _RunMapState extends State<RunMap> {
 
   @override
   Widget build(BuildContext context) {
-    final color = Theme.of(context).colorScheme.primary;
+    // Route and position dot sit on light map tiles in both themes, so use
+    // the fixed map-pin green (>= 5:1 on the tiles), not the theme primary.
+    const color = FFTokens.mapPin;
     final pts = _all;
     final fit = !widget.follow && pts.length >= 2;
     return ClipRRect(
@@ -91,6 +93,8 @@ class _RunMapState extends State<RunMap> {
                             points: [for (final p in s) LatLng(p.lat, p.lng)],
                             strokeWidth: 5,
                             color: color,
+                            borderStrokeWidth: 1.5,
+                            borderColor: FFTokens.mapPinHalo,
                           ),
                     ],
                   ),
@@ -104,7 +108,10 @@ class _RunMapState extends State<RunMap> {
                           decoration: BoxDecoration(
                             color: color,
                             shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 3),
+                            border: Border.all(
+                              color: FFTokens.mapPinHalo,
+                              width: 3,
+                            ),
                           ),
                         ),
                       ),

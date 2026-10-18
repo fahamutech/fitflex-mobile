@@ -2154,7 +2154,18 @@ class FFLocale extends ChangeNotifier {
       'friendInvite.sentBy.whatsapp': 'Sent by FitFlex on WhatsApp',
       'friendInvite.sentBy.sms': 'Sent by FitFlex by SMS',
       'friendInvite.sentBy.both': 'Sent by FitFlex on WhatsApp and SMS',
-      'friendInvite.sentBy.smsInstead': 'Not on WhatsApp, so FitFlex sent an SMS',
+      'friendInvite.sentBy.smsInstead':
+          'Not on WhatsApp, so FitFlex sent an SMS',
+      'friendInvite.notSentByFitflex':
+          'FitFlex could not send this invitation, so please send it yourself.',
+      'friendInvite.reason.smsNotSetUp': 'SMS is not set up yet.',
+      'friendInvite.reason.whatsappNotSetUp': 'WhatsApp is not set up yet.',
+      'friendInvite.reason.templateNotApproved':
+          'The WhatsApp message is not approved yet.',
+      'friendInvite.reason.dailyLimit': 'The daily sending limit was reached.',
+      'friendInvite.reason.badNumber': 'That phone number could not be used.',
+      'friendInvite.reason.failed':
+          'The message could not be delivered to the provider.',
       'community.results': 'Results',
       'community.noResults': 'No one found. Try their invite code.',
       'community.followsYou': 'Follow you',
@@ -4067,10 +4078,11 @@ class FFLocale extends ChangeNotifier {
       'a11y.decrease': 'Punguza idadi',
       'a11y.open': 'Fungua',
       // Kept in English until native Swahili review.
-      'theme.title': 'Theme',
-      'theme.dark': 'Dark',
-      'theme.light': 'Light',
-      'theme.auto': 'Auto (dark at night)',
+      // Swahili theme labels: pending native review.
+      'theme.title': 'Mandhari',
+      'theme.dark': 'Giza',
+      'theme.light': 'Mwanga',
+      'theme.auto': 'Kiotomatiki (giza usiku)',
       'lang.switchToSwahili': 'Switch to Swahili',
       'lang.switchToEnglish': 'Switch to English',
       'a11y.lightMode': 'Tumia hali ya mwanga',
@@ -6217,7 +6229,19 @@ class FFLocale extends ChangeNotifier {
       'friendInvite.sentBy.whatsapp': 'Imetumwa na FitFlex kwa WhatsApp',
       'friendInvite.sentBy.sms': 'Imetumwa na FitFlex kwa SMS',
       'friendInvite.sentBy.both': 'Imetumwa na FitFlex kwa WhatsApp na SMS',
-      'friendInvite.sentBy.smsInstead': 'Hayupo WhatsApp, kwa hiyo FitFlex ilituma SMS',
+      'friendInvite.sentBy.smsInstead':
+          'Hayupo WhatsApp, kwa hiyo FitFlex ilituma SMS',
+      'friendInvite.notSentByFitflex':
+          'FitFlex haikuweza kutuma mwaliko huu, tafadhali utume mwenyewe.',
+      'friendInvite.reason.smsNotSetUp': 'SMS bado haijawekwa.',
+      'friendInvite.reason.whatsappNotSetUp': 'WhatsApp bado haijawekwa.',
+      'friendInvite.reason.templateNotApproved':
+          'Ujumbe wa WhatsApp bado haujaidhinishwa.',
+      'friendInvite.reason.dailyLimit':
+          'Kikomo cha kutuma cha kila siku kimefikiwa.',
+      'friendInvite.reason.badNumber': 'Namba hiyo ya simu haikuweza kutumika.',
+      'friendInvite.reason.failed':
+          'Ujumbe haukuweza kufikishwa kwa mtoa huduma.',
       'community.results': 'Matokeo',
       'community.noResults':
           'Hakuna aliyepatikana. Jaribu msimbo wake wa mwaliko.',

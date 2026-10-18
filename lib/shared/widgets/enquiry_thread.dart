@@ -75,7 +75,7 @@ class EnquiryThread extends StatelessWidget {
                 ),
                 decoration: BoxDecoration(
                   color: m.from == me
-                      ? FFTokens.brand500
+                      ? scheme.primary
                       : scheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.only(
                     topLeft: const Radius.circular(14),
@@ -90,7 +90,9 @@ class EnquiryThread extends StatelessWidget {
                     Text(
                       m.text,
                       style: TextStyle(
-                        color: m.from == me ? Colors.white : scheme.onSurface,
+                        color: m.from == me
+                            ? scheme.onPrimary
+                            : scheme.onSurface,
                         height: 1.35,
                       ),
                     ),
@@ -101,7 +103,9 @@ class EnquiryThread extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 11,
                           color:
-                              (m.from == me ? Colors.white : scheme.onSurface)
+                              (m.from == me
+                                      ? scheme.onPrimary
+                                      : scheme.onSurface)
                                   .withValues(alpha: .7),
                         ),
                       ),

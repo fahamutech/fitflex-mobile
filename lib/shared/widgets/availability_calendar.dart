@@ -277,7 +277,7 @@ class _DateTile extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final date = DateTime.tryParse(day.date);
     final open = day.openCount;
-    final fg = selected ? Colors.white : scheme.onSurface;
+    final fg = selected ? scheme.onPrimary : scheme.onSurface;
     final label = formatScheduleDate(context, day.date);
     return Semantics(
       button: true,
@@ -291,12 +291,10 @@ class _DateTile extends StatelessWidget {
         child: Container(
           width: width,
           decoration: BoxDecoration(
-            color: selected
-                ? FFTokens.brand500
-                : scheme.surfaceContainerHighest,
+            color: selected ? scheme.primary : scheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(14),
             border: isToday && !selected
-                ? Border.all(color: FFTokens.brand500, width: 1.5)
+                ? Border.all(color: scheme.primary, width: 1.5)
                 : null,
           ),
           padding: const EdgeInsets.symmetric(vertical: 6),
@@ -334,7 +332,7 @@ class _DateTile extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: open > 0
                           ? (selected
-                                ? Colors.white24
+                                ? scheme.onPrimary.withValues(alpha: .14)
                                 : FFToneTheme.of(context).brand.bg)
                           : Colors.transparent,
                       borderRadius: BorderRadius.circular(8),
@@ -345,9 +343,9 @@ class _DateTile extends StatelessWidget {
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         color: selected
-                            ? Colors.white
+                            ? scheme.onPrimary
                             : (open > 0
-                                  ? FFTokens.brand700
+                                  ? FFToneTheme.of(context).brand.fg
                                   : fg.withValues(alpha: .5)),
                       ),
                     ),
@@ -385,8 +383,8 @@ class _SlotTile extends StatelessWidget {
     final Color bg;
     final Color fg;
     if (selected) {
-      bg = FFTokens.brand500;
-      fg = Colors.white;
+      bg = scheme.primary;
+      fg = scheme.onPrimary;
     } else if (booked) {
       bg = scheme.surfaceContainerHighest;
       fg = scheme.onSurface.withValues(alpha: .55);
@@ -395,7 +393,7 @@ class _SlotTile extends StatelessWidget {
       fg = scheme.onSurface.withValues(alpha: .35);
     } else {
       bg = scheme.surface;
-      fg = FFTokens.brand700;
+      fg = FFToneTheme.of(context).brand.fg;
     }
     final state = selected
         ? context.tr('cal.selected')
@@ -420,7 +418,7 @@ class _SlotTile extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
               color: selected
-                  ? FFTokens.brand500
+                  ? scheme.primary
                   : (booked || past)
                   ? scheme.outlineVariant.withValues(alpha: .5)
                   : FFToneTheme.of(context).brand.border,
@@ -494,8 +492,7 @@ class _Legend extends StatelessWidget {
           FFToneTheme.of(context).brand.border,
           'cal.available',
         ),
-        if (showSelected)
-          item(FFTokens.brand500, FFTokens.brand500, 'cal.selected'),
+        if (showSelected) item(scheme.primary, scheme.primary, 'cal.selected'),
         item(
           scheme.surfaceContainerHighest,
           scheme.outlineVariant,

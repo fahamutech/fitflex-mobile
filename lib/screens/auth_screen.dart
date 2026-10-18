@@ -179,11 +179,7 @@ class _AuthScreenState extends State<AuthScreen>
   }
 
   void _continueWithEmail({EmailAuthMode mode = EmailAuthMode.signIn}) {
-    final email = Uri.encodeComponent(_emailCtrl.text.trim());
-    final path =
-        '${AppRoutes.emailAuth}?email=$email'
-        '&mode=${mode == EmailAuthMode.signUp ? 'signup' : 'signin'}';
-    context.push(path);
+    pushEmailAuth(context, contact: _emailCtrl.text.trim(), mode: mode);
   }
 
   void _attemptContinue({EmailAuthMode mode = EmailAuthMode.signIn}) {
