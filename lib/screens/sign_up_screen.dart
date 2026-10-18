@@ -11,6 +11,7 @@ import '../shared/components/components.dart';
 import '../shared/design_tokens.dart';
 import '../shared/firebase_auth_service.dart';
 import '../shared/i18n.dart';
+import 'email_auth_screen.dart';
 import 'pin_flows.dart';
 
 /// Independent account-creation entry point, reached only from the
@@ -175,8 +176,11 @@ class _SignUpScreenState extends State<SignUpScreen>
       );
       return;
     }
-    final email = Uri.encodeComponent(_emailCtrl.text.trim());
-    context.push('${AppRoutes.emailAuth}?email=$email&mode=signup');
+    pushEmailAuth(
+      context,
+      contact: _emailCtrl.text.trim(),
+      mode: EmailAuthMode.signUp,
+    );
   }
 
   @override

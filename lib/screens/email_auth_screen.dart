@@ -17,6 +17,37 @@ import 'pin_flows.dart';
 
 enum EmailAuthMode { signIn, signUp }
 
+/// What the email/phone + PIN screen needs, passed as GoRouter `extra`.
+///
+/// The contact (an email address or phone number) must never go in the URL:
+/// it would land in browser history, server/proxy logs and analytics. This
+/// class deliberately has no `toJson`, so GoRouter cannot serialise it into
+/// browser history state either; it lives in memory only. After a reload or
+/// a history restore it is gone and the route sends the user back to the
+/// sign-in entry.
+@immutable
+class EmailAuthArgs {
+  const EmailAuthArgs({
+    required this.contact,
+    this.mode = EmailAuthMode.signIn,
+  });
+
+  final String contact;
+  final EmailAuthMode mode;
+}
+
+/// Opens the email/phone + PIN screen without putting [contact] in the URL.
+void pushEmailAuth(
+  BuildContext context, {
+  required String contact,
+  EmailAuthMode mode = EmailAuthMode.signIn,
+}) {
+  context.push(
+    AppRoutes.emailAuth,
+    extra: EmailAuthArgs(contact: contact, mode: mode),
+  );
+}
+
 class EmailAuthScreen extends StatefulWidget {
   const EmailAuthScreen({
     super.key,

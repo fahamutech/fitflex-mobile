@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -202,9 +204,104 @@ String routeForSignedInUser(AuthState auth) {
   return AppRoutes.home;
 }
 
+/// The [EmailAuthArgs] a navigation carried, or null when there are none
+/// (deep link, reload, browser history restore) or the contact is blank.
+EmailAuthArgs? emailAuthArgsOf(GoRouterState state) {
+  final extra = state.extra;
+  if (extra is EmailAuthArgs && extra.contact.trim().isNotEmpty) return extra;
+  return null;
+}
+
+/// GoRouter `extra` codec that keeps [EmailAuthArgs] (an email address or
+/// phone number) in memory. Browser history state only ever holds an opaque
+/// key; after a reload the key resolves to nothing and the user starts again
+/// from sign-in. Other extras keep GoRouter's default JSON behaviour
+/// (non-JSON values are dropped).
+class EmailAuthExtraCodec extends Codec<Object?, Object?> {
+  const EmailAuthExtraCodec();
+
+  static const _memKey = 'ffMem';
+  static const _jsonKey = 'ffJson';
+  static const _maxHeld = 8;
+  static final Map<String, EmailAuthArgs> _held = {};
+  static int _next = 0;
+
+  @override
+  Converter<Object?, Object?> get encoder => const _EmailAuthExtraEncoder();
+
+  @override
+  Converter<Object?, Object?> get decoder => const _EmailAuthExtraDecoder();
+}
+
+class _EmailAuthExtraEncoder extends Converter<Object?, Object?> {
+  const _EmailAuthExtraEncoder();
+
+  @override
+  Object? convert(Object? input) {
+    if (input == null) return null;
+    if (input is EmailAuthArgs) {
+      final held = EmailAuthExtraCodec._held;
+      final existing = held.entries
+          .where((e) => identical(e.value, input))
+          .map((e) => e.key)
+          .firstOrNull;
+      final key = existing ?? 'k${EmailAuthExtraCodec._next++}';
+      held[key] = input;
+      while (held.length > EmailAuthExtraCodec._maxHeld) {
+        held.remove(held.keys.first);
+      }
+      return <String, Object?>{EmailAuthExtraCodec._memKey: key};
+    }
+    try {
+      return <String, Object?>{
+        EmailAuthExtraCodec._jsonKey: json.encode(input),
+      };
+    } on JsonUnsupportedObjectError {
+      return null;
+    }
+  }
+}
+
+class _EmailAuthExtraDecoder extends Converter<Object?, Object?> {
+  const _EmailAuthExtraDecoder();
+
+  @override
+  Object? convert(Object? input) {
+    if (input is! Map) return null;
+    final key = input[EmailAuthExtraCodec._memKey];
+    if (key is String) return EmailAuthExtraCodec._held[key];
+    final encoded = input[EmailAuthExtraCodec._jsonKey];
+    if (encoded is String) return json.decode(encoded);
+    return null;
+  }
+}
+
+/// Shown for a moment when the email/phone screen is opened without its
+/// in-memory args (reload, history restore): sends the user to sign-in.
+class _BackToSignIn extends StatefulWidget {
+  const _BackToSignIn();
+
+  @override
+  State<_BackToSignIn> createState() => _BackToSignInState();
+}
+
+class _BackToSignInState extends State<_BackToSignIn> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.go(AppRoutes.auth);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => const Scaffold(body: SizedBox.shrink());
+}
+
 GoRouter buildRouter(AuthState auth) {
   return GoRouter(
     initialLocation: AppRoutes.splash,
+    extraCodec: const EmailAuthExtraCodec(),
     debugLogDiagnostics: false,
     refreshListenable: auth,
     redirect: (context, state) {
@@ -350,14 +447,19 @@ GoRouter buildRouter(AuthState auth) {
       GoRoute(
         path: AppRoutes.emailAuth,
         name: 'emailAuth',
+        // The contact comes only from in-memory `extra` (never the URL). A
+        // deep link, reload or history restore has none: back to sign-in.
+        redirect: (context, state) =>
+            emailAuthArgsOf(state) == null ? AppRoutes.auth : null,
         pageBuilder: (context, state) => CustomTransitionPage(
           key: state.pageKey,
-          child: EmailAuthScreen(
-            initialEmail: state.uri.queryParameters['email'] ?? '',
-            initialMode: state.uri.queryParameters['mode'] == 'signup'
-                ? EmailAuthMode.signUp
-                : EmailAuthMode.signIn,
-          ),
+          // Restored history entries skip route redirects, so check again.
+          child: emailAuthArgsOf(state) == null
+              ? const _BackToSignIn()
+              : EmailAuthScreen(
+                  initialEmail: emailAuthArgsOf(state)!.contact,
+                  initialMode: emailAuthArgsOf(state)!.mode,
+                ),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SlideTransition(
               position:
