@@ -13,7 +13,6 @@ import '../../shared/i18n.dart';
 import '../../shared/models.dart';
 import '../../shared/pin_credentials.dart';
 import 'member_shell.dart';
-import 'widgets/checkin_list.dart';
 import 'widgets/membership_card.dart';
 import 'widgets/pass_state.dart';
 import 'member_edit_profile_page.dart';
@@ -311,10 +310,6 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
         // Membership (A2/A3): plan, expiry date, days left, subscribed gym
         MembershipCard(subscription: data.subscription),
         const SizedBox(height: 12),
-
-        // Visit history
-        FFSectionTitle(context.tr('member.visitHistory')),
-        CheckinList(checkins: data.checkins, limit: 8),
 
         // Settings
         FFSectionTitle(context.tr('member.accountSettings')),

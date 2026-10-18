@@ -92,6 +92,9 @@ class ManualActivityDraft {
   final Map<String, dynamic>? shareWith;
   final bool shareChosen;
 
+  /// The gym, when logged from a gym visit.
+  final String? gymId;
+
   const ManualActivityDraft({
     required this.type,
     required this.startedAt,
@@ -103,6 +106,7 @@ class ManualActivityDraft {
     this.notes,
     this.shareWith,
     this.shareChosen = false,
+    this.gymId,
   });
 
   String? get _name {
@@ -134,6 +138,7 @@ class ManualActivityDraft {
       if (f.intensity) 'intensity': ?intensity?.wire,
       'notes': ?notesForBackend,
       if (shareChosen) 'shareWith': shareWith,
+      'gymId': ?gymId,
     };
   }
 }

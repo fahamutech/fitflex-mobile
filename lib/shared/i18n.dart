@@ -1631,7 +1631,6 @@ class FFLocale extends ChangeNotifier {
       'member.marketplaceSoon': 'Coming soon',
       'member.marketplaceBody':
           'FitFlex shop and gym marketplace features will be available here.',
-      'member.visitHistory': 'Visit history',
       'member.accountSettings': 'Account settings',
       'member.editDetails': 'Edit personal details',
       'member.editProfile': 'Edit profile',
@@ -2418,6 +2417,23 @@ class FFLocale extends ChangeNotifier {
           'Saved as manual activity. It counts toward your goals, streaks and challenges.',
       'logActivity.save': 'Save activity',
       'logActivity.saved': 'Activity logged',
+      'logActivity.atGym': 'At {gym}',
+      'logActivity.error.visitWindow':
+          'Pick a time from the visit up to 48 hours after it.',
+      'activity.viewMore': 'View more',
+      'activity.history': 'Activity history',
+      'activity.week': 'W{n} · {month}',
+      'activity.showOlder': 'Show older',
+      'activity.historyStart': 'Nothing before {date}.',
+      'activity.historyLoadFailed': 'Couldn\'t load older activity. Try again.',
+      'visit.title': 'Gym visit · {gym}',
+      'visit.nothingLogged': 'Nothing logged yet',
+      'visit.logged': '{n} logged',
+      'visit.prompt':
+          'What did you do during this visit? Log it to count it towards your goals.',
+      'visit.log': 'Log what you did',
+      'visit.logAnother': 'Log another activity',
+      'visit.tooOld': 'This visit is too long ago to log activity for.',
       'logActivity.error.durationRequired':
           'Enter how long it lasted, in minutes.',
       'logActivity.error.durationRange':
@@ -5703,7 +5719,6 @@ class FFLocale extends ChangeNotifier {
       'member.marketplaceSoon': 'Inakuja hivi karibuni',
       'member.marketplaceBody':
           'Vipengele vya duka la FitFlex na soko la gym vitapatikana hapa.',
-      'member.visitHistory': 'Historia ya mahudhurio',
       'member.accountSettings': 'Mipangilio ya akaunti',
       'member.editDetails': 'Hariri taarifa binafsi',
       'member.editProfile': 'Hariri wasifu',
@@ -6497,6 +6512,25 @@ class FFLocale extends ChangeNotifier {
           'Imehifadhiwa kama shughuli uliyoiweka mwenyewe. Inahesabiwa kwenye malengo, mfululizo na challenge zako.',
       'logActivity.save': 'Hifadhi shughuli',
       'logActivity.saved': 'Shughuli imerekodiwa',
+      // TODO(sw-review): visit strings below are drafts for native review.
+      'logActivity.atGym': 'Kwenye {gym}',
+      'logActivity.error.visitWindow':
+          'Chagua muda kuanzia ziara hadi saa 48 baada yake.',
+      'activity.viewMore': 'Tazama zaidi',
+      'activity.history': 'Historia ya shughuli',
+      'activity.week': 'Wiki {n} · {month}',
+      'activity.showOlder': 'Onyesha za zamani',
+      'activity.historyStart': 'Hakuna kabla ya {date}.',
+      'activity.historyLoadFailed':
+          'Imeshindwa kupakia shughuli za zamani. Jaribu tena.',
+      'visit.title': 'Ziara ya gym · {gym}',
+      'visit.nothingLogged': 'Hakuna kilichorekodiwa bado',
+      'visit.logged': 'Shughuli {n} zimerekodiwa',
+      'visit.prompt':
+          'Ulifanya nini katika ziara hii? Rekodi ili ihesabiwe kwenye malengo yako.',
+      'visit.log': 'Rekodi ulichofanya',
+      'visit.logAnother': 'Rekodi shughuli nyingine',
+      'visit.tooOld': 'Ziara hii ni ya zamani mno kurekodi shughuli.',
       'logActivity.error.durationRequired': 'Weka muda iliochukua, kwa dakika.',
       'logActivity.error.durationRange': 'Muda uwe kati ya dakika 1 na saa 24.',
       'logActivity.error.future': 'Muda huo wa kuanza ni wa baadaye.',
