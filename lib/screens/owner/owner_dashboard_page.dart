@@ -122,15 +122,17 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
               children: [
                 Text(
                   gym?['name']?.toString() ?? context.tr('owner.dashboard'),
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(color: Colors.white),
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: Theme.of(context).colorScheme.onPrimary,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   context.tr('owner.dashboardBody'),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.white.withValues(alpha: 0.85),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onPrimary.withValues(alpha: 0.85),
                   ),
                 ),
               ],

@@ -109,11 +109,14 @@ class FFToneTheme extends ThemeExtension<FFToneTheme> {
       border: Color(0xFF1F3350),
       dot: Color(0xFF8899AA),
     ),
+    // Volt family (Design System V2): the dark theme's primary is Volt, so
+    // brand badges/dots follow it instead of a second, emerald primary.
+    // bg = Volt 12% over slate-900, border = Volt 25% over slate-900.
     brand: FFToneColors(
-      bg: Color(0xFF103034),
-      fg: Color(0xFF75E7B3),
-      border: Color(0xFF12493E),
-      dot: Color(0xFF17B26A),
+      bg: Color(0xFF25312E),
+      fg: Color(0xFFC8F04A),
+      border: Color(0xFF3D4D32),
+      dot: Color(0xFFC8F04A),
     ),
     success: FFToneColors(
       bg: Color(0xFF0F2B38),

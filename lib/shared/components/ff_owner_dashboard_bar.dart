@@ -151,11 +151,11 @@ class FFOwnerDashboardBar extends StatelessWidget
             onTap: onAvatarTap,
             child: CircleAvatar(
               radius: 16,
-              backgroundColor: FFTokens.brand500,
+              backgroundColor: Theme.of(context).colorScheme.primary,
               child: Text(
                 initials,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onPrimary,
                   fontWeight: FontWeight.bold,
                   fontSize: 11,
                 ),

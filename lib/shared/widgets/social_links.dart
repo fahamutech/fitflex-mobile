@@ -145,7 +145,11 @@ class SocialLinksRow extends StatelessWidget {
           label: '${socialPlatformLabel(e.key)} $label',
           child: ActionChip(
             key: Key('social-${e.key}'),
-            avatar: _platformIcon(e.key, size: 16, color: FFTokens.brand500),
+            avatar: _platformIcon(
+              e.key,
+              size: 16,
+              color: Theme.of(context).colorScheme.primary,
+            ),
             label: Text(label),
             onPressed: () => _open(context, e.key, e.value),
           ),

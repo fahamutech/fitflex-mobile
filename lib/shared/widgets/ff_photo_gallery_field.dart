@@ -193,13 +193,13 @@ class _FFPhotoGalleryFieldState extends State<FFPhotoGalleryField> {
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: FFTokens.brand500,
+                            color: Theme.of(context).colorScheme.primary,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
                             context.tr('photos.profile'),
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onPrimary,
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
                             ),

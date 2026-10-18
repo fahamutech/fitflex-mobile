@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../app_scope.dart';
 import '../../router.dart';
@@ -109,18 +108,10 @@ class _QrCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           if (data.qrToken != null)
-            QrImageView(
+            FFQrCode(
+              key: const Key('member-qr'),
               data: data.qrToken!,
               size: 220,
-              backgroundColor: Colors.white,
-              eyeStyle: QrEyeStyle(
-                eyeShape: QrEyeShape.square,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              dataModuleStyle: QrDataModuleStyle(
-                dataModuleShape: QrDataModuleShape.square,
-                color: Theme.of(context).colorScheme.primary,
-              ),
             )
           else
             const SizedBox(

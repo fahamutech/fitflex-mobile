@@ -137,7 +137,7 @@ class _MemberOnboardingPageState extends State<MemberOnboardingPage> {
               child: Text(
                 context.tr('onboarding.ok'),
                 style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: FFTokens.brandVibrant,
+                  color: Theme.of(context).colorScheme.primary,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -173,9 +173,9 @@ class _MemberOnboardingPageState extends State<MemberOnboardingPage> {
                     // MEMBER SETUP header
                     Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.fitness_center_rounded,
-                          color: FFTokens.brandVibrant,
+                          color: Theme.of(context).colorScheme.primary,
                           size: FFTokens.iconLg,
                         ),
                         const SizedBox(width: FFTokens.spacingSm),
@@ -197,8 +197,8 @@ class _MemberOnboardingPageState extends State<MemberOnboardingPage> {
                         value: progress,
                         minHeight: 4,
                         backgroundColor: Theme.of(context).colorScheme.outline,
-                        valueColor: const AlwaysStoppedAnimation<Color>(
-                          FFTokens.brandVibrant,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Theme.of(context).colorScheme.primary,
                         ),
                       ),
                     ),

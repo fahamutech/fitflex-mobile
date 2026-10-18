@@ -102,7 +102,7 @@ class _RoleScreenState extends State<RoleScreen>
                         const SizedBox(height: FFTokens.spacingXl),
                         _RoleRadioTile(
                           icon: Icons.person_outline_rounded,
-                          iconColor: FFTokens.iconAccentGreen,
+                          iconColor: Theme.of(context).colorScheme.primary,
                           label: context.tr('role.member'),
                           description: context.tr('role.memberBody'),
                           selected: _selectedRole == 'member',
@@ -120,7 +120,7 @@ class _RoleScreenState extends State<RoleScreen>
                         const SizedBox(height: FFTokens.spacingMd),
                         _RoleRadioTile(
                           icon: Icons.people_outline_rounded,
-                          iconColor: FFTokens.iconAccentGreen,
+                          iconColor: Theme.of(context).colorScheme.primary,
                           label: context.tr('role.trainer'),
                           description: context.tr('role.trainerBody'),
                           selected: _selectedRole == 'trainer',

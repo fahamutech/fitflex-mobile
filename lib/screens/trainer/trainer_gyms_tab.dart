@@ -958,7 +958,7 @@ class _TrainerGymSheetState extends State<TrainerGymSheet> {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: selected
-                      ? FFTokens.brand500
+                      ? Theme.of(context).colorScheme.primary
                       : Theme.of(context).colorScheme.outlineVariant,
                   width: selected ? 2 : 1,
                 ),
@@ -969,7 +969,9 @@ class _TrainerGymSheetState extends State<TrainerGymSheet> {
                     selected
                         ? Icons.radio_button_checked
                         : Icons.radio_button_off,
-                    color: selected ? FFTokens.brand500 : null,
+                    color: selected
+                        ? Theme.of(context).colorScheme.primary
+                        : null,
                   ),
                   const SizedBox(width: 10),
                   Expanded(
