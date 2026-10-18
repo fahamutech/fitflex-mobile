@@ -156,6 +156,34 @@ void main() {
       expect(theme.preference, ThemePreference.auto);
       theme.dispose();
     });
+
+    testWidgets('theme menu is in Swahili when Swahili is chosen', (t) async {
+      SharedPreferences.setMockInitialValues({});
+      final theme = ThemeNotifier();
+      final locale = FFLocale()..set(const Locale('sw'));
+      await t.pumpWidget(
+        ThemeScope(
+          notifier: theme,
+          child: AnimatedBuilder(
+            animation: theme,
+            builder: (_, _) => FFLocaleScope(
+              notifier: locale,
+              child: const MaterialApp(
+                home: Scaffold(body: Center(child: ThemeToggleButton())),
+              ),
+            ),
+          ),
+        ),
+      );
+      await t.tap(find.byType(ThemeToggleButton));
+      await t.pumpAndSettle();
+      expect(find.text('Giza'), findsOneWidget);
+      expect(find.text('Mwanga'), findsOneWidget);
+      expect(find.text('Kiotomatiki (giza usiku)'), findsOneWidget);
+      expect(find.text('Dark'), findsNothing);
+      expect(find.text('Light'), findsNothing);
+      theme.dispose();
+    });
   });
 
   group('FFLocale', () {

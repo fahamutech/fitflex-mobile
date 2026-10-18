@@ -260,7 +260,7 @@ void main() {
           ),
         ),
       );
-      expect(find.byTooltip('Theme: Dark'), findsOneWidget);
+      expect(find.byTooltip('Mandhari: Giza'), findsOneWidget);
     });
   });
 }
