@@ -207,7 +207,7 @@ ThemeData buildDarkTheme() {
   const bg = FFTokens.darkBg;
   const surface = FFTokens.darkSurface;
   const onSurface = FFTokens.darkFgPrimary;
-  const primary = FFTokens.brandVibrant;
+  const primary = FFTokens.volt;
   const bord = FFTokens.darkBorder;
 
   return ThemeData(
@@ -218,7 +218,7 @@ ThemeData buildDarkTheme() {
     scaffoldBackgroundColor: bg,
     colorScheme: const ColorScheme.dark(
       primary: primary,
-      onPrimary: Colors.black,
+      onPrimary: FFTokens.onVolt,
       secondary: primary,
       onSecondary: Colors.black,
       surface: surface,
