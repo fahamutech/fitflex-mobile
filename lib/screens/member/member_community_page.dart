@@ -525,6 +525,31 @@ class _PeopleTabState extends State<PeopleTab> {
   }
 
   /// Request to a member, or a share link for someone not on FitFlex.
+  /// Why FitFlex did not send an invitation it tried to, in the member's
+  /// language. Null when the server did not try (sending is off).
+  String? _notSentReason(Map<String, dynamic> delivery) {
+    if (delivery.isEmpty) return null;
+    final t = context.tr;
+    final reasons = <String>{};
+    for (final v in delivery.values) {
+      final text = v.toString();
+      if (text == 'sent') continue;
+      final code = text.startsWith('skipped:') ? text.substring(8) : text;
+      reasons.add(switch (code) {
+        'sms_not_configured' => t('friendInvite.reason.smsNotSetUp'),
+        'whatsapp_not_available' ||
+        'whatsapp_not_configured' => t('friendInvite.reason.whatsappNotSetUp'),
+        'whatsapp_template_not_approved' => t(
+          'friendInvite.reason.templateNotApproved',
+        ),
+        'daily_limit' => t('friendInvite.reason.dailyLimit'),
+        'invalid_phone' || 'no_phone' => t('friendInvite.reason.badNumber'),
+        _ => t('friendInvite.reason.failed'),
+      });
+    }
+    return reasons.isEmpty ? null : reasons.join(' ');
+  }
+
   Future<void> _invite({String? userId}) async {
     final api = AppScope.of(context).api;
     final c = _contactQuery;
@@ -565,16 +590,28 @@ class _PeopleTabState extends State<PeopleTab> {
         );
       } else if (share != null && mounted) {
         // Not sent by FitFlex (off, failed or capped): the member picks the
-        // app and sends it themselves.
+        // app and sends it themselves. If the server tried and could not,
+        // say why first, so it is visible while the share sheet is open.
+        final why = _notSentReason(delivery);
+        if (why != null) {
+          messenger.showSnackBar(
+            SnackBar(
+              duration: const Duration(seconds: 8),
+              content: Text('${t('friendInvite.notSentByFitflex')} $why'),
+            ),
+          );
+        }
         await shareFriendInvite(
           context,
           text: share['text'].toString(),
           link: share['link'].toString(),
           subject: share['subject']?.toString(),
         );
-        messenger.showSnackBar(
-          SnackBar(content: Text(t('friendInvite.created'))),
-        );
+        if (why == null) {
+          messenger.showSnackBar(
+            SnackBar(content: Text(t('friendInvite.created'))),
+          );
+        }
       } else {
         messenger.showSnackBar(
           SnackBar(content: Text(t('friendInvite.requestSent'))),
