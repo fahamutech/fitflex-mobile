@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../shared/activity/activity.dart';
+import '../../../shared/activity/manual_activity_log.dart'
+    show manualMaxDaysBack;
 import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
 import '../../../shared/i18n.dart';
@@ -146,9 +148,12 @@ Widget recentEntryTile(RecentEntry e) => switch (e) {
 /// A gym visit in Recent activity. Tap to open it: what was logged during
 /// the visit, and a way to log what the member did.
 class GymVisitTile extends StatefulWidget {
-  const GymVisitTile({super.key, required this.entry});
+  const GymVisitTile({super.key, required this.entry, this.now});
 
   final RecentVisitEntry entry;
+
+  /// Injectable clock for tests.
+  final DateTime? now;
 
   @override
   State<GymVisitTile> createState() => _GymVisitTileState();
@@ -164,8 +169,14 @@ class _GymVisitTileState extends State<GymVisitTile> {
     final c = e.checkin;
     final gymName = c.gym?.name ?? c.gymId ?? '';
     final logged = e.activities.length;
+    // Older visits are past what Log activity accepts.
+    final now = widget.now ?? DateTime.now();
+    final canLog = !e.at.isBefore(
+      DateTime(now.year, now.month, now.day - manualMaxDaysBack),
+    );
+    final lang = Localizations.localeOf(context).languageCode;
     final subtitle = [
-      DateFormat('EEE d MMM · HH:mm').format(e.at.toLocal()),
+      DateFormat('EEE d MMM · HH:mm', lang).format(e.at.toLocal()),
       logged == 0
           ? context.tr('visit.nothingLogged')
           : context.tr('visit.logged').replaceAll('{n}', '$logged'),
@@ -233,28 +244,35 @@ class _GymVisitTileState extends State<GymVisitTile> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (logged == 0)
+                  if (!canLog)
+                    Text(
+                      context.tr('visit.tooOld'),
+                      key: Key('visit-too-old-${c.id}'),
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  if (canLog && logged == 0)
                     Text(
                       context.tr('visit.prompt'),
                       style: theme.textTheme.bodySmall,
-                    )
-                  else
-                    for (final a in e.activities)
-                      ActivityTimelineTile(activity: a),
-                  const SizedBox(height: FFTokens.spacingSm),
-                  FFButton(
-                    key: Key('visit-log-${c.id}'),
-                    label: context.tr(
-                      logged == 0 ? 'visit.log' : 'visit.logAnother',
                     ),
-                    onPressed: () =>
-                        openLogActivity(context, gymId: c.gymId, at: e.at),
-                    variant: logged == 0
-                        ? FFButtonVariant.primary
-                        : FFButtonVariant.secondary,
-                    size: FFButtonSize.sm,
-                    icon: Icons.add,
-                  ),
+                  for (final a in e.activities)
+                    ActivityTimelineTile(activity: a),
+                  if (canLog) ...[
+                    const SizedBox(height: FFTokens.spacingSm),
+                    FFButton(
+                      key: Key('visit-log-${c.id}'),
+                      label: context.tr(
+                        logged == 0 ? 'visit.log' : 'visit.logAnother',
+                      ),
+                      onPressed: () =>
+                          openLogActivity(context, gymId: c.gymId, at: e.at),
+                      variant: logged == 0
+                          ? FFButtonVariant.primary
+                          : FFButtonVariant.secondary,
+                      size: FFButtonSize.sm,
+                      icon: Icons.add,
+                    ),
+                  ],
                 ],
               ),
             ),

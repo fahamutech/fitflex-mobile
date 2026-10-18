@@ -487,4 +487,23 @@ void main() {
     expect(find.byKey(const Key('activity-lift')), findsOneWidget);
     expect(find.text('Log another activity'), findsOneWidget);
   });
+
+  testWidgets('a visit past 90 days can be opened but not logged', (
+    tester,
+  ) async {
+    final c = _visit('old', _daysAgo(100, 18));
+    await tester.pumpWidget(
+      _wrap(
+        GymVisitTile(
+          entry: RecentVisitEntry(c, _daysAgo(100, 18), const []),
+          now: _now,
+        ),
+        _data(),
+      ),
+    );
+    await tester.tap(find.byKey(const Key('visit-toggle-old')));
+    await tester.pump();
+    expect(find.byKey(const Key('visit-too-old-old')), findsOneWidget);
+    expect(find.byKey(const Key('visit-log-old')), findsNothing);
+  });
 }

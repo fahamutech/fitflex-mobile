@@ -114,26 +114,32 @@ void main() {
     expect(y('activity-sep10'), lessThan(y('visit-v1')));
   });
 
-  testWidgets('Show older loads the window before, until one is empty', (
+  testWidgets('Show older skips empty windows, gives up after a year', (
     tester,
   ) async {
     final data = MemberData()
       ..activityLoaded = true
       ..activities = [_act('sep23', DateTime(2026, 9, 23, 7))];
+    // The first window back is empty; the one before it has March.
     final provider = _OlderProvider([
-      [_act('may5', DateTime(2026, 5, 5, 7))],
+      const [],
+      [_act('mar20', DateTime(2026, 3, 20, 7))],
     ]);
     await _pump(tester, data, provider);
-    expect(find.text('W1 · May 2026'), findsNothing);
+    expect(find.text('W3 · Mar 2026'), findsNothing);
 
+    // One tap: the empty window is skipped, the next one has March.
     await tester.tap(find.byKey(const Key('history-older')));
     await tester.pumpAndSettle();
-    expect(find.text('W1 · May 2026'), findsOneWidget);
-    expect(provider.windows.single.$2, DateTime(2026, 6, 25));
-
-    await tester.tap(find.byKey(const Key('history-older')));
-    await tester.pumpAndSettle();
+    expect(find.text('W3 · Mar 2026'), findsOneWidget);
     expect(provider.windows.length, 2);
+    expect(provider.windows.first.$2, DateTime(2026, 6, 25));
+    expect(find.byKey(const Key('history-older')), findsOneWidget);
+
+    // Next tap: four empty windows in a row, then the end.
+    await tester.tap(find.byKey(const Key('history-older')));
+    await tester.pumpAndSettle();
+    expect(provider.windows.length, 6);
     expect(find.byKey(const Key('history-older')), findsNothing);
     expect(find.byKey(const Key('history-end')), findsOneWidget);
   });

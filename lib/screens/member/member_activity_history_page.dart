@@ -42,30 +42,44 @@ class _MemberActivityHistoryPageState extends State<MemberActivityHistoryPage> {
   bool _reachedEnd = false;
   bool _failed = false;
 
+  /// Empty windows in a row before "Show older" gives up: a year, so a
+  /// long break doesn't hide what came before it.
+  static const _maxEmptyWindows = 4;
+
+  /// Fetches window after window back until one has something in it, or
+  /// [_maxEmptyWindows] in a row are empty.
   Future<void> _loadOlder() async {
     final scope = AppScope.of(context);
     final userId = scope.auth.user?['id']?.toString() ?? '';
-    final to = _loadedFrom;
-    final from = DateTime(to.year, to.month, to.day - activityHistoryDays);
     setState(() {
       _loading = true;
       _failed = false;
     });
     try {
-      final acts = await scope.activity.getActivities(
-        userId: userId,
-        from: from,
-        to: to,
-      );
-      if (!mounted) return;
-      final known = {for (final a in _older) a.id};
-      setState(() {
-        _older.addAll(
-          acts.where((a) => !known.contains(a.id) && a.startedAt.isBefore(to)),
+      for (var empty = 0; empty < _maxEmptyWindows; empty++) {
+        final to = _loadedFrom;
+        final from = DateTime(to.year, to.month, to.day - activityHistoryDays);
+        final acts = await scope.activity.getActivities(
+          userId: userId,
+          from: from,
+          to: to,
         );
-        _loadedFrom = from;
-        // A whole window with nothing in it: treat it as the beginning.
-        _reachedEnd = acts.isEmpty;
+        if (!mounted) return;
+        final known = {for (final a in _older) a.id};
+        final fresh = acts
+            .where((a) => !known.contains(a.id) && a.startedAt.isBefore(to))
+            .toList();
+        setState(() {
+          _older.addAll(fresh);
+          _loadedFrom = from;
+        });
+        if (fresh.isNotEmpty) {
+          setState(() => _loading = false);
+          return;
+        }
+      }
+      setState(() {
+        _reachedEnd = true;
         _loading = false;
       });
     } catch (_) {
@@ -138,7 +152,10 @@ class _MemberActivityHistoryPageState extends State<MemberActivityHistoryPage> {
                 .tr('activity.historyStart')
                 .replaceAll(
                   '{date}',
-                  DateFormat('d MMM y').format(_loadedFrom),
+                  DateFormat(
+                    'd MMM y',
+                    Localizations.localeOf(context).languageCode,
+                  ).format(_loadedFrom),
                 ),
             key: const Key('history-end'),
             style: theme.textTheme.bodySmall,
@@ -168,8 +185,10 @@ class _WeekHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final (first, last) = monthWeekRange(week);
-    final month = DateFormat('MMM y').format(first);
-    final dates = '${first.day}–${last.day} ${DateFormat('MMM').format(last)}';
+    final lang = Localizations.localeOf(context).languageCode;
+    final month = DateFormat('MMM y', lang).format(first);
+    final dates =
+        '${first.day}–${last.day} ${DateFormat('MMM', lang).format(last)}';
     return Padding(
       key: Key('history-week-${week.year}-${week.month}-${week.week}'),
       padding: const EdgeInsets.only(

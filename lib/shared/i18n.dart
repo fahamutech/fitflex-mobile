@@ -2433,6 +2433,7 @@ class FFLocale extends ChangeNotifier {
           'What did you do during this visit? Log it to count it towards your goals.',
       'visit.log': 'Log what you did',
       'visit.logAnother': 'Log another activity',
+      'visit.tooOld': 'This visit is too long ago to log activity for.',
       'logActivity.error.durationRequired':
           'Enter how long it lasted, in minutes.',
       'logActivity.error.durationRange':
@@ -6512,10 +6513,10 @@ class FFLocale extends ChangeNotifier {
       'logActivity.save': 'Hifadhi shughuli',
       'logActivity.saved': 'Shughuli imerekodiwa',
       // TODO(sw-review): visit strings below are drafts for native review.
-      'logActivity.atGym': 'Katika {gym}',
+      'logActivity.atGym': 'Kwenye {gym}',
       'logActivity.error.visitWindow':
           'Chagua muda kuanzia ziara hadi saa 48 baada yake.',
-      'activity.viewMore': 'Ona zaidi',
+      'activity.viewMore': 'Tazama zaidi',
       'activity.history': 'Historia ya shughuli',
       'activity.week': 'Wiki {n} · {month}',
       'activity.showOlder': 'Onyesha za zamani',
@@ -6524,11 +6525,12 @@ class FFLocale extends ChangeNotifier {
           'Imeshindwa kupakia shughuli za zamani. Jaribu tena.',
       'visit.title': 'Ziara ya gym · {gym}',
       'visit.nothingLogged': 'Hakuna kilichorekodiwa bado',
-      'visit.logged': '{n} zimerekodiwa',
+      'visit.logged': 'Shughuli {n} zimerekodiwa',
       'visit.prompt':
           'Ulifanya nini katika ziara hii? Rekodi ili ihesabiwe kwenye malengo yako.',
       'visit.log': 'Rekodi ulichofanya',
       'visit.logAnother': 'Rekodi shughuli nyingine',
+      'visit.tooOld': 'Ziara hii ni ya zamani mno kurekodi shughuli.',
       'logActivity.error.durationRequired': 'Weka muda iliochukua, kwa dakika.',
       'logActivity.error.durationRange': 'Muda uwe kati ya dakika 1 na saa 24.',
       'logActivity.error.future': 'Muda huo wa kuanza ni wa baadaye.',
