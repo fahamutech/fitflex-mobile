@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'shared/auth_state.dart';
+import 'shared/held_nav_extras.dart';
 import 'screens/splash_screen.dart';
 import 'screens/language_screen.dart';
 import 'screens/role_screen.dart';
@@ -202,9 +205,142 @@ String routeForSignedInUser(AuthState auth) {
   return AppRoutes.home;
 }
 
+/// The [EmailAuthArgs] a navigation carried, or null when there are none
+/// (deep link, reload, browser history restore) or the contact is blank.
+EmailAuthArgs? emailAuthArgsOf(GoRouterState state) {
+  final extra = state.extra;
+  if (extra is EmailAuthArgs && extra.contact.trim().isNotEmpty) return extra;
+  return null;
+}
+
+/// GoRouter `extra` codec that keeps [EmailAuthArgs] (an email address or
+/// phone number) in memory ([HeldNavExtras]). Browser history state only ever
+/// holds a random opaque key; after a reload, sign-out or sign-in the key
+/// resolves to nothing and the user starts again from sign-in. Other extras
+/// keep GoRouter's default JSON behaviour (non-JSON values are dropped).
+class EmailAuthExtraCodec extends Codec<Object?, Object?> {
+  const EmailAuthExtraCodec();
+
+  static const _memKey = 'ffMem';
+  static const _jsonKey = 'ffJson';
+
+  /// Forgets every held contact not shown by a mounted screen. Called on
+  /// sign-out and after a successful sign-in or sign-up, so a later user
+  /// pressing browser Back cannot see the previous user's contact.
+  static void clear() => HeldNavExtras.clear();
+
+  @override
+  Converter<Object?, Object?> get encoder => const _EmailAuthExtraEncoder();
+
+  @override
+  Converter<Object?, Object?> get decoder => const _EmailAuthExtraDecoder();
+}
+
+class _EmailAuthExtraEncoder extends Converter<Object?, Object?> {
+  const _EmailAuthExtraEncoder();
+
+  @override
+  Object? convert(Object? input) {
+    if (input == null) return null;
+    if (input is EmailAuthArgs) {
+      return <String, Object?>{
+        EmailAuthExtraCodec._memKey: HeldNavExtras.hold(input),
+      };
+    }
+    try {
+      return <String, Object?>{
+        EmailAuthExtraCodec._jsonKey: json.encode(input),
+      };
+    } on JsonUnsupportedObjectError {
+      return null;
+    }
+  }
+}
+
+class _EmailAuthExtraDecoder extends Converter<Object?, Object?> {
+  const _EmailAuthExtraDecoder();
+
+  @override
+  Object? convert(Object? input) {
+    if (input is! Map) return null;
+    final key = input[EmailAuthExtraCodec._memKey];
+    if (key is String) {
+      final held = HeldNavExtras.lookup(key);
+      return held is EmailAuthArgs ? held : null;
+    }
+    final encoded = input[EmailAuthExtraCodec._jsonKey];
+    if (encoded is String) return json.decode(encoded);
+    return null;
+  }
+}
+
+/// Keeps the held [args] while the email/phone screen is mounted (so an
+/// auth-state refresh or a mid-flow sign-out still finds it) and forgets
+/// them once the screen is disposed.
+class _HoldEmailAuthArgs extends StatefulWidget {
+  const _HoldEmailAuthArgs({required this.args});
+
+  final EmailAuthArgs args;
+
+  @override
+  State<_HoldEmailAuthArgs> createState() => _HoldEmailAuthArgsState();
+}
+
+class _HoldEmailAuthArgsState extends State<_HoldEmailAuthArgs> {
+  @override
+  void initState() {
+    super.initState();
+    HeldNavExtras.pin(widget.args);
+  }
+
+  @override
+  void didUpdateWidget(_HoldEmailAuthArgs oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.args, widget.args)) {
+      HeldNavExtras.pin(widget.args);
+      HeldNavExtras.release(oldWidget.args);
+    }
+  }
+
+  @override
+  void dispose() {
+    HeldNavExtras.release(widget.args);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => EmailAuthScreen(
+    initialEmail: widget.args.contact,
+    initialMode: widget.args.mode,
+  );
+}
+
+/// Shown for a moment when the email/phone screen is opened without its
+/// in-memory args (reload, history restore): sends the user to sign-in.
+class _BackToSignIn extends StatefulWidget {
+  const _BackToSignIn();
+
+  @override
+  State<_BackToSignIn> createState() => _BackToSignInState();
+}
+
+class _BackToSignInState extends State<_BackToSignIn> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.go(AppRoutes.auth);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => const Scaffold(body: SizedBox.shrink());
+}
+
 GoRouter buildRouter(AuthState auth) {
   return GoRouter(
     initialLocation: AppRoutes.splash,
+    extraCodec: const EmailAuthExtraCodec(),
     debugLogDiagnostics: false,
     refreshListenable: auth,
     redirect: (context, state) {
@@ -350,14 +486,16 @@ GoRouter buildRouter(AuthState auth) {
       GoRoute(
         path: AppRoutes.emailAuth,
         name: 'emailAuth',
+        // The contact comes only from in-memory `extra` (never the URL). A
+        // deep link, reload or history restore has none: back to sign-in.
+        redirect: (context, state) =>
+            emailAuthArgsOf(state) == null ? AppRoutes.auth : null,
         pageBuilder: (context, state) => CustomTransitionPage(
           key: state.pageKey,
-          child: EmailAuthScreen(
-            initialEmail: state.uri.queryParameters['email'] ?? '',
-            initialMode: state.uri.queryParameters['mode'] == 'signup'
-                ? EmailAuthMode.signUp
-                : EmailAuthMode.signIn,
-          ),
+          // Restored history entries skip route redirects, so check again.
+          child: emailAuthArgsOf(state) == null
+              ? const _BackToSignIn()
+              : _HoldEmailAuthArgs(args: emailAuthArgsOf(state)!),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SlideTransition(
               position:
