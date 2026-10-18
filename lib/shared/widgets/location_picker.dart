@@ -118,10 +118,32 @@ class _LocationPickerState extends State<LocationPicker> {
                             point: _marker!,
                             width: 40,
                             height: 40,
-                            child: Icon(
+                            // Fixed brand green with a white halo: the pin
+                            // sits on light map tiles in both themes, where
+                            // the dark-theme primary (Volt) is unreadable.
+                            child: const Icon(
                               Icons.location_pin,
-                              color: Theme.of(context).colorScheme.primary,
+                              key: Key('location-picker-pin'),
+                              color: FFTokens.mapPin,
                               size: 40,
+                              shadows: [
+                                Shadow(
+                                  color: FFTokens.mapPinHalo,
+                                  offset: Offset(1.5, 0),
+                                ),
+                                Shadow(
+                                  color: FFTokens.mapPinHalo,
+                                  offset: Offset(-1.5, 0),
+                                ),
+                                Shadow(
+                                  color: FFTokens.mapPinHalo,
+                                  offset: Offset(0, 1.5),
+                                ),
+                                Shadow(
+                                  color: FFTokens.mapPinHalo,
+                                  offset: Offset(0, -1.5),
+                                ),
+                              ],
                             ),
                           ),
                         ],
