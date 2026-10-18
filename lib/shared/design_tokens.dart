@@ -177,6 +177,21 @@ class FFTokens {
   // ── Vibrant brand green (dark-mode CTA + selection state) ──
   static const Color brandVibrant = Color(0xFF17B26A);
 
+  // ── V2 accents (Design System V2, approved) ──
+  // Volt is the member-app accent on the Pulse (dark) theme: primary CTAs,
+  // selection and focus. Always pair it with [onVolt] text (15.4:1).
+  static const Color volt = Color(0xFFC8F04A);
+  static const Color onVolt = Color(0xFF020617);
+  // Fuel is the warm "act soon" accent (expiring passes, streak heat).
+  // [fuel] for light surfaces, [fuelOnDark] for text/icons on dark.
+  static const Color fuel = Color(0xFFB8452C);
+  static const Color fuelOnDark = Color(0xFFFF8A6B);
+  static const Color fuel50 = Color(0xFFFFF4EE);
+  static const Color fuel200 = Color(0xFFFBD9CC);
+  // Calm is the warm light canvas used by operator (portal) surfaces.
+  static const Color calmGround = Color(0xFFF7F5F0);
+  static const Color calmBorder = Color(0xFFEBE7DE);
+
   // ── On-dark text ──
   static const Color darkFgPrimary = Color(0xFFF1F5F9); // slate-100
   static const Color darkFgSecondary = Color(0xFFCBD5E1); // slate-300
