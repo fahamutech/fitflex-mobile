@@ -55,6 +55,14 @@ class RecordedRequest {
       '$key${query.isEmpty ? '' : '?$query'} ${jsonEncode(body)}';
 }
 
+/// A seeded answer with its own status and a raw body (not JSON-encoded),
+/// e.g. the HTML 404 page a backend returns for a route it does not have.
+class RawResponse {
+  const RawResponse(this.status, this.body);
+  final int status;
+  final String body;
+}
+
 /// A fake backend: answers from seeded JSON by "METHOD /path", records every
 /// request, and can fail or hold individual routes.
 class RecordingApi {
@@ -134,6 +142,7 @@ class RecordingApi {
       return http.Response('{}', 200);
     }
     final out = await route(rec);
+    if (out is RawResponse) return http.Response(out.body, out.status);
     return http.Response(
       out is String ? out : jsonEncode(out),
       200,

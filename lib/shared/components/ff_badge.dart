@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import '../design_tokens.dart';
 import '../tone_theme.dart';
 
-/// Badge tone matching portal's BadgeTone.
-enum FFBadgeTone { defaultTone, gray, brand, success, danger, warning }
+/// Badge tone matching portal's BadgeTone. [fuel] is the solid "act soon"
+/// tone (deals, discounts): white on Fuel, 5.35:1, the same in both themes.
+/// It is not an error colour.
+enum FFBadgeTone { defaultTone, gray, brand, success, danger, warning, fuel }
 
 /// Pill badge — matches portal's Badge component.
 class FFBadge extends StatelessWidget {
@@ -28,6 +30,12 @@ class FFBadge extends StatelessWidget {
       FFBadgeTone.success => tones.success,
       FFBadgeTone.danger => tones.danger,
       FFBadgeTone.warning => tones.warning,
+      FFBadgeTone.fuel => const FFToneColors(
+        bg: FFTokens.fuel,
+        fg: Colors.white,
+        border: FFTokens.fuel,
+        dot: Colors.white,
+      ),
     };
     final (bg, fg, ring, dotColor) = (c.bg, c.fg, c.border, c.dot);
 

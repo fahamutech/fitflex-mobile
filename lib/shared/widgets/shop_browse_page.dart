@@ -15,6 +15,8 @@ import '../product_categories.dart';
 import '../promotion.dart';
 import '../promotion_events.dart';
 import '../shop_checkout.dart';
+import '../shop_home.dart';
+import 'shop_home/shop_home_page.dart';
 
 num _shopNumber(dynamic value, [num fallback = 0]) {
   if (value is num) return value;
@@ -125,6 +127,10 @@ class ShopProduct {
       : priceTzs;
 }
 
+/// "4 in stock" / "Zipo 4", one placeholder line in both languages.
+String _inStock(BuildContext context, ShopProduct product) =>
+    context.tr('shop.inStockCount').replaceAll('{n}', '${product.stock}');
+
 class ShopVariant {
   const ShopVariant({required this.name, this.stock});
   final String name;
@@ -218,7 +224,11 @@ class ShopBrowsePage extends StatelessWidget {
 }
 
 class ShopBrowseBody extends StatefulWidget {
-  const ShopBrowseBody({super.key});
+  const ShopBrowseBody({super.key, this.mode = ShopHomeMode.member});
+
+  /// The role this shop is opened as. Only used by the Shop home (V2 flag):
+  /// it picks the suggestions, never which products can be browsed.
+  final ShopHomeMode mode;
 
   @override
   State<ShopBrowseBody> createState() => _ShopBrowseBodyState();
@@ -256,6 +266,18 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
   Timer? _trackingTimer;
   bool _trackingRequest = false;
 
+  /// Why the last catalogue load failed (offline or a server error).
+  Object? _loadError;
+
+  // Shop home V2: the landing is shown until the customer searches, picks a
+  // category or taps "View all"; the backend can switch it off (404/403).
+  bool _homeUnavailable = false;
+  bool _results = false;
+  final _searchController = TextEditingController();
+  final _homeKey = GlobalKey<ShopHomeViewState>();
+
+  bool get _showHome => shopHomeV2Enabled && !_homeUnavailable && !_results;
+
   @override
   void initState() {
     super.initState();
@@ -269,8 +291,59 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
   @override
   void dispose() {
     _trackingTimer?.cancel();
+    _searchController.dispose();
     super.dispose();
   }
+
+  void _shopEvent(String type, {String? productId}) {
+    if (!shopHomeV2Enabled) return;
+    ShopEvents.send(
+      AppScope.of(context).api,
+      type,
+      mode: widget.mode,
+      productId: productId,
+    );
+  }
+
+  /// Leaves the Shop home for the product list, with only these filters.
+  void _openResults({
+    String? search,
+    String? category,
+    Map<String, String> query = const {},
+  }) {
+    setState(() {
+      _results = true;
+      _search = search ?? query['search'] ?? '';
+      _searchController.text = _search;
+      _category = category ?? _nonEmpty(query['category']);
+      _brand = query['brand'] ?? '';
+      _vendorId = query['vendorId'] ?? '';
+      _minPrice = num.tryParse(query['minPrice'] ?? '');
+      _maxPrice = num.tryParse(query['maxPrice'] ?? '');
+      _minRating = num.tryParse(query['minRating'] ?? '');
+      _maxDistanceKm = num.tryParse(query['maxDistanceKm'] ?? '');
+      _deliveryOnly = query['delivery'] == 'true';
+      _promotionsOnly = query['promotions'] == 'true';
+      const sorts = {
+        'newest',
+        'popularity',
+        'price_asc',
+        'price_desc',
+        'rating',
+      };
+      _sort = sorts.contains(query['sort']) ? query['sort']! : 'newest';
+    });
+  }
+
+  static String? _nonEmpty(String? value) =>
+      value == null || value.isEmpty ? null : value;
+
+  void _backToHome() => setState(() {
+    _results = false;
+    _search = '';
+    _searchController.clear();
+    _category = null;
+  });
 
   Future<void> _refreshTracking() async {
     if (!mounted ||
@@ -320,10 +393,17 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
             .toList();
         _orders = results[1].whereType<Map<String, dynamic>>().toList();
         _loading = false;
+        _loadError = null;
       });
       await _loadPromotions();
-    } on ApiException {
-      if (mounted) setState(() => _loading = false);
+    } catch (e) {
+      // Offline or a server error: the list says so instead of "no products".
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _loadError = e;
+        });
+      }
     }
   }
 
@@ -371,7 +451,8 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
       return searchMatch &&
           (_category == null || product.category == _category) &&
           (!_deliveryOnly || product.deliveryAvailable) &&
-          (!_promotionsOnly || product.discountPriceTzs != null) &&
+          // On sale exactly as the server counts it: 0 < sale < price.
+          (!_promotionsOnly || product.effectivePrice < product.priceTzs) &&
           (_brand.isEmpty ||
               (product.brand ?? '').toLowerCase().contains(
                 _brand.toLowerCase(),
@@ -478,7 +559,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
 
   /// Add one unit; a product with options asks which one first. Returns
   /// whether a unit was added.
-  Future<bool> _addToCart(ShopProduct product) async {
+  Future<bool> _addToCart(ShopProduct product, {bool track = true}) async {
     if (product.variants.isNotEmpty && _cart.variantOf(product.id) == null) {
       final chosen = await showDialog<String>(
         context: context,
@@ -505,6 +586,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
     }
     final added = _cart.add(product);
     if (mounted) setState(() {});
+    if (added && track) _shopEvent('add_to_cart', productId: product.id);
     return added;
   }
 
@@ -558,6 +640,14 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
   }
 
   Future<void> _openProduct(ShopProduct product) async {
+    if (shopHomeV2Enabled) {
+      unawaited(
+        RecentlyViewedProducts.add(
+          AppScope.of(context).auth.user?['id']?.toString(),
+          product.id,
+        ),
+      );
+    }
     var detailedProduct = product;
     try {
       detailedProduct = ShopProduct.fromJson(
@@ -603,6 +693,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
       ),
     );
     if (values == null || !mounted) return;
+    _shopEvent('filter_applied');
     setState(() {
       _brand = values.brand;
       _vendorId = values.vendorId;
@@ -671,7 +762,10 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
   @override
   Widget build(BuildContext context) {
     return RefreshIndicator(
-      onRefresh: _load,
+      onRefresh: () async {
+        await _load();
+        if (_section == 0 && _showHome) await _homeKey.currentState?.reload();
+      },
       child: ListView(
         padding: const EdgeInsets.all(FFTokens.spacingLg),
         children: [
@@ -693,7 +787,22 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
                 setState(() => _section = value.first),
           ),
           const SizedBox(height: FFTokens.spacingMd),
-          if (_loading)
+          if (_section == 0 && _showHome)
+            ShopHomeView(
+              key: _homeKey,
+              mode: widget.mode,
+              cart: _cart,
+              ordering: _ordering,
+              onOpen: _openProduct,
+              onAdd: (product) => _addToCart(product, track: false),
+              onSearch: (text) => _openResults(search: text),
+              onCategory: (key) => _openResults(category: key),
+              onViewAll: (query) => _openResults(query: query),
+              onBrowseAll: () => _openResults(),
+              onCheckout: _checkout,
+              onUnavailable: () => setState(() => _homeUnavailable = true),
+            )
+          else if (_loading)
             const Center(
               child: Padding(
                 padding: EdgeInsets.all(FFTokens.spacingXl),
@@ -717,8 +826,21 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
         .toSet()
         .toList();
     return [
+      if (shopHomeV2Enabled && !_homeUnavailable)
+        Align(
+          alignment: Alignment.centerLeft,
+          child: FFButton(
+            key: const Key('shop-back-to-home'),
+            label: context.tr('shop.home.backToShop'),
+            onPressed: _backToHome,
+            variant: FFButtonVariant.ghost,
+            size: FFButtonSize.sm,
+            icon: Icons.arrow_back,
+          ),
+        ),
       FFTextField(
         key: const Key('shop-search'),
+        controller: _searchController,
         hint: context.tr('shop.searchHint'),
         prefixIcon: const Icon(Icons.search, size: 20),
         onChanged: (value) => setState(() => _search = value),
@@ -811,7 +933,8 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
         FFFeaturedStrip(
           title: context.tr('member.featuredProducts'),
           count: featured.length,
-          height: 210,
+          // Grows with the text size so the card text is never clipped.
+          height: 140 + MediaQuery.textScalerOf(context).scale(70),
           itemWidth: 160,
           itemBuilder: (context, i) => _FeaturedProductCard(
             key: Key('shop-featured-${featured[i].id}'),
@@ -820,7 +943,25 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
             onOpen: () => _openProduct(featured[i]),
           ),
         ),
-      if (_visible.isEmpty && featured.isEmpty)
+      if (_visible.isEmpty &&
+          featured.isEmpty &&
+          _products.isEmpty &&
+          _loadError != null)
+        isNetworkError(_loadError!)
+            ? FFErrorState(
+                key: const Key('shop-offline'),
+                icon: Icons.wifi_off,
+                title: context.tr('shop.home.offlineTitle'),
+                message: context.tr('shop.home.offlineBody'),
+                onRetry: _load,
+              )
+            : FFErrorState(
+                key: const Key('shop-load-error'),
+                title: context.tr('shop.home.errorTitle'),
+                message: context.tr('shop.home.errorBody'),
+                onRetry: _load,
+              )
+      else if (_visible.isEmpty && featured.isEmpty)
         FFEmptyState(title: context.tr('shop.noProducts'))
       else
         ..._visible.map(
@@ -841,6 +982,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
                     'product',
                     product.id,
                   );
+                  _shopEvent('product_favorited', productId: product.id);
                 } else {
                   _saved.remove(product.id);
                 }
@@ -1365,12 +1507,16 @@ class _ProductTile extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
+                  // A rating only with real reviews: never "★ 0.0".
                   Row(
                     children: [
-                      const Icon(Icons.star, size: 16),
-                      Text(
-                        ' ${product.rating.toStringAsFixed(1)} · ${product.stock} ${context.tr('shop.inStock')}',
-                      ),
+                      if (product.reviewCount > 0 && product.rating > 0) ...[
+                        const Icon(Icons.star, size: 16),
+                        Text(
+                          ' ${product.rating.toStringAsFixed(1)} · ${_inStock(context, product)}',
+                        ),
+                      ] else
+                        Text(_inStock(context, product)),
                     ],
                   ),
                 ],
@@ -1728,11 +1874,14 @@ class _ProductDetailsSheet extends StatelessWidget {
               ),
             Row(
               children: [
-                Text('${product.stock} ${context.tr('shop.inStock')} · '),
-                const Icon(Icons.star, size: 16),
-                Text(
-                  ' ${product.rating.toStringAsFixed(1)} (${product.reviewCount})',
-                ),
+                if (product.reviewCount > 0 && product.rating > 0) ...[
+                  Text('${_inStock(context, product)} · '),
+                  const Icon(Icons.star, size: 16),
+                  Text(
+                    ' ${product.rating.toStringAsFixed(1)} (${product.reviewCount})',
+                  ),
+                ] else
+                  Text(_inStock(context, product)),
               ],
             ),
             if (product.distanceKm != null)
