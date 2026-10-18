@@ -159,6 +159,7 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
         return;
       }
       await scope.auth.completeFitFlexSession(res);
+      EmailAuthExtraCodec.clear();
       if (!mounted) return;
       context.go(routeForSignedInUser(scope.auth));
     } catch (e) {
@@ -245,6 +246,7 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
         firebaseAuth: _authService,
       );
 
+      EmailAuthExtraCodec.clear();
       if (!mounted) return;
       context.go(routeForSignedInUser(auth));
     } on FirebaseAuthException catch (e) {
