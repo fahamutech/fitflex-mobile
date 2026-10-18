@@ -12,6 +12,7 @@ import '../shared/auth_state.dart';
 import '../shared/components/components.dart';
 import '../shared/design_tokens.dart';
 import '../shared/i18n.dart';
+import '../shared/pending_org_invite.dart';
 
 // Identity V2 · I7d: registering, signing in and recovering a PIN that
 // FitFlex keeps. A mobile number or email is proved once with a code; after
@@ -966,6 +967,8 @@ class _InviteStartScreenState extends State<InviteStartScreen> {
         displayName: _name.text.trim(),
         pin: pin,
       );
+      // This sign-in answered the invitation; a kept link token is done.
+      await PendingOrgInvite.clear();
       if (mounted) await _enter(context, step);
     } catch (e) {
       if (!mounted) return;
@@ -1064,7 +1067,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           _error = null;
         });
       } else {
-        await _enter(context, res);
+        // The invitations were answered here; a kept link token is done.
+        await PendingOrgInvite.clear();
+        if (mounted) await _enter(context, res);
       }
     } catch (e) {
       if (mounted) setState(() => _error = pinErrorMessage(context, e));

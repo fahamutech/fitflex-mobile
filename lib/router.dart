@@ -51,6 +51,7 @@ import 'shared/inbox/inbox_pages.dart';
 import 'screens/vendor/vendor_home_page.dart';
 import 'screens/partner/verification/verification_center_page.dart';
 import 'shared/widgets/invitations.dart';
+import 'shared/pending_org_invite.dart';
 
 /// Route path constants.
 abstract class AppRoutes {
@@ -175,6 +176,26 @@ bool _isOnboarded(AuthState auth, String role) {
 }
 
 String routeForSignedInUser(AuthState auth) {
+  final route = _landingFor(auth);
+  // An organisation invitation link opened before signing in comes first,
+  // once the account is ready (onboarding / approval still win).
+  if (PendingOrgInvite.hasPending &&
+      !auth.isPendingApproval &&
+      _homeRoutes.contains(route)) {
+    return AppRoutes.invitations;
+  }
+  return route;
+}
+
+const _homeRoutes = {
+  AppRoutes.memberHome,
+  AppRoutes.trainerHome,
+  AppRoutes.ownerHome,
+  AppRoutes.vendorHome,
+  AppRoutes.home,
+};
+
+String _landingFor(AuthState auth) {
   final role = auth.user?['userType']?.toString() ?? auth.role;
   final onboarded = _isOnboarded(auth, role);
   if (auth.isPendingApproval) {
@@ -364,6 +385,18 @@ GoRouter buildRouter(AuthState auth) {
 
       // An invitation link opens for anyone; it is kept through sign-in.
       if (loc.startsWith('/friend-invite/')) return null;
+
+      // An organisation invitation link: keep its token on the device and
+      // drop it from the address (and history), then route as usual.
+      if (loc == AppRoutes.invitations) {
+        final token = state.uri.queryParameters['token'];
+        if (token != null && token.isNotEmpty) {
+          showInvitationsWithoutToken();
+          return PendingOrgInvite.save(
+            token,
+          ).then((_) => AppRoutes.invitations);
+        }
+      }
 
       if (!loggedIn && !publicRoutes.contains(loc)) {
         return AppRoutes.language;

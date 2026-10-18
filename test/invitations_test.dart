@@ -287,11 +287,14 @@ void main() {
       );
     });
 
-    test('the link opens the invitations screen with the token', () {
+    test('the link carries the token after # (never sent to the server)', () {
       expect(
         inviteLink('a b/c'),
-        'https://fitflex-af-app.web.app/invitations?token=a+b%2Fc',
+        'https://fitflex-af-app.web.app/#/invitations?token=a+b%2Fc',
       );
+      final uri = Uri.parse(inviteLink('a b/c'));
+      expect(uri.query, isEmpty);
+      expect(uri.fragment, '/invitations?token=a+b%2Fc');
     });
   });
 
