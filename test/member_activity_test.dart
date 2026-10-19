@@ -504,6 +504,7 @@ void main() {
     await tester.tap(find.byKey(const Key('visit-toggle-old')));
     await tester.pump();
     expect(find.byKey(const Key('visit-too-old-old')), findsOneWidget);
+    expect(find.text('Nothing logged'), findsOneWidget);
     expect(find.byKey(const Key('visit-log-old')), findsNothing);
   });
 }

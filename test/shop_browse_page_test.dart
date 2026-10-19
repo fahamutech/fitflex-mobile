@@ -23,6 +23,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fitflexmobile/shared/formatters.dart';
+import 'package:fitflexmobile/shared/i18n.dart';
 import 'package:fitflexmobile/shared/widgets/shop_browse_page.dart';
 
 import 'support/recording_api.dart';
@@ -287,7 +288,8 @@ void main() {
       final was = tester.widget<Text>(_key('shop-was-p2'));
       expect(was.data, formatCurrency(30000));
       expect(was.style?.decoration, TextDecoration.lineThrough);
-      expect(find.text(' 4.5 · 4 in stock'), findsOneWidget);
+      // With real reviews: the rating and how many reviews (QA round 2).
+      expect(find.text(' 4.5 (12) · 4 in stock'), findsOneWidget);
       // Yoga Mat has a rating but no reviews: no stars, no number, no "0.0".
       expect(find.text('10 in stock'), findsOneWidget);
       expect(find.textContaining('3.0'), findsNothing);
@@ -1209,9 +1211,10 @@ void main() {
       api,
     ) async {
       _seed(api, orders: [_order('o1')]);
+      // The server answers `variant` per item (null when none).
       api.on('POST /me/shop-orders/o1/reorder', {
         'items': [
-          {'productId': 'p1', 'qty': 2},
+          {'productId': 'p1', 'qty': 2, 'variant': null},
         ],
       });
       final host = await _pump(tester, api);
@@ -1223,6 +1226,42 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Whey Protein'), findsOneWidget);
+    });
+
+    apiTest('reorder keeps each item\'s option for checkout', (
+      tester,
+      api,
+    ) async {
+      // Products whose options keep their own stock need one at checkout
+      // (400 variant_required otherwise).
+      _seed(
+        api,
+        orders: [_order('o1')],
+        products: [
+          {
+            ..._catalogue[0],
+            'variants': [
+              {'name': 'Vanilla', 'stock': 3},
+              {'name': 'Cocoa', 'stock': 1},
+            ],
+          },
+        ],
+      );
+      api.on('POST /me/shop-orders/o1/reorder', {
+        'items': [
+          {'productId': 'p1', 'qty': 1, 'variant': 'Cocoa'},
+        ],
+      });
+      final host = await _pump(tester, api);
+      await _openMyOrders(tester, host);
+      await tapVisible(tester, _key('shop-reorder-o1'));
+      await _openCheckout(tester);
+      await typeInto(tester, _key('shop-delivery-address'), 'Mikocheni');
+      await tapVisible(tester, _key('shop-place-order'));
+      final body = api.only('POST', '/me/shop-orders').body as Map;
+      expect(body['items'], [
+        {'productId': 'p1', 'qty': 1, 'variant': 'Cocoa'},
+      ]);
     });
 
     apiTest('invoice shows the order lines and a download button', (
@@ -1284,12 +1323,13 @@ void main() {
       api,
     ) async {
       _seed(api, orders: [_order('o1', status: 'accepted')]);
+      final accepted = (FFLocale()..set(const Locale('en'))).t(
+        'shop.orderStatus.accepted',
+      );
       final host = await _pump(tester, api);
       await _openMyOrders(tester, host);
       expect(
-        find.text(
-          '${formatCurrency(170000)} · ${host.tr('shop.orderStatus.accepted')}',
-        ),
+        find.text('${formatCurrency(170000)} · $accepted'),
         findsOneWidget,
       );
       api.on('GET /me/shop-orders', [_order('o1', status: 'dispatched')]);

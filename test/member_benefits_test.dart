@@ -175,7 +175,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Sponsored pass'), findsOneWidget);
-    expect(find.text('Unlock for TZS 45,000'), findsOneWidget);
+    expect(find.text('Unlock for TSh 45,000'), findsOneWidget);
     expect(find.text('No limit on how often you use it'), findsNothing);
 
     await tester.tap(find.byKey(const Key('unlock-b2be_1')));

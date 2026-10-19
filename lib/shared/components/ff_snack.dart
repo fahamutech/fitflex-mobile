@@ -108,28 +108,46 @@ class FFSnack {
           borderRadius: BorderRadius.circular(FFTokens.radiusMd),
           side: BorderSide(color: border),
         ),
-        action: actionLabel != null && onAction != null
-            ? SnackBarAction(
-                label: actionLabel,
-                textColor: fg,
-                onPressed: onAction,
-              )
-            : null,
-        content: Semantics(
-          liveRegion: true,
-          container: true,
-          child: Row(
-            children: [
-              ExcludeSemantics(child: Icon(icon, color: iconColor, size: 22)),
-              const SizedBox(width: FFTokens.spacingSm + 4),
-              Expanded(
-                child: Text(
-                  message,
-                  style: theme.textTheme.bodyMedium?.copyWith(color: fg),
+        // The action is drawn here rather than as a SnackBarAction, whose
+        // button is 36dp tall on web/desktop: this one is 48x48 (AC-46).
+        content: Row(
+          children: [
+            Expanded(
+              child: Semantics(
+                liveRegion: true,
+                container: true,
+                child: Row(
+                  children: [
+                    ExcludeSemantics(
+                      child: Icon(icon, color: iconColor, size: 22),
+                    ),
+                    const SizedBox(width: FFTokens.spacingSm + 4),
+                    Expanded(
+                      child: Text(
+                        message,
+                        style: theme.textTheme.bodyMedium?.copyWith(color: fg),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+            if (actionLabel != null && onAction != null)
+              TextButton(
+                key: const Key('ff-snack-action'),
+                style: TextButton.styleFrom(
+                  foregroundColor: fg,
+                  minimumSize: const Size(48, 48),
+                  tapTargetSize: MaterialTapTargetSize.padded,
+                  visualDensity: VisualDensity.standard,
+                ),
+                onPressed: () {
+                  messenger.hideCurrentSnackBar();
+                  onAction();
+                },
+                child: Text(actionLabel),
+              ),
+          ],
         ),
       ),
     );

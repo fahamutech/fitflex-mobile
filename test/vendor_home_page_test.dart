@@ -419,7 +419,8 @@ void main() {
         'brand': 'MuscleCo',
         'priceTzs': 90000,
         'discountPriceTzs': 80000,
-        'stock': 4,
+        // No 'stock': an edit never overwrites the stored count, which may
+        // have moved (buyers' reservations) while the form was open.
         'sku': 'WP-1',
         'weightKg': 1,
         'variants': [

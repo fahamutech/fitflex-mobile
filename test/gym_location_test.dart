@@ -199,7 +199,7 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.byIcon(Icons.verified), findsOneWidget);
-    expect(find.text('TZS 50,000'), findsOneWidget);
+    expect(find.text('TSh 50,000'), findsOneWidget);
   });
 
   test('nearest sorting can order gyms by km distance', () {

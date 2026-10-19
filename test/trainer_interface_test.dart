@@ -375,7 +375,7 @@ void main() {
           api: api,
         ),
       );
-      expect(find.text('Trainer pass from TZS 8,000'), findsOneWidget);
+      expect(find.text('Trainer pass from TSh 8,000'), findsOneWidget);
       await tester.tap(find.byKey(const Key('trainer-pass-option-weekly')));
       await tester.pump();
       await tester.tap(find.byKey(const Key('trainer-pass-buy')));
@@ -438,7 +438,7 @@ void main() {
       expect(find.byKey(const Key('trainer-gym-gym_home')), findsOneWidget);
       expect(find.byKey(const Key('trainer-gym-gym_pass')), findsOneWidget);
       expect(find.text('Free for me'), findsWidgets);
-      expect(find.text('Pass · TZS 8,000'), findsOneWidget);
+      expect(find.text('Pass · TSh 8,000'), findsOneWidget);
 
       // Member-style chips: "Free for me" keeps only linked gyms.
       await tester.tap(find.byKey(const Key('trainer-gym-filter-free')));

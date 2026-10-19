@@ -24,6 +24,8 @@ class FFButton extends StatelessWidget {
     this.loading = false,
     this.fullWidth = false,
     this.tooltip,
+    this.visualDensity,
+    this.maxLines = 1,
   });
 
   final String label;
@@ -38,6 +40,13 @@ class FFButton extends StatelessWidget {
   final bool loading;
   final bool fullWidth;
   final String? tooltip;
+
+  /// Set to [VisualDensity.standard] to keep the full height on web and
+  /// desktop, whose compact default takes 8px off (48 -> 40).
+  final VisualDensity? visualDensity;
+
+  /// Lines the label may use before it is cut off (long Swahili labels).
+  final int maxLines;
 
   double get _minHeight => switch (size) {
     FFButtonSize.sm => 40,
@@ -59,6 +68,7 @@ class FFButton extends StatelessWidget {
       ),
       // Keeps a 48dp hit area around the smaller button.
       tapTargetSize: MaterialTapTargetSize.padded,
+      visualDensity: visualDensity,
     );
     final destructiveStyle = variant == FFButtonVariant.destructive
         ? style.merge(
@@ -89,7 +99,7 @@ class FFButton extends StatelessWidget {
             Flexible(
               child: Text(
                 label,
-                maxLines: 1,
+                maxLines: maxLines,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
               ),
