@@ -93,21 +93,12 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
 
   void _showErrorDialog(String message) {
     if (!mounted) return;
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Authentication Error'),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              setState(() => _pin = '');
-            },
-            child: const Text('Close'),
-          ),
-        ],
-      ),
+    showFFAuthErrorDialog(
+      context,
+      message,
+      onClose: () {
+        if (mounted) setState(() => _pin = '');
+      },
     );
   }
 

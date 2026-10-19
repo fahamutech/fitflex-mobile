@@ -25,6 +25,17 @@ class PassSummaryCard extends StatelessWidget {
         child: SizedBox(height: 120, child: Center(child: FFSpinner(size: 32))),
       );
     }
+    // Offline before the profile ever arrived: we don't know the pass, so
+    // say we couldn't load it rather than "No pass yet".
+    if (data.me == null && data.offline) {
+      return FFErrorState(
+        key: const Key('pass-summary-error'),
+        icon: Icons.cloud_off_outlined,
+        title: context.tr('home.passError.title'),
+        retryLabel: context.tr('home.retry'),
+        onRetry: () => _retry(context),
+      );
+    }
     final theme = Theme.of(context);
     final state = passStateFor(data);
     final sub = data.subscription;
@@ -284,6 +295,13 @@ class PassSummaryCard extends StatelessWidget {
     await shellState?.refreshMe();
     if (!context.mounted) return;
     context.go(route);
+  }
+
+  /// Loads the profile again (and the QR once it says there is a pass).
+  Future<void> _retry(BuildContext context) async {
+    final shellState = context.findAncestorStateOfType<MemberShellState>();
+    await shellState?.refreshMe();
+    if (data.canCheckIn) await shellState?.refreshQr();
   }
 
   /// The pass name for a tier, or the tier itself for one the app doesn't know.

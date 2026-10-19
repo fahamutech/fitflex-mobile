@@ -100,7 +100,7 @@ class _RoleScreenState extends State<RoleScreen>
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                         const SizedBox(height: FFTokens.spacingXl),
-                        _RoleRadioTile(
+                        _RoleTile(
                           icon: Icons.person_outline_rounded,
                           iconColor: Theme.of(context).colorScheme.primary,
                           label: context.tr('role.member'),
@@ -109,7 +109,7 @@ class _RoleScreenState extends State<RoleScreen>
                           onTap: () => _select('member'),
                         ),
                         const SizedBox(height: FFTokens.spacingMd),
-                        _RoleRadioTile(
+                        _RoleTile(
                           icon: Icons.fitness_center_rounded,
                           iconColor: FFTokens.accentOrange,
                           label: context.tr('role.owner'),
@@ -118,7 +118,7 @@ class _RoleScreenState extends State<RoleScreen>
                           onTap: () => _select('gym_owner'),
                         ),
                         const SizedBox(height: FFTokens.spacingMd),
-                        _RoleRadioTile(
+                        _RoleTile(
                           icon: Icons.people_outline_rounded,
                           iconColor: Theme.of(context).colorScheme.primary,
                           label: context.tr('role.trainer'),
@@ -127,7 +127,7 @@ class _RoleScreenState extends State<RoleScreen>
                           onTap: () => _select('trainer'),
                         ),
                         const SizedBox(height: FFTokens.spacingMd),
-                        _RoleRadioTile(
+                        _RoleTile(
                           icon: Icons.storefront_outlined,
                           iconColor: FFTokens.accentIndigo,
                           label: context.tr('role.vendor'),
@@ -136,7 +136,7 @@ class _RoleScreenState extends State<RoleScreen>
                           onTap: () => _select('vendor'),
                         ),
                         const SizedBox(height: FFTokens.spacingMd),
-                        _RoleRadioTile(
+                        _RoleTile(
                           icon: Icons.badge_outlined,
                           iconColor: FFTokens.accentOrange,
                           label: context.tr('role.staff'),
@@ -171,8 +171,9 @@ class _RoleScreenState extends State<RoleScreen>
   }
 }
 
-class _RoleRadioTile extends StatelessWidget {
-  const _RoleRadioTile({
+/// An account-type option: the shared radio tile with the role's icon.
+class _RoleTile extends StatelessWidget {
+  const _RoleTile({
     required this.icon,
     required this.iconColor,
     required this.label,
@@ -190,82 +191,16 @@ class _RoleRadioTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: FFTokens.motionMedium,
-        curve: FFTokens.motionCurve,
-        padding: const EdgeInsets.symmetric(
-          horizontal: FFTokens.spacingLg,
-          vertical: FFTokens.spacingMd,
-        ),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(FFTokens.radiusXl),
-          border: Border.all(
-            color: selected
-                ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).colorScheme.outline,
-            width: selected ? 2 : 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              size: 28,
-              color: selected
-                  ? Theme.of(context).colorScheme.primary
-                  : iconColor,
-            ),
-            const SizedBox(width: FFTokens.spacingMd),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(label, style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: FFTokens.spacingXs),
-                  Text(
-                    description,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: FFTokens.spacingMd),
-            _RadioDot(selected: selected),
-          ],
-        ),
+    return FFChoiceTile(
+      title: label,
+      subtitle: description,
+      selected: selected,
+      onSelected: onTap,
+      leading: Icon(
+        icon,
+        size: 28,
+        color: selected ? Theme.of(context).colorScheme.primary : iconColor,
       ),
-    );
-  }
-}
-
-class _RadioDot extends StatelessWidget {
-  const _RadioDot({required this.selected});
-
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
-    final muted = Theme.of(context).colorScheme.outline;
-    return Container(
-      width: FFTokens.spacingLg,
-      height: FFTokens.spacingLg,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: selected ? primary : null,
-        border: Border.all(color: selected ? primary : muted, width: 2),
-      ),
-      child: selected
-          ? Center(
-              child: CircleAvatar(
-                radius: 5,
-                backgroundColor: Theme.of(context).colorScheme.onPrimary,
-              ),
-            )
-          : null,
     );
   }
 }

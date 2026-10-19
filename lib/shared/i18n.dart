@@ -4261,6 +4261,12 @@ class FFLocale extends ChangeNotifier {
       'shop.a11y.inCart': '{name}, {qty} in cart. Add one more',
       'shop.a11y.category': '{category}, category',
       'shop.a11y.viewAll': 'View all, {section}',
+      // Pre-sign-in fixes (2026-10-19). Language names are written in their
+      // own language on purpose, so they read the same in both maps.
+      'lang.name.en': 'English',
+      'lang.name.sw': 'Kiswahili',
+      'auth.errorDialog.title': "Couldn't sign you in",
+      'home.passError.title': "We couldn't load your pass.",
       // Vendor stock ledger (S1, 2026-10-19).
       'vendor.stock.orderNotVisible':
           'This order isn\'t in your orders yet. It appears there once it is paid.',
@@ -8641,6 +8647,11 @@ class FFLocale extends ChangeNotifier {
       'shop.a11y.inCart': '{name}, {qty} kwenye kikapu. Ongeza moja zaidi',
       'shop.a11y.category': 'Aina: {category}',
       'shop.a11y.viewAll': 'Tazama zote, {section}',
+      // Pre-sign-in fixes (2026-10-19): Swahili pending native review.
+      'lang.name.en': 'English',
+      'lang.name.sw': 'Kiswahili',
+      'auth.errorDialog.title': 'Hatukuweza kukuingiza',
+      'home.passError.title': 'Hatukuweza kupakia pasi yako.',
       // Vendor stock ledger (S1, 2026-10-19): Swahili drafts pending native
       // review (design spec vendor-stock-ledger-s1 §8, plan §4).
       'vendor.stock.orderNotVisible':
