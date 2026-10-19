@@ -52,6 +52,8 @@ class ShopHomeView extends StatefulWidget {
     this.onNeedCatalogue,
     this.onOfflineChanged,
     this.showHero = false,
+    this.heroFocusNode,
+    this.onHasContent,
   });
 
   final ShopHomeMode mode;
@@ -88,6 +90,13 @@ class ShopHomeView extends StatefulWidget {
   /// plan slice 1). Only the member shop asks for it; the trainer and owner
   /// shops and the pushed ShopBrowsePage do not.
   final bool showHero;
+
+  /// The band heading's focus node (the page footer's Back to top).
+  final FocusNode? heroFocusNode;
+
+  /// Whether the home shows rails or the All products grid (the page's
+  /// footer shows only then). Called after the frame, when it changes.
+  final ValueChanged<bool>? onHasContent;
 
   @override
   State<ShopHomeView> createState() => ShopHomeViewState();
@@ -355,6 +364,16 @@ class ShopHomeViewState extends State<ShopHomeView> {
     child: child,
   );
 
+  bool? _reportedContent;
+
+  void _reportContent(bool has) {
+    if (widget.onHasContent == null || _reportedContent == has) return;
+    _reportedContent = has;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.onHasContent?.call(has);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final data = _data;
@@ -369,6 +388,7 @@ class ShopHomeViewState extends State<ShopHomeView> {
               child: FFHeroBand(
                 key: const Key('shop-hero'),
                 photo: FFHeroPhoto.shop,
+                headingFocusNode: widget.heroFocusNode,
                 minHeight: 160,
                 wideHeight: 200,
                 eyebrow: context.tr('member.shopTitle'),
@@ -379,8 +399,10 @@ class ShopHomeViewState extends State<ShopHomeView> {
           )
         : null;
     if (data == null && _loading) {
+      _reportContent(false);
       children.addAll([?band, _padded(const _ShopHomeSkeleton())]);
     } else if (data == null) {
+      _reportContent(false);
       children.addAll([?band, _padded(_errorState(context))]);
     } else {
       if (_error != null) {
@@ -535,7 +557,10 @@ class ShopHomeViewState extends State<ShopHomeView> {
     List<ShopProduct>? grid;
     if (sections.isEmpty) {
       // The server's count says the shop is empty: no list to fetch.
-      if (data.allProductsCount == 0) return [_gettingReady(context)];
+      if (data.allProductsCount == 0) {
+        _reportContent(false);
+        return [_gettingReady(context)];
+      }
       grid = products.isNotEmpty ? products.values.toList() : widget.catalogue;
       if (grid == null && !widget.catalogueFailed && !_askedCatalogue) {
         _askedCatalogue = true;
@@ -543,8 +568,13 @@ class ShopHomeViewState extends State<ShopHomeView> {
           (_) => widget.onNeedCatalogue?.call(),
         );
       }
-      if (grid != null && grid.isEmpty) return [_gettingReady(context)];
+      if (grid != null && grid.isEmpty) {
+        _reportContent(false);
+        return [_gettingReady(context)];
+      }
     }
+    // Rails, or the All products grid once its list is in.
+    _reportContent(sections.isNotEmpty || grid != null);
 
     final categories = data.categories.isNotEmpty
         ? data.categories

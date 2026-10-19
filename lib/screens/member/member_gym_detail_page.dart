@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../app_scope.dart';
 import '../../router.dart';
 import '../../shared/components/components.dart';
+import '../../shared/photo_footer_flag.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/tone_theme.dart';
 import '../../shared/formatters.dart';
@@ -104,9 +105,18 @@ class _MemberGymDetailPageState extends State<MemberGymDetailPage> {
       // A8 — section order: gallery → name → location → verification →
       // ratings → plans → directions → about → equipment → amenities →
       // trainers → reviews → actions.
-      body: ListView(
+      body: footerListView(
         key: const Key('gym-detail-scroll'),
         padding: const EdgeInsets.all(FFTokens.spacingLg),
+        // PHOTO_FOOTER_UI: footer only, no stock top hero (the partner's
+        // own photos lead the page, decision D-1).
+        footer: photoFooterUi
+            ? FFPhotoFooter.sliver(
+                key: const Key('gym-detail-footer'),
+                pageKey: 'member.gymDetail',
+                gap: FFTokens.spacingXl - FFTokens.spacingLg,
+              )
+            : null,
         children: [
           // 1. Scrollable photo gallery
           _GymHero(key: const Key('gym-section-gallery'), gym: gym),

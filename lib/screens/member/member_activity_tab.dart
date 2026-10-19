@@ -12,6 +12,7 @@ import '../../shared/activity/workout.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
+import '../../shared/photo_footer_flag.dart';
 import '../../shared/photo_hero_flag.dart';
 import 'member_shell.dart';
 import 'widgets/home_hero.dart';
@@ -184,10 +185,24 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
     MemberData data,
     DateTime today,
   ) {
+    // PHOTO_FOOTER_UI (spec §33.6): one footer for all four sections,
+    // once activity has loaded.
+    Widget? footer({required bool padded}) => photoFooterUi
+        ? FFPhotoFooter.sliver(
+            key: const Key('activity-footer'),
+            pageKey: 'member.activity',
+            top: activityHeroSections[_section]!.$1,
+            enabled: data.activityLoaded,
+            gap: padded
+                ? FFTokens.spacingXl - FFTokens.spacingLg
+                : FFTokens.spacingXl,
+          )
+        : null;
     if (MediaQuery.sizeOf(context).width >= 840) {
-      return ListView(
+      return footerListView(
         key: const Key('activity-scroll'),
         padding: const EdgeInsets.all(FFTokens.spacingLg),
+        footer: footer(padded: true),
         children: [
           Center(
             child: ConstrainedBox(
@@ -207,9 +222,9 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
     }
     return HeroTabScroll(
       heroKey: _heroKey,
-      child: ListView(
+      child: footerListView(
         key: const Key('activity-scroll'),
-        padding: EdgeInsets.zero,
+        footer: footer(padded: false),
         children: [
           KeyedSubtree(key: _heroKey, child: _hero(context, data)),
           FFHeroSheet(

@@ -61,7 +61,13 @@ enum FFHeroPhoto {
     'scene-carbell-sarfo-3651',
     Alignment(0.15, 0),
   ),
-  shop('hero_shop', 1080 / 691, 'pexels-5592605', Alignment(-0.1, 0.2));
+  shop('hero_shop', 1080 / 691, 'pexels-5592605', Alignment(-0.1, 0.2)),
+
+  // Footer pool (spec §33, §34.1): 16:7 strips under a uniform 80% scrim.
+  footerWarmGym('footer_warm_gym', 680 / 297, 'scene-carbell-sarfo-3651'),
+  footerBoxing('footer_boxing', 540 / 236, 'pexels-8612491'),
+  footerWindow('footer_window', 960 / 421, 'scene-tima-6388'),
+  footerStairs('footer_stairs', 960 / 420, 'pexels-5647574');
 
   const FFHeroPhoto(
     this.file,
@@ -158,6 +164,7 @@ class FFPhotoHero extends StatelessWidget {
     this.logo,
     this.rounded = false,
     this.wideHeadline = false,
+    this.headingFocusNode,
   });
 
   final FFHeroPhoto photo;
@@ -208,6 +215,10 @@ class FFPhotoHero extends StatelessWidget {
 
   /// Canon h1 (48/52) for the desktop pre-sign-in panel.
   final bool wideHeadline;
+
+  /// Lets the page's footer "Back to top" move focus to the heading (spec
+  /// §32.1): focusable on request, but no extra Tab stop. Null: as before.
+  final FocusNode? headingFocusNode;
 
   /// The accent colour for the current theme: Volt on dark, brand-500 on
   /// light (large text only).
@@ -525,19 +536,54 @@ class FFPhotoHero extends StatelessWidget {
     ];
 
     final instant = MediaQuery.disableAnimationsOf(context);
-    // Eyebrow, headline, subline and chip are read as one heading.
-    Widget heading = Semantics(
-      container: true,
-      header: true,
-      label: _semanticsLabel,
-      excludeSemantics: true,
-      child: Column(
-        key: const Key('ff-hero-text'),
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: text,
-      ),
+    final textColumn = Column(
+      key: const Key('ff-hero-text'),
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: text,
     );
+    // Eyebrow, headline, subline and chip are read as one heading.
+    final focus = headingFocusNode;
+    Widget heading = focus == null
+        ? Semantics(
+            container: true,
+            header: true,
+            label: _semanticsLabel,
+            excludeSemantics: true,
+            child: textColumn,
+          )
+        : Focus(
+            focusNode: focus,
+            skipTraversal: true,
+            includeSemantics: false,
+            child: ListenableBuilder(
+              listenable: focus,
+              builder: (context, _) => Semantics(
+                container: true,
+                header: true,
+                label: _semanticsLabel,
+                excludeSemantics: true,
+                focusable: true,
+                focused: focus.hasFocus,
+                // A visible ring while it holds focus.
+                child: Container(
+                  key: const Key('ff-hero-heading-focus'),
+                  foregroundDecoration: focus.hasFocus
+                      ? BoxDecoration(
+                          border: Border.all(
+                            color: FFTokens.heroText,
+                            width: 2,
+                          ),
+                          borderRadius: BorderRadius.circular(
+                            FFTokens.radiusSm,
+                          ),
+                        )
+                      : null,
+                  child: textColumn,
+                ),
+              ),
+            ),
+          );
     if (!instant) {
       // A new headline (Activity's sections) fades in over 200ms (C-4).
       heading = AnimatedSwitcher(
@@ -824,6 +870,7 @@ class FFHeroBand extends StatelessWidget {
     this.headlineLoading = false,
     this.subline,
     this.actions = const [],
+    this.headingFocusNode,
   });
 
   final FFHeroPhoto photo;
@@ -839,6 +886,7 @@ class FFHeroBand extends StatelessWidget {
   final bool headlineLoading;
   final String? subline;
   final List<Widget> actions;
+  final FocusNode? headingFocusNode;
 
   @override
   Widget build(BuildContext context) {
@@ -854,6 +902,7 @@ class FFHeroBand extends StatelessWidget {
       headlineLoading: headlineLoading,
       subline: subline,
       actions: actions,
+      headingFocusNode: headingFocusNode,
     );
   }
 }

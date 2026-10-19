@@ -12,6 +12,7 @@ import '../design_tokens.dart';
 import '../formatters.dart';
 import '../discovery_loader.dart';
 import '../i18n.dart';
+import '../photo_footer_flag.dart';
 import '../payment_labels.dart';
 import '../product_categories.dart';
 import '../promotion.dart';
@@ -312,6 +313,12 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
 
   bool get _showHome => shopHomeV2Enabled && !_homeUnavailable && !_results;
 
+  /// PHOTO_FOOTER_UI (member shop home only, spec §33.6): whether the home
+  /// shows rails or the All products grid, and the band heading's focus
+  /// node for the footer's Back to top.
+  bool _homeHasContent = false;
+  final FocusNode _heroFocus = FocusNode(debugLabel: 'shop-hero-heading');
+
   // With the home on, today's product list (and discovery) is fetched only
   // when something needs it: the list, the fallback, a reorder, the grid.
   bool _catalogueLoaded = false;
@@ -362,6 +369,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
 
   @override
   void dispose() {
+    _heroFocus.dispose();
     removeRootBackHandler(_onRootBack);
     // "Added to cart" belongs to the shop: it does not follow to other tabs.
     // After this frame, and only if the app (and its messenger) is still
@@ -1049,13 +1057,27 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
               await _homeKey.currentState?.reload();
             }
           },
-          child: ListView(
+          child: footerListView(
             padding: home
                 ? EdgeInsets.symmetric(
                     vertical: FFTokens.spacingLg,
                     horizontal: side,
                   )
                 : const EdgeInsets.all(FFTokens.spacingLg),
+            // After "Browse all products", once the home has content.
+            footer: home && widget.showHero && photoFooterUi
+                ? FFPhotoFooter.sliver(
+                    key: const Key('shop-footer'),
+                    pageKey: 'member.shop',
+                    top: FFHeroPhoto.shop,
+                    backToTop: true,
+                    headingFocus: _heroFocus,
+                    enabled: _homeHasContent,
+                    gap: FFTokens.spacingXl - FFTokens.spacingLg,
+                    inset: side + gutter,
+                    maxWidth: 1200,
+                  )
+                : null,
             children: [
               if (home)
                 Padding(
@@ -1070,6 +1092,12 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
                   key: _homeKey,
                   mode: widget.mode,
                   showHero: widget.showHero,
+                  heroFocusNode: _heroFocus,
+                  onHasContent: (has) {
+                    if (mounted && has != _homeHasContent) {
+                      setState(() => _homeHasContent = has);
+                    }
+                  },
                   cart: _cart,
                   gutter: gutter,
                   initialData: _homeCache,

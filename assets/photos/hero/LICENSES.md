@@ -29,6 +29,10 @@ No photo shows an identifiable person, so no model releases are needed. The sect
 | `hero_gyms.webp` | Member Gyms list (band) | https://www.pexels.com/photo/33832204/ "Confident Woman in Gym Exercise Pose" | photobydela | Pexels licence | 0,0,1100,620 (~1.77:1) | 1080x609 | 15,618 | 6,288 | none: the weight stack and dark gym above and left of the woman; her raised hand starts about 60px below the crop and her face lower still, no face in frame |
 | `hero_trainers.webp` | Member Trainers list (band) | https://www.pexels.com/photo/36510739/ "Fitness Trainer in Busy Gym Environment" | Carbell Sarfo | Pexels licence | 100,650,1100,1000 (~2.86:1) | 1000x350 | 10,932 | 4,600 | hands, forearms and knees of a seated man; the crop starts about 230px below his chin and below the gym logo on his shirt (another gym's brand, cut out); two phones show their backs or dark screens; no face in frame |
 | `hero_shop.webp` | Member Shop home (band) | https://www.pexels.com/photo/5592605/ "A Young Man in a Yellow Beanie Using a Smartphone" | Thirdman | Pexels licence | 250,1300,1500,2100 (~1.56:1) | 1080x691 | 8,650 | 3,672 | two hands, forearms and a white T-shirt; the crop starts about 220px below the chin; the phone shows its case, not a screen; no face in frame |
+| `footer_warm_gym.webp` | Photo footer pool: Upgrade plan, vendor Products (PHOTO_FOOTER_UI) | https://www.pexels.com/photo/36510744/ "Focused Gym Trainer in Modern Fitness Center" | Carbell Sarfo | Pexels licence | 820,0,1500,297 (~16:7) | 680x297 | 6,640 | 3,172 | the warm, out-of-focus gym behind the trainer; one distant backlit silhouette with no facial features (unclear face); the trainer's head is left of x=820, outside the crop; no face in frame |
+| `footer_boxing.webp` | Photo footer pool: Activity, Gyms, trainer home | https://www.pexels.com/photo/8612491/ "A Man in Black Crew Neck T-shirt Smiling at the Camera" | RDNE Stock project | Pexels licence | 960,230,1500,466 (~16:7) | 540x236 | 2,916 | 1,362 | the blurred boxing gym to the man's left; at most two tiny out-of-focus figures with no features; his head and shoulder end at x~900, outside the crop; no face in frame |
+| `footer_window.webp` | Photo footer pool: Home, Trainers, gym detail | https://www.pexels.com/photo/6388369/ "A Woman in Black Tank Top Exercising in the Gym" | Tima Miroshnichenko | Pexels licence | 0,0,1050,460 (~16:7) | 960x421 | 2,474 | 1,026 | none: the misty gym windows above and left of the woman; her hair starts below y~480 and right of x~1000; no face in frame |
+| `footer_stairs.webp` | Photo footer pool: Profile, Shop home, trainer detail, owner home | https://www.pexels.com/photo/5647574/ "Serious African American manager texting message on smartphone" | Ono Kosuki | Pexels licence | 450,1720,1500,2179 (~16:7) | 960x420 | 11,720 | 3,206 | none: the glass stair rail below the man; his body ends above y~1600 at this x range; no face in frame |
 
 Total added (2026-10-19, first set): 409,056 bytes at 2x + 161,982 bytes at 1x = 571,038 bytes.
 
@@ -36,6 +40,8 @@ Addendum set (2026-10-19, spec §26, same processing; brightness graded per the 
 
 Section bands (2026-10-19, photo-hero spec §34.1, same processing; brightness x0.75 gyms, x0.85 trainers, x0.60 shop; WebP q72 method 6; only the VP8 image chunk is written, no EXIF, XMP or ICC; per-slot caps 60 KB at 2x, 25 KB at 1x): 35,200 bytes at 2x + 14,560 bytes at 1x = 49,760 bytes.
 
-All hero assets together: 1,111,730 bytes (budget 1.6 MB, spec §26).
+Footer pool (2026-10-19, photo-hero spec §34.1, same processing; brightness x0.65 warm gym, x0.60 boxing, x0.75 window, x0.85 stairs; WebP q72 method 6; VP8 chunk only; per-slot caps 40 KB at 2x, 12 KB at 1x): 23,750 bytes at 2x + 8,766 bytes at 1x = 32,516 bytes. The footer sits under a uniform 80% scrim. Which page shows which footer is fixed in `footerPagePhotos` (spec §33.6); a footer never shares a scene (`sourceId`) with the page's top photo.
+
+All hero assets together: 1,144,246 bytes (budget 1.6 MB, spec §26).
 
 These photos are not Tanzanian; they are a stop-gap (spec O-1). Replace with own photos before the flag is turned on in production.

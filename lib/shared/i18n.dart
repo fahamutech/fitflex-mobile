@@ -4380,6 +4380,9 @@ class FFLocale extends ChangeNotifier {
       'member.gymsNoMatch': 'No gyms match your search or filters.',
       'member.trainersNoMatch': 'No Trainers match your search or filters.',
       'member.clearSearchFilters': 'Clear search and filters',
+      // Photo footer band (spec §33).
+      'footer.endLine': "That's all for now.",
+      'footer.backToTop': 'Back to top',
       // Vendor stock ledger (S1, 2026-10-19).
       'vendor.orders.cancelledMeanwhile': 'This order was cancelled.',
       'payment.status.refunded': 'Refunded',
@@ -9095,6 +9098,8 @@ class FFLocale extends ChangeNotifier {
       'member.trainersNoMatch':
           'Hakuna trainer anayelingana na utafutaji au vichujio vyako.',
       'member.clearSearchFilters': 'Futa utafutaji na vichujio',
+      'footer.endLine': 'Hiyo ndiyo yote kwa sasa.',
+      'footer.backToTop': 'Rudi juu',
       // Vendor stock ledger (S1, 2026-10-19): Swahili drafts pending native
       // review (design spec vendor-stock-ledger-s1 §8, plan §4).
       'vendor.orders.cancelledMeanwhile': 'Oda hii imeghairiwa.',

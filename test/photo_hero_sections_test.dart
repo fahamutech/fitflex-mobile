@@ -709,9 +709,11 @@ void main() {
     });
 
     test('the section bands use originals no other hero uses', () {
+      // Other top heroes (the footer pool may share a scene with a band; the
+      // footer rule keeps them off the same page).
       final others = {
         for (final p in FFHeroPhoto.values)
-          if (!added.contains(p)) p.sourceId,
+          if (!added.contains(p) && !p.name.startsWith('footer')) p.sourceId,
       };
       for (final p in added) {
         expect(others, isNot(contains(p.sourceId)), reason: p.name);

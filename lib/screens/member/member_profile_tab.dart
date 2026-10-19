@@ -11,6 +11,7 @@ import '../../shared/design_tokens.dart';
 import '../../shared/firebase_auth_service.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
+import '../../shared/photo_footer_flag.dart';
 import '../../shared/photo_hero_flag.dart';
 import '../../shared/pin_credentials.dart';
 import 'member_shell.dart';
@@ -476,10 +477,23 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
       const SizedBox(height: 12),
       ..._settings(context),
     ];
+    // PHOTO_FOOTER_UI (spec §33.6): once the profile has loaded.
+    Widget? footer({required bool padded}) => photoFooterUi
+        ? FFPhotoFooter.sliver(
+            key: const Key('profile-footer'),
+            pageKey: 'member.profile',
+            top: FFHeroPhoto.profile,
+            enabled: data.me != null,
+            gap: padded
+                ? FFTokens.spacingXl - FFTokens.spacingLg
+                : FFTokens.spacingXl,
+          )
+        : null;
     if (wide) {
-      return ListView(
+      return footerListView(
         key: const Key('profile-scroll'),
         padding: const EdgeInsets.all(FFTokens.spacingLg),
+        footer: footer(padded: true),
         children: [
           Center(
             child: ConstrainedBox(
@@ -499,9 +513,9 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
     }
     return HeroTabScroll(
       heroKey: _heroKey,
-      child: ListView(
+      child: footerListView(
         key: const Key('profile-scroll'),
-        padding: EdgeInsets.zero,
+        footer: footer(padded: false),
         children: [
           KeyedSubtree(key: _heroKey, child: hero),
           FFHeroSheet(

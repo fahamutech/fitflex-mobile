@@ -12,6 +12,7 @@ import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
+import '../../shared/photo_footer_flag.dart';
 import '../../shared/photo_hero_flag.dart';
 import '../../shared/product_categories.dart';
 import '../../shared/tone_theme.dart';
@@ -829,6 +830,164 @@ class _VendorHomePageState extends State<VendorHomePage> {
     final products = lowOnly
         ? _products.where((p) => _low.isLow(p['id']?.toString())).toList()
         : _products;
+    final itemCount =
+        lead.length +
+        products.length +
+        (showFilter ? 1 : 0) +
+        (lowOnly && products.isEmpty ? 1 : 0);
+    Widget item(BuildContext context, int index) {
+      if (index < lead.length) return lead[index];
+      index -= lead.length;
+      if (showFilter) {
+        if (index == 0) return _stockFilter();
+        index -= 1;
+      }
+      if (index >= products.length) {
+        return FFEmptyState(
+          key: const Key('vendor-low-empty'),
+          title: context.tr('vendor.stock.lowEmpty'),
+          action: FFButton(
+            label: context.tr('vendor.stock.all'),
+            variant: FFButtonVariant.secondary,
+            onPressed: () => setState(() => _lowOnly = false),
+          ),
+        );
+      }
+      final product = products[index];
+      final paused = product['status'] == 'paused';
+      final id = product['id']?.toString();
+      final name = product['name']?.toString() ?? '';
+      final lowVariants = ledger ? _low.lowVariants(id) : const <String>[];
+      final low = ledger && _low.isLow(id);
+      final subtitle = Text(
+        '${formatCurrency(product['priceTzs'] as num? ?? 0)} · ${product['stock'] ?? 0} ${context.tr('vendor.inStock')}',
+      );
+      return Padding(
+        padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
+        child: FFCard(
+          child: ListTile(
+            key: Key('vendor-product-${product['id']}'),
+            contentPadding: EdgeInsets.zero,
+            onTap: ledger ? () => _openHistory(product) : null,
+            leading: const CircleAvatar(
+              child: Icon(Icons.shopping_bag_outlined),
+            ),
+            title: Text(name),
+            subtitle: !low
+                ? subtitle
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      subtitle,
+                      const SizedBox(height: FFTokens.spacingXs),
+                      // Badges wrap and are never cut off; both are read.
+                      Wrap(
+                        spacing: FFTokens.spacingXs,
+                        runSpacing: FFTokens.spacingXs,
+                        children: [
+                          FFBadge(
+                            key: Key('vendor-low-badge-$id'),
+                            label: context.tr('vendor.stock.lowBadge'),
+                            tone: FFBadgeTone.warning,
+                            wrap: true,
+                          ),
+                          if (lowVariants.isNotEmpty)
+                            FFBadge(
+                              key: Key('vendor-low-variants-$id'),
+                              label: fillIn(
+                                context.tr(
+                                  lowVariants.length == 1
+                                      ? 'vendor.stock.lowVariantsOne'
+                                      : 'vendor.stock.lowVariants',
+                                ),
+                                {'n': lowVariants.length},
+                              ),
+                              tone: FFBadgeTone.warning,
+                              wrap: true,
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+            trailing: PopupMenuButton<String>(
+              // 48dp even where the density is compact (web).
+              style: IconButton.styleFrom(
+                minimumSize: const Size(48, 48),
+                tapTargetSize: MaterialTapTargetSize.padded,
+              ),
+              tooltip: ledger
+                  ? fillIn(context.tr('vendor.productActions'), {'name': name})
+                  : null,
+              onSelected: (value) {
+                if (value == 'edit') _editProduct(product);
+                if (value == 'adjust') _adjustStock(product);
+                if (value == 'history') _openHistory(product);
+                if (value == 'archive') _archiveProduct(product);
+                if (value == 'duplicate') _duplicateProduct(product);
+                if (value == 'delete') _deleteProduct(product);
+              },
+              itemBuilder: (_) => [
+                PopupMenuItem(
+                  value: 'edit',
+                  child: Text(context.tr('vendor.edit')),
+                ),
+                if (ledger) ...[
+                  PopupMenuItem(
+                    value: 'adjust',
+                    child: Text(context.tr('vendor.stock.adjust')),
+                  ),
+                  PopupMenuItem(
+                    value: 'history',
+                    child: Text(context.tr('vendor.stock.history')),
+                  ),
+                ],
+                PopupMenuItem(
+                  value: 'archive',
+                  child: Text(
+                    paused
+                        ? context.tr('vendor.restore')
+                        : context.tr('vendor.pause'),
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'duplicate',
+                  child: Text(context.tr('vendor.duplicate')),
+                ),
+                PopupMenuItem(
+                  value: 'delete',
+                  child: Text(context.tr('vendor.delete')),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // PHOTO_FOOTER_UI (spec §33.6): only on Products while the hero rules
+    // show a hero, with at least one product. The FAB overlays the list once
+    // the hero has scrolled away, so the footer keeps 88px clear above it.
+    if (photoFooterUi && _heroOn(0)) {
+      return CustomScrollView(
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.all(FFTokens.spacingLg),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(item, childCount: itemCount),
+            ),
+          ),
+          FFPhotoFooter.sliver(
+            key: const Key('vendor-footer'),
+            pageKey: 'vendor.products',
+            top: FFHeroPhoto.vendor,
+            extraBottom: 88,
+            gap: FFTokens.spacingXl - FFTokens.spacingLg,
+            // A short list keeps today's room for the FAB.
+            hiddenExtent: vendorFabClearance - FFTokens.spacingLg,
+          ),
+        ],
+      );
+    }
     return ListView.builder(
       // Room under the last card for the floating "Add product" button.
       padding: const EdgeInsets.fromLTRB(
@@ -837,141 +996,8 @@ class _VendorHomePageState extends State<VendorHomePage> {
         FFTokens.spacingLg,
         vendorFabClearance,
       ),
-      itemCount:
-          lead.length +
-          products.length +
-          (showFilter ? 1 : 0) +
-          (lowOnly && products.isEmpty ? 1 : 0),
-      itemBuilder: (context, index) {
-        if (index < lead.length) return lead[index];
-        index -= lead.length;
-        if (showFilter) {
-          if (index == 0) return _stockFilter();
-          index -= 1;
-        }
-        if (index >= products.length) {
-          return FFEmptyState(
-            key: const Key('vendor-low-empty'),
-            title: context.tr('vendor.stock.lowEmpty'),
-            action: FFButton(
-              label: context.tr('vendor.stock.all'),
-              variant: FFButtonVariant.secondary,
-              onPressed: () => setState(() => _lowOnly = false),
-            ),
-          );
-        }
-        final product = products[index];
-        final paused = product['status'] == 'paused';
-        final id = product['id']?.toString();
-        final name = product['name']?.toString() ?? '';
-        final lowVariants = ledger ? _low.lowVariants(id) : const <String>[];
-        final low = ledger && _low.isLow(id);
-        final subtitle = Text(
-          '${formatCurrency(product['priceTzs'] as num? ?? 0)} · ${product['stock'] ?? 0} ${context.tr('vendor.inStock')}',
-        );
-        return Padding(
-          padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
-          child: FFCard(
-            child: ListTile(
-              key: Key('vendor-product-${product['id']}'),
-              contentPadding: EdgeInsets.zero,
-              onTap: ledger ? () => _openHistory(product) : null,
-              leading: const CircleAvatar(
-                child: Icon(Icons.shopping_bag_outlined),
-              ),
-              title: Text(name),
-              subtitle: !low
-                  ? subtitle
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        subtitle,
-                        const SizedBox(height: FFTokens.spacingXs),
-                        // Badges wrap and are never cut off; both are read.
-                        Wrap(
-                          spacing: FFTokens.spacingXs,
-                          runSpacing: FFTokens.spacingXs,
-                          children: [
-                            FFBadge(
-                              key: Key('vendor-low-badge-$id'),
-                              label: context.tr('vendor.stock.lowBadge'),
-                              tone: FFBadgeTone.warning,
-                              wrap: true,
-                            ),
-                            if (lowVariants.isNotEmpty)
-                              FFBadge(
-                                key: Key('vendor-low-variants-$id'),
-                                label: fillIn(
-                                  context.tr(
-                                    lowVariants.length == 1
-                                        ? 'vendor.stock.lowVariantsOne'
-                                        : 'vendor.stock.lowVariants',
-                                  ),
-                                  {'n': lowVariants.length},
-                                ),
-                                tone: FFBadgeTone.warning,
-                                wrap: true,
-                              ),
-                          ],
-                        ),
-                      ],
-                    ),
-              trailing: PopupMenuButton<String>(
-                // 48dp even where the density is compact (web).
-                style: IconButton.styleFrom(
-                  minimumSize: const Size(48, 48),
-                  tapTargetSize: MaterialTapTargetSize.padded,
-                ),
-                tooltip: ledger
-                    ? fillIn(context.tr('vendor.productActions'), {
-                        'name': name,
-                      })
-                    : null,
-                onSelected: (value) {
-                  if (value == 'edit') _editProduct(product);
-                  if (value == 'adjust') _adjustStock(product);
-                  if (value == 'history') _openHistory(product);
-                  if (value == 'archive') _archiveProduct(product);
-                  if (value == 'duplicate') _duplicateProduct(product);
-                  if (value == 'delete') _deleteProduct(product);
-                },
-                itemBuilder: (_) => [
-                  PopupMenuItem(
-                    value: 'edit',
-                    child: Text(context.tr('vendor.edit')),
-                  ),
-                  if (ledger) ...[
-                    PopupMenuItem(
-                      value: 'adjust',
-                      child: Text(context.tr('vendor.stock.adjust')),
-                    ),
-                    PopupMenuItem(
-                      value: 'history',
-                      child: Text(context.tr('vendor.stock.history')),
-                    ),
-                  ],
-                  PopupMenuItem(
-                    value: 'archive',
-                    child: Text(
-                      paused
-                          ? context.tr('vendor.restore')
-                          : context.tr('vendor.pause'),
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'duplicate',
-                    child: Text(context.tr('vendor.duplicate')),
-                  ),
-                  PopupMenuItem(
-                    value: 'delete',
-                    child: Text(context.tr('vendor.delete')),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
+      itemCount: itemCount,
+      itemBuilder: item,
     );
   }
 
