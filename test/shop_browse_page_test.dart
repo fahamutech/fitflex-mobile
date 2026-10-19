@@ -1177,9 +1177,10 @@ void main() {
       api,
     ) async {
       _seed(api, orders: [_order('o1')]);
+      // The server answers `variant` per item (null when none).
       api.on('POST /me/shop-orders/o1/reorder', {
         'items': [
-          {'productId': 'p1', 'qty': 2},
+          {'productId': 'p1', 'qty': 2, 'variant': null},
         ],
       });
       final host = await _pump(tester, api);

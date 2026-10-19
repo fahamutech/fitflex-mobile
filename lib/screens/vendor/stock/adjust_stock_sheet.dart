@@ -122,6 +122,8 @@ class _AdjustStockSheetState extends State<AdjustStockSheet> {
   bool _changed = false;
   bool _networkFailed = false;
   bool _saveFailed = false;
+  // A specific problem to fix before saving again (an i18n key).
+  String? _notice;
   String? _quantityError;
   String? _noteError;
 
@@ -215,6 +217,7 @@ class _AdjustStockSheetState extends State<AdjustStockSheet> {
       _clientRef = null;
       _networkFailed = false;
       _saveFailed = false;
+      _notice = null;
       _quantityError = null;
       if (_note.text.trim().isNotEmpty) _noteError = null;
     });
@@ -282,6 +285,18 @@ class _AdjustStockSheetState extends State<AdjustStockSheet> {
     if (mounted) setState(() => _busy = false);
   }
 
+  /// The product's variants changed under the vendor (renamed, removed, or
+  /// now keeping their own stock): load them again and ask for a pick.
+  void _variantsChanged() {
+    setState(() {
+      _variant = null;
+      _clientRef = null;
+      _notice = 'vendor.stock.variantsChanged';
+      _loading = true;
+    });
+    _refresh();
+  }
+
   void _onApiError(ApiException e) {
     final body = e.body is Map ? e.body as Map : const {};
     final current = (body['currentStock'] as num?)?.toInt();
@@ -289,6 +304,10 @@ class _AdjustStockSheetState extends State<AdjustStockSheet> {
       setState(() => _networkFailed = true);
       return;
     }
+    void notice(String key) => setState(() {
+      _notice = key;
+      _clientRef = null;
+    });
     switch (e.code) {
       case 'stock_changed':
         setState(() {
@@ -303,14 +322,38 @@ class _AdjustStockSheetState extends State<AdjustStockSheet> {
           if (current != null) _setStock(current);
           _clientRef = null;
         });
+      case 'variant_required' || 'variant_not_found':
+        _variantsChanged();
+      case 'expected_stock_required':
+        // The count we sent was missing: read it again before a new try.
+        notice('vendor.stock.currentUnknown');
+        setState(() => _loading = true);
+        _refresh();
+      case 'invalid_direction':
+        setState(() => _direction = null);
+        notice('vendor.stock.directionMissing');
       case 'note_required':
         setState(() => _noteError = context.tr('vendor.stock.noteMissing'));
       case 'note_too_long':
-        setState(() => _noteError = context.tr('vendor.saveFailed'));
+        setState(() => _noteError = context.tr('vendor.stock.noteTooLong'));
       case 'invalid_quantity':
         setState(
           () => _quantityError = context.tr('vendor.stock.quantityInvalid'),
         );
+      case 'invalid_field':
+        switch (body['field']) {
+          case 'variant':
+            _variantsChanged();
+          case 'quantity':
+            setState(
+              () => _quantityError = context.tr('vendor.stock.quantityInvalid'),
+            );
+          default:
+            notice('vendor.stock.retryEntry');
+        }
+      case 'invalid_client_ref' || 'client_ref_reused' || 'invalid_reason':
+        // Nothing was recorded; the next Save is a new entry.
+        notice('vendor.stock.retryEntry');
       case 'not_your_product' || 'vendor_permission_forbidden':
         Navigator.of(context).pop(AdjustExit.notAllowed);
       case 'product_not_found':
@@ -322,7 +365,6 @@ class _AdjustStockSheetState extends State<AdjustStockSheet> {
           Navigator.of(context).pop(AdjustExit.notAllowed);
           return;
         }
-        // Includes client_ref_reused: the next Save is a new entry.
         setState(() {
           _saveFailed = true;
           _clientRef = null;
@@ -375,6 +417,17 @@ class _AdjustStockSheetState extends State<AdjustStockSheet> {
                   message:
                       '${context.tr('error.network')} ${context.tr('vendor.stock.nothingSaved')}',
                   tone: FFAlertTone.error,
+                ),
+              ),
+              const SizedBox(height: FFTokens.spacingSm),
+            ],
+            if (_notice != null) ...[
+              Semantics(
+                liveRegion: true,
+                child: FFAlert(
+                  key: const Key('adjust-notice'),
+                  message: context.tr(_notice!),
+                  tone: FFAlertTone.warning,
                 ),
               ),
               const SizedBox(height: FFTokens.spacingSm),
@@ -445,6 +498,7 @@ class _AdjustStockSheetState extends State<AdjustStockSheet> {
             const SizedBox(height: FFTokens.spacingXs),
             Wrap(
               spacing: FFTokens.spacingSm,
+              runSpacing: FFTokens.spacingXs,
               children: [
                 for (final reason in adjustReasons)
                   Semantics(
@@ -471,6 +525,7 @@ class _AdjustStockSheetState extends State<AdjustStockSheet> {
               ),
               Wrap(
                 spacing: FFTokens.spacingSm,
+                runSpacing: FFTokens.spacingXs,
                 children: [
                   for (final (dir, key) in [
                     ('in', 'vendor.stock.add'),

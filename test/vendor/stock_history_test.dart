@@ -1,6 +1,8 @@
 // Vendor tools · S1: stock history — range, rows, paging with "Load more",
 // empty / error / not-found states, order links; and where a low-stock
 // notification leads.
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -46,6 +48,9 @@ Future<PageHost> _pump(
   Map<String, dynamic>? tools = ledgerOn,
   Map<String, dynamic> user = vendorUser,
   String lang = 'en',
+  String? variant,
+  double textScale = 1,
+  Size size = const Size(400, 900),
 }) {
   api.on('GET /vendor/products', [
     stockProduct('p1', 'Whey', stock: 8, reorderLevel: 5),
@@ -55,11 +60,12 @@ Future<PageHost> _pump(
   return pumpPage(
     tester,
     api,
-    const StockHistoryPage(productId: 'p1'),
+    StockHistoryPage(productId: 'p1', variant: variant),
     user: user,
     lang: lang,
     keepRequests: true,
-    size: const Size(400, 900),
+    textScale: textScale,
+    size: size,
   );
 }
 
@@ -260,6 +266,124 @@ void main() {
     await _pump(tester, api, lang: 'sw');
     expect(find.text('Badiliko la Stock'), findsOneWidget);
     expect(find.textContaining('stock_in'), findsNothing);
+  });
+
+  apiTest('a variant notice shows that variant\'s history', (
+    tester,
+    api,
+  ) async {
+    api.on('GET $_path', {
+      'openingStock': 3,
+      'closingStock': 1,
+      'rows': [_row('m1')],
+      'nextCursor': null,
+    });
+    await _pump(tester, api, variant: 'Large');
+    expect(
+      Uri.splitQueryString(api.only('GET', _path).query)['variant'],
+      'Large',
+    );
+    expect(find.text('Whey · Large'), findsOneWidget);
+  });
+
+  apiTest('no variant: the whole product, no variant filter', (
+    tester,
+    api,
+  ) async {
+    api.on('GET $_path', {
+      'openingStock': 3,
+      'closingStock': 1,
+      'rows': [],
+      'nextCursor': null,
+    });
+    await _pump(tester, api);
+    expect(
+      Uri.splitQueryString(api.only('GET', _path).query).containsKey('variant'),
+      isFalse,
+    );
+  });
+
+  apiTest('a variant that is gone falls back to the whole product', (
+    tester,
+    api,
+  ) async {
+    api.onCall('GET $_path', (r) {
+      if (Uri.splitQueryString(r.query).containsKey('variant')) {
+        return RawResponse(404, jsonEncode({'error': 'variant_not_found'}));
+      }
+      return {
+        'openingStock': 3,
+        'closingStock': 1,
+        'rows': [_row('m1')],
+        'nextCursor': null,
+      };
+    });
+    await _pump(tester, api, variant: 'Gone');
+    final calls = api.where('GET', _path);
+    expect(calls, hasLength(2));
+    expect(Uri.splitQueryString(calls.first.query)['variant'], 'Gone');
+    expect(
+      Uri.splitQueryString(calls.last.query).containsKey('variant'),
+      isFalse,
+    );
+    expect(find.byKey(const Key('stock-row-m1')), findsOneWidget);
+    expect(find.text('Whey'), findsOneWidget);
+  });
+
+  apiTest('a zero change is read as "no change", not "0 added"', (
+    tester,
+    api,
+  ) async {
+    api.on('GET $_path', {
+      'openingStock': 8,
+      'closingStock': 8,
+      'rows': [_row('m1', delta: 0, after: 8)],
+      'nextCursor': null,
+    });
+    final host = await _pump(tester, api);
+    final handle = tester.ensureSemantics();
+    expect(
+      find.bySemanticsLabel(RegExp(host.tr('vendor.stock.deltaNone'))),
+      findsOneWidget,
+    );
+    expect(find.bySemanticsLabel(RegExp('0 added')), findsNothing);
+    handle.dispose();
+  });
+
+  apiTest('Swahili at 375 and 2x text: short range labels, no overflow', (
+    tester,
+    api,
+  ) async {
+    api.on('GET $_path', {
+      'openingStock': 8,
+      'closingStock': 8,
+      'rows': [_row('m1')],
+      'nextCursor': null,
+    });
+    late PageHost host;
+    final errors = await captureFlutterErrors(() async {
+      host = await _pump(
+        tester,
+        api,
+        lang: 'sw',
+        textScale: 2,
+        size: const Size(375, 800),
+      );
+    });
+    expect(errors.where((e) => e.contains('overflowed')), isEmpty);
+    expect(find.text(host.tr('vendor.stock.range.7dShort')), findsOneWidget);
+    expect(find.text(host.tr('vendor.stock.range.7d')), findsNothing);
+  });
+
+  apiTest('English at 400: the full range labels', (tester, api) async {
+    api.on('GET $_path', {
+      'openingStock': 8,
+      'closingStock': 8,
+      'rows': [],
+      'nextCursor': null,
+    });
+    final host = await _pump(tester, api);
+    expect(find.text(host.tr('vendor.stock.range.30d')), findsOneWidget);
   });
 
   group('vendor_low_stock deep link', () {

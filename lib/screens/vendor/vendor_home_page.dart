@@ -245,7 +245,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
       if (e.code == 'stock_changed') {
         // Stock moved (e.g. an order) while the form was open: say so and
         // show the current count; the vendor edits again.
-        FFSnack.error(context, context.tr('vendor.stock.changed'));
+        FFSnack.error(context, context.tr('vendor.stock.changedForm'));
         await _refresh();
         return;
       }
@@ -1396,6 +1396,16 @@ class _VendorProductFormState extends State<VendorProductForm> {
           return context.tr('vendor.variant.stockMixed');
         case 'cost_forbidden':
           return context.tr('vendor.costForbidden');
+        case 'stock_changed':
+          // Stock moved since the form opened: show the new counts.
+          final current = (body['currentStock'] as num?)?.toInt();
+          final i = variant == null ? -1 : rowOf(variant);
+          if (i >= 0 && current != null) {
+            _variantRows[i].storedStock = current;
+          } else if (variant == null && current != null) {
+            _stock.text = '$current';
+          }
+          return context.tr('vendor.stock.changedForm');
       }
     }
     return widget.describeError?.call(e) ?? context.tr('vendor.saveFailed');

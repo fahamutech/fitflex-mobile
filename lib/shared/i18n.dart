@@ -4162,8 +4162,23 @@ class FFLocale extends ChangeNotifier {
       'shop.a11y.category': '{category}, category',
       'shop.a11y.viewAll': 'View all, {section}',
       // Vendor stock ledger (S1, 2026-10-19).
+      'vendor.stock.variantHistory': '{product} · {variant}',
+      'vendor.stock.retryEntry':
+          'Something went wrong with this entry. Nothing was saved. Tap save again.',
+      'vendor.stock.currentUnknown':
+          'Couldn\'t read the current stock. Wait for it to load and try again.',
+      'vendor.stock.directionMissing': 'Choose Add or Remove.',
+      'vendor.stock.variantsChanged':
+          'The variants of this product changed. Choose a variant again.',
+      'vendor.stock.range.customShort': 'Dates',
+      'vendor.stock.range.30dShort': '30 days',
+      'vendor.stock.range.7dShort': '7 days',
+      'vendor.stock.deltaNone': 'No change',
+      'vendor.stock.changedForm':
+          'Stock changed since you opened this product. Check the new number and save again.',
+      'vendor.stock.noteTooLong': 'Note is too long (max 200 characters).',
       'vendor.costPrice': 'Cost price',
-      'vendor.costPriceHelp': 'Only you and your staff see this.',
+      'vendor.costPriceHelp': 'Only you and your admin staff can see this.',
       'vendor.stock.reorderLevel': 'Reorder level',
       'vendor.stock.reorderHelp':
           'We\'ll alert you when stock falls to this number.',
@@ -5809,7 +5824,7 @@ class FFLocale extends ChangeNotifier {
       'vendor.discountPrice': 'Bei ya punguzo (TSh)',
       'vendor.sku': 'SKU',
       'vendor.weight': 'Uzito (kg)',
-      'vendor.variants': 'Aina mbadala',
+      'vendor.variants': 'Machaguo',
       'vendor.variantsHint': 'Vanilla, Chokoleti, Kubwa',
       'vendor.visible': 'Ionekane sokoni baada ya kuidhinishwa',
       'vendor.payments': 'Malipo',
@@ -8400,33 +8415,49 @@ class FFLocale extends ChangeNotifier {
       'shop.a11y.viewAll': 'Tazama zote, {section}',
       // Vendor stock ledger (S1, 2026-10-19): Swahili drafts pending native
       // review (design spec vendor-stock-ledger-s1 §8, plan §4).
+      'vendor.stock.variantHistory': '{product} · chaguo {variant}',
+      'vendor.stock.retryEntry':
+          'Kuna hitilafu kwenye ingizo hili. Hakuna kilichohifadhiwa. Bonyeza hifadhi tena.',
+      'vendor.stock.currentUnknown':
+          'Imeshindikana kusoma Stock iliyopo. Subiri ipakie kisha ujaribu tena.',
+      'vendor.stock.directionMissing': 'Chagua Ongeza au Ondoa.',
+      'vendor.stock.variantsChanged':
+          'Machaguo ya bidhaa hii yamebadilika. Chagua chaguo tena.',
+      'vendor.stock.range.customShort': 'Tarehe',
+      'vendor.stock.range.30dShort': 'Siku 30',
+      'vendor.stock.range.7dShort': 'Siku 7',
+      'vendor.stock.deltaNone': 'Hakuna badiliko',
+      'vendor.stock.changedForm':
+          'Stock imebadilika tangu ulipofungua bidhaa hii. Angalia idadi mpya kisha uhifadhi tena.',
+      'vendor.stock.noteTooLong': 'Maelezo ni marefu mno (herufi 200 zaidi).',
       'vendor.costPrice': 'Bei ya kununua',
-      'vendor.costPriceHelp': 'Wewe na wafanyakazi wako tu mnaona hii.',
+      'vendor.costPriceHelp': 'Wewe na wasimamizi wako pekee ndio mnaoiona.',
       'vendor.stock.reorderLevel': 'Kiwango cha kuagiza tena',
-      'vendor.stock.reorderHelp': 'Tutakujulisha Stock ikifika idadi hii.',
+      'vendor.stock.reorderHelp':
+          'Tutakujulisha Stock ikishuka hadi idadi hii.',
       'vendor.stock.initial': 'Stock ya kuanzia',
       'vendor.stock.current': 'Stock iliyopo sasa',
       'vendor.stock.readOnlyHelp':
           'Kubadilisha Stock, tumia Rekebisha Stock ili mabadiliko yarekodiwe.',
-      'vendor.stock.totalFromVariants': 'Jumla ya aina zote',
-      'vendor.variant.add': 'Ongeza aina',
-      'vendor.variant.name': 'Jina la aina',
-      'vendor.variant.remove': 'Ondoa aina {name}',
+      'vendor.stock.totalFromVariants': 'Jumla ya machaguo yote',
+      'vendor.variant.add': 'Ongeza chaguo',
+      'vendor.variant.name': 'Jina la chaguo',
+      'vendor.variant.remove': 'Ondoa chaguo {name}',
       'vendor.variant.newStartsAtZero':
-          'Aina mpya zinaanza na 0. Hifadhi, kisha tumia Rekebisha Stock kuongeza Stock.',
+          'Machaguo mapya yanaanza na 0. Hifadhi, kisha tumia Rekebisha Stock kuongeza Stock.',
       'vendor.variant.removeHasStock':
-          'Punguza Stock ya aina hii hadi 0 kwa Rekebisha Stock kabla ya kuiondoa.',
-      'vendor.variant.nameRequired': 'Weka jina kwa kila aina.',
-      'vendor.variant.duplicateName': 'Aina mbili zina jina moja.',
+          'Punguza Stock ya chaguo hili hadi 0 kwa Rekebisha Stock kabla ya kuliondoa.',
+      'vendor.variant.nameRequired': 'Weka jina kwa kila chaguo.',
+      'vendor.variant.duplicateName': 'Machaguo mawili yana jina moja.',
       'vendor.form.wholeNumber': 'Weka namba kamili, 0 au zaidi.',
       'vendor.stock.adjust': 'Rekebisha Stock',
       'vendor.stock.adjustFor': 'Rekebisha Stock: {name}',
-      'vendor.stock.variantLabel': 'Aina',
-      'vendor.stock.pickVariant': 'Chagua aina',
+      'vendor.stock.variantLabel': 'Chaguo',
+      'vendor.stock.pickVariant': 'Chagua chaguo',
       'vendor.stock.reasonLabel': 'Kwa nini Stock inabadilika?',
       'vendor.stock.reason.count': 'Imehesabiwa',
       'vendor.stock.reason.damaged': 'Imeharibika',
-      'vendor.stock.reason.expired': 'Muda wake umeisha',
+      'vendor.stock.reason.expired': 'Imeisha muda',
       'vendor.stock.reason.lost': 'Imepotea',
       'vendor.stock.reason.found': 'Imepatikana',
       'vendor.stock.reason.returned': 'Imerudishwa',
@@ -8466,15 +8497,16 @@ class FFLocale extends ChangeNotifier {
       'vendor.stock.loading': 'Inapakia historia ya Stock',
       'vendor.stock.historyEmpty':
           'Hakuna mabadiliko ya Stock katika tarehe hizi.',
-      'vendor.stock.historyFailed': 'Imeshindikana kupakia historia ya Stock.',
+      'vendor.stock.historyFailed':
+          'Imeshindikana kupakia historia ya Stock. Jaribu tena.',
       'vendor.stock.loadMore': 'Pakia zaidi',
-      'vendor.stock.by': 'Na {name}',
-      'vendor.stock.bySystem': 'FitFlex (moja kwa moja)',
+      'vendor.stock.by': 'Imefanywa na {name}',
+      'vendor.stock.bySystem': 'FitFlex (kiotomatiki)',
       'vendor.stock.order': 'Oda {ref}',
       'vendor.stock.fromProductForm': 'Imebadilishwa kwenye fomu ya bidhaa',
-      'vendor.stock.toVariants': 'Imehamishiwa kwenye Stock ya kila aina',
-      'vendor.stock.deltaIn': '{n} zimeongezwa',
-      'vendor.stock.deltaOut': '{n} zimeondolewa',
+      'vendor.stock.toVariants': 'Imehamishiwa kwenye Stock ya kila chaguo',
+      'vendor.stock.deltaIn': 'Zimeongezwa {n}',
+      'vendor.stock.deltaOut': 'Zimeondolewa {n}',
       'vendor.stock.rowLabel':
           '{reason}, {delta}, kutoka {before} hadi {after}, {time}, {actor}',
       'vendor.stock.backToProducts': 'Rudi kwenye bidhaa',
@@ -8483,15 +8515,15 @@ class FFLocale extends ChangeNotifier {
       'vendor.stock.lowFilter': 'Stock chache ({n})',
       'vendor.stock.all': 'Bidhaa zote',
       'vendor.stock.lowEmpty': 'Hakuna bidhaa yenye Stock chache.',
-      'vendor.stock.lowVariants': 'Aina {n} zina Stock chache',
+      'vendor.stock.lowVariants': 'Machaguo {n} yana Stock chache',
       'vendor.stock.lowNavLabel': 'Bidhaa, {n} zina Stock chache',
       'vendor.productActions': 'Vitendo vya {name}',
       'vendor.stock.noProductsAccess': 'Huna ruhusa ya kuona bidhaa.',
       'inbox.open.lowStock': 'Angalia Stock',
       'vendor.variant.hasReservations':
-          'Aina {name} ina oda zinazosubiri. Iondoe baada ya oda hizo kukamilika au kughairiwa.',
+          'Chaguo {name} lina oda zinazosubiri. Liondoe baada ya oda hizo kukamilika au kughairiwa.',
       'vendor.variant.stockMixed':
-          'Weka idadi ya Stock kwa kila aina, au usiweke kwa yoyote.',
+          'Weka idadi ya Stock kwa kila chaguo, au usiweke kwa lolote.',
       'vendor.costForbidden':
           'Mmiliki wa duka na wafanyakazi wa admin tu ndio wanaweza kuweka bei ya kununua.',
     },

@@ -276,6 +276,36 @@ void main() {
       expect(_k('vendor-product-save'), findsOneWidget);
     });
 
+    apiTest('stock_changed on save: message, new count shown, form open', (
+      tester,
+      api,
+    ) async {
+      seedVendorHome(
+        api,
+        tools: ledgerOn,
+        products: [
+          stockProduct(
+            'p1',
+            'Tee',
+            variants: [
+              {'name': 'Small', 'stock': 2},
+            ],
+          ),
+        ],
+      );
+      api.fail('PUT /vendor/products/p1', 409, {
+        'error': 'stock_changed',
+        'currentStock': 1,
+        'variant': 'Small',
+      });
+      final host = await pumpVendorHome(tester, api);
+      await productMenu(tester, 'p1', host.tr('vendor.edit'));
+      await tapVisible(tester, _k('vendor-product-save'));
+      expect(find.text(host.tr('vendor.stock.changedForm')), findsOneWidget);
+      expect(tester.widget<Text>(_k('variant-stock-value-0')).data, '1');
+      expect(_k('vendor-product-save'), findsOneWidget);
+    });
+
     apiTest('no cost permission: no cost fields, costTzs never sent', (
       tester,
       api,

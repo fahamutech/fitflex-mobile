@@ -361,6 +361,104 @@ void main() {
     expect(refs, ['ref-test-1', 'ref-test-2']);
   });
 
+  apiTest('note_too_long: a note error that says why', (tester, api) async {
+    api.fail('POST $_path', 400, {'error': 'note_too_long', 'max': 200});
+    final host = await _open(tester, api, whey);
+    await _reason(tester, 'found');
+    await _qty(tester, '1');
+    await typeInto(tester, find.byKey(const Key('adjust-note')), 'x');
+    await tapVisible(tester, _save);
+    expect(find.text(host.tr('vendor.stock.noteTooLong')), findsOneWidget);
+  });
+
+  apiTest('variant_required: variants reloaded, asked to pick again', (
+    tester,
+    api,
+  ) async {
+    final host = await _open(tester, api, whey);
+    // Meanwhile the product's variants started keeping their own stock.
+    api.on('GET /vendor/products', [
+      stockProduct(
+        'p1',
+        'Whey',
+        stock: 10,
+        variants: [
+          {'name': 'Vanilla', 'stock': 6},
+          {'name': 'Cocoa', 'stock': 4},
+        ],
+      ),
+    ]);
+    api.fail('POST $_path', 400, {
+      'error': 'variant_required',
+      'variants': ['Vanilla', 'Cocoa'],
+    });
+    api.clear();
+    await _reason(tester, 'restock');
+    await _qty(tester, '2');
+    await tapVisible(tester, _save);
+    expect(find.text(host.tr('vendor.stock.variantsChanged')), findsOneWidget);
+    expect(api.sent('GET', '/vendor/products'), isTrue);
+    expect(find.byKey(const Key('adjust-variant')), findsOneWidget);
+    expect(isEnabled(tester, _save), isFalse);
+  });
+
+  apiTest('variant_not_found is handled the same way', (tester, api) async {
+    final host = await _open(tester, api, whey);
+    api.fail('POST $_path', 404, {
+      'error': 'variant_not_found',
+      'variants': <String>[],
+    });
+    await _reason(tester, 'restock');
+    await _qty(tester, '2');
+    await tapVisible(tester, _save);
+    expect(find.text(host.tr('vendor.stock.variantsChanged')), findsOneWidget);
+    // Not closed as "product not found".
+    expect(_save, findsOneWidget);
+  });
+
+  apiTest('invalid_direction asks for Add or Remove', (tester, api) async {
+    api.fail('POST $_path', 400, {'error': 'invalid_direction'});
+    final host = await _open(tester, api, whey);
+    await _reason(tester, 'other');
+    await tapVisible(tester, find.byKey(const Key('adjust-direction-in')));
+    await _qty(tester, '1');
+    await typeInto(tester, find.byKey(const Key('adjust-note')), 'x');
+    await tapVisible(tester, _save);
+    expect(find.text(host.tr('vendor.stock.directionMissing')), findsOneWidget);
+  });
+
+  apiTest('invalid_client_ref / client_ref_reused: new ref next time', (
+    tester,
+    api,
+  ) async {
+    api.fail('POST $_path', 409, {'error': 'client_ref_reused'});
+    final host = await _open(tester, api, whey);
+    await _reason(tester, 'found');
+    await _qty(tester, '1');
+    await tapVisible(tester, _save);
+    expect(find.text(host.tr('vendor.stock.retryEntry')), findsOneWidget);
+    api.fail('POST $_path', 400, {'error': 'invalid_client_ref'});
+    await tapVisible(tester, _save);
+    final refs = [
+      for (final r in api.where('POST', _path)) (r.body as Map)['clientRef'],
+    ];
+    expect(refs, ['ref-test-1', 'ref-test-2']);
+  });
+
+  apiTest('expected_stock_required reloads the count and says so', (
+    tester,
+    api,
+  ) async {
+    api.fail('POST $_path', 400, {'error': 'expected_stock_required'});
+    final host = await _open(tester, api, whey);
+    await _reason(tester, 'count');
+    await _qty(tester, '3');
+    api.clear();
+    await tapVisible(tester, _save);
+    expect(find.text(host.tr('vendor.stock.currentUnknown')), findsOneWidget);
+    expect(api.sent('GET', '/vendor/products'), isTrue);
+  });
+
   apiTest('403 closes the sheet with the permission message', (
     tester,
     api,
@@ -405,6 +503,6 @@ void main() {
       await tapVisible(tester, find.byKey(const Key('adjust-direction-in')));
     });
     expect(errors.where((e) => e.contains('overflowed')), isEmpty);
-    expect(find.text('Muda wake umeisha'), findsOneWidget);
+    expect(find.text('Imeisha muda'), findsOneWidget);
   });
 }

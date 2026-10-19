@@ -52,6 +52,9 @@ class _StockHistoryPageState extends State<StockHistoryPage> {
   String _range = '30d';
   DateTimeRange? _custom;
   final Set<String> _expanded = {};
+  // Opened from a variant's low-stock notice: that variant's history. A
+  // variant that no longer exists falls back to the whole product.
+  late String? _variantFilter = widget.variant;
 
   @override
   void initState() {
@@ -110,7 +113,12 @@ class _StockHistoryPageState extends State<StockHistoryPage> {
             .vendorLowStock()
             .then<Object?>((v) => v)
             .catchError((Object _) => <dynamic>[]),
-        api.vendorStockMovements(widget.productId, from: from, to: to),
+        api.vendorStockMovements(
+          widget.productId,
+          from: from,
+          to: to,
+          variant: _variantFilter,
+        ),
       ]);
       if (!mounted) return;
       final product = (results[0] as List).whereType<Map>().firstWhere(
@@ -135,6 +143,12 @@ class _StockHistoryPageState extends State<StockHistoryPage> {
       });
     } catch (e) {
       if (!mounted) return;
+      if (_variantFilter != null &&
+          e is ApiException &&
+          e.code == 'variant_not_found') {
+        _variantFilter = null;
+        return _load();
+      }
       setState(() {
         _loading = false;
         _problem = _problemOf(e);
@@ -161,6 +175,7 @@ class _StockHistoryPageState extends State<StockHistoryPage> {
         widget.productId,
         from: from,
         to: to,
+        variant: _variantFilter,
         cursor: cursor,
       );
       if (!mounted) return;
@@ -201,7 +216,7 @@ class _StockHistoryPageState extends State<StockHistoryPage> {
     final result = await openAdjustStock(
       context,
       product: product,
-      variant: widget.variant,
+      variant: _variantFilter,
     );
     if (result == null || !mounted) return;
     setState(() => _product = withAdjustedStock(product, result.product));
@@ -219,7 +234,13 @@ class _StockHistoryPageState extends State<StockHistoryPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final name = _product?['name']?.toString() ?? '';
+    final product = _product?['name']?.toString() ?? '';
+    final name = _variantFilter == null || product.isEmpty
+        ? product
+        : fillIn(context.tr('vendor.stock.variantHistory'), {
+            'product': product,
+            'variant': _variantFilter,
+          });
     return Scaffold(
       appBar: AppBar(
         leading: BackButton(onPressed: _back),
@@ -444,15 +465,37 @@ class _StockHistoryPageState extends State<StockHistoryPage> {
     );
   }
 
-  Widget _rangePicker(BuildContext context) => FFSegmented(
-    key: const Key('stock-range'),
-    value: _range,
-    options: [
-      ('7d', context.tr('vendor.stock.range.7d')),
-      ('30d', context.tr('vendor.stock.range.30d')),
-      ('custom', context.tr('vendor.stock.range.custom')),
-    ],
-    onChanged: _pickRange,
+  /// 7 days / 30 days / Choose dates; the short labels when the full ones
+  /// would not fit a third of the width each (Swahili at 375, large text).
+  Widget _rangePicker(BuildContext context) => LayoutBuilder(
+    builder: (context, box) {
+      List<(String, String)> labels(String suffix) => [
+        ('7d', context.tr('vendor.stock.range.7d$suffix')),
+        ('30d', context.tr('vendor.stock.range.30d$suffix')),
+        ('custom', context.tr('vendor.stock.range.custom$suffix')),
+      ];
+      final full = labels('');
+      final style = Theme.of(
+        context,
+      ).textTheme.labelLarge?.copyWith(fontSize: 12.5);
+      final scaler = MediaQuery.textScalerOf(context);
+      final share = box.maxWidth / full.length - 2 * FFTokens.spacingXs - 2;
+      final fits = full.every((option) {
+        final painter = TextPainter(
+          text: TextSpan(text: option.$2, style: style),
+          textDirection: Directionality.of(context),
+          textScaler: scaler,
+          maxLines: 1,
+        )..layout();
+        return painter.width <= share;
+      });
+      return FFSegmented(
+        key: const Key('stock-range'),
+        value: _range,
+        options: fits ? full : labels('Short'),
+        onChanged: _pickRange,
+      );
+    },
   );
 
   String _when(String? createdAt) {
@@ -489,10 +532,14 @@ class _StockHistoryPageState extends State<StockHistoryPage> {
     final beforeAfter = before == null || after == null
         ? null
         : '${formatStock(before)} → ${formatStock(after)}';
-    final deltaWords = fillIn(
-      context.tr(delta >= 0 ? 'vendor.stock.deltaIn' : 'vendor.stock.deltaOut'),
-      {'n': formatStock(delta.abs())},
-    );
+    final deltaWords = delta == 0
+        ? context.tr('vendor.stock.deltaNone')
+        : fillIn(
+            context.tr(
+              delta > 0 ? 'vendor.stock.deltaIn' : 'vendor.stock.deltaOut',
+            ),
+            {'n': formatStock(delta.abs())},
+          );
     final label = fillIn(context.tr('vendor.stock.rowLabel'), {
       'reason': title,
       'delta': deltaWords,

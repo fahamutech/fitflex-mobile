@@ -155,7 +155,7 @@ void main() {
     await productMenu(tester, 'p1', host.tr('vendor.edit'));
     await typeInto(tester, find.byKey(const Key('vendor-product-stock')), '9');
     await tapVisible(tester, find.byKey(const Key('vendor-product-save')));
-    expect(host.snack(host.tr('vendor.stock.changed')), findsOneWidget);
+    expect(host.snack(host.tr('vendor.stock.changedForm')), findsOneWidget);
     expect(api.sent('GET', '/vendor/products'), isTrue);
   });
 
@@ -173,7 +173,10 @@ void main() {
     await typeInto(tester, find.byKey(const Key('vendor-product-stock')), '9');
     await tapVisible(tester, find.byKey(const Key('vendor-product-save')));
     expect(
-      host.snack('Stock imebadilika ulipokuwa ukihesabu. Hesabu tena.'),
+      host.snack(
+        'Stock imebadilika tangu ulipofungua bidhaa hii. '
+        'Angalia idadi mpya kisha uhifadhi tena.',
+      ),
       findsOneWidget,
     );
   });
