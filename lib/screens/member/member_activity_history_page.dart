@@ -9,6 +9,7 @@ import '../../shared/activity/activity_config.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
+import '../../shared/models.dart';
 import 'member_shell.dart';
 import 'widgets/gym_visit_tile.dart';
 
@@ -32,6 +33,10 @@ class _MemberActivityHistoryPageState extends State<MemberActivityHistoryPage> {
   /// Fetched here, older than what the Activity tab loaded.
   final _older = <Activity>[];
 
+  /// Check-ins fetched here by date range. The Activity tab only holds the
+  /// newest 50, which a frequent visitor passes within weeks.
+  final _visits = <String, CheckIn>{};
+
   /// Start of the oldest window loaded so far.
   late DateTime _loadedFrom = () {
     final now = widget.now ?? DateTime.now();
@@ -39,12 +44,67 @@ class _MemberActivityHistoryPageState extends State<MemberActivityHistoryPage> {
   }();
 
   bool _loading = false;
+
+  /// The first batch of visits, for the window the page opens on.
+  bool _visitsLoading = true;
+  bool _visitsFailed = false;
   bool _reachedEnd = false;
   bool _failed = false;
 
   /// Empty windows in a row before "Show older" gives up: a year, so a
   /// long break doesn't hide what came before it.
   static const _maxEmptyWindows = 4;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _loadRecentVisits();
+    });
+  }
+
+  Future<void> _loadRecentVisits() async {
+    final now = widget.now ?? DateTime.now();
+    setState(() {
+      _visitsLoading = true;
+      _visitsFailed = false;
+    });
+    final added = await _fetchVisits(
+      _loadedFrom,
+      now.add(const Duration(days: 1)),
+    );
+    if (!mounted) return;
+    setState(() {
+      _visitsLoading = false;
+      _visitsFailed = added < 0;
+    });
+  }
+
+  /// Visits from [from] up to [to]; how many were new, or -1 on failure. A failure only
+  /// means fewer visits shown, so it never blocks the activities.
+  Future<int> _fetchVisits(DateTime from, DateTime to) async {
+    try {
+      final rows = await AppScope.of(
+        context,
+      ).api.myCheckins(from: from, to: to);
+      if (!mounted) return 0;
+      var added = 0;
+      setState(() {
+        for (final c in rows.whereType<Map<String, dynamic>>().map(
+          CheckIn.fromJson,
+        )) {
+          if (c.id.isNotEmpty && _visits[c.id] == null) {
+            _visits[c.id] = c;
+            added++;
+          }
+        }
+      });
+      return added;
+    } catch (_) {
+      return -1;
+    }
+  }
 
   /// Fetches window after window back until one has something in it, or
   /// [_maxEmptyWindows] in a row are empty.
@@ -59,11 +119,11 @@ class _MemberActivityHistoryPageState extends State<MemberActivityHistoryPage> {
       for (var empty = 0; empty < _maxEmptyWindows; empty++) {
         final to = _loadedFrom;
         final from = DateTime(to.year, to.month, to.day - activityHistoryDays);
-        final acts = await scope.activity.getActivities(
-          userId: userId,
-          from: from,
-          to: to,
-        );
+        final (acts, newVisits) = await (
+          scope.activity.getActivities(userId: userId, from: from, to: to),
+          _fetchVisits(from, to),
+        ).wait;
+        // A failed visit fetch only means fewer visits; keep going.
         if (!mounted) return;
         final known = {for (final a in _older) a.id};
         final fresh = acts
@@ -73,7 +133,7 @@ class _MemberActivityHistoryPageState extends State<MemberActivityHistoryPage> {
           _older.addAll(fresh);
           _loadedFrom = from;
         });
-        if (fresh.isNotEmpty) {
+        if (fresh.isNotEmpty || newVisits > 0) {
           setState(() => _loading = false);
           return;
         }
@@ -102,10 +162,12 @@ class _MemberActivityHistoryPageState extends State<MemberActivityHistoryPage> {
     ];
     // Visits older than what's loaded can't show what was logged during
     // them yet, so they wait for "Show older" too.
-    final visits = data.checkins.where((c) {
-      final at = DateTime.tryParse(c.timestamp);
-      return at != null && !at.toLocal().isBefore(_loadedFrom);
-    }).toList();
+    final visits = {for (final c in data.checkins) c.id: c, ..._visits}.values
+        .where((c) {
+          final at = DateTime.tryParse(c.timestamp);
+          return at != null && !at.toLocal().isBefore(_loadedFrom);
+        })
+        .toList();
     final groups = groupByMonthWeek(
       recentTimeline(activities, visits, limit: null),
     );
@@ -127,6 +189,35 @@ class _MemberActivityHistoryPageState extends State<MemberActivityHistoryPage> {
           ),
         ),
         FFPageHeader(title: context.tr('activity.history')),
+        if (_visitsLoading)
+          const Padding(
+            key: Key('history-visits-loading'),
+            padding: EdgeInsets.only(bottom: FFTokens.spacingSm),
+            child: Center(child: FFSpinner(size: 20)),
+          )
+        else if (_visitsFailed)
+          Padding(
+            padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    context.tr('activity.historyVisitsFailed'),
+                    key: const Key('history-visits-failed'),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.error,
+                    ),
+                  ),
+                ),
+                FFButton(
+                  label: context.tr('common.retry'),
+                  onPressed: _loadRecentVisits,
+                  variant: FFButtonVariant.ghost,
+                  size: FFButtonSize.sm,
+                ),
+              ],
+            ),
+          ),
         if (groups.isEmpty)
           FFEmptyState(title: context.tr('activity.noActivity'))
         else
@@ -199,23 +290,31 @@ class _WeekHeader extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.baseline,
         textBaseline: TextBaseline.alphabetic,
         children: [
+          // Same weight as a section title, and a heading for screen
+          // readers, which hear "Week 3, October 2026" rather than "W3".
           Expanded(
-            child: Text(
-              context
-                  .tr('activity.week')
+            child: Semantics(
+              header: true,
+              label: context
+                  .tr('activity.weekSpoken')
                   .replaceAll('{n}', '${week.week}')
-                  .replaceAll('{month}', month),
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w700,
+                  .replaceAll(
+                    '{month}',
+                    DateFormat('MMMM y', lang).format(first),
+                  ),
+              excludeSemantics: true,
+              child: Text(
+                context
+                    .tr('activity.week')
+                    .replaceAll('{n}', '${week.week}')
+                    .replaceAll('{month}', month),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
-          Text(
-            dates,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
+          Text(dates, style: theme.textTheme.bodySmall),
         ],
       ),
     );

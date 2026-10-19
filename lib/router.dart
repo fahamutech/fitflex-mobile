@@ -50,6 +50,7 @@ import 'screens/member/member_message_settings_page.dart';
 import 'shared/friend_invites.dart';
 import 'shared/inbox/inbox_pages.dart';
 import 'screens/vendor/vendor_home_page.dart';
+import 'screens/vendor/stock/stock_history_page.dart';
 import 'screens/partner/verification/verification_center_page.dart';
 import 'shared/widgets/invitations.dart';
 import 'shared/pending_org_invite.dart';
@@ -84,6 +85,10 @@ abstract class AppRoutes {
 
   // Vendor
   static const vendorHome = '/vendor/home';
+
+  /// Vendor tools · S1: one product's stock history.
+  static String vendorStockHistory(String productId) =>
+      '/vendor/products/$productId/stock';
 
   // Owner sub-routes (shell)
   static const ownerRegistration = '/owner/register';
@@ -176,6 +181,11 @@ bool _isOnboarded(AuthState auth, String role) {
   // Member
   return auth.user?['onboardingCompleted'] == true;
 }
+
+/// A stock history path with a safe product id.
+final _vendorStockPath = RegExp(
+  r'^/vendor/products/[A-Za-z0-9_-]{1,64}/stock$',
+);
 
 String routeForSignedInUser(AuthState auth) {
   final route = _landingFor(auth);
@@ -429,7 +439,9 @@ GoRouter buildRouter(AuthState auth) {
         if (role == 'vendor') {
           // Vendors work on products while FitFlex verifies them; the
           // verification centre is the only other place they need.
-          if (loc == AppRoutes.vendorHome || loc == AppRoutes.verification) {
+          if (loc == AppRoutes.vendorHome ||
+              loc == AppRoutes.verification ||
+              _vendorStockPath.hasMatch(loc)) {
             return null;
           }
           return AppRoutes.vendorHome;
@@ -603,8 +615,25 @@ GoRouter buildRouter(AuthState auth) {
       GoRoute(
         path: AppRoutes.vendorHome,
         name: 'vendorHome',
-        builder: (context, state) =>
-            VendorHomePage(open: state.uri.queryParameters['open']),
+        builder: (context, state) => VendorHomePage(
+          open: state.uri.queryParameters['open'],
+          filter: state.uri.queryParameters['filter'],
+        ),
+      ),
+      GoRoute(
+        path: '/vendor/products/:productId/stock',
+        name: 'vendorStockHistory',
+        redirect: (context, state) => _vendorStockPath.hasMatch(state.uri.path)
+            ? null
+            : '${AppRoutes.vendorHome}?open=products&filter=low',
+        builder: (context, state) {
+          final variant = state.uri.queryParameters['variant'];
+          return StockHistoryPage(
+            productId: state.pathParameters['productId']!,
+            variant: variant == null || variant.isEmpty ? null : variant,
+            fromPush: state.uri.queryParameters['from'] == 'push',
+          );
+        },
       ),
       // Owner routes
       GoRoute(

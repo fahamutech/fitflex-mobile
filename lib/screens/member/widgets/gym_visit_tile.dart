@@ -175,105 +175,118 @@ class _GymVisitTileState extends State<GymVisitTile> {
       DateTime(now.year, now.month, now.day - manualMaxDaysBack),
     );
     final lang = Localizations.localeOf(context).languageCode;
-    final subtitle = [
-      DateFormat('EEE d MMM · HH:mm', lang).format(e.at.toLocal()),
-      logged == 0
-          ? context.tr('visit.nothingLogged')
-          : context.tr('visit.logged').replaceAll('{n}', '$logged'),
-    ].join(' · ');
-    final muted = theme.colorScheme.onSurfaceVariant;
+    final status = switch (logged) {
+      0 => context.tr(canLog ? 'visit.nothingLogged' : 'visit.notLogged'),
+      1 => context.tr('visit.loggedOne'),
+      _ => context.tr('visit.logged').replaceAll('{n}', '$logged'),
+    };
+    // Same anatomy as FFActionTile: boxed icon, title, two-line subtitle
+    // (when, then what was logged), chevron.
     return FFCard(
       key: Key('visit-${c.id}'),
-      padding: EdgeInsets.zero,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          InkWell(
-            key: Key('visit-toggle-${c.id}'),
-            borderRadius: BorderRadius.circular(FFTokens.radiusMd),
-            onTap: () => setState(() => _open = !_open),
-            child: Semantics(
-              button: true,
-              expanded: _open,
-              child: Padding(
-                padding: const EdgeInsets.all(FFTokens.spacingMd),
-                child: Row(
-                  children: [
-                    Icon(
+          Semantics(
+            button: true,
+            expanded: _open,
+            child: InkWell(
+              key: Key('visit-toggle-${c.id}'),
+              borderRadius: BorderRadius.circular(FFTokens.radiusXl),
+              onTap: () => setState(() => _open = !_open),
+              child: Row(
+                children: [
+                  Container(
+                    width: FFTokens.iconBox,
+                    height: FFTokens.iconBox,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      border: Border.all(color: theme.colorScheme.outline),
+                      borderRadius: BorderRadius.circular(FFTokens.radiusLg),
+                    ),
+                    child: Icon(
                       Icons.storefront_outlined,
                       color: theme.colorScheme.primary,
-                    ),
-                    const SizedBox(width: FFTokens.spacingMd),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            context
-                                .tr('visit.title')
-                                .replaceAll('{gym}', gymName),
-                            style: theme.textTheme.titleSmall,
-                          ),
-                          Text(
-                            subtitle,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: muted,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Icon(
-                      _open ? Icons.expand_less : Icons.expand_more,
-                      color: muted,
                       size: FFTokens.iconMd,
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: FFTokens.spacingSm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          context
+                              .tr('visit.title')
+                              .replaceAll('{gym}', gymName),
+                          style: theme.textTheme.titleSmall,
+                        ),
+                        const SizedBox(height: FFTokens.spacing2xs),
+                        Text(
+                          DateFormat(
+                            'EEE d MMM · HH:mm',
+                            lang,
+                          ).format(e.at.toLocal()),
+                          style: theme.textTheme.bodySmall,
+                        ),
+                        Text(status, style: theme.textTheme.bodySmall),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    _open ? Icons.expand_less : Icons.expand_more,
+                    color: theme.colorScheme.onSurfaceVariant,
+                    size: FFTokens.iconMd,
+                  ),
+                ],
               ),
             ),
           ),
           if (_open)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                FFTokens.spacingMd,
-                0,
-                FFTokens.spacingMd,
-                FFTokens.spacingMd,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (!canLog)
-                    Text(
-                      context.tr('visit.tooOld'),
-                      key: Key('visit-too-old-${c.id}'),
-                      style: theme.textTheme.bodySmall,
-                    ),
-                  if (canLog && logged == 0)
-                    Text(
-                      context.tr('visit.prompt'),
-                      style: theme.textTheme.bodySmall,
-                    ),
-                  for (final a in e.activities)
-                    ActivityTimelineTile(activity: a),
-                  if (canLog) ...[
-                    const SizedBox(height: FFTokens.spacingSm),
-                    FFButton(
-                      key: Key('visit-log-${c.id}'),
-                      label: context.tr(
-                        logged == 0 ? 'visit.log' : 'visit.logAnother',
+            // Its own node, so a screen reader doesn't read the body as part
+            // of the header button. Indented to line up with the title.
+            Semantics(
+              container: true,
+              explicitChildNodes: true,
+              child: Padding(
+                padding: const EdgeInsets.only(
+                  left: FFTokens.iconBox + FFTokens.spacingSm,
+                  top: FFTokens.spacingSm,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (final a in e.activities)
+                      ActivityTimelineTile(activity: a, compact: true),
+                    if (!canLog)
+                      Text(
+                        context.tr('visit.tooOld'),
+                        key: Key('visit-too-old-${c.id}'),
+                        style: theme.textTheme.bodySmall,
+                      )
+                    else ...[
+                      if (logged == 0)
+                        Text(
+                          context.tr('visit.prompt'),
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      const SizedBox(height: FFTokens.spacingSm),
+                      FFButton(
+                        key: Key('visit-log-${c.id}'),
+                        label: context.tr(
+                          logged == 0 ? 'visit.log' : 'visit.logAnother',
+                        ),
+                        onPressed: () =>
+                            openLogActivity(context, gymId: c.gymId, at: e.at),
+                        variant: logged == 0
+                            ? FFButtonVariant.primary
+                            : FFButtonVariant.secondary,
+                        size: FFButtonSize.sm,
+                        icon: Icons.add,
                       ),
-                      onPressed: () =>
-                          openLogActivity(context, gymId: c.gymId, at: e.at),
-                      variant: logged == 0
-                          ? FFButtonVariant.primary
-                          : FFButtonVariant.secondary,
-                      size: FFButtonSize.sm,
-                      icon: Icons.add,
-                    ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
         ],

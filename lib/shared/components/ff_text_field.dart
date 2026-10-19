@@ -34,6 +34,9 @@ class FFTextField extends StatelessWidget {
     this.helperText,
     this.suffixText,
     this.autovalidateMode,
+    this.focusNode,
+    this.helperMaxLines = 3,
+    this.errorMaxLines = 3,
   });
 
   final TextEditingController? controller;
@@ -66,10 +69,19 @@ class FFTextField extends StatelessWidget {
   final String? suffixText;
   final AutovalidateMode? autovalidateMode;
 
+  /// Lets a screen move focus back to this field (e.g. after a conflict).
+  final FocusNode? focusNode;
+
+  /// Helper and error text wrap (up to this many lines) instead of being cut
+  /// off with "…" — longer in Swahili.
+  final int helperMaxLines;
+  final int errorMaxLines;
+
   @override
   Widget build(BuildContext context) {
     return TextFormField(
       controller: controller,
+      focusNode: focusNode,
       initialValue: initialValue,
       validator: validator,
       keyboardType: keyboardType,
@@ -93,6 +105,8 @@ class FFTextField extends StatelessWidget {
         hintText: hint,
         errorText: errorText,
         helperText: helperText,
+        helperMaxLines: helperMaxLines,
+        errorMaxLines: errorMaxLines,
         suffixText: suffixText,
         prefixIcon: prefixIcon,
         suffixIcon: suffixIcon,

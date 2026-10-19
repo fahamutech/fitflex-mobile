@@ -46,20 +46,30 @@ class PassSummaryCard extends StatelessWidget {
         ? null
         : (directDaysLeft / directDurationDays).clamp(0, 1).toDouble();
 
+    // A working pass leads with its own name and status. A purchase still
+    // waiting for approval is a different pass, so it gets its own amber
+    // line below instead of borrowing this card's title or badge.
+    final hasPass = state.canShowQr;
+    final pendingAside = hasPass ? pending : null;
+
     // With no pass the title says so once; the sentence and the button
     // below carry the invitation, so the badge is left out.
-    final title = sub == null
-        ? (pending != null
-              ? _tierLabel(context, pending.tier)
-              : context.tr('pass.state.noPassYet'))
-        : sub.isDirect
-        ? (sub.homeGym?.name ?? context.tr('member.membership'))
-        : context.tr('pass.${sub.tier}');
-    final status = pending != null
-        ? context.tr('pass.pending')
-        : sub == null
-        ? null
-        : _statusLabel(context, sub.status);
+    final String title;
+    final String? status;
+    if (hasPass || (pending == null && sub != null)) {
+      title = sub!.isDirect
+          ? (sub.homeGym?.name ?? context.tr('member.membership'))
+          : context.tr('pass.${sub.tier}');
+      status = _statusLabel(context, sub.status);
+    } else if (pending != null) {
+      title =
+          _pendingName(context, pending) ??
+          context.tr('pass.state.pendingPurchaseAny');
+      status = context.tr('pass.pending');
+    } else {
+      title = context.tr('pass.state.noPassYet');
+      status = null;
+    }
 
     return FFCard(
       child: Column(
@@ -94,7 +104,23 @@ class PassSummaryCard extends StatelessWidget {
               ],
             ],
           ),
-          if (sub?.isDirect == true) ...[
+          if (pendingAside != null) ...[
+            const SizedBox(height: FFTokens.spacingSm),
+            FFBadge(
+              key: const Key('pass-pending-purchase'),
+              label: switch (_pendingName(context, pendingAside)) {
+                final name? =>
+                  context
+                      .tr('pass.state.pendingPurchase')
+                      .replaceAll('{tier}', name),
+                null => context.tr('pass.state.pendingPurchaseAny'),
+              },
+              tone: FFBadgeTone.warning,
+              dot: true,
+              wrap: true,
+            ),
+          ],
+          if (sub?.isDirect == true && (hasPass || pending == null)) ...[
             const SizedBox(height: 10),
             Text(
               context.tr('member.plan_${sub!.plan ?? 'monthly'}'),
@@ -283,6 +309,13 @@ class PassSummaryCard extends StatelessWidget {
     final key = 'pass.$tier';
     final label = context.tr(key);
     return label == key ? tier : label;
+  }
+
+  /// What a waiting payment buys: the pass tier, or the gym for a gym plan.
+  static String? _pendingName(BuildContext context, PaymentRequest pending) {
+    if (pending.tier.isNotEmpty) return _tierLabel(context, pending.tier);
+    final gym = pending.gymName?.trim() ?? '';
+    return gym.isEmpty ? null : gym;
   }
 
   /// Translated status, falling back to the raw value for new ones.

@@ -64,6 +64,12 @@ class FFSheet extends StatelessWidget {
                     ),
                     if (showClose)
                       IconButton(
+                        key: const Key('ff-sheet-close'),
+                        // 48x48 on every platform (web/desktop default to 40).
+                        style: IconButton.styleFrom(
+                          minimumSize: const Size(48, 48),
+                          visualDensity: VisualDensity.standard,
+                        ),
                         icon: const Icon(Icons.close),
                         tooltip: context.tr('common.close'),
                         onPressed: () => Navigator.of(context).maybePop(),

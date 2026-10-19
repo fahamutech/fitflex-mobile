@@ -244,6 +244,71 @@ void main() {
       expect(find.textContaining('Platform Pass'), findsNothing);
     });
 
+    testWidgets(
+      'active pass + pending purchase: the pass keeps its own status and '
+      'the purchase gets a separate amber line naming its tier',
+      (tester) async {
+        await _pumpCard(
+          tester,
+          _data(
+            subscription: _pass(),
+            used: 7,
+            pending: {'id': 'p2', 'status': 'pending', 'tier': 'premium'},
+          ),
+        );
+        // The card is still the Pro pass, marked Active in green.
+        expect(find.text('Pro'), findsOneWidget);
+        final badges = tester
+            .widgetList<FFBadge>(find.byType(FFBadge))
+            .toList();
+        final status = badges.firstWhere((b) => b.label == 'Active');
+        expect(status.tone, FFBadgeTone.success);
+        // The old merged badge is gone.
+        expect(find.text('Payment pending admin approval'), findsNothing);
+        // The purchase is its own amber line, naming what is being paid for.
+        final aside = tester.widget<FFBadge>(
+          find.byKey(const Key('pass-pending-purchase')),
+        );
+        expect(aside.label, 'Payment pending: Premium');
+        expect(aside.tone, FFBadgeTone.warning);
+        // The ring still counts visits left on the working pass, once.
+        expect(find.byKey(const Key('pass-visits-ring')), findsOneWidget);
+        expect(find.text('11'), findsOneWidget);
+        expect(find.text('7 of 18 used'), findsOneWidget);
+        expect(find.text('Show my QR'), findsOneWidget);
+      },
+    );
+
+    testWidgets('pending purchase alone: no separate line, one badge', (
+      tester,
+    ) async {
+      await _pumpCard(
+        tester,
+        _data(pending: {'id': 'p1', 'status': 'pending', 'tier': 'pro'}),
+      );
+      expect(find.byKey(const Key('pass-pending-purchase')), findsNothing);
+      final badge = tester.widget<FFBadge>(find.byType(FFBadge));
+      expect(badge.label, 'Payment pending admin approval');
+      expect(badge.tone, FFBadgeTone.warning);
+    });
+
+    testWidgets('ended pass + new purchase: titled by what is being paid', (
+      tester,
+    ) async {
+      await _pumpCard(
+        tester,
+        _data(
+          subscription: _pass(status: 'expired'),
+          pending: {'id': 'p3', 'status': 'pending', 'tier': 'premium'},
+        ),
+      );
+      expect(find.text('Premium'), findsOneWidget);
+      expect(find.text('Pro'), findsNothing);
+      expect(find.text('Payment pending admin approval'), findsOneWidget);
+      expect(find.byKey(const Key('pass-pending-purchase')), findsNothing);
+      expect(find.text('View payment'), findsOneWidget);
+    });
+
     testWidgets('ended pass offers Pay again, not the QR', (tester) async {
       await _pumpCard(tester, _data(subscription: _pass(status: 'expired')));
       expect(find.text('Pay again'), findsOneWidget);

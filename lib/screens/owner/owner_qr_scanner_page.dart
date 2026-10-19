@@ -7,6 +7,7 @@ import '../../shared/api_error_message.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
+import '../../shared/payment_labels.dart';
 
 class OwnerQrScannerPage extends StatefulWidget {
   const OwnerQrScannerPage({super.key});
@@ -264,7 +265,7 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
                   children: [
                     Text(context.tr('ownerScan.tier')),
                     FFBadge(
-                      label: sub['tier']?.toString() ?? '-',
+                      label: passTierLabel(context, sub['tier']),
                       tone: FFBadgeTone.brand,
                     ),
                   ],
@@ -343,7 +344,7 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
                           ? context.tr('ownerScan.selectGymToVerify')
                           : eligible
                           ? context.tr('ownerScan.eligible')
-                          : context.tr('ownerScan.reason_$reason'),
+                          : ownerScanReasonLabel(context, reason),
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         color: eligible ? FFTokens.success : FFTokens.danger,
                       ),
@@ -408,4 +409,12 @@ bool ownerScanNeedsGymSelection({
 }) {
   if (selectedGymId != null && selectedGymId.isNotEmpty) return false;
   return verifyResult['requiresGymSelection'] == true || gyms.length > 1;
+}
+
+/// Why the scanned member can't check in, in the owner's language. A reason
+/// the app does not know yet reads as a plain refusal, never as a key.
+String ownerScanReasonLabel(BuildContext context, Object? reason) {
+  final key = 'ownerScan.reason_${reason ?? 'unknown'}';
+  final label = context.tr(key);
+  return label == key ? context.tr('ownerScan.reason_unknown') : label;
 }

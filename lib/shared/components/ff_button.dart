@@ -24,6 +24,9 @@ class FFButton extends StatelessWidget {
     this.loading = false,
     this.fullWidth = false,
     this.tooltip,
+    this.visualDensity,
+    this.maxLines = 1,
+    this.semanticLabel,
   });
 
   final String label;
@@ -38,6 +41,17 @@ class FFButton extends StatelessWidget {
   final bool loading;
   final bool fullWidth;
   final String? tooltip;
+
+  /// Set to [VisualDensity.standard] to keep the full height on web and
+  /// desktop, whose compact default takes 8px off (48 -> 40).
+  final VisualDensity? visualDensity;
+
+  /// Lines the label may use before it is cut off (long Swahili labels).
+  final int maxLines;
+
+  /// What a screen reader says instead of [label], when the visible words
+  /// alone are ambiguous (e.g. one "Adjust" button per row).
+  final String? semanticLabel;
 
   double get _minHeight => switch (size) {
     FFButtonSize.sm => 40,
@@ -59,6 +73,7 @@ class FFButton extends StatelessWidget {
       ),
       // Keeps a 48dp hit area around the smaller button.
       tapTargetSize: MaterialTapTargetSize.padded,
+      visualDensity: visualDensity,
     );
     final destructiveStyle = variant == FFButtonVariant.destructive
         ? style.merge(
@@ -89,7 +104,7 @@ class FFButton extends StatelessWidget {
             Flexible(
               child: Text(
                 label,
-                maxLines: 1,
+                maxLines: maxLines,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
               ),
@@ -138,7 +153,7 @@ class FFButton extends StatelessWidget {
       container: true,
       button: true,
       enabled: handler != null,
-      label: label,
+      label: semanticLabel ?? label,
       value: loading ? context.tr('common.loading') : null,
       excludeSemantics: true,
       onTap: handler,

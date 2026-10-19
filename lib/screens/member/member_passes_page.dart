@@ -12,6 +12,7 @@ import '../../shared/formatters.dart';
 import '../../shared/api_client.dart';
 import '../../shared/api_error_message.dart';
 import '../../shared/i18n.dart';
+import '../../shared/manual_payment.dart';
 import '../../shared/models.dart';
 import '../../shared/pass_gyms.dart';
 import '../../shared/payment_labels.dart';
@@ -167,11 +168,33 @@ class _UpgradeGateState extends State<_UpgradeGate> {
   late Future<Map<String, dynamic>> _future;
   String? _selected;
   bool _sending = false;
+  PaymentModes _modes = PaymentModes.none;
+  final _manualInput = ManualPaymentInput();
 
   @override
   void initState() {
     super.initState();
-    _future = AppScope.of(context).api.upgradeOptions();
+    // Read without depending on it: initState may not register dependencies.
+    final api = context.getInheritedWidgetOfExactType<AppScope>()!.api;
+    _future = api.upgradeOptions();
+    loadPaymentModes(api).then((m) {
+      if (!mounted) return;
+      _manualInput.prefillPhone(
+        context
+            .getInheritedWidgetOfExactType<MemberDataScope>()
+            ?.notifier
+            ?.me
+            ?.user
+            .phone,
+      );
+      setState(() => _modes = m);
+    });
+  }
+
+  @override
+  void dispose() {
+    _manualInput.dispose();
+    super.dispose();
   }
 
   void _reload() {
@@ -181,16 +204,37 @@ class _UpgradeGateState extends State<_UpgradeGate> {
   Future<void> _submit() async {
     final tier = _selected;
     if (tier == null || _sending) return; // a second tap must not send twice
+    final manual = _modes.manual;
+    String? reference;
+    String? payerPhone;
+    if (manual != null) {
+      final ready = _manualInput.check(manual);
+      if (ready == null) {
+        setState(() {});
+        return;
+      }
+      reference = ready.reference;
+      payerPhone = ready.payerPhone;
+    }
     setState(() => _sending = true);
     try {
-      final created = await AppScope.of(context).api.upgradePass(tier);
-      if (!mounted) return;
-      ScaffoldMessenger.of(
+      final created = await AppScope.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(context.tr('upgrade.submitted'))));
+      ).api.upgradePass(tier, reference: reference, payerPhone: payerPhone);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.tr(
+              manual != null ? 'manualPay.submitted' : 'upgrade.submitted',
+            ),
+          ),
+        ),
+      );
       // With mobile money switched on, pay the difference straight away.
+      // A transaction ID means it was paid by hand already.
       final req = created['paymentRequest'];
-      if (req is Map) {
+      if (manual == null && req is Map) {
         await offerMobileMoney(
           context,
           paymentRequestId: req['id'] as String?,
@@ -205,6 +249,10 @@ class _UpgradeGateState extends State<_UpgradeGate> {
       context.go(AppRoutes.memberHome);
     } catch (e) {
       if (!mounted) return;
+      if (manual != null && _manualInput.takeServerError(e)) {
+        setState(() {});
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(errorMessage(FFLocaleScope.of(context), e))),
       );
@@ -420,10 +468,28 @@ class _UpgradeGateState extends State<_UpgradeGate> {
                 tone: FFAlertTone.warning,
               ),
             ],
+            if (_modes.manual != null && chosen != null) ...[
+              const SizedBox(height: 16),
+              ManualPaymentFields(
+                key: const Key('upgrade-manual-pay'),
+                manual: _modes.manual!,
+                amountLabel: formatCurrency(
+                  ((chosen['differenceTzs'] as num?) ?? 0).toInt(),
+                ),
+                input: _manualInput,
+                enabled: !_sending,
+                onChanged: (_) {
+                  if (_manualInput.clearErrors()) setState(() {});
+                },
+              ),
+            ],
             const SizedBox(height: 16),
             FFButton(
+              key: const Key('upgrade-submit'),
               label: chosen == null
                   ? context.tr('upgrade.request')
+                  : _modes.manual != null
+                  ? context.tr('manualPay.submit')
                   : context
                         .tr('upgrade.pay')
                         .replaceFirst(
@@ -518,6 +584,18 @@ class _PendingBlockCard extends StatelessWidget {
             label: context.tr('member.paymentPendingStatus'),
             value: context.tr('member.paymentPendingStatusValue'),
           ),
+          if (pending.memberReference case final ref?)
+            _DetailRow(
+              key: const Key('pending-transaction-id'),
+              label: context.tr('manualPay.idLabel'),
+              value: ref,
+            ),
+          if (pending.payerPhone case final phone?)
+            _DetailRow(
+              key: const Key('pending-payer-phone'),
+              label: context.tr('manualPay.paidFrom'),
+              value: phone,
+            ),
           const SizedBox(height: 16),
           PayNowButton(request: pending),
           SizedBox(
@@ -536,7 +614,7 @@ class _PendingBlockCard extends StatelessWidget {
 }
 
 class _DetailRow extends StatelessWidget {
-  const _DetailRow({required this.label, required this.value});
+  const _DetailRow({super.key, required this.label, required this.value});
 
   final String label;
   final String value;

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../design_tokens.dart';
 import '../../i18n.dart';
 import '../../shop_home.dart';
+import 'shop_focus_ring.dart';
 
 const _icons = <String, IconData>{
   'supplements_nutrition': Icons.science_outlined,
@@ -147,40 +148,47 @@ class ShopCategoryTile extends StatelessWidget {
       excludeSemantics: true,
       label: context.tr('shop.a11y.category').replaceAll('{category}', full),
       onTap: onTap,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(FFTokens.radiusMd),
-        onTap: onTap,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 100),
-          child: SizedBox(
-            width: width,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: FFTokens.spacingXs),
-              child: Column(
-                children: [
-                  Container(
-                    width: 64,
-                    height: 64,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerHighest,
-                      shape: BoxShape.circle,
+      // Keyboard focus: the shop's ring (>= 3:1 on the page), not only the
+      // faint grey focus fill.
+      child: ShopFocusRing(
+        builder: (node) => InkWell(
+          focusNode: node,
+          borderRadius: BorderRadius.circular(FFTokens.radiusMd),
+          onTap: onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 100),
+            child: SizedBox(
+              width: width,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: FFTokens.spacingXs,
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceContainerHighest,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        _icons[category.key] ?? Icons.category_outlined,
+                        size: 28,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
                     ),
-                    child: Icon(
-                      _icons[category.key] ?? Icons.category_outlined,
-                      size: 28,
-                      color: theme.colorScheme.onSurfaceVariant,
+                    const SizedBox(height: 6),
+                    Text(
+                      label,
+                      key: Key('shop-home-category-label-${category.key}'),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: wordSafeStyle(context, label, base, width),
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    label,
-                    key: Key('shop-home-category-label-${category.key}'),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: wordSafeStyle(context, label, base, width),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
