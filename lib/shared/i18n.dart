@@ -6497,7 +6497,8 @@ class FFLocale extends ChangeNotifier {
       'goal.range': '{what}, {range}',
       'goal.assignedBy': 'Limewekwa na {name}',
       'goal.label.trainer': 'Lengo la trainer',
-      'goal.label.coaching': 'Lengo la ukocha',
+      'goal.label.coaching':
+          'Lengo la uTrainer', // TODO(sw-review): 2026-10-19 uTrainer ruling
       'goal.group.trainer': 'Kutoka kwa trainer wako',
       'goal.group.yours': 'Malengo yako',
       'goal.markDone': 'Nimemaliza',
@@ -7977,7 +7978,8 @@ class FFLocale extends ChangeNotifier {
       'kyc.item.vetting_score': 'Alama za ukaguzi',
       'kyc.item.gym_tier': 'Daraja la gym',
       'kyc.item.payout_account': 'Akaunti ya malipo',
-      'kyc.item.certification': 'Cheti cha ukocha',
+      'kyc.item.certification':
+          'Cheti cha uTrainer', // TODO(sw-review): 2026-10-19 uTrainer ruling
       'kyc.item.specialisation': 'Utaalamu',
       'kyc.item.liability_cover': 'Bima ya dhima',
       'kyc.item.contact': 'Mawasiliano ya biashara',
@@ -8092,7 +8094,8 @@ class FFLocale extends ChangeNotifier {
           'Cheti chako cha BRELA cha usajili wa biashara au cha kuandikishwa kwa kampuni.',
       'kyc.doc.intro.tin_certificate': 'Cheti chako cha TIN kutoka TRA.',
       'kyc.doc.intro.business_licence': 'Leseni yako ya biashara iliyo hai.',
-      'kyc.doc.intro.certification': 'Cheti chako cha ukocha.',
+      'kyc.doc.intro.certification':
+          'Cheti chako cha uTrainer.', // TODO(sw-review): 2026-10-19 uTrainer ruling
       'kyc.doc.intro.liability_insurance':
           'Cheti chako cha bima ya dhima ya kitaaluma.',
       'kyc.doc.intro.representative_authority':
