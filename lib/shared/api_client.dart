@@ -154,8 +154,9 @@ class ApiClient {
         ? null
         : ok
         ? jsonDecode(res.body)
-        // An error page that is not JSON (e.g. a server's "Cannot POST" for
-        // a route it does not have) still becomes an ApiException.
+        // An error page that is not JSON (a server's "Cannot POST" for a
+        // route it does not have, a proxy's 502 page) still becomes an
+        // ApiException, with no body: its HTML never reaches the UI.
         : _decodeErrorBody(res.body);
     if (ok) return decoded;
     // A 401 always means this bearer session can no longer be used.  Do not
@@ -167,11 +168,13 @@ class ApiClient {
     throw ApiException(res.statusCode, decoded);
   }
 
+  /// The JSON error body, or null when it is not JSON (an HTML page or a
+  /// stack trace is not shown to anyone; the status still is).
   static dynamic _decodeErrorBody(String body) {
     try {
       return jsonDecode(body);
     } on FormatException {
-      return body;
+      return null;
     }
   }
 

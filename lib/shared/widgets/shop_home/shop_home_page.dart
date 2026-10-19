@@ -153,7 +153,8 @@ class ShopHomeViewState extends State<ShopHomeView> {
       if (e.status >= 500 && _data == null) return _degraded();
       _failed(e);
     } on FormatException {
-      // Not JSON (a backend without /shop/home answers with an HTML page).
+      // A success answer that is not JSON. (An HTML error page arrives as an
+      // ApiException with its status: 404 → unavailable, 5xx → fallback.)
       if (mounted && id == _load) _unavailable();
     } on TimeoutException catch (e) {
       // Too slow is treated as a server failure, not as being offline.

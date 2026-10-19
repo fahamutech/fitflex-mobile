@@ -7,6 +7,7 @@ import 'dart:convert';
 import 'package:fitflexmobile/app_scope.dart';
 import 'package:fitflexmobile/router.dart';
 import 'package:fitflexmobile/shared/api_client.dart';
+import 'package:fitflexmobile/shared/api_error_message.dart';
 import 'package:fitflexmobile/shared/auth_state.dart';
 import 'package:fitflexmobile/shared/friend_invites.dart';
 import 'package:fitflexmobile/shared/i18n.dart';
@@ -376,6 +377,39 @@ void main() {
       expect((res['invitation'] as Map)['status'], 'pending');
     });
 
+    test('an HTML error page keeps its status but not its HTML', () async {
+      Object? error;
+      await run(
+        [
+          http.Response(
+            '<!DOCTYPE html><html><body><pre>Error: boom\n    at '
+            'Layer.handle (/app/node_modules/express/router.js:95)</pre>'
+            '</body></html>',
+            502,
+            headers: {'content-type': 'text/html'},
+          ),
+        ],
+        (api) async {
+          try {
+            await api.previewFriendInvitation(_tok);
+          } catch (e) {
+            error = e;
+          }
+        },
+      );
+      final e = error as ApiException;
+      expect(e.status, 502);
+      expect(e.code, isNull);
+      expect(e.body, isNull);
+      for (final lang in ['en', 'sw']) {
+        final locale = FFLocale()..set(Locale(lang));
+        final text = errorMessage(locale, e);
+        expect(text, locale.t('error.requestFailed'), reason: lang);
+        expect(text, isNot(contains('<')), reason: lang);
+        expect(text, isNot(contains('express')), reason: lang);
+      }
+    });
+
     test('falls back on a 404 not_found too', () async {
       final seen = await run([
         http.Response(jsonEncode({'error': 'not_found'}), 404),
@@ -386,15 +420,18 @@ void main() {
 
     test('an invalid invitation is an answer, not retried', () async {
       Object? error;
-      final seen = await run([
-        http.Response(jsonEncode({'error': 'invalid_invitation'}), 404),
-      ], (api) async {
-        try {
-          await api.previewFriendInvitation(_tok);
-        } catch (e) {
-          error = e;
-        }
-      });
+      final seen = await run(
+        [
+          http.Response(jsonEncode({'error': 'invalid_invitation'}), 404),
+        ],
+        (api) async {
+          try {
+            await api.previewFriendInvitation(_tok);
+          } catch (e) {
+            error = e;
+          }
+        },
+      );
       expect(seen.map((r) => r.method), ['POST']);
       expect(error, isA<ApiException>());
       expect((error as ApiException).code, 'invalid_invitation');
@@ -402,15 +439,18 @@ void main() {
 
     test('other errors are not retried', () async {
       Object? error;
-      final seen = await run([
-        http.Response(jsonEncode({'error': 'rate_limited'}), 429),
-      ], (api) async {
-        try {
-          await api.previewFriendInvitation(_tok);
-        } catch (e) {
-          error = e;
-        }
-      });
+      final seen = await run(
+        [
+          http.Response(jsonEncode({'error': 'rate_limited'}), 429),
+        ],
+        (api) async {
+          try {
+            await api.previewFriendInvitation(_tok);
+          } catch (e) {
+            error = e;
+          }
+        },
+      );
       expect(seen, hasLength(1));
       expect((error as ApiException).status, 429);
     });
