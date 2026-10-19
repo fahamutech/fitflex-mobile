@@ -317,6 +317,8 @@ class VendorSalesTabState extends State<VendorSalesTab> {
                     icon: Icons.payments_outlined,
                     value: formatCurrency((s['totalTzs'] as num?) ?? 0),
                     label: context.tr('vendor.sales.total'),
+                    // Money is never cut off: it shrinks to fit.
+                    fitValue: true,
                   ),
                 ),
               ],
@@ -365,7 +367,7 @@ class VendorSalesTabState extends State<VendorSalesTab> {
             key: const Key('sales-failed'),
             message: context.tr(
               _problem == _Problem.network
-                  ? 'error.network'
+                  ? 'vendor.sales.offline'
                   : 'vendor.sales.failed',
             ),
             onRetry: reload,
@@ -444,12 +446,16 @@ class VendorSalesTabState extends State<VendorSalesTab> {
         padding: EdgeInsets.zero,
         child: Semantics(
           button: true,
-          label: fillIn(context.tr('vendor.sales.rowLabel'), {
-            'number': number,
-            'amount': total,
-            'time': time,
-            'status': status,
-          }),
+          label: [
+            fillIn(context.tr('vendor.sales.rowLabel'), {
+              'number': number,
+              'amount': total,
+              'time': time,
+              'status': status,
+            }),
+            if (late) context.tr('vendor.sales.offlineBadge'),
+            if (override) context.tr('vendor.sales.overrideBadge'),
+          ].join(', '),
           excludeSemantics: true,
           child: InkWell(
             onTap: salesIdPattern.hasMatch(id)

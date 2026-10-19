@@ -15,6 +15,7 @@ import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
 import '../../../shared/i18n.dart';
 import '../stock/stock_options.dart';
+import 'offline_sale_queue.dart';
 import 'receipt_data.dart';
 import 'receipt_page.dart';
 import 'sale_models.dart';
@@ -63,11 +64,18 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
   Future<void> _start() async {
     final tools = await enterSalesRoute(context);
     if (tools == null || !mounted) return;
+    final api = AppScope.of(context).api;
+    final session = SalesSession.of(context);
     () async {
       try {
-        final p = await AppScope.of(context).api.vendorProfile();
+        final p = await api.vendorProfile();
+        await session?.saveBusiness(p);
         if (mounted) setState(() => _profile = p);
-      } catch (_) {}
+      } catch (_) {
+        // Staff who may not read the profile: the header this device kept.
+        final kept = await session?.loadBusiness() ?? const {};
+        if (mounted && kept.isNotEmpty) setState(() => _profile = kept);
+      }
     }();
     await _load();
   }
@@ -298,6 +306,12 @@ class _VoidDialogState extends State<_VoidDialog> {
 
   bool get _ok => _reason.text.trim().length >= voidReasonMin;
 
+  /// D8: the reason field lets go of focus before the dialog closes.
+  void _close(Map<String, dynamic>? result) {
+    FocusManager.instance.primaryFocus?.unfocus();
+    Navigator.of(context).pop(result);
+  }
+
   Future<void> _submit() async {
     if (!_ok || _busy) return;
     setState(() {
@@ -309,15 +323,13 @@ class _VoidDialogState extends State<_VoidDialog> {
       final res = await AppScope.of(
         context,
       ).api.vendorVoidSale(widget.saleId, _reason.text.trim());
-      if (mounted) Navigator.of(context).pop(res);
+      if (mounted) _close(res);
     } on ApiException catch (e) {
       if (!mounted) return;
       final body = e.body is Map ? e.body as Map : const {};
       switch (e.code) {
         case 'already_voided':
-          Navigator.of(
-            context,
-          ).pop({'reload': true, 'message': 'vendor.sales.alreadyVoided'});
+          _close({'reload': true, 'message': 'vendor.sales.alreadyVoided'});
           return;
         case 'reason_required' || 'reason_too_long':
           setState(
@@ -355,58 +367,66 @@ class _VoidDialogState extends State<_VoidDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(
-        fillIn(context.tr('vendor.sales.voidTitle'), {'number': widget.number}),
-      ),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(context.tr('vendor.sales.voidBody')),
-            const SizedBox(height: FFTokens.spacingMd),
-            FFTextField(
-              key: const Key('sale-void-reason'),
-              controller: _reason,
-              label: context.tr('vendor.sales.voidReason'),
-              maxLength: voidReasonMax,
-              maxLines: 3,
-              minLines: 1,
-              errorText: _fieldError,
-              enabled: !_busy,
-              onChanged: (_) => setState(() {}),
-            ),
-            if (_error != null) ...[
-              const SizedBox(height: FFTokens.spacingSm),
-              Semantics(
-                liveRegion: true,
-                child: FFAlert(
-                  key: const Key('sale-void-error'),
-                  message: _error!,
-                  tone: FFAlertTone.error,
-                ),
+    return PopScope(
+      canPop: !_busy,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) FocusManager.instance.primaryFocus?.unfocus();
+      },
+      child: AlertDialog(
+        title: Text(
+          fillIn(context.tr('vendor.sales.voidTitle'), {
+            'number': widget.number,
+          }),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(context.tr('vendor.sales.voidBody')),
+              const SizedBox(height: FFTokens.spacingMd),
+              FFTextField(
+                key: const Key('sale-void-reason'),
+                controller: _reason,
+                label: context.tr('vendor.sales.voidReason'),
+                maxLength: voidReasonMax,
+                maxLines: 3,
+                minLines: 1,
+                errorText: _fieldError,
+                enabled: !_busy,
+                onChanged: (_) => setState(() {}),
               ),
+              if (_error != null) ...[
+                const SizedBox(height: FFTokens.spacingSm),
+                Semantics(
+                  liveRegion: true,
+                  child: FFAlert(
+                    key: const Key('sale-void-error'),
+                    message: _error!,
+                    tone: FFAlertTone.error,
+                  ),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
+        actions: [
+          FFButton(
+            label: context.tr('common.cancel'),
+            variant: FFButtonVariant.ghost,
+            visualDensity: VisualDensity.standard,
+            onPressed: _busy ? null : () => _close(null),
+          ),
+          FFButton(
+            key: const Key('sale-void-confirm'),
+            label: context.tr('vendor.sales.void'),
+            variant: FFButtonVariant.destructive,
+            visualDensity: VisualDensity.standard,
+            loading: _busy,
+            onPressed: _ok ? _submit : null,
+          ),
+        ],
       ),
-      actions: [
-        FFButton(
-          label: context.tr('common.cancel'),
-          variant: FFButtonVariant.ghost,
-          visualDensity: VisualDensity.standard,
-          onPressed: _busy ? null : () => Navigator.of(context).pop(),
-        ),
-        FFButton(
-          key: const Key('sale-void-confirm'),
-          label: context.tr('vendor.sales.void'),
-          variant: FFButtonVariant.destructive,
-          visualDensity: VisualDensity.standard,
-          loading: _busy,
-          onPressed: _ok ? _submit : null,
-        ),
-      ],
     );
   }
 }

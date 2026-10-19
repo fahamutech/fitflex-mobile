@@ -248,9 +248,12 @@ class _SalesSyncPageState extends State<SalesSyncPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    fillIn(context.tr('vendor.sync.banner'), {
-                      'n': waiting.length,
-                    }),
+                    fillIn(
+                      context.tr(
+                        pluralKey('vendor.sync.banner', waiting.length),
+                      ),
+                      {'n': waiting.length},
+                    ),
                     style: theme.textTheme.titleMedium,
                   ),
                   if (session.lastTry != null)
