@@ -71,7 +71,7 @@ class _FakeApi extends ApiClient {
     String id, {
     String? teamId,
     String? gymId,
-    bool leaderboardOptIn = false,
+    bool leaderboardOptIn = true,
   }) async {
     calls.add((
       'join',
@@ -174,7 +174,7 @@ void main() {
     expect(ChallengeMode.individual.hasTeams, isFalse);
   });
 
-  testWidgets('joining keeps you off the leaderboard unless you switch it on', (
+  testWidgets('joining puts you on the leaderboard unless you switch it off', (
     tester,
   ) async {
     _tall(tester);
@@ -191,7 +191,8 @@ void main() {
     );
     await tester.tap(find.byKey(const Key('challenge-join')));
     await tester.pumpAndSettle();
-    expect(_switchOn(tester, 'join-leaderboard'), isFalse);
+    expect(_switchOn(tester, 'join-leaderboard'), isTrue);
+    expect(find.byKey(const Key('join-sharing-note')), findsOneWidget);
     expect(
       find.textContaining('first name, last initial and progress'),
       findsOneWidget,
@@ -202,9 +203,34 @@ void main() {
       'id': 'c1',
       'teamId': null,
       'gymId': null,
-      'optIn': false,
+      'optIn': true,
     });
     expect(data.challenges.single.joined, isTrue);
+    expect(data.challenges.single.leaderboardOptIn, isTrue);
+  });
+
+  testWidgets('switching the leaderboard off when joining sends it off', (
+    tester,
+  ) async {
+    _tall(tester);
+    final api = _FakeApi();
+    final data = MemberData()
+      ..challengesLoaded = true
+      ..challenges = [_c(joined: false)];
+    await tester.pumpWidget(
+      _app(
+        api,
+        MemberChallengePage(challengeId: 'c1', now: _now),
+        data: data,
+      ),
+    );
+    await tester.tap(find.byKey(const Key('challenge-join')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('join-leaderboard')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('join-confirm')));
+    await tester.pumpAndSettle();
+    expect((_joined(api) as Map)['optIn'], isFalse);
     expect(data.challenges.single.leaderboardOptIn, isFalse);
   });
 
@@ -234,7 +260,6 @@ void main() {
     );
     expect(confirm().onPressed, isNull);
     await tester.tap(find.byKey(const Key('join-team-t_red')));
-    await tester.tap(find.byKey(const Key('join-leaderboard')));
     await tester.pumpAndSettle();
     expect(confirm().onPressed, isNotNull);
     await tester.tap(find.byKey(const Key('join-confirm')));
@@ -285,7 +310,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('join-confirm')));
     await tester.pumpAndSettle();
-    expect(choice, (teamId: null, gymId: 'g2', leaderboardOptIn: false));
+    expect(choice, (teamId: null, gymId: 'g2', leaderboardOptIn: true));
   });
 
   testWidgets(

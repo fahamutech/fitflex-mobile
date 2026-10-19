@@ -19,22 +19,28 @@ String shareLabel(
     if (s.public) context.tr('audience.public'),
     if (s.followers) context.tr('audience.followers'),
     if (s.friends) context.tr('audience.friends'),
-    for (final g in s.groups) groupNames[g] ?? context.tr('audience.aGroup'),
+    if (s.allGroups)
+      context.tr('audience.allGroups')
+    else
+      for (final g in s.groups) groupNames[g] ?? context.tr('audience.aGroup'),
     if (s.company) context.tr('audience.company'),
   ].join(' · ');
 }
 
 /// Pick who can see an activity. Returns the choice (null = private), or
-/// [cancelled] when dismissed.
+/// [cancelled] when dismissed. [forDefault] is the default audience for new
+/// activities: it adds "All my groups", which includes groups joined later.
 Future<({ShareWith? share, bool cancelled})> pickShare(
   BuildContext context, {
   ShareWith? initial,
   String? title,
+  bool forDefault = false,
 }) async {
   final res = await showModalBottomSheet<({ShareWith? share})>(
     context: context,
     isScrollControlled: true,
-    builder: (_) => _SharePicker(initial: initial, title: title),
+    builder: (_) =>
+        _SharePicker(initial: initial, title: title, forDefault: forDefault),
   );
   return res == null
       ? (share: initial, cancelled: true)
@@ -42,10 +48,11 @@ Future<({ShareWith? share, bool cancelled})> pickShare(
 }
 
 class _SharePicker extends StatefulWidget {
-  const _SharePicker({this.initial, this.title});
+  const _SharePicker({this.initial, this.title, this.forDefault = false});
 
   final ShareWith? initial;
   final String? title;
+  final bool forDefault;
 
   @override
   State<_SharePicker> createState() => _SharePickerState();
@@ -58,6 +65,8 @@ class _SharePickerState extends State<_SharePicker> {
   bool _publicProfile = false;
   late final Set<String> _groups = {...?widget.initial?.groups};
   late bool _company = widget.initial?.company ?? false;
+  late bool _allGroups =
+      widget.forDefault && (widget.initial?.allGroups ?? false);
   List<SocialGroup>? _mine;
   bool _hasCompany = false;
   bool _started = false;
@@ -81,6 +90,10 @@ class _SharePickerState extends State<_SharePicker> {
             if (g is Map && SocialGroup.fromJson(g).isMember)
               SocialGroup.fromJson(g),
         ];
+        // One activity names its groups: "all my groups" means each of them.
+        if (!widget.forDefault && widget.initial?.allGroups == true) {
+          _groups.addAll(_mine!.map((g) => g.id));
+        }
         _hasCompany = r[1]['hasCompany'] == true;
         _publicProfile = r[1]['publicProfile'] == true;
         if (!_publicProfile) _public = false;
@@ -95,8 +108,9 @@ class _SharePickerState extends State<_SharePicker> {
       friends: _friends,
       followers: _followers,
       public: _public,
-      groups: _groups.toList(),
+      groups: _allGroups ? const [] : _groups.toList(),
       company: _company,
+      allGroups: _allGroups,
     );
     return s.isPrivate ? null : s;
   }
@@ -139,6 +153,7 @@ class _SharePickerState extends State<_SharePicker> {
                 _public = false;
                 _groups.clear();
                 _company = false;
+                _allGroups = false;
               }),
               title: Text(context.tr('audience.private')),
               subtitle: Text(context.tr('audience.privateHint')),
@@ -175,6 +190,15 @@ class _SharePickerState extends State<_SharePicker> {
               title: Text(context.tr('audience.friends')),
               subtitle: Text(context.tr('audience.friendsHint')),
             ),
+            if (widget.forDefault)
+              CheckboxListTile(
+                key: const Key('share-all-groups'),
+                contentPadding: EdgeInsets.zero,
+                value: _allGroups,
+                onChanged: (v) => setState(() => _allGroups = v ?? false),
+                title: Text(context.tr('audience.allGroups')),
+                subtitle: Text(context.tr('audience.allGroupsHint')),
+              ),
             if (_mine == null)
               const Padding(
                 padding: EdgeInsets.all(FFTokens.spacingSm),
@@ -185,10 +209,14 @@ class _SharePickerState extends State<_SharePicker> {
                 CheckboxListTile(
                   key: Key('share-group-${g.id}'),
                   contentPadding: EdgeInsets.zero,
-                  value: _groups.contains(g.id),
-                  onChanged: (v) => setState(
-                    () => v == true ? _groups.add(g.id) : _groups.remove(g.id),
-                  ),
+                  value: _allGroups || _groups.contains(g.id),
+                  onChanged: _allGroups
+                      ? null
+                      : (v) => setState(
+                          () => v == true
+                              ? _groups.add(g.id)
+                              : _groups.remove(g.id),
+                        ),
                   title: Text(g.name),
                   subtitle: Text(context.tr('audience.groupHint')),
                 ),
@@ -438,6 +466,7 @@ class _SocialPrivacySectionState extends State<SocialPrivacySection> {
               context,
               initial: s.defaultShare,
               title: t('audience.defaultTitle'),
+              forDefault: true,
             );
             if (r.cancelled) return;
             await api.updateSocialSettings(ShareWith.wire(r.share));

@@ -13,7 +13,7 @@ import 'challenge_widgets.dart' show challengeAmount;
 typedef JoinChoice = ({String? teamId, String? gymId, bool leaderboardOptIn});
 
 /// Join a challenge: pick a team or gym when the challenge has them, and
-/// choose whether to appear on the leaderboard (off by default).
+/// choose whether to appear on the leaderboard (on by default).
 Future<JoinChoice?> showJoinChallengeSheet(
   BuildContext context, {
   required Challenge challenge,
@@ -37,7 +37,7 @@ class _JoinSheet extends StatefulWidget {
 class _JoinSheetState extends State<_JoinSheet> {
   String? _teamId;
   String? _gymId;
-  bool _optIn = false;
+  bool _optIn = true;
 
   @override
   void initState() {
@@ -121,6 +121,11 @@ class _JoinSheetState extends State<_JoinSheet> {
                   style: theme.textTheme.bodySmall,
                 ),
               ),
+            FFAlert(
+              key: const Key('join-sharing-note'),
+              message: context.tr('leaderboard.joinNote'),
+            ),
+            const SizedBox(height: FFTokens.spacingSm),
             SwitchListTile(
               key: const Key('join-leaderboard'),
               contentPadding: EdgeInsets.zero,

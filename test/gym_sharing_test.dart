@@ -108,25 +108,34 @@ void main() {
     bool on(WidgetTester tester, String p) =>
         tester.widget<Switch>(find.byKey(Key('gym-share-$p-g1'))).value;
 
-    testWidgets('check-ins are always the gym\'s; everything else starts off', (
-      tester,
-    ) async {
-      await pump(tester);
-      expect(find.text('Gyms'), findsOneWidget);
-      expect(find.text('Mikocheni Fitness'), findsOneWidget);
-      expect(find.text('Your gym'), findsOneWidget);
-      expect(find.byKey(const Key('gym-always-g1')), findsOneWidget);
-      expect(find.textContaining('your check-ins there'), findsOneWidget);
-      for (final p in GymPermission.values) {
-        expect(on(tester, p.wire), isFalse, reason: p.wire);
-      }
-      expect(
-        find.text(
-          'Gyms never see your steps, goals, streaks, or anything you do elsewhere.',
-        ),
-        findsOneWidget,
-      );
-    });
+    testWidgets(
+      'check-ins are always the gym\'s; the rest shows as the server says',
+      (tester) async {
+        // The server reports a gym with no saved choice as all on.
+        await pump(
+          tester,
+          permissions: {
+            'classAttendance': true,
+            'gymWorkouts': true,
+            'challenges': true,
+          },
+        );
+        expect(find.text('Gyms'), findsOneWidget);
+        expect(find.text('Mikocheni Fitness'), findsOneWidget);
+        expect(find.text('Your gym'), findsOneWidget);
+        expect(find.byKey(const Key('gym-always-g1')), findsOneWidget);
+        expect(find.textContaining('your check-ins there'), findsOneWidget);
+        for (final p in GymPermission.values) {
+          expect(on(tester, p.wire), isTrue, reason: p.wire);
+        }
+        expect(
+          find.text(
+            'Gyms never see your steps, goals or streaks, or what you do at other gyms.',
+          ),
+          findsOneWidget,
+        );
+      },
+    );
 
     testWidgets('a switch saves straight away for that gym', (tester) async {
       final (data, api) = await pump(tester);

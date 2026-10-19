@@ -1141,7 +1141,7 @@ class ApiClient {
     String id, {
     String? teamId,
     String? gymId,
-    bool leaderboardOptIn = false,
+    bool leaderboardOptIn = true,
   }) async => await _request(
     'POST',
     '/challenges/${Uri.encodeComponent(id)}/join',

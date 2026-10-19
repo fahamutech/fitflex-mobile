@@ -1,8 +1,9 @@
 /// Gym ↔ member activity sharing.
 ///
 /// A gym always sees its own records: check-ins and the visit patterns
-/// derived from them. Anything from the member's activity log is shared
-/// with a gym only when the member switches it on for that gym.
+/// derived from them. The extra items below start on for every gym (the
+/// server reports a gym with no saved choice as all on); the member can
+/// switch each off per gym. The app shows exactly what the server returns.
 library;
 
 import 'challenge.dart';

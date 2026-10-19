@@ -120,7 +120,7 @@ class _FakeApi extends ApiClient {
     String id, {
     String? teamId,
     String? gymId,
-    bool leaderboardOptIn = false,
+    bool leaderboardOptIn = true,
   }) async {
     calls.add(('join', id));
     return {};
@@ -360,7 +360,7 @@ void main() {
       expect(find.text('Goal: 50,000 steps'), findsOneWidget);
       expect(
         find.text(
-          "Coach Sarah will see that you joined, but not your progress, unless you share challenge data with them.",
+          "Coach Sarah will see that you joined, but not your progress, because you don't share challenge data with them.",
         ),
         findsOneWidget,
       );

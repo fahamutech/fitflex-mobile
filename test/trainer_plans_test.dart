@@ -161,55 +161,77 @@ void main() {
   });
 
   group('member', () {
-    testWidgets('Connect sends a request sharing only what was switched on', (
-      tester,
-    ) async {
-      tester.view.physicalSize = const Size(1080, 3000);
-      tester.view.devicePixelRatio = 3;
-      addTearDown(tester.view.reset);
-      final api = _FakeApi();
-      final data = MemberData();
-      await tester.pumpWidget(
-        _app(
-          api,
-          const TrainerConnectCard(
-            trainerId: 'trn_1',
-            trainerName: 'Coach Amani',
+    testWidgets(
+      'Connect starts with everything on; what is switched off is sent off',
+      (tester) async {
+        tester.view.physicalSize = const Size(1080, 3000);
+        tester.view.devicePixelRatio = 3;
+        addTearDown(tester.view.reset);
+        final api = _FakeApi();
+        final data = MemberData();
+        await tester.pumpWidget(
+          _app(
+            api,
+            const TrainerConnectCard(
+              trainerId: 'trn_1',
+              trainerName: 'Coach Amani',
+            ),
+            data: data,
           ),
-          data: data,
-        ),
-      );
-      expect(find.text('Train with Coach Amani'), findsOneWidget);
-      await tester.tap(find.byKey(const Key('trainer-connect')));
-      await tester.pumpAndSettle();
+        );
+        expect(find.text('Train with Coach Amani'), findsOneWidget);
+        await tester.tap(find.byKey(const Key('trainer-connect')));
+        await tester.pumpAndSettle();
 
-      // Everything starts off.
-      final sheetList = find.descendant(
-        of: find.byType(BottomSheet),
-        matching: find.byType(Scrollable),
-      );
-      for (final p in TrainerPermission.values) {
-        final f = find.byKey(Key('share-${p.wire}'));
-        await tester.scrollUntilVisible(f, 60, scrollable: sheetList);
-        expect(tester.widget<SwitchListTile>(f).value, isFalse, reason: p.wire);
-      }
-      await tester.scrollUntilVisible(
-        find.byKey(const Key('share-workoutHistory')),
-        -60,
-        scrollable: sheetList,
-      );
-      await tester.tap(find.byKey(const Key('share-workoutHistory')));
-      await tester.pump();
-      await tester.tap(find.byKey(const Key('share-save')));
-      await tester.pumpAndSettle();
+        expect(find.byKey(const Key('share-request-note')), findsOneWidget);
+        expect(
+          find.text(
+            "Everything starts switched on. Switch off anything you don't want to share, now or later in Privacy.",
+          ),
+          findsOneWidget,
+        );
+        // Everything starts on.
+        final sheetList = find.descendant(
+          of: find.byType(BottomSheet),
+          matching: find.byType(Scrollable),
+        );
+        for (final p in TrainerPermission.values) {
+          final f = find.byKey(Key('share-${p.wire}'));
+          await tester.scrollUntilVisible(f, 60, scrollable: sheetList);
+          expect(
+            tester.widget<SwitchListTile>(f).value,
+            isTrue,
+            reason: p.wire,
+          );
+        }
+        await tester.scrollUntilVisible(
+          find.byKey(const Key('share-workoutHistory')),
+          -60,
+          scrollable: sheetList,
+        );
+        await tester.tap(find.byKey(const Key('share-workoutHistory')));
+        await tester.pump();
+        await tester.tap(find.byKey(const Key('share-save')));
+        await tester.pumpAndSettle();
 
-      final (op, payload) = api.calls.single;
-      expect(op, 'request');
-      expect((payload as Map)['trainerId'], 'trn_1');
-      expect(payload['workoutHistory'], isTrue);
-      expect(payload['steps'], isFalse);
-      expect(payload['workoutDetails'], isFalse);
-    });
+        final (op, payload) = api.calls.single;
+        expect(op, 'request');
+        expect((payload as Map)['trainerId'], 'trn_1');
+        // History off takes details with it; the rest stays on.
+        expect(payload['workoutHistory'], isFalse);
+        expect(payload['workoutDetails'], isFalse);
+        for (final p in [
+          'steps',
+          'distance',
+          'activeMinutes',
+          'goals',
+          'streaks',
+          'challenges',
+        ]) {
+          expect(payload[p], isTrue, reason: p);
+        }
+      },
+    );
 
     testWidgets('An open connection shows what is shared instead of Connect', (
       tester,
