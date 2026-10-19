@@ -70,6 +70,15 @@ class VendorOrderCard extends StatelessWidget {
     );
     final status = order['status']?.toString() ?? 'pending';
     final delivered = shopCanonicalOrderStatus(status) == 'delivered';
+    // A cancelled or refunded order has nothing more to hand over, so the
+    // "contact hidden after 7 days" note does not apply to it.
+    final closed =
+        shopCanonicalOrderStatus(status) == 'cancelled' ||
+        order['orderStatus']?.toString() == 'cancelled' ||
+        const {
+          'refunded',
+          'refund_pending',
+        }.contains(order['paymentStatus']?.toString());
     final pickup = order['deliveryMethod'] == 'gym_pickup';
     final buyer = order['buyer'] is Map
         ? Map<String, dynamic>.from(order['buyer'] as Map)
@@ -146,7 +155,7 @@ class VendorOrderCard extends StatelessWidget {
               style: muted,
             ),
           // O-3: the server stops sending the contact 7 days after delivery.
-          if (delivered && phone.isEmpty && address.isEmpty)
+          if (delivered && !closed && phone.isEmpty && address.isEmpty)
             if (tools.buyerContact)
               Text(
                 context.tr('vendor.orders.contactHidden'),
