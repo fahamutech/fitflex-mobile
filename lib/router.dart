@@ -52,6 +52,11 @@ import 'shared/friend_invites.dart';
 import 'shared/inbox/inbox_pages.dart';
 import 'screens/vendor/vendor_home_page.dart';
 import 'screens/vendor/stock/stock_history_page.dart';
+import 'screens/vendor/sales/pos_page.dart';
+import 'screens/vendor/sales/receipt_page.dart';
+import 'screens/vendor/sales/sale_detail_page.dart';
+import 'screens/vendor/sales/sales_sync_page.dart';
+import 'screens/vendor/sales/sales_widgets.dart' show salesIdPattern;
 import 'screens/partner/verification/verification_center_page.dart';
 import 'shared/widgets/invitations.dart';
 import 'shared/pending_org_invite.dart';
@@ -196,6 +201,11 @@ bool _isOnboarded(AuthState auth, String role) {
 /// A stock history path with a safe product id.
 final _vendorStockPath = RegExp(
   r'^/vendor/products/[A-Za-z0-9_-]{1,64}/stock$',
+);
+
+/// Walk-in sales pages (S3). Pending vendors may sell too (Q-4).
+final _vendorSalesPath = RegExp(
+  r'^/vendor/sales/(new|sync|receipt/queued/[A-Za-z0-9._:-]{1,100}|receipt/[A-Za-z0-9._:-]{1,100}|[A-Za-z0-9._:-]{1,100})$',
 );
 
 String routeForSignedInUser(AuthState auth) {
@@ -491,7 +501,8 @@ GoRouter buildRouter(AuthState auth) {
           // verification centre is the only other place they need.
           if (loc == AppRoutes.vendorHome ||
               loc == AppRoutes.verification ||
-              _vendorStockPath.hasMatch(loc)) {
+              _vendorStockPath.hasMatch(loc) ||
+              _vendorSalesPath.hasMatch(loc)) {
             return null;
           }
           return AppRoutes.vendorHome;
@@ -692,6 +703,52 @@ GoRouter buildRouter(AuthState auth) {
             fromPush: state.uri.queryParameters['from'] == 'push',
           );
         },
+      ),
+      // Vendor walk-in sales (S3). Each page checks the feature and the
+      // `sales` permission itself; `new` and `sync` come before `:saleId`.
+      GoRoute(
+        path: '/vendor/sales/new',
+        name: 'vendorPos',
+        builder: (context, state) => const PosPage(),
+      ),
+      GoRoute(
+        path: '/vendor/sales/sync',
+        name: 'vendorSalesSync',
+        builder: (context, state) => const SalesSyncPage(),
+      ),
+      GoRoute(
+        path: '/vendor/sales/receipt/queued/:clientRef',
+        name: 'vendorQueuedReceipt',
+        redirect: (context, state) =>
+            salesIdPattern.hasMatch(state.pathParameters['clientRef'] ?? '')
+            ? null
+            : '${AppRoutes.vendorHome}?open=sales',
+        builder: (context, state) =>
+            SaleReceiptPage(clientRef: state.pathParameters['clientRef']),
+      ),
+      GoRoute(
+        path: '/vendor/sales/receipt/:saleId',
+        name: 'vendorSaleReceipt',
+        redirect: (context, state) =>
+            salesIdPattern.hasMatch(state.pathParameters['saleId'] ?? '')
+            ? null
+            : '${AppRoutes.vendorHome}?open=sales',
+        builder: (context, state) => SaleReceiptPage(
+          saleId: state.pathParameters['saleId'],
+          sale: state.extra is Map<String, dynamic>
+              ? state.extra as Map<String, dynamic>
+              : null,
+        ),
+      ),
+      GoRoute(
+        path: '/vendor/sales/:saleId',
+        name: 'vendorSaleDetail',
+        redirect: (context, state) =>
+            salesIdPattern.hasMatch(state.pathParameters['saleId'] ?? '')
+            ? null
+            : '${AppRoutes.vendorHome}?open=sales',
+        builder: (context, state) =>
+            SaleDetailPage(saleId: state.pathParameters['saleId']!),
       ),
       // Owner routes
       GoRoute(

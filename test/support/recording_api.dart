@@ -218,6 +218,7 @@ Future<PageHost> pumpPage(
   bool settle = true,
   bool keepRequests = false,
   String initialLocation = '/',
+  List<RouteBase> extraRoutes = const [],
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -246,6 +247,7 @@ Future<PageHost> pumpPage(
         path: AppRoutes.verification,
         builder: (_, _) => const Scaffold(body: Text('ROUTE-VERIFICATION')),
       ),
+      ...extraRoutes,
     ],
   );
   addTearDown(router.dispose);

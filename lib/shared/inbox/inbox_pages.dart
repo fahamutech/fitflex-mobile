@@ -62,6 +62,7 @@ String? routeForMessage(BuildContext context, InboxMessage m) {
       memberId: m.data['memberId']?.toString(),
       productId: m.data['productId']?.toString(),
       variant: m.data['variant']?.toString(),
+      saleId: m.data['saleId']?.toString(),
     );
   }
   if (role != 'member') return null;

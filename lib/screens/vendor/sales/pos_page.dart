@@ -1,0 +1,1654 @@
+// Vendor tools · S3: the POS (spec §2). Ring up a walk-in sale with correct
+// stock, take payment, and record it — or keep it on the device when there
+// is no connection.
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
+import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../app_scope.dart';
+import '../../../shared/api_client.dart';
+import '../../../shared/api_error_message.dart';
+import '../../../shared/components/components.dart';
+import '../../../shared/design_tokens.dart';
+import '../../../shared/formatters.dart';
+import '../../../shared/i18n.dart';
+import '../stock/stock_options.dart';
+import 'offline_sale_queue.dart';
+import 'payment_sheet.dart';
+import 'receipt_data.dart';
+import 'sale_models.dart';
+import 'sales_widgets.dart';
+
+/// The cart, saved to the device on every change (spec §2.5).
+class PosCartController extends ChangeNotifier {
+  PosCartController({PosCart? cart, this.onSaved}) : cart = cart ?? PosCart();
+
+  PosCart cart;
+
+  /// Where each change is saved (the session's draft store, once loaded).
+  Future<void> Function(PosCart cart)? onSaved;
+
+  void update(void Function(PosCart cart) change) {
+    change(cart);
+    notifyListeners();
+    unawaited(onSaved?.call(cart));
+  }
+
+  void replace(PosCart next) {
+    cart = next;
+    notifyListeners();
+    unawaited(onSaved?.call(cart));
+  }
+}
+
+enum _LoadProblem { none, failed, noCache, noAccess }
+
+class PosPage extends StatefulWidget {
+  const PosPage({super.key});
+
+  @override
+  State<PosPage> createState() => _PosPageState();
+}
+
+class _PosPageState extends State<PosPage> {
+  SalesSession? _session;
+  final _cart = PosCartController();
+  final _search = TextEditingController();
+  final _searchFocus = FocusNode();
+  final _lineFocus = <String, FocusNode>{};
+  List<Map<String, dynamic>> _products = [];
+  Map<String, dynamic> _profile = const {};
+  bool _loading = true;
+  bool _ready = false;
+  bool _offline = false;
+  String? _cachedAt;
+  _LoadProblem _problem = _LoadProblem.none;
+  bool _notAllowed = false;
+  // A line the server refused: its key and the words to show on it.
+  String? _flagged;
+  String? _flagText;
+
+  bool get _wide => MediaQuery.sizeOf(context).width >= 900;
+
+  @override
+  void initState() {
+    super.initState();
+    _search.addListener(() => setState(() {}));
+    WidgetsBinding.instance.addPostFrameCallback((_) => _start());
+  }
+
+  @override
+  void dispose() {
+    _session?.detach();
+    _cart.dispose();
+    _search.dispose();
+    _searchFocus.dispose();
+    for (final f in _lineFocus.values) {
+      f.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<void> _start() async {
+    final tools = await enterSalesRoute(context);
+    if (tools == null || !mounted) return;
+    final session = SalesSession.of(context);
+    if (session == null) return;
+    _session = session..attach();
+    await session.load();
+    final draft = await session.loadDraft();
+    if (!mounted) return;
+    _cart.cart = draft ?? PosCart();
+    _cart.onSaved = session.saveDraft;
+    setState(() => _ready = true);
+    if (draft != null) {
+      FFSnack.info(context, context.tr('vendor.pos.draftKept'));
+    }
+    final cached = await session.loadProducts();
+    if (!mounted) return;
+    if (cached != null && cached.products.isNotEmpty) {
+      setState(() {
+        _products = _sellable(cached.products);
+        _cachedAt = cached.cachedAt;
+        _loading = false;
+      });
+    }
+    unawaited(_loadProfile());
+    await _loadProducts();
+  }
+
+  List<Map<String, dynamic>> _sellable(List<Map<String, dynamic>> rows) => [
+    for (final p in rows)
+      if (p['status'] != 'archived' && p['deletedAt'] == null) p,
+  ];
+
+  Future<void> _loadProfile() async {
+    try {
+      final p = await AppScope.of(context).api.vendorProfile();
+      if (mounted) setState(() => _profile = p);
+    } catch (_) {
+      // Staff may not read the profile; the receipt has no header then.
+    }
+  }
+
+  Future<void> _loadProducts() async {
+    final hadCache = _products.isNotEmpty;
+    if (!hadCache) setState(() => _loading = true);
+    final isStaff =
+        AppScope.of(context).auth.user?['userType'] == 'vendor_staff';
+    try {
+      final rows = await AppScope.of(context).api.vendorProducts();
+      final products = rows.whereType<Map<String, dynamic>>().toList();
+      await _session?.saveProducts(products);
+      if (!mounted) return;
+      setState(() {
+        _products = _sellable(products);
+        _cachedAt = DateTime.now().toUtc().toIso8601String();
+        _offline = false;
+        _problem = _LoadProblem.none;
+        _loading = false;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        if (isVendorStaffDisabled(e, vendorStaff: isStaff)) {
+          _notAllowed = true;
+        } else if (e.status == 403) {
+          // Refused the product list (e.g. a permission was removed).
+          if (!hadCache) _problem = _LoadProblem.noAccess;
+        } else if (!hadCache) {
+          _problem = _LoadProblem.failed;
+        }
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _offline = true;
+        if (!hadCache) _problem = _LoadProblem.noCache;
+      });
+    }
+  }
+
+  // ── stock ───────────────────────────────────────────────────────────────
+
+  Map<String, dynamic>? _product(String id) {
+    for (final p in _products) {
+      if (p['id']?.toString() == id) return p;
+    }
+    return null;
+  }
+
+  /// Known available: last loaded stock, minus sales waiting on this
+  /// device, minus the cart (the server is the authority).
+  int _available(Map<String, dynamic> p, String? variant, {bool cart = true}) {
+    final id = p['id']?.toString() ?? '';
+    final productStock = (p['stock'] as num?)?.toInt() ?? 0;
+    var stock = productStock;
+    if (variant != null) {
+      for (final v in stockVariants(p)) {
+        if (v.name == variant) {
+          stock = v.stock < productStock ? v.stock : productStock;
+        }
+      }
+    }
+    final queued = _session?.queuedQty(id, variant) ?? 0;
+    final inCart = cart ? _cart.cart.qtyOf(id, variant) : 0;
+    final left = stock - queued - inCart;
+    return left < 0 ? 0 : left;
+  }
+
+  /// What a product row says is left (before the cart).
+  int _shownLeft(Map<String, dynamic> p) {
+    final variants = stockVariants(p);
+    if (variants.isEmpty) return _available(p, null, cart: false);
+    return variants.fold(0, (s, v) => s + _available(p, v.name, cart: false));
+  }
+
+  // ── cart actions ────────────────────────────────────────────────────────
+
+  void _announce(String message, {bool assertive = false}) {
+    SemanticsService.sendAnnouncement(
+      View.of(context),
+      message,
+      Directionality.of(context),
+      assertiveness: assertive ? Assertiveness.assertive : Assertiveness.polite,
+    );
+  }
+
+  Future<void> _tapProduct(Map<String, dynamic> p) async {
+    if (_notAllowed) return;
+    final name = p['name']?.toString() ?? '';
+    String? variant;
+    if (needsVariant(p)) {
+      variant = await _pickVariant(p);
+      if (variant == null || !mounted) return;
+    }
+    _add(p, variant, name);
+  }
+
+  void _add(Map<String, dynamic> p, String? variant, String name) {
+    final available =
+        _available(p, variant) + _cart.cart.qtyOf(p['id'].toString(), variant);
+    var added = false;
+    _cart.update(
+      (c) => added = c.addOne(
+        productId: p['id'].toString(),
+        variant: variant,
+        name: name,
+        priceTzs: walkInPrice(p),
+        available: available,
+      ),
+    );
+    if (!added) return;
+    _clearFlag();
+    HapticFeedback.selectionClick();
+    _announce(fillIn(context.tr('vendor.pos.added'), {'name': name}));
+  }
+
+  void _clearFlag() {
+    if (_flagged != null) {
+      setState(() {
+        _flagged = null;
+        _flagText = null;
+      });
+    }
+  }
+
+  Future<String?> _pickVariant(Map<String, dynamic> p) => showFFSheet<String>(
+    context,
+    title: p['name']?.toString() ?? context.tr('vendor.pos.pickVariant'),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(context.tr('vendor.pos.pickVariant')),
+        const SizedBox(height: FFTokens.spacingSm),
+        for (final v in stockVariants(p))
+          Builder(
+            builder: (sheet) {
+              final left = _available(p, v.name);
+              return ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 56),
+                child: ListTile(
+                  key: Key('pos-variant-${v.name}'),
+                  enabled: left > 0,
+                  title: Text(v.name),
+                  trailing: left > 0
+                      ? Text(fillIn(context.tr('vendor.pos.left'), {'n': left}))
+                      : FFBadge(
+                          label: context.tr('vendor.pos.outOfStock'),
+                          tone: FFBadgeTone.gray,
+                        ),
+                  onTap: left > 0
+                      ? () => Navigator.of(sheet).pop(v.name)
+                      : null,
+                ),
+              );
+            },
+          ),
+      ],
+    ),
+  );
+
+  void _step(PosLine line, int delta) {
+    final p = _product(line.productId);
+    if (delta > 0 && p != null && _available(p, line.variant) <= 0) return;
+    _cart.update((c) => c.setQty(line, line.qty + delta));
+    _clearFlag();
+  }
+
+  Future<void> _editLine(PosLine line) async {
+    final p = _product(line.productId);
+    final cap = p == null
+        ? maxQtyPerLine
+        : _available(p, line.variant) + line.qty;
+    final result = await showFFSheet<Object>(
+      context,
+      title: fillIn(context.tr('vendor.pos.editLine'), {'name': line.name}),
+      child: _LineEditor(line: line, maxQty: cap),
+    );
+    if (!mounted || result == null) return;
+    if (result == 'remove') {
+      _cart.update((c) => c.remove(line));
+    } else if (result is ({int qty, int? price, int discount})) {
+      _cart.update((c) {
+        line.qty = result.qty;
+        line.unitPriceTzs = result.price == line.listPriceTzs
+            ? null
+            : result.price;
+        line.discountTzs = result.discount;
+        c.changed();
+      });
+    }
+    _clearFlag();
+  }
+
+  Future<void> _saleDiscount() async {
+    final totals = _cart.cart.totals;
+    final result = await showFFSheet<int>(
+      context,
+      title: context.tr('vendor.pos.saleDiscount'),
+      child: _DiscountEditor(
+        baseTzs: totals.afterLinesTzs,
+        currentTzs: _cart.cart.saleDiscountTzs,
+      ),
+    );
+    if (result == null || !mounted) return;
+    _cart.update((c) {
+      c.saleDiscountTzs = result;
+      c.changed();
+    });
+  }
+
+  Future<void> _clearSale() async {
+    final ok = await showFFConfirmDialog(
+      context,
+      message: context.tr('vendor.pos.clearConfirm'),
+      confirmLabel: context.tr('vendor.pos.clearSale'),
+      destructive: true,
+      confirmKey: const Key('pos-clear-confirm'),
+    );
+    if (ok && mounted) {
+      _cart.update((c) => c.clear());
+      _clearFlag();
+    }
+  }
+
+  // ── charge ──────────────────────────────────────────────────────────────
+
+  Future<void> _charge() async {
+    if (_cart.cart.isEmpty || _notAllowed) return;
+    // The phone's cart sheet closes first; the payment sheet takes over.
+    await showFFSheet<bool>(
+      context,
+      title: context.tr('vendor.pos.payTitle'),
+      isDismissible: false,
+      child: PaymentSheet(
+        totalTzs: _cart.cart.totals.totalTzs,
+        submit: _submit,
+        onAction: (action) {
+          if (action == 'recordToday') _recordToday();
+        },
+      ),
+    );
+  }
+
+  Map<String, dynamic> _display() {
+    final user = AppScope.of(context).auth.user;
+    return {
+      'business': ?_profile['businessName'],
+      'contact': ?_profile['contactNumber'],
+      'address': ?_profile['address'],
+      'servedBy': ?(user?['displayName'] ?? user?['name']),
+      'lines': [
+        for (final l in _cart.cart.lines)
+          {'name': l.name, 'listPriceTzs': l.listPriceTzs},
+      ],
+    };
+  }
+
+  /// Sends the sale. Network failure (no answer) → kept on the device.
+  Future<PayAttempt> _submit(
+    List<Map<String, dynamic>> payments, {
+    bool queue = false,
+  }) async {
+    final session = _session;
+    if (session == null) return const PayAttempt.close();
+    final api = AppScope.of(context).api;
+    final display = _display();
+    // Online: no soldAt (the server's clock). Kept on the device: the same
+    // clientRef with the time of the first Complete.
+    final body = _cart.cart.requestBody(payments);
+    final queuedBody = _cart.cart.requestBody(payments, queued: true);
+    final sentOnline = !_cart.cart.keepSoldAt;
+    // Persist the fixed key and time before sending: a retry after an app
+    // kill reuses them.
+    await session.saveDraft(_cart.cart);
+    if (queue) return _queue(queuedBody, display, sentOnline: sentOnline);
+    try {
+      final res = await api.vendorRecordSale(body);
+      final sale = res['sale'];
+      if (sale is! Map) return const PayAttempt.server();
+      await _finished(Map<String, dynamic>.from(sale));
+      return const PayAttempt.close();
+    } on ApiException catch (e) {
+      if (!mounted) return const PayAttempt.close();
+      return _refused(e);
+    } catch (_) {
+      return _queue(queuedBody, display, sentOnline: sentOnline);
+    }
+  }
+
+  /// "Record with today's date": an edited offline sale older than the
+  /// server accepts loses its original time (kept in the note).
+  void _recordToday() {
+    final lang = FFLocaleScope.of(context).locale.languageCode;
+    final when = eatDayOf(_cart.cart.soldAt);
+    final originally = fillIn(context.tr('vendor.sync.originally'), {
+      'date': when == null
+          ? ''
+          : formatDate(DateTime(when.year, when.month, when.day), locale: lang),
+    });
+    _cart.update((c) => c.recordToday(originally));
+  }
+
+  Future<PayAttempt> _queue(
+    Map<String, dynamic> body,
+    Map<String, dynamic> display, {
+    bool sentOnline = false,
+  }) async {
+    final session = _session!;
+    final replaces = _cart.cart.replacesClientRef;
+    await session.enqueue(
+      QueuedSale(
+        body: body,
+        display: display,
+        queuedAt: DateTime.now().toUtc().toIso8601String(),
+        sentOnline: sentOnline,
+      ),
+    );
+    if (replaces != null) await session.remove(replaces);
+    _cart.update((c) => c.clear());
+    await session.clearDraft();
+    if (!mounted) return const PayAttempt.close();
+    FFSnack.info(context, context.tr('vendor.pos.savedOffline'));
+    _goAfterSheet(queuedReceiptRoute(body['clientRef'].toString()));
+    return const PayAttempt.close();
+  }
+
+  Future<void> _finished(Map<String, dynamic> sale) async {
+    final session = _session!;
+    final replaces = _cart.cart.replacesClientRef;
+    if (replaces != null) await session.remove(replaces);
+    _cart.update((c) => c.clear());
+    await session.clearDraft();
+    if (!mounted) return;
+    FFSnack.success(
+      context,
+      fillIn(context.tr('vendor.pos.saleSaved'), {'number': sale['number']}),
+    );
+    _goAfterSheet(saleReceiptRoute(sale['id'].toString()), extra: sale);
+  }
+
+  /// Navigates once the payment sheet has closed.
+  void _goAfterSheet(String route, {Object? extra}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.go(route, extra: extra);
+    });
+  }
+
+  PosLine? _lineFor(Map body) {
+    final id = body['productId']?.toString();
+    if (id == null) return null;
+    final variant = body['variant']?.toString();
+    for (final l in _cart.cart.lines) {
+      if (l.productId == id && (variant == null || l.variant == variant)) {
+        return l;
+      }
+    }
+    return null;
+  }
+
+  PayAttempt _refused(ApiException e) {
+    final body = e.body is Map ? Map<String, dynamic>.from(e.body) : {};
+    final code = e.code;
+    // 5xx and 429 rate_limited: nothing recorded yet; Try again (same
+    // clientRef) or keep it on the device.
+    if (e.status >= 500 || e.status == 429) return const PayAttempt.server();
+    if (e.status == 403) {
+      final isStaff =
+          AppScope.of(context).auth.user?['userType'] == 'vendor_staff';
+      if (code == 'vendor_suspended') {
+        _afterClose(
+          () => FFSnack.error(context, context.tr('vendor.sales.suspended')),
+        );
+      } else {
+        if (isVendorStaffDisabled(e, vendorStaff: isStaff)) {
+          setState(() => _notAllowed = true);
+        }
+        _afterClose(
+          () => FFSnack.error(context, context.tr('vendor.pos.err.notAllowed')),
+        );
+      }
+      return const PayAttempt.close();
+    }
+    if (e.status == 404 && code == 'feature_disabled') {
+      _afterClose(
+        () => FFSnack.error(context, context.tr('vendor.sync.featureOff')),
+      );
+      return const PayAttempt.close();
+    }
+    switch (code) {
+      case 'payment_short':
+        return PayAttempt.stay(
+          'vendor.pos.short',
+          values: {'amount': formatCurrency((body['shortTzs'] as num?) ?? 0)},
+        );
+      case 'reference_required':
+        return PayAttempt.stay(
+          'vendor.pos.referenceRequired',
+          index: (body['index'] as num?)?.toInt(),
+        );
+      case 'invalid_payment':
+        return PayAttempt.stay(
+          saleErrorKey(code, reason: body['reason']?.toString()),
+          index: (body['index'] as num?)?.toInt(),
+        );
+      case 'insufficient_stock':
+        final line = _lineFor(body);
+        final available = (body['available'] as num?)?.toInt();
+        if (available != null) {
+          _updateStock(
+            body['productId']?.toString(),
+            body['variant']?.toString(),
+            available,
+          );
+        }
+        _flag(
+          line,
+          line == null || available == null
+              // Without the product or the count: no blank name, no "0".
+              ? context.tr('vendor.sync.conflictStockGeneric')
+              : fillIn(context.tr('vendor.pos.err.stock'), {
+                  'available': available,
+                  'name': line.name,
+                }),
+        );
+        // Nothing was recorded: the next Complete is a new sale.
+        _cart.update((c) => c.changed());
+        return const PayAttempt.close();
+      case 'discount_exceeds_price':
+        _flag(
+          _lineFor(body),
+          fillIn(context.tr('vendor.pos.discountTooBig'), {
+            'amount': formatCurrency((body['maxTzs'] as num?) ?? 0),
+          }),
+        );
+        return const PayAttempt.close();
+      case 'product_not_found' ||
+          'product_unavailable' ||
+          'variant_not_found' ||
+          'variant_required' ||
+          'invalid_price':
+        final line = _lineFor(body);
+        _flag(
+          line,
+          fillIn(context.tr('vendor.pos.err.unavailable'), {
+            'name': line?.name ?? '',
+          }),
+        );
+        return const PayAttempt.close();
+      case 'sold_at_out_of_range':
+        // Only an edited offline sale sends soldAt: too old → it can be
+        // recorded with today's date; ahead of the server → the clock.
+        if (soldAtTooOld(_cart.cart.soldAt, body)) {
+          return const PayAttempt.stay(
+            'vendor.pos.err.tooOld',
+            action: 'recordToday',
+          );
+        }
+        return const PayAttempt.stay('vendor.pos.err.clock');
+      case 'client_ref_reused':
+        // The key was used for another sale: a new one next time.
+        _cart.update((c) => c.clientRef = null);
+        return const PayAttempt.stay('vendor.saveFailed');
+      default:
+        return PayAttempt.stay(
+          'vendor.sync.conflictOther',
+          values: {'reason': apiErrorMessage(FFLocaleScope.of(context), e)},
+        );
+    }
+  }
+
+  void _afterClose(VoidCallback f) =>
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) f();
+      });
+
+  void _updateStock(String? productId, String? variant, int available) {
+    if (productId == null) return;
+    setState(() {
+      _products = [
+        for (final p in _products)
+          if (p['id']?.toString() != productId)
+            p
+          else if (variant == null)
+            {
+              ...p,
+              'stock': available + (_session?.queuedQty(productId, null) ?? 0),
+            }
+          else
+            {
+              ...p,
+              'variants': [
+                for (final v in (p['variants'] as List? ?? []).whereType<Map>())
+                  v['name'] == variant ? {...v, 'stock': available} : v,
+              ],
+            },
+      ];
+    });
+  }
+
+  void _flag(PosLine? line, String text) {
+    setState(() {
+      _flagged = line?.key;
+      _flagText = text;
+    });
+    _afterClose(() {
+      _announce(text, assertive: true);
+      if (!_wide) _openCart();
+      final focus = line == null ? null : _lineFocus[line.key];
+      focus?.requestFocus();
+    });
+  }
+
+  // ── layout ──────────────────────────────────────────────────────────────
+
+  void _back() {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go(salesHomeRoute);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final session = _session;
+    return Scaffold(
+      appBar: AppBar(
+        leading: BackButton(onPressed: _back),
+        title: Text(context.tr('vendor.pos.title')),
+        actions: [
+          ListenableBuilder(
+            listenable: _cart,
+            builder: (context, _) => PopupMenuButton<String>(
+              key: const Key('pos-more'),
+              tooltip: context.tr('vendor.pos.more'),
+              style: IconButton.styleFrom(
+                minimumSize: const Size(48, 48),
+                visualDensity: VisualDensity.standard,
+              ),
+              onSelected: (v) {
+                if (v == 'clear') _clearSale();
+              },
+              itemBuilder: (_) => [
+                PopupMenuItem(
+                  key: const Key('pos-clear'),
+                  value: 'clear',
+                  enabled: !_cart.cart.isEmpty,
+                  child: Text(context.tr('vendor.pos.clearSale')),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      body: !_ready || session == null
+          ? const Center(child: FFSpinner())
+          : _body(session),
+      bottomNavigationBar: !_ready || _wide ? null : _cartBar(),
+    );
+  }
+
+  Widget _banners(SalesSession session) => Padding(
+    padding: const EdgeInsets.fromLTRB(
+      FFTokens.spacingLg,
+      FFTokens.spacingSm,
+      FFTokens.spacingLg,
+      0,
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_notAllowed)
+          Padding(
+            padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
+            child: FFAlert(
+              key: const Key('pos-staff-disabled'),
+              message: context.tr('error.reason.vendorStaffInactive'),
+              tone: FFAlertTone.error,
+            ),
+          ),
+        SalesSyncBanners(
+          session: session,
+          offline: _offline && _products.isNotEmpty
+              ? fillIn(context.tr('vendor.pos.offlineBanner'), {
+                  'time': eatDateTime(
+                    _cachedAt,
+                    locale: FFLocaleScope.of(context).locale.languageCode,
+                  ),
+                })
+              : null,
+        ),
+      ],
+    ),
+  );
+
+  Widget _body(SalesSession session) {
+    final products = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            FFTokens.spacingLg,
+            FFTokens.spacingSm,
+            FFTokens.spacingLg,
+            FFTokens.spacingSm,
+          ),
+          child: FFTextField(
+            key: const Key('pos-search'),
+            controller: _search,
+            focusNode: _searchFocus,
+            label: context.tr('vendor.pos.search'),
+            hint: context.tr('vendor.pos.searchHint'),
+            prefixIcon: const Icon(Icons.search),
+            autofocus: _wide,
+            textInputAction: TextInputAction.search,
+            onFieldSubmitted: (_) => _enterInSearch(),
+          ),
+        ),
+        Expanded(child: _productList()),
+      ],
+    );
+    if (!_wide) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _banners(session),
+          Expanded(child: products),
+        ],
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _banners(session),
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(child: products),
+              const VerticalDivider(width: 1),
+              SizedBox(
+                width: 400,
+                child: ListenableBuilder(
+                  listenable: _cart,
+                  builder: (context, _) => SingleChildScrollView(
+                    padding: const EdgeInsets.all(FFTokens.spacingLg),
+                    child: _cartContents(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  List<Map<String, dynamic>> get _matches {
+    final q = _search.text.trim().toLowerCase();
+    if (q.isEmpty) return _products;
+    return [
+      for (final p in _products)
+        if ([
+          p['name'],
+          p['brand'],
+          p['sku'],
+        ].any((f) => (f?.toString().toLowerCase() ?? '').contains(q)))
+          p,
+    ];
+  }
+
+  /// Enter in search (web; also USB scanners): add the one match, or the
+  /// exact SKU match.
+  void _enterInSearch() {
+    final q = _search.text.trim().toLowerCase();
+    if (q.isEmpty) return;
+    final sku = _products
+        .where((p) => (p['sku']?.toString().toLowerCase() ?? '') == q)
+        .toList();
+    final matches = sku.length == 1 ? sku : _matches;
+    if (matches.length != 1) return;
+    final p = matches.single;
+    if (_shownLeft(p) <= 0) return;
+    _tapProduct(p).then((_) {
+      if (!mounted) return;
+      _search.clear();
+      _searchFocus.requestFocus();
+    });
+  }
+
+  Widget _productList() {
+    if (_loading && _products.isEmpty) {
+      return FFSkeletonList(
+        count: 6,
+        semanticLabel: context.tr('vendor.pos.loading'),
+      );
+    }
+    switch (_problem) {
+      case _LoadProblem.noAccess:
+        return ListView(
+          padding: const EdgeInsets.all(FFTokens.spacingLg),
+          children: [
+            FFErrorState(
+              key: const Key('pos-no-products-access'),
+              message: context.tr('vendor.pos.noProductsAccess'),
+              onRetry: _loadProducts,
+            ),
+          ],
+        );
+      case _LoadProblem.failed:
+        return ListView(
+          padding: const EdgeInsets.all(FFTokens.spacingLg),
+          children: [
+            FFErrorState(
+              key: const Key('pos-load-failed'),
+              message: context.tr('vendor.pos.loadFailed'),
+              onRetry: _loadProducts,
+            ),
+          ],
+        );
+      case _LoadProblem.noCache:
+        return ListView(
+          padding: const EdgeInsets.all(FFTokens.spacingLg),
+          children: [
+            FFErrorState(
+              key: const Key('pos-no-cache'),
+              message: context.tr('vendor.pos.noCache'),
+              onRetry: _loadProducts,
+            ),
+          ],
+        );
+      case _LoadProblem.none:
+        break;
+    }
+    if (_products.isEmpty) {
+      return ListView(
+        padding: const EdgeInsets.all(FFTokens.spacingLg),
+        children: [
+          FFEmptyState(
+            key: const Key('pos-no-products'),
+            title: context.tr('vendor.pos.noProducts'),
+            action: canVendor(context, 'products')
+                ? FFButton(
+                    label: context.tr('vendor.pos.goToProducts'),
+                    variant: FFButtonVariant.secondary,
+                    onPressed: () => context.go('/vendor/home?open=products'),
+                  )
+                : null,
+          ),
+        ],
+      );
+    }
+    final matches = _matches;
+    if (matches.isEmpty) {
+      return ListView(
+        padding: const EdgeInsets.all(FFTokens.spacingLg),
+        children: [
+          Text(
+            fillIn(context.tr('vendor.pos.noResults'), {
+              'q': _search.text.trim(),
+            }),
+            key: const Key('pos-no-results'),
+          ),
+        ],
+      );
+    }
+    return ListenableBuilder(
+      listenable: Listenable.merge([_cart, ?_session]),
+      builder: (context, _) => ListView.builder(
+        padding: const EdgeInsets.fromLTRB(
+          FFTokens.spacingLg,
+          0,
+          FFTokens.spacingLg,
+          FFTokens.spacingLg,
+        ),
+        itemCount: matches.length,
+        itemBuilder: (context, i) => _productRow(matches[i]),
+      ),
+    );
+  }
+
+  Widget _productRow(Map<String, dynamic> p) {
+    final theme = Theme.of(context);
+    final id = p['id']?.toString() ?? '';
+    final name = p['name']?.toString() ?? '';
+    final left = _shownLeft(p);
+    final out = left <= 0;
+    final image = (p['images'] as List?)?.whereType<String>().firstOrNull;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
+      child: FFCard(
+        padding: EdgeInsets.zero,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 64),
+          child: Semantics(
+            button: true,
+            enabled: !out,
+            label: fillIn(context.tr('vendor.pos.add'), {'name': name}),
+            child: ListTile(
+              key: Key('pos-product-$id'),
+              enabled: !out && !_notAllowed,
+              onTap: out || _notAllowed ? null : () => _tapProduct(p),
+              leading: ExcludeSemantics(
+                child: SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: image == null
+                      ? const Icon(Icons.shopping_bag_outlined)
+                      : FFRemoteImage(
+                          src: image,
+                          width: 40,
+                          height: 40,
+                          fit: BoxFit.cover,
+                          fallback: const Icon(Icons.shopping_bag_outlined),
+                        ),
+                ),
+              ),
+              title: Text(name, maxLines: 2, overflow: TextOverflow.ellipsis),
+              subtitle: Wrap(
+                spacing: FFTokens.spacingSm,
+                runSpacing: FFTokens.spacingXs,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text(
+                    formatCurrency(walkInPrice(p)),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                  if (out)
+                    FFBadge(
+                      key: Key('pos-out-$id'),
+                      label: context.tr('vendor.pos.outOfStock'),
+                      tone: FFBadgeTone.gray,
+                    )
+                  else
+                    Text(fillIn(context.tr('vendor.pos.left'), {'n': left})),
+                ],
+              ),
+              trailing: const Icon(Icons.add_circle_outline),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _cartBar() => ListenableBuilder(
+    listenable: _cart,
+    builder: (context, _) {
+      final cart = _cart.cart;
+      final total = cart.totals.totalTzs;
+      final empty = cart.isEmpty;
+      final count = fillIn(context.tr('vendor.pos.items'), {
+        'n': cart.itemCount,
+      });
+      final charge = FFButton(
+        key: const Key('pos-charge'),
+        label: fillIn(context.tr('vendor.pos.charge'), {
+          'amount': formatCurrency(total),
+        }),
+        visualDensity: VisualDensity.standard,
+        onPressed: empty || _notAllowed ? null : _charge,
+      );
+      return SafeArea(
+        child: Material(
+          elevation: 3,
+          color: Theme.of(context).colorScheme.surfaceContainer,
+          child: Semantics(
+            label: fillIn(context.tr('vendor.pos.cartBarLabel'), {
+              'n': cart.itemCount,
+              'amount': formatCurrency(total),
+            }),
+            button: !empty,
+            child: InkWell(
+              key: const Key('pos-cart-bar'),
+              onTap: empty ? null : _openCart,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 64),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: FFTokens.spacingLg,
+                    vertical: FFTokens.spacingSm,
+                  ),
+                  child: LayoutBuilder(
+                    builder: (context, c) {
+                      // Large text or long Swahili: the count goes above a
+                      // full-width button instead of squeezing it.
+                      final stack =
+                          MediaQuery.textScalerOf(context).scale(1) > 1.3 ||
+                          c.maxWidth < 340;
+                      final label = Text(
+                        empty ? context.tr('vendor.pos.cartEmpty') : count,
+                        style: Theme.of(context).textTheme.titleSmall,
+                      );
+                      if (stack) {
+                        return Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            ExcludeSemantics(child: label),
+                            const SizedBox(height: FFTokens.spacingXs),
+                            charge,
+                          ],
+                        );
+                      }
+                      return Row(
+                        children: [
+                          Expanded(child: ExcludeSemantics(child: label)),
+                          const SizedBox(width: FFTokens.spacingSm),
+                          Flexible(child: charge),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    },
+  );
+
+  Future<void> _openCart() async {
+    final charge = await showFFSheet<bool>(
+      context,
+      title: context.tr('vendor.pos.cartTitle'),
+      child: ListenableBuilder(
+        listenable: _cart,
+        builder: (sheet, _) =>
+            _cartContents(onCharge: () => Navigator.of(sheet).pop(true)),
+      ),
+    );
+    if (charge == true && mounted) await _charge();
+  }
+
+  Widget _cartContents({VoidCallback? onCharge}) {
+    final theme = Theme.of(context);
+    final cart = _cart.cart;
+    final totals = cart.totals;
+    if (cart.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: FFTokens.spacingLg),
+        child: Text(
+          context.tr('vendor.pos.cartEmpty'),
+          key: const Key('pos-cart-empty'),
+          textAlign: TextAlign.center,
+        ),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final line in cart.lines) _cartLine(line),
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: FFButton(
+            key: const Key('pos-sale-discount'),
+            label: context.tr(
+              cart.saleDiscountTzs > 0
+                  ? 'vendor.pos.saleDiscount'
+                  : 'vendor.pos.addDiscount',
+            ),
+            icon: Icons.sell_outlined,
+            variant: FFButtonVariant.ghost,
+            visualDensity: VisualDensity.standard,
+            onPressed: _saleDiscount,
+          ),
+        ),
+        const Divider(),
+        MoneyRow(
+          context.tr('vendor.pos.subtotal'),
+          formatCurrency(totals.subtotalTzs),
+        ),
+        if (totals.discountsTzs > 0)
+          MoneyRow(
+            context.tr('vendor.pos.discounts'),
+            '−${formatCurrency(totals.discountsTzs)}',
+          ),
+        MoneyRow(
+          context.tr('vendor.pos.total'),
+          formatCurrency(totals.totalTzs),
+          strong: true,
+          key: const Key('pos-cart-total'),
+        ),
+        const SizedBox(height: FFTokens.spacingSm),
+        _NoteField(
+          note: cart.note,
+          onChanged: (v) => _cart.update((c) {
+            c.note = v;
+            c.changed();
+          }),
+        ),
+        const SizedBox(height: FFTokens.spacingSm),
+        FFButton(
+          key: const Key('pos-cart-charge'),
+          label: fillIn(context.tr('vendor.pos.charge'), {
+            'amount': formatCurrency(totals.totalTzs),
+          }),
+          fullWidth: true,
+          maxLines: 2,
+          visualDensity: VisualDensity.standard,
+          onPressed: _notAllowed ? null : (onCharge ?? _charge),
+        ),
+        // A refusal about no particular line (or one already removed).
+        if (_flagText != null &&
+            cart.lines.every((l) => l.key != _flagged)) ...[
+          const SizedBox(height: FFTokens.spacingSm),
+          FFAlert(message: _flagText!, tone: FFAlertTone.error),
+        ],
+        Text(
+          context.tr('vendor.pos.discountAudited'),
+          style: theme.textTheme.bodySmall,
+        ),
+      ],
+    );
+  }
+
+  Widget _cartLine(PosLine line) {
+    final theme = Theme.of(context);
+    final p = _product(line.productId);
+    final canAdd =
+        line.qty < maxQtyPerLine &&
+        (p == null || _available(p, line.variant) > 0);
+    final atCap = p != null && _available(p, line.variant) <= 0;
+    final flagged = _flagged == line.key;
+    final focus = _lineFocus.putIfAbsent(line.key, FocusNode.new);
+    final muted = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    final stockLeft = p == null ? null : _available(p, line.variant) + line.qty;
+    return Padding(
+      key: Key('pos-line-${line.productId}-${line.variant ?? ''}'),
+      padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
+      child: Container(
+        decoration: flagged
+            ? BoxDecoration(
+                border: Border.all(color: warningText(context), width: 2),
+                borderRadius: BorderRadius.circular(FFTokens.radiusMd),
+              )
+            : null,
+        padding: flagged ? const EdgeInsets.all(FFTokens.spacingXs) : null,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: () => _editLine(line),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(minHeight: 48),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(line.name, style: theme.textTheme.titleSmall),
+                          if (line.variant != null)
+                            Text(
+                              fillIn(context.tr('vendor.orders.variant'), {
+                                'name': line.variant,
+                              }),
+                              style: muted,
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  key: Key('pos-dec-${line.key}'),
+                  focusNode: focus,
+                  style: IconButton.styleFrom(
+                    minimumSize: const Size(48, 48),
+                    visualDensity: VisualDensity.standard,
+                  ),
+                  tooltip: fillIn(context.tr('vendor.pos.decrease'), {
+                    'name': line.name,
+                  }),
+                  icon: const Icon(Icons.remove),
+                  onPressed: () => _step(line, -1),
+                ),
+                Semantics(
+                  value: '${line.qty}',
+                  child: Text(
+                    '${line.qty}',
+                    key: Key('pos-qty-${line.key}'),
+                    style: theme.textTheme.titleMedium,
+                  ),
+                ),
+                IconButton(
+                  key: Key('pos-inc-${line.key}'),
+                  style: IconButton.styleFrom(
+                    minimumSize: const Size(48, 48),
+                    visualDensity: VisualDensity.standard,
+                  ),
+                  tooltip: fillIn(context.tr('vendor.pos.increase'), {
+                    'name': line.name,
+                  }),
+                  icon: const Icon(Icons.add),
+                  onPressed: canAdd ? () => _step(line, 1) : null,
+                ),
+              ],
+            ),
+            MoneyRow(
+              line.qty > 1 || line.priceChanged
+                  ? '@ ${formatMoney(line.priceEach)}'
+                  : '',
+              formatCurrency(line.lineTotalTzs),
+            ),
+            if (line.priceChanged)
+              Text(
+                fillIn(context.tr('vendor.pos.priceChanged'), {
+                  'amount': formatCurrency(line.listPriceTzs),
+                }),
+                style: muted,
+              ),
+            if (line.discountTzs > 0)
+              Text(
+                '${context.tr('vendor.pos.lineDiscountShort')} −${formatMoney(line.discountTzs)}',
+                style: muted,
+              ),
+            if (atCap && stockLeft != null)
+              Text(
+                fillIn(context.tr('vendor.pos.onlyLeft'), {'n': stockLeft}),
+                key: Key('pos-only-left-${line.key}'),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: warningText(context),
+                ),
+              ),
+            if (flagged && _flagText != null)
+              Semantics(
+                liveRegion: true,
+                child: Text(
+                  _flagText!,
+                  key: const Key('pos-line-error'),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.error,
+                  ),
+                ),
+              ),
+            if (flagged)
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: FFButton(
+                  key: const Key('pos-line-remove'),
+                  label: context.tr('vendor.pos.removeItem'),
+                  variant: FFButtonVariant.ghost,
+                  size: FFButtonSize.sm,
+                  semanticLabel: fillIn(context.tr('vendor.pos.removeLine'), {
+                    'name': line.name,
+                  }),
+                  onPressed: () {
+                    _cart.update((c) => c.remove(line));
+                    _clearFlag();
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NoteField extends StatefulWidget {
+  const _NoteField({required this.note, required this.onChanged});
+  final String note;
+  final ValueChanged<String> onChanged;
+
+  @override
+  State<_NoteField> createState() => _NoteFieldState();
+}
+
+class _NoteFieldState extends State<_NoteField> {
+  late final _controller = TextEditingController(text: widget.note);
+  late bool _open = widget.note.isNotEmpty;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_open) {
+      return Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: FFButton(
+          key: const Key('pos-add-note'),
+          label: context.tr('vendor.pos.addNote'),
+          icon: Icons.note_add_outlined,
+          variant: FFButtonVariant.ghost,
+          visualDensity: VisualDensity.standard,
+          onPressed: () => setState(() => _open = true),
+        ),
+      );
+    }
+    return FFTextField(
+      key: const Key('pos-note'),
+      controller: _controller,
+      label: context.tr('vendor.pos.note'),
+      maxLength: maxSaleNote,
+      maxLines: 3,
+      minLines: 1,
+      onChanged: widget.onChanged,
+    );
+  }
+}
+
+/// TSh | % and the amount; % turns into whole TSh, rounded down.
+class _DiscountField extends StatelessWidget {
+  const _DiscountField({
+    required this.mode,
+    required this.controller,
+    required this.onMode,
+    required this.onChanged,
+    this.errorText,
+    this.fieldKey,
+  });
+
+  final String mode;
+  final TextEditingController controller;
+  final ValueChanged<String> onMode;
+  final VoidCallback onChanged;
+  final String? errorText;
+  final Key? fieldKey;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      FFSegmented(
+        key: const Key('pos-discount-mode'),
+        value: mode,
+        options: [
+          ('tzs', context.tr('vendor.pos.discountTzs')),
+          ('pct', context.tr('vendor.pos.discountPct')),
+        ],
+        onChanged: onMode,
+      ),
+      const SizedBox(height: FFTokens.spacingSm),
+      FFTextField(
+        key: fieldKey,
+        controller: controller,
+        label: context.tr(
+          mode == 'pct'
+              ? 'vendor.pos.discountPercent'
+              : 'vendor.pos.discountAmount',
+        ),
+        keyboardType: TextInputType.number,
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+          LengthLimitingTextInputFormatter(mode == 'pct' ? 3 : 9),
+        ],
+        errorText: errorText,
+        onChanged: (_) => onChanged(),
+      ),
+    ],
+  );
+}
+
+int _discountValue(String mode, String text, int base) {
+  final n = int.tryParse(text.trim()) ?? 0;
+  return mode == 'pct' ? percentOf(base, n) : n;
+}
+
+class _LineEditor extends StatefulWidget {
+  const _LineEditor({required this.line, required this.maxQty});
+  final PosLine line;
+  final int maxQty;
+
+  @override
+  State<_LineEditor> createState() => _LineEditorState();
+}
+
+class _LineEditorState extends State<_LineEditor> {
+  late final _qty = TextEditingController(text: '${widget.line.qty}');
+  late final _price = TextEditingController(text: '${widget.line.priceEach}');
+  late final _discount = TextEditingController(
+    text: widget.line.discountTzs > 0 ? '${widget.line.discountTzs}' : '',
+  );
+  String _mode = 'tzs';
+
+  @override
+  void dispose() {
+    _qty.dispose();
+    _price.dispose();
+    _discount.dispose();
+    super.dispose();
+  }
+
+  int get _q => int.tryParse(_qty.text.trim()) ?? 0;
+  int get _p => int.tryParse(_price.text.trim()) ?? 0;
+  int get _gross => _q * _p;
+  int get _d => _discountValue(_mode, _discount.text, _gross);
+
+  @override
+  Widget build(BuildContext context) {
+    final cap = widget.maxQty < maxQtyPerLine ? widget.maxQty : maxQtyPerLine;
+    final qtyOk = _q >= 1 && _q <= cap;
+    final priceOk = _p >= 1;
+    final discountOk = _d <= _gross;
+    final valid = qtyOk && priceOk && discountOk;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            IconButton(
+              key: const Key('pos-edit-dec'),
+              style: IconButton.styleFrom(
+                minimumSize: const Size(48, 48),
+                visualDensity: VisualDensity.standard,
+              ),
+              tooltip: fillIn(context.tr('vendor.pos.decrease'), {
+                'name': widget.line.name,
+              }),
+              icon: const Icon(Icons.remove),
+              onPressed: _q > 1
+                  ? () => setState(() => _qty.text = '${_q - 1}')
+                  : null,
+            ),
+            Expanded(
+              child: FFTextField(
+                key: const Key('pos-edit-qty'),
+                controller: _qty,
+                label: context.tr('vendor.pos.qty'),
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(4),
+                ],
+                errorText: _q > cap
+                    ? fillIn(context.tr('vendor.pos.onlyLeft'), {'n': cap})
+                    : null,
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
+            IconButton(
+              key: const Key('pos-edit-inc'),
+              style: IconButton.styleFrom(
+                minimumSize: const Size(48, 48),
+                visualDensity: VisualDensity.standard,
+              ),
+              tooltip: fillIn(context.tr('vendor.pos.increase'), {
+                'name': widget.line.name,
+              }),
+              icon: const Icon(Icons.add),
+              onPressed: _q < cap
+                  ? () => setState(() => _qty.text = '${_q + 1}')
+                  : null,
+            ),
+          ],
+        ),
+        const SizedBox(height: FFTokens.spacingSm),
+        FFTextField(
+          key: const Key('pos-edit-price'),
+          controller: _price,
+          label: context.tr('vendor.pos.priceEach'),
+          helperText: fillIn(context.tr('vendor.pos.listPrice'), {
+            'amount': formatCurrency(widget.line.listPriceTzs),
+          }),
+          errorText: priceOk ? null : context.tr('vendor.pos.priceZero'),
+          keyboardType: TextInputType.number,
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(9),
+          ],
+          onChanged: (_) => setState(() {}),
+        ),
+        const SizedBox(height: FFTokens.spacingMd),
+        Text(
+          context.tr('vendor.pos.lineDiscount'),
+          style: Theme.of(context).textTheme.labelLarge,
+        ),
+        const SizedBox(height: FFTokens.spacingXs),
+        _DiscountField(
+          mode: _mode,
+          controller: _discount,
+          fieldKey: const Key('pos-edit-discount'),
+          onMode: (m) => setState(() {
+            _mode = m;
+            _discount.clear();
+          }),
+          onChanged: () => setState(() {}),
+          errorText: discountOk
+              ? null
+              : fillIn(context.tr('vendor.pos.discountTooBig'), {
+                  'amount': formatCurrency(_gross),
+                }),
+        ),
+        if (_d > 0 && _mode == 'pct')
+          Text('−${formatCurrency(_d)}', key: const Key('pos-edit-pct-value')),
+        const SizedBox(height: FFTokens.spacingSm),
+        MoneyRow(
+          context.tr('vendor.pos.total'),
+          formatCurrency(_gross - (discountOk ? _d : 0)),
+          strong: true,
+        ),
+        Text(
+          context.tr('vendor.pos.discountAudited'),
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(height: FFTokens.spacingMd),
+        FFButton(
+          key: const Key('pos-edit-save'),
+          label: context.tr('vendor.pos.save'),
+          fullWidth: true,
+          visualDensity: VisualDensity.standard,
+          onPressed: valid
+              ? () => Navigator.of(
+                  context,
+                ).pop((qty: _q, price: _p, discount: _d))
+              : null,
+        ),
+        const SizedBox(height: FFTokens.spacingSm),
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          spacing: FFTokens.spacingSm,
+          children: [
+            FFButton(
+              key: const Key('pos-edit-remove'),
+              label: context.tr('vendor.pos.removeItem'),
+              variant: FFButtonVariant.destructive,
+              visualDensity: VisualDensity.standard,
+              semanticLabel: fillIn(context.tr('vendor.pos.removeLine'), {
+                'name': widget.line.name,
+              }),
+              onPressed: () => Navigator.of(context).pop('remove'),
+            ),
+            FFButton(
+              label: context.tr('common.cancel'),
+              variant: FFButtonVariant.ghost,
+              visualDensity: VisualDensity.standard,
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _DiscountEditor extends StatefulWidget {
+  const _DiscountEditor({required this.baseTzs, required this.currentTzs});
+  final int baseTzs;
+  final int currentTzs;
+
+  @override
+  State<_DiscountEditor> createState() => _DiscountEditorState();
+}
+
+class _DiscountEditorState extends State<_DiscountEditor> {
+  late final _amount = TextEditingController(
+    text: widget.currentTzs > 0 ? '${widget.currentTzs}' : '',
+  );
+  String _mode = 'tzs';
+
+  @override
+  void dispose() {
+    _amount.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final value = _discountValue(_mode, _amount.text, widget.baseTzs);
+    final ok = value <= widget.baseTzs;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _DiscountField(
+          mode: _mode,
+          controller: _amount,
+          fieldKey: const Key('pos-sale-discount-amount'),
+          onMode: (m) => setState(() {
+            _mode = m;
+            _amount.clear();
+          }),
+          onChanged: () => setState(() {}),
+          errorText: ok
+              ? null
+              : fillIn(context.tr('vendor.pos.discountTooBig'), {
+                  'amount': formatCurrency(widget.baseTzs),
+                }),
+        ),
+        if (value > 0 && _mode == 'pct') Text('−${formatCurrency(value)}'),
+        const SizedBox(height: FFTokens.spacingSm),
+        Text(
+          context.tr('vendor.pos.discountAudited'),
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(height: FFTokens.spacingMd),
+        FFButton(
+          key: const Key('pos-sale-discount-save'),
+          label: context.tr('vendor.pos.save'),
+          fullWidth: true,
+          visualDensity: VisualDensity.standard,
+          onPressed: ok ? () => Navigator.of(context).pop(value) : null,
+        ),
+        if (widget.currentTzs > 0) ...[
+          const SizedBox(height: FFTokens.spacingSm),
+          FFButton(
+            key: const Key('pos-sale-discount-remove'),
+            label: context.tr('vendor.pos.removeDiscount'),
+            variant: FFButtonVariant.ghost,
+            visualDensity: VisualDensity.standard,
+            onPressed: () => Navigator.of(context).pop(0),
+          ),
+        ],
+      ],
+    );
+  }
+}
