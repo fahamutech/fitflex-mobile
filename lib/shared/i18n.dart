@@ -913,14 +913,16 @@ class FFLocale extends ChangeNotifier {
       'share.title': 'What {name} can see',
       'share.requestTitle': 'Connect with {name}',
       'share.body':
-          'Nothing is shared unless you switch it on. You can change this or disconnect at any time.',
+          '{name} sees only what is switched on. You can change this or disconnect at any time.',
+      'share.requestNote':
+          "Everything starts switched on. Switch off anything you don't want to share, now or later in Privacy.",
       'share.sendRequest': 'Send request',
       'share.save': 'Save sharing',
       'share.canSee': 'Can see',
-      'share.nothing': 'Nothing shared',
+      'share.nothing': 'Sharing switched off',
       'connect.title': 'Train with {name}',
       'connect.body':
-          'Connect to get workouts planned for you. You choose what your trainer can see.',
+          'Connect to get workouts planned for you. Your trainer sees your activity unless you switch it off.',
       'connect.action': 'Connect',
       'connect.pending': 'Request sent',
       'connect.connected': 'Connected',
@@ -1015,12 +1017,12 @@ class FFLocale extends ChangeNotifier {
       'assign.noHistory': 'No workouts in the last 13 weeks.',
       'privacy.title': 'Privacy & data',
       'privacy.body':
-          'Your activity is private. Only trainers you connect with can see anything, and only what you switch on.',
+          'Your activity is shared with your trainers, gyms, groups and challenges, and is public on your profile, unless you switch it off. Your route, calories and weight stay private. You can change this any time here.',
       'sharing.title': 'Activity sharing',
       'sharing.body':
-          'Choose what each trainer and gym can see. Changes apply straight away.',
+          "Trainers and gyms see what is switched on here. Everything starts on; switch off what you don't want to share. Changes apply straight away.",
       'sharing.summary': 'Sharing with {n} of {total} trainers',
-      'sharing.noTrainers': "You're not sharing with any trainers",
+      'sharing.noTrainers': 'No trainers connected yet',
       'sharing.trainerLabel': 'Trainer',
       'sharing.activityData': 'Activity data',
       'sharing.activityData.hint': 'Steps, distance and active minutes',
@@ -1061,7 +1063,7 @@ class FFLocale extends ChangeNotifier {
       'gymShare.yourGym': 'Your gym',
       'gymShare.visited': 'A gym you have visited',
       'gymShare.always':
-          "Always visible to {gym}: your check-ins there and how often you visit. These are the gym's own records.",
+          "Always visible to {gym}: your check-ins there and how often you visit. These are the gym's own records and can't be switched off.",
       'gymShare.classAttendance': 'Class attendance',
       'gymShare.classAttendance.hint':
           'Group classes you log at this gym: date and length',
@@ -1073,7 +1075,7 @@ class FFLocale extends ChangeNotifier {
       'gymShare.none': 'No gyms yet',
       'gymShare.noneBody': 'Gyms you join or visit will appear here.',
       'gymShare.neverShared':
-          'Gyms never see your steps, goals, streaks, or anything you do elsewhere.',
+          'Gyms never see your steps, goals or streaks, or what you do at other gyms.',
       'engagement.title': 'Engagement',
       'engagement.status.active': 'Active',
       'engagement.status.slipping': 'Slipping',
@@ -1129,7 +1131,7 @@ class FFLocale extends ChangeNotifier {
       'challenge.creatorSees':
           '{name} can see your progress in this challenge, because you share challenge data with them.',
       'challenge.creatorDoesNotSee':
-          '{name} will see that you joined, but not your progress, unless you share challenge data with them.',
+          "{name} will see that you joined, but not your progress, because you don't share challenge data with them.",
       'challenge.changeSharing': 'Change what you share',
       'challenge.unit.steps': 'steps',
       'challenge.unit.distance_km': '',
@@ -1194,7 +1196,9 @@ class FFLocale extends ChangeNotifier {
       'leaderboard.departmentNote': 'Your team is your department at work.',
       'leaderboard.optIn': 'Show me on the leaderboard',
       'leaderboard.optInHint':
-          'Off by default. If you switch it on, other participants see your first name, last initial and progress in this challenge. You can switch it off any time.',
+          'When on, other participants see your first name, last initial and progress in this challenge. It starts on when you join; switch it off any time.',
+      'leaderboard.joinNote':
+          'When you join, your progress in this challenge is shared. You can switch the leaderboard off below, and change what trainers and gyms see in Privacy.',
       'leaderboard.youAre': "You're #{rank} of {of} on the leaderboard",
       'leaderboard.youWouldBe': "You'd be #{rank} of {of}. You're not listed",
       'leaderboard.yourTeam': 'Your team: {team}',
@@ -2040,7 +2044,11 @@ class FFLocale extends ChangeNotifier {
       'phoneSteps.title': 'Count your steps with this phone',
       'audience.title': 'Who can see this',
       'audience.private': 'Only you',
-      'audience.privateHint': 'Not shared with anyone.',
+      'audience.privateHint':
+          'Not posted to anyone. Trainers and gyms still see what you share with them in Privacy.',
+      'audience.allGroups': 'All my groups',
+      'audience.allGroupsHint':
+          'Every group you are in, including groups you join later.',
       'audience.friends': 'Friends',
       'audience.friendsHint': 'People you follow who follow you back.',
       'audience.groupHint': 'Members of this group',
@@ -5072,14 +5080,16 @@ class FFLocale extends ChangeNotifier {
       'share.title': '{name} anaweza kuona nini',
       'share.requestTitle': 'Ungana na {name}',
       'share.body':
-          'Hakuna kinachoshirikishwa usipokiwasha. Unaweza kubadilisha hili au kuachana na trainer wakati wowote.',
+          '{name} anaona kile tu kilichowashwa. Unaweza kubadilisha hili au kuachana na trainer wakati wowote.',
+      'share.requestNote':
+          'Kila kitu kimewashwa mwanzoni. Zima chochote usichotaka kushirikisha, sasa au baadaye kwenye Faragha.',
       'share.sendRequest': 'Tuma ombi',
       'share.save': 'Hifadhi',
       'share.canSee': 'Anaweza kuona',
-      'share.nothing': 'Hakuna kinachoshirikishwa',
+      'share.nothing': 'Kushirikisha kumezimwa',
       'connect.title': 'Fanya mazoezi na {name}',
       'connect.body':
-          'Ungana ili upangiwe mazoezi. Wewe unachagua trainer wako anaweza kuona nini.',
+          'Ungana ili upangiwe mazoezi. Trainer wako ataona shughuli zako usipozizima.',
       'connect.action': 'Ungana',
       'connect.pending': 'Ombi limetumwa',
       'connect.connected': 'Mmeungana',
@@ -5177,12 +5187,12 @@ class FFLocale extends ChangeNotifier {
       'assign.noHistory': 'Hakuna mazoezi katika wiki 13 zilizopita.',
       'privacy.title': 'Faragha na data',
       'privacy.body':
-          'Shughuli zako ni za faragha. Ni ma-trainer uliounganishwa nao tu wanaoweza kuona kitu, na kile tu unachowasha.',
+          'Shughuli zako zinashirikishwa na ma-trainer wako, gym, vikundi na challenge, na zinaonekana hadharani kwenye wasifu wako, usipozizima. Njia yako, kalori na uzito vinabaki kuwa siri. Unaweza kubadilisha hili wakati wowote hapa.',
       'sharing.title': 'Kushirikisha shughuli',
       'sharing.body':
-          'Chagua kila trainer na gym wanaweza kuona nini. Mabadiliko yanaanza mara moja.',
+          'Ma-trainer na gym wanaona kilichowashwa hapa. Kila kitu kimewashwa mwanzoni; zima usichotaka kushirikisha. Mabadiliko yanaanza mara moja.',
       'sharing.summary': 'Unawashirikisha ma-trainer {n} kati ya {total}',
-      'sharing.noTrainers': 'Hujamshirikisha trainer yeyote',
+      'sharing.noTrainers': 'Bado hujaungana na trainer yeyote',
       'sharing.trainerLabel': 'Trainer',
       'sharing.activityData': 'Data ya shughuli',
       'sharing.activityData.hint': 'Hatua, umbali na dakika za mazoezi',
@@ -5226,7 +5236,7 @@ class FFLocale extends ChangeNotifier {
       'gymShare.yourGym': 'Gym yako',
       'gymShare.visited': 'Gym uliyowahi kutembelea',
       'gymShare.always':
-          '{gym} huona kila wakati: kuingia kwako hapo na mara ngapi unakwenda. Hizi ni rekodi za gym yenyewe.',
+          '{gym} huona kila wakati: kuingia kwako hapo na mara ngapi unakwenda. Hizi ni rekodi za gym yenyewe na haziwezi kuzimwa.',
       'gymShare.classAttendance': 'Mahudhurio ya madarasa',
       'gymShare.classAttendance.hint':
           'Madarasa ya kikundi unayorekodi kwenye gym hii: tarehe na muda',
@@ -5239,7 +5249,7 @@ class FFLocale extends ChangeNotifier {
       'gymShare.noneBody':
           'Gym unazojiunga nazo au kutembelea zitaonekana hapa.',
       'gymShare.neverShared':
-          'Gym hazioni kamwe hatua zako, malengo, mfululizo, au chochote unachofanya mahali pengine.',
+          'Gym hazioni kamwe hatua zako, malengo au mfululizo, wala unachofanya kwenye gym nyingine.',
       'engagement.title': 'Ushiriki',
       'engagement.status.active': 'Anahudhuria',
       'engagement.status.slipping': 'Anapunguza kuja',
@@ -5295,7 +5305,7 @@ class FFLocale extends ChangeNotifier {
       'challenge.creatorSees':
           '{name} anaweza kuona maendeleo yako kwenye challenge hii, kwa sababu unamshirikisha data ya challenge.',
       'challenge.creatorDoesNotSee':
-          '{name} ataona kwamba umejiunga, lakini si maendeleo yako, usipomshirikisha data ya challenge.',
+          '{name} ataona kwamba umejiunga, lakini si maendeleo yako, kwa sababu humshirikishi data ya challenge.',
       'challenge.changeSharing': 'Badilisha unachoshirikisha',
       'challenge.unit.steps': 'hatua',
       'challenge.unit.distance_km': '',
@@ -5363,7 +5373,9 @@ class FFLocale extends ChangeNotifier {
       'leaderboard.departmentNote': 'Timu yako ni idara yako kazini.',
       'leaderboard.optIn': 'Nionyeshe kwenye msimamo',
       'leaderboard.optInHint':
-          'Kwa kawaida imezimwa. Ukiiwasha, washiriki wengine wataona jina lako la kwanza, herufi ya kwanza ya jina la mwisho na maendeleo yako kwenye challenge hii. Unaweza kuizima wakati wowote.',
+          'Ikiwashwa, washiriki wengine wanaona jina lako la kwanza, herufi ya kwanza ya jina la mwisho na maendeleo yako kwenye challenge hii. Inawashwa unapojiunga; unaweza kuizima wakati wowote.',
+      'leaderboard.joinNote':
+          'Ukijiunga, maendeleo yako kwenye challenge hii yanashirikishwa. Unaweza kuzima msimamo hapa chini, na kubadilisha kile ma-trainer na gym wanaona kwenye Faragha.',
       'leaderboard.youAre': 'Uko nafasi ya {rank} kati ya {of} kwenye msimamo',
       'leaderboard.youWouldBe': 'Ungekuwa wa {rank} kati ya {of}. Hauonyeshwi',
       'leaderboard.yourTeam': 'Timu yako: {team}',
@@ -6214,7 +6226,11 @@ class FFLocale extends ChangeNotifier {
       'phoneSteps.title': 'Hesabu hatua zako kwa simu hii',
       'audience.title': 'Nani anaweza kuona',
       'audience.private': 'Wewe tu',
-      'audience.privateHint': 'Haishirikiwi na mtu yeyote.',
+      'audience.privateHint':
+          'Haichapishwi kwa mtu yeyote. Ma-trainer na gym bado wanaona unachowashirikisha kwenye Faragha.',
+      'audience.allGroups': 'Vikundi vyangu vyote',
+      'audience.allGroupsHint':
+          'Kila kikundi ulichomo, pamoja na vikundi utakavyojiunga navyo baadaye.',
       'audience.friends': 'Marafiki',
       'audience.friendsHint': 'Watu unaowafuata na wanaokufuata pia.',
       'audience.groupHint': 'Wanachama wa kikundi hiki',

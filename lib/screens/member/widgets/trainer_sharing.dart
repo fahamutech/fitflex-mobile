@@ -86,6 +86,13 @@ class _SharingSheetState extends State<_SharingSheet> {
               context.tr('share.body').replaceAll('{name}', widget.trainerName),
               style: theme.textTheme.bodySmall,
             ),
+            if (widget.isRequest) ...[
+              const SizedBox(height: FFTokens.spacingSm),
+              FFAlert(
+                key: const Key('share-request-note'),
+                message: context.tr('share.requestNote'),
+              ),
+            ],
             const SizedBox(height: FFTokens.spacingSm),
             Flexible(
               child: ListView(
@@ -148,7 +155,7 @@ class _TrainerConnectCardState extends State<TrainerConnectCard> {
     final perms = await showTrainerSharingSheet(
       context,
       trainerName: widget.trainerName,
-      initial: const TrainerPermissions(),
+      initial: TrainerPermissions.all,
       isRequest: true,
     );
     if (perms == null || !mounted) return;
