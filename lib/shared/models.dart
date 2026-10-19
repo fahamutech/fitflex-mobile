@@ -857,21 +857,6 @@ class PassTier {
     label: json['label'] as String?,
     gymAccess: json['gymAccess'] as String?,
   );
-
-  String get gymAccessLabel {
-    switch (gymAccess) {
-      case 'standard':
-        return 'Standard gyms';
-      case 'midtier':
-        return 'Standard + Mid-tier gyms';
-      case 'premium':
-        return 'Standard + Mid-tier + Premium gyms';
-      case 'luxury_executive':
-        return 'All gyms including Luxury/Executive';
-      default:
-        return gymAccess ?? '';
-    }
-  }
 }
 
 // ── Reviews ────────────────────────────────────────────────────────────────

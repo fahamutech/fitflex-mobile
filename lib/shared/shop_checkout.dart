@@ -124,6 +124,17 @@ String shopOrderStatusKey(Object? status) {
 }
 
 /// An order status in the member's or vendor's language.
+/// The short order number people say and see ("7A09CE31" → "09CE31"):
+/// `shortRef` when the server sends it (vendor orders do), otherwise the
+/// server's own rule (fitflex-functions `shortRef`): the last 6 characters
+/// of the id in capitals. Buyer and vendor therefore see the same number.
+String shopOrderRef(Map<String, dynamic> order) {
+  final ref = order['shortRef']?.toString().trim() ?? '';
+  if (ref.isNotEmpty) return ref;
+  final id = order['id']?.toString() ?? '';
+  return (id.length > 6 ? id.substring(id.length - 6) : id).toUpperCase();
+}
+
 String shopOrderStatusLabel(BuildContext context, Object? status) =>
     context.tr(shopOrderStatusKey(status));
 

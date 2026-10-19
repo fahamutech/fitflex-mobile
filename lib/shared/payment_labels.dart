@@ -43,6 +43,17 @@ String paymentProductLabel(BuildContext context, PaymentRequest p) {
   return (p.plan ?? '').toUpperCase();
 }
 
+/// Which gyms a FitFlex Pass tier opens ("Standard + Mid-tier gyms"), in
+/// the member's language; an access level this app does not know is shown
+/// as sent, and nothing at all as an empty string.
+String passGymAccessLabel(BuildContext context, String? gymAccess) {
+  final id = gymAccess?.trim() ?? '';
+  if (id.isEmpty) return '';
+  final key = 'pass.gymAccess.$id';
+  final label = context.tr(key);
+  return label == key ? id : label;
+}
+
 /// A shop payment method in words (`mpesa` → "M-Pesa"); the code itself,
 /// tidied, for one this app does not know yet; [fallback] when there is none.
 String shopPaymentMethodLabel(

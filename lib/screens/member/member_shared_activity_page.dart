@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../../app_scope.dart';
 import '../../shared/components/components.dart';
@@ -9,6 +8,7 @@ import '../../shared/i18n.dart';
 import '../../shared/social.dart';
 import 'member_community_page.dart';
 import 'widgets/run_widgets.dart' show RunSplits;
+import '../../shared/formatters.dart';
 
 /// One shared activity: the numbers, kudos and comments. Only people who
 /// can see it (the server checks) get here.
@@ -176,7 +176,7 @@ class _MemberSharedActivityPageState extends State<MemberSharedActivityPage> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      '${c.author.name} · ${DateFormat('d MMM HH:mm').format(c.createdAt)}',
+                                      '${c.author.name} · ${context.localDayTime(c.createdAt)}',
                                       style: theme.textTheme.bodySmall,
                                     ),
                                     Text(

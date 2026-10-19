@@ -8,7 +8,6 @@ import '../../shared/design_tokens.dart';
 import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
 import '../../shared/manual_payment.dart';
-import '../../shared/api_client.dart';
 import '../../shared/api_error_message.dart';
 import '../../shared/models.dart';
 import '../../shared/pass_gyms.dart';
@@ -71,24 +70,22 @@ class _MemberPaymentPageState extends State<MemberPaymentPage> {
           icon: const Icon(Icons.arrow_back),
         ),
         title: Text(context.tr('member.payment')),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(28),
-          child: Padding(
-            padding: const EdgeInsets.only(left: 16, right: 16, bottom: 8),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                body,
-                key: const Key('payment-page-body'),
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ),
-          ),
-        ),
       ),
       body: ListView(
         padding: const EdgeInsets.all(FFTokens.spacingLg),
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         children: [
+          // How this payment works, said once at the top. It scrolls with the
+          // page instead of squeezing the app bar (and its Back button) at
+          // 360px.
+          Text(
+            body,
+            key: const Key('payment-page-body'),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: FFTokens.spacingMd),
           // Order summary
           FFCard(
             child: Column(
@@ -119,8 +116,9 @@ class _MemberPaymentPageState extends State<MemberPaymentPage> {
                 _Row(
                   key: const Key('payment-pass-length'),
                   label: context.tr('member.passLength'),
+                  // "From approval" is said once, on the start row above.
                   value: context
-                      .tr('member.passLastsFromApproval')
+                      .tr('member.passLastsDays')
                       .replaceAll('{days}', '$platformPassDays'),
                 ),
                 _Row(
@@ -281,6 +279,8 @@ class _PayActionsState extends State<_PayActions> {
         payerPhone: payerPhone,
       );
       if (!mounted) return;
+      // A focused field must not outlive the page it is on (L4).
+      FocusManager.instance.primaryFocus?.unfocus();
       FFSnack.success(
         context,
         context.tr(
@@ -304,12 +304,14 @@ class _PayActionsState extends State<_PayActions> {
       await shellState?.refreshMe();
       if (!mounted) return;
       context.go(AppRoutes.memberHome);
-    } on ApiException catch (e) {
+    } catch (e) {
+      // Network failures arrive as ClientException / TimeoutException, not
+      // ApiException: they get the offline message instead of nothing.
       if (!mounted) return;
       if (manual != null && _manualInput.takeServerError(e)) {
         setState(() {});
       } else {
-        FFSnack.error(context, apiErrorMessage(FFLocaleScope.of(context), e));
+        FFSnack.error(context, errorMessage(FFLocaleScope.of(context), e));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -408,9 +410,11 @@ class _AvailableGymsSection extends StatelessWidget {
               alignment: Alignment.centerLeft,
               child: TextButton(
                 style: TextButton.styleFrom(
-                  padding: const EdgeInsets.only(top: 4),
-                  minimumSize: const Size(0, 36),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  // A 48dp target, also on the web (compact density).
+                  minimumSize: const Size(48, 48),
+                  tapTargetSize: MaterialTapTargetSize.padded,
+                  visualDensity: VisualDensity.standard,
                 ),
                 onPressed: () => showPassGymsSheet(
                   context,

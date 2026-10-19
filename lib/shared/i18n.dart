@@ -672,24 +672,23 @@ class FFLocale extends ChangeNotifier {
           'Pay with mobile money. Your pass starts as soon as the payment goes through.',
       'manualPay.title': 'How to pay',
       'manualPay.step1':
-          'Pay {amount} to Lipa Namba {number} (account name {name}).',
+          'Pay {amount} to the Lipa Namba below (account name {name}).',
       'manualPay.step1Network':
-          'Pay {amount} to Lipa Namba {number} (account name {name}, network {network}).',
+          'Pay {amount} to the Lipa Namba below (account name {name}, network {network}).',
       'manualPay.step2':
           'Keep the confirmation SMS. It has the transaction ID.',
-      'manualPay.step3':
-          'Enter the transaction ID below and submit. FitFlex checks it, then your plan starts.',
+      'manualPay.step3': 'Enter the transaction ID below and submit it.',
       'manualPay.copy': 'Copy number',
       'manualPay.copied': 'Lipa Namba copied',
       'manualPay.idLabel': 'Transaction ID',
       'manualPay.idHint': 'e.g. QJK3H7XY2P',
       'manualPay.idShown': 'Transaction ID: {id}',
       'manualPay.phoneLabel': 'Number you paid from',
-      'manualPay.phoneHint': 'e.g. 0712 345 678',
+      'manualPay.phoneHint': 'e.g. 0712\u00A0345\u00A0678',
       'manualPay.phoneHelp': 'The mobile money number the payment came from.',
       'manualPay.phoneRequired': 'Enter the number you paid from',
       'manualPay.phoneInvalid':
-          'Enter a Tanzanian mobile number, e.g. 0712 345 678',
+          'Enter a Tanzanian mobile number, e.g. 0712\u00A0345\u00A0678',
       'manualPay.paidFrom': 'Paid from',
       'manualPay.paidFromShown': 'Paid from: {phone}',
       'manualPay.idRequired': 'Enter the transaction ID from your payment SMS',
@@ -701,7 +700,14 @@ class FFLocale extends ChangeNotifier {
       'manualPay.submitted':
           "Transaction ID sent. Your plan starts once we've matched the payment.",
       'manualPay.pageBody':
-          'Pay the Lipa Namba below, then enter the transaction ID. FitFlex checks it before your pass starts.',
+          'Pay the Lipa Namba below, then enter the transaction ID.',
+      'manualPay.step3Upgrade':
+          'Enter the transaction ID below and submit it. Once it is approved, the upgrade applies to your current pass.',
+      'manualPay.submittedUpgrade':
+          "Transaction ID sent. Once it's approved, the upgrade applies to your current pass.",
+      'manualPay.copyFailed': "Couldn't copy. The Lipa Namba is {number}.",
+      'manualPay.numberA11y': 'Lipa Namba {number}',
+      'member.chooseFirst': 'Choose a plan to continue.',
       'momo.intro':
           'We will send a payment request to your phone. Approve it with your PIN to finish.',
       'momo.phone': 'Mobile money number',
@@ -1316,7 +1322,7 @@ class FFLocale extends ChangeNotifier {
       'member.plan_daily': 'Daily plan',
       'member.plan_weekly': 'Weekly plan',
       'member.plan_monthly': 'Monthly plan',
-      'member.planDuration': 'Valid for {days} day(s)',
+      'member.planDuration': 'Valid for {days} days',
       'member.subscribeFailed': 'Subscription request failed',
       'member.subscribeRequested':
           'Subscription requested — pending payment approval.',
@@ -1509,6 +1515,8 @@ class FFLocale extends ChangeNotifier {
       'shop.checkout': 'Checkout',
       'shop.noOrders': 'You have no marketplace orders yet.',
       'shop.order': 'Order',
+      'shop.orderRef': 'Order {ref}',
+      'shop.orderProgress': 'Order progress',
       'shop.total': 'Total',
       'shop.invoice': 'Invoice',
       'shop.invoiceTitle': 'FitFlex Marketplace Invoice',
@@ -1595,6 +1603,7 @@ class FFLocale extends ChangeNotifier {
       'vendor.business': 'Business',
       'vendor.payment': 'Payment',
       'vendor.pickupGym': 'Pickup gym',
+      'vendor.pickupGymUnknown': 'Gym name not available',
       'vendor.deliveryAddress': 'Delivery address',
       // Vendor tools S2: order privacy (orders tab).
       'vendor.orders.ref': 'Order {ref}',
@@ -1745,7 +1754,7 @@ class FFLocale extends ChangeNotifier {
       'member.noData': 'Nothing to show yet.',
       'member.paymentPendingTitle': 'Payment under review',
       'member.paymentPendingBody':
-          'Your payment request is waiting for admin approval. You cannot subscribe again until this is resolved.',
+          "You can't buy another pass until this payment is resolved.",
       'member.contactSupport': 'Contact support',
       'member.waitingApproval': 'Waiting for approval',
       'member.paymentPendingPlan': 'Plan requested',
@@ -1778,6 +1787,14 @@ class FFLocale extends ChangeNotifier {
       'home.onlineGyms': 'Free online gyms',
       'home.paidGyms': 'Paid visit gyms',
       'home.signout': 'Sign out',
+      'startup.offline.title': "Can't reach FitFlex",
+      'startup.offline.body':
+          'We could not load your account. Check your connection and try again.',
+      'startup.offline.stillOffline':
+          'Still no connection. Check your internet and try again.',
+      'notFound.title': 'Page not found',
+      'notFound.body': "This address doesn't open a page in the app.",
+      'notFound.home': 'Go to home',
       'home.seeAll': 'See all',
       'audience.body':
           'Choose who sees it. Friends are people you follow who follow you back; followers are everyone who follows you.',
@@ -2864,6 +2881,13 @@ class FFLocale extends ChangeNotifier {
       'owner.tinNumber': 'TIN number',
       'ownerScan.title': 'Scan Member QR',
       'ownerScan.hint': 'Point the camera at the member\'s QR code',
+      'ownerScan.camera.denied':
+          'Camera access is off. Allow the camera for FitFlex in your settings, then try again.',
+      'ownerScan.camera.unsupported':
+          "This device can't scan QR codes. Check members in from the Members list instead.",
+      'ownerScan.camera.error':
+          "The camera couldn't start. Try again, or check members in from the Members list.",
+      'ownerScan.openMembers': 'Open Members list',
       'ownerScan.scanAgain': 'Scan again',
       'ownerScan.passInfo': 'Pass information',
       'ownerScan.tier': 'Tier',
@@ -2949,6 +2973,9 @@ class FFLocale extends ChangeNotifier {
       'member.passStartsOnApproval': 'Starts when payment is approved',
       'member.passLength': 'Pass length',
       'member.passLastsFromApproval': 'Lasts {days} days from approval',
+      'member.passLastsDays': '{days} days',
+      'member.planDurationOne': 'Valid for 1 day',
+      'member.qrCheckIn': 'QR check-in',
       'member.moreGyms': 'more gyms',
       'passGyms.sheetTitle': '{tier} — gyms you can visit',
       'passGyms.view': 'View gyms',
@@ -5116,23 +5143,22 @@ class FFLocale extends ChangeNotifier {
           'Lipa kwa mtandao wa simu. Pasi yako inaanza mara malipo yanapokamilika.',
       'manualPay.title': 'Jinsi ya kulipa',
       'manualPay.step1':
-          'Lipa {amount} kwa Lipa Namba {number} (jina la akaunti {name}).',
+          'Lipa {amount} kwa Lipa Namba iliyo hapa chini (jina la akaunti {name}).',
       'manualPay.step1Network':
-          'Lipa {amount} kwa Lipa Namba {number} (jina la akaunti {name}, mtandao {network}).',
+          'Lipa {amount} kwa Lipa Namba iliyo hapa chini (jina la akaunti {name}, mtandao {network}).',
       'manualPay.step2': 'Hifadhi SMS ya uthibitisho. Ina namba ya muamala.',
-      'manualPay.step3':
-          'Weka namba ya muamala hapa chini kisha utume. FitFlex itaikagua, kisha mpango wako utaanza.',
+      'manualPay.step3': 'Weka namba ya muamala hapa chini kisha uitume.',
       'manualPay.copy': 'Nakili namba',
       'manualPay.copied': 'Lipa Namba imenakiliwa',
       'manualPay.idLabel': 'Namba ya muamala',
       'manualPay.idHint': 'mf. QJK3H7XY2P',
       'manualPay.idShown': 'Namba ya muamala: {id}',
       'manualPay.phoneLabel': 'Namba uliyolipia',
-      'manualPay.phoneHint': 'mf. 0712 345 678',
+      'manualPay.phoneHint': 'mf. 0712\u00A0345\u00A0678',
       'manualPay.phoneHelp': 'Namba ya mtandao wa simu iliyotumika kulipa.',
       'manualPay.phoneRequired': 'Weka namba uliyolipia',
       'manualPay.phoneInvalid':
-          'Weka namba ya simu ya Tanzania, mf. 0712 345 678',
+          'Weka namba ya simu ya Tanzania, mf. 0712\u00A0345\u00A0678',
       'manualPay.paidFrom': 'Imelipwa kutoka',
       'manualPay.paidFromShown': 'Imelipwa kutoka: {phone}',
       'manualPay.idRequired':
@@ -5145,7 +5171,14 @@ class FFLocale extends ChangeNotifier {
       'manualPay.submitted':
           'Namba ya muamala imetumwa. Mpango wako utaanza tukishalinganisha malipo.',
       'manualPay.pageBody':
-          'Lipa kwa Lipa Namba hapa chini, kisha weka namba ya muamala. FitFlex huikagua kabla pasi yako haijaanza.',
+          'Lipa kwa Lipa Namba hapa chini, kisha weka namba ya muamala.',
+      'manualPay.step3Upgrade':
+          'Weka namba ya muamala hapa chini kisha uitume. Ikishaidhinishwa, uboreshaji utatumika kwenye pasi yako ya sasa.',
+      'manualPay.submittedUpgrade':
+          'Namba ya muamala imetumwa. Ikishaidhinishwa, uboreshaji utatumika kwenye pasi yako ya sasa.',
+      'manualPay.copyFailed': 'Imeshindikana kunakili. Lipa Namba ni {number}.',
+      'manualPay.numberA11y': 'Lipa Namba ni {number}',
+      'member.chooseFirst': 'Chagua mpango ili kuendelea.',
       'momo.intro':
           'Tutatuma ombi la malipo kwenye simu yako. Likubali kwa PIN yako ili kukamilisha.',
       'momo.phone': 'Namba ya mtandao wa simu',
@@ -5758,7 +5791,7 @@ class FFLocale extends ChangeNotifier {
       'member.anyPrice': 'Bei yoyote',
       'member.verifiedOnly': 'Gym zilizothibitishwa pekee',
       'member.allAmenities': 'Huduma zote',
-      'member.openNow': 'Zilizo wazi sasa',
+      'member.openNow': 'Iko wazi sasa',
       'member.gymDetail': 'Maelezo ya gym',
       'member.about': 'Kuhusu',
       'member.amenities': 'Huduma',
@@ -5969,6 +6002,8 @@ class FFLocale extends ChangeNotifier {
       'shop.checkout': 'Kamilisha ununuzi',
       'shop.noOrders': 'Bado huna oda za sokoni.',
       'shop.order': 'Oda',
+      'shop.orderRef': 'Oda {ref}',
+      'shop.orderProgress': 'Hatua za oda',
       'shop.total': 'Jumla',
       'shop.invoice': 'Ankara',
       'shop.invoiceTitle': 'Ankara ya Soko la FitFlex',
@@ -6056,6 +6091,7 @@ class FFLocale extends ChangeNotifier {
       'vendor.business': 'Biashara',
       'vendor.payment': 'Malipo',
       'vendor.pickupGym': 'Gym ya kuchukulia',
+      'vendor.pickupGymUnknown': 'Jina la gym halipatikani',
       'vendor.deliveryAddress': 'Anwani ya delivery',
       // Vendor tools S2 (Swahili for native review; variant = chaguo).
       'vendor.orders.ref': 'Oda {ref}',
@@ -6206,7 +6242,7 @@ class FFLocale extends ChangeNotifier {
       'member.noData': 'Hakuna cha kuonyesha bado.',
       'member.paymentPendingTitle': 'Malipo yanakaguliwa',
       'member.paymentPendingBody':
-          'Ombi lako la malipo linasubiri idhini ya admin. Huwezi kujiunga tena hadi ombi hili likamilike.',
+          'Huwezi kununua pasi nyingine hadi malipo haya yakamilike.',
       'member.contactSupport': 'Wasiliana na msaada',
       'member.waitingApproval': 'Inasubiri idhini',
       'member.paymentPendingPlan': 'Mpango ulioomba',
@@ -6240,6 +6276,14 @@ class FFLocale extends ChangeNotifier {
       'home.paidGyms': 'Gym za kulipia kwa kila ziara',
       'home.back': 'Rudi',
       'home.signout': 'Toka',
+      'startup.offline.title': 'Hatuwezi kufikia FitFlex',
+      'startup.offline.body':
+          'Hatukuweza kupakia akaunti yako. Angalia mtandao wako kisha ujaribu tena.',
+      'startup.offline.stillOffline':
+          'Bado hakuna mtandao. Angalia intaneti yako kisha ujaribu tena.',
+      'notFound.title': 'Ukurasa haupatikani',
+      'notFound.body': 'Anwani hii haifungui ukurasa wowote kwenye programu.',
+      'notFound.home': 'Nenda mwanzo',
       'home.seeAll': 'Tazama zote',
       'audience.body':
           'Chagua nani aone. Marafiki ni watu unaowafuata na wanaokufuata pia; wafuasi ni wote wanaokufuata.',
@@ -7268,6 +7312,13 @@ class FFLocale extends ChangeNotifier {
       'ownerReg.done': 'Tayari',
       'ownerScan.title': 'Skani QR ya Mwanachama',
       'ownerScan.hint': 'Elekeza kamera kwenye QR ya mwanachama',
+      'ownerScan.camera.denied':
+          'Ruhusa ya kamera imezimwa. Ruhusu kamera kwa FitFlex kwenye mipangilio, kisha ujaribu tena.',
+      'ownerScan.camera.unsupported':
+          'Kifaa hiki hakiwezi kuskani QR. Mwingize mwanachama kupitia orodha ya Wanachama badala yake.',
+      'ownerScan.camera.error':
+          'Kamera imeshindwa kuwaka. Jaribu tena, au mwingize mwanachama kupitia orodha ya Wanachama.',
+      'ownerScan.openMembers': 'Fungua orodha ya Wanachama',
       'ownerScan.scanAgain': 'Skani tena',
       'ownerScan.passInfo': 'Taarifa za pasi',
       'ownerScan.tier': 'Kiwango',
@@ -7360,6 +7411,9 @@ class FFLocale extends ChangeNotifier {
       'member.passStartsOnApproval': 'Inaanza malipo yakiidhinishwa',
       'member.passLength': 'Muda wa pasi',
       'member.passLastsFromApproval': 'Siku {days} tangu kuidhinishwa',
+      'member.passLastsDays': 'Siku {days}',
+      'member.planDurationOne': 'Inatumika kwa siku 1',
+      'member.qrCheckIn': 'Kuingia kwa QR',
       'member.moreGyms': 'gym zaidi',
       'passGyms.sheetTitle': '{tier} — gym unazoweza kutembelea',
       'passGyms.view': 'Tazama gym',

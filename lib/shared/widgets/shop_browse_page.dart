@@ -1380,7 +1380,15 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
     }
     return _orders.map((order) {
       final status = order['status']?.toString() ?? 'pending';
-      final timeline = (order['timeline'] as List? ?? []).whereType<Map>();
+      // The status is said once: as the last step of the order's progress
+      // ("Pending → Accepted"), not again beside the amount.
+      final steps = <String>[];
+      for (final entry in (order['timeline'] as List? ?? []).whereType<Map>()) {
+        final label = shopOrderStatusLabel(context, entry['status']);
+        if (steps.isEmpty || steps.last != label) steps.add(label);
+      }
+      final current = shopOrderStatusLabel(context, status);
+      if (steps.isEmpty || steps.last != current) steps.add(current);
       return Padding(
         padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
         child: FFCard(
@@ -1388,13 +1396,22 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '${context.tr('shop.order')} ${order['id']}',
+                context
+                    .tr('shop.orderRef')
+                    .replaceAll('{ref}', shopOrderRef(order)),
+                key: Key('order-ref-${order['id']}'),
                 style: Theme.of(context).textTheme.titleSmall,
               ),
+              Text(formatCurrency(order['totalTzs'] as num? ?? 0)),
+              // Plain text, not chips: nothing here can be ticked or tapped.
               Text(
-                '${formatCurrency(order['totalTzs'] as num? ?? 0)} · '
-                '${shopOrderStatusLabel(context, status)}',
+                steps.join(' → '),
                 key: Key('order-status-${order['id']}'),
+                semanticsLabel:
+                    '${context.tr('shop.orderProgress')}: ${steps.join(', ')}',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
               ),
               if (shopOrderPaymentKey(order) case final paymentKey?)
                 Text(
@@ -1412,18 +1429,6 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
                   size: FFButtonSize.sm,
                 ),
               const SizedBox(height: 6),
-              Wrap(
-                spacing: 4,
-                children: timeline
-                    .map(
-                      (entry) => Chip(
-                        label: Text(
-                          shopOrderStatusLabel(context, entry['status']),
-                        ),
-                      ),
-                    )
-                    .toList(),
-              ),
               Wrap(
                 children: [
                   if (order['canCancel'] == true)

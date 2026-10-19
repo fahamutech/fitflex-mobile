@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../app_scope.dart';
-import '../../shared/api_client.dart';
+import '../../router.dart';
 import '../../shared/api_error_message.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
@@ -103,9 +104,10 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
         _verifyResult = result;
         _selectedGymId = selectedGymId ?? resultGymId;
       });
-    } on ApiException catch (e) {
+    } catch (e) {
+      // Offline gets the network message, not silence.
       if (!mounted) return;
-      setState(() => _error = apiErrorMessage(FFLocaleScope.of(context), e));
+      setState(() => _error = errorMessage(FFLocaleScope.of(context), e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -128,9 +130,10 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
       );
       // Auto-reset to allow scanning next member immediately
       await _reset();
-    } on ApiException catch (e) {
+    } catch (e) {
+      // Offline gets the network message, not silence.
       if (!mounted) return;
-      setState(() => _error = apiErrorMessage(FFLocaleScope.of(context), e));
+      setState(() => _error = errorMessage(FFLocaleScope.of(context), e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -153,16 +156,39 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(context.tr('ownerScan.title'))),
+      appBar: AppBar(
+        // Opened by a typed or reloaded address there is nothing to pop:
+        // Back still leads home rather than leaving the owner stuck.
+        leading: IconButton(
+          key: const Key('owner-scan-back'),
+          tooltip: context.tr('a11y.back'),
+          icon: const Icon(Icons.arrow_back),
+          onPressed: _leave,
+        ),
+        title: Text(context.tr('ownerScan.title')),
+      ),
       body: _verifyResult != null ? _resultView() : _scannerView(),
     );
+  }
+
+  void _leave() {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go(AppRoutes.ownerHome);
+    }
   }
 
   Widget _scannerView() {
     return Column(
       children: [
         Expanded(
-          child: MobileScanner(controller: _cameraCtrl, onDetect: _onDetect),
+          child: MobileScanner(
+            controller: _cameraCtrl,
+            onDetect: _onDetect,
+            errorBuilder: (context, error, _) =>
+                OwnerScanCameraError(code: error.errorCode, onRetry: _reset),
+          ),
         ),
         if (_busy)
           const Padding(padding: EdgeInsets.all(16), child: FFSpinner()),
@@ -417,4 +443,72 @@ String ownerScanReasonLabel(BuildContext context, Object? reason) {
   final key = 'ownerScan.reason_${reason ?? 'unknown'}';
   final label = context.tr(key);
   return label == key ? context.tr('ownerScan.reason_unknown') : label;
+}
+
+/// i18n key for why the camera could not start.
+String ownerScanCameraErrorKey(MobileScannerErrorCode code) => switch (code) {
+  MobileScannerErrorCode.permissionDenied => 'ownerScan.camera.denied',
+  MobileScannerErrorCode.unsupported => 'ownerScan.camera.unsupported',
+  _ => 'ownerScan.camera.error',
+};
+
+/// Shown in place of the camera when it cannot start: why, in the owner's
+/// language, with a way to try again and a way to check members in by hand
+/// (the Members list) instead of a dead end.
+class OwnerScanCameraError extends StatelessWidget {
+  const OwnerScanCameraError({
+    super.key,
+    required this.code,
+    required this.onRetry,
+  });
+
+  final MobileScannerErrorCode code;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ColoredBox(
+      key: const Key('owner-scan-camera-error'),
+      color: theme.colorScheme.surface,
+      child: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(FFTokens.spacingLg),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.no_photography_outlined,
+                size: 40,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(height: FFTokens.spacingSm),
+              Text(
+                context.tr(ownerScanCameraErrorKey(code)),
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyLarge,
+              ),
+              const SizedBox(height: FFTokens.spacingMd),
+              if (code != MobileScannerErrorCode.unsupported) ...[
+                FFButton(
+                  key: const Key('owner-scan-retry'),
+                  label: context.tr('common.retry'),
+                  icon: Icons.refresh,
+                  onPressed: onRetry,
+                ),
+                const SizedBox(height: FFTokens.spacingSm),
+              ],
+              FFButton(
+                key: const Key('owner-scan-members'),
+                label: context.tr('ownerScan.openMembers'),
+                icon: Icons.people_outline,
+                variant: FFButtonVariant.secondary,
+                onPressed: () => context.go(AppRoutes.ownerMembers),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

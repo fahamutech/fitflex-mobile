@@ -548,6 +548,7 @@ void main() {
         findsOneWidget,
       );
       expect(
+        // Payment status and method in words, not codes (M6).
         find.text('${host.tr('vendor.payment')}: Paid · M-Pesa'),
         findsOneWidget,
       );
@@ -726,14 +727,21 @@ void main() {
       expect(buttonLabelled(host.tr('vendor.cancel')), findsNothing);
     });
 
-    apiTest('pickup orders show the pickup gym', (tester, api) async {
+    apiTest('pickup orders without a gym name never show the raw id', (
+      tester,
+      api,
+    ) async {
       _seed(api, orders: [_order('o1', delivery: 'gym_pickup')]);
       final host = await _pump(tester, api);
       await _tab(tester, 'orders');
       expect(
-        find.text('${host.tr('vendor.pickupGym')}: gym-7'),
+        find.text(
+          '${host.tr('vendor.pickupGym')}: '
+          '${host.tr('vendor.pickupGymUnknown')}',
+        ),
         findsOneWidget,
       );
+      expect(find.textContaining('gym-7'), findsNothing);
     });
 
     apiTest('a failed status change shows the error and stays usable', (
@@ -1298,6 +1306,28 @@ void main() {
       );
       expect(host.snack(host.tr('vendor.productSaved')), findsOneWidget);
       expect(host.tr('vendor.productSaved'), isNot('Product saved.'));
+    });
+  });
+
+  group('language', () {
+    apiTest('a vendor switches language in place, without signing out', (
+      tester,
+      api,
+    ) async {
+      _seed(api);
+      final host = await _pump(tester, api);
+      expect(find.text('Vendor marketplace'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('vendor-language')));
+      await tester.pumpAndSettle();
+      // The same screen, now in Swahili; still signed in, nothing sent.
+      expect(find.text('Soko la muuzaji'), findsOneWidget);
+      expect(find.text('Vendor marketplace'), findsNothing);
+      expect(host.auth.isSignedIn, isTrue);
+      expect(find.text('ROUTE-LANGUAGE'), findsNothing);
+      // And back to English.
+      await tester.tap(find.byKey(const Key('vendor-language')));
+      await tester.pumpAndSettle();
+      expect(find.text('Vendor marketplace'), findsOneWidget);
     });
   });
 }

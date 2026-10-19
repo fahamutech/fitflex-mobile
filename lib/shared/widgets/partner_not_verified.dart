@@ -80,6 +80,7 @@ class NotVerifiedLabel extends StatelessWidget {
     return Text(
       context.tr('gym.unverified'),
       maxLines: 1,
+      overflow: TextOverflow.ellipsis,
       style: theme.textTheme.labelSmall?.copyWith(
         color: theme.textTheme.bodySmall?.color,
       ),

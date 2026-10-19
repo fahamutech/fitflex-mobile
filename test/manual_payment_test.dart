@@ -211,13 +211,16 @@ void main() {
         tester.widget<EditableText>(_phoneField).controller.text,
         '0712 345 678',
       );
+      // The number is said once, large, under the sentence (M3); amount
+      // and network do not break across lines (H1).
       expect(
         find.text(
-          'Pay TSh 120,000 to Lipa Namba 5123456 '
-          '(account name FitFlex Africa Ltd, network M-Pesa).',
+          'Pay TSh\u00A0120,000 to the Lipa Namba below '
+          '(account name FitFlex Africa Ltd, network M\u2060-\u2060Pesa).',
         ),
         findsOneWidget,
       );
+      expect(find.textContaining('5123456'), findsOneWidget);
       expect(_key('manual-pay-copy'), findsOneWidget);
       expect(find.text('Use the Lipa kwa M-Pesa menu.'), findsOneWidget);
       expect(find.text(host.tr('manualPay.pageBody')), findsOneWidget);

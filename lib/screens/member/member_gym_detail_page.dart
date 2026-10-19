@@ -219,7 +219,7 @@ class _MemberGymDetailPageState extends State<MemberGymDetailPage> {
             child: Text(
               gym.venueType == 'online'
                   ? context.tr('member.planBody')
-                  : '${context.tr('member.openNow')} - QR Check-in - ${formatCurrency(gym.perVisitRate)}',
+                  : '${context.tr('member.openNow')} - ${context.tr('member.qrCheckIn')} - ${formatCurrency(gym.perVisitRate)}',
               style: TextStyle(
                 color: Theme.of(context).textTheme.bodySmall?.color,
                 height: 1.4,
