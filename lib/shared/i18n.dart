@@ -2533,6 +2533,8 @@ class FFLocale extends ChangeNotifier {
       'pass.state.pending':
           "We're confirming your payment. Your QR unlocks as soon as it's confirmed.",
       'pass.state.viewPayment': 'View payment',
+      'pass.state.pendingPurchase': 'Payment pending: {tier}',
+      'pass.state.pendingPurchaseAny': 'A payment is pending',
       'pass.state.lowVisits': '{n} visits left',
       'pass.state.noVisits': 'No visits left on this pass',
       'pass.state.lowVisitsHint': 'Plan your next pass before it runs out.',
@@ -2840,6 +2842,9 @@ class FFLocale extends ChangeNotifier {
       'member.priceRange': 'Price range',
       'member.startDate': 'Start date',
       'member.endDate': 'End date',
+      'member.passStartsOnApproval': 'Starts when payment is approved',
+      'member.passLength': 'Pass length',
+      'member.passLastsFromApproval': 'Lasts {days} days from approval',
       'member.moreGyms': 'more gyms',
       'passGyms.sheetTitle': '{tier} — gyms you can visit',
       'passGyms.view': 'View gyms',
@@ -6729,6 +6734,9 @@ class FFLocale extends ChangeNotifier {
       'pass.state.pending':
           'Tunathibitisha malipo yako. QR yako itafunguka mara yatakapothibitishwa.',
       'pass.state.viewPayment': 'Angalia malipo',
+      // Swahili for native review.
+      'pass.state.pendingPurchase': 'Malipo yanasubiriwa: {tier}',
+      'pass.state.pendingPurchaseAny': 'Kuna malipo yanayosubiriwa',
       'pass.state.lowVisits': 'Zimebaki ziara {n}',
       'pass.state.noVisits': 'Hakuna ziara zilizobaki kwenye pasi hii',
       'pass.state.lowVisitsHint': 'Panga pasi yako ijayo kabla hii haijaisha.',
@@ -6958,6 +6966,10 @@ class FFLocale extends ChangeNotifier {
       'member.priceRange': 'Kiwango cha bei',
       'member.startDate': 'Tarehe ya kuanza',
       'member.endDate': 'Tarehe ya mwisho',
+      // Swahili for native review.
+      'member.passStartsOnApproval': 'Inaanza malipo yakiidhinishwa',
+      'member.passLength': 'Muda wa pasi',
+      'member.passLastsFromApproval': 'Siku {days} tangu kuidhinishwa',
       'member.moreGyms': 'gym zaidi',
       'passGyms.sheetTitle': '{tier} — gym unazoweza kutembelea',
       'passGyms.view': 'Tazama gym',

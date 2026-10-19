@@ -149,7 +149,7 @@ class _PassTile extends StatelessWidget {
         : context.tr('trainerPass.kindPass');
     final period = context.tr('trainerPass.period.${pass['plan']}');
     final amount = (pass['paymentRequest'] as Map?)?['amountTzs'] as num?;
-    final until = pass['expiresAt']?.toString().split('T').first ?? '';
+    final until = context.localDate(pass['expiresAt'], fallback: '');
     final (statusLabel, tone) = switch (status) {
       'active' => (
         context.tr('trainerPass.activeUntil').replaceAll('{date}', until),
