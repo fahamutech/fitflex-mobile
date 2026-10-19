@@ -128,7 +128,7 @@ void main() {
       expect(find.textContaining('gym-7'), findsNothing);
     });
 
-    apiTest('pickup gym without a name falls back to the id', (
+    apiTest('pickup gym without a name says so, never the raw id', (
       tester,
       api,
     ) async {
@@ -141,9 +141,13 @@ void main() {
         ),
       ]);
       expect(
-        find.text('${host.tr('vendor.pickupGym')}: gym-7'),
+        find.text(
+          '${host.tr('vendor.pickupGym')}: '
+          '${host.tr('vendor.pickupGymUnknown')}',
+        ),
         findsOneWidget,
       );
+      expect(find.textContaining('gym-7'), findsNothing);
     });
 
     apiTest('the buyer phone is a call button that dials tel:', (
@@ -315,7 +319,10 @@ void main() {
       expect(find.text('Order 0C8F6E'), findsOneWidget);
       expect(find.text('2× Whey Protein'), findsOneWidget);
       expect(
-        find.text('${host.tr('vendor.pickupGym')}: gym-7'),
+        find.text(
+          '${host.tr('vendor.pickupGym')}: '
+          '${host.tr('vendor.pickupGymUnknown')}',
+        ),
         findsOneWidget,
       );
       expect(find.textContaining('Buyer:'), findsNothing);

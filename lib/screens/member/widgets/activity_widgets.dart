@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../../../shared/activity/activity.dart';
 import '../../../shared/activity/run_metrics.dart' show formatPace;
@@ -70,9 +69,8 @@ class ActivityTimelineTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final a = activity;
-    final lang = Localizations.localeOf(context).languageCode;
     final parts = <String>[
-      DateFormat('EEE d MMM · HH:mm', lang).format(a.startedAt.toLocal()),
+      context.localDayTime(a.startedAt),
       if (a.durationMinutes != null)
         '${a.durationMinutes} ${context.tr('activity.min')}',
       if (a.distanceKm != null && a.distanceKm! > 0) formatKm(a.distanceKm!),

@@ -24,7 +24,9 @@ void main() {
     // pumpPage is a 360 px phone: the sentence values wrap, no overflow.
     expect(tester.takeException(), isNull);
     expect(find.text('Starts when payment is approved'), findsOneWidget);
-    expect(find.text('Lasts 30 days from approval'), findsOneWidget);
+    // "From approval" is said once, on the start row.
+    expect(find.text('30 days'), findsOneWidget);
+    expect(find.textContaining('from approval'), findsNothing);
     expect(find.text('End date'), findsNothing);
     expect(find.text('Total to pay'), findsOneWidget);
     expect(find.text('Total'), findsNothing);

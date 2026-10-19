@@ -124,8 +124,50 @@ String formatDateTime(
       '${formatTimeOfDay(d, locale: locale)}';
 }
 
+const _weekdaysEn = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+// CLDR sw has no shorter weekday names than the full ones.
+const _weekdaysSw = [
+  'Jumatatu', 'Jumanne', 'Jumatano', 'Alhamisi', //
+  'Ijumaa', 'Jumamosi', 'Jumapili',
+];
+
+/// "Sun 19 Oct · 17:30" (sw "Jumapili 19 Okt · 5:30 jioni") on the
+/// member's clock, or [fallback]. [withYear] adds the year after the month.
+/// For lists of visits, check-ins and activities, where the weekday helps.
+String formatDayTime(
+  Object? value, {
+  String locale = 'en',
+  bool withYear = false,
+  String fallback = '-',
+}) {
+  final d = localDateTime(value);
+  if (d == null) return fallback;
+  final sw = locale == 'sw';
+  final weekday = (sw ? _weekdaysSw : _weekdaysEn)[d.weekday - 1];
+  final month = (sw ? _monthsSw : _monthsEn)[d.month - 1];
+  final year = withYear ? ' ${d.year}' : '';
+  return '$weekday ${d.day} $month$year · '
+      '${formatTimeOfDay(d, locale: locale)}';
+}
+
 /// The same, in the language the member chose.
 extension FFDateFormatting on BuildContext {
+  String localDayTime(
+    Object? value, {
+    bool withYear = false,
+    String fallback = '-',
+  }) => formatDayTime(
+    value,
+    locale: FFLocaleScope.of(this).locale.languageCode,
+    withYear: withYear,
+    fallback: fallback,
+  );
+
+  String localTimeOfDay(DateTime value) => formatTimeOfDay(
+    localDateTime(value) ?? value,
+    locale: FFLocaleScope.of(this).locale.languageCode,
+  );
+
   String localDate(Object? value, {String fallback = '-'}) => formatDate(
     value,
     locale: FFLocaleScope.of(this).locale.languageCode,

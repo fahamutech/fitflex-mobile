@@ -532,7 +532,8 @@ void main() {
       final host = await _pump(tester, api);
       await tester.tap(find.text(host.tr('shop.myOrders')));
       await tester.pumpAndSettle();
-      expect(find.text('${host.tr('shop.order')} o1'), findsOneWidget);
+      // The short ref the server's rule gives (last 6, capitals).
+      expect(find.text('Order O1'), findsOneWidget);
       expect(_key('order-cancel-o1'), findsOneWidget);
       expect(_key('shop-reorder-o1'), findsOneWidget);
     });
@@ -2283,7 +2284,8 @@ void qaRound2() {
       await tester.tap(find.text(host.tr('shop.myOrders')));
       await tester.pumpAndSettle();
       expect(find.textContaining('Iko tayari kuchukuliwa'), findsWidgets);
-      expect(find.text('Inasubiri'), findsOneWidget);
+      // One progress line: "Inasubiri → Iko tayari kuchukuliwa".
+      expect(find.textContaining('Inasubiri →'), findsOneWidget);
       expect(find.textContaining('ready_for_pickup'), findsNothing);
       expect(find.textContaining('pending'), findsNothing);
     });

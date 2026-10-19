@@ -11,6 +11,7 @@ import '../../shared/design_tokens.dart';
 import '../../shared/friend_invites.dart';
 import '../../shared/i18n.dart';
 import '../../shared/social.dart';
+import '../../shared/formatters.dart';
 
 /// Friends & groups: the feed of what people shared, finding and following
 /// people, and groups. Only mutual followers, group-mates and colleagues
@@ -279,7 +280,7 @@ class FeedCard extends StatelessWidget {
                           style: theme.textTheme.titleSmall,
                         ),
                         Text(
-                          DateFormat('EEE d MMM · HH:mm').format(a.startedAt),
+                          context.localDayTime(a.startedAt),
                           style: theme.textTheme.bodySmall,
                         ),
                       ],
@@ -720,7 +721,9 @@ class _PeopleTabState extends State<PeopleTab> {
 
   /// "Sent by FitFlex on WhatsApp · 17 Oct", or SMS, or "no WhatsApp, sent by SMS".
   String? _sentLine(Map<String, dynamic> i, String Function(String) t) {
-    final by = [for (final c in (i['sentBy'] as List? ?? const [])) c.toString()];
+    final by = [
+      for (final c in (i['sentBy'] as List? ?? const [])) c.toString(),
+    ];
     if (by.isEmpty) return null;
     final at = DateTime.tryParse(i['sentAt']?.toString() ?? '')?.toLocal();
     final when = at == null ? '' : ' · ${DateFormat('d MMM').format(at)}';
@@ -814,9 +817,7 @@ class _PeopleTabState extends State<PeopleTab> {
     final api = AppScope.of(context).api;
     // Invite codes are 8 letters/digits; anything else searches by name.
     try {
-      final r = await api.findPeople(
-        q: q,
-      );
+      final r = await api.findPeople(q: q);
       if (mounted) setState(() => _found = _people(r['people']));
     } catch (_) {
       if (mounted) setState(() => _found = const []);

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import '../../../shared/activity/activity.dart';
 import '../../../shared/activity/manual_activity_log.dart'
@@ -10,6 +9,7 @@ import '../../../shared/i18n.dart';
 import '../../../shared/models.dart';
 import '../member_log_activity_page.dart' show openLogActivity;
 import 'activity_widgets.dart';
+import '../../../shared/formatters.dart';
 
 /// One row of Recent activity: an activity on its own, or a gym visit with
 /// whatever the member logged during it.
@@ -174,7 +174,6 @@ class _GymVisitTileState extends State<GymVisitTile> {
     final canLog = !e.at.isBefore(
       DateTime(now.year, now.month, now.day - manualMaxDaysBack),
     );
-    final lang = Localizations.localeOf(context).languageCode;
     final status = switch (logged) {
       0 => context.tr(canLog ? 'visit.nothingLogged' : 'visit.notLogged'),
       1 => context.tr('visit.loggedOne'),
@@ -223,10 +222,8 @@ class _GymVisitTileState extends State<GymVisitTile> {
                         ),
                         const SizedBox(height: FFTokens.spacing2xs),
                         Text(
-                          DateFormat(
-                            'EEE d MMM · HH:mm',
-                            lang,
-                          ).format(e.at.toLocal()),
+                          // Swahili reads "5:30 jioni", not 24-hour time.
+                          context.localDayTime(e.at),
                           style: theme.textTheme.bodySmall,
                         ),
                         Text(status, style: theme.textTheme.bodySmall),

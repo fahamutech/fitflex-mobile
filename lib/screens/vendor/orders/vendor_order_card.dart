@@ -15,6 +15,7 @@ import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
 import '../../../shared/formatters.dart';
 import '../../../shared/i18n.dart';
+import '../../../shared/payment_labels.dart';
 import '../../../shared/shop_checkout.dart';
 import '../stock/stock_options.dart';
 
@@ -23,26 +24,17 @@ import '../stock/stock_options.dart';
 Future<bool> Function(Uri uri) vendorOrderDialer = (uri) =>
     launchUrl(uri, mode: LaunchMode.externalApplication);
 
-/// The order number shown to the vendor: `shortRef`, or (older backend) the
-/// same rule the server uses, the last 6 characters of the id in capitals.
-String vendorOrderRef(Map<String, dynamic> order) {
-  final ref = order['shortRef']?.toString().trim() ?? '';
-  if (ref.isNotEmpty) return ref;
-  final id = order['id']?.toString() ?? '';
-  return (id.length > 6 ? id.substring(id.length - 6) : id).toUpperCase();
-}
+/// The order number shown to the vendor; see [shopOrderRef].
+String vendorOrderRef(Map<String, dynamic> order) => shopOrderRef(order);
 
-/// The pickup gym's name; the raw id only when the server sent no name.
-String vendorPickupGymLabel(Map<String, dynamic> order) {
+/// The pickup gym's name as the server sends it (`pickupGym.name`), or null
+/// when it sent none (an older backend, or a gym since removed). A raw id
+/// such as "gym_dev_owner" is never shown.
+String? vendorPickupGymName(Map<String, dynamic> order) {
   final gym = order['pickupGym'];
-  if (gym is Map) {
-    final name = gym['name']?.toString().trim() ?? '';
-    if (name.isNotEmpty) return name;
-    final id = gym['id']?.toString() ?? '';
-    if (id.isNotEmpty) return id;
-  }
-  final id = order['pickupGymId']?.toString() ?? '';
-  return id.isEmpty ? '-' : id;
+  if (gym is! Map) return null;
+  final name = gym['name']?.toString().trim() ?? '';
+  return name.isEmpty ? null : name;
 }
 
 class VendorOrderCard extends StatelessWidget {
@@ -98,7 +90,10 @@ class VendorOrderCard extends StatelessWidget {
             key: Key('vendor-order-status-$_id'),
           ),
           Text(
-            '${context.tr('vendor.payment')}: ${order['paymentStatus'] ?? '-'} · ${order['paymentMethod'] ?? '-'}',
+            '${context.tr('vendor.payment')}: '
+            '${shopPaymentStatusLabel(context, order['paymentStatus'])} · '
+            '${shopPaymentMethodLabel(context, order['paymentMethod'])}',
+            key: Key('vendor-order-payment-$_id'),
           ),
           if (buyer != null)
             Text(
@@ -109,7 +104,8 @@ class VendorOrderCard extends StatelessWidget {
             ),
           if (pickup)
             Text(
-              '${context.tr('vendor.pickupGym')}: ${vendorPickupGymLabel(order)}',
+              '${context.tr('vendor.pickupGym')}: '
+              '${vendorPickupGymName(order) ?? context.tr('vendor.pickupGymUnknown')}',
               key: Key('vendor-order-pickup-$_id'),
             )
           else if (address.isNotEmpty)

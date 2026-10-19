@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../app_scope.dart';
@@ -222,11 +221,17 @@ class _UpgradeGateState extends State<_UpgradeGate> {
         context,
       ).api.upgradePass(tier, reference: reference, payerPhone: payerPhone);
       if (!mounted) return;
+      // A focused field must not outlive the page it is on (L4).
+      FocusManager.instance.primaryFocus?.unfocus();
+      // An upgrade applies to the pass the member already has once it is
+      // approved; it does not start a new plan.
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             context.tr(
-              manual != null ? 'manualPay.submitted' : 'upgrade.submitted',
+              manual != null
+                  ? 'manualPay.submittedUpgrade'
+                  : 'upgrade.submitted',
             ),
           ),
         ),
@@ -308,9 +313,7 @@ class _UpgradeGateState extends State<_UpgradeGate> {
         final endsAt = DateTime.tryParse(
           '${current['expiresAt'] ?? ''}',
         )?.toLocal();
-        final endsLabel = endsAt == null
-            ? ''
-            : DateFormat('dd MMM yyyy').format(endsAt);
+        final endsLabel = endsAt == null ? '' : context.localDate(endsAt);
         final daysLeft = endsAt?.difference(DateTime.now()).inDays;
         Map? chosen;
         for (final o in options) {
@@ -416,9 +419,10 @@ class _UpgradeGateState extends State<_UpgradeGate> {
                                 TextButton.icon(
                                   style: TextButton.styleFrom(
                                     padding: EdgeInsets.zero,
-                                    minimumSize: const Size(0, 36),
-                                    tapTargetSize:
-                                        MaterialTapTargetSize.shrinkWrap,
+                                    // 48dp, also on the web.
+                                    minimumSize: const Size(48, 48),
+                                    tapTargetSize: MaterialTapTargetSize.padded,
+                                    visualDensity: VisualDensity.standard,
                                     alignment: Alignment.centerLeft,
                                   ),
                                   onPressed: () => showPassGymsSheet(
@@ -478,29 +482,39 @@ class _UpgradeGateState extends State<_UpgradeGate> {
                 ),
                 input: _manualInput,
                 enabled: !_sending,
+                upgrade: true,
                 onChanged: (_) {
                   if (_manualInput.clearErrors()) setState(() {});
                 },
               ),
             ],
             const SizedBox(height: 16),
-            FFButton(
-              key: const Key('upgrade-submit'),
-              label: chosen == null
-                  ? context.tr('upgrade.request')
-                  : _modes.manual != null
-                  ? context.tr('manualPay.submit')
-                  : context
-                        .tr('upgrade.pay')
-                        .replaceFirst(
-                          '{amount}',
-                          formatCurrency(
-                            ((chosen['differenceTzs'] as num?) ?? 0).toInt(),
+            // Nothing to submit until a plan is picked: say so instead of
+            // showing a button that does nothing (L3).
+            if (chosen == null)
+              Text(
+                context.tr('member.chooseFirst'),
+                key: const Key('upgrade-choose-first'),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              )
+            else
+              FFButton(
+                key: const Key('upgrade-submit'),
+                label: _modes.manual != null
+                    ? context.tr('manualPay.submit')
+                    : context
+                          .tr('upgrade.pay')
+                          .replaceFirst(
+                            '{amount}',
+                            formatCurrency(
+                              ((chosen['differenceTzs'] as num?) ?? 0).toInt(),
+                            ),
                           ),
-                        ),
-              onPressed: chosen == null || _sending ? null : _submit,
-              loading: _sending,
-            ),
+                onPressed: _sending ? null : _submit,
+                loading: _sending,
+              ),
           ],
         );
       },
@@ -549,15 +563,11 @@ class _PendingBlockCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // The title says it is waiting; the badge and status row
+                    // that repeated it are gone (owner: say a fact once).
                     Text(
                       context.tr('member.paymentPendingTitle'),
                       style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 2),
-                    FFBadge(
-                      label: context.tr('member.waitingApproval'),
-                      tone: FFBadgeTone.warning,
-                      dot: true,
                     ),
                   ],
                 ),
@@ -579,10 +589,6 @@ class _PendingBlockCard extends StatelessWidget {
           _DetailRow(
             label: context.tr('member.paymentPendingAmount'),
             value: formatCurrency(pending.amountTzs),
-          ),
-          _DetailRow(
-            label: context.tr('member.paymentPendingStatus'),
-            value: context.tr('member.paymentPendingStatusValue'),
           ),
           if (pending.memberReference case final ref?)
             _DetailRow(
@@ -700,7 +706,7 @@ class _SelectablePass extends StatelessWidget {
                       Padding(
                         padding: const EdgeInsets.only(top: 2),
                         child: Text(
-                          pass.gymAccessLabel,
+                          passGymAccessLabel(context, pass.gymAccess),
                           style: Theme.of(context).textTheme.labelSmall
                               ?.copyWith(
                                 color: Theme.of(context).colorScheme.primary,
@@ -720,8 +726,10 @@ class _SelectablePass extends StatelessWidget {
                       TextButton.icon(
                         style: TextButton.styleFrom(
                           padding: EdgeInsets.zero,
-                          minimumSize: const Size(0, 36),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          // 48dp, also on the web.
+                          minimumSize: const Size(48, 48),
+                          tapTargetSize: MaterialTapTargetSize.padded,
+                          visualDensity: VisualDensity.standard,
                           alignment: Alignment.centerLeft,
                         ),
                         onPressed: () => showPassGymsSheet(

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import '../../app_scope.dart';
 import '../../shared/components/components.dart';
@@ -166,10 +165,10 @@ class _OwnerCheckinsPageState extends State<OwnerCheckinsPage> {
                     final at = DateTime.tryParse(
                       c['timestamp']?.toString() ?? '',
                     )?.toLocal();
-                    final lang = Localizations.localeOf(context).languageCode;
+                    // Swahili reads "5:30 jioni", not 24-hour time.
                     final when = at == null
                         ? (c['timestamp']?.toString() ?? '')
-                        : DateFormat('EEE d MMM · HH:mm', lang).format(at);
+                        : context.localDayTime(at);
                     // A name leads when there is one; the public ID stays
                     // visible so staff can still match it to the Members list.
                     final hasName =

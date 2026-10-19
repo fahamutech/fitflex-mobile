@@ -87,18 +87,14 @@ extension PassStateBadge on PassState {
   };
 }
 
-/// dd/MM/yyyy, or "-" when there is no date.
-String passDate(String? iso) {
-  final date = localDateTime(iso);
-  if (date == null) return '-';
-  return '${date.day.toString().padLeft(2, '0')}/'
-      '${date.month.toString().padLeft(2, '0')}/${date.year}';
-}
+/// "18 Nov 2026" (sw "18 Nov 2026"), the app's one date format, or "-" when
+/// there is no date.
+String passDate(BuildContext context, String? iso) => context.localDate(iso);
 
 /// The one sentence that explains a state, or null when the pass is simply
 /// fine. Home, My QR and Profile all say the same thing.
 String? passStateMessage(BuildContext context, MemberData d, PassState state) {
-  final ends = passDate(d.subscription?.expiresAt);
+  final ends = passDate(context, d.subscription?.expiresAt);
   return switch (state) {
     PassState.none => context.tr('pass.state.none'),
     PassState.pending => context.tr('pass.state.pending'),

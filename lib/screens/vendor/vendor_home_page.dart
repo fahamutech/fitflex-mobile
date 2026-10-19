@@ -28,6 +28,9 @@ import 'stock/stock_history_page.dart';
 import 'stock/stock_options.dart';
 import 'stock/variant_rows_editor.dart';
 
+/// Bottom padding for vendor lists: the extended FAB (56) plus margins.
+const vendorFabClearance = 96.0;
+
 class VendorHomePage extends StatefulWidget {
   const VendorHomePage({super.key, this.open, this.filter});
 
@@ -641,7 +644,13 @@ class _VendorHomePageState extends State<VendorHomePage> {
         ? _products.where((p) => _low.isLow(p['id']?.toString())).toList()
         : _products;
     return ListView.builder(
-      padding: const EdgeInsets.all(FFTokens.spacingLg),
+      // Room under the last card for the floating "Add product" button.
+      padding: const EdgeInsets.fromLTRB(
+        FFTokens.spacingLg,
+        FFTokens.spacingLg,
+        FFTokens.spacingLg,
+        vendorFabClearance,
+      ),
       itemCount:
           products.length +
           (showFilter ? 1 : 0) +
@@ -809,7 +818,13 @@ class _VendorHomePageState extends State<VendorHomePage> {
       );
     }
     return ListView.builder(
-      padding: const EdgeInsets.all(FFTokens.spacingLg),
+      // Room under the last order, so no floating button can cover it.
+      padding: const EdgeInsets.fromLTRB(
+        FFTokens.spacingLg,
+        FFTokens.spacingLg,
+        FFTokens.spacingLg,
+        vendorFabClearance,
+      ),
       itemCount: _orders.length,
       itemBuilder: (context, index) {
         final order = _orders[index];
@@ -842,15 +857,19 @@ class _VendorHomePageState extends State<VendorHomePage> {
                                   ),
                             size: FFButtonSize.sm,
                           ),
+                        // Cancelling cannot be undone: it reads as a
+                        // destructive action, not as one more safe link.
                         FFButton(
+                          key: Key('vendor-cancel-${order['id']}'),
                           label: context.tr('vendor.cancel'),
+                          icon: Icons.cancel_outlined,
                           onPressed: _busy
                               ? null
                               : () => _updateOrder(
                                   order['id'].toString(),
                                   'cancelled',
                                 ),
-                          variant: FFButtonVariant.ghost,
+                          variant: FFButtonVariant.destructive,
                           size: FFButtonSize.sm,
                         ),
                       ],

@@ -548,7 +548,8 @@ void main() {
         findsOneWidget,
       );
       expect(
-        find.text('${host.tr('vendor.payment')}: paid · mpesa'),
+        // Payment status and method in words, not codes (M6).
+        find.text('${host.tr('vendor.payment')}: Paid · M-Pesa'),
         findsOneWidget,
       );
       expect(
@@ -726,14 +727,21 @@ void main() {
       expect(buttonLabelled(host.tr('vendor.cancel')), findsNothing);
     });
 
-    apiTest('pickup orders show the pickup gym', (tester, api) async {
+    apiTest('pickup orders without a gym name never show the raw id', (
+      tester,
+      api,
+    ) async {
       _seed(api, orders: [_order('o1', delivery: 'gym_pickup')]);
       final host = await _pump(tester, api);
       await _tab(tester, 'orders');
       expect(
-        find.text('${host.tr('vendor.pickupGym')}: gym-7'),
+        find.text(
+          '${host.tr('vendor.pickupGym')}: '
+          '${host.tr('vendor.pickupGymUnknown')}',
+        ),
         findsOneWidget,
       );
+      expect(find.textContaining('gym-7'), findsNothing);
     });
 
     apiTest('a failed status change shows the error and stays usable', (

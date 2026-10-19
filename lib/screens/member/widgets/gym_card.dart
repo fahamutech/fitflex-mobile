@@ -222,11 +222,15 @@ class GymGridCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // The name has the line to itself (only the small
+                      // verified tick beside it), so at 360px it is never
+                      // cut to "D…" by the "Not verified" label.
                       Row(
                         children: [
                           Flexible(
                             child: Text(
                               gym.name,
+                              key: Key('gym-grid-name-${gym.id}'),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: tt.bodyMedium?.copyWith(
@@ -237,18 +241,29 @@ class GymGridCard extends StatelessWidget {
                           if (gymIsVerified(gym)) ...[
                             const SizedBox(width: 4),
                             const GymVerifiedIcon(size: 13),
-                          ] else ...[
-                            const SizedBox(width: 6),
-                            const NotVerifiedLabel(),
                           ],
                         ],
                       ),
                       const SizedBox(height: 3),
-                      Text(
-                        gym.location,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: tt.bodySmall?.copyWith(fontSize: 11),
+                      // "Not verified" sits after the area instead, which
+                      // gives way first; no extra line, so the card height
+                      // in the grid is unchanged.
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              gym.location,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: tt.bodySmall?.copyWith(fontSize: 11),
+                            ),
+                          ),
+                          if (!gymIsVerified(gym)) ...[
+                            const SizedBox(width: 6),
+                            // Both give way on a narrow card, never overflow.
+                            const Flexible(child: NotVerifiedLabel()),
+                          ],
+                        ],
                       ),
                       const SizedBox(height: 6),
                       Wrap(

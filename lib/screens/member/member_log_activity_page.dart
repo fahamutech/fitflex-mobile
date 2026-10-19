@@ -16,6 +16,7 @@ import '../../shared/social.dart';
 import 'widgets/share_picker.dart';
 import 'widgets/activity_widgets.dart';
 import 'widgets/gym_visit_tile.dart' show visitLinkWindow, withinVisit;
+import '../../shared/formatters.dart';
 
 /// Activity → Log activity: a session the member did without FitFlex
 /// tracking it. Saved through the existing `POST /me/activities` contract
@@ -214,7 +215,7 @@ class _MemberLogActivityPageState extends State<MemberLogActivityPage> {
     final f = manualFieldsFor(_type);
     final lang = Localizations.localeOf(context).languageCode;
     final dateLabel = DateFormat('EEE d MMM', lang).format(_day);
-    final timeLabel = DateFormat('HH:mm', lang).format(_startedAt);
+    final timeLabel = context.localTimeOfDay(_startedAt);
 
     return ListView(
       key: const Key('log-activity'),

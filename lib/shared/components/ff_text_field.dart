@@ -37,6 +37,7 @@ class FFTextField extends StatelessWidget {
     this.focusNode,
     this.helperMaxLines = 3,
     this.errorMaxLines = 3,
+    this.scrollPadding = const EdgeInsets.all(20),
   });
 
   final TextEditingController? controller;
@@ -77,6 +78,10 @@ class FFTextField extends StatelessWidget {
   final int helperMaxLines;
   final int errorMaxLines;
 
+  /// Space kept around the field when it scrolls into view above the
+  /// keyboard; a larger bottom keeps the button under it in view too.
+  final EdgeInsets scrollPadding;
+
   @override
   Widget build(BuildContext context) {
     return TextFormField(
@@ -100,6 +105,7 @@ class FFTextField extends StatelessWidget {
       readOnly: readOnly,
       onTap: onTap,
       autovalidateMode: autovalidateMode,
+      scrollPadding: scrollPadding,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,

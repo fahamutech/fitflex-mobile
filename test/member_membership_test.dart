@@ -179,7 +179,7 @@ void main() {
   });
 
   group('GymPlansSheet (A7)', () {
-    testWidgets('lists plans and enables subscribe only after selection', (
+    testWidgets('lists plans and offers subscribe only after selection', (
       tester,
     ) async {
       await tester.pumpWidget(
@@ -189,13 +189,9 @@ void main() {
       expect(find.byKey(const Key('gym-plan-weekly')), findsOneWidget);
       expect(find.byKey(const Key('gym-plan-monthly')), findsOneWidget);
 
-      final button = tester.widget<FilledButton>(
-        find.descendant(
-          of: find.byKey(const Key('gym-plan-subscribe')),
-          matching: find.byType(FilledButton),
-        ),
-      );
-      expect(button.onPressed, isNull);
+      // Before a plan is picked: an explanation, not a dead button (L3).
+      expect(find.byKey(const Key('gym-plan-subscribe')), findsNothing);
+      expect(find.text('Choose a plan to continue.'), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('gym-plan-weekly')));
       await tester.pump();
