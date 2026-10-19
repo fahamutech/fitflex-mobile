@@ -640,6 +640,9 @@ class PaymentRequest {
   /// The transaction ID the member typed when paying a Lipa Namba by hand
   /// (upper-cased by the server). Such a request is not paid by "Pay now".
   final String? memberReference;
+
+  /// The mobile-money number the member says they paid from (+255…).
+  final String? payerPhone;
   final String? note;
   final String requestedAt;
   final String? decidedAt;
@@ -658,6 +661,7 @@ class PaymentRequest {
     required this.provider,
     this.reference,
     this.memberReference,
+    this.payerPhone,
     this.note,
     required this.requestedAt,
     this.decidedAt,
@@ -682,6 +686,9 @@ class PaymentRequest {
         (json['memberReference'] as String?)?.trim().isEmpty == true
         ? null
         : json['memberReference'] as String?,
+    payerPhone: (json['payerPhone'] as String?)?.trim().isEmpty == true
+        ? null
+        : json['payerPhone'] as String?,
     note: json['note'] as String?,
     requestedAt: json['requestedAt'] as String? ?? '',
     decidedAt: json['decidedAt'] as String?,

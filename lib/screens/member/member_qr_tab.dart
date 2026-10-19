@@ -242,6 +242,16 @@ class _PendingPaymentCard extends StatelessWidget {
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
+          if (pending.payerPhone case final phone?) ...[
+            const SizedBox(height: 2),
+            Text(
+              context
+                  .tr('manualPay.paidFromShown')
+                  .replaceAll('{phone}', phone),
+              key: const Key('qr-pending-payer-phone'),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
         ],
       ),
     );

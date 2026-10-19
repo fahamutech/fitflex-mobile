@@ -25,6 +25,7 @@ const _manualOn = {
       'sw': 'Tumia menyu ya Lipa kwa M-Pesa.',
     },
     'referenceRequired': true,
+    'payerPhoneRequired': true,
   },
 };
 
@@ -40,18 +41,30 @@ const _manualOff = {
   },
 };
 
-MemberData _data() => MemberData()
+MemberData _data({String? phone}) => MemberData()
   ..selectedTier = 'pro'
-  ..passes = [PassTier(id: 'pro', price: 120000, visitCap: 12)];
+  ..passes = [PassTier(id: 'pro', price: 120000, visitCap: 12)]
+  ..me = MemberMeResponse.fromJson({
+    'user': {
+      'id': 'm1',
+      'displayName': 'Amina',
+      'onboardingCompleted': true,
+      'phone': ?phone,
+    },
+  });
 
 Future<PageHost> _pumpPayment(
   WidgetTester tester,
   RecordingApi api, {
   String lang = 'en',
+  String? phone,
 }) => pumpPage(
   tester,
   api,
-  MemberDataScope(data: _data(), child: const MemberPaymentPage()),
+  MemberDataScope(
+    data: _data(phone: phone),
+    child: const MemberPaymentPage(),
+  ),
   user: const {'id': 'm1', 'userType': 'member'},
   lang: lang,
   size: const Size(400, 1600),
@@ -61,6 +74,11 @@ Finder _key(String k) => find.byKey(Key(k));
 
 Finder get _idField => find.descendant(
   of: _key('manual-pay-transaction-id'),
+  matching: find.byType(EditableText),
+);
+
+Finder get _phoneField => find.descendant(
+  of: _key('manual-pay-payer-phone'),
   matching: find.byType(EditableText),
 );
 
@@ -105,7 +123,7 @@ void main() {
         'QJK3H7XY2P',
         '  qjk3h7xy2p  ',
         'MP241019.1234',
-        'A1_b-2.c',
+        'A1_b-2.c3', // six letters/digits once punctuation is dropped
         '123456',
         '9${'A' * 39}',
       ]) {
@@ -124,9 +142,50 @@ void main() {
         'ABCDEFGH', // no digit
         '-ABC123', // starts with a dash
         '.ABC123',
+        'A-B-C-1', // only 4 letters/digits once punctuation is dropped
       ]) {
         expect(transactionIdError(bad), 'manualPay.idInvalid', reason: bad);
       }
+    });
+  });
+
+  group('paying number check (same rule as the server)', () {
+    test('accepts 0…, 255…, +255… mobile numbers with separators', () {
+      for (final ok in [
+        '0712345678',
+        '0612 345 678',
+        '255712345678',
+        '+255712345678',
+        '+255 (754) 111-222',
+        '0754.111.222',
+      ]) {
+        expect(payerPhoneError(ok), isNull, reason: ok);
+      }
+      expect(normalizedPayerPhone('0754 111 222'), '+255754111222');
+    });
+
+    test('refuses empty, landlines, short, foreign and bare numbers', () {
+      expect(payerPhoneError(''), 'manualPay.phoneRequired');
+      for (final bad in [
+        '0222123456', // landline (2x)
+        '071234567', // 9 digits after 0
+        '712345678', // no prefix
+        '+254712345678', // Kenya
+        '0712345678x',
+      ]) {
+        expect(payerPhoneError(bad), 'manualPay.phoneInvalid', reason: bad);
+      }
+    });
+
+    test('not asked for unless the server says so', () {
+      final noPhone = ManualPayment.fromOptions({
+        'manual': {'enabled': true, 'lipaNamba': '5123456', 'accountName': 'X'},
+      })!;
+      expect(noPhone.payerPhoneRequired, isFalse);
+      final input = ManualPaymentInput();
+      input.transactionId.text = 'QJK3H7XY2P';
+      expect(input.check(noPhone)?.payerPhone, isNull);
+      input.dispose();
     });
   });
 
@@ -144,9 +203,14 @@ void main() {
           'memberReference': 'QJK3H7XY2P',
         },
       });
-      final host = await _pumpPayment(tester, api);
+      final host = await _pumpPayment(tester, api, phone: '0712 345 678');
 
       expect(_key('manual-pay-steps'), findsOneWidget);
+      // The paying number starts as the member's own, and can be changed.
+      expect(
+        tester.widget<EditableText>(_phoneField).controller.text,
+        '0712 345 678',
+      );
       expect(
         find.text(
           'Pay TZS 120,000 to Lipa Namba 5123456 '
@@ -170,12 +234,20 @@ void main() {
       expect(find.text(host.tr('manualPay.idInvalid')), findsOneWidget);
       expect(api.sent('POST', '/me/subscribe'), isFalse);
 
+      // A number that is not Tanzanian mobile: refused on the phone.
       await tester.enterText(_idField, '  QJK3H7XY2P ');
+      await tester.enterText(_phoneField, '0222 123 456');
+      await tapVisible(tester, _key('payment-submit'));
+      expect(find.text(host.tr('manualPay.phoneInvalid')), findsOneWidget);
+      expect(api.sent('POST', '/me/subscribe'), isFalse);
+
+      await tester.enterText(_phoneField, '+255 (754) 111-222');
       await tapVisible(tester, _key('payment-submit'));
       expect(api.only('POST', '/me/subscribe').body, {
         'tier': 'pro',
         'type': 'platform_pass',
         'reference': 'QJK3H7XY2P',
+        'payerPhone': '+255 (754) 111-222',
       });
       // Paid by hand: no mobile-money sheet is offered afterwards.
       expect(find.text(host.tr('momo.title')), findsNothing);
@@ -200,10 +272,22 @@ void main() {
       api.fail('POST /me/subscribe', 409, {
         'error': 'payment_reference_duplicate',
       });
-      final host = await _pumpPayment(tester, api);
+      final host = await _pumpPayment(tester, api, phone: '0712345678');
       await tester.enterText(_idField, 'QJK3H7XY2P');
       await tapVisible(tester, _key('payment-submit'));
       expect(find.text(host.tr('manualPay.idDuplicate')), findsOneWidget);
+    });
+
+    apiTest('a refused paying number from the server shows under its field', (
+      tester,
+      api,
+    ) async {
+      api.on('GET /payments/options', _manualOn);
+      api.fail('POST /me/subscribe', 400, {'error': 'payer_phone_invalid'});
+      final host = await _pumpPayment(tester, api, phone: '0712345678');
+      await tester.enterText(_idField, 'QJK3H7XY2P');
+      await tapVisible(tester, _key('payment-submit'));
+      expect(find.text(host.tr('manualPay.phoneInvalid')), findsOneWidget);
     });
 
     apiTest('manual off: unchanged flow, no reference sent', (
@@ -218,6 +302,7 @@ void main() {
       final host = await _pumpPayment(tester, api);
       expect(_key('manual-pay-steps'), findsNothing);
       expect(_key('manual-pay-transaction-id'), findsNothing);
+      expect(_key('manual-pay-payer-phone'), findsNothing);
       expect(find.text(host.tr('member.paymentBody')), findsOneWidget);
       expect(buttonLabelled(host.tr('member.requestPayment')), findsOneWidget);
       await tapVisible(tester, _key('payment-submit'));
@@ -263,6 +348,52 @@ void main() {
       });
       expect(p.memberReference, 'QJK3H7XY2P');
       expect(PaymentRequest.fromJson({'id': 'p2'}).memberReference, isNull);
+      expect(
+        PaymentRequest.fromJson({
+          'id': 'p1',
+          'payerPhone': '+255754111222',
+        }).payerPhone,
+        '+255754111222',
+      );
+    });
+
+    apiTest('My QR shows the transaction ID and the paying number', (
+      tester,
+      api,
+    ) async {
+      final data = MemberData()
+        ..me = MemberMeResponse.fromJson({
+          'user': {'id': 'm1', 'displayName': 'Amina'},
+          'pendingPayment': {
+            'id': 'p1',
+            'tier': 'pro',
+            'status': 'pending',
+            'amountTzs': 120000,
+            'memberReference': 'QJK3H7XY2P',
+            'payerPhone': '+255754111222',
+          },
+        });
+      final host = await pumpPage(
+        tester,
+        api,
+        MemberDataScope(data: data, child: const MemberQrTab()),
+        user: const {'id': 'm1', 'userType': 'member'},
+        size: const Size(400, 1600),
+      );
+      expect(
+        find.text(
+          host.tr('manualPay.idShown').replaceAll('{id}', 'QJK3H7XY2P'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
+          host
+              .tr('manualPay.paidFromShown')
+              .replaceAll('{phone}', '+255754111222'),
+        ),
+        findsOneWidget,
+      );
     });
 
     apiTest('a request with a transaction ID gets no Pay now', (
@@ -313,6 +444,9 @@ void main() {
       (400, 'payment_reference_invalid'),
       (409, 'payment_reference_duplicate'),
       (409, 'manual_payment_submitted'),
+      (400, 'payer_phone_required'),
+      (400, 'payer_phone_invalid'),
+      (429, 'too_many_attempts'),
     ]) {
       test('$code is explained in English and Swahili', () {
         final e = ApiException(status, {'error': code});
@@ -323,6 +457,20 @@ void main() {
         expect(sw, isNot(en));
       });
     }
+
+    test('Swahili says mobile money the glossary way (mtandao wa simu)', () {
+      for (final k in FFLocale.keysOf('sw')) {
+        expect(
+          FFLocale.textOf('sw', k),
+          isNot(contains('pesa ya simu')),
+          reason: k,
+        );
+      }
+      expect(
+        FFLocale.textOf('sw', 'momo.pageBody'),
+        contains('mtandao wa simu'),
+      );
+    });
 
     test('the three reference codes go under the field', () {
       expect(
@@ -355,10 +503,11 @@ void main() {
       final keys = FFLocale.keysOf(
         'en',
       ).where((k) => k.startsWith('manualPay.'));
-      expect(keys.length, greaterThanOrEqualTo(15));
+      expect(keys.length, greaterThanOrEqualTo(22));
       for (final k in keys) {
         expect(FFLocale.textOf('sw', k), isNotNull, reason: k);
-        if (k == 'manualPay.idHint') continue; // an example ID
+        // Examples, not words.
+        if (k == 'manualPay.idHint' || k == 'manualPay.phoneHint') continue;
         expect(
           FFLocale.textOf('sw', k),
           isNot(FFLocale.textOf('en', k)),
@@ -405,12 +554,14 @@ void main() {
       expect(find.text(host.tr('manualPay.idRequired')), findsOneWidget);
       expect(api.sent('POST', '/me/subscribe'), isFalse);
       await tester.enterText(_idField, 'MP241019.1234');
+      await tester.enterText(_phoneField, '0754111222');
       await tapVisible(tester, _key('gym-plan-subscribe'));
       expect(api.only('POST', '/me/subscribe').body, {
         'type': 'direct_sub',
         'homeGymId': 'g1',
         'plan': 'monthly',
         'reference': 'MP241019.1234',
+        'payerPhone': '0754111222',
       });
     });
 

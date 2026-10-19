@@ -236,13 +236,26 @@ class _PayActions extends StatefulWidget {
 }
 
 class _PayActionsState extends State<_PayActions> {
-  final _transactionId = TextEditingController();
-  String? _idError;
+  final _manualInput = ManualPaymentInput();
   bool _loading = false;
 
   @override
+  void initState() {
+    super.initState();
+    // The member's own number, which they can change to the one they paid from.
+    _manualInput.prefillPhone(
+      context
+          .getInheritedWidgetOfExactType<MemberDataScope>()
+          ?.notifier
+          ?.me
+          ?.user
+          .phone,
+    );
+  }
+
+  @override
   void dispose() {
-    _transactionId.dispose();
+    _manualInput.dispose();
     super.dispose();
   }
 
@@ -250,22 +263,23 @@ class _PayActionsState extends State<_PayActions> {
     if (_loading) return; // a second tap must not send a second request
     final manual = widget.modes.manual;
     String? reference;
+    String? payerPhone;
     if (manual != null) {
-      final problem = transactionIdError(_transactionId.text);
-      if (problem != null) {
-        setState(() => _idError = context.tr(problem));
+      final ready = _manualInput.check(manual);
+      if (ready == null) {
+        setState(() {});
         return;
       }
-      reference = _transactionId.text.trim();
+      reference = ready.reference;
+      payerPhone = ready.payerPhone;
     }
-    setState(() {
-      _loading = true;
-      _idError = null;
-    });
+    setState(() => _loading = true);
     try {
-      final created = await AppScope.of(
-        context,
-      ).api.requestPass(widget.tier, reference: reference);
+      final created = await AppScope.of(context).api.requestPass(
+        widget.tier,
+        reference: reference,
+        payerPhone: payerPhone,
+      );
       if (!mounted) return;
       FFSnack.success(
         context,
@@ -292,9 +306,8 @@ class _PayActionsState extends State<_PayActions> {
       context.go(AppRoutes.memberHome);
     } on ApiException catch (e) {
       if (!mounted) return;
-      final idProblem = transactionIdServerErrorKey(e);
-      if (manual != null && idProblem != null) {
-        setState(() => _idError = context.tr(idProblem));
+      if (manual != null && _manualInput.takeServerError(e)) {
+        setState(() {});
       } else {
         FFSnack.error(context, apiErrorMessage(FFLocaleScope.of(context), e));
       }
@@ -318,11 +331,10 @@ class _PayActionsState extends State<_PayActions> {
           ManualPaymentFields(
             manual: manual,
             amountLabel: formatCurrency(widget.amountTzs),
-            controller: _transactionId,
-            errorText: _idError,
+            input: _manualInput,
             enabled: !_loading,
             onChanged: (_) {
-              if (_idError != null) setState(() => _idError = null);
+              if (_manualInput.clearErrors()) setState(() {});
             },
           ),
           const SizedBox(height: FFTokens.spacingMd),

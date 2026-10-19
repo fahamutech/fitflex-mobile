@@ -704,15 +704,22 @@ class ApiClient {
     return await _request('GET', '/me/checkins?$query');
   }
 
-  /// [reference] is the member's mobile-money transaction ID, sent only while
-  /// manual Lipa Namba payment is on (fitflex-functions#188).
+  /// [reference] is the member's mobile-money transaction ID and
+  /// [payerPhone] the number they paid from, sent only while manual Lipa
+  /// Namba payment is on (fitflex-functions#188).
   Future<Map<String, dynamic>> requestPass(
     String tier, {
     String? reference,
+    String? payerPhone,
   }) async => await _request(
     'POST',
     '/me/subscribe',
-    body: {'tier': tier, 'type': 'platform_pass', 'reference': ?reference},
+    body: {
+      'tier': tier,
+      'type': 'platform_pass',
+      'reference': ?reference,
+      'payerPhone': ?payerPhone,
+    },
   );
 
   Future<Map<String, dynamic>> subscribe(String tier) async =>
@@ -755,11 +762,16 @@ class ApiClient {
   Future<Map<String, dynamic>> upgradePass(
     String tier, {
     String? reference,
+    String? payerPhone,
   }) async =>
       await _request(
             'POST',
             '/me/upgrade',
-            body: {'tier': tier, 'reference': ?reference},
+            body: {
+              'tier': tier,
+              'reference': ?reference,
+              'payerPhone': ?payerPhone,
+            },
           )
           as Map<String, dynamic>;
 
@@ -768,6 +780,7 @@ class ApiClient {
     required String gymId,
     required String plan,
     String? reference,
+    String? payerPhone,
   }) async => await _request(
     'POST',
     '/me/subscribe',
@@ -776,6 +789,7 @@ class ApiClient {
       'homeGymId': gymId,
       'plan': plan,
       'reference': ?reference,
+      'payerPhone': ?payerPhone,
     },
   );
 

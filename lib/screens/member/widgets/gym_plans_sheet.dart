@@ -10,6 +10,7 @@ import '../../../shared/formatters.dart';
 import '../../../shared/i18n.dart';
 import '../../../shared/models.dart';
 import '../../../shared/manual_payment.dart';
+import '../member_shell.dart';
 
 /// A7 — Gym direct plan model derived from the gym's own rates.
 class GymPlan {
@@ -59,8 +60,7 @@ class _GymPlansSheetState extends State<GymPlansSheet> {
   bool _busy = false;
   String? _error;
   PaymentModes _modes = PaymentModes.none;
-  final _transactionId = TextEditingController();
-  String? _idError;
+  final _manualInput = ManualPaymentInput();
 
   @override
   void initState() {
@@ -69,13 +69,22 @@ class _GymPlansSheetState extends State<GymPlansSheet> {
     final scope = context.getInheritedWidgetOfExactType<AppScope>();
     if (scope == null) return;
     loadPaymentModes(scope.api).then((m) {
-      if (mounted) setState(() => _modes = m);
+      if (!mounted) return;
+      _manualInput.prefillPhone(
+        context
+            .getInheritedWidgetOfExactType<MemberDataScope>()
+            ?.notifier
+            ?.me
+            ?.user
+            .phone,
+      );
+      setState(() => _modes = m);
     });
   }
 
   @override
   void dispose() {
-    _transactionId.dispose();
+    _manualInput.dispose();
     super.dispose();
   }
 
@@ -84,24 +93,26 @@ class _GymPlansSheetState extends State<GymPlansSheet> {
     if (plan == null || _busy) return;
     final manual = _modes.manual;
     String? reference;
+    String? payerPhone;
     if (manual != null) {
-      final problem = transactionIdError(_transactionId.text);
-      if (problem != null) {
-        setState(() => _idError = context.tr(problem));
+      final ready = _manualInput.check(manual);
+      if (ready == null) {
+        setState(() {});
         return;
       }
-      reference = _transactionId.text.trim();
+      reference = ready.reference;
+      payerPhone = ready.payerPhone;
     }
     setState(() {
       _busy = true;
       _error = null;
-      _idError = null;
     });
     try {
       final created = await AppScope.of(context).api.subscribeDirect(
         gymId: widget.gym.id,
         plan: plan,
         reference: reference,
+        payerPhone: payerPhone,
       );
       if (!mounted) return;
       // With mobile money switched on, pay straight away; a transaction ID
@@ -117,12 +128,10 @@ class _GymPlansSheetState extends State<GymPlansSheet> {
       if (mounted) Navigator.pop(context, true);
     } on ApiException catch (e) {
       if (!mounted) return;
-      final idProblem = transactionIdServerErrorKey(e);
+      final onField = manual != null && _manualInput.takeServerError(e);
       setState(() {
         _busy = false;
-        if (manual != null && idProblem != null) {
-          _idError = context.tr(idProblem);
-        } else {
+        if (!onField) {
           _error = apiErrorMessage(FFLocaleScope.of(context), e);
         }
       });
@@ -197,11 +206,10 @@ class _GymPlansSheetState extends State<GymPlansSheet> {
                               ?.price ??
                           0,
                     ),
-                    controller: _transactionId,
-                    errorText: _idError,
+                    input: _manualInput,
                     enabled: !_busy,
                     onChanged: (_) {
-                      if (_idError != null) setState(() => _idError = null);
+                      if (_manualInput.clearErrors()) setState(() {});
                     },
                   ),
                 ),

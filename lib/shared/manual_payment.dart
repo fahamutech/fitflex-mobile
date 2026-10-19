@@ -26,6 +26,7 @@ class ManualPayment {
     this.instructionsEn,
     this.instructionsSw,
     this.referenceRequired = true,
+    this.payerPhoneRequired = false,
   });
 
   final String lipaNamba;
@@ -34,6 +35,9 @@ class ManualPayment {
   final String? instructionsEn;
   final String? instructionsSw;
   final bool referenceRequired;
+
+  /// The member must also say which mobile-money number they paid from.
+  final bool payerPhoneRequired;
 
   /// The `manual` block of /payments/options, or null when it is missing,
   /// switched off, or lacks the number or account name.
@@ -56,6 +60,7 @@ class ManualPayment {
       instructionsEn: instructions is Map ? text(instructions['en']) : null,
       instructionsSw: instructions is Map ? text(instructions['sw']) : null,
       referenceRequired: m['referenceRequired'] != false,
+      payerPhoneRequired: m['payerPhoneRequired'] == true,
     );
   }
 
@@ -107,7 +112,32 @@ String? transactionIdError(String raw) {
   if (!_transactionIdPattern.hasMatch(id) || !id.contains(RegExp(r'[0-9]'))) {
     return 'manualPay.idInvalid';
   }
+  // At least six letters or digits once the punctuation is dropped.
+  if (id.replaceAll(RegExp(r'[^A-Za-z0-9]'), '').length < 6) {
+    return 'manualPay.idInvalid';
+  }
   return null;
+}
+
+final _payerPhonePattern = RegExp(r'^(?:\+255|255|0)([67]\d{8})$');
+
+/// i18n key for what is wrong with the number the member paid from, or null
+/// when it passes the server's rule (fitflex-functions#188): 0XXXXXXXXX,
+/// 255XXXXXXXXX or +255XXXXXXXXX, a 6x/7x mobile number, with spaces,
+/// dashes, dots or brackets allowed.
+String? payerPhoneError(String raw) {
+  if (raw.trim().isEmpty) return 'manualPay.phoneRequired';
+  final compact = raw.trim().replaceAll(RegExp(r'[\s().-]'), '');
+  return _payerPhonePattern.hasMatch(compact) ? null : 'manualPay.phoneInvalid';
+}
+
+/// The number as the server stores it (+255…), for showing back; null when
+/// it is not a valid number.
+String? normalizedPayerPhone(String raw) {
+  final m = _payerPhonePattern.firstMatch(
+    raw.trim().replaceAll(RegExp(r'[\s().-]'), ''),
+  );
+  return m == null ? null : '+255${m.group(1)}';
 }
 
 /// Step-by-step instructions for paying the Lipa Namba, with a copy button.
@@ -266,6 +296,74 @@ class TransactionIdField extends StatelessWidget {
   );
 }
 
+/// i18n key for a refused paying number, to show under its field, or null.
+String? payerPhoneServerErrorKey(Object error) {
+  if (error is! ApiException) return null;
+  return switch (error.code) {
+    'payer_phone_required' => 'manualPay.phoneRequired',
+    'payer_phone_invalid' => 'manualPay.phoneInvalid',
+    _ => null,
+  };
+}
+
+/// What the member types for a manual payment: the transaction ID and the
+/// number they paid from, with the problems found (as i18n keys). One per
+/// purchase screen; dispose it with the screen.
+class ManualPaymentInput {
+  final transactionId = TextEditingController();
+  final payerPhone = TextEditingController();
+  String? idError;
+  String? phoneError;
+  bool _prefilled = false;
+
+  /// Puts the member's own number in the paying-number field once, if it is
+  /// still empty. They can change it.
+  void prefillPhone(String? phone) {
+    if (_prefilled) return;
+    _prefilled = true;
+    final p = phone?.trim() ?? '';
+    if (p.isNotEmpty && payerPhone.text.isEmpty) payerPhone.text = p;
+  }
+
+  /// Checks what was typed. Returns what to send, or null (with [idError] /
+  /// [phoneError] set) when something needs fixing first.
+  ({String reference, String? payerPhone})? check(ManualPayment manual) {
+    idError = transactionIdError(transactionId.text);
+    phoneError = manual.payerPhoneRequired
+        ? payerPhoneError(payerPhone.text)
+        : null;
+    if (idError != null || phoneError != null) return null;
+    return (
+      reference: transactionId.text.trim(),
+      payerPhone: manual.payerPhoneRequired ? payerPhone.text.trim() : null,
+    );
+  }
+
+  /// Puts a server refusal of the ID or the number under its field. True
+  /// when it was one of those; other errors are shown the usual way.
+  bool takeServerError(Object error) {
+    final id = transactionIdServerErrorKey(error);
+    final phone = payerPhoneServerErrorKey(error);
+    if (id == null && phone == null) return false;
+    idError = id ?? idError;
+    phoneError = phone ?? phoneError;
+    return true;
+  }
+
+  /// Clears the shown problems (as the member edits). True if any were shown.
+  bool clearErrors() {
+    final had = idError != null || phoneError != null;
+    idError = null;
+    phoneError = null;
+    return had;
+  }
+
+  void dispose() {
+    transactionId.dispose();
+    payerPhone.dispose();
+  }
+}
+
 /// i18n key for a refused transaction ID, to show under the field, or null
 /// for any other error (shown the usual way).
 String? transactionIdServerErrorKey(Object error) {
@@ -285,32 +383,51 @@ class ManualPaymentFields extends StatelessWidget {
     super.key,
     required this.manual,
     required this.amountLabel,
-    required this.controller,
-    this.errorText,
+    required this.input,
     this.enabled = true,
     this.onChanged,
   });
 
   final ManualPayment manual;
   final String amountLabel;
-  final TextEditingController controller;
-  final String? errorText;
+  final ManualPaymentInput input;
   final bool enabled;
   final ValueChanged<String>? onChanged;
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      ManualPaymentSteps(manual: manual, amountLabel: amountLabel),
-      const SizedBox(height: FFTokens.spacingMd),
-      TransactionIdField(
-        controller: controller,
-        errorText: errorText,
-        enabled: enabled,
-        onChanged: onChanged,
-      ),
-    ],
-  );
+  Widget build(BuildContext context) {
+    String? tr(String? key) => key == null ? null : context.tr(key);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ManualPaymentSteps(manual: manual, amountLabel: amountLabel),
+        const SizedBox(height: FFTokens.spacingMd),
+        TransactionIdField(
+          controller: input.transactionId,
+          errorText: tr(input.idError),
+          enabled: enabled,
+          onChanged: onChanged,
+        ),
+        if (manual.payerPhoneRequired) ...[
+          const SizedBox(height: FFTokens.spacingMd),
+          FFTextField(
+            key: const Key('manual-pay-payer-phone'),
+            controller: input.payerPhone,
+            label: context.tr('manualPay.phoneLabel'),
+            hint: context.tr('manualPay.phoneHint'),
+            helperText: context.tr('manualPay.phoneHelp'),
+            errorText: tr(input.phoneError),
+            enabled: enabled,
+            keyboardType: TextInputType.phone,
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9+\s().-]')),
+              LengthLimitingTextInputFormatter(20),
+            ],
+            onChanged: onChanged,
+          ),
+        ],
+      ],
+    );
+  }
 }

@@ -169,8 +169,7 @@ class _UpgradeGateState extends State<_UpgradeGate> {
   String? _selected;
   bool _sending = false;
   PaymentModes _modes = PaymentModes.none;
-  final _transactionId = TextEditingController();
-  String? _idError;
+  final _manualInput = ManualPaymentInput();
 
   @override
   void initState() {
@@ -179,13 +178,22 @@ class _UpgradeGateState extends State<_UpgradeGate> {
     final api = context.getInheritedWidgetOfExactType<AppScope>()!.api;
     _future = api.upgradeOptions();
     loadPaymentModes(api).then((m) {
-      if (mounted) setState(() => _modes = m);
+      if (!mounted) return;
+      _manualInput.prefillPhone(
+        context
+            .getInheritedWidgetOfExactType<MemberDataScope>()
+            ?.notifier
+            ?.me
+            ?.user
+            .phone,
+      );
+      setState(() => _modes = m);
     });
   }
 
   @override
   void dispose() {
-    _transactionId.dispose();
+    _manualInput.dispose();
     super.dispose();
   }
 
@@ -198,22 +206,21 @@ class _UpgradeGateState extends State<_UpgradeGate> {
     if (tier == null || _sending) return; // a second tap must not send twice
     final manual = _modes.manual;
     String? reference;
+    String? payerPhone;
     if (manual != null) {
-      final problem = transactionIdError(_transactionId.text);
-      if (problem != null) {
-        setState(() => _idError = context.tr(problem));
+      final ready = _manualInput.check(manual);
+      if (ready == null) {
+        setState(() {});
         return;
       }
-      reference = _transactionId.text.trim();
+      reference = ready.reference;
+      payerPhone = ready.payerPhone;
     }
-    setState(() {
-      _sending = true;
-      _idError = null;
-    });
+    setState(() => _sending = true);
     try {
       final created = await AppScope.of(
         context,
-      ).api.upgradePass(tier, reference: reference);
+      ).api.upgradePass(tier, reference: reference, payerPhone: payerPhone);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -242,9 +249,8 @@ class _UpgradeGateState extends State<_UpgradeGate> {
       context.go(AppRoutes.memberHome);
     } catch (e) {
       if (!mounted) return;
-      final idProblem = transactionIdServerErrorKey(e);
-      if (manual != null && idProblem != null) {
-        setState(() => _idError = context.tr(idProblem));
+      if (manual != null && _manualInput.takeServerError(e)) {
+        setState(() {});
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
@@ -470,11 +476,10 @@ class _UpgradeGateState extends State<_UpgradeGate> {
                 amountLabel: formatCurrency(
                   ((chosen['differenceTzs'] as num?) ?? 0).toInt(),
                 ),
-                controller: _transactionId,
-                errorText: _idError,
+                input: _manualInput,
                 enabled: !_sending,
                 onChanged: (_) {
-                  if (_idError != null) setState(() => _idError = null);
+                  if (_manualInput.clearErrors()) setState(() {});
                 },
               ),
             ],
@@ -584,6 +589,12 @@ class _PendingBlockCard extends StatelessWidget {
               key: const Key('pending-transaction-id'),
               label: context.tr('manualPay.idLabel'),
               value: ref,
+            ),
+          if (pending.payerPhone case final phone?)
+            _DetailRow(
+              key: const Key('pending-payer-phone'),
+              label: context.tr('manualPay.paidFrom'),
+              value: phone,
             ),
           const SizedBox(height: 16),
           PayNowButton(request: pending),
