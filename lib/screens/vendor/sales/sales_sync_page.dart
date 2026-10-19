@@ -234,7 +234,7 @@ class _SalesSyncPageState extends State<SalesSyncPage> {
                   message: context.tr('vendor.sync.featureOff'),
                 ),
               ),
-            if (session.pause == SalesSyncPause.suspended)
+            if (session.suspended)
               Padding(
                 padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
                 child: FFAlert(

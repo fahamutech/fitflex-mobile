@@ -184,12 +184,14 @@ class SalesSession extends ChangeNotifier with WidgetsBindingObserver {
   String get draftKey => 'vendor_pos_draft.$vendorId.$personId';
   String get productsKey => 'vendor_pos_products.$vendorId';
   String get businessKey => 'vendor_pos_business.$vendorId';
+  String get suspendedKey => 'vendor_sales_suspended.$vendorId.$personId';
 
   List<QueuedSale> _queue = [];
   bool _loaded = false;
   Future<void>? _loading;
   Future<void>? _running;
   SalesSyncPause _pause = SalesSyncPause.none;
+  bool _suspended = false;
   int _failures = 0;
   Timer? _timer;
   int _attached = 0;
@@ -287,6 +289,12 @@ class SalesSession extends ChangeNotifier with WidgetsBindingObserver {
         if (list is List) {
           _queue = [for (final e in list) ?QueuedSale.fromJson(e)];
         }
+      }
+      // Kept across restarts: the till stays off until a sales call
+      // succeeds again (S3 UAT, D4).
+      if (prefs.getBool(suspendedKey) == true) {
+        _suspended = true;
+        if (_pause == SalesSyncPause.none) _pause = SalesSyncPause.suspended;
       }
       final draft = prefs.getString(draftKey);
       if (draft != null) {
@@ -429,9 +437,34 @@ class SalesSession extends ChangeNotifier with WidgetsBindingObserver {
 
   /// The till was told the business is suspended (403 vendor_suspended).
   void markSuspended() {
-    if (_pause == SalesSyncPause.suspended) return;
+    final changed = !_suspended || _pause != SalesSyncPause.suspended;
+    _suspended = true;
     _pause = SalesSyncPause.suspended;
+    unawaited(_keepSuspended(true));
+    if (changed) notifyListeners();
+  }
+
+  /// The business is suspended (403 vendor_suspended), as last heard from
+  /// the server; kept on the device until a sales call succeeds.
+  bool get suspended => _suspended;
+
+  /// A sales call succeeded: the business is not suspended (any more).
+  void salesAnswered() {
+    if (!_suspended) return;
+    _suspended = false;
+    if (_pause == SalesSyncPause.suspended) _pause = SalesSyncPause.none;
+    unawaited(_keepSuspended(false));
     notifyListeners();
+    _schedule();
+  }
+
+  Future<void> _keepSuspended(bool on) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      on
+          ? await prefs.setBool(suspendedKey, true)
+          : await prefs.remove(suspendedKey);
+    } catch (_) {}
   }
 
   // Product cache ---------------------------------------------------------
@@ -507,6 +540,7 @@ class SalesSession extends ChangeNotifier with WidgetsBindingObserver {
 
   void _onApiSuccess(String method, String path) {
     if (!path.startsWith('/vendor/')) return;
+    if (path.startsWith('/vendor/sales')) salesAnswered();
     // Our own sync calls arrive here too: the running loop ignores them.
     if (_running != null || waiting.isEmpty) return;
     scheduleMicrotask(() => unawaited(sync()));
@@ -609,6 +643,7 @@ class SalesSession extends ChangeNotifier with WidgetsBindingObserver {
         if (sale is! Map) throw StateError('no sale in the answer');
         _queue.remove(item);
         _retryAt = null;
+        salesAnswered();
         synced[item.clientRef] = Map<String, dynamic>.from(sale);
         final number = sale['number']?.toString();
         if (number != null) _syncedNumbers.add(number);
@@ -652,7 +687,7 @@ class SalesSession extends ChangeNotifier with WidgetsBindingObserver {
     }
     if (e.status == 403 && code == 'vendor_suspended') {
       item.state = 'waiting';
-      _pause = SalesSyncPause.suspended;
+      markSuspended();
       return true;
     }
     if (e.status == 403) {

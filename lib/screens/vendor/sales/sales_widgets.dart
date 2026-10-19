@@ -89,7 +89,7 @@ class SalesSyncBanners extends StatelessWidget {
         final children = <Widget>[
           if (offline != null)
             FFAlert(key: const Key('sales-offline-banner'), message: offline!),
-          if (session.pause == SalesSyncPause.suspended)
+          if (session.suspended)
             FFAlert(
               key: const Key('sales-suspended-banner'),
               message: context.tr('vendor.sales.suspended'),

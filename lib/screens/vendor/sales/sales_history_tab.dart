@@ -123,6 +123,8 @@ class VendorSalesTabState extends State<VendorSalesTab> {
             ? _Problem.suspended
             : _Problem.failed;
       });
+      // The paused notice (banners) says it once for the whole tab.
+      if (e.code == 'vendor_suspended') _session?.markSuspended();
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -302,26 +304,30 @@ class VendorSalesTabState extends State<VendorSalesTab> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: FFStatTile(
-                    icon: Icons.receipt_long_outlined,
-                    value: '${s['count'] ?? 0}',
-                    label: context.tr('vendor.sales.count'),
+            // Both tiles the same height, however the money shrinks.
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: FFStatTile(
+                      icon: Icons.receipt_long_outlined,
+                      value: '${s['count'] ?? 0}',
+                      label: context.tr('vendor.sales.count'),
+                    ),
                   ),
-                ),
-                const SizedBox(width: FFTokens.spacingSm),
-                Expanded(
-                  child: FFStatTile(
-                    icon: Icons.payments_outlined,
-                    value: formatCurrency((s['totalTzs'] as num?) ?? 0),
-                    label: context.tr('vendor.sales.total'),
-                    // Money is never cut off: it shrinks to fit.
-                    fitValue: true,
+                  const SizedBox(width: FFTokens.spacingSm),
+                  Expanded(
+                    child: FFStatTile(
+                      icon: Icons.payments_outlined,
+                      value: formatCurrency((s['totalTzs'] as num?) ?? 0),
+                      label: context.tr('vendor.sales.total'),
+                      // Money is never cut off: it shrinks to fit.
+                      fitValue: true,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             if (discounts > 0)
               MoneyRow(
@@ -354,17 +360,15 @@ class VendorSalesTabState extends State<VendorSalesTab> {
     }
     switch (_problem) {
       case _Problem.suspended:
-        return [
-          FFAlert(
-            key: const Key('sales-suspended'),
-            message: context.tr('vendor.sales.suspended'),
-            tone: FFAlertTone.warning,
-          ),
-        ];
+        // Shown once, by the paused notice above.
+        return const [];
       case _Problem.failed || _Problem.network:
         return [
           FFErrorState(
             key: const Key('sales-failed'),
+            title: _problem == _Problem.network
+                ? context.tr('vendor.sales.offlineTitle')
+                : null,
             message: context.tr(
               _problem == _Problem.network
                   ? 'vendor.sales.offline'
