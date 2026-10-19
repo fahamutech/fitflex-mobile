@@ -42,19 +42,50 @@ class _OlderProvider extends MockActivityProvider {
   }
 }
 
+/// Serves check-ins by range from [all], and records the ranges asked for.
+class _FakeApi extends ApiClient {
+  _FakeApi([this.all = const []]) : super(baseUrl: 'http://x');
+
+  final List<Map<String, dynamic>> all;
+  final ranges = <(DateTime?, DateTime?)>[];
+
+  @override
+  Future<List<dynamic>> myCheckins({DateTime? from, DateTime? to}) async {
+    ranges.add((from, to));
+    return [
+      for (final c in all)
+        if (from == null ||
+            !DateTime.parse(c['timestamp'] as String).isBefore(from))
+          if (to == null ||
+              DateTime.parse(c['timestamp'] as String).isBefore(to))
+            c,
+    ];
+  }
+}
+
+Map<String, dynamic> _checkin(String id, DateTime at) => {
+  'id': id,
+  'memberId': 'u1',
+  'timestamp': at.toUtc().toIso8601String(),
+  'gymTier': 'gold',
+  'gymId': 'gym_1',
+  'gym': {'id': 'gym_1', 'name': 'Iron House'},
+};
+
 Future<void> _pump(
   WidgetTester tester,
   MemberData data,
-  _OlderProvider provider,
-) async {
+  _OlderProvider provider, {
+  ApiClient? api,
+}) async {
   tester.view.physicalSize = const Size(1080, 6000);
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
-  final api = ApiClient(baseUrl: 'http://x');
+  final client = api ?? _FakeApi();
   await tester.pumpWidget(
     AppScope(
-      api: api,
-      auth: AuthState(api),
+      api: client,
+      auth: AuthState(client),
       activityProvider: provider,
       child: FFLocaleScope(
         notifier: FFLocale(),
@@ -142,5 +173,34 @@ void main() {
     expect(provider.windows.length, 6);
     expect(find.byKey(const Key('history-older')), findsNothing);
     expect(find.byKey(const Key('history-end')), findsOneWidget);
+  });
+
+  testWidgets('visits come by date range, past the newest 50', (tester) async {
+    // The Activity tab only has one recent check-in; the page asks for the
+    // whole window and then each older one.
+    final data = MemberData()
+      ..activityLoaded = true
+      ..checkins = [
+        CheckIn.fromJson(_checkin('recent', DateTime(2026, 9, 22, 18))),
+      ];
+    final api = _FakeApi([
+      _checkin('recent', DateTime(2026, 9, 22, 18)),
+      _checkin('july', DateTime(2026, 7, 2, 18)),
+      _checkin('april', DateTime(2026, 4, 9, 18)),
+    ]);
+    await _pump(tester, data, _OlderProvider([]), api: api);
+    await tester.pumpAndSettle();
+
+    expect(api.ranges.first.$1, DateTime(2026, 6, 25));
+    expect(find.byKey(const Key('visit-recent')), findsOneWidget);
+    expect(find.byKey(const Key('visit-july')), findsOneWidget);
+    expect(find.byKey(const Key('visit-april')), findsNothing);
+
+    // The next window back has no activities but a visit: that's enough.
+    await tester.tap(find.byKey(const Key('history-older')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('visit-april')), findsOneWidget);
+    expect(api.ranges.length, 2);
+    expect(find.byKey(const Key('history-older')), findsOneWidget);
   });
 }

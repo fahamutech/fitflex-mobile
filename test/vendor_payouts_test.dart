@@ -85,25 +85,25 @@ void main() {
     _tall(tester);
     await tester.pumpWidget(_app(_FakeApi(statements: [_statement()])));
     await tester.pumpAndSettle();
-    expect(find.text('TZS 81,000'), findsOneWidget);
+    expect(find.text('TSh 81,000'), findsOneWidget);
     expect(find.textContaining('2 order(s)'), findsOneWidget);
     expect(find.textContaining('delivered'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('payout-vst_1')));
     await tester.pumpAndSettle();
     expect(
-      find.textContaining('Sales of your items: TZS 90,000'),
+      find.textContaining('Sales of your items: TSh 90,000'),
       findsOneWidget,
     );
     expect(
-      find.textContaining('FitFlex commission: TZS 9,000'),
+      find.textContaining('FitFlex commission: TSh 9,000'),
       findsOneWidget,
     );
     expect(find.textContaining('CRDB ····1234'), findsOneWidget);
     expect(find.textContaining('CRDB-V1'), findsOneWidget);
     expect(find.byKey(const Key('payout-line-ord_1')), findsOneWidget);
     expect(find.textContaining('2 item(s)'), findsOneWidget);
-    expect(find.text('TZS 72,000'), findsOneWidget);
+    expect(find.text('TSh 72,000'), findsOneWidget);
   });
 
   testWidgets('a vendor who cannot be paid yet is told, in Swahili too', (
