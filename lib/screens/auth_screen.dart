@@ -106,19 +106,7 @@ class _AuthScreenState extends State<AuthScreen>
 
   void _showErrorDialog(String message) {
     if (!mounted) return;
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Authentication Error'),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
+    showFFAuthErrorDialog(context, message);
   }
 
   Future<void> _handleSessionApiError(ApiException e) async {

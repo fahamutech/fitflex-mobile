@@ -78,31 +78,30 @@ class _LanguageScreenState extends State<LanguageScreen>
                       children: [
                         SizedBox(height: FFTokens.spacingXl * 3),
                         Text(
-                          'Choose language',
+                          context.tr('lang.title'),
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.headlineMedium,
                         ),
                         const SizedBox(height: FFTokens.spacingMd),
                         Text(
-                          'Chagua lugha unayoipenda',
+                          context.tr('lang.slogan'),
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                         SizedBox(height: FFTokens.spacingXl * 1.5),
-                        _LanguageTile(
+                        // Each language is named in its own language.
+                        FFChoiceTile(
                           key: const Key('langEnglish'),
-                          title: 'English',
-                          subtitle: 'International Standard',
+                          title: context.tr('lang.name.en'),
                           selected: _selected == 'en',
-                          onTap: () => _select('en'),
+                          onSelected: () => _select('en'),
                         ),
                         const SizedBox(height: FFTokens.spacingMd),
-                        _LanguageTile(
+                        FFChoiceTile(
                           key: const Key('langKiswahili'),
-                          title: 'Swahili',
-                          subtitle: 'Lugha ya Kiswahili',
+                          title: context.tr('lang.name.sw'),
                           selected: _selected == 'sw',
-                          onTap: () => _select('sw'),
+                          onSelected: () => _select('sw'),
                         ),
                       ],
                     ),
@@ -113,7 +112,7 @@ class _LanguageScreenState extends State<LanguageScreen>
                   child: SizedBox(
                     width: double.infinity,
                     child: FFButton(
-                      label: 'Continue',
+                      label: context.tr('lang.continue'),
                       onPressed: _selected != null ? _continue : null,
                     ),
                   ),
@@ -123,90 +122,6 @@ class _LanguageScreenState extends State<LanguageScreen>
           ),
         ),
       ),
-    );
-  }
-}
-
-class _LanguageTile extends StatelessWidget {
-  const _LanguageTile({
-    super.key,
-    required this.title,
-    required this.subtitle,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String title;
-  final String subtitle;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: FFTokens.motionMedium,
-        curve: FFTokens.motionCurve,
-        padding: const EdgeInsets.symmetric(
-          horizontal: FFTokens.spacingLg,
-          vertical: FFTokens.spacingMd,
-        ),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(FFTokens.radiusXl),
-          border: Border.all(
-            color: selected
-                ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).colorScheme.outline,
-            width: selected ? 2 : 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: FFTokens.spacingXs),
-                  Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
-                ],
-              ),
-            ),
-            _RadioDot(selected: selected),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _RadioDot extends StatelessWidget {
-  const _RadioDot({required this.selected});
-
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
-    final muted = Theme.of(context).colorScheme.outline;
-    return Container(
-      width: FFTokens.spacingLg,
-      height: FFTokens.spacingLg,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: selected ? primary : null,
-        border: Border.all(color: selected ? primary : muted, width: 2),
-      ),
-      child: selected
-          ? Center(
-              child: CircleAvatar(
-                radius: 5,
-                backgroundColor: Theme.of(context).colorScheme.onPrimary,
-              ),
-            )
-          : null,
     );
   }
 }
