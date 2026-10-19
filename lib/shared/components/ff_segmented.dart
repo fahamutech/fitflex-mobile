@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../design_tokens.dart';
-import '../photo_hero_flag.dart';
 
 /// Tab-style toggle group — matches portal's Segmented component.
 ///
@@ -115,28 +114,19 @@ class FFSegmented extends StatelessWidget {
       ),
     );
     if (!scroll) return Flexible(child: tile);
-    // Keep the chosen segment in view when the row scrolls.
+    // Keep the chosen segment in view when the row scrolls. Only this row
+    // scrolls: Scrollable.ensureVisible would also scroll every scrollable
+    // around it, so choosing a segment made the page jump (Activity).
     return Builder(
       builder: (ctx) {
         if (selected) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!ctx.mounted) return;
-            if (photoHeroUi) {
-              // Scroll only this row, not the page around it: on Activity
-              // the page-level scroll pushed the photo hero off screen.
-              final row = Scrollable.maybeOf(ctx);
-              final box = ctx.findRenderObject();
-              if (row != null && box != null) {
-                row.position.ensureVisible(
-                  box,
-                  alignment: 0.5,
-                  duration: FFTokens.motionFast,
-                );
-              }
-              return;
-            }
-            Scrollable.ensureVisible(
-              ctx,
+            final row = Scrollable.maybeOf(ctx, axis: Axis.horizontal);
+            final box = ctx.findRenderObject();
+            if (row == null || box == null || !box.attached) return;
+            row.position.ensureVisible(
+              box,
               alignment: 0.5,
               duration: FFTokens.motionFast,
             );
