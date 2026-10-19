@@ -52,53 +52,61 @@ class GymCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          gym.name,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                            color: Theme.of(context).colorScheme.onSurface,
+                  // Name up to two lines with the tick after it; "Not
+                  // verified" gets its own line so neither pushes the row
+                  // past the card at large text sizes.
+                  Text.rich(
+                    TextSpan(
+                      text: gym.name,
+                      children: [
+                        if (gymIsVerified(gym)) ...[
+                          const TextSpan(text: ' '),
+                          const WidgetSpan(
+                            alignment: PlaceholderAlignment.middle,
+                            child: GymVerifiedIcon(size: 14),
                           ),
-                        ),
-                      ),
-                      if (gymIsVerified(gym)) ...[
-                        const SizedBox(width: 4),
-                        const GymVerifiedIcon(size: 14),
-                      ] else ...[
-                        const SizedBox(width: 6),
-                        const NotVerifiedLabel(),
+                        ],
                       ],
-                    ],
+                    ),
+                    key: Key('gym-list-name-${gym.id}'),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
                   ),
+                  if (!gymIsVerified(gym)) ...[
+                    const SizedBox(height: 2),
+                    const NotVerifiedLabel(maxLines: 2),
+                  ],
                   const SizedBox(height: 4),
                   Text(
                     gym.location,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: Theme.of(context).textTheme.bodySmall?.color,
                       fontSize: 12,
                     ),
                   ),
                   const SizedBox(height: 6),
-                  Row(
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
                     children: [
                       FFBadge(
                         label: gymTierLabel(context, gym),
                         tone: FFBadgeTone.brand,
                       ),
-                      if (distanceKm != null) ...[
-                        const SizedBox(width: 6),
+                      if (distanceKm != null)
                         FFBadge(
                           label: _formatDistance(distanceKm!),
                           tone: FFBadgeTone.gray,
                         ),
-                      ],
-                      if (gym.promotion != null) ...[
-                        const SizedBox(width: 6),
+                      if (gym.promotion != null)
                         FFPromotionBadge(tag: gym.promotion!),
-                      ],
                     ],
                   ),
                 ],

@@ -200,7 +200,6 @@ void sectionTest(
       debugPhotoHeroUiOverride = null;
       debugShopHomeV2Override = null;
     });
-    _ignoreTrainerCardOverflow();
     final api = RecordingApi();
     await api.run(() async {
       await body(tester, api);
@@ -208,21 +207,6 @@ void sectionTest(
       await tester.pump(const Duration(seconds: 1));
     });
   });
-}
-
-/// The trainer grid card overflows by a fraction of a pixel at 390 wide
-/// with the real fonts, flag on or off (lib/screens/member/widgets/
-/// trainer_card.dart, not touched here). Only that overflow is set aside.
-void _ignoreTrainerCardOverflow() {
-  final previous = FlutterError.onError;
-  FlutterError.onError = (details) {
-    final text = details.toString();
-    if (text.contains('overflowed') && text.contains('trainer_card.dart')) {
-      return;
-    }
-    previous?.call(details);
-  };
-  addTearDown(() => FlutterError.onError = previous);
 }
 
 Finder _key(String k) => find.byKey(Key(k));
@@ -662,17 +646,7 @@ void main() {
               dark: dark,
             ),
           );
-          expect(
-            errors.where(
-              // Grid cards overflow at this size flag on or off (fixed card
-              // aspect; not touched here). Anything else fails.
-              (e) =>
-                  !e.contains('trainer_card.dart') &&
-                  !e.contains('gym_card.dart'),
-            ),
-            isEmpty,
-            reason: errors.join('\n'),
-          );
+          expect(errors, isEmpty, reason: errors.join('\n'));
           expect(find.byType(FFPhotoHero), findsOneWidget);
         });
       }

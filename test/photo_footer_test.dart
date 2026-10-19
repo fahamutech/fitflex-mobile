@@ -196,18 +196,6 @@ void footerTest(
       debugPhotoFooterUiOverride = null;
       debugShopHomeV2Override = null;
     });
-    // Grid cards overflow by a fraction of a pixel with the real fonts, flag
-    // on or off (not touched here).
-    final previous = FlutterError.onError;
-    FlutterError.onError = (d) {
-      final t = d.toString();
-      if (t.contains('overflowed') &&
-          (t.contains('trainer_card.dart') || t.contains('gym_card.dart'))) {
-        return;
-      }
-      previous?.call(d);
-    };
-    addTearDown(() => FlutterError.onError = previous);
     final api = RecordingApi();
     await api.run(() async {
       await body(tester, api);
