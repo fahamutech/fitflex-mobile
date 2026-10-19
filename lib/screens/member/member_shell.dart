@@ -619,36 +619,46 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
   }
 
   /// Home's app bar over the hero: transparent with light icons until the
-  /// hero scrolls under it, then solid with the theme's colours.
+  /// hero scrolls under it, then solid `surface` with the theme's colours.
   bool _homeBarSolid = false;
 
+  /// The bar's own background is animated (not a `flexibleSpace` layer: the
+  /// Scaffold gives the app bar a loose height, so a childless box there
+  /// lays out at zero height and never paints). With the real colour on the
+  /// AppBar, its Material paints it and the status bar style follows it.
   PreferredSizeWidget _heroAppBar(BuildContext context) {
-    final onPhoto = !_homeBarSolid;
-    Widget bar(Widget w) => onPhoto ? FFOnPhotoTheme(child: w) : w;
-    return AppBar(
-      automaticallyImplyLeading: false,
-      backgroundColor: Colors.transparent,
-      surfaceTintColor: Colors.transparent,
-      elevation: 0,
-      scrolledUnderElevation: 0,
-      foregroundColor: onPhoto ? FFTokens.heroText : null,
-      systemOverlayStyle: onPhoto ? SystemUiOverlayStyle.light : null,
-      flexibleSpace: AnimatedOpacity(
-        opacity: _homeBarSolid ? 1 : 0,
+    final surface = Theme.of(context).colorScheme.surface;
+    final solid = _homeBarSolid;
+    Widget bar(Widget w) => solid ? w : FFOnPhotoTheme(child: w);
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(kToolbarHeight),
+      child: TweenAnimationBuilder<double>(
+        tween: Tween<double>(end: solid ? 1 : 0),
         duration: MediaQuery.disableAnimationsOf(context)
             ? Duration.zero
             : const Duration(milliseconds: 150),
-        child: ColoredBox(color: Theme.of(context).colorScheme.surface),
-      ),
-      title: bar(Text(context.tr('app.title'))),
-      actions: [
-        bar(
-          const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [InboxBellButton(), AppPrefsButtons()],
-          ),
+        builder: (context, t, _) => AppBar(
+          key: const Key('member-home-hero-app-bar'),
+          automaticallyImplyLeading: false,
+          backgroundColor: surface.withValues(alpha: surface.a * t),
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          foregroundColor: solid ? null : FFTokens.heroText,
+          // Solid: null lets AppBar pick the style from the surface colour,
+          // i.e. the theme's.
+          systemOverlayStyle: solid ? null : SystemUiOverlayStyle.light,
+          title: bar(Text(context.tr('app.title'))),
+          actions: [
+            bar(
+              const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [InboxBellButton(), AppPrefsButtons()],
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
