@@ -22,6 +22,7 @@ import '../../shared/widgets/persona_switcher.dart';
 import '../../shared/widgets/terms_agreement.dart';
 import '../pin_flows.dart';
 import '../../shared/shop_checkout.dart';
+import 'orders/vendor_order_card.dart';
 import 'stock/adjust_stock_sheet.dart';
 import 'stock/stock_history_page.dart';
 import 'stock/stock_options.dart';
@@ -50,6 +51,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
   Map<String, dynamic> _payments = {};
   bool _loading = true;
   bool _busy = false;
+  bool _staffDisabled = false;
   int _tab = 0;
   // Vendor tools · S1: off (old screens) unless the server says otherwise.
   VendorTools _tools = VendorTools.off;
@@ -164,6 +166,8 @@ class _VendorHomePageState extends State<VendorHomePage> {
     // refused to a staff member) must not hide the others. A part that
     // fails keeps what it showed before.
     var failed = false;
+    // S2: the business owner turned this staff member's access off.
+    var staffDisabled = false;
     Future<T?> part<T>(
       bool allowed,
       Future<T> Function() load,
@@ -173,8 +177,12 @@ class _VendorHomePageState extends State<VendorHomePage> {
       if (!allowed) return none;
       try {
         return await load();
-      } on ApiException {
-        if (!quiet) failed = true;
+      } on ApiException catch (e) {
+        if (isVendorStaffDisabled(e, vendorStaff: isStaff)) {
+          staffDisabled = true;
+        } else if (!quiet) {
+          failed = true;
+        }
         return null;
       } catch (_) {
         if (!quiet) failed = true;
@@ -223,9 +231,14 @@ class _VendorHomePageState extends State<VendorHomePage> {
       _payments = loaded.payments ?? _payments;
       _enquiries = loaded.enquiries ?? _enquiries;
       _staff = loaded.staff ?? _staff;
+      _staffDisabled = staffDisabled;
       _loading = false;
     });
-    if (failed) FFSnack.error(context, context.tr('vendor.loadFailed'));
+    if (staffDisabled) {
+      FFSnack.error(context, context.tr('error.reason.vendorStaffInactive'));
+    } else if (failed) {
+      FFSnack.error(context, context.tr('vendor.loadFailed'));
+    }
     await _loadStockTools(await tools);
   }
 
@@ -406,9 +419,18 @@ class _VendorHomePageState extends State<VendorHomePage> {
     try {
       await AppScope.of(context).api.vendorUpdateOrderStatus(id, status);
       await _refresh();
-    } on ApiException {
+    } on ApiException catch (e) {
       if (mounted) {
-        FFSnack.error(context, context.tr('vendor.saveFailed'));
+        final isStaff =
+            AppScope.of(context).auth.user?['userType'] == 'vendor_staff';
+        FFSnack.error(
+          context,
+          context.tr(
+            isVendorStaffDisabled(e, vendorStaff: isStaff)
+                ? 'error.reason.vendorStaffInactive'
+                : 'vendor.saveFailed',
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -450,6 +472,20 @@ class _VendorHomePageState extends State<VendorHomePage> {
             builder: (context, _) =>
                 _pendingApproval ? _pendingBanner() : const SizedBox.shrink(),
           ),
+          if (_staffDisabled)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                FFTokens.spacingLg,
+                FFTokens.spacingSm,
+                FFTokens.spacingLg,
+                0,
+              ),
+              child: FFAlert(
+                key: const Key('vendor-staff-disabled'),
+                message: context.tr('error.reason.vendorStaffInactive'),
+                tone: FFAlertTone.error,
+              ),
+            ),
           Expanded(
             child: _loading
                 ? const Center(child: FFSpinner())
@@ -778,70 +814,48 @@ class _VendorHomePageState extends State<VendorHomePage> {
       itemBuilder: (context, index) {
         final order = _orders[index];
         final status = order['status']?.toString() ?? 'pending';
-        final items = (order['items'] as List? ?? [])
-            .whereType<Map>()
-            .map((item) => '${item['qty']}× ${item['name']}')
-            .join(', ');
         return Padding(
           padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
-          child: FFCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(items, style: Theme.of(context).textTheme.titleSmall),
-                const SizedBox(height: 4),
-                Text(
-                  '${formatCurrency(order['totalTzs'] as num? ?? 0)} · ${context.tr('vendor.status')}: ${shopOrderStatusLabel(context, status)}',
-                  key: Key('vendor-order-status-${order['id']}'),
-                ),
-                Text(
-                  '${context.tr('vendor.payment')}: ${order['paymentStatus'] ?? '-'} · ${order['paymentMethod'] ?? '-'}',
-                ),
-                Text(
-                  order['deliveryMethod'] == 'gym_pickup'
-                      ? '${context.tr('vendor.pickupGym')}: ${order['pickupGymId'] ?? '-'}'
-                      : '${context.tr('vendor.deliveryAddress')}: ${order['deliveryAddress'] ?? '-'}',
-                ),
-                if (order['paymentStatus'] == 'pending')
-                  Text(
-                    context.tr('vendor.awaitingPayment'),
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                // Legacy `confirmed` / `fulfilled` rows read as accepted /
-                // delivered, as the backend reads them.
-                if (!shopOrderIsFinal(status)) ...[
-                  const SizedBox(height: FFTokens.spacingSm),
-                  Wrap(
-                    spacing: FFTokens.spacingSm,
-                    children: [
-                      if (vendorNextOrderStatus(order) case final next?)
+          child: VendorOrderCard(
+            order: order,
+            tools: _tools,
+            // Legacy `confirmed` / `fulfilled` rows read as accepted /
+            // delivered, as the backend reads them.
+            actions: shopOrderIsFinal(status)
+                ? null
+                : Padding(
+                    padding: const EdgeInsets.only(top: FFTokens.spacingSm),
+                    child: Wrap(
+                      spacing: FFTokens.spacingSm,
+                      children: [
+                        if (vendorNextOrderStatus(order) case final next?)
+                          FFButton(
+                            key: Key('vendor-next-${order['id']}'),
+                            label: vendorMarkStatusLabel(context, next),
+                            // Only paid orders can be fulfilled.
+                            onPressed:
+                                _busy || order['paymentStatus'] == 'pending'
+                                ? null
+                                : () => _updateOrder(
+                                    order['id'].toString(),
+                                    next,
+                                  ),
+                            size: FFButtonSize.sm,
+                          ),
                         FFButton(
-                          key: Key('vendor-next-${order['id']}'),
-                          label: vendorMarkStatusLabel(context, next),
-                          // Only paid orders can be fulfilled.
-                          onPressed:
-                              _busy || order['paymentStatus'] == 'pending'
+                          label: context.tr('vendor.cancel'),
+                          onPressed: _busy
                               ? null
-                              : () =>
-                                    _updateOrder(order['id'].toString(), next),
+                              : () => _updateOrder(
+                                  order['id'].toString(),
+                                  'cancelled',
+                                ),
+                          variant: FFButtonVariant.ghost,
                           size: FFButtonSize.sm,
                         ),
-                      FFButton(
-                        label: context.tr('vendor.cancel'),
-                        onPressed: _busy
-                            ? null
-                            : () => _updateOrder(
-                                order['id'].toString(),
-                                'cancelled',
-                              ),
-                        variant: FFButtonVariant.ghost,
-                        size: FFButtonSize.sm,
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ],
-              ],
-            ),
           ),
         );
       },

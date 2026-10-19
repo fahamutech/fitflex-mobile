@@ -14,7 +14,11 @@ import '../../../shared/i18n.dart';
 
 /// The vendor tools switched on for this session.
 class VendorTools {
-  const VendorTools({this.stockLedger = false, this.canSeeCost = false});
+  const VendorTools({
+    this.stockLedger = false,
+    this.canSeeCost = false,
+    this.buyerContact = false,
+  });
 
   /// Everything off: the old screens.
   static const off = VendorTools();
@@ -24,6 +28,11 @@ class VendorTools {
 
   /// Cost price may be seen and sent (the vendor and their admin staff).
   final bool canSeeCost;
+
+  /// S2: the buyer's phone is shared inside the O-3 window
+  /// (VENDOR_ORDER_BUYER_CONTACT). The server enforces it; the app only uses
+  /// it to explain why the phone and address are gone.
+  final bool buyerContact;
 }
 
 class _Cached {
@@ -54,6 +63,7 @@ class VendorToolsOptions {
       final tools = VendorTools(
         stockLedger: options['stockLedger'] == true,
         canSeeCost: options['canSeeCost'] == true,
+        buyerContact: options['buyerContact'] == true,
       );
       _cache[api] = _Cached(token, tools);
       return tools;

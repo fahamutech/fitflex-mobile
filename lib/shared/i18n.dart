@@ -462,6 +462,8 @@ class FFLocale extends ChangeNotifier {
       'error.reason.invalidCredentials': 'Wrong email or PIN',
       'error.reason.accountSuspended':
           'This account is suspended. Contact support',
+      'error.reason.vendorStaffInactive':
+          'Your staff access is disabled. Ask the business owner.',
       'error.reason.activeSubscriptionRequired':
           'You need an active plan for this',
       'confirm.signout': 'Are you sure you want to sign out of this account?',
@@ -1589,6 +1591,21 @@ class FFLocale extends ChangeNotifier {
       'vendor.payment': 'Payment',
       'vendor.pickupGym': 'Pickup gym',
       'vendor.deliveryAddress': 'Delivery address',
+      // Vendor tools S2: order privacy (orders tab).
+      'vendor.orders.ref': 'Order {ref}',
+      'vendor.orders.buyer': 'Buyer: {name}',
+      'vendor.orders.buyerUnnamed': 'FitFlex member',
+      'vendor.orders.call': 'Call {phone}',
+      'vendor.orders.callBuyer': 'Call the buyer on {phone}',
+      'vendor.orders.callFailed':
+          'Could not open the phone app. Call {phone} instead.',
+      'vendor.orders.variant': 'Variant: {name}',
+      'vendor.orders.contactUntil':
+          'You can see the phone and address until {date}.',
+      'vendor.orders.contactHidden':
+          "The buyer's phone and address are hidden 7 days after delivery.",
+      'vendor.orders.addressHidden':
+          'The delivery address is hidden 7 days after delivery.',
       'vendor.updateStatus': 'Update status',
       'vendor.todaySales': "Today's sales",
       'vendor.weeklySales': 'Weekly sales',
@@ -4765,6 +4782,9 @@ class FFLocale extends ChangeNotifier {
       'error.reason.invalidCredentials': 'Barua pepe au PIN si sahihi',
       'error.reason.accountSuspended':
           'Akaunti hii imesimamishwa. Wasiliana na huduma kwa wateja',
+      // Swahili for native review (vendor tools S2).
+      'error.reason.vendorStaffInactive':
+          'Ruhusa yako ya mfanyakazi imezimwa. Wasiliana na mmiliki wa biashara.',
       'error.reason.activeSubscriptionRequired':
           'Unahitaji mpango ulio hai kwa hili',
       'confirm.signout': 'Una uhakika unataka kutoka kwenye akaunti hii?',
@@ -5976,6 +5996,20 @@ class FFLocale extends ChangeNotifier {
       'vendor.payment': 'Malipo',
       'vendor.pickupGym': 'Gym ya kuchukulia',
       'vendor.deliveryAddress': 'Anwani ya delivery',
+      // Vendor tools S2 (Swahili for native review; variant = chaguo).
+      'vendor.orders.ref': 'Oda {ref}',
+      'vendor.orders.buyer': 'Mnunuzi: {name}',
+      'vendor.orders.buyerUnnamed': 'Mwanachama wa FitFlex',
+      'vendor.orders.call': 'Piga {phone}',
+      'vendor.orders.callBuyer': 'Mpigie mnunuzi kwa {phone}',
+      'vendor.orders.callFailed':
+          'Imeshindikana kufungua simu. Piga {phone} mwenyewe.',
+      'vendor.orders.variant': 'Chaguo: {name}',
+      'vendor.orders.contactUntil': 'Unaweza kuona simu na anwani hadi {date}.',
+      'vendor.orders.contactHidden':
+          'Simu na anwani ya mnunuzi hufichwa siku 7 baada ya kufikishwa.',
+      'vendor.orders.addressHidden':
+          'Anwani ya kufikisha hufichwa siku 7 baada ya kufikishwa.',
       // Swahili for native review.
       'vendor.updateStatus': 'Sasisha hali',
       'vendor.todaySales': 'Mauzo ya leo',

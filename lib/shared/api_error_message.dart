@@ -7,8 +7,13 @@ import 'i18n.dart';
 
 /// Any caught error → user-facing copy (UAT #48). Prefer this over
 /// `e.toString()`, which shows raw text like "ApiException(400, {...})".
-String errorMessage(FFLocale locale, Object error) {
-  if (error is ApiException) return apiErrorMessage(locale, error);
+///
+/// [vendorStaff]: the caller is vendor staff, so `account_suspended` means
+/// their staff access was turned off (vendor tools S2).
+String errorMessage(FFLocale locale, Object error, {bool vendorStaff = false}) {
+  if (error is ApiException) {
+    return apiErrorMessage(locale, error, vendorStaff: vendorStaff);
+  }
   if (isNetworkError(error)) return locale.t('error.network');
   return locale.t('error.requestFailed');
 }
@@ -25,7 +30,14 @@ bool isNetworkError(Object error) {
 
 /// Converts API failures into user-facing copy. Backend validation/decline
 /// reasons win over the HTTP status so a 400 never leaks into the UI alone.
-String apiErrorMessage(FFLocale locale, ApiException exception) {
+String apiErrorMessage(
+  FFLocale locale,
+  ApiException exception, {
+  bool vendorStaff = false,
+}) {
+  if (isVendorStaffDisabled(exception, vendorStaff: vendorStaff)) {
+    return locale.t('error.reason.vendorStaffInactive');
+  }
   final reason = _firstReason(exception.body);
   if (reason != null && reason.isNotEmpty) {
     final translated = _knownReason(locale, reason) ?? _humanize(reason);
@@ -42,6 +54,18 @@ String apiErrorMessage(FFLocale locale, ApiException exception) {
     _ => 'error.requestFailed',
   };
   return locale.t(key);
+}
+
+/// Vendor staff whose access the business owner turned off (vendor tools
+/// S2, fitflex-functions#200): `vendor_staff_inactive` from vendor routes and
+/// PIN sign-in, or `account_suspended` (the token check runs first) when the
+/// caller is vendor staff. For anyone else `account_suspended` keeps its
+/// own message.
+bool isVendorStaffDisabled(Object error, {bool vendorStaff = false}) {
+  if (error is! ApiException) return false;
+  final reason = _firstReason(error.body)?.trim().toLowerCase();
+  if (reason == 'vendor_staff_inactive') return true;
+  return vendorStaff && reason == 'account_suspended';
 }
 
 String? _firstReason(dynamic value) {
