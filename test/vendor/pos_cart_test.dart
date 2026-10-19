@@ -604,7 +604,7 @@ void main() {
       final en = FFLocale()..set(const Locale('en'));
       expect(
         receiptShareText(data, en.t, 'en'),
-        contains('Provisional receipt (ref 123456)'),
+        contains('Provisional receipt, number to follow (ref 123456)'),
       );
     });
 

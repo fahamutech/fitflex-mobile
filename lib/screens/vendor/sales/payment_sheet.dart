@@ -149,6 +149,7 @@ class _PaymentSheetState extends State<PaymentSheet> {
     if (!mounted) return;
     switch (out.kind) {
       case PayAttemptKind.close:
+        FocusManager.instance.primaryFocus?.unfocus();
         Navigator.of(context).pop(true);
         return;
       case PayAttemptKind.stay:
@@ -176,6 +177,11 @@ class _PaymentSheetState extends State<PaymentSheet> {
     final status = _statusLine(context, check);
     return PopScope(
       canPop: !_saving,
+      // D8: let go of the amount / reference field before the sheet goes
+      // (a field still focused while its route closes can throw on web).
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) FocusManager.instance.primaryFocus?.unfocus();
+      },
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -319,6 +325,27 @@ class _PaymentSheetState extends State<PaymentSheet> {
           'method': context.tr(paymentMethodKey(check.overMethod)),
         }),
         key: const Key('pos-over-non-cash'),
+        style: theme.textTheme.titleSmall?.copyWith(
+          color: warningText(context),
+        ),
+      );
+    }
+    // Caught here, before sending (the server refuses the same).
+    if (check.paidTooLarge) {
+      return Text(
+        context.tr('vendor.pos.err.paidTooLargeLocal'),
+        key: const Key('pos-paid-too-large'),
+        style: theme.textTheme.titleSmall?.copyWith(
+          color: warningText(context),
+        ),
+      );
+    }
+    if (check.changeTooLarge) {
+      return Text(
+        fillIn(context.tr('vendor.pos.err.changeTooLargeLocal'), {
+          'amount': formatCurrency(check.totalTzs + maxChangeOverTotalTzs),
+        }),
+        key: const Key('pos-change-too-large'),
         style: theme.textTheme.titleSmall?.copyWith(
           color: warningText(context),
         ),

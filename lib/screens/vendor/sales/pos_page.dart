@@ -70,8 +70,15 @@ class _PosPageState extends State<PosPage> {
   // A line the server refused: its key and the words to show on it.
   String? _flagged;
   String? _flagText;
+  // Move focus to the flagged line's stepper once it is on screen.
+  bool _focusFlagged = false;
 
   bool get _wide => MediaQuery.sizeOf(context).width >= 900;
+
+  /// Selling is off: staff disabled, or the business is suspended (the
+  /// paused notice shows). Queued sales stay.
+  bool get _blocked =>
+      _notAllowed || _session?.pause == SalesSyncPause.suspended;
 
   @override
   void initState() {
@@ -104,7 +111,9 @@ class _PosPageState extends State<PosPage> {
     _cart.cart = draft ?? PosCart();
     _cart.onSaved = session.saveDraft;
     setState(() => _ready = true);
-    if (draft != null) {
+    // An unfinished sale the seller left; not one just opened from
+    // "Edit sale" on the sync screen.
+    if (draft != null && draft.replacesClientRef == null) {
       FFSnack.info(context, context.tr('vendor.pos.draftKept'));
     }
     final cached = await session.loadProducts();
@@ -125,12 +134,21 @@ class _PosPageState extends State<PosPage> {
       if (p['status'] != 'archived' && p['deletedAt'] == null) p,
   ];
 
+  /// The receipt header: what this device kept first (works offline),
+  /// then the server's, which is kept for next time.
   Future<void> _loadProfile() async {
+    final session = _session;
+    final api = AppScope.of(context).api;
+    final kept = await session?.loadBusiness() ?? const {};
+    if (mounted && kept.isNotEmpty && _profile.isEmpty) {
+      setState(() => _profile = kept);
+    }
     try {
-      final p = await AppScope.of(context).api.vendorProfile();
+      final p = await api.vendorProfile();
+      await session?.saveBusiness(p);
       if (mounted) setState(() => _profile = p);
     } catch (_) {
-      // Staff may not read the profile; the receipt has no header then.
+      // Offline, or staff who may not read the profile: the kept header.
     }
   }
 
@@ -221,7 +239,7 @@ class _PosPageState extends State<PosPage> {
   }
 
   Future<void> _tapProduct(Map<String, dynamic> p) async {
-    if (_notAllowed) return;
+    if (_blocked) return;
     final name = p['name']?.toString() ?? '';
     String? variant;
     if (needsVariant(p)) {
@@ -361,7 +379,7 @@ class _PosPageState extends State<PosPage> {
   // ── charge ──────────────────────────────────────────────────────────────
 
   Future<void> _charge() async {
-    if (_cart.cart.isEmpty || _notAllowed) return;
+    if (_cart.cart.isEmpty || _blocked) return;
     // The phone's cart sheet closes first; the payment sheet takes over.
     await showFFSheet<bool>(
       context,
@@ -409,6 +427,7 @@ class _PosPageState extends State<PosPage> {
     // kill reuses them.
     await session.saveDraft(_cart.cart);
     if (queue) return _queue(queuedBody, display, sentOnline: sentOnline);
+
     try {
       final res = await api.vendorRecordSale(body);
       final sale = res['sale'];
@@ -419,7 +438,7 @@ class _PosPageState extends State<PosPage> {
       if (!mounted) return const PayAttempt.close();
       return _refused(e);
     } catch (_) {
-      return _queue(queuedBody, display, sentOnline: sentOnline);
+      return _queue(queuedBody, display, sentOnline: sentOnline, offline: true);
     }
   }
 
@@ -440,6 +459,7 @@ class _PosPageState extends State<PosPage> {
     Map<String, dynamic> body,
     Map<String, dynamic> display, {
     bool sentOnline = false,
+    bool offline = false,
   }) async {
     final session = _session!;
     final replaces = _cart.cart.replacesClientRef;
@@ -455,7 +475,11 @@ class _PosPageState extends State<PosPage> {
     _cart.update((c) => c.clear());
     await session.clearDraft();
     if (!mounted) return const PayAttempt.close();
-    FFSnack.info(context, context.tr('vendor.pos.savedOffline'));
+    // No answer at all, or the seller chose "Save and sync later".
+    FFSnack.info(
+      context,
+      context.tr(offline ? 'vendor.pos.savedOffline' : 'vendor.pos.savedLater'),
+    );
     _goAfterSheet(queuedReceiptRoute(body['clientRef'].toString()));
     return const PayAttempt.close();
   }
@@ -503,6 +527,7 @@ class _PosPageState extends State<PosPage> {
       final isStaff =
           AppScope.of(context).auth.user?['userType'] == 'vendor_staff';
       if (code == 'vendor_suspended') {
+        _session?.markSuspended();
         _afterClose(
           () => FFSnack.error(context, context.tr('vendor.sales.suspended')),
         );
@@ -638,11 +663,10 @@ class _PosPageState extends State<PosPage> {
       _flagged = line?.key;
       _flagText = text;
     });
+    _focusFlagged = line != null;
     _afterClose(() {
       _announce(text, assertive: true);
       if (!_wide) _openCart();
-      final focus = line == null ? null : _lineFocus[line.key];
-      focus?.requestFocus();
     });
   }
 
@@ -777,7 +801,7 @@ class _PosPageState extends State<PosPage> {
               SizedBox(
                 width: 400,
                 child: ListenableBuilder(
-                  listenable: _cart,
+                  listenable: Listenable.merge([_cart, ?_session]),
                   builder: (context, _) => SingleChildScrollView(
                     padding: const EdgeInsets.all(FFTokens.spacingLg),
                     child: _cartContents(),
@@ -928,14 +952,24 @@ class _PosPageState extends State<PosPage> {
         padding: EdgeInsets.zero,
         child: ConstrainedBox(
           constraints: const BoxConstraints(minHeight: 64),
+          // One node: what it is, its price and stock, and whether it can
+          // be added (out of stock reads as disabled).
           child: Semantics(
             button: true,
-            enabled: !out,
-            label: fillIn(context.tr('vendor.pos.add'), {'name': name}),
+            enabled: !out && !_blocked,
+            label: [
+              fillIn(context.tr('vendor.pos.add'), {'name': name}),
+              formatCurrency(walkInPrice(p)),
+              out
+                  ? context.tr('vendor.pos.outOfStock')
+                  : fillIn(context.tr('vendor.pos.left'), {'n': left}),
+            ].join(', '),
+            excludeSemantics: true,
+            onTap: out || _blocked ? null : () => _tapProduct(p),
             child: ListTile(
               key: Key('pos-product-$id'),
-              enabled: !out && !_notAllowed,
-              onTap: out || _notAllowed ? null : () => _tapProduct(p),
+              enabled: !out && !_blocked,
+              onTap: out || _blocked ? null : () => _tapProduct(p),
               leading: ExcludeSemantics(
                 child: SizedBox(
                   width: 40,
@@ -982,31 +1016,32 @@ class _PosPageState extends State<PosPage> {
   }
 
   Widget _cartBar() => ListenableBuilder(
-    listenable: _cart,
+    listenable: Listenable.merge([_cart, ?_session]),
     builder: (context, _) {
       final cart = _cart.cart;
       final total = cart.totals.totalTzs;
       final empty = cart.isEmpty;
-      final count = fillIn(context.tr('vendor.pos.items'), {
-        'n': cart.itemCount,
-      });
+      final count = fillIn(
+        context.tr(pluralKey('vendor.pos.items', cart.itemCount)),
+        {'n': cart.itemCount},
+      );
       final charge = FFButton(
         key: const Key('pos-charge'),
         label: fillIn(context.tr('vendor.pos.charge'), {
           'amount': formatCurrency(total),
         }),
         visualDensity: VisualDensity.standard,
-        onPressed: empty || _notAllowed ? null : _charge,
+        onPressed: empty || _blocked ? null : _charge,
       );
       return SafeArea(
         child: Material(
           elevation: 3,
           color: Theme.of(context).colorScheme.surfaceContainer,
           child: Semantics(
-            label: fillIn(context.tr('vendor.pos.cartBarLabel'), {
-              'n': cart.itemCount,
-              'amount': formatCurrency(total),
-            }),
+            label: fillIn(
+              context.tr(pluralKey('vendor.pos.cartBarLabel', cart.itemCount)),
+              {'n': cart.itemCount, 'amount': formatCurrency(total)},
+            ),
             button: !empty,
             child: InkWell(
               key: const Key('pos-cart-bar'),
@@ -1063,7 +1098,7 @@ class _PosPageState extends State<PosPage> {
       context,
       title: context.tr('vendor.pos.cartTitle'),
       child: ListenableBuilder(
-        listenable: _cart,
+        listenable: Listenable.merge([_cart, ?_session]),
         builder: (sheet, _) =>
             _cartContents(onCharge: () => Navigator.of(sheet).pop(true)),
       ),
@@ -1137,7 +1172,7 @@ class _PosPageState extends State<PosPage> {
           fullWidth: true,
           maxLines: 2,
           visualDensity: VisualDensity.standard,
-          onPressed: _notAllowed ? null : (onCharge ?? _charge),
+          onPressed: _blocked ? null : (onCharge ?? _charge),
         ),
         // A refusal about no particular line (or one already removed).
         if (_flagText != null &&
@@ -1162,6 +1197,12 @@ class _PosPageState extends State<PosPage> {
     final atCap = p != null && _available(p, line.variant) <= 0;
     final flagged = _flagged == line.key;
     final focus = _lineFocus.putIfAbsent(line.key, FocusNode.new);
+    if (flagged && _focusFlagged) {
+      _focusFlagged = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (focus.context != null) focus.requestFocus();
+      });
+    }
     final muted = theme.textTheme.bodySmall?.copyWith(
       color: theme.colorScheme.onSurfaceVariant,
     );
@@ -1218,8 +1259,10 @@ class _PosPageState extends State<PosPage> {
                   icon: const Icon(Icons.remove),
                   onPressed: () => _step(line, -1),
                 ),
+                // Read once: the number, not the number and its value.
                 Semantics(
-                  value: '${line.qty}',
+                  label: '${line.qty}',
+                  excludeSemantics: true,
                   child: Text(
                     '${line.qty}',
                     key: Key('pos-qty-${line.key}'),
@@ -1258,7 +1301,8 @@ class _PosPageState extends State<PosPage> {
                 '${context.tr('vendor.pos.lineDiscountShort')} −${formatMoney(line.discountTzs)}',
                 style: muted,
               ),
-            if (atCap && stockLeft != null)
+            // After a refusal the server's count replaces the old hint.
+            if (atCap && stockLeft != null && !flagged)
               Text(
                 fillIn(context.tr('vendor.pos.onlyLeft'), {'n': stockLeft}),
                 key: Key('pos-only-left-${line.key}'),

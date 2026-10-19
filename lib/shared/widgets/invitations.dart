@@ -587,9 +587,15 @@ class _InvitePersonSheetState extends State<_InvitePersonSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              context
-                  .tr('invite.sheetTitle')
-                  .replaceAll('{role}', inviteRoleLabel(context, widget.role)),
+              // A shop's staff are not gym staff.
+              widget.orgType == 'vendor' && widget.role == 'staff'
+                  ? context.tr('vendor.invite.staffTitle')
+                  : context
+                        .tr('invite.sheetTitle')
+                        .replaceAll(
+                          '{role}',
+                          inviteRoleLabel(context, widget.role),
+                        ),
               style: theme.textTheme.titleMedium,
             ),
             const SizedBox(height: 4),

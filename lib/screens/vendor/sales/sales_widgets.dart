@@ -100,9 +100,10 @@ class SalesSyncBanners extends StatelessWidget {
               context,
               FFAlert(
                 key: const Key('sales-waiting-banner'),
-                message: fillIn(context.tr('vendor.sync.banner'), {
-                  'n': waiting,
-                }),
+                message: fillIn(
+                  context.tr(pluralKey('vendor.sync.banner', waiting)),
+                  {'n': waiting},
+                ),
               ),
               FFButton(
                 key: const Key('sales-sync-now'),
@@ -123,9 +124,10 @@ class SalesSyncBanners extends StatelessWidget {
               context,
               FFAlert(
                 key: const Key('sales-conflicts-banner'),
-                message: fillIn(context.tr('vendor.sync.conflicts'), {
-                  'n': conflicts,
-                }),
+                message: fillIn(
+                  context.tr(pluralKey('vendor.sync.conflicts', conflicts)),
+                  {'n': conflicts},
+                ),
                 tone: FFAlertTone.warning,
               ),
               FFButton(
@@ -190,15 +192,21 @@ class MoneyRow extends StatelessWidget {
               fontFeatures: const [FontFeature.tabularFigures()],
               decoration: strike ? TextDecoration.lineThrough : null,
             );
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(child: Text(label, style: style)),
-          const SizedBox(width: FFTokens.spacingSm),
-          Text(amount, style: style),
-        ],
+    // Its own screen-reader node: "Total, TSh 45,000".
+    return Semantics(
+      container: true,
+      label: label.isEmpty ? amount : '$label, $amount',
+      excludeSemantics: true,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: Text(label, style: style)),
+            const SizedBox(width: FFTokens.spacingSm),
+            Text(amount, style: style),
+          ],
+        ),
       ),
     );
   }
@@ -243,8 +251,8 @@ class ReceiptView extends StatelessWidget {
         : _fill('vendor.pos.receiptNo', {'number': number});
     return FFCard(
       key: const Key('sales-receipt'),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      // Each line of the receipt is its own node (not one long label).
+      child: _SemanticRows(
         children: [
           if (data.business != null)
             Text(data.business!, style: theme.textTheme.titleLarge),
@@ -409,3 +417,24 @@ class ReceiptLanguageToggle extends StatelessWidget {
 /// The success tone's text colour (change due), readable in both themes.
 Color successText(BuildContext context) => FFToneTheme.of(context).success.fg;
 Color warningText(BuildContext context) => FFToneTheme.of(context).warning.fg;
+
+/// A receipt column whose rows are separate screen-reader nodes, so a
+/// screen reader moves line by line instead of reading one long label.
+class _SemanticRows extends StatelessWidget {
+  const _SemanticRows({required this.children});
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    explicitChildNodes: true,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final c in children)
+          c is Divider || c is SizedBox
+              ? c
+              : Semantics(container: true, child: c),
+      ],
+    ),
+  );
+}

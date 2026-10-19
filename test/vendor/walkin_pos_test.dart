@@ -320,7 +320,15 @@ void main() {
       await openPayment(tester);
       await tapVisible(tester, find.byKey(const Key('pos-complete')));
       await tester.pumpAndSettle();
-      expect(find.text(host.tr('vendor.sales.suspended')), findsOneWidget);
+      // The snack and the paused notice both say it (D4).
+      expect(find.text(host.tr('vendor.sales.suspended')), findsWidgets);
+      expect(find.byKey(const Key('sales-suspended-banner')), findsOneWidget);
+      // Selling is off while the notice shows: no adding, no Charge.
+      final whey = tester.widget<ListTile>(
+        find.byKey(const Key('pos-product-p1')),
+      );
+      expect(whey.onTap, isNull);
+      expect(isEnabled(tester, find.byKey(const Key('pos-charge'))), isFalse);
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.getString('vendor_pos_draft.v1.v1'), isNotNull);
       expect(prefs.getString('vendor_sale_queue.v1.v1'), isNull);

@@ -36,6 +36,11 @@ const maxPaymentReference = 100;
 const voidReasonMin = 3;
 const voidReasonMax = 200;
 
+/// Server limits (vendor-sale.mjs): change may be at most the total plus
+/// 1,000,000; a sale and its payments at most 100,000,000.
+const maxChangeOverTotalTzs = 1000000;
+const maxSaleTzs = 100000000;
+
 /// The i18n key naming [method] (never the raw code).
 String paymentMethodKey(String? method) => switch (method) {
   'cash' => 'vendor.pos.method.cash',
@@ -448,6 +453,12 @@ class PaymentCheck {
             ?.method
       : null;
 
+  /// Change beyond what the server accepts (likely a typo in the amount).
+  bool get changeTooLarge => changeTzs > totalTzs + maxChangeOverTotalTzs;
+
+  /// More paid than any sale may hold.
+  bool get paidTooLarge => paidTzs > maxSaleTzs;
+
   List<int> get missingReferences => [
     for (var i = 0; i < rows.length; i++)
       if (rows[i].referenceMissing) i,
@@ -464,6 +475,8 @@ class PaymentCheck {
         rowsComplete &&
         remainingTzs == 0 &&
         !nonCashOver &&
+        !changeTooLarge &&
+        !paidTooLarge &&
         missingReferences.isEmpty;
   }
 
@@ -541,3 +554,7 @@ bool soldAtTooOld(String? soldAt, Map body) {
   }
   return sold.isBefore(earliest);
 }
+
+/// The key for [n] of something: `{key}One` when [n] is 1 (English "1 sale"
+/// vs "2 sales"), else [key].
+String pluralKey(String key, num n) => n == 1 ? '${key}One' : key;
