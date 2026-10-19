@@ -14,7 +14,7 @@ FFBadgeTone statementTone(String status) => switch (status) {
   _ => FFBadgeTone.gray,
 };
 
-/// "−TZS 3,500" for money taken off, "TZS 3,500" otherwise.
+/// "−TSh 3,500" for money taken off, "TSh 3,500" otherwise.
 String signedCurrency(num value) =>
     '${value < 0 ? '−' : ''}${formatCurrency(value.abs())}';
 

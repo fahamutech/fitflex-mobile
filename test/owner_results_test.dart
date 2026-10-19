@@ -11,7 +11,7 @@ import 'package:fitflexmobile/screens/owner/communications/widgets/results_card.
 import 'package:fitflexmobile/shared/api_client.dart';
 import 'package:fitflexmobile/shared/i18n.dart';
 
-// The September example: 120 recipients … 24 renewed, TZS 1,920,000.
+// The September example: 120 recipients … 24 renewed, TSh 1,920,000.
 final _september = CommsResults.fromJson({
   'attribution': {
     'model': 'last_touch',
@@ -101,10 +101,10 @@ void main() {
     expect(_value(tester, 'opened'), '82 · 68%');
     expect(_value(tester, 'clicked'), '61 · 51%');
     expect(_value(tester, 'renewed'), '24');
-    expect(find.text('TZS 1,920,000'), findsOneWidget);
+    expect(find.text('TSh 1,920,000'), findsOneWidget);
     expect(find.textContaining('7 days before paying'), findsOneWidget);
     expect(
-      find.textContaining('Asha · TZS 80,000 · renewal · after tapping'),
+      find.textContaining('Asha · TSh 80,000 · renewal · after tapping'),
       findsOneWidget,
     );
   });
@@ -163,7 +163,7 @@ void main() {
       expect(find.text('September renewals'), findsOneWidget);
       expect(find.text('auto:membership_expiring'), findsOneWidget);
       expect(find.text('7 members · 6 opened · 3 paid'), findsOneWidget);
-      expect(find.text('TZS 60,000'), findsOneWidget);
+      expect(find.text('TSh 60,000'), findsOneWidget);
       expect(r.periodDays, 30);
     },
   );
