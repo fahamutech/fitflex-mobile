@@ -259,6 +259,23 @@ void main() {
       expect(_k('vendor-product-save'), findsOneWidget);
     });
 
+    apiTest('cost_forbidden (stale options) is explained in the form', (
+      tester,
+      api,
+    ) async {
+      seedVendorHome(
+        api,
+        tools: ledgerOn,
+        products: [stockProduct('p1', 'Tee', costTzs: 100)],
+      );
+      api.fail('PUT /vendor/products/p1', 403, {'error': 'cost_forbidden'});
+      final host = await pumpVendorHome(tester, api);
+      await productMenu(tester, 'p1', host.tr('vendor.edit'));
+      await tapVisible(tester, _k('vendor-product-save'));
+      expect(find.text(host.tr('vendor.costForbidden')), findsOneWidget);
+      expect(_k('vendor-product-save'), findsOneWidget);
+    });
+
     apiTest('no cost permission: no cost fields, costTzs never sent', (
       tester,
       api,

@@ -1374,6 +1374,8 @@ class _VendorProductFormState extends State<VendorProductForm> {
           });
         case 'variant_stock_mixed':
           return context.tr('vendor.variant.stockMixed');
+        case 'cost_forbidden':
+          return context.tr('vendor.costForbidden');
       }
     }
     return widget.describeError?.call(e) ?? context.tr('vendor.saveFailed');

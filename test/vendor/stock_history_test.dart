@@ -307,6 +307,7 @@ void main() {
           k.startsWith('vendor.stock.') ||
           k.startsWith('vendor.variant.') ||
           k == 'vendor.costPrice' ||
+          k == 'vendor.costForbidden' ||
           k == 'inbox.open.lowStock';
       final en = FFLocale.keysOf('en').where(stockKey).toSet();
       final sw = FFLocale.keysOf('sw').where(stockKey).toSet();

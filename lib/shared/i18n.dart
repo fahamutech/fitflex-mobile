@@ -4255,6 +4255,8 @@ class FFLocale extends ChangeNotifier {
           'Variant {name} has orders waiting. Remove it after they are completed or cancelled.',
       'vendor.variant.stockMixed':
           'Give every variant a stock number, or none.',
+      'vendor.costForbidden':
+          'Only the shop owner and admin staff can set the cost price.',
     },
     'sw': {
       'app.title': 'FitFlex',
@@ -8490,6 +8492,8 @@ class FFLocale extends ChangeNotifier {
           'Aina {name} ina oda zinazosubiri. Iondoe baada ya oda hizo kukamilika au kughairiwa.',
       'vendor.variant.stockMixed':
           'Weka idadi ya Stock kwa kila aina, au usiweke kwa yoyote.',
+      'vendor.costForbidden':
+          'Mmiliki wa duka na wafanyakazi wa admin tu ndio wanaweza kuweka bei ya kununua.',
     },
   };
 }
