@@ -761,26 +761,25 @@ class _VendorHomePageState extends State<VendorHomePage> {
                     context.tr('vendor.awaitingPayment'),
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
-                if (!['delivered', 'cancelled'].contains(status)) ...[
+                // Legacy `confirmed` / `fulfilled` rows read as accepted /
+                // delivered, as the backend reads them.
+                if (!shopOrderIsFinal(status)) ...[
                   const SizedBox(height: FFTokens.spacingSm),
                   Wrap(
                     spacing: FFTokens.spacingSm,
                     children: [
-                      FFButton(
-                        key: Key('vendor-next-${order['id']}'),
-                        label: vendorMarkStatusLabel(
-                          context,
-                          _nextOrderStatus(order),
+                      if (vendorNextOrderStatus(order) case final next?)
+                        FFButton(
+                          key: Key('vendor-next-${order['id']}'),
+                          label: vendorMarkStatusLabel(context, next),
+                          // Only paid orders can be fulfilled.
+                          onPressed:
+                              _busy || order['paymentStatus'] == 'pending'
+                              ? null
+                              : () =>
+                                    _updateOrder(order['id'].toString(), next),
+                          size: FFButtonSize.sm,
                         ),
-                        // Only paid orders can be fulfilled.
-                        onPressed: _busy || order['paymentStatus'] == 'pending'
-                            ? null
-                            : () => _updateOrder(
-                                order['id'].toString(),
-                                _nextOrderStatus(order),
-                              ),
-                        size: FFButtonSize.sm,
-                      ),
                       FFButton(
                         label: context.tr('vendor.cancel'),
                         onPressed: _busy
@@ -801,19 +800,6 @@ class _VendorHomePageState extends State<VendorHomePage> {
         );
       },
     );
-  }
-
-  String _nextOrderStatus(Map<String, dynamic> order) {
-    final status = order['status']?.toString() ?? 'pending';
-    if (status == 'pending' || status == 'confirmed') return 'accepted';
-    if (status == 'accepted') return 'processing';
-    if (status == 'processing') return 'packed';
-    if (status == 'packed') {
-      return order['deliveryMethod'] == 'gym_pickup'
-          ? 'ready_for_pickup'
-          : 'dispatched';
-    }
-    return 'delivered';
   }
 
   Widget _paymentsTab() {

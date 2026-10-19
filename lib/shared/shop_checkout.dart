@@ -127,6 +127,74 @@ String shopOrderStatusKey(Object? status) {
 String shopOrderStatusLabel(BuildContext context, Object? status) =>
     context.tr(shopOrderStatusKey(status));
 
+/// A stored status as the backend reads it: legacy `confirmed` is
+/// `accepted`, legacy `fulfilled` is `delivered` (order-lifecycle.mjs
+/// canonicalStatus).
+String shopCanonicalOrderStatus(Object? status) => switch ('${status ?? ''}') {
+  'confirmed' => 'accepted',
+  'fulfilled' => 'delivered',
+  final s => s,
+};
+
+/// Nothing follows these: no next step and no cancel.
+bool shopOrderIsFinal(Object? status) =>
+    const {'delivered', 'cancelled'}.contains(shopCanonicalOrderStatus(status));
+
+/// The backend's forward moves per canonical status (order-lifecycle.mjs
+/// FORWARD), used when the server sends no `nextStatuses`.
+const _forward = <String, List<String>>{
+  'pending': ['accepted'],
+  'accepted': ['processing', 'packed', 'dispatched', 'ready_for_pickup'],
+  'processing': ['packed', 'dispatched', 'ready_for_pickup'],
+  'packed': ['dispatched', 'ready_for_pickup'],
+  'dispatched': ['ready_for_pickup', 'delivered'],
+  'ready_for_pickup': ['delivered'],
+};
+
+/// The statuses that may follow [status] for this delivery method, exactly
+/// as the backend's nextStatuses(): gym pickup never goes straight from
+/// dispatched to delivered; home delivery never uses ready_for_pickup.
+List<String> shopAllowedNextStatuses(Object? status, Object? deliveryMethod) {
+  final from = shopCanonicalOrderStatus(status);
+  final list = _forward[from] ?? const <String>[];
+  if (deliveryMethod == 'gym_pickup') {
+    return [
+      for (final s in list)
+        if (!(from == 'dispatched' && s == 'delivered')) s,
+    ];
+  }
+  return [
+    for (final s in list)
+      if (s != 'ready_for_pickup') s,
+  ];
+}
+
+/// The one next step the vendor's button offers for their fulfilment, or
+/// null when there is none. Prefers the server's own `nextStatuses` for this
+/// vendor (sent with each vendor order) and falls back to the same matrix.
+/// The step is the first allowed one, except that a gym-pickup order goes
+/// to "ready for pickup" rather than "on the way" when both are allowed.
+String? vendorNextOrderStatus(Map<dynamic, dynamic> order) {
+  final status = order['status'] ?? 'pending';
+  if (shopOrderIsFinal(status)) return null;
+  final fromServer = order['nextStatuses'];
+  var allowed = fromServer is List
+      ? [for (final s in fromServer) '$s']
+      : shopAllowedNextStatuses(status, order['deliveryMethod']);
+  // The server sends none for an unpaid order; the button is still shown,
+  // disabled, so the vendor sees what comes once it is paid.
+  if (allowed.isEmpty && order['paymentStatus'] != 'paid') {
+    allowed = shopAllowedNextStatuses(status, order['deliveryMethod']);
+  }
+  if (allowed.isEmpty) return null;
+  if (order['deliveryMethod'] == 'gym_pickup' &&
+      allowed.contains('ready_for_pickup') &&
+      allowed.first == 'dispatched') {
+    return 'ready_for_pickup';
+  }
+  return allowed.first;
+}
+
 /// The vendor's button for moving an order on to [next] ("Mark as packed",
 /// sw "Fungasha oda"). Each step has its own wording; a step the app does
 /// not know yet reads "Update status" rather than a word joined to a status.
