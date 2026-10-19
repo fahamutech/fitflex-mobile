@@ -217,6 +217,7 @@ Future<PageHost> pumpPage(
   bool invitesEnabled = false,
   bool settle = true,
   bool keepRequests = false,
+  String initialLocation = '/',
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -231,6 +232,7 @@ Future<PageHost> pumpPage(
   }
   final locale = FFLocale()..set(Locale(lang));
   final router = GoRouter(
+    initialLocation: initialLocation,
     routes: [
       GoRoute(
         path: '/',

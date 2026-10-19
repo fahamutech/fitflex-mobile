@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../router.dart';
 import '../../shared/shop_home.dart';
 import '../../shared/widgets/shop_browse_page.dart';
 
@@ -9,6 +10,8 @@ class OwnerShopPage extends StatelessWidget {
   const OwnerShopPage({super.key});
 
   @override
-  Widget build(BuildContext context) =>
-      const ShopBrowseBody(mode: ShopHomeMode.owner);
+  Widget build(BuildContext context) => const ShopBrowseBody(
+    mode: ShopHomeMode.owner,
+    routePath: AppRoutes.ownerShop,
+  );
 }

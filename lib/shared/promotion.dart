@@ -9,6 +9,9 @@ class PromotionTag {
     required this.label,
     this.commercial = false,
     this.token,
+    this.disclosureCodes = const [],
+    this.disclosureEn = '',
+    this.disclosureSw = '',
   });
 
   final String id;
@@ -23,6 +26,13 @@ class PromotionTag {
   /// the request had no session.
   final String? token;
 
+  /// The disclosure to show (functions#179): `codes` (featured, promoted,
+  /// sponsored, recommended, campaign; "sponsored" whenever paid) with the
+  /// server's own wording in both languages. Empty from older servers.
+  final List<String> disclosureCodes;
+  final String disclosureEn;
+  final String disclosureSw;
+
   static PromotionTag? fromJson(Object? json) {
     if (json is! Map) return null;
     final type = json['type'];
@@ -35,6 +45,19 @@ class PromotionTag {
       token: switch (json['token']) {
         final String t when t.isNotEmpty => t,
         _ => null,
+      },
+      disclosureCodes: switch (json['disclosure']) {
+        {'codes': final List codes} =>
+          codes.map((c) => c.toString()).where((c) => c.isNotEmpty).toList(),
+        _ => const [],
+      },
+      disclosureEn: switch (json['disclosure']) {
+        {'en': final String en} => en,
+        _ => '',
+      },
+      disclosureSw: switch (json['disclosure']) {
+        {'sw': final String sw} => sw,
+        _ => '',
       },
     );
   }

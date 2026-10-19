@@ -14,11 +14,16 @@ class FFBadge extends StatelessWidget {
     required this.label,
     this.tone = FFBadgeTone.defaultTone,
     this.dot = false,
+    this.wrap = false,
   });
 
   final String label;
   final FFBadgeTone tone;
   final bool dot;
+
+  /// Let the label wrap onto more lines instead of being cut off (labels that
+  /// must be read in full, such as a paid-placement disclosure).
+  final bool wrap;
 
   @override
   Widget build(BuildContext context) {
@@ -66,9 +71,9 @@ class FFBadge extends StatelessWidget {
           Flexible(
             child: Text(
               label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              softWrap: false,
+              maxLines: wrap ? null : 1,
+              overflow: wrap ? null : TextOverflow.ellipsis,
+              softWrap: wrap,
               style: Theme.of(
                 context,
               ).textTheme.labelMedium?.copyWith(color: fg),

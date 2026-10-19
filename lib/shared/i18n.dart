@@ -4069,6 +4069,36 @@ class FFLocale extends ChangeNotifier {
       'error.reason.reviewTextTooLong': 'the review is over 1000 characters',
       // Shop home V2 (Phase 1, 2026-10-18).
       'shop.home.cart': 'Cart',
+      'shop.home.productGone': 'This product is no longer available',
+      'shop.home.allProducts': 'All products',
+      'shop.home.cartBar': '{count} items · {total}',
+      'shop.home.cartBarOne': '1 item · {total}',
+      'shop.home.checkoutOffline': 'Checkout needs a connection',
+      'shop.a11y.cartBar': 'View cart, {count} items, total {total}',
+      'shop.a11y.cartBarOne': 'View cart, 1 item, total {total}',
+      'shop.a11y.showMore': 'Show more, {section}',
+      'shop.a11y.showPrevious': 'Show previous, {section}',
+      'shop.why.roleMember': "You're shopping as a member.",
+      'shop.why.roleTrainer': "You're shopping as a trainer.",
+      'shop.why.roleOwner': "You're shopping as a gym owner.",
+      'shop.why.roleVendor': "You're shopping for yourself.",
+      'shop.why.popularWithRole':
+          "It's popular with others shopping in this role.",
+      'shop.why.boughtCategory': "You've bought {category} before.",
+      'shop.why.boughtProduct': 'Suggested because you bought {product}.',
+      'shop.why.gender': 'The gender in your profile.',
+      'shop.why.deliversToArea': 'It delivers to the area in your profile.',
+      'shop.why.featured':
+          'Featured products are chosen by FitFlex or paid for by sellers. Paid ones are labelled Sponsored.',
+      'shop.why.flashSale': 'The seller has set a discount for a limited time.',
+      'shop.why.profileGoal': 'Matches the fitness goal in your profile.',
+      'shop.why.trainerSpecialty':
+          'Matches the specialties on your trainer profile.',
+      'shop.why.recentlyViewed': 'Products you opened recently on this device.',
+      'shop.why.sellerDiscount': 'The seller has lowered the price.',
+      'shop.why.newArrival': 'Recently added to the shop.',
+      'shop.why.generic': "Suggested from what's popular on FitFlex.",
+      'shop.why.bestSellers': 'The most bought on FitFlex in the last 30 days.',
       'shop.home.onlyLeftOne': 'Only 1 left',
       'shop.home.cartCountOne': 'Cart, 1 item',
       'shop.inStockCount': '{n} in stock',
@@ -8160,6 +8190,41 @@ class FFLocale extends ChangeNotifier {
       'error.reason.reviewTextTooLong': 'maoni yamezidi herufi 1000',
       // Shop home V2 (Phase 1, 2026-10-18): Swahili pending native review.
       'shop.home.cart': 'Kikapu',
+      'shop.home.productGone': 'Bidhaa hii haipatikani tena',
+      'shop.home.allProducts': 'Bidhaa zote',
+      'shop.home.cartBar': 'Bidhaa {count} · {total}',
+      'shop.home.cartBarOne': 'Bidhaa 1 · {total}',
+      'shop.home.checkoutOffline': 'Kukamilisha ununuzi kunahitaji intaneti',
+      'shop.a11y.cartBar': 'Tazama kikapu, bidhaa {count}, jumla {total}',
+      'shop.a11y.cartBarOne': 'Tazama kikapu, bidhaa 1, jumla {total}',
+      'shop.a11y.showMore': 'Onyesha zaidi, {section}',
+      'shop.a11y.showPrevious': 'Onyesha zilizotangulia, {section}',
+      'shop.why.roleMember': 'Unanunua kama mwanachama.',
+      'shop.why.roleTrainer': 'Unanunua kama trainer.',
+      'shop.why.roleOwner': 'Unanunua kama mmiliki wa gym.',
+      'shop.why.roleVendor': 'Unanunua kwa matumizi yako binafsi.',
+      'shop.why.popularWithRole':
+          'Ni maarufu kwa wengine wanaonunua katika nafasi hii.',
+      'shop.why.boughtCategory': 'Uliwahi kununua {category}.',
+      'shop.why.boughtProduct': 'Imependekezwa kwa sababu ulinunua {product}.',
+      'shop.why.gender': 'Jinsia uliyoweka kwenye wasifu wako.',
+      'shop.why.deliversToArea':
+          'Ina delivery kwenye eneo lililo kwenye wasifu wako.',
+      'shop.why.featured':
+          'Bidhaa zilizoangaziwa huchaguliwa na FitFlex au hulipiwa na wauzaji. Zilizolipiwa zimeandikwa "Iliyodhaminiwa".',
+      'shop.why.flashSale': 'Muuzaji ameweka punguzo kwa muda maalum.',
+      'shop.why.profileGoal':
+          'Inalingana na lengo la mazoezi kwenye wasifu wako.',
+      'shop.why.trainerSpecialty':
+          'Inalingana na utaalamu ulio kwenye wasifu wako wa trainer.',
+      'shop.why.recentlyViewed':
+          'Bidhaa ulizofungua hivi karibuni kwenye kifaa hiki.',
+      'shop.why.sellerDiscount': 'Muuzaji amepunguza bei.',
+      'shop.why.newArrival': 'Zimeongezwa dukani hivi karibuni.',
+      'shop.why.generic':
+          'Imependekezwa kutokana na kinachopendwa kwenye FitFlex.',
+      'shop.why.bestSellers':
+          'Zilizonunuliwa zaidi kwenye FitFlex katika siku 30 zilizopita.',
       'shop.home.onlyLeftOne': 'Imebaki 1 tu',
       'shop.home.cartCountOne': 'Kikapu, bidhaa 1',
       'shop.inStockCount': 'Zipo {n}',

@@ -163,7 +163,7 @@ class ShopProductCard extends StatelessWidget {
             child: Align(
               alignment: Alignment.topLeft,
               child: !product.inStock
-                  ? _OutOfStockBadge(
+                  ? ShopOutOfStockBadge(
                       key: Key('shop-home-oos-${product.id}'),
                       label: context.tr('shop.outOfStock'),
                     )
@@ -275,10 +275,14 @@ class ShopProductCard extends StatelessWidget {
               promotionLabel: promoLabel,
             ),
             onTap: _open,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(FFTokens.radiusMd),
-              onTap: _open,
-              child: body,
+            child: _FocusRing(
+              shape: BoxShape.rectangle,
+              builder: (onFocusChange) => InkWell(
+                borderRadius: BorderRadius.circular(FFTokens.radiusMd),
+                onTap: _open,
+                onFocusChange: onFocusChange,
+                child: body,
+              ),
             ),
           ),
           if (product.inStock)
@@ -323,8 +327,10 @@ class _ImageFallback extends StatelessWidget {
   );
 }
 
-class _OutOfStockBadge extends StatelessWidget {
-  const _OutOfStockBadge({super.key, required this.label});
+/// "Out of stock": white on the inverse surface (slate-700 family), the
+/// same on the home cards and in the product list.
+class ShopOutOfStockBadge extends StatelessWidget {
+  const ShopOutOfStockBadge({super.key, required this.label});
   final String label;
 
   @override
@@ -381,30 +387,37 @@ class _CartButton extends StatelessWidget {
         height: ShopProductCard._hit,
         child: Material(
           type: MaterialType.transparency,
-          child: InkResponse(
-            onTap: onPressed,
-            radius: ShopProductCard._hit / 2,
-            child: Center(
-              child: Container(
-                width: ShopProductCard._button,
-                height: ShopProductCard._button,
-                decoration: BoxDecoration(color: fill, shape: BoxShape.circle),
-                alignment: Alignment.center,
-                child: qty > 0
-                    ? Text(
-                        '$qty',
-                        // Fixed size inside a fixed circle; the label carries it.
-                        textScaler: TextScaler.noScaling,
-                        style: theme.textTheme.labelLarge?.copyWith(
+          child: _FocusRing(
+            shape: BoxShape.circle,
+            builder: (onFocusChange) => InkResponse(
+              onTap: onPressed,
+              onFocusChange: onFocusChange,
+              radius: ShopProductCard._hit / 2,
+              child: Center(
+                child: Container(
+                  width: ShopProductCard._button,
+                  height: ShopProductCard._button,
+                  decoration: BoxDecoration(
+                    color: fill,
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: qty > 0
+                      ? Text(
+                          '$qty',
+                          // Fixed size inside a fixed circle; the label carries it.
+                          textScaler: TextScaler.noScaling,
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: ink,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        )
+                      : Icon(
+                          Icons.add_shopping_cart,
+                          size: FFTokens.iconMd,
                           color: ink,
-                          fontWeight: FontWeight.w800,
                         ),
-                      )
-                    : Icon(
-                        Icons.add_shopping_cart,
-                        size: FFTokens.iconMd,
-                        color: ink,
-                      ),
+                ),
               ),
             ),
           ),
@@ -412,4 +425,41 @@ class _CartButton extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A visible keyboard focus outline (AC-45). The theme's primary colour:
+/// brand green in light theme, Volt in dark theme; both are drawn on the
+/// page ground around the control, never on the white image well.
+class _FocusRing extends StatefulWidget {
+  const _FocusRing({required this.builder, required this.shape});
+  final Widget Function(ValueChanged<bool> onFocusChange) builder;
+  final BoxShape shape;
+
+  @override
+  State<_FocusRing> createState() => _FocusRingState();
+}
+
+class _FocusRingState extends State<_FocusRing> {
+  bool _focused = false;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    key: _focused ? const Key('shop-home-focus-ring') : null,
+    position: DecorationPosition.foreground,
+    decoration: _focused
+        ? BoxDecoration(
+            shape: widget.shape,
+            borderRadius: widget.shape == BoxShape.rectangle
+                ? BorderRadius.circular(FFTokens.radiusMd)
+                : null,
+            border: Border.all(
+              color: Theme.of(context).colorScheme.primary,
+              width: 2,
+            ),
+          )
+        : const BoxDecoration(),
+    child: widget.builder((focused) {
+      if (mounted && focused != _focused) setState(() => _focused = focused);
+    }),
+  );
 }
