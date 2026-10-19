@@ -2470,7 +2470,7 @@ class FFLocale extends ChangeNotifier {
       'origin.title': 'Where your activity data comes from',
       'origin.device': 'Device',
       'origin.deviceBody':
-          'Measured by your phone, watch or wearable through Apple Health or Health Connect. FitFlex only ever shows readings a connected device recorded. It never estimates or fills in device data.',
+          'Measured by your phone, watch or wearable through Health Connect. FitFlex only ever shows readings a connected device recorded. It never estimates or fills in device data.',
       'origin.fitflex': 'FitFlex',
       'origin.fitflexBody':
           'Created by FitFlex itself, for example when you finish a workout in the app.',
@@ -6690,7 +6690,7 @@ class FFLocale extends ChangeNotifier {
       'origin.title': 'Data yako ya shughuli inatoka wapi',
       'origin.device': 'Kifaa',
       'origin.deviceBody':
-          'Imepimwa na simu, saa au kifaa chako cha kuvaa kupitia Apple Health au Health Connect. FitFlex huonyesha tu vipimo vilivyorekodiwa na kifaa kilichounganishwa. Haikadirii wala haijazi data ya kifaa.',
+          'Imepimwa na simu, saa au kifaa chako cha kuvaa kupitia Health Connect. FitFlex huonyesha tu vipimo vilivyorekodiwa na kifaa kilichounganishwa. Haikadirii wala haijazi data ya kifaa.',
       'origin.fitflex': 'FitFlex',
       'origin.fitflexBody':
           'Imetengenezwa na FitFlex yenyewe, kwa mfano unapomaliza mazoezi ndani ya app.',

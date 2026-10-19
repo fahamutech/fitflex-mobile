@@ -270,7 +270,11 @@ void main() {
 
   test('activity copy mentions Health Connect only, not Apple Health', () {
     for (final lang in ['en', 'sw']) {
-      for (final k in ['activity.getStarted.body', 'origin.noDevicesYet']) {
+      for (final k in [
+        'activity.getStarted.body',
+        'origin.noDevicesYet',
+        'origin.deviceBody',
+      ]) {
         final text = FFLocale.textOf(lang, k)!;
         expect(text, isNot(contains('Apple Health')), reason: '$lang $k');
         expect(text, contains('Health Connect'), reason: '$lang $k');
