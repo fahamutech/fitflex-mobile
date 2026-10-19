@@ -209,6 +209,19 @@ class FFTokens {
   static const Color darkFgSecondary = Color(0xFFCBD5E1); // slate-300
   static const Color darkFgMuted = Color(0xFF94A3B8); // slate-400
 
+  // ── Muted text on light grounds ──
+  // slate-600: 7.0:1 on the #EEF2F7 page, 7.6:1 on white.
+  static const Color lightFgMuted = Color(0xFF475569);
+
+  /// Muted secondary text (struck-through prices, hints) for the current
+  /// theme: slate-600 on light, slate-400 on dark (6.96:1 on slate-900).
+  /// The themes leave `onSurfaceVariant` unset, so it falls back to the
+  /// full-strength text colour; use this instead.
+  static Color mutedText(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+      ? darkFgMuted
+      : lightFgMuted;
+
   // ── Role-card accent icon colors ──
   static const Color iconAccentGreen = Color(0xFF17B26A);
   static const Color accentOrange = Color(0xFFF79009);

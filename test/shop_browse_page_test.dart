@@ -23,6 +23,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fitflexmobile/shared/formatters.dart';
+import 'package:fitflexmobile/shared/i18n.dart';
 import 'package:fitflexmobile/shared/widgets/shop_browse_page.dart';
 
 import 'support/recording_api.dart';
@@ -287,7 +288,8 @@ void main() {
       final was = tester.widget<Text>(_key('shop-was-p2'));
       expect(was.data, formatCurrency(30000));
       expect(was.style?.decoration, TextDecoration.lineThrough);
-      expect(find.text(' 4.5 · 4 in stock'), findsOneWidget);
+      // With real reviews: the rating and how many reviews (QA round 2).
+      expect(find.text(' 4.5 (12) · 4 in stock'), findsOneWidget);
       // Yoga Mat has a rating but no reviews: no stars, no number, no "0.0".
       expect(find.text('10 in stock'), findsOneWidget);
       expect(find.textContaining('3.0'), findsNothing);
@@ -1051,9 +1053,15 @@ void main() {
       final host = await _pump(tester, api);
       await _openMyOrders(tester, host);
       expect(find.text('${host.tr('shop.order')} o1'), findsOneWidget);
-      expect(find.text('${formatCurrency(170000)} · accepted'), findsOneWidget);
-      expect(find.text('placed'), findsOneWidget);
-      expect(find.text('accepted'), findsOneWidget);
+      // Statuses are words, not the server's codes (QA round 2).
+      expect(
+        find.text(
+          '${formatCurrency(170000)} · ${host.tr('shop.orderStatus.accepted')}',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text(host.tr('shop.orderStatus.placed')), findsOneWidget);
+      expect(find.text(host.tr('shop.orderStatus.accepted')), findsOneWidget);
     });
 
     apiTest('an unpaid order says it is awaiting payment', (tester, api) async {
@@ -1289,15 +1297,23 @@ void main() {
       api,
     ) async {
       _seed(api, orders: [_order('o1', status: 'accepted')]);
+      final accepted = (FFLocale()..set(const Locale('en'))).t(
+        'shop.orderStatus.accepted',
+      );
       final host = await _pump(tester, api);
       await _openMyOrders(tester, host);
-      expect(find.text('${formatCurrency(170000)} · accepted'), findsOneWidget);
+      expect(
+        find.text('${formatCurrency(170000)} · $accepted'),
+        findsOneWidget,
+      );
       api.on('GET /me/shop-orders', [_order('o1', status: 'dispatched')]);
       await tester.pump(const Duration(seconds: 11));
       await tester.pump();
       await tester.pump();
       expect(
-        find.text('${formatCurrency(170000)} · dispatched'),
+        find.text(
+          '${formatCurrency(170000)} · ${host.tr('shop.orderStatus.dispatched')}',
+        ),
         findsOneWidget,
       );
       expect(host.snack(host.tr('shop.trackingUpdated')), findsOneWidget);

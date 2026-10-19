@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../design_tokens.dart';
 import '../../i18n.dart';
+import 'shop_focus_ring.dart';
 
 /// Card width for a rail: 156 on phones, 180 on tablets, 200 on wide screens,
 /// and at least 180 from 160% text size so names and prices still fit.
@@ -20,11 +21,50 @@ double shopRailCardWidth(BuildContext context) {
 /// and web default to a compact 40px).
 const _target = Size(48, 48);
 
-ButtonStyle shopIconButtonStyle() => IconButton.styleFrom(
-  minimumSize: _target,
-  tapTargetSize: MaterialTapTargetSize.padded,
-  visualDensity: VisualDensity.standard,
+ButtonStyle shopIconButtonStyle() =>
+    IconButton.styleFrom(
+      minimumSize: _target,
+      tapTargetSize: MaterialTapTargetSize.padded,
+      visualDensity: VisualDensity.standard,
+    ).copyWith(
+      // The shop draws its own node-based ring (ShopFocusRing), so the
+      // theme's state-based one is off: one ring at a time, none left over.
+      side: const WidgetStatePropertyAll(BorderSide.none),
+    );
+
+/// An icon button with the shop's focus ring.
+Widget shopIconButton({
+  required Key key,
+  required String tooltip,
+  required IconData icon,
+  required VoidCallback? onPressed,
+}) => ShopFocusRing(
+  shape: BoxShape.circle,
+  builder: (node) => IconButton(
+    key: key,
+    focusNode: node,
+    style: shopIconButtonStyle(),
+    tooltip: tooltip,
+    icon: Icon(icon),
+    onPressed: onPressed,
+  ),
 );
+
+/// The leading header icon for a section (spec §6.1): trending for the
+/// popular / cold-start rail, a person once it is personalised, and the
+/// usual icon set for the rest. Decorative (the title carries the meaning).
+IconData? shopSectionIcon(String key, {bool personalised = false}) =>
+    switch (key) {
+      'featured' => Icons.auto_awesome_outlined,
+      'recommended' => personalised ? Icons.person_outline : Icons.trending_up,
+      'best_sellers' => Icons.emoji_events_outlined,
+      'popular_near_you' => Icons.place_outlined,
+      'essentials' => Icons.fitness_center,
+      'recently_viewed' => Icons.history,
+      'deals' => Icons.local_offer_outlined,
+      'new_arrivals' => Icons.fiber_new_outlined,
+      _ => null,
+    };
 
 /// A titled home section: header (title, "Why am I seeing this?", "View all"
 /// and, on wide screens, previous/next) over a horizontally scrolling row of
@@ -36,6 +76,7 @@ class ShopProductRail extends StatefulWidget {
     required this.sectionKey,
     required this.title,
     required this.children,
+    this.icon,
     this.inset = 16,
     this.onWhy,
     this.onViewAll,
@@ -45,6 +86,9 @@ class ShopProductRail extends StatefulWidget {
   final String sectionKey;
   final String title;
   final List<Widget> children;
+
+  /// Leading header icon (20px, decorative).
+  final IconData? icon;
 
   /// The page gutter: header text and the first card line up with it.
   final double inset;
@@ -153,11 +197,10 @@ class _ShopProductRailState extends State<ShopProductRail> {
     final arrows = showArrows && (_canBack || _canForward);
     final controls = <Widget>[
       if (widget.onWhy != null)
-        IconButton(
+        shopIconButton(
           key: Key('shop-home-why-${widget.sectionKey}'),
-          style: shopIconButtonStyle(),
           tooltip: context.tr('shop.why.a11y'),
-          icon: const Icon(Icons.info_outline),
+          icon: Icons.info_outline,
           onPressed: widget.onWhy,
         ),
       if (widget.onViewAll != null)
@@ -168,41 +211,43 @@ class _ShopProductRailState extends State<ShopProductRail> {
               .tr('shop.a11y.viewAll')
               .replaceAll('{section}', widget.title),
           onTap: widget.onViewAll,
-          child: TextButton.icon(
-            key: Key('shop-home-viewall-${widget.sectionKey}'),
-            style: TextButton.styleFrom(
-              minimumSize: _target,
-              tapTargetSize: MaterialTapTargetSize.padded,
-              visualDensity: VisualDensity.standard,
+          child: ShopFocusRing(
+            radius: FFTokens.radiusFull,
+            builder: (node) => TextButton.icon(
+              key: Key('shop-home-viewall-${widget.sectionKey}'),
+              focusNode: node,
+              style: TextButton.styleFrom(
+                minimumSize: _target,
+                tapTargetSize: MaterialTapTargetSize.padded,
+                visualDensity: VisualDensity.standard,
+              ).copyWith(side: const WidgetStatePropertyAll(BorderSide.none)),
+              onPressed: widget.onViewAll,
+              iconAlignment: IconAlignment.end,
+              icon: const Icon(Icons.arrow_forward, size: 18),
+              label: Text(viewAllLabel),
             ),
-            onPressed: widget.onViewAll,
-            iconAlignment: IconAlignment.end,
-            icon: const Icon(Icons.arrow_forward, size: 18),
-            label: Text(viewAllLabel),
           ),
         ),
       if (arrows) ...[
-        IconButton(
+        shopIconButton(
           key: Key('shop-home-prev-${widget.sectionKey}'),
-          style: shopIconButtonStyle(),
           tooltip: context
               .tr('shop.a11y.showPrevious')
               .replaceAll('{section}', widget.title),
-          icon: const Icon(Icons.chevron_left),
+          icon: Icons.chevron_left,
           onPressed: _canBack ? () => _page(-1) : null,
         ),
-        IconButton(
+        shopIconButton(
           key: Key('shop-home-next-${widget.sectionKey}'),
-          style: shopIconButtonStyle(),
           tooltip: context
               .tr('shop.a11y.showMore')
               .replaceAll('{section}', widget.title),
-          icon: const Icon(Icons.chevron_right),
+          icon: Icons.chevron_right,
           onPressed: _canForward ? () => _page(1) : null,
         ),
       ],
     ];
-    final title = Semantics(
+    final text = Semantics(
       header: true,
       child: Text(
         widget.title,
@@ -210,6 +255,22 @@ class _ShopProductRailState extends State<ShopProductRail> {
         style: titleStyle,
       ),
     );
+    final Widget title = widget.icon == null
+        ? text
+        : Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              ExcludeSemantics(
+                child: Icon(
+                  widget.icon,
+                  key: Key('shop-home-icon-${widget.sectionKey}'),
+                  size: FFTokens.iconMd,
+                ),
+              ),
+              const SizedBox(width: FFTokens.spacingSm),
+              Flexible(child: text),
+            ],
+          );
     if (controls.isEmpty) {
       return ConstrainedBox(
         constraints: const BoxConstraints(minHeight: 48),
@@ -228,7 +289,9 @@ class _ShopProductRailState extends State<ShopProductRail> {
           textDirection: direction,
           maxLines: 1,
         )..layout()).width;
-        final titleWidth = measure(widget.title, titleStyle);
+        final titleWidth =
+            measure(widget.title, titleStyle) +
+            (widget.icon == null ? 0 : FFTokens.iconMd + FFTokens.spacingSm);
         var controlsWidth = 0.0;
         if (widget.onWhy != null) controlsWidth += 48;
         if (widget.onViewAll != null) {

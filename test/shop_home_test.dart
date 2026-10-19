@@ -16,9 +16,11 @@ import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:fitflexmobile/screens/trainer/trainer_home_page.dart';
 import 'package:fitflexmobile/screens/vendor/vendor_home_page.dart';
 import 'package:fitflexmobile/shared/api_client.dart';
 import 'package:fitflexmobile/shared/components/components.dart';
+import 'package:fitflexmobile/shared/design_tokens.dart';
 import 'package:fitflexmobile/shared/i18n.dart';
 import 'package:fitflexmobile/shared/promotion.dart';
 import 'package:fitflexmobile/shared/promotion_events.dart';
@@ -588,16 +590,31 @@ void main() {
       });
     }
 
-    apiTest('a 500 falls back to today\'s shop (AC-02), not an error', (
+    apiTest('a 500: categories + All products from the list (AC-02)', (
       tester,
       api,
     ) async {
       _seed(api);
       api.fail('GET /shop/home', 500);
       await _pump(tester, api);
-      expect(_key('shop-home'), findsNothing);
+      // The spec's fallback layout, not the old list and not an error.
+      expect(_key('shop-home'), findsOneWidget);
       expect(_key('shop-home-error'), findsNothing);
-      expect(_key('shop-product-p1'), findsOneWidget);
+      expect(_key('shop-home-categories'), findsOneWidget);
+      expect(_key('shop-home-grid'), findsOneWidget);
+      expect(_key('shop-home-card-p1'), findsOneWidget);
+      expect(_key('shop-product-p1'), findsNothing);
+    });
+
+    apiTest('a 500 and a failing list: the grid says so with Try again', (
+      tester,
+      api,
+    ) async {
+      _seed(api);
+      api.fail('GET /shop/home', 500);
+      api.fail('GET /shop/products', 500);
+      await _pump(tester, api);
+      expect(_key('shop-home-grid-error'), findsOneWidget);
     });
 
     apiTest('a 400 still shows an error with Try again', (tester, api) async {
@@ -1147,6 +1164,7 @@ void main() {
   });
   qaRound1();
   qaRound1b();
+  qaRound2();
 }
 
 String _location(WidgetTester tester) => GoRouter.of(
@@ -1431,15 +1449,15 @@ void qaRound1() {
     });
 
     // 4 — timeout falls back.
-    apiTest('a timeout from /shop/home falls back to today\'s shop', (
+    apiTest('a timeout from /shop/home: categories + All products', (
       tester,
       api,
     ) async {
       _seed(api);
       api.onCall('GET /shop/home', (_) => throw TimeoutException('slow'));
       await _pump(tester, api);
-      expect(_key('shop-home'), findsNothing);
-      expect(_key('shop-product-p1'), findsOneWidget);
+      expect(_key('shop-home-grid'), findsOneWidget);
+      expect(_key('shop-product-p1'), findsNothing);
     });
 
     // 5 — the cart snackbar goes away.
@@ -1929,6 +1947,345 @@ void qaRound1b() {
       expect(sw.t('shop.why.deliversToArea'), contains('delivery'));
       expect(sw.t('shop.why.featured'), contains('"Iliyodhaminiwa"'));
       expect(sw.t('shop.why.featured'), isNot(contains('“')));
+    });
+  });
+}
+
+Future<void> _withDesktopDensity(Future<void> Function() body) async {
+  debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+  try {
+    await body();
+  } finally {
+    debugDefaultTargetPlatformOverride = null;
+  }
+}
+
+void _expect48(WidgetTester tester, Finder f, String what) {
+  final size = tester.getSize(f);
+  expect(size.width, greaterThanOrEqualTo(48), reason: '$what width');
+  expect(size.height, greaterThanOrEqualTo(48), reason: '$what height');
+}
+
+void qaRound2() {
+  group('QA round 2', () {
+    // 1 — trainer shop URL + Back.
+    apiTest('trainer shop: URLs keep open=shop; Back goes to the home', (
+      tester,
+      api,
+    ) async {
+      final pops = _recordSystemPop(tester);
+      _seed(api, home: _home(mode: 'trainer'));
+      await pumpPage(
+        tester,
+        api,
+        const ShopBrowseBody(
+          mode: ShopHomeMode.trainer,
+          routePath: '/',
+          routeQuery: {'open': 'shop'},
+        ),
+        user: _member,
+        size: const Size(420, 900),
+      );
+      await tapVisible(tester, _key('shop-home-viewall-deals'));
+      final location = Uri.parse(_location(tester));
+      expect(location.queryParameters['open'], 'shop');
+      expect(location.queryParameters['view'], 'results');
+      handleRootBack(didPop: false);
+      await tester.pumpAndSettle();
+      expect(_key('shop-home'), findsOneWidget);
+      expect(pops, isEmpty);
+    });
+
+    apiTest('trainer home: ?open=shop opens the Shop tab with its URL', (
+      tester,
+      api,
+    ) async {
+      _seed(api, home: _home(mode: 'trainer'));
+      await pumpPage(
+        tester,
+        api,
+        const TrainerHomePage(open: 'shop'),
+        user: const {'id': 't1', 'userType': 'trainer'},
+        size: const Size(420, 900),
+      );
+      final stack = tester.widget<IndexedStack>(find.byType(IndexedStack));
+      expect(stack.index, 2);
+      final body = tester.widget<ShopBrowseBody>(find.byType(ShopBrowseBody));
+      expect(body.mode, ShopHomeMode.trainer);
+      expect(body.routePath, isNotNull);
+      expect(body.routeQuery, {'open': 'shop'});
+    });
+
+    // 2 — muted struck price (card + list), defined tokens.
+    apiTest('struck original price is muted (slate-600 light)', (
+      tester,
+      api,
+    ) async {
+      _seed(api, home: _home());
+      await _pump(tester, api);
+      expect(
+        tester.widget<Text>(_key('shop-home-was-p2')).style?.color,
+        FFTokens.lightFgMuted,
+      );
+      await tapVisible(tester, _key('shop-home-viewall-deals'));
+      expect(
+        tester.widget<Text>(_key('shop-was-p2')).style?.color,
+        FFTokens.lightFgMuted,
+      );
+      // Regular price: text-strong, not brand green.
+      final scheme = Theme.of(tester.element(_key('shop-was-p2'))).colorScheme;
+      await tapVisible(tester, _key('shop-back-to-home'));
+      await tapVisible(tester, _key('shop-home-browse-all'));
+      expect(
+        tester.widget<Text>(_key('shop-price-p1')).style?.color,
+        scheme.onSurface,
+      );
+    });
+
+    // 3 — focus.
+    apiTest('Browse segment: a 2px ring when focused', (tester, api) async {
+      _seed(api, home: _home());
+      await _pump(tester, api);
+      final button = tester.widget<SegmentedButton<int>>(
+        find.byType(SegmentedButton<int>),
+      );
+      final side = button.style!.side!.resolve({WidgetState.focused});
+      expect(side!.width, 2);
+      expect(side.color, ffFocusRingLight);
+    });
+
+    apiTest('one ring at a time: category tile, card, then cart button', (
+      tester,
+      api,
+    ) async {
+      _seed(api, home: _home());
+      await _pump(tester, api);
+      FocusManager.instance.highlightStrategy =
+          FocusHighlightStrategy.alwaysTraditional;
+      addTearDown(
+        () => FocusManager.instance.highlightStrategy =
+            FocusHighlightStrategy.automatic,
+      );
+      Future<void> focusInside(Finder f) async {
+        final inkWell = find
+            .descendant(
+              of: f,
+              matching: find.byWidgetPredicate((w) => w is InkResponse),
+            )
+            .first;
+        Focus.of(
+          tester.element(
+            find.descendant(of: inkWell, matching: find.byType(Text)).first,
+          ),
+        ).requestFocus();
+        await tester.pumpAndSettle();
+      }
+
+      await focusInside(_key('shop-home-category-equipment'));
+      expect(_key('shop-home-focus-ring'), findsOneWidget);
+      await focusInside(_key('shop-home-card-p1'));
+      expect(_key('shop-home-focus-ring'), findsOneWidget);
+      // The cart button: its own stop, and still only one ring.
+      Focus.of(
+        tester.element(
+          find
+              .descendant(
+                of: _key('shop-home-add-p1'),
+                matching: find.byType(Icon),
+              )
+              .first,
+        ),
+      ).requestFocus();
+      await tester.pumpAndSettle();
+      expect(_key('shop-home-focus-ring'), findsOneWidget);
+      // A pointer tap (touch mode): no ring left anywhere.
+      FocusManager.instance.highlightStrategy =
+          FocusHighlightStrategy.alwaysTouch;
+      await tester.pumpAndSettle();
+      expect(_key('shop-home-focus-ring'), findsNothing);
+    });
+
+    // 4 — 48dp targets on desktop density.
+    apiTest('48dp: cart bar, Browse all, sheet Close, View cart', (
+      tester,
+      api,
+    ) async {
+      await _withDesktopDensity(() async {
+        _seed(api, home: _home());
+        final host = await _pump(tester, api, size: const Size(1280, 900));
+        _expect48(tester, _key('shop-home-browse-all'), 'Browse all');
+        await tapVisible(tester, _key('shop-home-add-p1'));
+        _expect48(tester, _key('ff-snack-action'), 'View cart');
+        await host.dismissSnacks();
+        _expect48(tester, _key('shop-home-checkout'), 'cart bar');
+        await tapVisible(tester, _key('shop-home-why-best_sellers'));
+        _expect48(tester, _key('ff-sheet-close'), 'sheet close');
+      });
+    });
+
+    apiTest('48dp: list Save, +, and filter chips', (tester, api) async {
+      await _withDesktopDensity(() async {
+        _seed(api, home: _home());
+        await _pump(tester, api, size: const Size(1280, 900));
+        await tapVisible(tester, _key('shop-home-browse-all'));
+        _expect48(tester, _key('shop-save-p1'), 'Save');
+        _expect48(tester, _key('shop-add-p1'), '+');
+        expect(
+          tester.getSize(_key('shop-delivery-filter')).height,
+          greaterThanOrEqualTo(48),
+        );
+        expect(
+          tester.getSize(_key('shop-promotions-filter')).height,
+          greaterThanOrEqualTo(48),
+        );
+      });
+    });
+
+    // 6 — offline cart bar wraps in Swahili.
+    apiTest('offline cart bar in Swahili at 375 wraps, not "…"', (
+      tester,
+      api,
+    ) async {
+      _seed(api, home: _home());
+      final host = await _pump(
+        tester,
+        api,
+        lang: 'sw',
+        size: const Size(375, 812),
+      );
+      await tapVisible(tester, _key('shop-home-add-p1'));
+      await host.dismissSnacks();
+      api.onCall(
+        'GET /shop/home',
+        (_) => throw http.ClientException('XMLHttpRequest error.'),
+      );
+      await tester.tap(find.text(host.tr('shop.myOrders')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(host.tr('shop.browse')));
+      await tester.pumpAndSettle();
+      final paragraph = tester.renderObject<RenderParagraph>(
+        find.descendant(
+          of: _key('shop-home-checkout'),
+          matching: find.byType(RichText),
+        ),
+      );
+      expect(
+        paragraph.text.toPlainText(),
+        host.tr('shop.home.checkoutOffline'),
+      );
+      expect(paragraph.didExceedMaxLines, isFalse);
+    });
+
+    // 7 — "View cart" opens the real cart.
+    apiTest('"View cart" opens the cart with its lines and total', (
+      tester,
+      api,
+    ) async {
+      _seed(api, home: _home());
+      await _pump(tester, api);
+      await tapVisible(tester, _key('shop-home-add-p1'));
+      await tester.tap(_key('ff-snack-action'));
+      await tester.pumpAndSettle();
+      expect(_key('shop-cart-summary'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: _key('shop-cart-summary'),
+          matching: find.text('1 × Whey Protein'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        tester.widget<Text>(_key('shop-cart-total')).data,
+        formatCurrency(85000),
+      );
+      expect(_key('shop-place-order'), findsOneWidget);
+    });
+
+    // 8 — results chips.
+    apiTest('results: the selected chip is scrolled into view; token gap', (
+      tester,
+      api,
+    ) async {
+      _seed(api, home: _home());
+      await _pump(tester, api, size: const Size(375, 812));
+      await tapVisible(tester, _key('shop-home-category-other'));
+      await tester.pumpAndSettle();
+      final chip = tester.getRect(
+        find.ancestor(
+          of: find.text('Other'),
+          matching: find.byType(FilterChip),
+        ),
+      );
+      expect(chip.left, greaterThanOrEqualTo(0));
+      expect(chip.right, lessThanOrEqualTo(375));
+      final chips = tester.getRect(_key('shop-category-chips'));
+      final sort = tester.getRect(_key('shop-sort'));
+      expect(
+        sort.top - chips.bottom,
+        greaterThanOrEqualTo(FFTokens.spacingMd - 1),
+      );
+    });
+
+    // 9 — section icons.
+    apiTest('rail icons: trending for Popular, person when personalised', (
+      tester,
+      api,
+    ) async {
+      _seed(
+        api,
+        home: _home(
+          sections: [
+            _section('recommended', 'Popular with members', 'Maarufu', ['p1']),
+          ],
+        ),
+      );
+      await _pump(tester, api);
+      expect(
+        tester.widget<Icon>(_key('shop-home-icon-recommended')).icon,
+        Icons.trending_up,
+      );
+    });
+
+    apiTest('rail icons: person once personalised', (tester, api) async {
+      _seed(
+        api,
+        home: _home(
+          personalised: true,
+          sections: [
+            _section('recommended', 'Recommended for you', 'Kwako', ['p1']),
+          ],
+        ),
+      );
+      await _pump(tester, api);
+      expect(
+        tester.widget<Icon>(_key('shop-home-icon-recommended')).icon,
+        Icons.person_outline,
+      );
+    });
+
+    // 10 — order statuses in Swahili.
+    apiTest('My orders: statuses are words in Swahili', (tester, api) async {
+      _seed(api, home: _home());
+      api.on('GET /me/shop-orders', [
+        {
+          'id': 'o1',
+          'status': 'ready_for_pickup',
+          'paymentStatus': 'paid',
+          'totalTzs': 85000,
+          'items': [],
+          'timeline': [
+            {'status': 'pending'},
+            {'status': 'ready_for_pickup'},
+          ],
+        },
+      ]);
+      final host = await _pump(tester, api, lang: 'sw');
+      await tester.tap(find.text(host.tr('shop.myOrders')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Iko tayari kuchukuliwa'), findsWidgets);
+      expect(find.text('Inasubiri'), findsOneWidget);
+      expect(find.textContaining('ready_for_pickup'), findsNothing);
+      expect(find.textContaining('pending'), findsNothing);
     });
   });
 }

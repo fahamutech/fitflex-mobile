@@ -13,6 +13,7 @@ import '../../shared/inbox/inbox_pages.dart';
 import '../../shared/models.dart';
 import '../../shared/root_back_navigation.dart';
 import '../../shared/widgets/partner_not_verified.dart';
+import '../../router.dart';
 import '../../shared/shop_home.dart';
 import '../../shared/widgets/shop_browse_page.dart';
 import '../../shared/widgets/social_links.dart';
@@ -80,6 +81,11 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
     if (part == null) return;
     if (part == 'clients') {
       setState(() => _tabIndex = 1);
+      return;
+    }
+    // The shop's own links (`?open=shop&view=results…`): the Shop tab.
+    if (part == 'shop') {
+      setState(() => _tabIndex = 2);
       return;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -320,7 +326,11 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
             children: [
               _dashboardTab(),
               const TrainerClientsTab(),
-              const ShopBrowseBody(mode: ShopHomeMode.trainer),
+              const ShopBrowseBody(
+                mode: ShopHomeMode.trainer,
+                routePath: AppRoutes.trainerHome,
+                routeQuery: {'open': 'shop'},
+              ),
               TrainerGymsTab(
                 key: _gymsTabKey,
                 onProfileChanged: _refreshProfile,
