@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../shared/inbox/inbox_pages.dart';
 import '../../shared/file-export.dart';
 import 'package:go_router/go_router.dart';
@@ -20,13 +21,20 @@ import '../../shared/widgets/persona_switcher.dart';
 import '../../shared/widgets/terms_agreement.dart';
 import '../pin_flows.dart';
 import '../../shared/shop_checkout.dart';
+import 'stock/adjust_stock_sheet.dart';
+import 'stock/stock_history_page.dart';
+import 'stock/stock_options.dart';
+import 'stock/variant_rows_editor.dart';
 
 class VendorHomePage extends StatefulWidget {
-  const VendorHomePage({super.key, this.open});
+  const VendorHomePage({super.key, this.open, this.filter});
 
   /// The section to show first — where a notification leads: `orders`,
   /// `enquiries`, `products` or `payments`.
   final String? open;
+
+  /// `low`: start the product list on the low-stock filter (stock ledger).
+  final String? filter;
 
   @override
   State<VendorHomePage> createState() => _VendorHomePageState();
@@ -42,6 +50,12 @@ class _VendorHomePageState extends State<VendorHomePage> {
   bool _loading = true;
   bool _busy = false;
   int _tab = 0;
+  // Vendor tools · S1: off (old screens) unless the server says otherwise.
+  VendorTools _tools = VendorTools.off;
+  LowStockIndex _low = LowStockIndex.empty();
+  late bool _lowOnly = widget.filter == 'low';
+
+  bool get _ledger => _tools.stockLedger && _can('products');
 
   bool _can(String permission) {
     final user = AppScope.of(context).auth.user;
@@ -88,6 +102,9 @@ class _VendorHomePageState extends State<VendorHomePage> {
   void didUpdateWidget(VendorHomePage old) {
     super.didUpdateWidget(old);
     if (widget.open != old.open) _show(widget.open);
+    if (widget.filter != old.filter) {
+      setState(() => _lowOnly = widget.filter == 'low');
+    }
   }
 
   List<int> get _sections {
@@ -133,10 +150,12 @@ class _VendorHomePageState extends State<VendorHomePage> {
     }
   }
 
-  Future<void> _refresh() async {
+  Future<void> _refresh({bool askTools = false}) async {
     setState(() => _loading = true);
     await _checkApproval();
     if (!mounted) return;
+    // Which vendor tools are on; never fails (off when it cannot tell).
+    final tools = VendorToolsOptions.of(context, refresh: askTools);
     try {
       final results = await Future.wait([
         _can('products')
@@ -179,6 +198,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
             .toList();
         _loading = false;
       });
+      await _loadStockTools(await tools);
     } on ApiException {
       if (!mounted) return;
       setState(() => _loading = false);
@@ -186,7 +206,26 @@ class _VendorHomePageState extends State<VendorHomePage> {
     }
   }
 
+  /// The stock ledger's extras: on/off, and which products are low. The
+  /// low list failing just hides the badge and filter.
+  Future<void> _loadStockTools(VendorTools tools) async {
+    var low = LowStockIndex.empty();
+    if (tools.stockLedger && _can('products')) {
+      try {
+        low = LowStockIndex(await AppScope.of(context).api.vendorLowStock());
+      } catch (_) {
+        // No badge, no filter, no error.
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      _tools = tools;
+      _low = low;
+    });
+  }
+
   Future<void> _editProduct([Map<String, dynamic>? product]) async {
+    if (_ledger) return _editProductWithLedger(product);
     final draft = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       isScrollControlled: true,
@@ -204,10 +243,89 @@ class _VendorHomePageState extends State<VendorHomePage> {
       await _refresh();
     } on ApiException catch (e) {
       if (!mounted) return;
+      if (e.code == 'stock_changed') {
+        // Stock moved (e.g. an order) while the form was open: say so and
+        // show the current count; the vendor edits again.
+        FFSnack.error(context, context.tr('vendor.stock.changedForm'));
+        await _refresh();
+        return;
+      }
       FFSnack.error(context, _saveFailedText(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  /// The product form with the stock ledger on: it saves itself and stays
+  /// open (values kept) when the save fails.
+  Future<void> _editProductWithLedger(Map<String, dynamic>? product) async {
+    final api = AppScope.of(context).api;
+    final productId = product?['id']?.toString();
+    var current = product;
+    final saved = await showFFSheet<bool>(
+      context,
+      title: context.tr(
+        product == null ? 'vendor.addProduct' : 'vendor.editProduct',
+      ),
+      child: VendorProductForm(
+        product: product,
+        stockLedger: true,
+        canSeeCost: _tools.canSeeCost,
+        describeError: _saveFailedText,
+        onSave: (body) => api.vendorSaveProduct(body, productId: productId),
+        onAdjust: current == null
+            ? null
+            : (variant) async {
+                final result = await openAdjustStock(
+                  context,
+                  product: current!,
+                  variant: variant,
+                );
+                if (result == null) return null;
+                current = withAdjustedStock(current!, result.product);
+                _applyAdjusted(result);
+                return result.product;
+              },
+      ),
+    );
+    if (saved != true || !mounted) return;
+    FFSnack.success(context, context.tr('vendor.productSaved'));
+    await _refresh();
+  }
+
+  /// Shows an adjustment's new counts on the product card at once, then
+  /// refreshes the low-stock list.
+  void _applyAdjusted(AdjustResult result) {
+    final id = result.product['id']?.toString();
+    if (!mounted || id == null) return;
+    setState(() {
+      _products = [
+        for (final p in _products)
+          p['id']?.toString() == id ? withAdjustedStock(p, result.product) : p,
+      ];
+    });
+    _loadStockTools(_tools);
+  }
+
+  Future<void> _adjustStock(Map<String, dynamic> product) async {
+    final result = await openAdjustStock(context, product: product);
+    if (result != null) _applyAdjusted(result);
+  }
+
+  Future<void> _openHistory(Map<String, dynamic> product) async {
+    await context.push('/vendor/products/${product['id']}/stock');
+    if (!mounted) return;
+    // Quietly, so the list keeps its filter and scroll position.
+    try {
+      final rows = await AppScope.of(context).api.vendorProducts();
+      if (!mounted) return;
+      setState(
+        () => _products = rows.whereType<Map<String, dynamic>>().toList(),
+      );
+    } catch (_) {
+      // The list stays as it was.
+    }
+    await _loadStockTools(_tools);
   }
 
   Future<void> _archiveProduct(Map<String, dynamic> product) async {
@@ -311,7 +429,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
             child: _loading
                 ? const Center(child: FFSpinner())
                 : RefreshIndicator(
-                    onRefresh: _refresh,
+                    onRefresh: () => _refresh(askTools: true),
                     child: switch (tab) {
                       0 => _productsTab(),
                       1 => _ordersTab(),
@@ -344,8 +462,8 @@ class _VendorHomePageState extends State<VendorHomePage> {
                 if (sections.contains(0))
                   NavigationDestination(
                     key: const Key('vendor-nav-products'),
-                    icon: const Icon(Icons.inventory_2_outlined),
-                    selectedIcon: const Icon(Icons.inventory_2),
+                    icon: _lowBadge(const Icon(Icons.inventory_2_outlined)),
+                    selectedIcon: _lowBadge(const Icon(Icons.inventory_2)),
                     label: context.tr('vendor.products'),
                   ),
                 if (sections.contains(1))
@@ -383,6 +501,20 @@ class _VendorHomePageState extends State<VendorHomePage> {
                   ),
               ],
             ),
+    );
+  }
+
+  /// The low-stock count on the Products tab (stock ledger only).
+  Widget _lowBadge(Widget icon) {
+    final n = _ledger ? _low.count : 0;
+    if (n == 0) return icon;
+    return Semantics(
+      label: fillIn(context.tr('vendor.stock.lowNavLabel'), {'n': n}),
+      child: Badge(
+        key: const Key('vendor-nav-low-badge'),
+        label: Text(n > 99 ? '99+' : '$n'),
+        child: icon,
+      ),
     );
   }
 
@@ -433,28 +565,92 @@ class _VendorHomePageState extends State<VendorHomePage> {
         children: [FFEmptyState(title: context.tr('vendor.noProducts'))],
       );
     }
+    final ledger = _ledger;
+    final showFilter = ledger && (_low.count > 0 || _lowOnly);
+    final lowOnly = ledger && _lowOnly;
+    final products = lowOnly
+        ? _products.where((p) => _low.isLow(p['id']?.toString())).toList()
+        : _products;
     return ListView.builder(
       padding: const EdgeInsets.all(FFTokens.spacingLg),
-      itemCount: _products.length,
+      itemCount:
+          products.length +
+          (showFilter ? 1 : 0) +
+          (lowOnly && products.isEmpty ? 1 : 0),
       itemBuilder: (context, index) {
-        final product = _products[index];
+        if (showFilter) {
+          if (index == 0) return _stockFilter();
+          index -= 1;
+        }
+        if (index >= products.length) {
+          return FFEmptyState(
+            key: const Key('vendor-low-empty'),
+            title: context.tr('vendor.stock.lowEmpty'),
+            action: FFButton(
+              label: context.tr('vendor.stock.all'),
+              variant: FFButtonVariant.secondary,
+              onPressed: () => setState(() => _lowOnly = false),
+            ),
+          );
+        }
+        final product = products[index];
         final paused = product['status'] == 'paused';
+        final id = product['id']?.toString();
+        final name = product['name']?.toString() ?? '';
+        final lowVariants = ledger ? _low.lowVariants(id) : const <String>[];
+        final low = ledger && _low.isLow(id);
+        final subtitle = Text(
+          '${formatCurrency(product['priceTzs'] as num? ?? 0)} · ${product['stock'] ?? 0} ${context.tr('vendor.inStock')}',
+        );
         return Padding(
           padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
           child: FFCard(
             child: ListTile(
               key: Key('vendor-product-${product['id']}'),
               contentPadding: EdgeInsets.zero,
+              onTap: ledger ? () => _openHistory(product) : null,
               leading: const CircleAvatar(
                 child: Icon(Icons.shopping_bag_outlined),
               ),
-              title: Text(product['name']?.toString() ?? ''),
-              subtitle: Text(
-                '${formatCurrency(product['priceTzs'] as num? ?? 0)} · ${product['stock'] ?? 0} ${context.tr('vendor.inStock')}',
-              ),
+              title: Text(name),
+              subtitle: !low
+                  ? subtitle
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        subtitle,
+                        const SizedBox(height: FFTokens.spacingXs),
+                        Wrap(
+                          spacing: FFTokens.spacingXs,
+                          runSpacing: FFTokens.spacingXs,
+                          children: [
+                            FFBadge(
+                              key: Key('vendor-low-badge-$id'),
+                              label: context.tr('vendor.stock.lowBadge'),
+                              tone: FFBadgeTone.warning,
+                            ),
+                            if (lowVariants.isNotEmpty)
+                              FFBadge(
+                                label: fillIn(
+                                  context.tr('vendor.stock.lowVariants'),
+                                  {'n': lowVariants.length},
+                                ),
+                                tone: FFBadgeTone.warning,
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
               trailing: PopupMenuButton<String>(
+                tooltip: ledger
+                    ? fillIn(context.tr('vendor.productActions'), {
+                        'name': name,
+                      })
+                    : null,
                 onSelected: (value) {
                   if (value == 'edit') _editProduct(product);
+                  if (value == 'adjust') _adjustStock(product);
+                  if (value == 'history') _openHistory(product);
                   if (value == 'archive') _archiveProduct(product);
                   if (value == 'duplicate') _duplicateProduct(product);
                   if (value == 'delete') _deleteProduct(product);
@@ -464,6 +660,16 @@ class _VendorHomePageState extends State<VendorHomePage> {
                     value: 'edit',
                     child: Text(context.tr('vendor.edit')),
                   ),
+                  if (ledger) ...[
+                    PopupMenuItem(
+                      value: 'adjust',
+                      child: Text(context.tr('vendor.stock.adjust')),
+                    ),
+                    PopupMenuItem(
+                      value: 'history',
+                      child: Text(context.tr('vendor.stock.history')),
+                    ),
+                  ],
                   PopupMenuItem(
                     value: 'archive',
                     child: Text(
@@ -488,6 +694,30 @@ class _VendorHomePageState extends State<VendorHomePage> {
       },
     );
   }
+
+  /// All products / Low stock (n). Pills wrap, which long Swahili needs.
+  Widget _stockFilter() => Padding(
+    padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
+    child: Wrap(
+      spacing: FFTokens.spacingSm,
+      children: [
+        FFPill(
+          key: const Key('vendor-filter-all'),
+          label: context.tr('vendor.stock.all'),
+          filled: !_lowOnly,
+          onTap: () => setState(() => _lowOnly = false),
+        ),
+        FFPill(
+          key: const Key('vendor-filter-low'),
+          label: fillIn(context.tr('vendor.stock.lowFilter'), {
+            'n': _low.count,
+          }),
+          filled: _lowOnly,
+          onTap: () => setState(() => _lowOnly = true),
+        ),
+      ],
+    ),
+  );
 
   Widget _ordersTab() {
     if (_orders.isEmpty) {
@@ -531,26 +761,25 @@ class _VendorHomePageState extends State<VendorHomePage> {
                     context.tr('vendor.awaitingPayment'),
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
-                if (!['delivered', 'cancelled'].contains(status)) ...[
+                // Legacy `confirmed` / `fulfilled` rows read as accepted /
+                // delivered, as the backend reads them.
+                if (!shopOrderIsFinal(status)) ...[
                   const SizedBox(height: FFTokens.spacingSm),
                   Wrap(
                     spacing: FFTokens.spacingSm,
                     children: [
-                      FFButton(
-                        key: Key('vendor-next-${order['id']}'),
-                        label: vendorMarkStatusLabel(
-                          context,
-                          _nextOrderStatus(order),
+                      if (vendorNextOrderStatus(order) case final next?)
+                        FFButton(
+                          key: Key('vendor-next-${order['id']}'),
+                          label: vendorMarkStatusLabel(context, next),
+                          // Only paid orders can be fulfilled.
+                          onPressed:
+                              _busy || order['paymentStatus'] == 'pending'
+                              ? null
+                              : () =>
+                                    _updateOrder(order['id'].toString(), next),
+                          size: FFButtonSize.sm,
                         ),
-                        // Only paid orders can be fulfilled.
-                        onPressed: _busy || order['paymentStatus'] == 'pending'
-                            ? null
-                            : () => _updateOrder(
-                                order['id'].toString(),
-                                _nextOrderStatus(order),
-                              ),
-                        size: FFButtonSize.sm,
-                      ),
                       FFButton(
                         label: context.tr('vendor.cancel'),
                         onPressed: _busy
@@ -571,19 +800,6 @@ class _VendorHomePageState extends State<VendorHomePage> {
         );
       },
     );
-  }
-
-  String _nextOrderStatus(Map<String, dynamic> order) {
-    final status = order['status']?.toString() ?? 'pending';
-    if (status == 'pending' || status == 'confirmed') return 'accepted';
-    if (status == 'accepted') return 'processing';
-    if (status == 'processing') return 'packed';
-    if (status == 'packed') {
-      return order['deliveryMethod'] == 'gym_pickup'
-          ? 'ready_for_pickup'
-          : 'dispatched';
-    }
-    return 'delivered';
   }
 
   Widget _paymentsTab() {
@@ -910,9 +1126,35 @@ class _VendorHomePageState extends State<VendorHomePage> {
 }
 
 class VendorProductForm extends StatefulWidget {
-  const VendorProductForm({super.key, this.product});
+  const VendorProductForm({
+    super.key,
+    this.product,
+    this.stockLedger = false,
+    this.canSeeCost = false,
+    this.onSave,
+    this.onAdjust,
+    this.describeError,
+  });
 
   final Map<String, dynamic>? product;
+
+  /// Vendor tools · S1 is on: per-variant rows, reorder level, cost price,
+  /// stock changed only through "Adjust stock". Off: the form as before.
+  final bool stockLedger;
+
+  /// Cost price is shown and sent only when this is true.
+  final bool canSeeCost;
+
+  /// Ledger on: saves the body; the form stays open (values kept) when it
+  /// throws, and closes with `true` when it succeeds.
+  final Future<void> Function(Map<String, dynamic> body)? onSave;
+
+  /// Ledger on: opens "Adjust stock" for the product (variant null) or one
+  /// variant, resolving with the product's counts `{stock, variants}`.
+  final Future<Map<String, dynamic>?> Function(String? variant)? onAdjust;
+
+  /// Ledger on: the words for a failed save.
+  final String Function(Object error)? describeError;
 
   @override
   State<VendorProductForm> createState() => _VendorProductFormState();
@@ -931,9 +1173,25 @@ class _VendorProductFormState extends State<VendorProductForm> {
   late final TextEditingController _sku;
   late final TextEditingController _weight;
   late final TextEditingController _variants;
+  late final TextEditingController _cost;
+  late final TextEditingController _reorder;
+  final List<VariantDraft> _variantRows = [];
+  Map<int, String> _variantErrors = const {};
+  String? _saveError;
+  bool _saving = false;
   String? _image;
   String? _secondImage;
   bool _visible = true;
+
+  bool get _creating => widget.product == null;
+
+  /// The stock the form loaded (sent as `stockSeen` with a changed stock).
+  int get _stockLoaded => (widget.product?['stock'] as num?)?.toInt() ?? 0;
+
+  /// Whether the vendor changed the Stock field (ledger off).
+  bool get _stockEdited =>
+      _stock.text.trim() != (widget.product?['stock']?.toString() ?? '');
+  bool get _ledger => widget.stockLedger;
 
   @override
   void initState() {
@@ -961,6 +1219,13 @@ class _VendorProductFormState extends State<VendorProductForm> {
           .map((item) => item['name'])
           .join(', '),
     );
+    _cost = TextEditingController(text: product?['costTzs']?.toString());
+    _reorder = TextEditingController(
+      text: product?['reorderLevel']?.toString(),
+    );
+    for (final v in (product?['variants'] as List? ?? []).whereType<Map>()) {
+      _variantRows.add(VariantDraft.stored(v));
+    }
     final images = (product?['images'] as List?)?.whereType<String>().toList();
     _image = images?.firstOrNull;
     _secondImage = images != null && images.length > 1 ? images[1] : null;
@@ -978,38 +1243,185 @@ class _VendorProductFormState extends State<VendorProductForm> {
     _sku.dispose();
     _weight.dispose();
     _variants.dispose();
+    _cost.dispose();
+    _reorder.dispose();
+    for (final row in _variantRows) {
+      row.dispose();
+    }
     super.dispose();
   }
 
-  void _submit() {
+  /// The fields every save sends, both with and without the ledger.
+  Map<String, dynamic>? _common() {
     final price = num.tryParse(_price.text.trim());
-    if (_name.text.trim().isEmpty || price == null || price <= 0) return;
-    Navigator.pop(context, {
+    if (_name.text.trim().isEmpty || price == null || price <= 0) return null;
+    return {
       'name': _name.text.trim(),
       'description': _description.text.trim(),
       if (_category != null) 'category': _category,
       'brand': _brand.text.trim(),
       'priceTzs': price,
       'discountPriceTzs': num.tryParse(_discountPrice.text.trim()),
-      'stock': int.tryParse(_stock.text.trim()) ?? 0,
       'sku': _sku.text.trim(),
       'weightKg': num.tryParse(_weight.text.trim()),
+      'visibility': _visible ? 'visible' : 'hidden',
+      'images': [?_image, ?_secondImage],
+    };
+  }
+
+  void _submit() {
+    if (_ledger) {
+      _submitLedger();
+      return;
+    }
+    final common = _common();
+    if (common == null) return;
+    Navigator.pop(context, {
+      ...common,
+      // A new product sends its starting stock. An edit sends stock only
+      // when the vendor changed it, with the count the form loaded
+      // (`stockSeen`), so a form left open while buyers reserved stock does
+      // not overwrite it (live-bug fix, S1 / F2). Variants never carry
+      // stock on an edit; the server keeps their stored counts.
+      if (_creating) 'stock': int.tryParse(_stock.text.trim()) ?? 0,
+      if (!_creating && _stockEdited) ...{
+        'stock': int.tryParse(_stock.text.trim()) ?? 0,
+        'stockSeen': _stockLoaded,
+      },
       'variants': _variants.text
           .split(',')
           .map((value) => value.trim())
           .where((value) => value.isNotEmpty)
           .map((value) => {'name': value})
           .toList(),
-      'visibility': _visible ? 'visible' : 'hidden',
-      'images': [
-        if (_image != null) _image,
-        if (_secondImage != null) _secondImage,
-      ],
+    });
+  }
+
+  int get _variantSum => _variantRows.fold(
+    0,
+    (sum, row) =>
+        sum +
+        (_creating
+            ? int.tryParse(row.stock.text.trim()) ?? 0
+            : row.storedStock ?? 0),
+  );
+
+  /// The body with the ledger on. Null when something needs fixing first.
+  Map<String, dynamic>? _ledgerBody() {
+    final errors = validateVariants(_variantRows);
+    setState(() {
+      _variantErrors = errors;
+      _saveError = null;
+    });
+    final common = _common();
+    if (common == null || errors.isNotEmpty) return null;
+    if (_variantRows.any((r) => r.removeBlocked)) return null;
+    int? whole(TextEditingController c) => int.tryParse(c.text.trim());
+    return {
+      ...common,
+      if (_creating)
+        'stock': _variantRows.isEmpty ? whole(_stock) ?? 0 : _variantSum,
+      if (widget.canSeeCost) 'costTzs': whole(_cost),
+      'reorderLevel': whole(_reorder),
+      'variants': variantsPayload(
+        _variantRows,
+        creating: _creating,
+        withCost: widget.canSeeCost,
+      ),
+    };
+  }
+
+  Future<void> _submitLedger() async {
+    final body = _ledgerBody();
+    final save = widget.onSave;
+    if (body == null || save == null) return;
+    setState(() => _saving = true);
+    try {
+      await save(body);
+      if (mounted) Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _saveError = _ledgerSaveError(e);
+      });
+    }
+  }
+
+  /// Variant problems the server found are shown on their row.
+  String? _ledgerSaveError(Object e) {
+    if (e is ApiException) {
+      final body = e.body is Map ? e.body as Map : const {};
+      final variant = body['variant']?.toString();
+      int rowOf(String? name) =>
+          _variantRows.indexWhere((r) => (r.original ?? r.trimmedName) == name);
+      switch (e.code) {
+        case 'variant_has_stock':
+          final i = rowOf(variant);
+          if (i >= 0) {
+            _variantErrors = {
+              ..._variantErrors,
+              i: 'vendor.variant.removeHasStock',
+            };
+            return null;
+          }
+          return context.tr('vendor.variant.removeHasStock');
+        case 'duplicate_variant':
+          final i = _variantRows.indexWhere(
+            (r) => r.trimmedName.toLowerCase() == variant?.toLowerCase(),
+          );
+          if (i >= 0) {
+            _variantErrors = {
+              ..._variantErrors,
+              i: 'vendor.variant.duplicateName',
+            };
+            return null;
+          }
+          return context.tr('vendor.variant.duplicateName');
+        case 'variant_has_reservations':
+          return fillIn(context.tr('vendor.variant.hasReservations'), {
+            'name': variant ?? '',
+          });
+        case 'variant_stock_mixed':
+          return context.tr('vendor.variant.stockMixed');
+        case 'cost_forbidden':
+          return context.tr('vendor.costForbidden');
+        case 'stock_changed':
+          // Stock moved since the form opened: show the new counts.
+          final current = (body['currentStock'] as num?)?.toInt();
+          final i = variant == null ? -1 : rowOf(variant);
+          if (i >= 0 && current != null) {
+            _variantRows[i].storedStock = current;
+          } else if (variant == null && current != null) {
+            _stock.text = '$current';
+          }
+          return context.tr('vendor.stock.changedForm');
+      }
+    }
+    return widget.describeError?.call(e) ?? context.tr('vendor.saveFailed');
+  }
+
+  Future<void> _adjust([String? variant]) async {
+    final adjust = widget.onAdjust;
+    if (adjust == null) return;
+    final fresh = await adjust(variant);
+    if (fresh == null || !mounted) return;
+    setState(() {
+      if (fresh['stock'] is num) _stock.text = '${fresh['stock']}';
+      for (final v in (fresh['variants'] as List? ?? []).whereType<Map>()) {
+        for (final row in _variantRows) {
+          if (row.original == v['name']) {
+            row.storedStock = (v['stock'] as num?)?.toInt();
+            if (!row.holdsStock) row.removeBlocked = false;
+          }
+        }
+      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_ledger) return _ledgerForm(context);
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.only(
@@ -1029,52 +1441,10 @@ class _VendorProductFormState extends State<VendorProductForm> {
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: FFTokens.spacingMd),
-              Center(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    FFPhotoPickerField(
-                      value: _image,
-                      onChanged: (value) => setState(() => _image = value),
-                    ),
-                    const SizedBox(width: FFTokens.spacingMd),
-                    FFPhotoPickerField(
-                      value: _secondImage,
-                      onChanged: (value) =>
-                          setState(() => _secondImage = value),
-                    ),
-                  ],
-                ),
-              ),
-              FFTextField(
-                key: const Key('vendor-product-name'),
-                controller: _name,
-                label: context.tr('vendor.name'),
-              ),
-              FFTextField(
-                key: const Key('vendor-product-brand'),
-                controller: _brand,
-                label: context.tr('vendor.brand'),
-              ),
-              FFTextField(
-                key: const Key('vendor-product-description'),
-                controller: _description,
-                label: context.tr('vendor.description'),
-              ),
-              ProductCategoryDropdown(
-                current: widget.product?['category']?.toString(),
-                onChanged: (key) => _category = key,
-              ),
+              ..._topFields(),
               Row(
                 children: [
-                  Expanded(
-                    child: FFTextField(
-                      key: const Key('vendor-product-price'),
-                      controller: _price,
-                      keyboardType: TextInputType.number,
-                      label: context.tr('vendor.price'),
-                    ),
-                  ),
+                  Expanded(child: _priceField()),
                   const SizedBox(width: FFTokens.spacingMd),
                   Expanded(
                     child: FFTextField(
@@ -1086,54 +1456,236 @@ class _VendorProductFormState extends State<VendorProductForm> {
                   ),
                 ],
               ),
-              FFTextField(
-                key: const Key('vendor-product-discount-price'),
-                controller: _discountPrice,
-                keyboardType: TextInputType.number,
-                label: context.tr('vendor.discountPrice'),
-              ),
-              Row(
-                children: [
-                  Expanded(
-                    child: FFTextField(
-                      key: const Key('vendor-product-sku'),
-                      controller: _sku,
-                      label: context.tr('vendor.sku'),
-                    ),
-                  ),
-                  const SizedBox(width: FFTokens.spacingMd),
-                  Expanded(
-                    child: FFTextField(
-                      key: const Key('vendor-product-weight'),
-                      controller: _weight,
-                      keyboardType: TextInputType.number,
-                      label: context.tr('vendor.weight'),
-                    ),
-                  ),
-                ],
-              ),
+              ..._middleFields(),
               FFTextField(
                 key: const Key('vendor-product-variants'),
                 controller: _variants,
                 label: context.tr('vendor.variants'),
                 hint: context.tr('vendor.variantsHint'),
               ),
-              SwitchListTile(
-                key: const Key('vendor-product-visibility'),
-                contentPadding: EdgeInsets.zero,
-                value: _visible,
-                onChanged: (value) => setState(() => _visible = value),
-                title: Text(context.tr('vendor.visible')),
-              ),
-              const SizedBox(height: FFTokens.spacingLg),
-              SizedBox(
-                width: double.infinity,
-                child: FFButton(
-                  key: const Key('vendor-product-save'),
-                  label: context.tr('vendor.save'),
-                  onPressed: _submit,
+              ..._bottomFields(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _topFields() => [
+    Center(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          FFPhotoPickerField(
+            value: _image,
+            onChanged: (value) => setState(() => _image = value),
+          ),
+          const SizedBox(width: FFTokens.spacingMd),
+          FFPhotoPickerField(
+            value: _secondImage,
+            onChanged: (value) => setState(() => _secondImage = value),
+          ),
+        ],
+      ),
+    ),
+    FFTextField(
+      key: const Key('vendor-product-name'),
+      controller: _name,
+      label: context.tr('vendor.name'),
+    ),
+    FFTextField(
+      key: const Key('vendor-product-brand'),
+      controller: _brand,
+      label: context.tr('vendor.brand'),
+    ),
+    FFTextField(
+      key: const Key('vendor-product-description'),
+      controller: _description,
+      label: context.tr('vendor.description'),
+    ),
+    ProductCategoryDropdown(
+      current: widget.product?['category']?.toString(),
+      onChanged: (key) => _category = key,
+    ),
+  ];
+
+  Widget _priceField() => FFTextField(
+    key: const Key('vendor-product-price'),
+    controller: _price,
+    keyboardType: TextInputType.number,
+    label: context.tr('vendor.price'),
+  );
+
+  List<Widget> _middleFields() => [
+    FFTextField(
+      key: const Key('vendor-product-discount-price'),
+      controller: _discountPrice,
+      keyboardType: TextInputType.number,
+      label: context.tr('vendor.discountPrice'),
+    ),
+    Row(
+      children: [
+        Expanded(
+          child: FFTextField(
+            key: const Key('vendor-product-sku'),
+            controller: _sku,
+            label: context.tr('vendor.sku'),
+          ),
+        ),
+        const SizedBox(width: FFTokens.spacingMd),
+        Expanded(
+          child: FFTextField(
+            key: const Key('vendor-product-weight'),
+            controller: _weight,
+            keyboardType: TextInputType.number,
+            label: context.tr('vendor.weight'),
+          ),
+        ),
+      ],
+    ),
+  ];
+
+  List<Widget> _bottomFields() => [
+    SwitchListTile(
+      key: const Key('vendor-product-visibility'),
+      contentPadding: EdgeInsets.zero,
+      value: _visible,
+      onChanged: (value) => setState(() => _visible = value),
+      title: Text(context.tr('vendor.visible')),
+    ),
+    if (_saveError != null) ...[
+      FFAlert(
+        key: const Key('vendor-product-save-error'),
+        message: _saveError!,
+        tone: FFAlertTone.error,
+      ),
+      const SizedBox(height: FFTokens.spacingSm),
+    ],
+    const SizedBox(height: FFTokens.spacingLg),
+    SizedBox(
+      width: double.infinity,
+      child: FFButton(
+        key: const Key('vendor-product-save'),
+        label: context.tr('vendor.save'),
+        loading: _saving,
+        onPressed: _saving ? null : _submit,
+      ),
+    ),
+  ];
+
+  /// Two fields side by side, or one above the other when either would be
+  /// narrower than 160 (large text, Swahili).
+  Widget _pair(Widget a, Widget b) => LayoutBuilder(
+    builder: (context, box) {
+      final scaled = MediaQuery.textScalerOf(context).scale(1) >= 1.3;
+      if (scaled || box.maxWidth < 2 * 160 + FFTokens.spacingMd) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [a, b],
+        );
+      }
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(child: a),
+          const SizedBox(width: FFTokens.spacingMd),
+          Expanded(child: b),
+        ],
+      );
+    },
+  );
+
+  Widget _ledgerStockField() {
+    final digits = [FilteringTextInputFormatter.digitsOnly];
+    if (_variantRows.isNotEmpty) {
+      // O-1: with variants, the product's stock is their total.
+      return KeyedSubtree(
+        key: ValueKey('vendor-product-total-$_variantSum'),
+        child: FFTextField(
+          key: const Key('vendor-product-stock'),
+          initialValue: '$_variantSum',
+          readOnly: true,
+          label: context.tr('vendor.stock.totalFromVariants'),
+        ),
+      );
+    }
+    if (_creating) {
+      return FFTextField(
+        key: const Key('vendor-product-stock'),
+        controller: _stock,
+        keyboardType: TextInputType.number,
+        inputFormatters: digits,
+        label: context.tr('vendor.stock.initial'),
+      );
+    }
+    return FFTextField(
+      key: const Key('vendor-product-stock'),
+      controller: _stock,
+      readOnly: true,
+      label: context.tr('vendor.stock.current'),
+      helperText: context.tr('vendor.stock.readOnlyHelp'),
+    );
+  }
+
+  Widget _ledgerForm(BuildContext context) {
+    final digits = [FilteringTextInputFormatter.digitsOnly];
+    final reorder = FFTextField(
+      key: const Key('vendor-product-reorder'),
+      controller: _reorder,
+      enabled: !_saving,
+      keyboardType: TextInputType.number,
+      inputFormatters: digits,
+      label: context.tr('vendor.stock.reorderLevel'),
+      helperText: context.tr('vendor.stock.reorderHelp'),
+    );
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 560),
+        child: AbsorbPointer(
+          absorbing: _saving,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ..._topFields(),
+              _pair(_priceField(), _ledgerStockField()),
+              if (!_creating && widget.onAdjust != null)
+                Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: FFButton(
+                    key: const Key('vendor-product-adjust'),
+                    label: context.tr('vendor.stock.adjust'),
+                    icon: Icons.tune,
+                    variant: FFButtonVariant.ghost,
+                    onPressed: () => _adjust(),
+                  ),
                 ),
+              if (widget.canSeeCost)
+                _pair(
+                  FFTextField(
+                    key: const Key('vendor-product-cost'),
+                    controller: _cost,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: digits,
+                    label: context.tr('vendor.costPrice'),
+                    helperText: context.tr('vendor.costPriceHelp'),
+                  ),
+                  reorder,
+                )
+              else
+                reorder,
+              ..._middleFields(),
+              const SizedBox(height: FFTokens.spacingMd),
+              VariantRowsEditor(
+                rows: _variantRows,
+                creating: _creating,
+                showCost: widget.canSeeCost,
+                errors: _variantErrors,
+                enabled: !_saving,
+                onChanged: () => setState(() {}),
+                onAdjust: widget.onAdjust == null ? null : _adjust,
               ),
+              ..._bottomFields(),
             ],
           ),
         ),

@@ -178,6 +178,7 @@ String partnerLinkFor({required String side, required String type}) =>
         'vendor_customer_enquiry' => 'customerQuestions',
         'vendor_product_approved' || 'vendor_product_rejected' => 'products',
         'vendor_payout_paid' => 'payments',
+        'vendor_low_stock' => 'lowStock',
         _ => '',
       },
       'gym' => switch (type) {
@@ -200,6 +201,8 @@ String? partnerRouteFor({
   required String type,
   String? gymId,
   String? memberId,
+  String? productId,
+  String? variant,
 }) {
   bool ok(String? id) => id != null && _safeId.hasMatch(id);
   return switch (partnerLinkFor(side: side, type: type)) {
@@ -212,6 +215,16 @@ String? partnerRouteFor({
     'customerQuestions' => '/vendor/home?open=enquiries',
     'products' => '/vendor/home?open=products',
     'payments' => '/vendor/home?open=payments',
+    // Low stock: that product's stock history (the screen checks the ledger
+    // is on and the person may see products); else the low products.
+    'lowStock' when ok(productId) => Uri(
+      path: '/vendor/products/$productId/stock',
+      queryParameters: {
+        if (variant != null && variant.isNotEmpty) 'variant': variant,
+        'from': 'push',
+      },
+    ).toString(),
+    'lowStock' => '/vendor/home?open=products&filter=low',
     'checkins' when ok(gymId) => '/owner/gyms/$gymId/checkins',
     'member' when ok(memberId) => '/owner/members/$memberId',
     'memberPayments' when ok(memberId) => '/owner/members/$memberId/payments',

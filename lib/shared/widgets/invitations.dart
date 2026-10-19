@@ -12,8 +12,8 @@ import '../pending_org_invite.dart';
 import 'persona_switcher.dart';
 import 'verify_identifier.dart';
 import '../components/components.dart';
-import '../formatters.dart';
 import '../payment_labels.dart';
+import '../formatters.dart';
 
 /// Where an invitation link opens (the web build of this app).
 const kInviteLinkBase = 'https://fitflex-af-app.web.app';

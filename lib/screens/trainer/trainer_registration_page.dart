@@ -6,6 +6,7 @@ import '../../router.dart';
 import '../../shared/api_client.dart';
 import '../../shared/api_error_message.dart';
 import '../../shared/design_tokens.dart';
+import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
 import '../../shared/widgets/persona_switcher.dart';
@@ -321,7 +322,8 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
         FFTextField(
           controller: _sessionRateCtrl,
           label: context.tr('trainerReg.sessionRate'),
-          suffixText: 'TZS${context.tr('trainerReg.perSession')}',
+          suffixText:
+              '${currencyLabel('TZS')}${context.tr('trainerReg.perSession')}',
           validator: (v) => (v == null || v.trim().isEmpty)
               ? context.tr('onboarding.required')
               : null,

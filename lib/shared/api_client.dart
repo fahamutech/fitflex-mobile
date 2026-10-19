@@ -1933,6 +1933,53 @@ class ApiClient {
     body: data,
   );
 
+  // ── Vendor tools (stock ledger, S1) ─────────────────────────────────────
+
+  /// Which vendor tools this server has switched on, e.g.
+  /// `{stockLedger: true, ...}`. Anything but `true` means "not on".
+  Future<Map<String, dynamic>> vendorToolsOptions() async =>
+      await _request('GET', '/vendor/tools/options');
+
+  /// Records a stock change with a reason. Answers `{movement, product}`;
+  /// a retried [body] (same `clientRef`) gets the first answer back.
+  Future<Map<String, dynamic>> vendorAdjustStock(
+    String productId,
+    Map<String, dynamic> body,
+  ) async => await _request(
+    'POST',
+    '/vendor/products/${Uri.encodeComponent(productId)}/stock-adjustments',
+    body: body,
+  );
+
+  /// One product's stock history, newest first. [from] / [to] are EAT days
+  /// (YYYY-MM-DD, inclusive).
+  Future<Map<String, dynamic>> vendorStockMovements(
+    String productId, {
+    String? from,
+    String? to,
+    String? variant,
+    int? limit,
+    String? cursor,
+  }) async {
+    final query = <String, String>{
+      'from': ?from,
+      'to': ?to,
+      if (variant != null && variant.isNotEmpty) 'variant': variant,
+      if (limit != null) 'limit': '$limit',
+      if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+    };
+    final path =
+        '/vendor/products/${Uri.encodeComponent(productId)}/stock-movements';
+    return await _request(
+      'GET',
+      query.isEmpty ? path : '$path?${Uri(queryParameters: query).query}',
+    );
+  }
+
+  /// Products and variants at or below their reorder level.
+  Future<List<dynamic>> vendorLowStock() async =>
+      await _request('GET', '/vendor/stock/low');
+
   Future<List<dynamic>> vendorOrders() async =>
       await _request('GET', '/vendor/orders');
 

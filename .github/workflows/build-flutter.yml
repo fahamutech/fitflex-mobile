@@ -1,12 +1,15 @@
 name: Build Flutter APK
 
-# PR check: analyze, test and build a debug APK. Merges to main are built and
+# PR and release-candidate check: analyze, test and build a debug APK. Merges to main are built and
 # sent to testers by distribute-android.yml, so main isn't built twice. The
 # debug APK is not stored (it filled the artifact quota); tagged releases are.
 on:
   pull_request:
-    branches: [main]
+    branches: [main, release-candidate]
   push:
+    # release-candidate is checked on every merge; it is never deployed from
+    # here (deploy-web.yml and distribute-android.yml only run for main).
+    branches: [release-candidate]
     tags: ['v*']
   workflow_dispatch:
 
