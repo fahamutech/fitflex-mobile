@@ -1324,6 +1324,8 @@ class FFLocale extends ChangeNotifier {
           'A price changed while you were checking out. Please review your cart and try again.',
       'shop.errUnavailable':
           'An item in your cart is no longer available. Please remove it and try again.',
+      'shop.errVendorUnavailable':
+          'A seller in your cart is not selling at the moment. Please remove their items and try again.',
       'shop.errVariantRequired': 'Please choose an option for every item.',
       'shop.errChanged':
           'Your order details changed. Please place the order again.',
@@ -5492,6 +5494,8 @@ class FFLocale extends ChangeNotifier {
           'Bei ilibadilika ulipokuwa unalipia. Tafadhali kagua kikapu chako na ujaribu tena.',
       'shop.errUnavailable':
           'Bidhaa iliyo kwenye kikapu chako haipatikani tena. Tafadhali iondoe na ujaribu tena.',
+      'shop.errVendorUnavailable':
+          'Muuzaji mmoja kwenye kikapu chako hauzi kwa sasa. Tafadhali ondoa bidhaa zake na ujaribu tena.',
       'shop.errVariantRequired': 'Tafadhali chagua chaguo kwa kila bidhaa.',
       'shop.errChanged':
           'Maelezo ya oda yako yamebadilika. Tafadhali weka oda tena.',
