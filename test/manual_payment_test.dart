@@ -3,6 +3,7 @@ import 'package:fitflexmobile/screens/member/widgets/gym_plans_sheet.dart';
 import 'package:fitflexmobile/screens/member/widgets/mobile_money_pay.dart';
 import 'package:fitflexmobile/shared/api_client.dart';
 import 'package:fitflexmobile/shared/api_error_message.dart';
+import 'package:fitflexmobile/shared/components/components.dart';
 import 'package:fitflexmobile/shared/i18n.dart';
 import 'package:fitflexmobile/shared/manual_payment.dart';
 import 'package:fitflexmobile/shared/models.dart';
@@ -83,6 +84,8 @@ Finder get _phoneField => find.descendant(
 );
 
 void main() {
+  phaseAPolish2Tests();
+
   group('options', () {
     test('a missing or switched-off block means no manual payment', () {
       expect(ManualPayment.fromOptions(null), isNull);
@@ -591,6 +594,108 @@ void main() {
         'homeGymId': 'g1',
         'plan': 'monthly',
       });
+    });
+  });
+}
+
+/// The payment page inside a shell-like Scaffold whose bottom bar hides
+/// while typing, the way the member shell shows it (M16).
+Widget _inShell(MemberData data) => Scaffold(
+  body: MemberDataScope(data: data, child: const MemberPaymentPage()),
+  bottomNavigationBar: FFHideWhileTyping(
+    child: NavigationBar(
+      key: const Key('test-bottom-nav'),
+      destinations: const [
+        NavigationDestination(icon: Icon(Icons.home), label: 'A'),
+        NavigationDestination(icon: Icon(Icons.person), label: 'B'),
+      ],
+    ),
+  ),
+);
+
+void phaseAPolish2Tests() {
+  group('keyboard and focus at 360 (phase A polish 2)', () {
+    for (final lang in ['en', 'sw']) {
+      apiTest('M16 [$lang]: 360x400 typing the ID hides the bottom bar and '
+          'Submit is fully on screen', (tester, api) async {
+        api.on('GET /payments/options', _manualOn);
+        await pumpPage(
+          tester,
+          api,
+          _inShell(_data(phone: '0712345678')),
+          user: const {'id': 'm1', 'userType': 'member'},
+          lang: lang,
+          size: const Size(360, 400),
+        );
+        expect(_key('test-bottom-nav'), findsOneWidget);
+
+        await tester.dragUntilVisible(
+          _key('manual-pay-transaction-id'),
+          find.byType(Scrollable).first,
+          const Offset(0, -80),
+        );
+        await tester.showKeyboard(_idField);
+        await tester.pumpAndSettle();
+        expect(_key('test-bottom-nav'), findsNothing);
+        expect(_key('bottom-nav-hidden'), findsOneWidget);
+
+        // Scrolled so the field and the button under it both show.
+        final submit = tester.getRect(_key('payment-submit'));
+        expect(submit.top, greaterThanOrEqualTo(0));
+        expect(submit.bottom, lessThanOrEqualTo(400));
+        final id = tester.getRect(_key('manual-pay-transaction-id'));
+        expect(id.top, greaterThanOrEqualTo(0));
+        expect(tester.takeException(), isNull);
+
+        // Done typing: the bar comes back.
+        FocusManager.instance.primaryFocus?.unfocus();
+        await tester.pumpAndSettle();
+        expect(_key('test-bottom-nav'), findsOneWidget);
+      });
+    }
+
+    apiTest('M16: a tall screen keeps the bar while a field has focus', (
+      tester,
+      api,
+    ) async {
+      api.on('GET /payments/options', _manualOn);
+      await pumpPage(
+        tester,
+        api,
+        _inShell(_data(phone: '0712345678')),
+        user: const {'id': 'm1', 'userType': 'member'},
+        size: const Size(360, 740),
+      );
+      await tester.showKeyboard(_idField);
+      await tester.pumpAndSettle();
+      expect(_key('test-bottom-nav'), findsOneWidget);
+    });
+
+    apiTest('L4: submitting with the ID field focused lets go of the focus '
+        'before the field is disabled, also when the server refuses', (
+      tester,
+      api,
+    ) async {
+      api.on('GET /payments/options', _manualOn);
+      api.fail('POST /me/subscribe', 409, {
+        'error': 'payment_reference_duplicate',
+      });
+      final host = await _pumpPayment(tester, api, phone: '0712345678');
+      await tester.showKeyboard(_idField);
+      await tester.enterText(_idField, 'QJK3H7XY2P');
+      expect(ffTextFieldHasFocus(), isTrue);
+
+      // Tap without settling first: the field must already have let go when
+      // the request starts and it turns disabled.
+      await tester.ensureVisible(_key('payment-submit'));
+      await tester.tap(_key('payment-submit'));
+      await tester.pump();
+      expect(ffTextFieldHasFocus(), isFalse);
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpAndSettle();
+      expect(find.text(host.tr('manualPay.idDuplicate')), findsOneWidget);
+      expect(tester.takeException(), isNull);
     });
   });
 }

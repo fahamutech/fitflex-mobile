@@ -281,7 +281,6 @@ class PassSummaryCard extends StatelessWidget {
             total: cap,
             color: ringColor,
             leftLabel: context.tr('pass.state.left'),
-            ofLabel: usedOf!,
           )
         else
           Icon(Icons.all_inclusive, size: 40, color: ringColor),
@@ -408,23 +407,22 @@ class _VisitsRing extends StatelessWidget {
     required this.total,
     required this.color,
     required this.leftLabel,
-    required this.ofLabel,
   });
 
   final int left;
   final int total;
   final Color color;
   final String leftLabel;
-  final String ofLabel;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final fraction = total <= 0 ? 0.0 : (left / total).clamp(0.0, 1.0);
-    // One label for the whole ring; the number and "left" inside it are not
-    // read again on their own.
+    // One label for the whole ring ("11 left"); the number and "left" inside
+    // it are not read again on their own. "1 of 12 used" is the text beside
+    // the ring and is read there, so the ring does not say it too.
     return Semantics(
-      label: '$left $leftLabel, $ofLabel',
+      label: '$left $leftLabel',
       excludeSemantics: true,
       child: SizedBox(
         width: 96,
