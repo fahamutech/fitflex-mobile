@@ -4,7 +4,9 @@ import '../i18n.dart';
 import 'ff_spinner.dart';
 
 /// Visual weight of an [FFButton].
-enum FFButtonVariant { primary, secondary, ghost, destructive }
+/// [onPhoto] is the secondary action on a photo hero's scrim: transparent,
+/// with a light border and label (10.6:1 on the 80% scrim), in both themes.
+enum FFButtonVariant { primary, secondary, ghost, destructive, onPhoto }
 
 /// Height step of an [FFButton]. `sm` is 40dp tall but still has a 48dp hit
 /// area; `md` and `lg` are 48 and 52dp.
@@ -140,6 +142,24 @@ class FFButton extends StatelessWidget {
       FFButtonVariant.secondary => OutlinedButton(
         onPressed: handler,
         style: style,
+        child: content,
+      ),
+      FFButtonVariant.onPhoto => OutlinedButton(
+        onPressed: handler,
+        style: style.merge(
+          OutlinedButton.styleFrom(
+            foregroundColor: FFTokens.heroText,
+            backgroundColor: Colors.transparent,
+          ).copyWith(
+            side: WidgetStateProperty.resolveWith(
+              (states) => BorderSide(
+                color: FFTokens.heroText,
+                // Focus thickens the ring so it reads against the border.
+                width: states.contains(WidgetState.focused) ? 3 : 1.5,
+              ),
+            ),
+          ),
+        ),
         child: content,
       ),
       FFButtonVariant.ghost => TextButton(

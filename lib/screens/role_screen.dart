@@ -7,6 +7,7 @@ import '../shared/i18n.dart';
 import '../shared/design_tokens.dart';
 import '../app_scope.dart';
 import '../shared/components/components.dart';
+import '../shared/photo_hero_flag.dart';
 
 /// Compile-time flag: enables a dev-only mock-login panel for blackbox testing.
 /// Build with `--dart-define=MOCK_AUTH=true`. Never enabled in store builds.
@@ -60,8 +61,124 @@ class _RoleScreenState extends State<RoleScreen>
     context.push(AppRoutes.signUp);
   }
 
+  /// The five account types. [canon] uses the canon role colours (F-6),
+  /// which ship with PHOTO_HERO_UI.
+  List<Widget> _tiles(BuildContext context, {required bool canon}) {
+    final memberColor = Theme.of(context).brightness == Brightness.dark
+        ? FFTokens.roleMemberDark
+        : FFTokens.roleMemberLight;
+    return [
+      _RoleTile(
+        icon: Icons.person_outline_rounded,
+        iconColor: canon ? memberColor : Theme.of(context).colorScheme.primary,
+        label: context.tr('role.member'),
+        description: context.tr('role.memberBody'),
+        selected: _selectedRole == 'member',
+        onTap: () => _select('member'),
+      ),
+      const SizedBox(height: FFTokens.spacingMd),
+      _RoleTile(
+        icon: Icons.fitness_center_rounded,
+        iconColor: FFTokens.accentOrange,
+        label: context.tr('role.owner'),
+        description: context.tr('role.ownerBody'),
+        selected: _selectedRole == 'gym_owner',
+        onTap: () => _select('gym_owner'),
+      ),
+      const SizedBox(height: FFTokens.spacingMd),
+      _RoleTile(
+        icon: Icons.people_outline_rounded,
+        iconColor: canon
+            ? FFTokens.roleTrainer
+            : Theme.of(context).colorScheme.primary,
+        label: context.tr('role.trainer'),
+        description: context.tr('role.trainerBody'),
+        selected: _selectedRole == 'trainer',
+        onTap: () => _select('trainer'),
+      ),
+      const SizedBox(height: FFTokens.spacingMd),
+      _RoleTile(
+        icon: Icons.storefront_outlined,
+        iconColor: canon ? FFTokens.roleVendor : FFTokens.accentIndigo,
+        label: context.tr('role.vendor'),
+        description: context.tr('role.vendorBody'),
+        selected: _selectedRole == 'vendor',
+        onTap: () => _select('vendor'),
+      ),
+      const SizedBox(height: FFTokens.spacingMd),
+      _RoleTile(
+        icon: Icons.badge_outlined,
+        iconColor: FFTokens.accentOrange,
+        label: context.tr('role.staff'),
+        description: context.tr('role.staffBody'),
+        selected: _selectedRole == 'gym_staff',
+        onTap: () => _select('gym_staff'),
+      ),
+    ];
+  }
+
+  /// PHOTO_HERO_UI: a small hero so the tiles stay near the top.
+  Widget _buildPhotoHero(BuildContext context) {
+    final title = context.tr('role.welcomeTitle');
+    // The brand name is the accent: "Welcome to FitFlex" / "Karibu FitFlex".
+    final hasBrand = title.contains('FitFlex');
+    return FFPhotoHeroPage(
+      phoneFraction: 0,
+      shortPhoneFraction: 0,
+      phoneMinHeight: 200,
+      leading: IconButton(
+        tooltip: context.tr('a11y.back'),
+        icon: const Icon(Icons.arrow_back),
+        onPressed: () =>
+            context.canPop() ? context.pop() : context.go(AppRoutes.auth),
+      ),
+      actions: const [AppPrefsButtons()],
+      hero: (context, f) => FFPhotoHero(
+        photo: FFHeroPhoto.role,
+        variant: f.variant,
+        minHeight: f.minHeight,
+        topInset: f.topInset,
+        wideHeadline: f.wide,
+        eyebrow: context.tr('auth.createAccount'),
+        headlineLead: hasBrand
+            ? title.replaceFirst('FitFlex', '').trim()
+            : title,
+        headlineAccent: hasBrand ? 'FitFlex' : null,
+      ),
+      content: FadeTransition(
+        opacity: _fadeAnim,
+        child: SlideTransition(
+          position: _slideAnim,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                context.tr('role.welcomeSubtitle'),
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: FFTokens.spacingMd),
+              ..._tiles(context, canon: true),
+              if (kMockAuth) ...[
+                const SizedBox(height: FFTokens.spacingXl),
+                const _DevLoginPanel(),
+              ],
+              const SizedBox(height: FFTokens.spacingLg),
+              FFButton(
+                key: const Key('role-continue'),
+                fullWidth: true,
+                label: context.tr('lang.continue'),
+                onPressed: _selectedRole != null ? _continue : null,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (photoHeroUi) return _buildPhotoHero(context);
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -100,50 +217,7 @@ class _RoleScreenState extends State<RoleScreen>
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                         const SizedBox(height: FFTokens.spacingXl),
-                        _RoleTile(
-                          icon: Icons.person_outline_rounded,
-                          iconColor: Theme.of(context).colorScheme.primary,
-                          label: context.tr('role.member'),
-                          description: context.tr('role.memberBody'),
-                          selected: _selectedRole == 'member',
-                          onTap: () => _select('member'),
-                        ),
-                        const SizedBox(height: FFTokens.spacingMd),
-                        _RoleTile(
-                          icon: Icons.fitness_center_rounded,
-                          iconColor: FFTokens.accentOrange,
-                          label: context.tr('role.owner'),
-                          description: context.tr('role.ownerBody'),
-                          selected: _selectedRole == 'gym_owner',
-                          onTap: () => _select('gym_owner'),
-                        ),
-                        const SizedBox(height: FFTokens.spacingMd),
-                        _RoleTile(
-                          icon: Icons.people_outline_rounded,
-                          iconColor: Theme.of(context).colorScheme.primary,
-                          label: context.tr('role.trainer'),
-                          description: context.tr('role.trainerBody'),
-                          selected: _selectedRole == 'trainer',
-                          onTap: () => _select('trainer'),
-                        ),
-                        const SizedBox(height: FFTokens.spacingMd),
-                        _RoleTile(
-                          icon: Icons.storefront_outlined,
-                          iconColor: FFTokens.accentIndigo,
-                          label: context.tr('role.vendor'),
-                          description: context.tr('role.vendorBody'),
-                          selected: _selectedRole == 'vendor',
-                          onTap: () => _select('vendor'),
-                        ),
-                        const SizedBox(height: FFTokens.spacingMd),
-                        _RoleTile(
-                          icon: Icons.badge_outlined,
-                          iconColor: FFTokens.accentOrange,
-                          label: context.tr('role.staff'),
-                          description: context.tr('role.staffBody'),
-                          selected: _selectedRole == 'gym_staff',
-                          onTap: () => _select('gym_staff'),
-                        ),
+                        ..._tiles(context, canon: false),
                         if (kMockAuth) ...[
                           const SizedBox(height: FFTokens.spacingXl),
                           const _DevLoginPanel(),

@@ -209,6 +209,66 @@ class FFTokens {
   static const Color darkFgSecondary = Color(0xFFCBD5E1); // slate-300
   static const Color darkFgMuted = Color(0xFF94A3B8); // slate-400
 
+  // ── Photo hero (docs/design/photo-hero-screens.md §3.3) ──
+  // The hero is an always-dark island: a photo under a slate-950 scrim with
+  // light text, in both themes. Contrast is guaranteed against a pure-white
+  // photo pixel, so it holds for any photo.
+  static const Color heroScrim = darkBg;
+
+  /// Behind the status bar, app bar icons and logo. No other text.
+  static const double heroScrimTop = 0.50;
+
+  /// Minimum under any text (10.6:1 for [heroText] over pure white).
+  static const double heroScrimText = 0.80;
+
+  /// Dark theme bottom edge: seamless into the page ground.
+  static const double heroScrimGround = 1.00;
+
+  /// Horizontal (panel / wide banner) scrim: leading and far edge.
+  static const double heroScrimPanelLead = 0.92;
+  static const double heroScrimPanelTail = 0.30;
+
+  static const Color heroText = Color(0xFFF1F5F9);
+
+  /// Subline and body text on a hero. Never slate-400 (#94A3B8) on a hero.
+  static const Color heroTextBody = Color(0xFFCBD5E1);
+
+  /// Accent word: Volt in the dark theme; brand-500 in light (large only).
+  static const Color heroAccentDark = volt;
+  static const Color heroAccentLight = fgBrand;
+
+  /// Fuel state chip on the hero.
+  static const Color heroChipFuelText = fuelOnDark;
+  static Color get heroChipFuelBorder => fuelOnDark.withValues(alpha: 0.6);
+  static Color get heroChipFuelFill => heroScrim.withValues(alpha: 0.4);
+
+  /// Shown before the photo decodes, under high contrast and on failure.
+  static const Color heroPlaceholder = Color(0xFF0B192C);
+
+  /// Light theme: the content sheet overlaps the hero by this much.
+  static const double heroSheetOverlap = 24;
+  static const double heroSheetRadius = radiusXl;
+
+  /// Headline size / line height: 34/36 from 375 wide, 30/32 below.
+  static const double heroDisplaySize = 34;
+  static const double heroDisplayLine = 36;
+  static const double heroDisplaySizeSmall = 30;
+  static const double heroDisplayLineSmall = 32;
+
+  /// Panel variant (>= 1024 wide): canon h1.
+  static const double heroDisplaySizeWide = 48;
+  static const double heroDisplayLineWide = 52;
+
+  /// Hero eyebrow: uppercase mono label, tracking 0.18em.
+  static TextStyle heroEyebrow({Color color = heroText}) =>
+      monoLabel(color, size: 11).copyWith(letterSpacing: 11 * 0.18);
+
+  // ── Canon role colours (photo hero role tiles, F-6) ──
+  static const Color roleMemberLight = Color(0xFF1F7A3A);
+  static const Color roleMemberDark = Color(0xFF17B26A);
+  static const Color roleTrainer = Color(0xFF3B82F6);
+  static const Color roleVendor = Color(0xFFA855F7);
+
   // ── Muted text on light grounds ──
   // slate-600: 7.0:1 on the #EEF2F7 page, 7.6:1 on white.
   static const Color lightFgMuted = Color(0xFF475569);
