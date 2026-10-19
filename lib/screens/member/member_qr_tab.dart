@@ -234,6 +234,14 @@ class _PendingPaymentCard extends StatelessWidget {
               fontSize: 14,
             ),
           ),
+          if (pending.memberReference case final ref?) ...[
+            const SizedBox(height: 4),
+            Text(
+              context.tr('manualPay.idShown').replaceAll('{id}', ref),
+              key: const Key('qr-pending-transaction-id'),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
         ],
       ),
     );

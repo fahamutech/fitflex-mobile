@@ -704,10 +704,15 @@ class ApiClient {
     return await _request('GET', '/me/checkins?$query');
   }
 
-  Future<Map<String, dynamic>> requestPass(String tier) async => await _request(
+  /// [reference] is the member's mobile-money transaction ID, sent only while
+  /// manual Lipa Namba payment is on (fitflex-functions#188).
+  Future<Map<String, dynamic>> requestPass(
+    String tier, {
+    String? reference,
+  }) async => await _request(
     'POST',
     '/me/subscribe',
-    body: {'tier': tier, 'type': 'platform_pass'},
+    body: {'tier': tier, 'type': 'platform_pass', 'reference': ?reference},
   );
 
   Future<Map<String, dynamic>> subscribe(String tier) async =>
@@ -747,18 +752,31 @@ class ApiClient {
       await _request('GET', '/me/upgrade-options') as Map<String, dynamic>;
 
   /// Upgrade the FitFlex Pass by paying the price difference.
-  Future<Map<String, dynamic>> upgradePass(String tier) async =>
-      await _request('POST', '/me/upgrade', body: {'tier': tier})
+  Future<Map<String, dynamic>> upgradePass(
+    String tier, {
+    String? reference,
+  }) async =>
+      await _request(
+            'POST',
+            '/me/upgrade',
+            body: {'tier': tier, 'reference': ?reference},
+          )
           as Map<String, dynamic>;
 
   /// A7: subscribe to a gym's own Daily/Weekly/Monthly plan.
   Future<Map<String, dynamic>> subscribeDirect({
     required String gymId,
     required String plan,
+    String? reference,
   }) async => await _request(
     'POST',
     '/me/subscribe',
-    body: {'type': 'direct_sub', 'homeGymId': gymId, 'plan': plan},
+    body: {
+      'type': 'direct_sub',
+      'homeGymId': gymId,
+      'plan': plan,
+      'reference': ?reference,
+    },
   );
 
   Future<Map<String, dynamic>> myQr() async => await _request('GET', '/me/qr');

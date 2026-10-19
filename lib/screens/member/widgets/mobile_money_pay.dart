@@ -327,11 +327,18 @@ class _PayNowButtonState extends State<PayNowButton> {
     super.initState();
     final type = widget.request.productType;
     // An older server sends no product type: a tier means a pass.
-    final isPayable = type != null
-        ? _payable.contains(type)
-        : widget.request.tier.isNotEmpty;
+    // Paid by hand with a transaction ID: the server refuses a second
+    // payment (409 manual_payment_submitted), so "Pay now" is not offered.
+    final isPayable =
+        widget.request.memberReference == null &&
+        (type != null
+            ? _payable.contains(type)
+            : widget.request.tier.isNotEmpty);
     if (isPayable) {
-      _available = AppScope.of(context).api
+      // Read without depending on it: initState may not register dependencies.
+      _available = context
+          .getInheritedWidgetOfExactType<AppScope>()!
+          .api
           .paymentOptions()
           .then((o) => o['enabled'] == true)
           .catchError((_) => false);

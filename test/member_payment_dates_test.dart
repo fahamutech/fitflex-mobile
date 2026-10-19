@@ -1,39 +1,27 @@
 import 'package:fitflexmobile/screens/member/member_shell.dart';
-import 'package:fitflexmobile/shared/design_tokens.dart';
 import 'package:fitflexmobile/shared/i18n.dart';
 import 'package:fitflexmobile/shared/models.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'support/recording_api.dart';
+
 void main() {
-  testWidgets('payment summary says the pass starts on approval, no dates', (
+  apiTest('payment summary says the pass starts on approval, no dates', (
     tester,
+    api,
   ) async {
     final data = MemberData()
       ..selectedTier = 'pro'
       ..passes = [PassTier(id: 'pro', price: 120000, visitCap: 12)];
-    // A narrow phone: the sentence values must wrap, not overflow.
-    tester.view.physicalSize = const Size(360, 1600);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
-    await tester.pumpWidget(
-      FFLocaleScope(
-        notifier: FFLocale(),
-        child: MaterialApp(
-          theme: buildTheme(),
-          supportedLocales: const [Locale('en'), Locale('sw')],
-          localizationsDelegates: const [
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
-          home: MemberDataScope(data: data, child: const MemberPaymentPage()),
-        ),
-      ),
+    api.on('GET /payments/options', {'enabled': false});
+    await pumpPage(
+      tester,
+      api,
+      MemberDataScope(data: data, child: const MemberPaymentPage()),
+      user: const {'id': 'm1', 'userType': 'member'},
     );
-    await tester.pump();
 
+    // pumpPage is a 360 px phone: the sentence values wrap, no overflow.
     expect(tester.takeException(), isNull);
     expect(find.text('Starts when payment is approved'), findsOneWidget);
     expect(find.text('Lasts 30 days from approval'), findsOneWidget);

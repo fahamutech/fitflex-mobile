@@ -111,6 +111,11 @@ String? _knownReason(FFLocale locale, String reason) {
     'plan_not_offered': 'error.reason.planNotOffered',
     'gym_not_available': 'error.reason.gymNotAvailable',
     'tier_not_available': 'error.reason.tierNotAvailable',
+    // Manual Lipa Namba payment (fitflex-functions#188).
+    'payment_reference_required': 'error.reason.paymentReferenceRequired',
+    'payment_reference_invalid': 'error.reason.paymentReferenceInvalid',
+    'payment_reference_duplicate': 'error.reason.paymentReferenceDuplicate',
+    'manual_payment_submitted': 'error.reason.manualPaymentSubmitted',
     'invalid_tier': 'error.reason.tierNotAvailable',
     'not_an_upgrade': 'error.reason.notAnUpgrade',
     'invalid_phone': 'error.reason.invalidPhone',

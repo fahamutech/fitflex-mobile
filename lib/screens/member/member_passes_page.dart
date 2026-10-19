@@ -12,6 +12,7 @@ import '../../shared/formatters.dart';
 import '../../shared/api_client.dart';
 import '../../shared/api_error_message.dart';
 import '../../shared/i18n.dart';
+import '../../shared/manual_payment.dart';
 import '../../shared/models.dart';
 import '../../shared/pass_gyms.dart';
 import '../../shared/payment_labels.dart';
@@ -167,11 +168,25 @@ class _UpgradeGateState extends State<_UpgradeGate> {
   late Future<Map<String, dynamic>> _future;
   String? _selected;
   bool _sending = false;
+  PaymentModes _modes = PaymentModes.none;
+  final _transactionId = TextEditingController();
+  String? _idError;
 
   @override
   void initState() {
     super.initState();
-    _future = AppScope.of(context).api.upgradeOptions();
+    // Read without depending on it: initState may not register dependencies.
+    final api = context.getInheritedWidgetOfExactType<AppScope>()!.api;
+    _future = api.upgradeOptions();
+    loadPaymentModes(api).then((m) {
+      if (mounted) setState(() => _modes = m);
+    });
+  }
+
+  @override
+  void dispose() {
+    _transactionId.dispose();
+    super.dispose();
   }
 
   void _reload() {
@@ -181,16 +196,38 @@ class _UpgradeGateState extends State<_UpgradeGate> {
   Future<void> _submit() async {
     final tier = _selected;
     if (tier == null || _sending) return; // a second tap must not send twice
-    setState(() => _sending = true);
+    final manual = _modes.manual;
+    String? reference;
+    if (manual != null) {
+      final problem = transactionIdError(_transactionId.text);
+      if (problem != null) {
+        setState(() => _idError = context.tr(problem));
+        return;
+      }
+      reference = _transactionId.text.trim();
+    }
+    setState(() {
+      _sending = true;
+      _idError = null;
+    });
     try {
-      final created = await AppScope.of(context).api.upgradePass(tier);
-      if (!mounted) return;
-      ScaffoldMessenger.of(
+      final created = await AppScope.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(context.tr('upgrade.submitted'))));
+      ).api.upgradePass(tier, reference: reference);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.tr(
+              manual != null ? 'manualPay.submitted' : 'upgrade.submitted',
+            ),
+          ),
+        ),
+      );
       // With mobile money switched on, pay the difference straight away.
+      // A transaction ID means it was paid by hand already.
       final req = created['paymentRequest'];
-      if (req is Map) {
+      if (manual == null && req is Map) {
         await offerMobileMoney(
           context,
           paymentRequestId: req['id'] as String?,
@@ -205,6 +242,11 @@ class _UpgradeGateState extends State<_UpgradeGate> {
       context.go(AppRoutes.memberHome);
     } catch (e) {
       if (!mounted) return;
+      final idProblem = transactionIdServerErrorKey(e);
+      if (manual != null && idProblem != null) {
+        setState(() => _idError = context.tr(idProblem));
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(errorMessage(FFLocaleScope.of(context), e))),
       );
@@ -420,10 +462,29 @@ class _UpgradeGateState extends State<_UpgradeGate> {
                 tone: FFAlertTone.warning,
               ),
             ],
+            if (_modes.manual != null && chosen != null) ...[
+              const SizedBox(height: 16),
+              ManualPaymentFields(
+                key: const Key('upgrade-manual-pay'),
+                manual: _modes.manual!,
+                amountLabel: formatCurrency(
+                  ((chosen['differenceTzs'] as num?) ?? 0).toInt(),
+                ),
+                controller: _transactionId,
+                errorText: _idError,
+                enabled: !_sending,
+                onChanged: (_) {
+                  if (_idError != null) setState(() => _idError = null);
+                },
+              ),
+            ],
             const SizedBox(height: 16),
             FFButton(
+              key: const Key('upgrade-submit'),
               label: chosen == null
                   ? context.tr('upgrade.request')
+                  : _modes.manual != null
+                  ? context.tr('manualPay.submit')
                   : context
                         .tr('upgrade.pay')
                         .replaceFirst(
@@ -518,6 +579,12 @@ class _PendingBlockCard extends StatelessWidget {
             label: context.tr('member.paymentPendingStatus'),
             value: context.tr('member.paymentPendingStatusValue'),
           ),
+          if (pending.memberReference case final ref?)
+            _DetailRow(
+              key: const Key('pending-transaction-id'),
+              label: context.tr('manualPay.idLabel'),
+              value: ref,
+            ),
           const SizedBox(height: 16),
           PayNowButton(request: pending),
           SizedBox(
@@ -536,7 +603,7 @@ class _PendingBlockCard extends StatelessWidget {
 }
 
 class _DetailRow extends StatelessWidget {
-  const _DetailRow({required this.label, required this.value});
+  const _DetailRow({super.key, required this.label, required this.value});
 
   final String label;
   final String value;

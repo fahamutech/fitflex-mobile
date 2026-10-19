@@ -7,6 +7,7 @@ import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
+import '../../shared/manual_payment.dart';
 import '../../shared/api_client.dart';
 import '../../shared/api_error_message.dart';
 import '../../shared/models.dart';
@@ -21,8 +22,27 @@ import 'widgets/pass_gyms_sheet.dart';
 /// sends no length, so the app mirrors it here.
 const platformPassDays = 30;
 
-class MemberPaymentPage extends StatelessWidget {
+class MemberPaymentPage extends StatefulWidget {
   const MemberPaymentPage({super.key});
+
+  @override
+  State<MemberPaymentPage> createState() => _MemberPaymentPageState();
+}
+
+class _MemberPaymentPageState extends State<MemberPaymentPage> {
+  /// Null until /payments/options answers.
+  PaymentModes? _modes;
+  bool _loadingModes = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_modes != null || _loadingModes) return;
+    _loadingModes = true;
+    loadPaymentModes(AppScope.of(context).api).then((m) {
+      if (mounted) setState(() => _modes = m);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,6 +54,13 @@ class MemberPaymentPage extends StatelessWidget {
     final visitCap = pass?.visitCap;
     // Nothing to pay for until the chosen tier is found in the live catalogue.
     final payable = pass != null && price > 0;
+    final modes = _modes;
+    // How this payment works, said once under the title.
+    final body = modes?.manual != null
+        ? context.tr('manualPay.pageBody')
+        : modes?.mobileMoney == true
+        ? context.tr('momo.pageBody')
+        : context.tr('member.paymentBody');
 
     return Scaffold(
       appBar: AppBar(
@@ -50,7 +77,8 @@ class MemberPaymentPage extends StatelessWidget {
             child: Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                context.tr('member.paymentBody'),
+                body,
+                key: const Key('payment-page-body'),
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ),
@@ -139,7 +167,15 @@ class MemberPaymentPage extends StatelessWidget {
               message: context.tr('member.passNoneAvailable'),
               tone: FFAlertTone.warning,
             ),
-          _SubmitButton(tier: data.selectedTier, enabled: payable),
+          if (modes == null)
+            const Center(child: FFSpinner(size: 28))
+          else
+            _PayActions(
+              tier: data.selectedTier,
+              enabled: payable,
+              modes: modes,
+              amountTzs: price,
+            ),
         ],
       ),
     );
@@ -178,29 +214,68 @@ class _Row extends StatelessWidget {
   }
 }
 
-class _SubmitButton extends StatefulWidget {
-  const _SubmitButton({required this.tier, required this.enabled});
+/// What the member does to pay: with manual payment on, pay the Lipa Namba
+/// and submit the transaction ID; with mobile money on, "Pay now"; otherwise
+/// the pilot request that an admin approves.
+class _PayActions extends StatefulWidget {
+  const _PayActions({
+    required this.tier,
+    required this.enabled,
+    required this.modes,
+    required this.amountTzs,
+  });
 
   final String tier;
   final bool enabled;
+  final PaymentModes modes;
+  final num amountTzs;
 
   @override
-  State<_SubmitButton> createState() => _SubmitButtonState();
+  State<_PayActions> createState() => _PayActionsState();
 }
 
-class _SubmitButtonState extends State<_SubmitButton> {
+class _PayActionsState extends State<_PayActions> {
+  final _transactionId = TextEditingController();
+  String? _idError;
   bool _loading = false;
+
+  @override
+  void dispose() {
+    _transactionId.dispose();
+    super.dispose();
+  }
 
   Future<void> _submit() async {
     if (_loading) return; // a second tap must not send a second request
-    setState(() => _loading = true);
+    final manual = widget.modes.manual;
+    String? reference;
+    if (manual != null) {
+      final problem = transactionIdError(_transactionId.text);
+      if (problem != null) {
+        setState(() => _idError = context.tr(problem));
+        return;
+      }
+      reference = _transactionId.text.trim();
+    }
+    setState(() {
+      _loading = true;
+      _idError = null;
+    });
     try {
-      final created = await AppScope.of(context).api.requestPass(widget.tier);
+      final created = await AppScope.of(
+        context,
+      ).api.requestPass(widget.tier, reference: reference);
       if (!mounted) return;
-      FFSnack.success(context, context.tr('member.paymentSubmitted'));
-      // With mobile money switched on, pay straight away.
+      FFSnack.success(
+        context,
+        context.tr(
+          manual != null ? 'manualPay.submitted' : 'member.paymentSubmitted',
+        ),
+      );
+      // With mobile money switched on, pay straight away. A request carrying
+      // a transaction ID is already paid by hand and cannot be paid again.
       final req = created['paymentRequest'];
-      if (req is Map) {
+      if (manual == null && req is Map) {
         await offerMobileMoney(
           context,
           paymentRequestId: req['id'] as String?,
@@ -216,7 +291,12 @@ class _SubmitButtonState extends State<_SubmitButton> {
       context.go(AppRoutes.memberHome);
     } on ApiException catch (e) {
       if (!mounted) return;
-      FFSnack.error(context, apiErrorMessage(FFLocaleScope.of(context), e));
+      final idProblem = transactionIdServerErrorKey(e);
+      if (manual != null && idProblem != null) {
+        setState(() => _idError = context.tr(idProblem));
+      } else {
+        FFSnack.error(context, apiErrorMessage(FFLocaleScope.of(context), e));
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -224,10 +304,35 @@ class _SubmitButtonState extends State<_SubmitButton> {
 
   @override
   Widget build(BuildContext context) {
-    return FFButton(
-      label: context.tr('member.requestPayment'),
-      onPressed: _loading || !widget.enabled ? null : _submit,
-      loading: _loading,
+    final manual = widget.modes.manual;
+    final label = manual != null
+        ? context.tr('manualPay.submit')
+        : widget.modes.mobileMoney
+        ? context.tr('momo.payNow')
+        : context.tr('member.requestPayment');
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (manual != null && widget.enabled) ...[
+          ManualPaymentFields(
+            manual: manual,
+            amountLabel: formatCurrency(widget.amountTzs),
+            controller: _transactionId,
+            errorText: _idError,
+            enabled: !_loading,
+            onChanged: (_) {
+              if (_idError != null) setState(() => _idError = null);
+            },
+          ),
+          const SizedBox(height: FFTokens.spacingMd),
+        ],
+        FFButton(
+          key: const Key('payment-submit'),
+          label: label,
+          onPressed: _loading || !widget.enabled ? null : _submit,
+          loading: _loading,
+        ),
+      ],
     );
   }
 }
