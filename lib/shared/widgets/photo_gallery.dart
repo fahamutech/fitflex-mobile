@@ -59,37 +59,45 @@ class PhotoGallery extends StatelessWidget {
                   ),
                 ),
               ),
+              // Previous / next sit centred on the side edges. They must be
+              // wrapped in Center: a bare IconButton.filled inside a
+              // top:0/bottom:0 Positioned stretches to the full height and
+              // shows as a primary-coloured bar down each side.
               if (images.length > 1) ...[
                 Positioned(
                   left: 12,
                   top: 0,
                   bottom: 0,
-                  child: IconButton.filled(
-                    tooltip: context.tr('a11y.previous'),
-                    key: Key('$keyPrefix-photo-previous'),
-                    onPressed: currentIndex == 0
-                        ? null
-                        : () => controller.previousPage(
-                            duration: const Duration(milliseconds: 180),
-                            curve: Curves.easeOut,
-                          ),
-                    icon: const Icon(Icons.chevron_left),
+                  child: Center(
+                    child: IconButton.filled(
+                      tooltip: context.tr('a11y.previous'),
+                      key: Key('$keyPrefix-photo-previous'),
+                      onPressed: currentIndex == 0
+                          ? null
+                          : () => controller.previousPage(
+                              duration: const Duration(milliseconds: 180),
+                              curve: Curves.easeOut,
+                            ),
+                      icon: const Icon(Icons.chevron_left),
+                    ),
                   ),
                 ),
                 Positioned(
                   right: 12,
                   top: 0,
                   bottom: 0,
-                  child: IconButton.filled(
-                    tooltip: context.tr('a11y.next'),
-                    key: Key('$keyPrefix-photo-next'),
-                    onPressed: currentIndex == images.length - 1
-                        ? null
-                        : () => controller.nextPage(
-                            duration: const Duration(milliseconds: 180),
-                            curve: Curves.easeOut,
-                          ),
-                    icon: const Icon(Icons.chevron_right),
+                  child: Center(
+                    child: IconButton.filled(
+                      tooltip: context.tr('a11y.next'),
+                      key: Key('$keyPrefix-photo-next'),
+                      onPressed: currentIndex == images.length - 1
+                          ? null
+                          : () => controller.nextPage(
+                              duration: const Duration(milliseconds: 180),
+                              curve: Curves.easeOut,
+                            ),
+                      icon: const Icon(Icons.chevron_right),
+                    ),
                   ),
                 ),
               ],
