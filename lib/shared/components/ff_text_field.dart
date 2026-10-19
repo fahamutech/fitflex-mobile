@@ -34,6 +34,7 @@ class FFTextField extends StatelessWidget {
     this.helperText,
     this.suffixText,
     this.autovalidateMode,
+    this.focusNode,
   });
 
   final TextEditingController? controller;
@@ -66,10 +67,14 @@ class FFTextField extends StatelessWidget {
   final String? suffixText;
   final AutovalidateMode? autovalidateMode;
 
+  /// Lets a screen move focus back to this field (e.g. after a conflict).
+  final FocusNode? focusNode;
+
   @override
   Widget build(BuildContext context) {
     return TextFormField(
       controller: controller,
+      focusNode: focusNode,
       initialValue: initialValue,
       validator: validator,
       keyboardType: keyboardType,

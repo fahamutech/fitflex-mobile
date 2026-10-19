@@ -1177,9 +1177,10 @@ void main() {
       api,
     ) async {
       _seed(api, orders: [_order('o1')]);
+      // The server answers `variant` per item (null when none).
       api.on('POST /me/shop-orders/o1/reorder', {
         'items': [
-          {'productId': 'p1', 'qty': 2},
+          {'productId': 'p1', 'qty': 2, 'variant': null},
         ],
       });
       final host = await _pump(tester, api);
@@ -1191,6 +1192,42 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Whey Protein'), findsOneWidget);
+    });
+
+    apiTest('reorder keeps each item\'s option for checkout', (
+      tester,
+      api,
+    ) async {
+      // Products whose options keep their own stock need one at checkout
+      // (400 variant_required otherwise).
+      _seed(
+        api,
+        orders: [_order('o1')],
+        products: [
+          {
+            ..._catalogue[0],
+            'variants': [
+              {'name': 'Vanilla', 'stock': 3},
+              {'name': 'Cocoa', 'stock': 1},
+            ],
+          },
+        ],
+      );
+      api.on('POST /me/shop-orders/o1/reorder', {
+        'items': [
+          {'productId': 'p1', 'qty': 1, 'variant': 'Cocoa'},
+        ],
+      });
+      final host = await _pump(tester, api);
+      await _openMyOrders(tester, host);
+      await tapVisible(tester, _key('shop-reorder-o1'));
+      await _openCheckout(tester);
+      await typeInto(tester, _key('shop-delivery-address'), 'Mikocheni');
+      await tapVisible(tester, _key('shop-place-order'));
+      final body = api.only('POST', '/me/shop-orders').body as Map;
+      expect(body['items'], [
+        {'productId': 'p1', 'qty': 1, 'variant': 'Cocoa'},
+      ]);
     });
 
     apiTest('invoice shows the order lines and a download button', (
