@@ -11,6 +11,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 
 import '../../../app_scope.dart';
@@ -45,11 +46,16 @@ String newStockClientRef([Random? random]) {
 /// Opens the sheet for [product] (a vendor product map: id, name, stock,
 /// variants). [variant] preselects a variant. Shows the result snack and
 /// resolves with the saved change, or null when nothing was saved.
+/// How [openAdjustStock] reports its outcome when a snackbar would not be
+/// seen (e.g. it is opened from inside another sheet, which covers it).
+typedef AdjustNotify = void Function(String message, {required bool error});
+
 Future<AdjustResult?> openAdjustStock(
   BuildContext context, {
   required Map<String, dynamic> product,
   String? variant,
   String Function()? makeClientRef,
+  AdjustNotify? notify,
 }) async {
   final out = await showFFSheet<Object>(
     context,
@@ -61,24 +67,29 @@ Future<AdjustResult?> openAdjustStock(
     ),
   );
   if (!context.mounted) return null;
+  void tell(String message, {required bool error}) {
+    if (notify != null) return notify(message, error: error);
+    error ? FFSnack.error(context, message) : FFSnack.success(context, message);
+  }
+
   if (out is AdjustResult) {
-    FFSnack.success(
-      context,
+    tell(
       fillIn(context.tr('vendor.stock.updated'), {
         'before': formatStock(out.movement['stockBefore'] as num? ?? 0),
         'after': formatStock(out.movement['stockAfter'] as num? ?? 0),
       }),
+      error: false,
     );
     return out;
   }
   if (out is AdjustExit) {
-    FFSnack.error(
-      context,
+    tell(
       context.tr(switch (out) {
         AdjustExit.notAllowed => 'vendor.stock.notAllowed',
         AdjustExit.notFound => 'vendor.stock.notFound',
         AdjustExit.failed => 'vendor.saveFailed',
       }),
+      error: true,
     );
   }
   return null;
@@ -124,6 +135,8 @@ class _AdjustStockSheetState extends State<AdjustStockSheet> {
   bool _saveFailed = false;
   // A specific problem to fix before saving again (an i18n key).
   String? _notice;
+  // Focus the quantity once the save has finished (after a 409).
+  bool _refocusQuantity = false;
   String? _quantityError;
   String? _noteError;
 
@@ -209,7 +222,9 @@ class _AdjustStockSheetState extends State<AdjustStockSheet> {
       _reason != null &&
       _kind != null &&
       _quantityValid &&
-      !_insufficient;
+      !_insufficient &&
+      // Other needs a note before it can be saved.
+      (_reason != 'other' || _note.text.trim().isNotEmpty);
 
   /// Anything the vendor changes makes this a new entry.
   void _edited() {
@@ -281,8 +296,19 @@ class _AdjustStockSheetState extends State<AdjustStockSheet> {
       // reference, so "Try again" cannot record it twice.
       if (!mounted) return;
       setState(() => _networkFailed = true);
+      _announce(
+        '${context.tr('error.network')} ${context.tr('vendor.stock.nothingSaved')}',
+      );
     }
-    if (mounted) setState(() => _busy = false);
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (_refocusQuantity) {
+      // After the field is enabled again (it is disabled while saving).
+      _refocusQuantity = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _quantityFocus.requestFocus();
+      });
+    }
   }
 
   /// The product's variants changed under the vendor (renamed, removed, or
@@ -297,11 +323,25 @@ class _AdjustStockSheetState extends State<AdjustStockSheet> {
     _refresh();
   }
 
+  /// Says [message] to a screen reader now (alerts that appear in the
+  /// sheet are not always picked up as a live region on web).
+  void _announce(String message) {
+    SemanticsService.sendAnnouncement(
+      View.of(context),
+      message,
+      Directionality.of(context),
+      assertiveness: Assertiveness.assertive,
+    );
+  }
+
   void _onApiError(ApiException e) {
     final body = e.body is Map ? e.body as Map : const {};
     final current = (body['currentStock'] as num?)?.toInt();
     if (e.status >= 500) {
       setState(() => _networkFailed = true);
+      _announce(
+        '${context.tr('error.network')} ${context.tr('vendor.stock.nothingSaved')}',
+      );
       return;
     }
     void notice(String key) => setState(() {
@@ -316,7 +356,8 @@ class _AdjustStockSheetState extends State<AdjustStockSheet> {
           _clientRef = null;
           _quantity.clear();
         });
-        _quantityFocus.requestFocus();
+        _refocusQuantity = true;
+        _announce(context.tr('vendor.stock.changed'));
       case 'insufficient_stock':
         setState(() {
           if (current != null) _setStock(current);
@@ -507,12 +548,22 @@ class _AdjustStockSheetState extends State<AdjustStockSheet> {
                       key: Key('adjust-reason-$reason'),
                       label: context.tr('vendor.stock.reason.$reason'),
                       filled: _reason == reason,
-                      onTap: _busy
-                          ? null
-                          : () {
-                              _reason = reason;
-                              _edited();
-                            },
+                      // Always tappable (keeps its size while saving);
+                      // ignored while a save is in flight.
+                      onTap: () {
+                        if (_busy) return;
+                        final wasCount = _reason == 'count';
+                        // A new reason is a new entry: start the number over.
+                        if (reason != _reason) _quantity.clear();
+                        _reason = reason;
+                        _noteError = null;
+                        _edited();
+                        if (reason == 'count' && !wasCount) {
+                          WidgetsBinding.instance.addPostFrameCallback(
+                            (_) => _quantityFocus.requestFocus(),
+                          );
+                        }
+                      },
                     ),
                   ),
               ],
@@ -537,12 +588,11 @@ class _AdjustStockSheetState extends State<AdjustStockSheet> {
                         key: Key('adjust-direction-$dir'),
                         label: context.tr(key),
                         filled: _direction == dir,
-                        onTap: _busy
-                            ? null
-                            : () {
-                                _direction = dir;
-                                _edited();
-                              },
+                        onTap: () {
+                          if (_busy) return;
+                          _direction = dir;
+                          _edited();
+                        },
                       ),
                     ),
                 ],
@@ -593,6 +643,7 @@ class _AdjustStockSheetState extends State<AdjustStockSheet> {
             const SizedBox(height: FFTokens.spacingMd),
             FFButton(
               key: const Key('adjust-save'),
+              visualDensity: VisualDensity.standard,
               label: context.tr(
                 _networkFailed
                     ? 'common.retry'
@@ -607,6 +658,7 @@ class _AdjustStockSheetState extends State<AdjustStockSheet> {
             const SizedBox(height: FFTokens.spacingSm),
             FFButton(
               key: const Key('adjust-cancel'),
+              visualDensity: VisualDensity.standard,
               label: context.tr('common.cancel'),
               variant: FFButtonVariant.ghost,
               fullWidth: true,
@@ -637,7 +689,10 @@ class _AdjustStockSheetState extends State<AdjustStockSheet> {
       }
     }
     return Semantics(
+      container: true,
       liveRegion: true,
+      label: text ?? '',
+      excludeSemantics: true,
       child: Padding(
         padding: const EdgeInsets.only(top: FFTokens.spacingXs),
         child: Text(

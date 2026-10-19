@@ -62,6 +62,28 @@ class _StockHistoryPageState extends State<StockHistoryPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _start());
   }
 
+  /// The route moved to another product or variant while this page was
+  /// open (a notification, go()): start over for it.
+  @override
+  void didUpdateWidget(StockHistoryPage old) {
+    super.didUpdateWidget(old);
+    if (old.productId == widget.productId && old.variant == widget.variant) {
+      return;
+    }
+    setState(() {
+      _product = null;
+      _rows.clear();
+      _cursor = null;
+      _opening = null;
+      _closing = null;
+      _expanded.clear();
+      _variantFilter = widget.variant;
+      _loading = true;
+      _problem = _Problem.none;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _start());
+  }
+
   Future<void> _start() async {
     if (!mounted) return;
     if (!canManageProducts(context)) {
@@ -202,12 +224,45 @@ class _StockHistoryPageState extends State<StockHistoryPage> {
         firstDate: last.subtract(const Duration(days: 730)),
         lastDate: last,
         initialDateRange: _custom,
+        builder: (context, child) => Theme(
+          data: stockRangePickerTheme(Theme.of(context)),
+          child: child!,
+        ),
       );
       if (picked == null || !mounted) return;
       _custom = picked;
     }
     setState(() => _range = value);
     await _load();
+  }
+
+  /// The orders this person can see (null until known or when it failed).
+  Set<String>? _visibleOrders;
+
+  Future<void> _loadVisibleOrders() async {
+    if (!canVendor(context, 'orders')) return;
+    try {
+      final rows = await AppScope.of(context).api.vendorOrders();
+      if (!mounted) return;
+      _visibleOrders = {
+        for (final o in rows.whereType<Map>()) o['id']?.toString() ?? '',
+      };
+    } catch (_) {
+      _visibleOrders = null;
+    }
+  }
+
+  /// Opens Orders, unless this order is not in the vendor's list yet (an
+  /// unpaid order): then say so rather than show an Orders tab without it.
+  Future<void> _openOrder(String orderId) async {
+    if (_visibleOrders == null) await _loadVisibleOrders();
+    if (!mounted) return;
+    final visible = _visibleOrders;
+    if (visible != null && !visible.contains(orderId)) {
+      FFSnack.info(context, context.tr('vendor.stock.orderNotVisible'));
+      return;
+    }
+    context.go('/vendor/home?open=orders');
   }
 
   Future<void> _adjust() async {
@@ -363,6 +418,7 @@ class _StockHistoryPageState extends State<StockHistoryPage> {
             title: context.tr('vendor.stock.historyEmpty'),
             action: FFButton(
               label: context.tr('vendor.stock.adjust'),
+              visualDensity: VisualDensity.standard,
               onPressed: _adjust,
             ),
           ),
@@ -378,6 +434,7 @@ class _StockHistoryPageState extends State<StockHistoryPage> {
         if (_cursor != null)
           FFButton(
             key: const Key('stock-load-more'),
+            visualDensity: VisualDensity.standard,
             label: context.tr(
               _moreFailed ? 'common.retry' : 'vendor.stock.loadMore',
             ),
@@ -454,6 +511,7 @@ class _StockHistoryPageState extends State<StockHistoryPage> {
                 : AlignmentDirectional.centerStart,
             child: FFButton(
               key: const Key('stock-adjust'),
+              visualDensity: VisualDensity.standard,
               label: context.tr('vendor.stock.adjust'),
               icon: Icons.tune,
               fullWidth: !wide,
@@ -475,11 +533,17 @@ class _StockHistoryPageState extends State<StockHistoryPage> {
         ('custom', context.tr('vendor.stock.range.custom$suffix')),
       ];
       final full = labels('');
+      // Measured the way FFSegmented draws a regular option (bold
+      // labelLarge, 8px each side, inside its 4px track padding), but for
+      // the whole label on ONE line: otherwise "Choose dates" fits word by
+      // word and wraps to two lines.
       final style = Theme.of(
         context,
-      ).textTheme.labelLarge?.copyWith(fontSize: 12.5);
+      ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700);
       final scaler = MediaQuery.textScalerOf(context);
-      final share = box.maxWidth / full.length - 2 * FFTokens.spacingXs - 2;
+      final share =
+          (box.maxWidth - 2 * FFTokens.spacingXs) / full.length -
+          2 * FFTokens.spacingSm;
       final fits = full.every((option) {
         final painter = TextPainter(
           text: TextSpan(text: option.$2, style: style),
@@ -487,16 +551,46 @@ class _StockHistoryPageState extends State<StockHistoryPage> {
           textScaler: scaler,
           maxLines: 1,
         )..layout();
-        return painter.width <= share;
+        final width = painter.width;
+        painter.dispose();
+        return width <= share;
       });
-      return FFSegmented(
-        key: const Key('stock-range'),
-        value: _range,
-        options: fits ? full : labels('Short'),
-        onChanged: _pickRange,
+      final custom = _custom;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          FFSegmented(
+            key: const Key('stock-range'),
+            value: _range,
+            options: fits ? full : labels('Short'),
+            onChanged: _pickRange,
+          ),
+          // The dates chosen, so "Choose dates" says which ones.
+          if (_range == 'custom' && custom != null)
+            Padding(
+              padding: const EdgeInsets.only(top: FFTokens.spacingXs),
+              child: Text(
+                fillIn(context.tr('vendor.stock.customRange'), {
+                  'from': _day(custom.start),
+                  'to': _day(custom.end),
+                }),
+                key: const Key('stock-custom-range'),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
+        ],
       );
     },
   );
+
+  String _day(DateTime day) {
+    final lang = FFLocaleScope.of(context).locale.languageCode;
+    try {
+      return DateFormat('d MMM yyyy', lang).format(day);
+    } catch (_) {
+      return DateFormat('d MMM yyyy').format(day);
+    }
+  }
 
   String _when(String? createdAt) {
     final at = DateTime.tryParse(createdAt ?? '');
@@ -529,9 +623,26 @@ class _StockHistoryPageState extends State<StockHistoryPage> {
     final note = stockNoteLabel(context, row['note']?.toString());
     final doc = row['document'] is Map ? row['document'] as Map : null;
     final title = variant.isEmpty ? reason : '$reason · $variant';
+    // before → after, with an arrow icon (not a "→" glyph: on web it shows
+    // as a box until a fallback font loads).
+    final small = theme.textTheme.bodySmall;
     final beforeAfter = before == null || after == null
         ? null
-        : '${formatStock(before)} → ${formatStock(after)}';
+        : <InlineSpan>[
+            TextSpan(text: formatStock(before)),
+            WidgetSpan(
+              alignment: PlaceholderAlignment.middle,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                child: Icon(
+                  Icons.arrow_forward,
+                  size: (small?.fontSize ?? 12) + 1,
+                  color: small?.color,
+                ),
+              ),
+            ),
+            TextSpan(text: formatStock(after)),
+          ];
     final deltaWords = delta == 0
         ? context.tr('vendor.stock.deltaNone')
         : fillIn(
@@ -561,7 +672,7 @@ class _StockHistoryPageState extends State<StockHistoryPage> {
               label: text,
               variant: FFButtonVariant.ghost,
               size: FFButtonSize.sm,
-              onPressed: () => context.go('/vendor/home?open=orders'),
+              onPressed: () => _openOrder(docId),
             )
           : Text(text, style: theme.textTheme.bodySmall);
     }
@@ -570,67 +681,73 @@ class _StockHistoryPageState extends State<StockHistoryPage> {
       padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
       child: FFCard(
         key: Key('stock-row-$id'),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 64),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Semantics(
-                label: label,
-                excludeSemantics: true,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Text(title, style: theme.textTheme.titleSmall),
+        // Sized by its content: no blank band when a row has no note.
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Semantics(
+              label: label,
+              excludeSemantics: true,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(title, style: theme.textTheme.titleSmall),
+                      ),
+                      Text(
+                        formatDelta(delta),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                          color: delta > 0
+                              ? tones.success.fg
+                              : theme.colorScheme.onSurface,
                         ),
-                        Text(
-                          formatDelta(delta),
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontFeatures: const [FontFeature.tabularFigures()],
-                            color: delta > 0
-                                ? tones.success.fg
-                                : theme.colorScheme.onSurface,
-                          ),
+                      ),
+                    ],
+                  ),
+                  Text.rich(
+                    TextSpan(
+                      style: small,
+                      children: [
+                        ...?beforeAfter,
+                        TextSpan(
+                          text:
+                              (beforeAfter == null ? '' : ' · ') +
+                              [
+                                when,
+                                who,
+                              ].where((p) => p.isNotEmpty).join(' · '),
                         ),
                       ],
                     ),
-                    Text(
-                      [
-                        ?beforeAfter,
-                        when,
-                        who,
-                      ].where((s) => s.isNotEmpty).join(' · '),
-                      style: theme.textTheme.bodySmall,
-                    ),
-                  ],
+                  ),
+                ],
+              ),
+            ),
+            if (note != null)
+              InkWell(
+                onTap: () => setState(
+                  () => expanded ? _expanded.remove(id) : _expanded.add(id),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.only(top: FFTokens.spacingXs),
+                  child: Text(
+                    note,
+                    maxLines: expanded ? null : 3,
+                    overflow: expanded ? null : TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium,
+                  ),
                 ),
               ),
-              if (note != null)
-                InkWell(
-                  onTap: () => setState(
-                    () => expanded ? _expanded.remove(id) : _expanded.add(id),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: FFTokens.spacingXs),
-                    child: Text(
-                      note,
-                      maxLines: expanded ? null : 3,
-                      overflow: expanded ? null : TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                  ),
-                ),
-              if (orderLink != null)
-                Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: orderLink,
-                ),
-            ],
-          ),
+            if (orderLink != null)
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: orderLink,
+              ),
+          ],
         ),
       ),
     );
@@ -665,3 +782,36 @@ Map<String, dynamic> withAdjustedStock(
       fresh['variants'] as List,
     ),
 };
+
+/// The date range picker in the app's colours, with readable days inside
+/// the chosen range: a light tint of the primary behind normal text (the
+/// default M3 fill put white text on Volt in dark, slate on green in light).
+/// The first and last day keep the solid primary with its on-colour.
+ThemeData stockRangePickerTheme(ThemeData base) {
+  final scheme = base.colorScheme;
+  final dark = base.brightness == Brightness.dark;
+  return base.copyWith(
+    datePickerTheme: base.datePickerTheme.copyWith(
+      backgroundColor: scheme.surface,
+      rangePickerBackgroundColor: scheme.surface,
+      rangePickerHeaderBackgroundColor: scheme.surface,
+      rangePickerHeaderForegroundColor: scheme.onSurface,
+      headerBackgroundColor: scheme.surface,
+      headerForegroundColor: scheme.onSurface,
+      rangeSelectionBackgroundColor: scheme.primary.withValues(
+        alpha: dark ? 0.22 : 0.14,
+      ),
+      dayForegroundColor: WidgetStateProperty.resolveWith(
+        (states) => states.contains(WidgetState.selected)
+            ? scheme.onPrimary
+            : states.contains(WidgetState.disabled)
+            ? scheme.onSurface.withValues(alpha: 0.38)
+            : scheme.onSurface,
+      ),
+      dayBackgroundColor: WidgetStateProperty.resolveWith(
+        (states) =>
+            states.contains(WidgetState.selected) ? scheme.primary : null,
+      ),
+    ),
+  );
+}

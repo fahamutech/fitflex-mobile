@@ -149,7 +149,7 @@ void main() {
       'expectedStock': 10,
       'clientRef': 'ref-test-1',
     });
-    expect(find.text('Stock updated: 10 → 7'), findsOneWidget);
+    expect(find.text('Stock updated from 10 to 7'), findsOneWidget);
     expect(_result?.product['stock'], 7);
   });
 
@@ -178,8 +178,8 @@ void main() {
     expect(find.byKey(const Key('adjust-quantity')), findsNothing);
     await tapVisible(tester, find.byKey(const Key('adjust-direction-out')));
     await _qty(tester, '2');
-    await tapVisible(tester, _save);
-    expect(find.text(host.tr('vendor.stock.noteMissing')), findsOneWidget);
+    // Save waits for the note.
+    expect(isEnabled(tester, _save), isFalse);
     expect(api.sent('POST', _path), isFalse);
 
     await typeInto(tester, find.byKey(const Key('adjust-note')), 'Gift');
@@ -340,7 +340,7 @@ void main() {
       (sent[0].body as Map)['clientRef'],
       (sent[1].body as Map)['clientRef'],
     );
-    expect(find.text('Stock updated: 10 → 14'), findsOneWidget);
+    expect(find.text('Stock updated from 10 to 14'), findsOneWidget);
   });
 
   apiTest('a changed entry after a failure gets a new ref', (

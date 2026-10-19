@@ -107,10 +107,10 @@ void main() {
     expect(find.text('Counted'), findsOneWidget);
     expect(find.text('−2'), findsNWidgets(2));
     // 11:05Z is 14:05 in Dar es Salaam.
-    expect(
-      find.textContaining('10 → 8 · 19 Oct, 14:05 · By Asha'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('8 · 19 Oct, 14:05 · By Asha'), findsOneWidget);
+    // before → after uses an icon, not a "→" glyph (tofu on web).
+    expect(find.byIcon(Icons.arrow_forward), findsWidgets);
+    expect(find.textContaining('→'), findsNothing);
     expect(find.text(host.tr('vendor.stock.fromProductForm')), findsOneWidget);
     expect(find.text('Order placed'), findsOneWidget);
     expect(

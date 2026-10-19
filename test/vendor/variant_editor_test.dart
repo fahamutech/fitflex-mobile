@@ -216,9 +216,88 @@ void main() {
       // An empty one goes.
       await tapVisible(tester, _k('variant-remove-1'));
       expect(_k('variant-row-1'), findsNothing);
-      // Save is held back while the warning stands.
+      // The variant was kept, so Save goes ahead (never a silent no-op).
       await tapVisible(tester, _k('vendor-product-save'));
+      final body = api.only('PUT', '/vendor/products/p1').body as Map;
+      expect((body['variants'] as List).map((v) => v['name']), ['Small']);
+    });
+
+    apiTest('typing in a kept variant clears the remove warning', (
+      tester,
+      api,
+    ) async {
+      seedVendorHome(
+        api,
+        tools: ledgerOn,
+        products: [
+          stockProduct(
+            'p1',
+            'Tee',
+            variants: [
+              {'name': 'Small', 'stock': 5},
+            ],
+          ),
+        ],
+      );
+      final host = await pumpVendorHome(tester, api);
+      await productMenu(tester, 'p1', host.tr('vendor.edit'));
+      await tapVisible(tester, _k('variant-remove-0'));
+      expect(_k('variant-has-stock-0'), findsOneWidget);
+      await typeInto(tester, _k('variant-reorder-0'), '2');
+      await tester.pumpAndSettle();
+      expect(_k('variant-has-stock-0'), findsNothing);
+    });
+
+    apiTest('invalid name or price: inline errors and a message, no PUT', (
+      tester,
+      api,
+    ) async {
+      seedVendorHome(
+        api,
+        tools: ledgerOn,
+        products: [stockProduct('p1', 'Tee')],
+      );
+      final host = await pumpVendorHome(tester, api);
+      await productMenu(tester, 'p1', host.tr('vendor.edit'));
+      await typeInto(tester, _k('vendor-product-name'), ' ');
+      await typeInto(tester, _k('vendor-product-price'), '0');
+      await tapVisible(tester, _k('vendor-product-save'));
+      expect(find.text(host.tr('vendor.form.nameRequired')), findsOneWidget);
+      expect(find.text(host.tr('vendor.form.priceRequired')), findsOneWidget);
+      expect(find.text(host.tr('vendor.form.fixErrors')), findsOneWidget);
       expect(api.sent('PUT', '/vendor/products/p1'), isFalse);
+    });
+
+    apiTest('each variant Adjust button names its variant to screen readers', (
+      tester,
+      api,
+    ) async {
+      seedVendorHome(
+        api,
+        tools: ledgerOn,
+        products: [
+          stockProduct(
+            'p1',
+            'Tee',
+            variants: [
+              {'name': 'Small', 'stock': 5},
+              {'name': 'Large', 'stock': 3},
+            ],
+          ),
+        ],
+      );
+      final handle = tester.ensureSemantics();
+      final host = await pumpVendorHome(tester, api);
+      await productMenu(tester, 'p1', host.tr('vendor.edit'));
+      expect(find.bySemanticsLabel('Adjust stock: Small'), findsOneWidget);
+      expect(find.bySemanticsLabel('Adjust stock: Large'), findsOneWidget);
+      // 48dp targets for the row buttons.
+      for (final key in ['variant-adjust-0', 'variant-remove-0']) {
+        final size = tester.getSize(_k(key));
+        expect(size.height, greaterThanOrEqualTo(48), reason: key);
+        expect(size.width, greaterThanOrEqualTo(48), reason: key);
+      }
+      handle.dispose();
     });
 
     apiTest('server refusals stay in the open form with values kept', (
@@ -354,7 +433,7 @@ void main() {
       await tester.pumpAndSettle();
       await tapVisible(tester, _k('adjust-save'));
       expect(textOf(tester, _k('vendor-product-stock')), '14');
-      expect(find.text('Stock updated: 10 → 14'), findsOneWidget);
+      expect(find.text('Stock updated from 10 to 14'), findsOneWidget);
     });
 
     apiTest('Swahili, 375 wide, 2x text: form rows stack, no overflow', (
