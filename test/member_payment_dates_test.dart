@@ -13,6 +13,10 @@ void main() {
     final data = MemberData()
       ..selectedTier = 'pro'
       ..passes = [PassTier(id: 'pro', price: 120000, visitCap: 12)];
+    // A narrow phone: the sentence values must wrap, not overflow.
+    tester.view.physicalSize = const Size(360, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
     await tester.pumpWidget(
       FFLocaleScope(
         notifier: FFLocale(),
@@ -30,6 +34,7 @@ void main() {
     );
     await tester.pump();
 
+    expect(tester.takeException(), isNull);
     expect(find.text('Starts when payment is approved'), findsOneWidget);
     expect(find.text('Lasts 30 days from approval'), findsOneWidget);
     expect(find.text('End date'), findsNothing);

@@ -156,12 +156,22 @@ class _Row extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
+      // Values can be whole sentences ("Starts when payment is approved"):
+      // they wrap instead of running off a narrow phone.
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
             child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
           ),
-          Text(value, style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(width: FFTokens.spacingSm),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+          ),
         ],
       ),
     );
