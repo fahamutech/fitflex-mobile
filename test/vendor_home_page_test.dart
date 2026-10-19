@@ -1308,4 +1308,26 @@ void main() {
       expect(host.tr('vendor.productSaved'), isNot('Product saved.'));
     });
   });
+
+  group('language', () {
+    apiTest('a vendor switches language in place, without signing out', (
+      tester,
+      api,
+    ) async {
+      _seed(api);
+      final host = await _pump(tester, api);
+      expect(find.text('Vendor marketplace'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('vendor-language')));
+      await tester.pumpAndSettle();
+      // The same screen, now in Swahili; still signed in, nothing sent.
+      expect(find.text('Soko la muuzaji'), findsOneWidget);
+      expect(find.text('Vendor marketplace'), findsNothing);
+      expect(host.auth.isSignedIn, isTrue);
+      expect(find.text('ROUTE-LANGUAGE'), findsNothing);
+      // And back to English.
+      await tester.tap(find.byKey(const Key('vendor-language')));
+      await tester.pumpAndSettle();
+      expect(find.text('Vendor marketplace'), findsOneWidget);
+    });
+  });
 }

@@ -458,6 +458,9 @@ class _VendorHomePageState extends State<VendorHomePage> {
           // Orders, questions and decisions arrive here as well as by push.
           const InboxBellButton(),
           const PersonaSwitchButton(),
+          // English <-> Swahili in place, the same shared switch members and
+          // owners use; the choice is remembered (owner, 2026-10-19).
+          const LanguageToggleButton(key: Key('vendor-language')),
           // The vendor and their staff change their own PIN here.
           const ChangePinButton(),
           IconButton(
