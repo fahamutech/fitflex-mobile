@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'shared/auth_state.dart';
 import 'shared/held_nav_extras.dart';
 import 'screens/splash_screen.dart';
+import 'screens/route_status_pages.dart';
 import 'screens/language_screen.dart';
 import 'screens/role_screen.dart';
 import 'screens/auth_screen.dart';
@@ -58,6 +59,9 @@ import 'shared/pending_org_invite.dart';
 /// Route path constants.
 abstract class AppRoutes {
   static const splash = '/';
+
+  /// Signed in but the account could not be loaded (see [StartupOfflinePage]).
+  static const startupOffline = '/offline';
   static const language = '/language';
   static const role = '/role';
   static const auth = '/auth';
@@ -207,7 +211,20 @@ const _homeRoutes = {
   AppRoutes.home,
 };
 
+/// The account could not be loaded and what this device kept would send the
+/// person to setup or registration (or is missing): wait for the server
+/// instead of guessing (H6). With a kept account that is already set up the
+/// app opens as usual and its own offline banner takes over.
+bool _waitForProfile(AuthState auth) {
+  if (!auth.isSignedIn || !auth.profileUnconfirmed) return false;
+  if (auth.user == null) return true;
+  final role = auth.user?['userType']?.toString() ?? auth.role;
+  return const {'member', 'trainer', 'gym_operator'}.contains(role) &&
+      !_isOnboarded(auth, role);
+}
+
 String _landingFor(AuthState auth) {
+  if (_waitForProfile(auth)) return AppRoutes.startupOffline;
   final role = auth.user?['userType']?.toString() ?? auth.role;
   final onboarded = _isOnboarded(auth, role);
   if (auth.isPendingApproval) {
@@ -414,6 +431,14 @@ GoRouter buildRouter(AuthState auth) {
         return AppRoutes.language;
       }
 
+      // Never onboarding on the strength of a failed /me (H6).
+      if (_waitForProfile(auth)) {
+        return loc == AppRoutes.startupOffline
+            ? null
+            : AppRoutes.startupOffline;
+      }
+      if (loc == AppRoutes.startupOffline) return routeForSignedInUser(auth);
+
       // Identity V2: several personas and none used last — ask first.
       if (loggedIn && auth.personaChoiceRequired) {
         return loc == AppRoutes.personaPicker ? null : AppRoutes.personaPicker;
@@ -483,7 +508,15 @@ GoRouter buildRouter(AuthState auth) {
 
       return null;
     },
+    // An address that matches no page gets a translated page with a way
+    // home, not go_router's raw "GoException" text (D7).
+    errorBuilder: (context, state) => const NotFoundPage(),
     routes: [
+      GoRoute(
+        path: AppRoutes.startupOffline,
+        name: 'startupOffline',
+        builder: (context, state) => const StartupOfflinePage(),
+      ),
       GoRoute(
         path: AppRoutes.splash,
         name: 'splash',

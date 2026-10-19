@@ -1,18 +1,24 @@
 // Design-QA fixes on the journey-audit Phase A screens: layouts at a 360px
 // phone in English and Swahili (H1–H3), Swahili time (M2), one screen-reader
-// label for the visits ring (M5), and the related UAT items (D2, D3, D6, M6,
-// M15).
+// label for the visits ring (M5), and the related UAT items (D2, D3, D6, D7,
+// H6, M6, M15).
+import 'package:fitflexmobile/app_scope.dart';
+import 'package:fitflexmobile/router.dart';
 import 'package:fitflexmobile/screens/member/member_shell.dart';
 import 'package:fitflexmobile/screens/member/widgets/gym_card.dart';
 import 'package:fitflexmobile/screens/member/widgets/gym_visit_tile.dart';
 import 'package:fitflexmobile/screens/member/widgets/pass_summary_card.dart';
 import 'package:fitflexmobile/screens/owner/owner_qr_scanner_page.dart';
+import 'package:fitflexmobile/screens/route_status_pages.dart';
+import 'package:fitflexmobile/shared/api_client.dart';
+import 'package:fitflexmobile/shared/auth_state.dart';
 import 'package:fitflexmobile/shared/design_tokens.dart';
 import 'package:fitflexmobile/shared/formatters.dart';
 import 'package:fitflexmobile/shared/i18n.dart';
 import 'package:fitflexmobile/shared/manual_payment.dart';
 import 'package:fitflexmobile/shared/models.dart';
 import 'package:fitflexmobile/shared/payment_labels.dart';
+import 'package:fitflexmobile/shared/theme_notifier.dart';
 import 'package:fitflexmobile/shared/widgets/partner_not_verified.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -20,6 +26,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'support/recording_api.dart';
 
@@ -565,4 +572,136 @@ void main() {
       expect(host.snack(host.tr('error.network')), findsOneWidget);
     });
   });
+
+  group('H6 start-up with the backend unreachable', () {
+    Future<AuthState> hydrateOffline(
+      RecordingApi api,
+      Map<String, Object> prefs,
+    ) async {
+      SharedPreferences.setMockInitialValues(prefs);
+      api.onCall(
+        'GET /me',
+        (_) => throw http.ClientException('XMLHttpRequest error.'),
+      );
+      final auth = AuthState(ApiClient(baseUrl: 'http://fixtures.local'));
+      await auth.hydrate();
+      return auth;
+    }
+
+    apiTest('no kept profile: a connection page, never member setup', (
+      tester,
+      api,
+    ) async {
+      final auth = await hydrateOffline(api, {'token': 't', 'role': 'member'});
+      expect(auth.isSignedIn, isTrue);
+      expect(auth.profileUnconfirmed, isTrue);
+      expect(routeForSignedInUser(auth), AppRoutes.startupOffline);
+      expect(routeForSignedInUser(auth), isNot(AppRoutes.memberOnboarding));
+
+      // Back online: Retry loads the profile and the member goes home.
+      api.on('GET /me', {
+        'user': {'id': 'm1', 'userType': 'member', 'onboardingCompleted': true},
+      });
+      expect(await auth.retryProfile(), isTrue);
+      expect(auth.profileUnconfirmed, isFalse);
+      expect(routeForSignedInUser(auth), AppRoutes.memberHome);
+    });
+
+    apiTest('a kept, set-up profile opens home as before', (tester, api) async {
+      final auth = await hydrateOffline(api, {
+        'token': 't',
+        'role': 'member',
+        'user': '{"id":"m1","userType":"member","onboardingCompleted":true}',
+      });
+      expect(auth.profileUnconfirmed, isTrue);
+      expect(routeForSignedInUser(auth), AppRoutes.memberHome);
+    });
+
+    apiTest('a member who really has not set up still gets setup online', (
+      tester,
+      api,
+    ) async {
+      SharedPreferences.setMockInitialValues({'token': 't', 'role': 'member'});
+      api.on('GET /me', {
+        'user': {
+          'id': 'm1',
+          'userType': 'member',
+          'onboardingCompleted': false,
+        },
+      });
+      final auth = AuthState(ApiClient(baseUrl: 'http://fixtures.local'));
+      await auth.hydrate();
+      expect(auth.profileUnconfirmed, isFalse);
+      expect(routeForSignedInUser(auth), AppRoutes.memberOnboarding);
+    });
+
+    apiTest('the router holds the member on the connection page', (
+      tester,
+      api,
+    ) async {
+      final auth = await hydrateOffline(api, {'token': 't', 'role': 'member'});
+      await _pumpRouter(tester, auth, AppRoutes.memberOnboarding);
+      expect(find.byType(StartupOfflinePage), findsOneWidget);
+      expect(
+        find.text(_locale('en').t('startup.offline.title')),
+        findsOneWidget,
+      );
+    });
+  });
+
+  group('D7 unknown address', () {
+    apiTest('/vendor/orders shows a translated page with a way home', (
+      tester,
+      api,
+    ) async {
+      final auth = AuthState(ApiClient(baseUrl: 'http://fixtures.local'));
+      await auth.signIn('t', {
+        'id': 'v1',
+        'userType': 'vendor',
+        'approvalStatus': 'approved',
+      });
+      await _pumpRouter(tester, auth, '/vendor/orders', lang: 'sw');
+      expect(find.byType(NotFoundPage), findsOneWidget);
+      expect(find.text(_locale('sw').t('notFound.title')), findsOneWidget);
+      expect(find.textContaining('GoException'), findsNothing);
+      expect(find.byKey(const Key('not-found-home')), findsOneWidget);
+    });
+  });
+}
+
+/// The app's real router, opened at [location].
+Future<void> _pumpRouter(
+  WidgetTester tester,
+  AuthState auth,
+  String location, {
+  String lang = 'en',
+}) async {
+  _phone360(tester);
+  final router = buildRouter(auth);
+  addTearDown(router.dispose);
+  await tester.pumpWidget(
+    AppScope(
+      api: auth.api,
+      auth: auth,
+      child: ThemeScope(
+        notifier: ThemeNotifier(),
+        child: FFLocaleScope(
+          notifier: FFLocale()..set(Locale(lang)),
+          child: MaterialApp.router(
+            routerConfig: router,
+            theme: buildTheme(),
+            supportedLocales: const [Locale('en'), Locale('sw')],
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+  router.go(location);
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 50));
 }
