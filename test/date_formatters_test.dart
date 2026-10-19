@@ -26,9 +26,26 @@ void main() {
     test('Swahili month names', () {
       const iso = '2026-10-18T22:30:00.000Z';
       expect(formatDate(iso, locale: 'sw'), '19 Okt 2026');
-      expect(formatDateTime(iso, locale: 'sw'), '19 Okt 2026, 01:30');
+      expect(formatDateTime(iso, locale: 'sw'), '19 Okt 2026, 1:30 usiku');
       expect(formatDate('2026-08-01T09:00:00Z', locale: 'sw'), '1 Ago 2026');
       expect(formatDate('2026-12-31T12:00:00Z', locale: 'sw'), '31 Des 2026');
+    });
+
+    test('Swahili time of day: 12-hour clock with the part of the day', () {
+      // Glossary (owner, 2026-10-04): "5:30 jioni"; no six-hour offset.
+      String sw(int h, int m) =>
+          formatTimeOfDay(DateTime(2026, 10, 19, h, m), locale: 'sw');
+      expect(sw(0, 5), '12:05 usiku');
+      expect(sw(4, 59), '4:59 usiku');
+      expect(sw(5, 0), '5:00 asubuhi');
+      expect(sw(11, 30), '11:30 asubuhi');
+      expect(sw(12, 0), '12:00 mchana');
+      expect(sw(15, 45), '3:45 mchana');
+      expect(sw(17, 30), '5:30 jioni');
+      expect(sw(19, 0), '7:00 usiku');
+      expect(sw(23, 10), '11:10 usiku');
+      // English stays 24-hour.
+      expect(formatTimeOfDay(DateTime(2026, 10, 19, 17, 30)), '17:30');
     });
 
     test('an instant with an explicit offset is read correctly', () {
@@ -108,6 +125,6 @@ void main() {
         ),
       ),
     );
-    expect(find.text('19 Okt 2026, 01:30'), findsOneWidget);
+    expect(find.text('19 Okt 2026, 1:30 usiku'), findsOneWidget);
   });
 }

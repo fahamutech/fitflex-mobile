@@ -79,7 +79,29 @@ String formatDate(
   return '${d.day} ${months[d.month - 1]} ${d.year}';
 }
 
-/// "19 Oct 2026, 01:30" (24-hour) on the member's clock, or [fallback].
+/// The Swahili word for the part of the day [hour] (0–23) falls in. Same
+/// rule as `swahiliDayPeriod` in the Swahili structural work (mobile#62).
+String _swDayPeriod(int hour) {
+  if (hour >= 5 && hour < 12) return 'asubuhi';
+  if (hour >= 12 && hour < 16) return 'mchana';
+  if (hour >= 16 && hour < 19) return 'jioni';
+  return 'usiku';
+}
+
+/// A time of day: English 24-hour "17:30"; Swahili style per the glossary
+/// (owner, 2026-10-04): a 12-hour clock with the part of the day,
+/// "5:30 jioni". The digits are those of a 12-hour clock, not the
+/// traditional six-hour offset.
+String formatTimeOfDay(DateTime d, {String locale = 'en'}) {
+  if (locale == 'sw') {
+    final h12 = d.hour % 12 == 0 ? 12 : d.hour % 12;
+    return '$h12:${_two(d.minute)} ${_swDayPeriod(d.hour)}';
+  }
+  return '${_two(d.hour)}:${_two(d.minute)}';
+}
+
+/// "19 Oct 2026, 01:30" (sw "19 Okt 2026, 1:30 usiku") on the member's
+/// clock, or [fallback].
 String formatDateTime(
   Object? value, {
   String locale = 'en',
@@ -87,7 +109,8 @@ String formatDateTime(
 }) {
   final d = localDateTime(value);
   if (d == null) return fallback;
-  return '${formatDate(d, locale: locale)}, ${_two(d.hour)}:${_two(d.minute)}';
+  return '${formatDate(d, locale: locale)}, '
+      '${formatTimeOfDay(d, locale: locale)}';
 }
 
 /// The same, in the language the member chose.
