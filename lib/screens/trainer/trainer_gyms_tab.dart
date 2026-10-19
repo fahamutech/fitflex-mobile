@@ -224,12 +224,6 @@ class TrainerGymsTabState extends State<TrainerGymsTab> {
     }
   }
 
-  int _crossAxisCount(double width) {
-    if (width >= 900) return 4;
-    if (width >= 600) return 3;
-    return 2;
-  }
-
   Widget _chip(
     String key,
     String label,
@@ -519,29 +513,32 @@ class TrainerGymsTabState extends State<TrainerGymsTab> {
           else
             SliverPadding(
               padding: const EdgeInsets.all(FFTokens.spacingLg),
-              sliver: SliverGrid(
-                delegate: SliverChildBuilderDelegate((context, i) {
-                  final row = visible[i];
-                  final gym = _gymById[row['id'].toString()]!;
-                  return GymGridCard(
-                    key: Key('trainer-gym-${gym.id}'),
-                    gym: gym,
-                    distanceKm: gymDisplayDistanceKm(
-                      gym,
-                      userLat: _userLat,
-                      userLng: _userLng,
-                      activeFilter: _filter,
-                    ),
-                    extraBadge: _cardBadge(row),
-                    onTap: () => _openGym(row),
+              sliver: Builder(
+                builder: (context) {
+                  final cols = ffCardGridColumns(context, constraints.maxWidth);
+                  // Rows as tall as their tallest card (H3).
+                  return SliverFFRowGrid(
+                    columns: cols,
+                    itemCount: visible.length,
+                    itemBuilder: (context, i) {
+                      final row = visible[i];
+                      final gym = _gymById[row['id'].toString()]!;
+                      return GymGridCard(
+                        key: Key('trainer-gym-${gym.id}'),
+                        gym: gym,
+                        imageAspectRatio: cols == 1 ? 16 / 9 : 4 / 3,
+                        distanceKm: gymDisplayDistanceKm(
+                          gym,
+                          userLat: _userLat,
+                          userLng: _userLng,
+                          activeFilter: _filter,
+                        ),
+                        extraBadge: _cardBadge(row),
+                        onTap: () => _openGym(row),
+                      );
+                    },
                   );
-                }, childCount: visible.length),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: _crossAxisCount(constraints.maxWidth),
-                  crossAxisSpacing: FFTokens.spacingMd,
-                  mainAxisSpacing: FFTokens.spacingMd,
-                  childAspectRatio: 0.72,
-                ),
+                },
               ),
             ),
         ],

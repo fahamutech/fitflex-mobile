@@ -4735,8 +4735,9 @@ class FFLocale extends ChangeNotifier {
       'theme.dark': 'Giza',
       'theme.light': 'Mwanga',
       'theme.auto': 'Kiotomatiki (giza usiku)',
-      'lang.switchToSwahili': 'Switch to Swahili',
-      'lang.switchToEnglish': 'Switch to English',
+      // Language toggle's spoken name / tooltip (pending native review).
+      'lang.switchToSwahili': 'Badilisha lugha iwe Kiswahili',
+      'lang.switchToEnglish': 'Badilisha lugha iwe Kiingereza',
       'a11y.lightMode': 'Tumia hali ya mwanga',
       'a11y.darkMode': 'Tumia hali ya giza',
       'lang.title': 'Chagua Lugha',

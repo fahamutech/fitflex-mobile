@@ -309,14 +309,14 @@ void main() {
           'verified': false,
         });
         _phone360(tester);
-        // Two columns at 360: (360 - 2×16 - 12) / 2 = 158 wide, ratio 0.72.
+        // Two columns at 360: (360 - 2×16 - 12) / 2 = 158 wide. The row is
+        // as tall as its card (SliverFFRowGrid), so only the width is set.
         await tester.pumpWidget(
           _app(
             Center(
               child: SizedBox(
                 width: 158,
-                height: 158 / 0.72,
-                child: GymGridCard(gym: gym),
+                child: IntrinsicHeight(child: GymGridCard(gym: gym)),
               ),
             ),
             lang: lang,
@@ -409,12 +409,15 @@ void main() {
           ),
         ),
       );
-      expect(find.bySemanticsLabel('11 left, 7 of 18 used'), findsOneWidget);
+      // The ring says "11 left"; "7 of 18 used" is the line beside it and
+      // is read there only (polish round 2: each fact once).
+      expect(find.bySemanticsLabel('11 left'), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp('7 of 18 used')), findsOneWidget);
       // The number and "left" inside the ring are not read again.
       final ring = tester.getSemantics(
         find.byKey(const Key('pass-visits-ring')),
       );
-      expect(ring.label, '11 left, 7 of 18 used');
+      expect(ring.label, '11 left');
       var children = 0;
       ring.visitChildren((_) {
         children++;

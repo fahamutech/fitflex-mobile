@@ -204,12 +204,6 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
   }
 
   /// Returns the responsive column count based on available width.
-  int _crossAxisCount(double width) {
-    if (width >= 900) return 4;
-    if (width >= 600) return 3;
-    return 2;
-  }
-
   @override
   Widget build(BuildContext context) {
     final data = MemberDataScope.of(context);
@@ -229,7 +223,7 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final cols = _crossAxisCount(constraints.maxWidth);
+        final cols = ffCardGridColumns(context, constraints.maxWidth);
 
         return CustomScrollView(
           key: const Key('gym-page-scroll'),
@@ -509,6 +503,9 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
               child: FFFeaturedStrip(
                 title: context.tr('member.featuredGyms'),
                 count: featured.length,
+                // As tall as the tallest card: a two-line name or a
+                // wrapped "Not verified" is never clipped (H3).
+                fitContent: true,
                 itemBuilder: (context, i) => GymGridCard(
                   key: Key('gym-featured-${featured[i].id}'),
                   gym: featured[i],
@@ -563,26 +560,22 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
             else if (gyms.isNotEmpty)
               SliverPadding(
                 padding: const EdgeInsets.all(FFTokens.spacingLg),
-                sliver: SliverGrid(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, i) => GymGridCard(
-                      key: Key('gym-card-${gyms[i].id}'),
-                      gym: gyms[i],
-                      placement: _discovery?.placement,
-                      distanceKm: gymDisplayDistanceKm(
-                        gyms[i],
-                        userLat: _userLat,
-                        userLng: _userLng,
-                        activeFilter: _filter,
-                      ),
+                // Rows as tall as their tallest card: a two-line name or
+                // a wrapped "Not verified" is never clipped (H3).
+                sliver: SliverFFRowGrid(
+                  columns: cols,
+                  itemCount: gyms.length,
+                  itemBuilder: (context, i) => GymGridCard(
+                    key: Key('gym-card-${gyms[i].id}'),
+                    gym: gyms[i],
+                    placement: _discovery?.placement,
+                    imageAspectRatio: cols == 1 ? 16 / 9 : 4 / 3,
+                    distanceKm: gymDisplayDistanceKm(
+                      gyms[i],
+                      userLat: _userLat,
+                      userLng: _userLng,
+                      activeFilter: _filter,
                     ),
-                    childCount: gyms.length,
-                  ),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: cols,
-                    crossAxisSpacing: FFTokens.spacingMd,
-                    mainAxisSpacing: FFTokens.spacingMd,
-                    childAspectRatio: 0.72,
                   ),
                 ),
               ),
