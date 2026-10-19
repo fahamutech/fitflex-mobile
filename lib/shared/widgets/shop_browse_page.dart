@@ -135,6 +135,15 @@ class ShopProduct {
 String _inStock(BuildContext context, ShopProduct product) =>
     context.tr('shop.inStockCount').replaceAll('{n}', '${product.stock}');
 
+/// An order status as words in the customer's language ("pending" ->
+/// "Pending" / "Inasubiri"); an unknown status is shown as the server
+/// wrote it, with underscores as spaces.
+String shopOrderStatusLabel(BuildContext context, String status) {
+  final key = 'shop.orderStatus.$status';
+  final label = context.tr(key);
+  return label == key ? status.replaceAll('_', ' ') : label;
+}
+
 class ShopVariant {
   const ShopVariant({required this.name, this.stock});
   final String name;
@@ -159,6 +168,14 @@ class ShopCart {
   void setVariant(String productId, String name) => _variant[productId] = name;
 
   int get itemCount => _qty.values.fold(0, (a, b) => a + b);
+
+  /// What is in the cart, in the order it was added: product, quantity and
+  /// the option chosen (if any).
+  List<(ShopProduct, int, String?)> get lines => [
+    for (final e in _qty.entries)
+      if (_products[e.key] != null)
+        (_products[e.key]!, e.value, _variant[e.key]),
+  ];
   bool get isEmpty => _qty.isEmpty;
   int qtyOf(String productId) => _qty[productId] ?? 0;
   num get totalTzs => _qty.entries.fold(
@@ -232,6 +249,7 @@ class ShopBrowseBody extends StatefulWidget {
     super.key,
     this.mode = ShopHomeMode.member,
     this.routePath,
+    this.routeQuery = const {},
   });
 
   /// The role this shop is opened as. Only used by the Shop home (V2 flag):
@@ -241,8 +259,13 @@ class ShopBrowseBody extends StatefulWidget {
   /// The route this shop is the page for (member and owner shop). With the
   /// V2 flag on, the product list, its filters and an open product are kept
   /// in this route's query (`?view=results&category=…&sort=…&product=…`), so
-  /// browser Back and a refresh work. Null (trainer tab): no URL.
+  /// browser Back and a refresh work. Null: no URL.
   final String? routePath;
+
+  /// Extra query the host page needs to show the shop (the trainer home's
+  /// `open=shop`, which selects its Shop tab). Kept in every URL the shop
+  /// writes and ignored when reading.
+  final Map<String, String> routeQuery;
 
   @override
   State<ShopBrowseBody> createState() => _ShopBrowseBodyState();
@@ -312,6 +335,23 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
   bool _closingFromUrl = false;
   ScaffoldMessengerState? _messenger;
 
+  /// The selected category chip, scrolled into view when the list opens.
+  final _selectedChipKey = GlobalKey(debugLabel: 'shop-chip-selected');
+
+  void _revealSelectedChip() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final chip = _selectedChipKey.currentContext;
+      if (chip == null || !chip.mounted) return;
+      Scrollable.ensureVisible(
+        chip,
+        alignment: 0.5,
+        duration: MediaQuery.disableAnimationsOf(chip)
+            ? Duration.zero
+            : FFTokens.motionMedium,
+      );
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -375,7 +415,10 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
     if (!_syncUrl || !mounted) return;
     final router = GoRouter.maybeOf(context);
     if (router == null) return;
-    final query = _stateQuery();
+    final state = _stateQuery();
+    final query = state.isEmpty && !_results
+        ? <String, String>{}
+        : {...widget.routeQuery, ...state};
     final location = Uri(
       path: widget.routePath,
       queryParameters: query.isEmpty ? null : query,
@@ -473,6 +516,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
   }) {
     _applyResults(search: search, category: category, query: query);
     _pushUrl();
+    _revealSelectedChip();
   }
 
   void _applyResults({
@@ -670,7 +714,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) => const _CheckoutSheet(),
+      builder: (_) => _CheckoutSheet(cart: shopHomeV2Enabled ? _cart : null),
     );
     if (checkout == null || !mounted || _ordering) return;
     final items = _cart.toOrderItems();
@@ -961,10 +1005,22 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
     final home = _section == 0 && _showHome;
     final segments = SegmentedButton<int>(
       // 48dp targets whatever density the platform uses (AC-46).
-      style: const ButtonStyle(
-        minimumSize: WidgetStatePropertyAll(Size(0, 48)),
+      style: ButtonStyle(
+        minimumSize: const WidgetStatePropertyAll(Size(0, 48)),
         tapTargetSize: MaterialTapTargetSize.padded,
         visualDensity: VisualDensity.standard,
+        // A visible keyboard ring on the focused segment, including the
+        // Volt-filled "Browse" in dark theme (AC-45).
+        side: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.focused)
+              ? BorderSide(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? ffFocusRingDark
+                      : ffFocusRingLight,
+                  width: 2,
+                )
+              : BorderSide(color: Theme.of(context).colorScheme.outline),
+        ),
       ),
       segments: [
         ButtonSegment(
@@ -1095,6 +1151,9 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
       child: FFButton(
         key: const Key('shop-home-checkout'),
         label: label,
+        // 48dp on web/desktop too, and long Swahili wraps instead of "…".
+        visualDensity: VisualDensity.standard,
+        maxLines: 2,
         trailingIcon: _homeOffline ? null : Icons.arrow_forward,
         fullWidth: !wide,
         onPressed: _homeOffline || _ordering ? null : _checkout,
@@ -1145,10 +1204,13 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
       ),
       const SizedBox(height: FFTokens.spacingSm),
       SingleChildScrollView(
+        key: const Key('shop-category-chips'),
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
             FilterChip(
+              materialTapTargetSize: MaterialTapTargetSize.padded,
+              visualDensity: VisualDensity.standard,
               label: Text(context.tr('shop.allCategories')),
               selected: _category == null,
               onSelected: (_) => setState(() => _category = null),
@@ -1156,6 +1218,11 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
             for (final category in categories) ...[
               const SizedBox(width: 6),
               FilterChip(
+                key: _category == category
+                    ? _selectedChipKey
+                    : Key('shop-chip-$category'),
+                materialTapTargetSize: MaterialTapTargetSize.padded,
+                visualDensity: VisualDensity.standard,
                 label: Text(
                   ProductCategories.labelFor(
                     category,
@@ -1169,6 +1236,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
           ],
         ),
       ),
+      const SizedBox(height: FFTokens.spacingMd),
       Row(
         children: [
           Expanded(
@@ -1214,12 +1282,16 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
         children: [
           FilterChip(
             key: const Key('shop-delivery-filter'),
+            materialTapTargetSize: MaterialTapTargetSize.padded,
+            visualDensity: VisualDensity.standard,
             label: Text(context.tr('shop.delivery')),
             selected: _deliveryOnly,
             onSelected: (value) => setState(() => _deliveryOnly = value),
           ),
           FilterChip(
             key: const Key('shop-promotions-filter'),
+            materialTapTargetSize: MaterialTapTargetSize.padded,
+            visualDensity: VisualDensity.standard,
             label: Text(context.tr('shop.promotions')),
             selected: _promotionsOnly,
             onSelected: (value) => setState(() => _promotionsOnly = value),
@@ -1328,7 +1400,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
                 style: Theme.of(context).textTheme.titleSmall,
               ),
               Text(
-                '${formatCurrency(order['totalTzs'] as num? ?? 0)} · $status',
+                '${formatCurrency(order['totalTzs'] as num? ?? 0)} · ${shopOrderStatusLabel(context, status)}',
               ),
               if (shopOrderPaymentKey(order) case final paymentKey?)
                 Text(
@@ -1350,7 +1422,14 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
                 spacing: 4,
                 children: timeline
                     .map(
-                      (entry) => Chip(label: Text(entry['status'].toString())),
+                      (entry) => Chip(
+                        label: Text(
+                          shopOrderStatusLabel(
+                            context,
+                            entry['status'].toString(),
+                          ),
+                        ),
+                      ),
                     )
                     .toList(),
               ),
@@ -1840,16 +1919,19 @@ class _ProductTile extends StatelessWidget {
                         formatCurrency(product.priceTzs),
                         key: Key('shop-was-${product.id}'),
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: colors.onSurfaceVariant,
+                          color: FFTokens.mutedText(context),
                           decoration: TextDecoration.lineThrough,
                         ),
                       ),
                     ),
                   ] else
+                    // A regular price in text-strong (brand green is for
+                    // actions, not prices).
                     Text(
                       formatCurrency(product.effectivePrice),
+                      key: Key('shop-price-${product.id}'),
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: colors.primary,
+                        color: colors.onSurface,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -1858,11 +1940,13 @@ class _ProductTile extends StatelessWidget {
                     children: [
                       if (product.reviewCount > 0 && product.rating > 0) ...[
                         const Icon(Icons.star, size: 16),
-                        Text(
-                          ' ${product.rating.toStringAsFixed(1)} · ${_inStock(context, product)}',
+                        Flexible(
+                          child: Text(
+                            ' ${product.rating.toStringAsFixed(1)} (${product.reviewCount}) · ${_inStock(context, product)}',
+                          ),
                         ),
                       ] else
-                        Text(_inStock(context, product)),
+                        Flexible(child: Text(_inStock(context, product))),
                     ],
                   ),
                 ],
@@ -1872,6 +1956,7 @@ class _ProductTile extends StatelessWidget {
               children: [
                 IconButton(
                   key: Key('shop-save-${product.id}'),
+                  style: _tileButton,
                   tooltip: context.tr('shop.saveForLater'),
                   icon: Icon(saved ? Icons.bookmark : Icons.bookmark_border),
                   onPressed: onSave,
@@ -1882,6 +1967,7 @@ class _ProductTile extends StatelessWidget {
                     if (qty > 0)
                       IconButton(
                         tooltip: context.tr('a11y.decrease'),
+                        style: _tileButton,
                         key: Key('shop-remove-${product.id}'),
                         icon: const Icon(Icons.remove_circle_outline),
                         onPressed: onRemove,
@@ -1891,6 +1977,7 @@ class _ProductTile extends StatelessWidget {
                     if (product.inStock)
                       IconButton(
                         tooltip: context.tr('a11y.increase'),
+                        style: _tileButton,
                         key: Key('shop-add-${product.id}'),
                         icon: const Icon(Icons.add_circle_outline),
                         onPressed: onAdd,
@@ -1906,8 +1993,19 @@ class _ProductTile extends StatelessWidget {
   }
 }
 
+/// 48x48 for the list's icon buttons on every platform (AC-46).
+final ButtonStyle _tileButton = IconButton.styleFrom(
+  minimumSize: const Size(48, 48),
+  tapTargetSize: MaterialTapTargetSize.padded,
+  visualDensity: VisualDensity.standard,
+);
+
 class _CheckoutSheet extends StatefulWidget {
-  const _CheckoutSheet();
+  const _CheckoutSheet({this.cart});
+
+  /// With the Shop home on, the sheet starts with the cart itself (lines and
+  /// total), so "View cart" and the cart bar open the real cart.
+  final ShopCart? cart;
   @override
   State<_CheckoutSheet> createState() => _CheckoutSheetState();
 }
@@ -1991,6 +2089,58 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
     super.dispose();
   }
 
+  /// The cart: each line (name, option, quantity, line price) and the total.
+  Widget _cartSummary(BuildContext context, ShopCart cart) {
+    final theme = Theme.of(context);
+    return Padding(
+      key: const Key('shop-cart-summary'),
+      padding: const EdgeInsets.symmetric(vertical: FFTokens.spacingSm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final (product, qty, variant) in cart.lines)
+            Padding(
+              padding: const EdgeInsets.only(bottom: FFTokens.spacingXs),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      '$qty × ${product.name}${variant == null ? '' : ' · $variant'}',
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                  ),
+                  const SizedBox(width: FFTokens.spacingSm),
+                  Text(
+                    formatCurrency(product.effectivePrice * qty),
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+            ),
+          const Divider(),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  context.tr('shop.total'),
+                  style: theme.textTheme.titleSmall,
+                ),
+              ),
+              Text(
+                formatCurrency(cart.totalTzs),
+                key: const Key('shop-cart-total'),
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   void _submit() {
     if (_delivery == 'home_delivery' && _address.text.trim().isEmpty) {
       FFSnack.error(context, context.tr('shop.addressRequired'));
@@ -2027,6 +2177,7 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
                 context.tr('shop.checkout'),
                 style: Theme.of(context).textTheme.titleLarge,
               ),
+              if (widget.cart case final cart?) _cartSummary(context, cart),
               RadioGroup<String>(
                 groupValue: _delivery,
                 onChanged: (value) => setState(() => _delivery = value!),
