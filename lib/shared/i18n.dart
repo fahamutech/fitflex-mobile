@@ -2439,6 +2439,10 @@ class FFLocale extends ChangeNotifier {
       'visit.title': 'Gym visit · {gym}',
       'visit.nothingLogged': 'Nothing logged yet',
       'visit.logged': '{n} logged',
+      'visit.loggedOne': '1 logged',
+      'visit.notLogged': 'Nothing logged',
+      'activity.weekSpoken': 'Week {n}, {month}',
+      'activity.historyVisitsFailed': 'Couldn\'t load your gym visits.',
       'visit.prompt':
           'What did you do during this visit? Log it to count it towards your goals.',
       'visit.log': 'Log what you did',
@@ -6626,6 +6630,10 @@ class FFLocale extends ChangeNotifier {
       'visit.title': 'Ziara ya gym · {gym}',
       'visit.nothingLogged': 'Hakuna kilichorekodiwa bado',
       'visit.logged': 'Shughuli {n} zimerekodiwa',
+      'visit.loggedOne': 'Shughuli 1 imerekodiwa',
+      'visit.notLogged': 'Hakuna kilichorekodiwa',
+      'activity.weekSpoken': 'Wiki {n}, {month}',
+      'activity.historyVisitsFailed': 'Imeshindwa kupakia ziara zako za gym.',
       'visit.prompt':
           'Ulifanya nini katika ziara hii? Rekodi ili ihesabiwe kwenye malengo yako.',
       'visit.log': 'Rekodi ulichofanya',

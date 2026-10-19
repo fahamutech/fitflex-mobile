@@ -44,6 +44,10 @@ class _MemberActivityHistoryPageState extends State<MemberActivityHistoryPage> {
   }();
 
   bool _loading = false;
+
+  /// The first batch of visits, for the window the page opens on.
+  bool _visitsLoading = true;
+  bool _visitsFailed = false;
   bool _reachedEnd = false;
   bool _failed = false;
 
@@ -56,12 +60,28 @@ class _MemberActivityHistoryPageState extends State<MemberActivityHistoryPage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final now = widget.now ?? DateTime.now();
-      _fetchVisits(_loadedFrom, now.add(const Duration(days: 1)));
+      _loadRecentVisits();
     });
   }
 
-  /// Visits from [from] up to [to]; how many were new. A failure only
+  Future<void> _loadRecentVisits() async {
+    final now = widget.now ?? DateTime.now();
+    setState(() {
+      _visitsLoading = true;
+      _visitsFailed = false;
+    });
+    final added = await _fetchVisits(
+      _loadedFrom,
+      now.add(const Duration(days: 1)),
+    );
+    if (!mounted) return;
+    setState(() {
+      _visitsLoading = false;
+      _visitsFailed = added < 0;
+    });
+  }
+
+  /// Visits from [from] up to [to]; how many were new, or -1 on failure. A failure only
   /// means fewer visits shown, so it never blocks the activities.
   Future<int> _fetchVisits(DateTime from, DateTime to) async {
     try {
@@ -82,7 +102,7 @@ class _MemberActivityHistoryPageState extends State<MemberActivityHistoryPage> {
       });
       return added;
     } catch (_) {
-      return 0;
+      return -1;
     }
   }
 
@@ -103,6 +123,7 @@ class _MemberActivityHistoryPageState extends State<MemberActivityHistoryPage> {
           scope.activity.getActivities(userId: userId, from: from, to: to),
           _fetchVisits(from, to),
         ).wait;
+        // A failed visit fetch only means fewer visits; keep going.
         if (!mounted) return;
         final known = {for (final a in _older) a.id};
         final fresh = acts
@@ -168,6 +189,35 @@ class _MemberActivityHistoryPageState extends State<MemberActivityHistoryPage> {
           ),
         ),
         FFPageHeader(title: context.tr('activity.history')),
+        if (_visitsLoading)
+          const Padding(
+            key: Key('history-visits-loading'),
+            padding: EdgeInsets.only(bottom: FFTokens.spacingSm),
+            child: Center(child: FFSpinner(size: 20)),
+          )
+        else if (_visitsFailed)
+          Padding(
+            padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    context.tr('activity.historyVisitsFailed'),
+                    key: const Key('history-visits-failed'),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.error,
+                    ),
+                  ),
+                ),
+                FFButton(
+                  label: context.tr('common.retry'),
+                  onPressed: _loadRecentVisits,
+                  variant: FFButtonVariant.ghost,
+                  size: FFButtonSize.sm,
+                ),
+              ],
+            ),
+          ),
         if (groups.isEmpty)
           FFEmptyState(title: context.tr('activity.noActivity'))
         else
@@ -240,23 +290,31 @@ class _WeekHeader extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.baseline,
         textBaseline: TextBaseline.alphabetic,
         children: [
+          // Same weight as a section title, and a heading for screen
+          // readers, which hear "Week 3, October 2026" rather than "W3".
           Expanded(
-            child: Text(
-              context
-                  .tr('activity.week')
+            child: Semantics(
+              header: true,
+              label: context
+                  .tr('activity.weekSpoken')
                   .replaceAll('{n}', '${week.week}')
-                  .replaceAll('{month}', month),
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w700,
+                  .replaceAll(
+                    '{month}',
+                    DateFormat('MMMM y', lang).format(first),
+                  ),
+              excludeSemantics: true,
+              child: Text(
+                context
+                    .tr('activity.week')
+                    .replaceAll('{n}', '${week.week}')
+                    .replaceAll('{month}', month),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
-          Text(
-            dates,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
+          Text(dates, style: theme.textTheme.bodySmall),
         ],
       ),
     );
