@@ -63,11 +63,13 @@ enum FFHeroPhoto {
   ),
   shop('hero_shop', 1080 / 691, 'pexels-5592605', Alignment(-0.1, 0.2)),
 
-  // Footer pool (spec §33, §34.1): 16:7 strips under a uniform 80% scrim.
-  footerWarmGym('footer_warm_gym', 680 / 297, 'scene-carbell-sarfo-3651'),
-  footerBoxing('footer_boxing', 540 / 236, 'pexels-8612491'),
-  footerWindow('footer_window', 960 / 421, 'scene-tima-6388'),
-  footerStairs('footer_stairs', 960 / 420, 'pexels-5647574');
+  // Footer pool (spec §33, §34.1; sharp people-free set, owner 2026-10-20):
+  // 16:7 strips, 1080x472 at 2x from source crops at least as large (never
+  // upscaled), under a uniform 80% scrim.
+  footerStudio('footer_studio', 1080 / 472, 'pexels-4716814'),
+  footerGymFloor('footer_gym_floor', 1080 / 472, 'pexels-29526371'),
+  footerRack('footer_rack', 1080 / 472, 'pexels-3916766'),
+  footerShelves('footer_shelves', 1080 / 472, 'scene-tubarones-9545');
 
   const FFHeroPhoto(
     this.file,

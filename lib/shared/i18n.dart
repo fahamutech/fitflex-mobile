@@ -4381,8 +4381,11 @@ class FFLocale extends ChangeNotifier {
       'member.gymsNoMatch': 'No gyms match your search or filters.',
       'member.trainersNoMatch': 'No Trainers match your search or filters.',
       'member.clearSearchFilters': 'Clear search and filters',
-      // Photo footer band (spec §33).
-      'footer.endLine': "That's all for now.",
+      // Photo footer band (spec §33). Brand lockup: the owner chose these
+      // brand words and asked for them untranslated, the same in English and
+      // Swahili (2026-10-20).
+      'footer.brand': 'FitFlex Africa',
+      'footer.tagline': 'Fitness Without Limits',
       'footer.backToTop': 'Back to top',
       // Vendor stock ledger (S1, 2026-10-19).
       'vendor.orders.cancelledMeanwhile': 'This order was cancelled.',
@@ -9110,7 +9113,10 @@ class FFLocale extends ChangeNotifier {
       'member.trainersNoMatch':
           'Hakuna trainer anayelingana na utafutaji au vichujio vyako.',
       'member.clearSearchFilters': 'Futa utafutaji na vichujio',
-      'footer.endLine': 'Hiyo ndiyo yote kwa sasa.',
+      // Photo footer brand lockup: owner-chosen brand words, deliberately
+      // untranslated (the same as English; owner 2026-10-20).
+      'footer.brand': 'FitFlex Africa',
+      'footer.tagline': 'Fitness Without Limits',
       'footer.backToTop': 'Rudi juu',
       // Vendor stock ledger (S1, 2026-10-19): Swahili drafts pending native
       // review (design spec vendor-stock-ledger-s1 §8, plan §4).

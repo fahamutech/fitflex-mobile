@@ -7,30 +7,34 @@ import '../i18n.dart';
 import 'ff_button.dart';
 import 'ff_photo_hero.dart';
 
-/// The footer pool, in table order (photo-hero spec §34.1).
+/// The footer pool, in table order (photo-hero spec §34.1; sharp,
+/// people-free set, owner decision 2026-10-20).
 const footerPhotoPool = [
-  FFHeroPhoto.footerWarmGym,
-  FFHeroPhoto.footerBoxing,
-  FFHeroPhoto.footerWindow,
-  FFHeroPhoto.footerStairs,
+  FFHeroPhoto.footerStudio,
+  FFHeroPhoto.footerGymFloor,
+  FFHeroPhoto.footerRack,
+  FFHeroPhoto.footerShelves,
 ];
 
 /// The footer photo of each footer page while photos are bundled (spec
-/// §33.6): fixed, so it can be reviewed, and never from the same scene as
-/// the page's top photo.
+/// §33.6): fixed, so it can be reviewed, never from the same scene as the
+/// page's top photo, and never the same as a page one step away (the
+/// member tabs Home, Activity, Gyms, Shop, Profile; Gyms to Trainers and
+/// gym detail; Trainers and gym detail to trainer detail; Home to Upgrade
+/// and Shop).
 const footerPagePhotos = <String, FFHeroPhoto>{
-  'member.home': FFHeroPhoto.footerWindow,
-  'member.activity': FFHeroPhoto.footerBoxing,
-  'member.profile': FFHeroPhoto.footerStairs,
-  'member.passes': FFHeroPhoto.footerWarmGym,
-  'member.gyms': FFHeroPhoto.footerBoxing,
-  'member.trainers': FFHeroPhoto.footerWindow,
-  'member.shop': FFHeroPhoto.footerStairs,
-  'member.gymDetail': FFHeroPhoto.footerWindow,
-  'member.trainerDetail': FFHeroPhoto.footerStairs,
-  'trainer.home': FFHeroPhoto.footerBoxing,
-  'vendor.products': FFHeroPhoto.footerWarmGym,
-  'owner.home': FFHeroPhoto.footerStairs,
+  'member.home': FFHeroPhoto.footerStudio,
+  'member.activity': FFHeroPhoto.footerGymFloor,
+  'member.profile': FFHeroPhoto.footerRack,
+  'member.passes': FFHeroPhoto.footerRack,
+  'member.gyms': FFHeroPhoto.footerStudio,
+  'member.trainers': FFHeroPhoto.footerGymFloor,
+  'member.shop': FFHeroPhoto.footerShelves,
+  'member.gymDetail': FFHeroPhoto.footerRack,
+  'member.trainerDetail': FFHeroPhoto.footerStudio,
+  'trainer.home': FFHeroPhoto.footerShelves,
+  'vendor.products': FFHeroPhoto.footerRack,
+  'owner.home': FFHeroPhoto.footerStudio,
 };
 
 /// FNV-1a 32-bit over UTF-8: the same on the VM and on the web (unlike
@@ -72,8 +76,9 @@ double photoFooterHeight(BuildContext context) {
 }
 
 /// The photo band that closes a long page (photo-hero spec §33): a photo
-/// under a uniform 80% scrim, the FitFlex wordmark and "That's all for
-/// now.", plus "Back to top" on Gyms, Trainers and Shop.
+/// under a uniform 80% scrim and the brand lockup (the FitFlex mark on a
+/// light plate, "FitFlex Africa" and "Fitness Without Limits"; owner
+/// 2026-10-20), plus "Back to top" on Gyms, Trainers and Shop.
 ///
 /// Use [FFPhotoFooter.sliver] as the last sliver of the page's scroll view
 /// (see [footerListView] for pages that were a ListView).
@@ -272,7 +277,6 @@ class _FooterSliverState extends State<_FooterSliver> {
 
   Widget _band(BuildContext context) {
     final photo = footerPhotoFor(widget.pageKey, top: widget.top);
-    final scale = MediaQuery.textScalerOf(context).scale(1);
     return ClipRRect(
       key: const Key('photo-footer'),
       borderRadius: BorderRadius.circular(FFTokens.radiusXl),
@@ -306,22 +310,7 @@ class _FooterSliverState extends State<_FooterSliver> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const ExcludeSemantics(child: FFWordmark()),
-                      const SizedBox(height: FFTokens.spacingSm),
-                      Text(
-                        context.tr('footer.endLine'),
-                        key: const Key('photo-footer-line'),
-                        textAlign: TextAlign.center,
-                        maxLines: scale > 1.15 ? 3 : 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontFamily: FFTokens.fontSans,
-                          fontSize: 16,
-                          height: 1.5,
-                          fontWeight: FontWeight.w600,
-                          color: FFTokens.heroText,
-                        ),
-                      ),
+                      const _FooterLockup(),
                       if (widget.backToTop) ...[
                         const SizedBox(height: FFTokens.spacingSm + 4),
                         FFButton(
@@ -341,6 +330,93 @@ class _FooterSliverState extends State<_FooterSliver> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// The footer's brand lockup (owner 2026-10-20): the FitFlex mark (navy pin
+/// and runner) on a light round plate, so the navy pin stays visible on the
+/// dark scrim (canon: never on a busy photo without a scrim), then the
+/// brand name and tagline. One text node for screen readers; the mark is
+/// decorative.
+class _FooterLockup extends StatelessWidget {
+  const _FooterLockup();
+
+  /// The mark's drawn size (logical px), inside a [plate]-wide circle.
+  static const double mark = 48;
+  static const double plate = 60;
+
+  @override
+  Widget build(BuildContext context) {
+    final brand = context.tr('footer.brand');
+    final tagline = context.tr('footer.tagline');
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    return Column(
+      key: const Key('photo-footer-lockup'),
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ExcludeSemantics(
+          child: Container(
+            key: const Key('photo-footer-plate'),
+            width: plate,
+            height: plate,
+            alignment: Alignment.center,
+            decoration: const BoxDecoration(
+              color: FFTokens.heroText,
+              shape: BoxShape.circle,
+            ),
+            child: Image.asset(
+              'assets/brand/fitflex-icon.png',
+              key: const Key('photo-footer-logo'),
+              width: mark,
+              height: mark,
+              // The source is 1024px: decode at display size only.
+              cacheWidth: (mark * dpr).ceil(),
+              fit: BoxFit.contain,
+              excludeFromSemantics: true,
+            ),
+          ),
+        ),
+        const SizedBox(height: FFTokens.spacingSm + 4),
+        Semantics(
+          label: '$brand, $tagline',
+          excludeSemantics: true,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                brand,
+                key: const Key('photo-footer-brand'),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontFamily: FFTokens.fontSans,
+                  fontSize: 22,
+                  height: 1.25,
+                  fontWeight: FontWeight.w900,
+                  color: FFTokens.heroText,
+                ),
+              ),
+              const SizedBox(height: FFTokens.spacingXs),
+              Text(
+                tagline,
+                key: const Key('photo-footer-tagline'),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontFamily: FFTokens.fontSans,
+                  fontSize: 15,
+                  height: 1.4,
+                  fontWeight: FontWeight.w500,
+                  color: FFTokens.heroTextBody,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
