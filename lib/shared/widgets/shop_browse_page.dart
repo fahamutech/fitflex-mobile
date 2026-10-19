@@ -242,6 +242,7 @@ class ShopBrowseBody extends StatefulWidget {
     this.mode = ShopHomeMode.member,
     this.routePath,
     this.routeQuery = const {},
+    this.showHero = false,
   });
 
   /// The role this shop is opened as. Only used by the Shop home (V2 flag):
@@ -258,6 +259,10 @@ class ShopBrowseBody extends StatefulWidget {
   /// `open=shop`, which selects its Shop tab). Kept in every URL the shop
   /// writes and ignored when reading.
   final Map<String, String> routeQuery;
+
+  /// Show the Shop home's photo band (PHOTO_HERO_UI). The member Shop tab
+  /// only; never the trainer or owner shop or the pushed ShopBrowsePage.
+  final bool showHero;
 
   @override
   State<ShopBrowseBody> createState() => _ShopBrowseBodyState();
@@ -1064,6 +1069,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
                 ShopHomeView(
                   key: _homeKey,
                   mode: widget.mode,
+                  showHero: widget.showHero,
                   cart: _cart,
                   gutter: gutter,
                   initialData: _homeCache,

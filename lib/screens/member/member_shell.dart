@@ -45,6 +45,16 @@ class MemberData extends ChangeNotifier {
   MemberMeResponse? me;
   List<Gym> gyms = [];
   List<TrainerProfile> trainers = [];
+
+  /// F-12: whether the gym / trainer directory request has finished, and
+  /// whether it failed. They default to "loaded" (data set directly); the
+  /// shell clears them before its first request, so the tabs can show a
+  /// loading or error state instead of "Nothing to show yet." App-side
+  /// state only, no backend field.
+  bool gymsLoaded = true;
+  bool gymsLoadFailed = false;
+  bool trainersLoaded = true;
+  bool trainersLoadFailed = false;
   List<CheckIn> checkins = [];
   List<PassTier> passes = [];
   Set<String> favoriteGymIds = {};
@@ -175,7 +185,9 @@ class MemberShell extends StatefulWidget {
 }
 
 class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
-  final MemberData _data = MemberData();
+  final MemberData _data = MemberData()
+    ..gymsLoaded = false
+    ..trainersLoaded = false;
   Timer? _qrTimer;
   Timer? _stepsTimer;
   bool _started = false;
@@ -223,6 +235,10 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
         FFHeroPhoto.activityToday,
         FFHeroPhoto.profile,
         FFHeroPhoto.upgrade,
+        // Section bands (increment plan, slice 1), after the tabs above.
+        FFHeroPhoto.gyms,
+        FFHeroPhoto.trainers,
+        FFHeroPhoto.shop,
       ]);
     }
     WidgetsBinding.instance.addObserver(this);
@@ -324,20 +340,46 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
   }
 
   Future<void> _refreshGyms() async {
+    // A retry with nothing cached shows the loading state again.
+    if (_data.gyms.isEmpty && _data.gymsLoadFailed) {
+      _data.update(
+        (d) => d
+          ..gymsLoaded = false
+          ..gymsLoadFailed = false,
+      );
+    }
     try {
       final res = await AppScope.of(context).api.listGyms();
       _data.update(
-        (d) => d.gyms = res
-            .whereType<Map<String, dynamic>>()
-            .map(Gym.fromJson)
-            .toList(),
+        (d) => d
+          ..gyms = res
+              .whereType<Map<String, dynamic>>()
+              .map(Gym.fromJson)
+              .toList()
+          ..gymsLoaded = true
+          ..gymsLoadFailed = false,
       );
     } catch (_) {
-      // ignore
+      // What was loaded before stays; the tab says so only if it has none.
+      _data.update(
+        (d) => d
+          ..gymsLoaded = true
+          ..gymsLoadFailed = true,
+      );
     }
   }
 
+  /// Reloads the gym directory (the Gyms tab's Try again).
+  Future<void> refreshGyms() => _refreshGyms();
+
   Future<void> _refreshTrainers() async {
+    if (_data.trainers.isEmpty && _data.trainersLoadFailed) {
+      _data.update(
+        (d) => d
+          ..trainersLoaded = false
+          ..trainersLoadFailed = false,
+      );
+    }
     try {
       final res = await AppScope.of(context).api.listTrainers();
       final trainers = <TrainerProfile>[];
@@ -352,9 +394,19 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
           debugPrint('[MemberShell] Skipping malformed trainer: $error');
         }
       }
-      _data.update((d) => d.trainers = trainers);
+      _data.update(
+        (d) => d
+          ..trainers = trainers
+          ..trainersLoaded = true
+          ..trainersLoadFailed = false,
+      );
     } catch (error) {
       debugPrint('[MemberShell] Could not refresh trainers: $error');
+      _data.update(
+        (d) => d
+          ..trainersLoaded = true
+          ..trainersLoadFailed = true,
+      );
     }
   }
 

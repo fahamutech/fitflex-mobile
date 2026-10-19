@@ -13,6 +13,7 @@ class MemberShopTab extends StatelessWidget {
     return const ShopBrowseBody(
       mode: ShopHomeMode.member,
       routePath: AppRoutes.memberShop,
+      showHero: true,
     );
   }
 }

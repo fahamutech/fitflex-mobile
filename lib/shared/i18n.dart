@@ -4367,6 +4367,19 @@ class FFLocale extends ChangeNotifier {
       'hero.owner.lead': 'Keep your gym',
       'hero.owner.accent': 'moving.',
       'member.nameFallback': 'Member',
+      // Section bands (photo-hero increment plan, slice 1).
+      'hero.gyms.lead': 'Find your',
+      'hero.gyms.accent': 'gym.',
+      'hero.trainers.lead': 'Train with',
+      'hero.trainers.accent': 'a Trainer.',
+      'hero.shop.lead': 'Gear up',
+      'hero.shop.accent': 'for training.',
+      // Gyms / Trainers load states (F-12, spec §32.4).
+      'member.gymsLoadError': "We couldn't load gyms.",
+      'member.trainersLoadError': "We couldn't load Trainers.",
+      'member.gymsNoMatch': 'No gyms match your search or filters.',
+      'member.trainersNoMatch': 'No Trainers match your search or filters.',
+      'member.clearSearchFilters': 'Clear search and filters',
       // Vendor stock ledger (S1, 2026-10-19).
       'vendor.orders.cancelledMeanwhile': 'This order was cancelled.',
       'payment.status.refunded': 'Refunded',
@@ -9067,6 +9080,21 @@ class FFLocale extends ChangeNotifier {
       'hero.owner.lead': 'Weka gym yako',
       'hero.owner.accent': 'ikisonga.',
       'member.nameFallback': 'Mwanachama',
+      // Section bands (photo-hero increment plan, slice 1): drafts pending
+      // native review.
+      'hero.gyms.lead': 'Pata',
+      'hero.gyms.accent': 'gym yako.',
+      'hero.trainers.lead': 'Fanya mazoezi na',
+      'hero.trainers.accent': 'Trainer.',
+      'hero.shop.lead': 'Jiandae',
+      'hero.shop.accent': 'kwa mazoezi.',
+      'member.gymsLoadError': 'Hatukuweza kupakia gym.',
+      'member.trainersLoadError': 'Hatukuweza kupakia ma-trainer.',
+      'member.gymsNoMatch':
+          'Hakuna gym inayolingana na utafutaji au vichujio vyako.',
+      'member.trainersNoMatch':
+          'Hakuna trainer anayelingana na utafutaji au vichujio vyako.',
+      'member.clearSearchFilters': 'Futa utafutaji na vichujio',
       // Vendor stock ledger (S1, 2026-10-19): Swahili drafts pending native
       // review (design spec vendor-stock-ledger-s1 §8, plan §4).
       'vendor.orders.cancelledMeanwhile': 'Oda hii imeghairiwa.',

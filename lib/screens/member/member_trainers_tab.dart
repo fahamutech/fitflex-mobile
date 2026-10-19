@@ -7,8 +7,10 @@ import '../../shared/discovery_loader.dart';
 import '../../shared/promotion_events.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
+import '../../shared/photo_hero_flag.dart';
 import '../../shared/promotion.dart';
 import 'member_shell.dart';
+import 'widgets/directory_states.dart';
 import 'widgets/trainer_card.dart';
 
 class MemberTrainersTab extends StatefulWidget {
@@ -120,6 +122,16 @@ class _MemberTrainersTabState extends State<MemberTrainersTab> {
     return result;
   }
 
+  /// "Clear search and filters": back to the full list.
+  void _clearSearchAndFilters() {
+    _searchCtrl.clear();
+    setState(() {
+      _search = '';
+      _filter = 'all';
+    });
+    _requestDiscovery(immediate: true);
+  }
+
   /// Returns the responsive column count based on available width.
   int _crossAxisCount(double width) {
     if (width >= 900) return 4;
@@ -154,34 +166,54 @@ class _MemberTrainersTabState extends State<MemberTrainersTab> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    FFPageHeader(title: context.tr('member.findTrainerTitle')),
-                    TextField(
-                      key: const Key('trainer-search'),
-                      controller: _searchCtrl,
-                      decoration: InputDecoration(
-                        hintText: context.tr('member.searchTrainers'),
-                        prefixIcon: const Icon(Icons.search, size: 20),
-                        suffixIcon: _search.isEmpty
-                            ? null
-                            : IconButton(
-                                tooltip: context.tr('common.close'),
-                                icon: const Icon(Icons.close, size: 18),
-                                onPressed: () {
-                                  _searchCtrl.clear();
-                                  setState(() => _search = '');
-                                  _requestDiscovery(immediate: true);
-                                },
-                              ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(
-                            FFTokens.radiusLg,
+                    if (photoHeroUi) ...[
+                      // PHOTO_HERO_UI (increment plan, slice 1): a band in
+                      // place of the page title.
+                      FFHeroBand(
+                        key: const Key('trainers-hero'),
+                        photo: FFHeroPhoto.trainers,
+                        minHeight: 160,
+                        wideHeight: 200,
+                        eyebrow: context.tr('member.trainers'),
+                        headlineLead: context.tr('hero.trainers.lead'),
+                        headlineAccent: context.tr('hero.trainers.accent'),
+                      ),
+                      const SizedBox(height: FFTokens.spacingMd),
+                    ] else
+                      FFPageHeader(
+                        title: context.tr('member.findTrainerTitle'),
+                      ),
+                    FFSearchFocusScroll(
+                      enabled: photoHeroUi,
+                      builder: (context, focusNode) => TextField(
+                        key: const Key('trainer-search'),
+                        focusNode: focusNode,
+                        controller: _searchCtrl,
+                        decoration: InputDecoration(
+                          hintText: context.tr('member.searchTrainers'),
+                          prefixIcon: const Icon(Icons.search, size: 20),
+                          suffixIcon: _search.isEmpty
+                              ? null
+                              : IconButton(
+                                  tooltip: context.tr('common.close'),
+                                  icon: const Icon(Icons.close, size: 18),
+                                  onPressed: () {
+                                    _searchCtrl.clear();
+                                    setState(() => _search = '');
+                                    _requestDiscovery(immediate: true);
+                                  },
+                                ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(
+                              FFTokens.radiusLg,
+                            ),
                           ),
                         ),
+                        onChanged: (v) {
+                          setState(() => _search = v);
+                          _requestDiscovery();
+                        },
                       ),
-                      onChanged: (v) {
-                        setState(() => _search = v);
-                        _requestDiscovery();
-                      },
                     ),
                     if (_discoveryLoading)
                       const LinearProgressIndicator(minHeight: 2),
@@ -280,12 +312,48 @@ class _MemberTrainersTabState extends State<MemberTrainersTab> {
             ),
 
             // ── Grid ──────────────────────────────────────────────────────
-            if (trainers.isEmpty && featured.isEmpty)
+            // F-12: loading and failure have their own states (flag on and
+            // off); "Nothing to show yet." only once loaded and empty.
+            if (data.trainers.isEmpty && !data.trainersLoaded)
+              DirectorySkeletonGrid(
+                key: const Key('trainer-grid-loading'),
+                columns: cols,
+                childAspectRatio: 0.68,
+              )
+            else if (data.trainers.isEmpty && data.trainersLoadFailed)
               SliverFillRemaining(
                 hasScrollBody: false,
                 child: Padding(
                   padding: const EdgeInsets.all(FFTokens.spacingLg),
-                  child: FFEmptyState(title: context.tr('member.noData')),
+                  child: FFErrorState(
+                    key: const Key('trainer-load-error'),
+                    title: context.tr('member.trainersLoadError'),
+                    retryLabel: context.tr('common.retry'),
+                    onRetry: () => context
+                        .findAncestorStateOfType<MemberShellState>()
+                        ?.refreshTrainers(),
+                  ),
+                ),
+              )
+            else if (trainers.isEmpty && featured.isEmpty)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: Padding(
+                  padding: const EdgeInsets.all(FFTokens.spacingLg),
+                  child:
+                      data.trainers.isNotEmpty &&
+                          (_search.isNotEmpty || _filter != 'all')
+                      ? FFEmptyState(
+                          key: const Key('trainer-no-match'),
+                          title: context.tr('member.trainersNoMatch'),
+                          action: FFButton(
+                            key: const Key('trainer-clear-search'),
+                            label: context.tr('member.clearSearchFilters'),
+                            variant: FFButtonVariant.ghost,
+                            onPressed: _clearSearchAndFilters,
+                          ),
+                        )
+                      : FFEmptyState(title: context.tr('member.noData')),
                 ),
               )
             else if (trainers.isNotEmpty)

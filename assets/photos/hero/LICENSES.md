@@ -6,7 +6,7 @@ All files come from the parent repo's `social/brand/photos/` (branch `release-ca
 
 Processing (2026-10-19): cropped to the hero aspect ratio, converted to sRGB, resized, re-encoded as WebP (quality 72). Metadata (EXIF, GPS, ICC) is not carried over. 1x files sit in this folder, 2x files in `2.0x/`.
 
-No photo shows an identifiable person, so no model releases are needed. Four addendum photos (`hero_pin`, `hero_upgrade`, `hero_activity_challenges`, `hero_trainer`) show hands, arms, a torso or a leg; each is cropped so that no face is in frame (owner decision 2026-10-19: backs, hands or unclear faces only). No location or gym consent applies (the photos are not of FitFlex partner gyms and are not presented as such). No expiry.
+No photo shows an identifiable person, so no model releases are needed. The section bands (`hero_gyms`, `hero_trainers`, `hero_shop`, spec §34.1) come from photos that show a face somewhere in the frame; each crop leaves every face out (`hero_gyms` has no person; `hero_trainers` and `hero_shop` show hands and arms only). Four addendum photos (`hero_pin`, `hero_upgrade`, `hero_activity_challenges`, `hero_trainer`) show hands, arms, a torso or a leg; each is cropped so that no face is in frame (owner decision 2026-10-19: backs, hands or unclear faces only). No location or gym consent applies (the photos are not of FitFlex partner gyms and are not presented as such). No expiry.
 
 | File | Used on | Source page | Photographer | Licence | Crop (source px, l,t,r,b) | 2x size | 2x bytes | 1x bytes | People |
 |---|---|---|---|---|---|---|---|---|---|
@@ -26,11 +26,16 @@ No photo shows an identifiable person, so no model releases are needed. Four add
 | `hero_trainer.webp` | Trainer home (stand-in, spec O-22) | https://www.pexels.com/photo/6388387/ "Grayscale Photo of a Woman Using Battle Ropes" | Tima Miroshnichenko | Pexels licence | 0,470,840,1000 (~1.6:1) | 840x530 | 9,792 | 3,820 | one hand, forearm and one leg/shoe at the right edge; face and torso outside the crop, no face in frame |
 | `hero_vendor.webp` | Vendor home, Products tab (stand-in, spec O-22) | https://www.pexels.com/photo/9545914/ "Gym Equipment Inside the Fitness Gym" | TUBARONES PHOTOGRAPHY | Pexels licence | 620,250,1500,837 (3:2) | 880x587 | 38,004 | 16,130 | none |
 | `hero_owner.webp` | Gym owner home | https://www.pexels.com/photo/29526371/ "Modern well-equipped gym with diverse fitness equipment" | foad shariyati | Pexels licence | 0,1000,1500,2000 (3:2) | 1080x720 | 60,784 | 24,550 | none (the small figure in the full frame is outside this crop) |
+| `hero_gyms.webp` | Member Gyms list (band) | https://www.pexels.com/photo/33832204/ "Confident Woman in Gym Exercise Pose" | photobydela | Pexels licence | 0,0,1100,620 (~1.77:1) | 1080x609 | 15,618 | 6,288 | none: the weight stack and dark gym above and left of the woman; her raised hand starts about 60px below the crop and her face lower still, no face in frame |
+| `hero_trainers.webp` | Member Trainers list (band) | https://www.pexels.com/photo/36510739/ "Fitness Trainer in Busy Gym Environment" | Carbell Sarfo | Pexels licence | 100,650,1100,1000 (~2.86:1) | 1000x350 | 10,932 | 4,600 | hands, forearms and knees of a seated man; the crop starts about 230px below his chin and below the gym logo on his shirt (another gym's brand, cut out); two phones show their backs or dark screens; no face in frame |
+| `hero_shop.webp` | Member Shop home (band) | https://www.pexels.com/photo/5592605/ "A Young Man in a Yellow Beanie Using a Smartphone" | Thirdman | Pexels licence | 250,1300,1500,2100 (~1.56:1) | 1080x691 | 8,650 | 3,672 | two hands, forearms and a white T-shirt; the crop starts about 220px below the chin; the phone shows its case, not a screen; no face in frame |
 
 Total added (2026-10-19, first set): 409,056 bytes at 2x + 161,982 bytes at 1x = 571,038 bytes.
 
 Addendum set (2026-10-19, spec §26, same processing; brightness graded per the spec's factor before export): 352,066 bytes at 2x + 137,866 bytes at 1x = 489,932 bytes.
 
-All hero assets together: 1,061,970 bytes (budget 1.6 MB, spec §26).
+Section bands (2026-10-19, photo-hero spec §34.1, same processing; brightness x0.75 gyms, x0.85 trainers, x0.60 shop; WebP q72 method 6; only the VP8 image chunk is written, no EXIF, XMP or ICC; per-slot caps 60 KB at 2x, 25 KB at 1x): 35,200 bytes at 2x + 14,560 bytes at 1x = 49,760 bytes.
+
+All hero assets together: 1,111,730 bytes (budget 1.6 MB, spec §26).
 
 These photos are not Tanzanian; they are a stop-gap (spec O-1). Replace with own photos before the flag is turned on in production.
