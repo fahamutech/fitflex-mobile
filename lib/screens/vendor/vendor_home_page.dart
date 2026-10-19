@@ -298,11 +298,13 @@ class _VendorHomePageState extends State<VendorHomePage> {
         onSave: (body) => api.vendorSaveProduct(body, productId: productId),
         onAdjust: current == null
             ? null
-            : (variant) async {
+            : (variant, notify) async {
+                // Told inside the form: a snackbar would sit behind it.
                 final result = await openAdjustStock(
                   context,
                   product: current!,
                   variant: variant,
+                  notify: notify,
                 );
                 if (result == null) return null;
                 current = withAdjustedStock(current!, result.product);
@@ -1194,8 +1196,13 @@ class VendorProductForm extends StatefulWidget {
   final Future<void> Function(Map<String, dynamic> body)? onSave;
 
   /// Ledger on: opens "Adjust stock" for the product (variant null) or one
-  /// variant, resolving with the product's counts `{stock, variants}`.
-  final Future<Map<String, dynamic>?> Function(String? variant)? onAdjust;
+  /// variant, resolving with the product's counts `{stock, variants}`. The
+  /// outcome is reported through `notify` so the form can show it.
+  final Future<Map<String, dynamic>?> Function(
+    String? variant,
+    AdjustNotify notify,
+  )?
+  onAdjust;
 
   /// Ledger on: the words for a failed save.
   final String Function(Object error)? describeError;
@@ -1481,10 +1488,32 @@ class _VendorProductFormState extends State<VendorProductForm> {
     return widget.describeError?.call(e) ?? context.tr('vendor.saveFailed');
   }
 
+  /// The outcome of the last product-level adjustment, shown under its
+  /// button (variant ones show under their row).
+  ({String message, bool error})? _stockNotice;
+
   Future<void> _adjust([String? variant]) async {
     final adjust = widget.onAdjust;
     if (adjust == null) return;
-    final fresh = await adjust(variant);
+    setState(() {
+      _stockNotice = null;
+      for (final row in _variantRows) {
+        row.notice = null;
+      }
+    });
+    final fresh = await adjust(variant, (message, {required error}) {
+      if (!mounted) return;
+      final notice = (message: message, error: error);
+      setState(() {
+        if (variant == null) {
+          _stockNotice = notice;
+        } else {
+          for (final row in _variantRows) {
+            if (row.original == variant) row.notice = notice;
+          }
+        }
+      });
+    });
     if (fresh == null || !mounted) return;
     setState(() {
       if (fresh['stock'] is num) _stock.text = '${fresh['stock']}';
@@ -1778,6 +1807,17 @@ class _VendorProductFormState extends State<VendorProductForm> {
                     variant: FFButtonVariant.ghost,
                     visualDensity: VisualDensity.standard,
                     onPressed: () => _adjust(),
+                  ),
+                ),
+              if (_stockNotice case final notice?)
+                Semantics(
+                  liveRegion: true,
+                  child: FFAlert(
+                    key: const Key('vendor-product-stock-notice'),
+                    message: notice.message,
+                    tone: notice.error
+                        ? FFAlertTone.error
+                        : FFAlertTone.success,
                   ),
                 ),
               if (widget.canSeeCost)

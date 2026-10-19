@@ -46,11 +46,16 @@ String newStockClientRef([Random? random]) {
 /// Opens the sheet for [product] (a vendor product map: id, name, stock,
 /// variants). [variant] preselects a variant. Shows the result snack and
 /// resolves with the saved change, or null when nothing was saved.
+/// How [openAdjustStock] reports its outcome when a snackbar would not be
+/// seen (e.g. it is opened from inside another sheet, which covers it).
+typedef AdjustNotify = void Function(String message, {required bool error});
+
 Future<AdjustResult?> openAdjustStock(
   BuildContext context, {
   required Map<String, dynamic> product,
   String? variant,
   String Function()? makeClientRef,
+  AdjustNotify? notify,
 }) async {
   final out = await showFFSheet<Object>(
     context,
@@ -62,24 +67,29 @@ Future<AdjustResult?> openAdjustStock(
     ),
   );
   if (!context.mounted) return null;
+  void tell(String message, {required bool error}) {
+    if (notify != null) return notify(message, error: error);
+    error ? FFSnack.error(context, message) : FFSnack.success(context, message);
+  }
+
   if (out is AdjustResult) {
-    FFSnack.success(
-      context,
+    tell(
       fillIn(context.tr('vendor.stock.updated'), {
         'before': formatStock(out.movement['stockBefore'] as num? ?? 0),
         'after': formatStock(out.movement['stockAfter'] as num? ?? 0),
       }),
+      error: false,
     );
     return out;
   }
   if (out is AdjustExit) {
-    FFSnack.error(
-      context,
+    tell(
       context.tr(switch (out) {
         AdjustExit.notAllowed => 'vendor.stock.notAllowed',
         AdjustExit.notFound => 'vendor.stock.notFound',
         AdjustExit.failed => 'vendor.saveFailed',
       }),
+      error: true,
     );
   }
   return null;

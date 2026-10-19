@@ -533,11 +533,17 @@ class _StockHistoryPageState extends State<StockHistoryPage> {
         ('custom', context.tr('vendor.stock.range.custom$suffix')),
       ];
       final full = labels('');
+      // Measured the way FFSegmented draws a regular option (bold
+      // labelLarge, 8px each side, inside its 4px track padding), but for
+      // the whole label on ONE line: otherwise "Choose dates" fits word by
+      // word and wraps to two lines.
       final style = Theme.of(
         context,
-      ).textTheme.labelLarge?.copyWith(fontSize: 12.5);
+      ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700);
       final scaler = MediaQuery.textScalerOf(context);
-      final share = box.maxWidth / full.length - 2 * FFTokens.spacingXs - 2;
+      final share =
+          (box.maxWidth - 2 * FFTokens.spacingXs) / full.length -
+          2 * FFTokens.spacingSm;
       final fits = full.every((option) {
         final painter = TextPainter(
           text: TextSpan(text: option.$2, style: style),
@@ -545,7 +551,9 @@ class _StockHistoryPageState extends State<StockHistoryPage> {
           textScaler: scaler,
           maxLines: 1,
         )..layout();
-        return painter.width <= share;
+        final width = painter.width;
+        painter.dispose();
+        return width <= share;
       });
       final custom = _custom;
       return Column(

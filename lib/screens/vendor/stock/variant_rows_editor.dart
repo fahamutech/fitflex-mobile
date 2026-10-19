@@ -52,6 +52,10 @@ class VariantDraft {
   /// Set when the vendor tried to remove it while it still has stock.
   bool removeBlocked = false;
 
+  /// The outcome of the last "Adjust stock" on this variant, shown in the
+  /// row (a snackbar would be hidden behind the product form).
+  ({String message, bool error})? notice;
+
   bool get isNew => original == null;
   bool get holdsStock => (storedStock ?? 0) > 0;
   String get trimmedName => name.text.trim();
@@ -369,6 +373,17 @@ class VariantRowsEditor extends StatelessWidget {
                     ],
                   ],
                 );
+                // The stored count with its "Adjust stock" button needs a
+                // whole line below ~600 wide (beside Cost the button was
+                // cut to "Adjust st…"); Cost and Reorder share the next.
+                final countCell = hasStockCell && !creating;
+                if (countCell && (box.maxWidth < 600 || !fits(cells.length))) {
+                  final rest = cells.sublist(1);
+                  return stack([
+                    cells.first,
+                    if (fits(rest.length)) line(rest) else stack(rest),
+                  ]);
+                }
                 if (fits(cells.length)) return line(cells);
                 if (cells.length == 3 && fits(2)) {
                   return stack([line(cells.sublist(0, 2)), cells[2]]);
@@ -377,6 +392,18 @@ class VariantRowsEditor extends StatelessWidget {
               },
             ),
           ),
+          if (row.notice case final notice?)
+            Padding(
+              padding: const EdgeInsets.only(top: FFTokens.spacingSm),
+              child: Semantics(
+                liveRegion: true,
+                child: FFAlert(
+                  key: Key('variant-stock-notice-$index'),
+                  message: notice.message,
+                  tone: notice.error ? FFAlertTone.error : FFAlertTone.success,
+                ),
+              ),
+            ),
           if (row.removeBlocked || error == 'vendor.variant.removeHasStock')
             Padding(
               padding: const EdgeInsets.only(top: FFTokens.spacingSm),

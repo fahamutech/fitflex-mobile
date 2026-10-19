@@ -5,6 +5,7 @@
 // region.
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fitflexmobile/screens/vendor/stock/adjust_stock_sheet.dart';
@@ -84,6 +85,118 @@ void main() {
       expect(find.textContaining('Extra Large Family Pack: '), findsNothing);
     });
   }
+
+  apiTest('375 EN: count + Adjust on their own line, label not cut', (
+    tester,
+    api,
+  ) async {
+    final host = await _openEdit(tester, api, const Size(375, 812));
+    await tester.ensureVisible(_k('variant-adjust-0'));
+    await tester.pumpAndSettle();
+    final label = find.descendant(
+      of: _k('variant-adjust-0'),
+      matching: find.text(host.tr('vendor.stock.adjust')),
+    );
+    final paragraph = tester.renderObject<RenderParagraph>(label);
+    expect(paragraph.didExceedMaxLines, isFalse);
+    final text = tester.widget<Text>(label);
+    final style = DefaultTextStyle.of(
+      tester.element(label),
+    ).style.merge(text.style);
+    expect(
+      tester.getSize(label).width,
+      greaterThanOrEqualTo(
+        _natural(tester, host.tr('vendor.stock.adjust'), style) - 1,
+      ),
+    );
+    // Cost and Reorder start below the Adjust button, not beside it.
+    expect(
+      tester.getTopLeft(_k('variant-cost-0')).dy,
+      greaterThanOrEqualTo(tester.getBottomLeft(_k('variant-adjust-0')).dy),
+    );
+  });
+
+  apiTest('1280 EN history: range labels stay on one line', (
+    tester,
+    api,
+  ) async {
+    api.on('GET /vendor/products', [stockProduct('p1', 'Whey')]);
+    api.on('GET /vendor/tools/options', ledgerOn);
+    api.on('GET /vendor/stock/low', []);
+    api.on('GET /vendor/products/p1/stock-movements', {
+      'openingStock': 10,
+      'closingStock': 10,
+      'rows': [],
+      'nextCursor': null,
+    });
+    await pumpPage(
+      tester,
+      api,
+      const StockHistoryPage(productId: 'p1'),
+      size: const Size(1280, 900),
+    );
+    final texts = find.descendant(
+      of: _k('stock-range'),
+      matching: find.byType(Text),
+    );
+    expect(texts, findsNWidgets(3));
+    for (final element in texts.evaluate()) {
+      final paragraph = element.renderObject! as RenderParagraph;
+      // One line: the paragraph is no taller than a single line box.
+      final lines = paragraph.getBoxesForSelection(
+        TextSelection(
+          baseOffset: 0,
+          extentOffset: paragraph.text.toPlainText().length,
+        ),
+      );
+      final tops = lines.map((b) => b.top.round()).toSet();
+      expect(tops, hasLength(1), reason: paragraph.text.toPlainText());
+    }
+  });
+
+  apiTest('adjusting from inside the product form shows the result there', (
+    tester,
+    api,
+  ) async {
+    seedVendorHome(api, tools: ledgerOn, products: [_tee]);
+    api.on('POST /vendor/products/p1/stock-adjustments', {
+      'movement': {'stockBefore': 5, 'stockAfter': 8, 'delta': 3},
+      'product': {
+        'id': 'p1',
+        'stock': 11,
+        'variants': [
+          {'name': 'Extra Large Family Pack', 'stock': 8},
+          {'name': 'Small', 'stock': 3},
+        ],
+      },
+    });
+    final host = await pumpPage(
+      tester,
+      api,
+      const VendorHomePage(),
+      user: vendorUser,
+      size: const Size(400, 900),
+    );
+    await productMenu(tester, 'p1', host.tr('vendor.edit'));
+    await tapVisible(tester, _k('variant-adjust-0'));
+    await tapVisible(tester, _k('adjust-reason-restock'));
+    await typeInto(tester, _k('adjust-quantity'), '3');
+    await tester.pumpAndSettle();
+    await tapVisible(tester, _k('adjust-save'));
+    // Shown in the open form, in the variant's row (not a snackbar behind
+    // the sheet).
+    final notice = _k('variant-stock-notice-0');
+    expect(notice, findsOneWidget);
+    expect(
+      find.descendant(
+        of: notice,
+        matching: find.text('Stock updated from 5 to 8'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.byType(SnackBar), findsNothing);
+    expect(tester.widget<Text>(_k('variant-stock-value-0')).data, '8');
+  });
 
   apiTest('stock buttons keep 48dp with desktop (compact) density', (
     tester,
