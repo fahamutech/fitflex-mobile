@@ -591,12 +591,19 @@ void main() {
       // (current status, delivery method) -> status the button will set.
       const cases = [
         ('pending', 'home_delivery', 'accepted'),
-        ('confirmed', 'home_delivery', 'accepted'),
+        // Legacy `confirmed` is `accepted` on the server: sending `accepted`
+        // again was a silent no-op and the order never moved.
+        ('confirmed', 'home_delivery', 'processing'),
         ('accepted', 'home_delivery', 'processing'),
         ('processing', 'home_delivery', 'packed'),
         ('packed', 'home_delivery', 'dispatched'),
         ('packed', 'gym_pickup', 'ready_for_pickup'),
         ('dispatched', 'home_delivery', 'delivered'),
+        // Gym pickup goes dispatched -> ready for pickup; the server refuses
+        // dispatched -> delivered (invalid_transition).
+        ('dispatched', 'gym_pickup', 'ready_for_pickup'),
+        ('ready_for_pickup', 'gym_pickup', 'delivered'),
+        ('confirmed', 'gym_pickup', 'processing'),
       ];
       _seed(
         api,
@@ -633,6 +640,60 @@ void main() {
       expect(api.sent('GET', '/vendor/orders'), isTrue);
     });
 
+    apiTest('a legacy confirmed order moves on: it sends processing', (
+      tester,
+      api,
+    ) async {
+      _seed(api, orders: [_order('o1', status: 'confirmed')]);
+      final host = await _pump(tester, api);
+      await _tab(tester, 'orders');
+      // Shown as Accepted, offered the step after it.
+      expect(
+        find.textContaining(host.tr('shop.orderStatus.accepted')),
+        findsOneWidget,
+      );
+      final button = find.byKey(const Key('vendor-next-o1'));
+      expect(
+        find.descendant(
+          of: button,
+          matching: find.text(host.tr('vendor.markStatus.processing')),
+        ),
+        findsOneWidget,
+      );
+      await tapVisible(tester, button);
+      expect(api.only('POST', '/vendor/orders/o1/status').body, {
+        'status': 'processing',
+      });
+    });
+
+    apiTest('the server\'s own next steps win when it sends them', (
+      tester,
+      api,
+    ) async {
+      _seed(
+        api,
+        orders: [
+          {
+            ..._order('o1', status: 'confirmed'),
+            'nextStatuses': ['packed', 'dispatched'],
+          },
+          {
+            ..._order('o2', status: 'packed'),
+            'nextStatuses': <String>[], // paid, but nothing allowed
+          },
+        ],
+      );
+      final host = await _pump(tester, api);
+      await _tab(tester, 'orders');
+      await tapVisible(tester, find.byKey(const Key('vendor-next-o1')));
+      expect(api.only('POST', '/vendor/orders/o1/status').body, {
+        'status': 'packed',
+      });
+      expect(find.byKey(const Key('vendor-next-o2')), findsNothing);
+      // Cancel stays available for a paid order that is not final.
+      expect(buttonLabelled(host.tr('vendor.cancel')), findsNWidgets(2));
+    });
+
     apiTest('cancel sends cancelled', (tester, api) async {
       _seed(api, orders: [_order('o1', status: 'accepted')]);
       final host = await _pump(tester, api);
@@ -652,12 +713,15 @@ void main() {
         orders: [
           _order('o1', status: 'delivered'),
           _order('o2', status: 'cancelled'),
+          // Legacy `fulfilled` is `delivered` on the server.
+          _order('o3', status: 'fulfilled'),
         ],
       );
       final host = await _pump(tester, api);
       await _tab(tester, 'orders');
       expect(find.byKey(const Key('vendor-next-o1')), findsNothing);
       expect(find.byKey(const Key('vendor-next-o2')), findsNothing);
+      expect(find.byKey(const Key('vendor-next-o3')), findsNothing);
       expect(buttonLabelled(host.tr('vendor.cancel')), findsNothing);
     });
 
