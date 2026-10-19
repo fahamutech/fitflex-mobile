@@ -1321,7 +1321,9 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
                 style: Theme.of(context).textTheme.titleSmall,
               ),
               Text(
-                '${formatCurrency(order['totalTzs'] as num? ?? 0)} · $status',
+                '${formatCurrency(order['totalTzs'] as num? ?? 0)} · '
+                '${shopOrderStatusLabel(context, status)}',
+                key: Key('order-status-${order['id']}'),
               ),
               if (shopOrderPaymentKey(order) case final paymentKey?)
                 Text(
@@ -1343,7 +1345,11 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
                 spacing: 4,
                 children: timeline
                     .map(
-                      (entry) => Chip(label: Text(entry['status'].toString())),
+                      (entry) => Chip(
+                        label: Text(
+                          shopOrderStatusLabel(context, entry['status']),
+                        ),
+                      ),
                     )
                     .toList(),
               ),
@@ -2395,14 +2401,23 @@ class _VendorStoreSheetState extends State<VendorStoreSheet> {
                             context.tr('shop.vendorStore'),
                         style: Theme.of(context).textTheme.headlineSmall,
                       ),
-                      Row(
-                        children: [
-                          const Icon(Icons.star, size: 16),
-                          Text(
-                            ' ${_shopNumber(store['rating']).toStringAsFixed(1)} (${_shopNumber(store['reviewCount']).toInt()})',
-                          ),
-                        ],
-                      ),
+                      // A score only with real reviews: never "★ 0.0 (0)".
+                      if (_shopNumber(store['reviewCount']) > 0 &&
+                          _shopNumber(store['rating']) > 0)
+                        Row(
+                          key: const Key('shop-store-rating'),
+                          children: [
+                            const Icon(Icons.star, size: 16),
+                            Text(
+                              ' ${_shopNumber(store['rating']).toStringAsFixed(1)} (${_shopNumber(store['reviewCount']).toInt()})',
+                            ),
+                          ],
+                        )
+                      else
+                        Text(
+                          context.tr('reviews.none'),
+                          key: const Key('shop-store-no-reviews'),
+                        ),
                     ],
                   ),
                 ),
@@ -2472,9 +2487,15 @@ class _RatingLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // A review without a score shows no star rather than "0".
+    final value = _shopNumber(rating);
+    if (value <= 0) return const SizedBox.shrink();
     return Row(
       mainAxisSize: MainAxisSize.min,
-      children: [Text('${rating ?? 0} '), const Icon(Icons.star, size: 16)],
+      children: [
+        Text('${value % 1 == 0 ? value.toInt() : value} '),
+        const Icon(Icons.star, size: 16),
+      ],
     );
   }
 }

@@ -13,6 +13,7 @@ import 'persona_switcher.dart';
 import 'verify_identifier.dart';
 import '../components/components.dart';
 import '../formatters.dart';
+import '../payment_labels.dart';
 
 /// Where an invitation link opens (the web build of this app).
 const kInviteLinkBase = 'https://fitflex-af-app.web.app';
@@ -295,7 +296,10 @@ class _InvitationCard extends StatelessWidget {
               Text(
                 context
                     .tr('invite.planLine')
-                    .replaceAll('{tier}', plan['tier']?.toString() ?? '')
+                    .replaceAll(
+                      '{tier}',
+                      passTierLabel(context, plan['tier'], fallback: ''),
+                    )
                     .replaceAll(
                       '{end}',
                       context.localDate(plan['endDate'], fallback: ''),

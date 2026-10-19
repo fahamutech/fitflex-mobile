@@ -3,6 +3,20 @@ import 'package:flutter/widgets.dart';
 import 'i18n.dart';
 import 'models.dart';
 
+/// A FitFlex Pass tier by name ("Pro"), the code itself for a tier this app
+/// does not know yet, or [fallback] when there is none.
+String passTierLabel(
+  BuildContext context,
+  Object? tier, {
+  String fallback = '-',
+}) {
+  final id = tier?.toString().trim() ?? '';
+  if (id.isEmpty) return fallback;
+  final key = 'pass.$id';
+  final label = context.tr(key);
+  return label == key ? id.replaceAll('_', ' ') : label;
+}
+
 /// What a payment buys, in words the member recognises: a FitFlex Pass tier,
 /// a gym plan at a named gym, a trainer session, a trainer's gym pass or a
 /// shop order. Never a bare tier/plan code, which reads the same for products

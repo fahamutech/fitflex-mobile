@@ -94,6 +94,10 @@ String? _knownReason(FFLocale locale, String reason) {
     'wrong_gym': 'error.reason.wrongGym',
     'gym_not_verified': 'error.reason.gymNotVerified',
     'trainer_not_verified': 'error.reason.trainerNotVerified',
+    'operator_not_assigned_to_gym': 'error.reason.operatorNotAssigned',
+    'member_not_found': 'error.reason.memberNotFound',
+    'gym_not_found': 'error.reason.gymNotFound',
+    'tier_not_configured': 'error.reason.tierNotConfigured',
     // Trainer booking.
     'slot_already_booked': 'error.reason.slotUnavailable',
     'slot_not_available': 'error.reason.slotUnavailable',
