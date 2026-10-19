@@ -249,11 +249,15 @@ class ChoosePinStep extends StatefulWidget {
     required this.onChosen,
     this.busy = false,
     this.error,
+    this.intro,
   });
 
   final ValueChanged<String> onChosen;
   final bool busy;
   final String? error;
+
+  /// Text above the step's title (e.g. why the PIN is being set up).
+  final Widget? intro;
 
   @override
   State<ChoosePinStep> createState() => _ChoosePinStepState();
@@ -298,9 +302,13 @@ class _ChoosePinStepState extends State<ChoosePinStep> {
   @override
   Widget build(BuildContext context) {
     final error = _mismatch ?? widget.error;
-    return Column(
+    final header = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (widget.intro != null) ...[
+          widget.intro!,
+          const SizedBox(height: FFTokens.spacingMd),
+        ],
         Text(
           context.tr(_first == null ? 'pin.chooseTitle' : 'pin.confirmTitle'),
           key: const Key('pin-flow-pin-title'),
@@ -309,7 +317,12 @@ class _ChoosePinStepState extends State<ChoosePinStep> {
         ),
         const SizedBox(height: 4),
         Text(context.tr('pin.chooseBody'), textAlign: TextAlign.center),
-        const SizedBox(height: FFTokens.spacingLg),
+      ],
+    );
+    final pinned = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
         PinInputRow(pin: _pin, obscure: true),
         if (error != null) ...[
           const SizedBox(height: FFTokens.spacingSm),
@@ -320,18 +333,41 @@ class _ChoosePinStepState extends State<ChoosePinStep> {
             style: TextStyle(color: Theme.of(context).colorScheme.error),
           ),
         ],
-        const SizedBox(height: FFTokens.spacingLg),
-        SizedBox(
-          height: 300,
-          child: CustomKeypad(
-            onDigit: _digit,
-            onDelete: _delete,
-            onOk: _ok,
-            okEnabled: _pin.length == 4,
-            isLoading: widget.busy,
-          ),
-        ),
       ],
+    );
+    final keypad = CustomKeypad(
+      onDigit: _digit,
+      onDelete: _delete,
+      onOk: _ok,
+      okEnabled: _pin.length == 4,
+      isLoading: widget.busy,
+    );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // A screen of its own (today's layout): the keypad keeps 44px keys
+        // and stays on screen; the text above gives way and scrolls.
+        if (PinPadLayout.fits(constraints)) {
+          return PinPadLayout(
+            key: const Key('pin-flow-pad'),
+            header: header,
+            pinned: pinned,
+            keypad: keypad,
+            gaps: (FFTokens.spacingLg, FFTokens.spacingLg, 0),
+            maxKeypadHeight: 300,
+          );
+        }
+        // Under the photo hero, the page sizes the sheet to its content.
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            header,
+            const SizedBox(height: FFTokens.spacingLg),
+            pinned,
+            const SizedBox(height: FFTokens.spacingLg),
+            SizedBox(height: 300, child: keypad),
+          ],
+        );
+      },
     );
   }
 }
@@ -348,7 +384,9 @@ Widget _flowScreen(
   String? headline,
   bool keypad = false,
 }) {
-  if (!photoHeroUi) return _flowScaffold(context, title: title, child: child);
+  if (!photoHeroUi) {
+    return _flowScaffold(context, title: title, keypad: keypad, child: child);
+  }
   return FFPhotoHeroPage(
     phoneFraction: 0.30,
     shortPhoneFraction: 0.30,
@@ -357,7 +395,8 @@ Widget _flowScreen(
     heroMinViewportHeight: keypad ? 800 : null,
     maxHeroTextScale: keypad ? 1.15 : null,
     fallback: keypad
-        ? (context) => _flowScaffold(context, title: title, child: child)
+        ? (context) =>
+              _flowScaffold(context, title: title, keypad: true, child: child)
         : null,
     contentMaxWidth: 400,
     leading: Builder(
@@ -382,20 +421,33 @@ Widget _flowScreen(
   );
 }
 
+/// [keypad] steps fill the screen (no outer scroll) so the step can keep
+/// its keypad on screen; other steps scroll.
 Widget _flowScaffold(
   BuildContext context, {
   required String title,
   required Widget child,
+  bool keypad = false,
 }) => Scaffold(
   appBar: AppBar(title: Text(title)),
   body: SafeArea(
     child: Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 400),
-        child: ListView(
-          padding: const EdgeInsets.all(FFTokens.spacingLg),
-          children: [child],
-        ),
+        child: keypad
+            ? Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  FFTokens.spacingLg,
+                  FFTokens.spacingMd,
+                  FFTokens.spacingLg,
+                  FFTokens.spacingMd,
+                ),
+                child: child,
+              )
+            : ListView(
+                padding: const EdgeInsets.all(FFTokens.spacingLg),
+                children: [child],
+              ),
       ),
     ),
   ),
@@ -771,27 +823,30 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
       title: context.tr('pin.setupTitle'),
       headline: askCode ? 'hero.pin.code' : 'hero.pin.create',
       keypad: !askCode,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(context.tr('pin.setupBody'), textAlign: TextAlign.center),
-          const SizedBox(height: FFTokens.spacingMd),
-          if (askCode)
-            CodeStep(
-              sentTo: widget.contact,
-              onSubmit: _codeEntered,
-              resendAfterSeconds: widget.resendAfterSeconds,
-              error: _error,
-              busy: _busy,
+      child: askCode
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(context.tr('pin.setupBody'), textAlign: TextAlign.center),
+                const SizedBox(height: FFTokens.spacingMd),
+                CodeStep(
+                  sentTo: widget.contact,
+                  onSubmit: _codeEntered,
+                  resendAfterSeconds: widget.resendAfterSeconds,
+                  error: _error,
+                  busy: _busy,
+                ),
+              ],
             )
-          else
-            ChoosePinStep(
+          : ChoosePinStep(
               onChosen: (pin) => _finish(pin: pin),
               busy: _busy,
               error: _error,
+              intro: Text(
+                context.tr('pin.setupBody'),
+                textAlign: TextAlign.center,
+              ),
             ),
-        ],
-      ),
     );
   }
 }
@@ -1046,6 +1101,7 @@ class _InviteStartScreenState extends State<InviteStartScreen> {
     return _flowScaffold(
       context,
       title: context.tr('start.title'),
+      keypad: _nameDone,
       child: _nameDone
           ? ChoosePinStep(onChosen: _begin, busy: _busy, error: _error)
           : Column(

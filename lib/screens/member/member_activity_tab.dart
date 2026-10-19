@@ -238,13 +238,17 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
           actions:
               data.activityLoaded &&
                   (data.activities.isNotEmpty || _section != 'overview')
-              ? FFButton(
-                  key: const Key('activity-log-open'),
-                  label: context.tr('logActivity.open'),
-                  onPressed: () => openLogActivity(context),
-                  variant: FFButtonVariant.secondary,
-                  size: FFButtonSize.sm,
-                  icon: Icons.add,
+              ? _besideTitle(
+                  context,
+                  FFButton(
+                    key: const Key('activity-log-open'),
+                    label: context.tr('logActivity.open'),
+                    onPressed: () => openLogActivity(context),
+                    variant: FFButtonVariant.secondary,
+                    size: FFButtonSize.sm,
+                    icon: Icons.add,
+                    maxLines: 2,
+                  ),
                 )
               : null,
         ),
@@ -286,6 +290,16 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
       ],
     );
   }
+
+  /// A button next to a title, kept to under half the screen's width so a
+  /// long label (Swahili, large text) wraps onto a second line instead of
+  /// pushing the row off screen.
+  Widget _besideTitle(BuildContext context, Widget button) => ConstrainedBox(
+    constraints: BoxConstraints(
+      maxWidth: MediaQuery.sizeOf(context).width * 0.45,
+    ),
+    child: button,
+  );
 
   List<Widget> _overview(
     BuildContext context,
@@ -362,13 +376,17 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
       Row(
         children: [
           Expanded(child: FFSectionTitle(context.tr('activity.recent'))),
-          FFButton(
-            key: const Key('data-origins-info'),
-            label: context.tr('origin.link'),
-            onPressed: () => showDataOriginsSheet(context),
-            variant: FFButtonVariant.ghost,
-            size: FFButtonSize.sm,
-            icon: Icons.info_outline,
+          _besideTitle(
+            context,
+            FFButton(
+              key: const Key('data-origins-info'),
+              label: context.tr('origin.link'),
+              onPressed: () => showDataOriginsSheet(context),
+              variant: FFButtonVariant.ghost,
+              size: FFButtonSize.sm,
+              icon: Icons.info_outline,
+              maxLines: 2,
+            ),
           ),
         ],
       ),
