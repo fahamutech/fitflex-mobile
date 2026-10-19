@@ -4311,6 +4311,16 @@ class FFLocale extends ChangeNotifier {
       'home.how.step2': 'Show your QR at a partner gym.',
       'home.how.step3': 'Train, and track every visit here.',
       // Vendor stock ledger (S1, 2026-10-19).
+      'payment.status.refunded': 'Refunded',
+      'payment.status.refund_pending': 'Refund pending',
+      'payment.status.failed': 'Payment failed',
+      'payment.status.paid': 'Paid',
+      'payment.status.pending': 'Awaiting payment',
+      'payment.method.bank': 'Bank transfer',
+      'payment.method.card': 'Card',
+      'payment.method.mixx': 'Mixx by Yas',
+      'payment.method.airtel_money': 'Airtel Money',
+      'payment.method.mpesa': 'M-Pesa',
       'vendor.stock.orderNotVisible':
           'This order isn\'t in your orders yet. It appears there once it is paid.',
       'vendor.stock.lowVariantsOne': '1 variant low',
@@ -8734,6 +8744,16 @@ class FFLocale extends ChangeNotifier {
       'home.how.step3': 'Fanya mazoezi, na fuatilia kila ziara hapa.',
       // Vendor stock ledger (S1, 2026-10-19): Swahili drafts pending native
       // review (design spec vendor-stock-ledger-s1 §8, plan §4).
+      'payment.status.refunded': 'Imerejeshwa',
+      'payment.status.refund_pending': 'Marejesho yanasubiri',
+      'payment.status.failed': 'Malipo yameshindikana',
+      'payment.status.paid': 'Imelipwa',
+      'payment.status.pending': 'Inasubiri malipo',
+      'payment.method.bank': 'Uhamisho wa benki',
+      'payment.method.card': 'Kadi',
+      'payment.method.mixx': 'Mixx by Yas',
+      'payment.method.airtel_money': 'Airtel Money',
+      'payment.method.mpesa': 'M-Pesa',
       'vendor.stock.orderNotVisible':
           'Oda hii bado haipo kwenye oda zako. Itaonekana humo ikishalipwa.',
       'vendor.stock.lowVariantsOne': 'Chaguo 1 lina Stock chache',

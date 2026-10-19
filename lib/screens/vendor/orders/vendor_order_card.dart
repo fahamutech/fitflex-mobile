@@ -14,6 +14,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
 import '../../../shared/formatters.dart';
+import '../../../shared/payment_labels.dart';
 import '../../../shared/i18n.dart';
 import '../../../shared/shop_checkout.dart';
 import '../stock/stock_options.dart';
@@ -98,7 +99,7 @@ class VendorOrderCard extends StatelessWidget {
             key: Key('vendor-order-status-$_id'),
           ),
           Text(
-            '${context.tr('vendor.payment')}: ${order['paymentStatus'] ?? '-'} · ${order['paymentMethod'] ?? '-'}',
+            '${context.tr('vendor.payment')}: ${shopPaymentStatusLabel(context, order['paymentStatus'])} · ${shopPaymentMethodLabel(context, order['paymentMethod'])}',
           ),
           if (buyer != null)
             Text(
