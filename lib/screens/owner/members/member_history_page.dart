@@ -10,7 +10,8 @@ import 'package:flutter/material.dart';
 import '../../../app_scope.dart';
 import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
-import '../../../shared/formatters.dart';
+// member_format.dart has its own date helpers for these tables.
+import '../../../shared/formatters.dart' hide formatDate, formatDateTime;
 import '../../../shared/i18n.dart';
 import 'data/member_models.dart';
 import 'data/member_repository.dart';

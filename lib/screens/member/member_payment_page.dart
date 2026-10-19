@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../../app_scope.dart';
 import '../../router.dart';
@@ -15,6 +14,12 @@ import '../../shared/pass_gyms.dart';
 import 'member_shell.dart';
 import 'widgets/mobile_money_pay.dart';
 import 'widgets/pass_gyms_sheet.dart';
+
+/// How long a FitFlex Pass lasts once its payment is approved. The server
+/// sets 30 days at purchase and moves both dates to the approval moment
+/// (subscription-service `subscribe`, `activationDates`); /subscription-tiers
+/// sends no length, so the app mirrors it here.
+const platformPassDays = 30;
 
 class MemberPaymentPage extends StatelessWidget {
   const MemberPaymentPage({super.key});
@@ -75,17 +80,24 @@ class MemberPaymentPage extends StatelessWidget {
                       ? context.tr('pass.unlimited')
                       : '$visitCap',
                 ),
+                // The pass starts when FitFlex approves the payment, not
+                // today, so no calendar dates are promised here.
                 _Row(
+                  key: const Key('payment-pass-start'),
                   label: context.tr('member.startDate'),
-                  value: DateFormat('dd MMM yyyy').format(DateTime.now()),
+                  value: context.tr('member.passStartsOnApproval'),
                 ),
                 _Row(
-                  label: context.tr('member.endDate'),
-                  value: DateFormat(
-                    'dd MMM yyyy',
-                  ).format(DateTime.now().add(const Duration(days: 30))),
+                  key: const Key('payment-pass-length'),
+                  label: context.tr('member.passLength'),
+                  value: context
+                      .tr('member.passLastsFromApproval')
+                      .replaceAll('{days}', '$platformPassDays'),
                 ),
-                _Row(label: 'Total', value: formatCurrency(price)),
+                _Row(
+                  label: context.tr('member.total'),
+                  value: formatCurrency(price),
+                ),
               ],
             ),
           ),
@@ -135,7 +147,7 @@ class MemberPaymentPage extends StatelessWidget {
 }
 
 class _Row extends StatelessWidget {
-  const _Row({required this.label, required this.value});
+  const _Row({super.key, required this.label, required this.value});
 
   final String label;
   final String value;
@@ -144,12 +156,22 @@ class _Row extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
+      // Values can be whole sentences ("Starts when payment is approved"):
+      // they wrap instead of running off a narrow phone.
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
             child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
           ),
-          Text(value, style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(width: FFTokens.spacingSm),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+          ),
         ],
       ),
     );

@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import '../../../shared/components/components.dart';
+import '../../../shared/formatters.dart';
 import '../../../shared/i18n.dart';
 import '../member_shell.dart';
 
@@ -88,7 +89,7 @@ extension PassStateBadge on PassState {
 
 /// dd/MM/yyyy, or "-" when there is no date.
 String passDate(String? iso) {
-  final date = DateTime.tryParse(iso ?? '')?.toLocal();
+  final date = localDateTime(iso);
   if (date == null) return '-';
   return '${date.day.toString().padLeft(2, '0')}/'
       '${date.month.toString().padLeft(2, '0')}/${date.year}';
