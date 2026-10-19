@@ -5549,8 +5549,10 @@ class FFLocale extends ChangeNotifier {
       'error.reason.tierNotAvailable': 'pasi hii haipatikani kwa sasa',
       'pay.product.fitflexPass': 'FitFlex Pass',
       'pay.product.gymPlan': 'Mpango wa gym',
-      'pay.product.trainerSession': 'Kipindi cha mkufunzi',
-      'pay.product.trainerPass': 'Pasi ya mkufunzi ya gym',
+      'pay.product.trainerSession':
+          'Kipindi cha trainer', // TODO(sw-review): 2026-10-19 glossary fix
+      'pay.product.trainerPass':
+          'Pasi ya trainer ya gym', // TODO(sw-review): 2026-10-19 glossary fix
       'pay.product.shopOrder': 'Oda ya duka',
       'member.gymPlanPending':
           'Malipo yako ya mpango katika gym hii yanasubiri idhini.',
@@ -6003,7 +6005,7 @@ class FFLocale extends ChangeNotifier {
       'training.focusOn': "Mkazo: {areas}",
       'training.restNote': "Siku zisizo na kipindi ni za kupumzika.",
       'training.privacyNote':
-          "Mpango na mazoezi yako ni yako. Wakufunzi na gym wanayaona tu ikiwa umechagua kushiriki.",
+          "Mpango na mazoezi yako ni yako. Ma-trainer na gym wanayaona tu ikiwa umechagua kushiriki.", // TODO(sw-review): 2026-10-19 glossary fix
       'training.failed':
           "Imeshindikana. Angalia mtandao wako kisha ujaribu tena.",
       'training.change': "Badilisha mpango wangu",
@@ -6060,7 +6062,8 @@ class FFLocale extends ChangeNotifier {
       'training.weekday.5': "Ijumaa",
       'training.weekday.6': "Jumamosi",
       'training.weekday.7': "Jumapili",
-      'training.yourTrainer': "mkufunzi wako",
+      'training.yourTrainer':
+          "trainer wako", // TODO(sw-review): 2026-10-19 glossary fix
       'training.fromTrainer': "Kutoka kwa {name}",
       'training.offerFrom': "{name} amekuandalia mpango",
       'training.offerView': "Uangalie",
@@ -6133,12 +6136,13 @@ class FFLocale extends ChangeNotifier {
           "Imeshindikana kuhifadhi mabadiliko. Angalia mtandao wako kisha ujaribu tena.",
       'trainerPlan.saved': "Mpango umesasishwa.",
       'trainerPlan.savedActive': "Mpango umesasishwa. {name} amearifiwa.",
-      'inbox.open.trainer': "Angalia mkufunzi",
+      'inbox.open.trainer':
+          "Angalia trainer", // TODO(sw-review): 2026-10-19 glossary fix
       'inbox.open.trainingOffer': "Angalia mpango",
       'inbox.open.trainingPlan': "Angalia mpango wangu",
       'training.offerGone': "Mpango huu hausubiri tena jibu lako",
       'training.offerGoneBody':
-          "Huenda umeshaujibu, au mkufunzi wako ameuondoa au ametuma mpya.",
+          "Huenda umeshaujibu, au trainer wako ameuondoa au ametuma mpya.", // TODO(sw-review): 2026-10-19 glossary fix
       'training.offerAlreadyYours': "Tayari unatumia mpango huu",
       'inbox.open.clients': "Fungua wateja",
       'inbox.open.sessions': "Angalia vipindi",
@@ -6150,7 +6154,8 @@ class FFLocale extends ChangeNotifier {
       'inbox.open.payments': "Angalia malipo",
       'inbox.open.checkins': "Angalia walioingia",
       'inbox.open.member': "Angalia mwanachama",
-      'inbox.open.gymTrainers': "Angalia wakufunzi",
+      'inbox.open.gymTrainers':
+          "Angalia ma-trainer", // TODO(sw-review): 2026-10-19 glossary fix
       'inbox.open.gyms': "Angalia gym zangu",
       'inbox.open.earnings': "Angalia mapato",
       'checkinAlerts.title': "Arifa za kuingia",
@@ -6965,7 +6970,8 @@ class FFLocale extends ChangeNotifier {
       'owner.statementReference': 'Kumbukumbu ya malipo',
       'owner.statementAccount': 'Akaunti ya malipo',
       'owner.statementPass': 'Pasi',
-      'owner.statementSponsored': 'Imedhaminiwa',
+      'owner.statementSponsored':
+          'Iliyodhaminiwa', // TODO(sw-review): 2026-10-19 glossary fix
       'owner.statementBracket.daily': 'Bei ya siku',
       'owner.statementBracket.weekly': 'Wiki moja',
       'owner.statementBracket.double_weekly': 'Wiki mbili',
@@ -7679,7 +7685,7 @@ class FFLocale extends ChangeNotifier {
       'msgPrefs.smsConsent.agree': 'Ndiyo, nitumie ofa',
       'msgPrefs.smsReminders': 'Vikumbusho kwa SMS',
       'msgPrefs.smsReminders.body':
-          'Ujumbe kabla ya kipindi cha mkufunzi kuanza na kabla ya pass yako kuisha.',
+          'Ujumbe kabla ya kipindi cha trainer kuanza na kabla ya pasi yako kuisha.', // TODO(sw-review): 2026-10-19 glossary fix
       'msgPrefs.alwaysOn':
           'Ujumbe kuhusu uanachama wako, kulipia tena, malipo na matangazo ya gym huja kwenye Ujumbe wako kila wakati, ili usikose jambo muhimu.',
       // Trainer interface: calendar, weekly hours, socials, trainer passes.
