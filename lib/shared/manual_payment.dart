@@ -312,8 +312,10 @@ class ManualPaymentSteps extends StatelessWidget {
 }
 
 /// Room kept below a focused payment field when the keyboard opens, so the
-/// next field and the submit button scroll into view with it.
-const manualPayScrollPadding = EdgeInsets.fromLTRB(20, 20, 20, 160);
+/// next field and the submit button scroll into view with it. 200 covers the
+/// paying-number field (with its help line) and the button under the
+/// transaction ID at 360 wide.
+const manualPayScrollPadding = EdgeInsets.fromLTRB(20, 20, 20, 200);
 
 /// The required "Transaction ID" field. [errorText] is shown under it.
 class TransactionIdField extends StatelessWidget {

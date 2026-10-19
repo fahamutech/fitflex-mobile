@@ -136,6 +136,7 @@ class GymGridCard extends StatelessWidget {
     this.onTap,
     this.extraBadge,
     this.placement,
+    this.imageAspectRatio = 4 / 3,
   });
 
   final Gym gym;
@@ -143,6 +144,9 @@ class GymGridCard extends StatelessWidget {
 
   /// The discovery placement this card was shown in (promotion analytics).
   final String? placement;
+
+  /// Photo shape; a one-column grid uses a wider one so the card stays short.
+  final double imageAspectRatio;
 
   /// Defaults to the member gym page.
   final VoidCallback? onTap;
@@ -183,7 +187,7 @@ class GymGridCard extends StatelessWidget {
                 top: Radius.circular(FFTokens.radiusLg),
               ),
               child: AspectRatio(
-                aspectRatio: 4 / 3,
+                aspectRatio: imageAspectRatio,
                 child: gym.coverThumbnail == null
                     ? Container(
                         color: cs.primary.withValues(alpha: 0.1),
@@ -213,8 +217,6 @@ class GymGridCard extends StatelessWidget {
             Flexible(
               child: ClipRect(
                 child: Padding(
-                  // Keep the compact two-column card within the Pixel 7 grid's
-                  // 241.3 px extent, including the verified and distance badges.
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
                     vertical: 6,
@@ -222,49 +224,59 @@ class GymGridCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // The name has the line to itself (only the small
-                      // verified tick beside it), so at 360px it is never
-                      // cut to "D…" by the "Not verified" label.
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              gym.name,
-                              key: Key('gym-grid-name-${gym.id}'),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: tt.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
+                      // Up to two lines for the name, with the verified tick
+                      // right after it, so at 360 it is read in full instead
+                      // of "Dev Owner …".
+                      Text.rich(
+                        TextSpan(
+                          text: gym.name,
+                          children: [
+                            if (gymIsVerified(gym)) ...[
+                              const TextSpan(text: ' '),
+                              const WidgetSpan(
+                                alignment: PlaceholderAlignment.middle,
+                                child: GymVerifiedIcon(size: 13),
                               ),
-                            ),
-                          ),
-                          if (gymIsVerified(gym)) ...[
-                            const SizedBox(width: 4),
-                            const GymVerifiedIcon(size: 13),
+                            ],
                           ],
-                        ],
+                        ),
+                        key: Key('gym-grid-name-${gym.id}'),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: tt.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       const SizedBox(height: 3),
-                      // "Not verified" sits after the area instead, which
-                      // gives way first; no extra line, so the card height
-                      // in the grid is unchanged.
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              gym.location,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: tt.bodySmall?.copyWith(fontSize: 11),
-                            ),
-                          ),
-                          if (!gymIsVerified(gym)) ...[
-                            const SizedBox(width: 6),
-                            // Both give way on a narrow card, never overflow.
-                            const Flexible(child: NotVerifiedLabel()),
-                          ],
-                        ],
+                      Text(
+                        gym.location,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: tt.bodySmall?.copyWith(fontSize: 11),
                       ),
+                      // "Not verified" is the trust signal: it has a line of
+                      // its own (with a small icon) and may wrap, never cut.
+                      if (!gymIsVerified(gym)) ...[
+                        const SizedBox(height: 3),
+                        Row(
+                          key: Key('gym-grid-unverified-${gym.id}'),
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(top: 1),
+                              child: Icon(
+                                Icons.gpp_maybe_outlined,
+                                size: 13,
+                                color: tt.bodySmall?.color,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Flexible(
+                              child: NotVerifiedLabel(maxLines: 2),
+                            ),
+                          ],
+                        ),
+                      ],
                       const SizedBox(height: 6),
                       Wrap(
                         spacing: 4,

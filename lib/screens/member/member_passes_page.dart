@@ -323,6 +323,10 @@ class _UpgradeGateState extends State<_UpgradeGate> {
       reference = ready.reference;
       payerPhone = ready.payerPhone;
     }
+    // Let go of the focused field before it is disabled for the request:
+    // disabling a focused field throws "Null check operator used on a null
+    // value" on the web, even when the request then fails (L4).
+    FocusManager.instance.primaryFocus?.unfocus();
     setState(() => _sending = true);
     try {
       final created = await AppScope.of(
@@ -860,13 +864,16 @@ class _SelectablePass extends StatelessWidget {
                     if (pass.gymAccess != null && pass.gymAccess!.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(top: 2),
+                        // Wraps: at 360 wide Premium's "Standard + Mid-tier
+                        // + Premium gyms" is the point of the card, so it is
+                        // never cut.
                         child: Text(
                           passGymAccessLabel(context, pass.gymAccess),
+                          key: Key('pass-gym-access-${pass.id}'),
                           style: Theme.of(context).textTheme.labelSmall
                               ?.copyWith(
                                 color: Theme.of(context).colorScheme.primary,
                               ),
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     if (gymCount > 0)

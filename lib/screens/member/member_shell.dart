@@ -775,39 +775,43 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
                     ),
                   ],
                 ),
-          bottomNavigationBar: NavigationBar(
-            selectedIndex: _tabIndex,
-            onDestinationSelected: _onTab,
-            destinations: [
-              NavigationDestination(
-                icon: const Icon(Icons.home_outlined),
-                selectedIcon: const Icon(Icons.home),
-                label: context.tr('member.home'),
-              ),
-              NavigationDestination(
-                key: const Key('member-nav-activity'),
-                icon: const Icon(Icons.directions_run_outlined),
-                selectedIcon: const Icon(Icons.directions_run),
-                label: context.tr('activity.title'),
-              ),
-              NavigationDestination(
-                key: const Key('member-nav-gyms'),
-                icon: const Icon(Icons.fitness_center_outlined),
-                selectedIcon: const Icon(Icons.fitness_center),
-                label: context.tr('member.gyms'),
-              ),
-              NavigationDestination(
-                key: const Key('member-nav-shop'),
-                icon: const Icon(Icons.storefront_outlined),
-                selectedIcon: const Icon(Icons.storefront),
-                label: context.tr('member.shop'),
-              ),
-              NavigationDestination(
-                icon: const Icon(Icons.person_outline),
-                selectedIcon: const Icon(Icons.person),
-                label: context.tr('member.profile'),
-              ),
-            ],
+          // Out of the way while typing, so a form's submit button (the
+          // payment page and plan sheets) is never half under it (M16).
+          bottomNavigationBar: FFHideWhileTyping(
+            child: NavigationBar(
+              selectedIndex: _tabIndex,
+              onDestinationSelected: _onTab,
+              destinations: [
+                NavigationDestination(
+                  icon: const Icon(Icons.home_outlined),
+                  selectedIcon: const Icon(Icons.home),
+                  label: context.tr('member.home'),
+                ),
+                NavigationDestination(
+                  key: const Key('member-nav-activity'),
+                  icon: const Icon(Icons.directions_run_outlined),
+                  selectedIcon: const Icon(Icons.directions_run),
+                  label: context.tr('activity.title'),
+                ),
+                NavigationDestination(
+                  key: const Key('member-nav-gyms'),
+                  icon: const Icon(Icons.fitness_center_outlined),
+                  selectedIcon: const Icon(Icons.fitness_center),
+                  label: context.tr('member.gyms'),
+                ),
+                NavigationDestination(
+                  key: const Key('member-nav-shop'),
+                  icon: const Icon(Icons.storefront_outlined),
+                  selectedIcon: const Icon(Icons.storefront),
+                  label: context.tr('member.shop'),
+                ),
+                NavigationDestination(
+                  icon: const Icon(Icons.person_outline),
+                  selectedIcon: const Icon(Icons.person),
+                  label: context.tr('member.profile'),
+                ),
+              ],
+            ),
           ),
         ),
       ),

@@ -72,14 +72,18 @@ class PartnerNotVerifiedNotice extends StatelessWidget {
 
 /// Small "Not verified" label for a trainer or gym in a list.
 class NotVerifiedLabel extends StatelessWidget {
-  const NotVerifiedLabel({super.key});
+  const NotVerifiedLabel({super.key, this.maxLines = 1});
+
+  /// Lines it may take before it is cut; a narrow card lets it wrap so the
+  /// whole word stays readable.
+  final int maxLines;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Text(
       context.tr('gym.unverified'),
-      maxLines: 1,
+      maxLines: maxLines,
       overflow: TextOverflow.ellipsis,
       style: theme.textTheme.labelSmall?.copyWith(
         color: theme.textTheme.bodySmall?.color,

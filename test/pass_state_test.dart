@@ -158,6 +158,37 @@ void main() {
       expect(find.byKey(const Key('pass-upgrade-action')), findsOneWidget);
     });
 
+    for (final lang in ['en', 'sw']) {
+      testWidgets('[$lang] at 360 the card says each fact once (M5)', (
+        tester,
+      ) async {
+        tester.view.physicalSize = const Size(360, 740);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        final handle = tester.ensureSemantics();
+        await _pumpCard(
+          tester,
+          _data(subscription: _pass(), used: 7),
+          lang: lang,
+        );
+        String tr(String k) => FFLocale.textOf(lang, k)!;
+        final used = tr(
+          'pass.state.usedOf',
+        ).replaceAll('{used}', '7').replaceAll('{total}', '18');
+        // The ring is "11 left" only; the used count is the line beside it.
+        expect(
+          tester.getSemantics(find.byKey(const Key('pass-visits-ring'))).label,
+          '11 ${tr('pass.state.left')}',
+        );
+        // Across the whole card the used count is announced once.
+        expect(
+          find.bySemanticsLabel(RegExp(RegExp.escape(used))),
+          findsOneWidget,
+        );
+        handle.dispose();
+      });
+    }
+
     testWidgets('low visits says how many are left', (tester) async {
       await _pumpCard(tester, _data(subscription: _pass(), used: 15));
       expect(find.text('3'), findsOneWidget);

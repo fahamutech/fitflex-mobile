@@ -7,6 +7,8 @@ export 'pin_input_row.dart';
 export 'ff_avatar.dart';
 export 'ff_badge.dart';
 export 'ff_featured_strip.dart';
+export 'ff_hide_while_typing.dart';
+export 'ff_row_grid.dart';
 export 'ff_promotion_badge.dart';
 export 'ff_card.dart';
 export 'ff_empty_state.dart';

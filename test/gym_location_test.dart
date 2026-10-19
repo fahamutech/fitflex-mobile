@@ -158,10 +158,12 @@ void main() {
         notifier: FFLocale(),
         child: MaterialApp(
           home: Center(
+            // The grid row is as tall as its card (SliverFFRowGrid).
             child: SizedBox(
               width: 173.7,
-              height: 241.3,
-              child: GymGridCard(gym: gym, distanceKm: 3.2),
+              child: IntrinsicHeight(
+                child: GymGridCard(gym: gym, distanceKm: 3.2),
+              ),
             ),
           ),
         ),

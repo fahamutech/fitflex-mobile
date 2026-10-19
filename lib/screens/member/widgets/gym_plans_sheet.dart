@@ -103,6 +103,10 @@ class _GymPlansSheetState extends State<GymPlansSheet> {
       reference = ready.reference;
       payerPhone = ready.payerPhone;
     }
+    // Let go of the focused field before it is disabled for the request:
+    // disabling a focused field throws "Null check operator used on a null
+    // value" on the web, even when the request then fails (L4).
+    FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       _busy = true;
       _error = null;
