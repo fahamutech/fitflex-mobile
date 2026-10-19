@@ -11,6 +11,7 @@ import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
 import '../../../shared/i18n.dart';
 import '../../../shared/tone_theme.dart';
+import '../orders/vendor_order_card.dart';
 import 'adjust_stock_sheet.dart';
 import 'stock_options.dart';
 
@@ -662,9 +663,12 @@ class _StockHistoryPageState extends State<StockHistoryPage> {
     Widget? orderLink;
     if (doc != null && doc['type'] == 'order') {
       final docId = doc['id']?.toString() ?? '';
-      final ref = (doc['number']?.toString().isNotEmpty ?? false)
-          ? doc['number'].toString()
-          : (docId.length > 8 ? docId.substring(docId.length - 8) : docId);
+      // The same order number as Orders and the portal: the document's
+      // shortRef (or number) if sent, else the last 6 characters in capitals.
+      final ref = vendorOrderRef({
+        'id': docId,
+        'shortRef': doc['shortRef'] ?? doc['number'],
+      });
       final text = fillIn(context.tr('vendor.stock.order'), {'ref': ref});
       orderLink = canVendor(context, 'orders')
           ? FFButton(

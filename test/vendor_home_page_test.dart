@@ -548,7 +548,7 @@ void main() {
         findsOneWidget,
       );
       expect(
-        find.text('${host.tr('vendor.payment')}: paid · mpesa'),
+        find.text('${host.tr('vendor.payment')}: Paid · M-Pesa'),
         findsOneWidget,
       );
       expect(
