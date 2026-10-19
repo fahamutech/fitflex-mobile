@@ -177,6 +177,28 @@ void main() {
         ),
         'Kubali oda',
       );
+      // Swahili steps are verb phrases, not "Weka" + a state.
+      expect(
+        await _say(
+          tester,
+          (c) => vendorMarkStatusLabel(c, 'dispatched'),
+          lang: 'sw',
+        ),
+        'Tuma njiani',
+      );
+      // A step the app does not know: a plain "Update status".
+      expect(
+        await _say(tester, (c) => vendorMarkStatusLabel(c, 'new_step')),
+        'Update status',
+      );
+      expect(
+        await _say(
+          tester,
+          (c) => vendorMarkStatusLabel(c, 'new_step'),
+          lang: 'sw',
+        ),
+        'Sasisha hali',
+      );
       for (final s in [
         'accepted',
         'processing',

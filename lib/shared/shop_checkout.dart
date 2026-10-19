@@ -127,13 +127,13 @@ String shopOrderStatusKey(Object? status) {
 String shopOrderStatusLabel(BuildContext context, Object? status) =>
     context.tr(shopOrderStatusKey(status));
 
-/// The vendor's button for moving an order on to [next] ("Mark as packed").
+/// The vendor's button for moving an order on to [next] ("Mark as packed",
+/// sw "Fungasha oda"). Each step has its own wording; a step the app does
+/// not know yet reads "Update status" rather than a word joined to a status.
 String vendorMarkStatusLabel(BuildContext context, String next) {
   final key = 'vendor.markStatus.$next';
   final label = context.tr(key);
-  return label == key
-      ? '${context.tr('vendor.mark')} ${shopOrderStatusLabel(context, next)}'
-      : label;
+  return label == key ? context.tr('vendor.updateStatus') : label;
 }
 
 /// i18n key for the line shown under an order's total, or null when the order
