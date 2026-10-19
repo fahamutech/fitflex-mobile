@@ -954,6 +954,27 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    apiTest('an HTML 502 from /shop/home: the fallback layout, no HTML', (
+      tester,
+      api,
+    ) async {
+      _seed(api);
+      api.onCall(
+        'GET /shop/home',
+        (_) => const RawResponse(
+          502,
+          '<!DOCTYPE html><html><body>Bad Gateway</body></html>',
+        ),
+      );
+      await _pump(tester, api);
+      expect(_key('shop-home'), findsOneWidget);
+      expect(_key('shop-home-error'), findsNothing);
+      expect(_key('shop-home-grid'), findsOneWidget);
+      expect(find.textContaining('DOCTYPE'), findsNothing);
+      expect(find.textContaining('Bad Gateway'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
     apiTest('403 mode_not_allowed: retried once without mode', (
       tester,
       api,

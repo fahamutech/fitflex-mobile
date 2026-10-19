@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'api_client.dart';
 import 'firebase_auth_service.dart';
 import 'held_nav_extras.dart';
+import 'pending_friend_invite.dart';
 import 'pending_org_invite.dart';
 import 'push_service.dart';
 
@@ -331,9 +332,10 @@ class AuthState extends ChangeNotifier {
   Future<void> switchPersona(String personaId) async {
     final res = await api.switchPersona(personaId);
     final user = Map<String, dynamic>.from(res['user'] as Map);
-    // A kept organisation invitation link belongs to the session it was
-    // opened in, not to the persona switched to.
+    // A kept invitation link belongs to the session it was opened in, not
+    // to the persona switched to.
     await PendingOrgInvite.clear();
+    await PendingFriendInvite.clear();
     // Push belongs to the persona: drop it for the old one, the new session
     // registers again in signIn().
     await push?.unregister();
@@ -477,9 +479,12 @@ class AuthState extends ChangeNotifier {
     // cannot press Back into this user's email/phone screen. A screen still
     // mounted (a 401 during sign-in lands here too) keeps its own.
     HeldNavExtras.clear();
-    // Ending a real session: a kept organisation invitation link is not the
-    // next person's. Sign-in error paths (no session yet) keep it.
-    if (_token != null) await PendingOrgInvite.clear();
+    // Ending a real session: a kept invitation link is not the next
+    // person's. Sign-in error paths (no session yet) keep it.
+    if (_token != null) {
+      await PendingOrgInvite.clear();
+      await PendingFriendInvite.clear();
+    }
     // While the session token is still set, so the backend accepts the call.
     await push?.unregister();
     _token = null;

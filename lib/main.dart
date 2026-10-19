@@ -31,12 +31,27 @@ Future<void> main() async {
   // device below), so the app opens /invitations with no token in history.
   final linkToken = kIsWeb ? inviteTokenFromPageUri(Uri.base) : null;
   if (linkToken != null) showInvitationsWithoutToken();
+  // Likewise a friend invitation link (`/friend-invite/#tok`, or a legacy
+  // `/friend-invite/tok`): the app opens /friend-invite with no token.
+  final friendLink = kIsWeb && linkToken == null
+      ? friendInviteLinkFrom(Uri.base)
+      : null;
+  if (friendLink != null) showFriendInviteWithoutToken();
 
   WidgetsFlutterBinding.ensureInitialized();
   if (linkToken != null) {
     await PendingOrgInvite.save(linkToken);
   } else {
     await PendingOrgInvite.load();
+  }
+  final friendToken = friendLink?.token;
+  if (friendToken != null) {
+    await PendingFriendInvite.save(friendToken);
+  } else if (friendLink != null) {
+    // A malformed link: the page says it is not valid.
+    await PendingFriendInvite.clear();
+  } else {
+    await PendingFriendInvite.load();
   }
   const mockAuth = bool.fromEnvironment('MOCK_AUTH');
 
@@ -233,8 +248,9 @@ class _FitFlexAppState extends State<FitFlexApp> with WidgetsBindingObserver {
       _runs?.discard();
       _inbox.clear();
       _syncedLocale = null;
-      // A kept organisation invitation link is not the next person's.
+      // A kept invitation link is not the next person's.
       PendingOrgInvite.clear();
+      PendingFriendInvite.clear();
     }
     if (token != null && token != _lastToken) {
       _inbox.load();

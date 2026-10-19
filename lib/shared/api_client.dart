@@ -149,8 +149,16 @@ class ApiClient {
       rethrow;
     }
     _log.response(method, uri, res.statusCode, res.body);
-    final decoded = res.body.isEmpty ? null : jsonDecode(res.body);
-    if (res.statusCode >= 200 && res.statusCode < 300) return decoded;
+    final ok = res.statusCode >= 200 && res.statusCode < 300;
+    final decoded = res.body.isEmpty
+        ? null
+        : ok
+        ? jsonDecode(res.body)
+        // An error page that is not JSON (a server's "Cannot POST" for a
+        // route it does not have, a proxy's 502 page) still becomes an
+        // ApiException, with no body: its HTML never reaches the UI.
+        : _decodeErrorBody(res.body);
+    if (ok) return decoded;
     // A 401 always means this bearer session can no longer be used.  Do not
     // rely on a particular backend error shape: gateways and proxies often
     // return their own 401 payloads.
@@ -158,6 +166,16 @@ class ApiClient {
       onUnauthorized!();
     }
     throw ApiException(res.statusCode, decoded);
+  }
+
+  /// The JSON error body, or null when it is not JSON (an HTML page or a
+  /// stack trace is not shown to anyone; the status still is).
+  static dynamic _decodeErrorBody(String body) {
+    try {
+      return jsonDecode(body);
+    } on FormatException {
+      return null;
+    }
   }
 
   static bool _isRetryableError(Object e) {
@@ -1319,8 +1337,26 @@ class ApiClient {
       _map('DELETE', '/me/friend-invitations/${_e(id)}');
   Future<Map<String, dynamic>> claimFriendInvitation(String token) =>
       _map('POST', '/me/friend-invitations/claim', body: {'token': token});
-  Future<Map<String, dynamic>> previewFriendInvitation(String token) =>
-      _map('GET', '/friend-invitations/preview/${_e(token)}');
+
+  /// Public: what an invitation link is for. The token goes in the body so
+  /// it stays out of server / CDN access logs. While the backend rolls out,
+  /// a server without the POST route answers 404 with no FitFlex error code
+  /// (or `not_found`); only then is the older GET (token in the path) used.
+  /// A 404 `invalid_invitation` is a real answer and is not retried.
+  Future<Map<String, dynamic>> previewFriendInvitation(String token) async {
+    try {
+      return await _map(
+        'POST',
+        '/friend-invitations/preview',
+        body: {'token': token},
+      );
+    } on ApiException catch (e) {
+      final code = e.code;
+      if (e.status != 404 || (code != null && code != 'not_found')) rethrow;
+      return _map('GET', '/friend-invitations/preview/${_e(token)}');
+    }
+  }
+
   Future<Map<String, dynamic>> follow(String userId) =>
       _map('POST', '/me/follows', body: {'userId': userId});
   Future<Map<String, dynamic>> unfollow(String userId) =>
