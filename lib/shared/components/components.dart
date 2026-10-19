@@ -29,6 +29,7 @@ export 'ff_google_sign_in_button.dart';
 export 'ff_divider_label.dart';
 export 'ff_button.dart';
 export 'ff_choice_tile.dart';
+export 'ff_filter_chip.dart';
 export 'ff_photo_footer.dart';
 export 'ff_photo_hero.dart';
 export 'ff_photo_hero_page.dart';

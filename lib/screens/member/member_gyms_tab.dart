@@ -344,101 +344,42 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
                     ),
                     if (_discoveryLoading)
                       const LinearProgressIndicator(minHeight: 2),
-                    const SizedBox(height: 12),
-                    // ── Tier filter chips ──────────────────────────────
-                    SizedBox(
-                      height: 38,
-                      child: ListView.separated(
-                        key: const Key('gym-filter-scroll'),
-                        scrollDirection: Axis.horizontal,
-                        itemCount: _filters.length + 1,
-                        separatorBuilder: (context, index) =>
-                            const SizedBox(width: 8),
-                        itemBuilder: (_, i) {
-                          if (i == _filters.length) {
-                            return GestureDetector(
-                              key: const Key('gym-filter-more'),
-                              onTap: () =>
-                                  setState(() => _showFilters = !_showFilters),
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 100),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: _showFilters ? cs.primary : cs.surface,
-                                  border: Border.all(
-                                    color: _showFilters
-                                        ? cs.primary
-                                        : cs.outline,
-                                  ),
-                                  borderRadius: BorderRadius.circular(
-                                    FFTokens.radiusXl,
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.tune,
-                                      size: 14,
-                                      color: _showFilters
-                                          ? cs.onPrimary
-                                          : cs.onSurface,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      context.tr('member.otherFilters'),
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w500,
-                                        color: _showFilters
-                                            ? cs.onPrimary
-                                            : cs.onSurface,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          }
-                          final selected = _filter == _filters[i];
-                          return GestureDetector(
-                            key: Key('gym-filter-${_filters[i]}'),
-                            onTap: () {
-                              setState(() => _filter = _filters[i]);
-                              if (_filters[i] == 'nearest') {
-                                _fetchLocation();
-                              }
-                              _requestDiscovery(immediate: true);
-                            },
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 100),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: selected ? cs.primary : cs.surface,
-                                border: Border.all(
-                                  color: selected ? cs.primary : cs.outline,
-                                ),
-                                borderRadius: BorderRadius.circular(
-                                  FFTokens.radiusXl,
-                                ),
-                              ),
-                              child: Text(
-                                filterLabels[i],
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                  color: selected ? cs.onPrimary : cs.onSurface,
-                                ),
-                              ),
+                    // The chips' 48px hit area brings its own space above.
+                    const SizedBox(height: 4),
+                    // ── Tier filter chips (F-11: 48px targets, keyboard) ─
+                    // A plain row (not a lazy list) so Tab reaches every
+                    // chip; 2px side padding keeps the focus ring visible.
+                    SingleChildScrollView(
+                      key: const Key('gym-filter-scroll'),
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      child: Row(
+                        children: [
+                          for (var i = 0; i < _filters.length; i++) ...[
+                            if (i > 0) const SizedBox(width: 8),
+                            FFFilterChip(
+                              key: Key('gym-filter-${_filters[i]}'),
+                              label: filterLabels[i],
+                              selected: _filter == _filters[i],
+                              onSelected: () {
+                                setState(() => _filter = _filters[i]);
+                                if (_filters[i] == 'nearest') {
+                                  _fetchLocation();
+                                }
+                                _requestDiscovery(immediate: true);
+                              },
                             ),
-                          );
-                        },
+                          ],
+                          const SizedBox(width: 8),
+                          FFFilterChip(
+                            key: const Key('gym-filter-more'),
+                            label: context.tr('member.otherFilters'),
+                            icon: Icons.tune,
+                            selected: _showFilters,
+                            onSelected: () =>
+                                setState(() => _showFilters = !_showFilters),
+                          ),
+                        ],
                       ),
                     ),
                     // ── Filters panel (A9): price + amenities + verified ──
@@ -455,42 +396,19 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
                               ),
                             ),
                             const SizedBox(height: 8),
+                            // The 48px hit areas already space the rows.
                             Wrap(
                               spacing: 6,
-                              runSpacing: 6,
                               children: _priceFilters.map((p) {
-                                final sel = _priceFilter == p;
-                                return GestureDetector(
-                                  onTap: () => setState(() => _priceFilter = p),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 5,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: sel
-                                          ? cs.primary.withValues(alpha: 0.1)
-                                          : cs.surface,
-                                      border: Border.all(
-                                        color: sel ? cs.primary : cs.outline,
-                                      ),
-                                      borderRadius: BorderRadius.circular(
-                                        FFTokens.radiusMd,
-                                      ),
-                                    ),
-                                    child: Text(
-                                      p == 'any'
-                                          ? context.tr('member.anyPrice')
-                                          : p,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: sel
-                                            ? FontWeight.w600
-                                            : FontWeight.w400,
-                                        color: sel ? cs.primary : cs.onSurface,
-                                      ),
-                                    ),
-                                  ),
+                                return FFFilterChip(
+                                  key: Key('gym-price-filter-$p'),
+                                  label: p == 'any'
+                                      ? context.tr('member.anyPrice')
+                                      : p,
+                                  tone: FFFilterChipTone.tint,
+                                  selected: _priceFilter == p,
+                                  onSelected: () =>
+                                      setState(() => _priceFilter = p),
                                 );
                               }).toList(),
                             ),

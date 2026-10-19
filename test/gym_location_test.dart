@@ -187,12 +187,15 @@ void main() {
       isVerified: true,
     );
 
+    // The grid gives the card the Infinix column width; rows are as tall as
+    // their tallest card (SliverFFRowGrid), so the height is the card's own,
+    // not a fixed aspect-ratio cell.
     await tester.pumpWidget(
       MaterialApp(
-        home: Center(
+        home: Align(
+          alignment: Alignment.topCenter,
           child: SizedBox(
             width: 169.3,
-            height: 249,
             child: TrainerGridCard(trainer: trainer),
           ),
         ),
