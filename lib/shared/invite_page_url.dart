@@ -1,4 +1,4 @@
-// Organisation invitation links: reading a token from the page address the
+// Invitation links: reading a token from the page address the
 // web app was opened at, and taking it out of the address bar.
 
 export 'invite_page_url_stub.dart'

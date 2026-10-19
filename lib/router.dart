@@ -100,7 +100,14 @@ abstract class AppRoutes {
   static const ownerMemberCheckins = '/owner/members/:memberId/checkins';
   static const ownerMemberPayments = '/owner/members/:memberId/payments';
   static const inbox = '/inbox';
-  static const friendInvite = '/friend-invite/:token';
+
+  /// The friend-invitation page; the token is kept on the device, never in
+  /// the location.
+  static const friendInvite = '/friend-invite';
+
+  /// Links sent before the token moved to the fragment. Matched only to be
+  /// redirected to [friendInvite] once the token is kept.
+  static const friendInviteLegacy = '/friend-invite/:token';
   static const inboxMessage = '/inbox/:messageId';
   static const memberMessageSettings = '/member/message-settings';
   static const memberBenefits = '/member/benefits';
@@ -395,8 +402,26 @@ GoRouter buildRouter(AuthState auth) {
         AppRoutes.googleWebCallback,
       ];
 
-      // An invitation link opens for anyone; it is kept through sign-in.
-      if (loc.startsWith('/friend-invite/')) return null;
+      // A friend-invitation link (`/friend-invite/#tok`, a full
+      // `https://…/friend-invite/#tok` from an Android App Link, or a legacy
+      // `/friend-invite/tok`): keep the token on the device and open the
+      // page without it, so it stays out of the location and history. A
+      // malformed token drops any earlier kept one, so the page says the
+      // link is not valid.
+      final friendLink = friendInviteLinkFrom(state.uri);
+      if (friendLink != null) {
+        showFriendInviteWithoutToken();
+        final token = friendLink.token;
+        return (token == null
+                ? PendingFriendInvite.clear()
+                : PendingFriendInvite.save(token))
+            .then((_) => AppRoutes.friendInvite);
+      }
+      // The invitation page opens for anyone; the token is kept through
+      // sign-in.
+      if (loc == AppRoutes.friendInvite || loc.startsWith('/friend-invite/')) {
+        return null;
+      }
 
       // An organisation invitation link: keep its token on the device and
       // drop it from the address (and history), then route as usual.
@@ -702,8 +727,12 @@ GoRouter buildRouter(AuthState auth) {
       // Inbox — every signed-in role's messages.
       GoRoute(
         path: AppRoutes.friendInvite,
-        builder: (context, state) =>
-            FriendInvitePage(token: state.pathParameters['token'] ?? ''),
+        builder: (context, state) => const FriendInvitePage(),
+      ),
+      // Never shown: the redirect keeps the token and moves on.
+      GoRoute(
+        path: AppRoutes.friendInviteLegacy,
+        builder: (context, state) => const FriendInvitePage(),
       ),
       GoRoute(
         path: AppRoutes.inbox,

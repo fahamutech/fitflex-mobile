@@ -8,7 +8,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../app_scope.dart';
@@ -19,30 +18,9 @@ import 'components/components.dart';
 import 'design_tokens.dart';
 import 'i18n.dart';
 import 'inbox/inbox_controller.dart';
+import 'pending_friend_invite.dart';
 
-/// The invitation token a signed-out visitor arrived with, kept through
-/// sign-in / registration so it can be claimed afterwards.
-class PendingFriendInvite {
-  static const _key = 'pending_friend_invite_token';
-
-  static Future<void> save(String token) async {
-    try {
-      (await SharedPreferences.getInstance()).setString(_key, token);
-    } catch (_) {}
-  }
-
-  /// Returns and clears the saved token.
-  static Future<String?> take() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString(_key);
-      if (token != null) await prefs.remove(_key);
-      return token;
-    } catch (_) {
-      return null;
-    }
-  }
-}
+export 'pending_friend_invite.dart';
 
 /// Opens the native share sheet with the invitation message. If the device
 /// has no sharing app (or sharing fails), offers copy-message / copy-link.
@@ -160,12 +138,13 @@ class FriendInvitationActions extends StatelessWidget {
   }
 }
 
-/// What an invitation link opens. Signed out: who invited them and a way to
-/// register or sign in (the link is kept through that). Signed in: it is
-/// claimed, and the request appears under Notifications to approve.
+/// What an invitation link opens. The link's token was kept on the device by
+/// the router (or at web startup), so it is not in the location. Signed out:
+/// who invited them and a way to register or sign in (the token stays kept
+/// through that). Signed in: it is claimed, and the request appears under
+/// Notifications to approve.
 class FriendInvitePage extends StatefulWidget {
-  const FriendInvitePage({super.key, required this.token});
-  final String token;
+  const FriendInvitePage({super.key});
 
   @override
   State<FriendInvitePage> createState() => _FriendInvitePageState();
@@ -194,8 +173,14 @@ class _FriendInvitePageState extends State<FriendInvitePage> {
       _error = null;
     });
     try {
-      if (scope.auth.isSignedIn) {
-        final res = await scope.api.claimFriendInvitation(widget.token);
+      final token = await PendingFriendInvite.peek();
+      if (token == null) {
+        // No link kept (or older than a day): nothing to open.
+        _status = 'invalid';
+      } else if (scope.auth.isSignedIn) {
+        final res = await scope.api.claimFriendInvitation(token);
+        // Claimed: the request now lives under Notifications.
+        await PendingFriendInvite.clear();
         await scope.inbox?.load();
         if (!mounted) return;
         _status = ((res['invitation'] as Map?)?['status'] ?? 'pending')
@@ -205,11 +190,12 @@ class _FriendInvitePageState extends State<FriendInvitePage> {
           return;
         }
       } else {
-        final res = await scope.api.previewFriendInvitation(widget.token);
+        final res = await scope.api.previewFriendInvitation(token);
         final inv = (res['invitation'] as Map?) ?? const {};
         _status = inv['status']?.toString();
         _inviter = inv['inviterName']?.toString();
-        if (_status == 'pending') await PendingFriendInvite.save(widget.token);
+        // Kept through sign-in only while it can still be accepted.
+        if (_status != 'pending') await PendingFriendInvite.clear();
       }
     } catch (e) {
       if (e is ApiException) {
@@ -218,8 +204,10 @@ class _FriendInvitePageState extends State<FriendInvitePage> {
           _mismatch = ((e.body as Map?)?['contactType'] ?? '').toString();
         } else if (code.startsWith('invitation_')) {
           _status = code.substring('invitation_'.length);
+          await PendingFriendInvite.clear();
         } else if (code == 'invalid_invitation') {
           _status = 'invalid';
+          await PendingFriendInvite.clear();
         } else {
           _error = e;
         }
