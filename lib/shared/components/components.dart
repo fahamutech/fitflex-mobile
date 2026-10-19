@@ -31,6 +31,7 @@ export 'ff_button.dart';
 export 'ff_choice_tile.dart';
 export 'ff_photo_hero.dart';
 export 'ff_photo_hero_page.dart';
+export 'ff_search_focus_scroll.dart';
 export 'ff_snack.dart';
 export 'ff_sheet.dart';
 export 'ff_dialog.dart';

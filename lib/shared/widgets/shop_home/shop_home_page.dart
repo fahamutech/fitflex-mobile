@@ -8,6 +8,7 @@ import '../../api_error_message.dart';
 import '../../components/components.dart';
 import '../../design_tokens.dart';
 import '../../i18n.dart';
+import '../../photo_hero_flag.dart';
 import '../../product_categories.dart';
 import '../../promotion_events.dart' show discoverSessionId;
 import '../../shop_home.dart';
@@ -50,6 +51,7 @@ class ShopHomeView extends StatefulWidget {
     this.catalogueFailed = false,
     this.onNeedCatalogue,
     this.onOfflineChanged,
+    this.showHero = false,
   });
 
   final ShopHomeMode mode;
@@ -81,6 +83,11 @@ class ShopHomeView extends StatefulWidget {
 
   /// Whether the last request failed for lack of a connection.
   final ValueChanged<bool>? onOfflineChanged;
+
+  /// The static brand band under the search row (PHOTO_HERO_UI, increment
+  /// plan slice 1). Only the member shop asks for it; the trainer and owner
+  /// shops and the pushed ShopBrowsePage do not.
+  final bool showHero;
 
   @override
   State<ShopHomeView> createState() => ShopHomeViewState();
@@ -352,10 +359,29 @@ class ShopHomeViewState extends State<ShopHomeView> {
   Widget build(BuildContext context) {
     final data = _data;
     final children = <Widget>[_padded(_searchRow(context))];
+    // The static brand band (spec §32.5): slot 3, after the search row and
+    // after the offline alert (the alert is about the content and must not
+    // sit under a photo).
+    final band = widget.showHero && photoHeroUi
+        ? _padded(
+            Padding(
+              padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
+              child: FFHeroBand(
+                key: const Key('shop-hero'),
+                photo: FFHeroPhoto.shop,
+                minHeight: 160,
+                wideHeight: 200,
+                eyebrow: context.tr('member.shopTitle'),
+                headlineLead: context.tr('hero.shop.lead'),
+                headlineAccent: context.tr('hero.shop.accent'),
+              ),
+            ),
+          )
+        : null;
     if (data == null && _loading) {
-      children.add(_padded(const _ShopHomeSkeleton()));
+      children.addAll([?band, _padded(const _ShopHomeSkeleton())]);
     } else if (data == null) {
-      children.add(_padded(_errorState(context)));
+      children.addAll([?band, _padded(_errorState(context))]);
     } else {
       if (_error != null) {
         children.add(
@@ -374,7 +400,7 @@ class ShopHomeViewState extends State<ShopHomeView> {
           ),
         );
       }
-      children.addAll(_content(context, data));
+      children.addAll([?band, ..._content(context, data)]);
     }
     return Column(
       key: const Key('shop-home'),

@@ -12,9 +12,11 @@ import '../../shared/discovery_loader.dart';
 import '../../shared/promotion_events.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
+import '../../shared/photo_hero_flag.dart';
 import '../../shared/promotion.dart';
 import 'member_shell.dart';
 import 'widgets/gym_card.dart';
+import 'widgets/directory_states.dart';
 import 'widgets/gym_filters.dart';
 
 class MemberGymsTab extends StatefulWidget {
@@ -203,6 +205,27 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
     return result;
   }
 
+  /// Whether the search or any filter is narrowing the list.
+  bool get _filtersActive =>
+      _search.isNotEmpty ||
+      _filter != 'all' ||
+      _priceFilter != 'any' ||
+      _amenityFilter.isNotEmpty ||
+      _verifiedOnly;
+
+  /// "Clear search and filters": back to the full list.
+  void _clearSearchAndFilters() {
+    _searchCtrl.clear();
+    setState(() {
+      _search = '';
+      _filter = 'all';
+      _priceFilter = 'any';
+      _amenityFilter.clear();
+      _verifiedOnly = false;
+    });
+    _requestDiscovery(immediate: true);
+  }
+
   /// Returns the responsive column count based on available width.
   @override
   Widget build(BuildContext context) {
@@ -240,46 +263,78 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    FFPageHeader(
-                      title: context.tr('member.discoverGyms'),
-                      // Trainer discovery moved here from the bottom nav
-                      // when Activity took that slot.
-                      actions: FFButton(
-                        key: const Key('member-find-trainer'),
-                        label: context.tr('member.trainers'),
-                        onPressed: () => context.go(AppRoutes.memberTrainers),
-                        variant: FFButtonVariant.ghost,
-                        size: FFButtonSize.sm,
-                        icon: Icons.sports_gymnastics_outlined,
-                      ),
-                    ),
-                    TextField(
-                      key: const Key('gym-search'),
-                      controller: _searchCtrl,
-                      decoration: InputDecoration(
-                        hintText: context.tr('member.searchGyms'),
-                        prefixIcon: const Icon(Icons.search, size: 20),
-                        suffixIcon: _search.isEmpty
-                            ? null
-                            : IconButton(
-                                tooltip: context.tr('common.close'),
-                                icon: const Icon(Icons.close, size: 18),
-                                onPressed: () {
-                                  _searchCtrl.clear();
-                                  setState(() => _search = '');
-                                  _requestDiscovery(immediate: true);
-                                },
-                              ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(
-                            FFTokens.radiusLg,
+                    if (photoHeroUi) ...[
+                      // PHOTO_HERO_UI (increment plan, slice 1): a band
+                      // replaces the page title and carries the Trainers
+                      // button; search and filters stay right below it.
+                      FFHeroBand(
+                        key: const Key('gyms-hero'),
+                        photo: FFHeroPhoto.gyms,
+                        minHeight: 160,
+                        wideHeight: 200,
+                        // Not "Discover gyms": the section strip below
+                        // already says it (spec §32.2).
+                        eyebrow: context.tr('member.gyms'),
+                        headlineLead: context.tr('hero.gyms.lead'),
+                        headlineAccent: context.tr('hero.gyms.accent'),
+                        actions: [
+                          FFButton(
+                            key: const Key('member-find-trainer'),
+                            label: context.tr('member.trainers'),
+                            onPressed: () =>
+                                context.go(AppRoutes.memberTrainers),
+                            variant: FFButtonVariant.onPhoto,
+                            size: FFButtonSize.sm,
+                            icon: Icons.sports_gymnastics_outlined,
                           ),
+                        ],
+                      ),
+                      const SizedBox(height: FFTokens.spacingMd),
+                    ] else
+                      FFPageHeader(
+                        title: context.tr('member.discoverGyms'),
+                        // Trainer discovery moved here from the bottom nav
+                        // when Activity took that slot.
+                        actions: FFButton(
+                          key: const Key('member-find-trainer'),
+                          label: context.tr('member.trainers'),
+                          onPressed: () => context.go(AppRoutes.memberTrainers),
+                          variant: FFButtonVariant.ghost,
+                          size: FFButtonSize.sm,
+                          icon: Icons.sports_gymnastics_outlined,
                         ),
                       ),
-                      onChanged: (v) {
-                        setState(() => _search = v);
-                        _requestDiscovery();
-                      },
+                    FFSearchFocusScroll(
+                      enabled: photoHeroUi,
+                      builder: (context, focusNode) => TextField(
+                        key: const Key('gym-search'),
+                        focusNode: focusNode,
+                        controller: _searchCtrl,
+                        decoration: InputDecoration(
+                          hintText: context.tr('member.searchGyms'),
+                          prefixIcon: const Icon(Icons.search, size: 20),
+                          suffixIcon: _search.isEmpty
+                              ? null
+                              : IconButton(
+                                  tooltip: context.tr('common.close'),
+                                  icon: const Icon(Icons.close, size: 18),
+                                  onPressed: () {
+                                    _searchCtrl.clear();
+                                    setState(() => _search = '');
+                                    _requestDiscovery(immediate: true);
+                                  },
+                                ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(
+                              FFTokens.radiusLg,
+                            ),
+                          ),
+                        ),
+                        onChanged: (v) {
+                          setState(() => _search = v);
+                          _requestDiscovery();
+                        },
+                      ),
                     ),
                     if (_discoveryLoading)
                       const LinearProgressIndicator(minHeight: 2),
@@ -549,12 +604,46 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
             ),
 
             // ── Grid ────────────────────────────────────────────────────
-            if (gyms.isEmpty && featured.isEmpty)
+            // F-12: loading and failure have their own states (flag on and
+            // off); "Nothing to show yet." only once loaded and empty.
+            if (data.gyms.isEmpty && !data.gymsLoaded)
+              DirectorySkeletonGrid(
+                key: const Key('gym-grid-loading'),
+                columns: cols,
+                childAspectRatio: 0.72,
+              )
+            else if (data.gyms.isEmpty && data.gymsLoadFailed)
               SliverFillRemaining(
                 hasScrollBody: false,
                 child: Padding(
                   padding: const EdgeInsets.all(FFTokens.spacingLg),
-                  child: FFEmptyState(title: context.tr('member.noData')),
+                  child: FFErrorState(
+                    key: const Key('gym-load-error'),
+                    title: context.tr('member.gymsLoadError'),
+                    retryLabel: context.tr('common.retry'),
+                    onRetry: () => context
+                        .findAncestorStateOfType<MemberShellState>()
+                        ?.refreshGyms(),
+                  ),
+                ),
+              )
+            else if (gyms.isEmpty && featured.isEmpty)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: Padding(
+                  padding: const EdgeInsets.all(FFTokens.spacingLg),
+                  child: data.gyms.isNotEmpty && _filtersActive
+                      ? FFEmptyState(
+                          key: const Key('gym-no-match'),
+                          title: context.tr('member.gymsNoMatch'),
+                          action: FFButton(
+                            key: const Key('gym-clear-search'),
+                            label: context.tr('member.clearSearchFilters'),
+                            variant: FFButtonVariant.ghost,
+                            onPressed: _clearSearchAndFilters,
+                          ),
+                        )
+                      : FFEmptyState(title: context.tr('member.noData')),
                 ),
               )
             else if (gyms.isNotEmpty)

@@ -8,36 +8,78 @@ import 'ff_skeleton.dart';
 /// Bundled hero photos (people-free licensed stock until FitFlex has its own
 /// shoot; see assets/photos/hero/LICENSES.md). Never fetched from a network.
 enum FFHeroPhoto {
-  language('hero_language', 4 / 5),
-  signIn('hero_sign_in', 4 / 5),
-  signUp('hero_sign_up', 4 / 5),
-  role('hero_role', 16 / 9),
+  language('hero_language', 4 / 5, 'pexels-12250460'),
+  signIn('hero_sign_in', 4 / 5, 'scene-tubarones-9545'),
+  signUp('hero_sign_up', 4 / 5, 'pexels-3916766'),
+  role('hero_role', 16 / 9, 'pexels-29526371'),
 
   /// Home with no QR: no pass, payment pending, ended.
-  homeStart('hero_home_start', 4 / 5),
+  homeStart('hero_home_start', 4 / 5, 'pexels-29526371'),
 
   /// Home with a working pass (QR states).
-  homePass('hero_home_pass', 3 / 2),
+  homePass('hero_home_pass', 3 / 2, 'pexels-5312212'),
 
   // Addendum 2026-10-19 (spec §26). Focal points keep the subject in frame
   // from a 360px phone (about 1.2:1) to a 3:1 desktop banner.
-  profile('hero_profile', 3 / 2, Alignment(0.3, 0)),
-  pin('hero_pin', 1005 / 670, Alignment(0.3, -0.2)),
-  upgrade('hero_upgrade', 3 / 2, Alignment(-0.3, -0.4)),
-  activityToday('hero_activity_today', 3 / 2, Alignment(-0.2, -0.3)),
-  activityTraining('hero_activity_training', 800 / 533, Alignment(-0.4, 0)),
-  activityChallenges('hero_activity_challenges', 900 / 580, Alignment(0, 0.1)),
-  activityProgress('hero_activity_progress', 3 / 2, Alignment(-0.1, -0.3)),
-  trainer('hero_trainer', 840 / 530, Alignment(0.7, 0)),
-  vendor('hero_vendor', 880 / 587, Alignment(0, -0.3)),
-  owner('hero_owner', 3 / 2, Alignment(-0.3, -0.3));
+  profile('hero_profile', 3 / 2, 'pexels-4716814', Alignment(0.3, 0)),
+  pin('hero_pin', 1005 / 670, 'pexels-7432872', Alignment(0.3, -0.2)),
+  upgrade('hero_upgrade', 3 / 2, 'scene-ketut-4720', Alignment(-0.3, -0.4)),
+  activityToday(
+    'hero_activity_today',
+    3 / 2,
+    'pexels-12250460',
+    Alignment(-0.2, -0.3),
+  ),
+  activityTraining(
+    'hero_activity_training',
+    800 / 533,
+    'scene-tubarones-9545',
+    Alignment(-0.4, 0),
+  ),
+  activityChallenges(
+    'hero_activity_challenges',
+    900 / 580,
+    'scene-ketut-4720',
+    Alignment(0, 0.1),
+  ),
+  activityProgress(
+    'hero_activity_progress',
+    3 / 2,
+    'pexels-3916766',
+    Alignment(-0.1, -0.3),
+  ),
+  trainer('hero_trainer', 840 / 530, 'scene-tima-6388', Alignment(0.7, 0)),
+  vendor('hero_vendor', 880 / 587, 'scene-tubarones-9545', Alignment(0, -0.3)),
+  owner('hero_owner', 3 / 2, 'pexels-29526371', Alignment(-0.3, -0.3)),
 
-  const FFHeroPhoto(this.file, this.aspect, [this.focal = Alignment.center]);
+  // Section bands (photo-hero spec §32, §34.1): member Gyms, Trainers and
+  // Shop home.
+  gyms('hero_gyms', 1080 / 609, 'pexels-33832204', Alignment(-0.3, -0.2)),
+  trainers(
+    'hero_trainers',
+    1000 / 350,
+    'scene-carbell-sarfo-3651',
+    Alignment(0.15, 0),
+  ),
+  shop('hero_shop', 1080 / 691, 'pexels-5592605', Alignment(-0.1, 0.2));
+
+  const FFHeroPhoto(
+    this.file,
+    this.aspect,
+    this.sourceId, [
+    this.focal = Alignment.center,
+  ]);
 
   final String file;
 
   /// Width / height of the bundled file.
   final double aspect;
+
+  /// The scene this file shows (spec §34.1): the original photo's name in
+  /// the parent repo's social/brand/photos/, or a `scene-…` id when several
+  /// originals come from one shoot. Crops of one scene share it, so a page
+  /// can keep its footer photo apart from its top hero.
+  final String sourceId;
 
   /// Where `BoxFit.cover` keeps the subject (the image alignment).
   final Alignment focal;
