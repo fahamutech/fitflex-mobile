@@ -222,9 +222,9 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
       context.tr('member.all'),
       context.tr('member.saved'),
       context.tr('member.nearest'),
-      'Standard',
-      'Mid-Range',
-      'Premium',
+      tierLabel(context, 'standard'),
+      tierLabel(context, 'midtier'),
+      tierLabel(context, 'premium'),
     ];
 
     return LayoutBuilder(

@@ -91,7 +91,7 @@ void main() {
     final api = _FakeApi(statements: [_statement()]);
     await tester.pumpWidget(_app(api));
     await tester.pumpAndSettle();
-    expect(find.text('TZS 34,000'), findsOneWidget);
+    expect(find.text('TSh 34,000'), findsOneWidget);
     expect(find.text('Paid'), findsOneWidget);
     expect(find.textContaining('2 session(s)'), findsOneWidget);
     expect(find.byKey(const Key('payouts-not-ready')), findsNothing);
@@ -100,7 +100,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('payout-net')), findsOneWidget);
     expect(
-      find.textContaining('FitFlex commission: TZS 6,000'),
+      find.textContaining('FitFlex commission: TSh 6,000'),
       findsOneWidget,
     );
     expect(find.textContaining('mpesa ····0777'), findsOneWidget);

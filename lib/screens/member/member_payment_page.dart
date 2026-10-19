@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../../app_scope.dart';
 import '../../router.dart';
@@ -8,6 +7,7 @@ import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
+import '../../shared/manual_payment.dart';
 import '../../shared/api_client.dart';
 import '../../shared/api_error_message.dart';
 import '../../shared/models.dart';
@@ -15,9 +15,35 @@ import '../../shared/pass_gyms.dart';
 import 'member_shell.dart';
 import 'widgets/mobile_money_pay.dart';
 import 'widgets/pass_gyms_sheet.dart';
+import 'widgets/gym_filters.dart';
 
-class MemberPaymentPage extends StatelessWidget {
+/// How long a FitFlex Pass lasts once its payment is approved. The server
+/// sets 30 days at purchase and moves both dates to the approval moment
+/// (subscription-service `subscribe`, `activationDates`); /subscription-tiers
+/// sends no length, so the app mirrors it here.
+const platformPassDays = 30;
+
+class MemberPaymentPage extends StatefulWidget {
   const MemberPaymentPage({super.key});
+
+  @override
+  State<MemberPaymentPage> createState() => _MemberPaymentPageState();
+}
+
+class _MemberPaymentPageState extends State<MemberPaymentPage> {
+  /// Null until /payments/options answers.
+  PaymentModes? _modes;
+  bool _loadingModes = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_modes != null || _loadingModes) return;
+    _loadingModes = true;
+    loadPaymentModes(AppScope.of(context).api).then((m) {
+      if (mounted) setState(() => _modes = m);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,6 +55,13 @@ class MemberPaymentPage extends StatelessWidget {
     final visitCap = pass?.visitCap;
     // Nothing to pay for until the chosen tier is found in the live catalogue.
     final payable = pass != null && price > 0;
+    final modes = _modes;
+    // How this payment works, said once under the title.
+    final body = modes?.manual != null
+        ? context.tr('manualPay.pageBody')
+        : modes?.mobileMoney == true
+        ? context.tr('momo.pageBody')
+        : context.tr('member.paymentBody');
 
     return Scaffold(
       appBar: AppBar(
@@ -45,7 +78,8 @@ class MemberPaymentPage extends StatelessWidget {
             child: Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                context.tr('member.paymentBody'),
+                body,
+                key: const Key('payment-page-body'),
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ),
@@ -75,17 +109,24 @@ class MemberPaymentPage extends StatelessWidget {
                       ? context.tr('pass.unlimited')
                       : '$visitCap',
                 ),
+                // The pass starts when FitFlex approves the payment, not
+                // today, so no calendar dates are promised here.
                 _Row(
+                  key: const Key('payment-pass-start'),
                   label: context.tr('member.startDate'),
-                  value: DateFormat('dd MMM yyyy').format(DateTime.now()),
+                  value: context.tr('member.passStartsOnApproval'),
                 ),
                 _Row(
-                  label: context.tr('member.endDate'),
-                  value: DateFormat(
-                    'dd MMM yyyy',
-                  ).format(DateTime.now().add(const Duration(days: 30))),
+                  key: const Key('payment-pass-length'),
+                  label: context.tr('member.passLength'),
+                  value: context
+                      .tr('member.passLastsFromApproval')
+                      .replaceAll('{days}', '$platformPassDays'),
                 ),
-                _Row(label: 'Total', value: formatCurrency(price)),
+                _Row(
+                  label: context.tr('member.total'),
+                  value: formatCurrency(price),
+                ),
               ],
             ),
           ),
@@ -127,7 +168,15 @@ class MemberPaymentPage extends StatelessWidget {
               message: context.tr('member.passNoneAvailable'),
               tone: FFAlertTone.warning,
             ),
-          _SubmitButton(tier: data.selectedTier, enabled: payable),
+          if (modes == null)
+            const Center(child: FFSpinner(size: 28))
+          else
+            _PayActions(
+              tier: data.selectedTier,
+              enabled: payable,
+              modes: modes,
+              amountTzs: price,
+            ),
         ],
       ),
     );
@@ -135,7 +184,7 @@ class MemberPaymentPage extends StatelessWidget {
 }
 
 class _Row extends StatelessWidget {
-  const _Row({required this.label, required this.value});
+  const _Row({super.key, required this.label, required this.value});
 
   final String label;
   final String value;
@@ -144,41 +193,104 @@ class _Row extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
+      // Values can be whole sentences ("Starts when payment is approved"):
+      // they wrap instead of running off a narrow phone.
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
             child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
           ),
-          Text(value, style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(width: FFTokens.spacingSm),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-class _SubmitButton extends StatefulWidget {
-  const _SubmitButton({required this.tier, required this.enabled});
+/// What the member does to pay: with manual payment on, pay the Lipa Namba
+/// and submit the transaction ID; with mobile money on, "Pay now"; otherwise
+/// the pilot request that an admin approves.
+class _PayActions extends StatefulWidget {
+  const _PayActions({
+    required this.tier,
+    required this.enabled,
+    required this.modes,
+    required this.amountTzs,
+  });
 
   final String tier;
   final bool enabled;
+  final PaymentModes modes;
+  final num amountTzs;
 
   @override
-  State<_SubmitButton> createState() => _SubmitButtonState();
+  State<_PayActions> createState() => _PayActionsState();
 }
 
-class _SubmitButtonState extends State<_SubmitButton> {
+class _PayActionsState extends State<_PayActions> {
+  final _manualInput = ManualPaymentInput();
   bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // The member's own number, which they can change to the one they paid from.
+    _manualInput.prefillPhone(
+      context
+          .getInheritedWidgetOfExactType<MemberDataScope>()
+          ?.notifier
+          ?.me
+          ?.user
+          .phone,
+    );
+  }
+
+  @override
+  void dispose() {
+    _manualInput.dispose();
+    super.dispose();
+  }
 
   Future<void> _submit() async {
     if (_loading) return; // a second tap must not send a second request
+    final manual = widget.modes.manual;
+    String? reference;
+    String? payerPhone;
+    if (manual != null) {
+      final ready = _manualInput.check(manual);
+      if (ready == null) {
+        setState(() {});
+        return;
+      }
+      reference = ready.reference;
+      payerPhone = ready.payerPhone;
+    }
     setState(() => _loading = true);
     try {
-      final created = await AppScope.of(context).api.requestPass(widget.tier);
+      final created = await AppScope.of(context).api.requestPass(
+        widget.tier,
+        reference: reference,
+        payerPhone: payerPhone,
+      );
       if (!mounted) return;
-      FFSnack.success(context, context.tr('member.paymentSubmitted'));
-      // With mobile money switched on, pay straight away.
+      FFSnack.success(
+        context,
+        context.tr(
+          manual != null ? 'manualPay.submitted' : 'member.paymentSubmitted',
+        ),
+      );
+      // With mobile money switched on, pay straight away. A request carrying
+      // a transaction ID is already paid by hand and cannot be paid again.
       final req = created['paymentRequest'];
-      if (req is Map) {
+      if (manual == null && req is Map) {
         await offerMobileMoney(
           context,
           paymentRequestId: req['id'] as String?,
@@ -194,7 +306,11 @@ class _SubmitButtonState extends State<_SubmitButton> {
       context.go(AppRoutes.memberHome);
     } on ApiException catch (e) {
       if (!mounted) return;
-      FFSnack.error(context, apiErrorMessage(FFLocaleScope.of(context), e));
+      if (manual != null && _manualInput.takeServerError(e)) {
+        setState(() {});
+      } else {
+        FFSnack.error(context, apiErrorMessage(FFLocaleScope.of(context), e));
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -202,10 +318,34 @@ class _SubmitButtonState extends State<_SubmitButton> {
 
   @override
   Widget build(BuildContext context) {
-    return FFButton(
-      label: context.tr('member.requestPayment'),
-      onPressed: _loading || !widget.enabled ? null : _submit,
-      loading: _loading,
+    final manual = widget.modes.manual;
+    final label = manual != null
+        ? context.tr('manualPay.submit')
+        : widget.modes.mobileMoney
+        ? context.tr('momo.payNow')
+        : context.tr('member.requestPayment');
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (manual != null && widget.enabled) ...[
+          ManualPaymentFields(
+            manual: manual,
+            amountLabel: formatCurrency(widget.amountTzs),
+            input: _manualInput,
+            enabled: !_loading,
+            onChanged: (_) {
+              if (_manualInput.clearErrors()) setState(() {});
+            },
+          ),
+          const SizedBox(height: FFTokens.spacingMd),
+        ],
+        FFButton(
+          key: const Key('payment-submit'),
+          label: label,
+          onPressed: _loading || !widget.enabled ? null : _submit,
+          loading: _loading,
+        ),
+      ],
     );
   }
 }
@@ -256,7 +396,7 @@ class _AvailableGymsSection extends StatelessWidget {
                         ),
                       ),
                       FFBadge(
-                        label: g.tier.replaceAll('_', ' '),
+                        label: gymTierLabel(context, g),
                         tone: FFBadgeTone.gray,
                       ),
                     ],

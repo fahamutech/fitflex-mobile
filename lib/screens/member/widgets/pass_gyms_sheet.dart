@@ -6,15 +6,15 @@ import '../../../shared/design_tokens.dart';
 import '../../../shared/i18n.dart';
 import '../../../shared/models.dart';
 import '../../../shared/pass_gyms.dart';
+import 'gym_filters.dart';
 
 /// The tier name as the member reads it elsewhere ("Pro", "Basic"…).
 String passTierName(BuildContext context, String tierId) =>
     context.tr('pass.$tierId');
 
 /// Label for a gym tier group ("Standard", "Mid-tier"…).
-String gymTierGroupLabel(BuildContext context, String tier) => context.tr(
-  tier == 'luxury_executive' ? 'ownerReg.tier_luxury' : 'ownerReg.tier_$tier',
-);
+String gymTierGroupLabel(BuildContext context, String tier) =>
+    tierLabel(context, tier);
 
 /// A one-line split of [gyms] by gym tier: "9 Standard · 5 Mid-tier".
 String gymSplitSummary(BuildContext context, List<Gym> gyms) =>

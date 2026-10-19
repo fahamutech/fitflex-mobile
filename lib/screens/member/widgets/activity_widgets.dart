@@ -55,15 +55,24 @@ class ActivitySampleBadge extends StatelessWidget {
 
 /// One row in the activity timeline.
 class ActivityTimelineTile extends StatelessWidget {
-  const ActivityTimelineTile({super.key, required this.activity});
+  const ActivityTimelineTile({
+    super.key,
+    required this.activity,
+    this.compact = false,
+  });
 
   final Activity activity;
+
+  /// A plain row with no card or origin label, for inside another card
+  /// (a gym visit).
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final a = activity;
+    final lang = Localizations.localeOf(context).languageCode;
     final parts = <String>[
-      DateFormat('EEE d MMM · HH:mm').format(a.startedAt.toLocal()),
+      DateFormat('EEE d MMM · HH:mm', lang).format(a.startedAt.toLocal()),
       if (a.durationMinutes != null)
         '${a.durationMinutes} ${context.tr('activity.min')}',
       if (a.distanceKm != null && a.distanceKm! > 0) formatKm(a.distanceKm!),
@@ -74,6 +83,61 @@ class ActivityTimelineTile extends StatelessWidget {
     ];
     final workoutId = a.workoutId;
     final opensRun = a.isRecordedRun;
+    // A finished workout is recorded under its own name; a logged
+    // session under the name the member gave it.
+    final title = workoutId != null && (a.notes ?? '').isNotEmpty
+        ? a.notes!
+        : manualActivityName(a) ?? activityTypeLabel(context, a.type);
+    final VoidCallback onTap = opensRun
+        ? () => context.go(
+            AppRoutes.memberRunDetail.replaceFirst(
+              ':activityId',
+              Uri.encodeComponent(a.id),
+            ),
+          )
+        : workoutId == null
+        ? (a.isDailyStepTotal || a.isSample || a.origin != DataOrigin.manual
+              ? () {}
+              : () => showActivityActions(context, a))
+        : () => context.go(
+            AppRoutes.memberWorkout.replaceFirst(
+              ':workoutId',
+              Uri.encodeComponent(workoutId),
+            ),
+          );
+    if (compact) {
+      final theme = Theme.of(context);
+      return InkWell(
+        key: Key('activity-${a.id}'),
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(FFTokens.radiusSm),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 48),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: FFTokens.spacingXs),
+            child: Row(
+              children: [
+                Icon(
+                  activityTypeIcon(a.type),
+                  size: FFTokens.iconSm,
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(width: FFTokens.spacingSm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, style: theme.textTheme.bodyMedium),
+                      Text(parts.join(' · '), style: theme.textTheme.bodySmall),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
     return FFActionTile(
       key: Key('activity-${a.id}'),
       trailing: Row(
@@ -89,29 +153,9 @@ class ActivityTimelineTile extends StatelessWidget {
         ],
       ),
       icon: activityTypeIcon(a.type),
-      // A finished workout is recorded under its own name; a logged
-      // session under the name the member gave it.
-      title: workoutId != null && (a.notes ?? '').isNotEmpty
-          ? a.notes!
-          : manualActivityName(a) ?? activityTypeLabel(context, a.type),
+      title: title,
       subtitle: parts.join(' · '),
-      onTap: opensRun
-          ? () => context.go(
-              AppRoutes.memberRunDetail.replaceFirst(
-                ':activityId',
-                Uri.encodeComponent(a.id),
-              ),
-            )
-          : workoutId == null
-          ? (a.isDailyStepTotal || a.isSample || a.origin != DataOrigin.manual
-                ? () {}
-                : () => showActivityActions(context, a))
-          : () => context.go(
-              AppRoutes.memberWorkout.replaceFirst(
-                ':workoutId',
-                Uri.encodeComponent(workoutId),
-              ),
-            ),
+      onTap: onTap,
     );
   }
 }

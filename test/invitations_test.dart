@@ -9,6 +9,7 @@ import 'package:fitflexmobile/router.dart';
 import 'package:fitflexmobile/shared/api_client.dart';
 import 'package:fitflexmobile/shared/auth_state.dart';
 import 'package:fitflexmobile/shared/design_tokens.dart';
+import 'package:fitflexmobile/shared/formatters.dart';
 import 'package:fitflexmobile/shared/i18n.dart';
 import 'package:fitflexmobile/shared/theme_notifier.dart';
 import 'package:fitflexmobile/shared/widgets/invitations.dart';
@@ -318,14 +319,17 @@ void main() {
   testWidgets(
     'a member invitation shows its plan and payment; accepting it stays put',
     (tester) async {
+      // Dates read on the member's clock (EAT), not as the UTC ISO day.
+      debugLocalOffsetOverride = const Duration(hours: 3);
+      addTearDown(() => debugLocalOffsetOverride = null);
       final api = _FakeApi()..mine = [_memberInvite()];
       final auth = await _signedIn(api);
       await tester.pumpWidget(_app(auth, const InvitationsScreen()));
       await tester.pumpAndSettle();
 
       expect(find.text('Iron Paradise'), findsOneWidget);
-      expect(find.text('standard plan, until 2026-10-31'), findsOneWidget);
-      expect(find.text('Paid: TZS 50000'), findsOneWidget);
+      expect(find.text('standard plan, until 31 Oct 2026'), findsOneWidget);
+      expect(find.text('Paid: TSh 50000'), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('accept-inv_member')));
       await tester.pumpAndSettle();
@@ -518,7 +522,7 @@ void main() {
 
     expect(find.byKey(const Key('lapsed-inv_lapsed')), findsOneWidget);
     expect(
-      find.textContaining('Paid TZS 30000 but never accepted'),
+      find.textContaining('Paid TSh 30000 but never accepted'),
       findsOneWidget,
     );
     expect(find.byKey(const Key('refunded-inv_lapsed')), findsOneWidget);

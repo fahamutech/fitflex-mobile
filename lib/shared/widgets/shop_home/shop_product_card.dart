@@ -6,6 +6,7 @@ import '../../formatters.dart';
 import '../../i18n.dart';
 import '../../promotion_events.dart';
 import '../shop_browse_page.dart' show ShopProduct;
+import 'shop_focus_ring.dart';
 
 /// Whether [product] is on sale: a sale price above zero and below the price.
 bool shopOnSale(ShopProduct product) {
@@ -234,7 +235,7 @@ class ShopProductCard extends StatelessWidget {
             formatCurrency(product.priceTzs),
             key: Key('shop-home-was-${product.id}'),
             style: theme.textTheme.labelSmall?.copyWith(
-              color: colors.onSurfaceVariant,
+              color: FFTokens.mutedText(context),
               decoration: TextDecoration.lineThrough,
             ),
           ),
@@ -275,12 +276,12 @@ class ShopProductCard extends StatelessWidget {
               promotionLabel: promoLabel,
             ),
             onTap: _open,
-            child: _FocusRing(
+            child: ShopFocusRing(
               shape: BoxShape.rectangle,
-              builder: (onFocusChange) => InkWell(
+              builder: (node) => InkWell(
                 borderRadius: BorderRadius.circular(FFTokens.radiusMd),
                 onTap: _open,
-                onFocusChange: onFocusChange,
+                focusNode: node,
                 child: body,
               ),
             ),
@@ -387,11 +388,11 @@ class _CartButton extends StatelessWidget {
         height: ShopProductCard._hit,
         child: Material(
           type: MaterialType.transparency,
-          child: _FocusRing(
+          child: ShopFocusRing(
             shape: BoxShape.circle,
-            builder: (onFocusChange) => InkResponse(
+            builder: (node) => InkResponse(
               onTap: onPressed,
-              onFocusChange: onFocusChange,
+              focusNode: node,
               radius: ShopProductCard._hit / 2,
               child: Center(
                 child: Container(
@@ -425,41 +426,4 @@ class _CartButton extends StatelessWidget {
       ),
     );
   }
-}
-
-/// A visible keyboard focus outline (AC-45). The theme's primary colour:
-/// brand green in light theme, Volt in dark theme; both are drawn on the
-/// page ground around the control, never on the white image well.
-class _FocusRing extends StatefulWidget {
-  const _FocusRing({required this.builder, required this.shape});
-  final Widget Function(ValueChanged<bool> onFocusChange) builder;
-  final BoxShape shape;
-
-  @override
-  State<_FocusRing> createState() => _FocusRingState();
-}
-
-class _FocusRingState extends State<_FocusRing> {
-  bool _focused = false;
-
-  @override
-  Widget build(BuildContext context) => DecoratedBox(
-    key: _focused ? const Key('shop-home-focus-ring') : null,
-    position: DecorationPosition.foreground,
-    decoration: _focused
-        ? BoxDecoration(
-            shape: widget.shape,
-            borderRadius: widget.shape == BoxShape.rectangle
-                ? BorderRadius.circular(FFTokens.radiusMd)
-                : null,
-            border: Border.all(
-              color: Theme.of(context).colorScheme.primary,
-              width: 2,
-            ),
-          )
-        : const BoxDecoration(),
-    child: widget.builder((focused) {
-      if (mounted && focused != _focused) setState(() => _focused = focused);
-    }),
-  );
 }

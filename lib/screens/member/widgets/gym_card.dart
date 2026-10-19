@@ -6,6 +6,7 @@ import '../../../shared/design_tokens.dart';
 import '../../../shared/models.dart';
 import '../../../shared/promotion_events.dart';
 import '../../../shared/widgets/partner_not_verified.dart';
+import 'gym_filters.dart';
 
 class GymCard extends StatelessWidget {
   const GymCard({
@@ -84,7 +85,7 @@ class GymCard extends StatelessWidget {
                   Row(
                     children: [
                       FFBadge(
-                        label: gym.tier.replaceAll('_', ' '),
+                        label: gymTierLabel(context, gym),
                         tone: FFBadgeTone.brand,
                       ),
                       if (distanceKm != null) ...[
@@ -255,7 +256,7 @@ class GymGridCard extends StatelessWidget {
                         runSpacing: 4,
                         children: [
                           FFBadge(
-                            label: gym.tier.replaceAll('_', ' '),
+                            label: gymTierLabel(context, gym),
                             tone: FFBadgeTone.brand,
                           ),
                           if (distanceKm != null)

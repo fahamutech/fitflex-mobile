@@ -15,7 +15,7 @@ import 'member_shell.dart';
 import '../../shared/social.dart';
 import 'widgets/share_picker.dart';
 import 'widgets/activity_widgets.dart';
-import 'widgets/gym_visit_tile.dart' show withinVisit;
+import 'widgets/gym_visit_tile.dart' show visitLinkWindow, withinVisit;
 
 /// Activity → Log activity: a session the member did without FitFlex
 /// tracking it. Saved through the existing `POST /me/activities` contract
@@ -98,18 +98,46 @@ class _MemberLogActivityPageState extends State<MemberLogActivityPage> {
 
   Future<void> _pickDay() async {
     final now = _now;
+    final visitAt = widget.startedAt?.toLocal();
     final picked = await showDatePicker(
       context: context,
       initialDate: _day,
-      firstDate: DateTime(now.year, now.month, now.day - manualMaxDaysBack),
-      lastDate: DateTime(now.year, now.month, now.day),
+      // From a visit, only the days its 48-hour window covers.
+      firstDate: visitAt != null
+          ? DateTime(visitAt.year, visitAt.month, visitAt.day)
+          : DateTime(now.year, now.month, now.day - manualMaxDaysBack),
+      lastDate: visitAt != null && visitAt.add(visitLinkWindow).isBefore(now)
+          ? DateTime(
+              visitAt.add(visitLinkWindow).year,
+              visitAt.add(visitLinkWindow).month,
+              visitAt.add(visitLinkWindow).day,
+            )
+          : DateTime(now.year, now.month, now.day),
     );
-    if (picked != null) setState(() => _day = picked);
+    if (picked != null) {
+      setState(() {
+        _day = picked;
+        _errors = {..._errors}..remove('startedAt');
+      });
+    }
   }
 
   Future<void> _pickTime() async {
-    final picked = await showTimePicker(context: context, initialTime: _time);
-    if (picked != null) setState(() => _time = picked);
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _time,
+      // 24-hour clock, like the times everywhere else in the app.
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+        child: child!,
+      ),
+    );
+    if (picked != null) {
+      setState(() {
+        _time = picked;
+        _errors = {..._errors}..remove('startedAt');
+      });
+    }
   }
 
   Future<void> _save() async {
@@ -184,7 +212,9 @@ class _MemberLogActivityPageState extends State<MemberLogActivityPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final f = manualFieldsFor(_type);
-    final dateLabel = DateFormat('EEE d MMM').format(_day);
+    final lang = Localizations.localeOf(context).languageCode;
+    final dateLabel = DateFormat('EEE d MMM', lang).format(_day);
+    final timeLabel = DateFormat('HH:mm', lang).format(_startedAt);
 
     return ListView(
       key: const Key('log-activity'),
@@ -264,7 +294,7 @@ class _MemberLogActivityPageState extends State<MemberLogActivityPage> {
             Expanded(
               child: FFButton(
                 key: const Key('log-time'),
-                label: _time.format(context),
+                label: timeLabel,
                 onPressed: _pickTime,
                 variant: FFButtonVariant.secondary,
                 icon: Icons.schedule,

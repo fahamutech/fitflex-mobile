@@ -14,6 +14,7 @@ import '../../shop_home.dart';
 import '../shop_browse_page.dart' show ShopCart, ShopProduct;
 import 'shop_category_row.dart';
 import 'shop_product_card.dart';
+import 'shop_focus_ring.dart';
 import 'shop_product_rail.dart';
 
 /// The server's placement for the marketplace: promotion events from the
@@ -147,8 +148,9 @@ class ShopHomeViewState extends State<ShopHomeView> {
     } on ApiException catch (e) {
       if (!mounted || id != _load) return;
       if (e.status == 404 || e.status == 403) return _unavailable();
-      // A server failure before anything is shown: today's shop (AC-02).
-      if (e.status >= 500 && _data == null) return _unavailable();
+      // A server failure before anything is shown: the spec's fallback
+      // layout (categories + "All products" from the product list).
+      if (e.status >= 500 && _data == null) return _degraded();
       _failed(e);
     } on FormatException {
       // Not JSON (a backend without /shop/home answers with an HTML page).
@@ -156,7 +158,7 @@ class ShopHomeViewState extends State<ShopHomeView> {
     } on TimeoutException catch (e) {
       // Too slow is treated as a server failure, not as being offline.
       if (!mounted || id != _load) return;
-      if (_data == null) return _unavailable();
+      if (_data == null) return _degraded();
       _failed(e);
     } catch (e) {
       if (!mounted || id != _load) return;
@@ -170,6 +172,17 @@ class ShopHomeViewState extends State<ShopHomeView> {
       _loading = false;
     });
     widget.onOfflineChanged?.call(isNetworkError(error));
+  }
+
+  /// The home could not be built (5xx / timeout): show the categories and
+  /// the "All products" grid from today's product list (AC-02, §9 Partial).
+  /// If that list fails too, the grid says so with Try again.
+  void _degraded() {
+    setState(() {
+      _data = ShopHomeData(mode: widget.mode.wire);
+      _error = null;
+      _loading = false;
+    });
   }
 
   void _unavailable() {
@@ -395,21 +408,25 @@ class ShopHomeViewState extends State<ShopHomeView> {
             ),
           ),
           const SizedBox(width: FFTokens.spacingSm),
-          IconButton(
-            key: const Key('shop-home-cart'),
-            style: shopIconButtonStyle(),
-            tooltip: cartLabel,
-            onPressed: () {
-              if (widget.cart.isEmpty) {
-                FFSnack.info(context, context.tr('shop.home.cartEmpty'));
-              } else {
-                widget.onCheckout();
-              }
-            },
-            icon: Badge(
-              isLabelVisible: count > 0,
-              label: Text('$count'),
-              child: const Icon(Icons.shopping_cart_outlined),
+          ShopFocusRing(
+            shape: BoxShape.circle,
+            builder: (node) => IconButton(
+              key: const Key('shop-home-cart'),
+              focusNode: node,
+              style: shopIconButtonStyle(),
+              tooltip: cartLabel,
+              onPressed: () {
+                if (widget.cart.isEmpty) {
+                  FFSnack.info(context, context.tr('shop.home.cartEmpty'));
+                } else {
+                  widget.onCheckout();
+                }
+              },
+              icon: Badge(
+                isLabelVisible: count > 0,
+                label: Text('$count'),
+                child: const Icon(Icons.shopping_cart_outlined),
+              ),
             ),
           ),
         ],
@@ -523,6 +540,7 @@ class ShopHomeViewState extends State<ShopHomeView> {
         ShopProductRail(
           key: Key('shop-home-section-${section.key}'),
           sectionKey: section.key,
+          icon: shopSectionIcon(section.key, personalised: data.personalised),
           title: _title(context, section, lang),
           inset: widget.gutter,
           onShown: () => _event(
@@ -549,6 +567,7 @@ class ShopHomeViewState extends State<ShopHomeView> {
             key: const Key('shop-home-browse-all'),
             label: context.tr('shop.home.browseAll'),
             variant: FFButtonVariant.ghost,
+            visualDensity: VisualDensity.standard,
             onPressed: widget.onBrowseAll,
           ),
         ),
