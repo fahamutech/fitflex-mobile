@@ -4091,6 +4091,13 @@ class FFLocale extends ChangeNotifier {
       'shop.why.featured':
           'Featured products are chosen by FitFlex or paid for by sellers. Paid ones are labelled Sponsored.',
       'shop.why.flashSale': 'The seller has set a discount for a limited time.',
+      'shop.why.profileGoal': 'Matches the fitness goal in your profile.',
+      'shop.why.trainerSpecialty':
+          'Matches the specialties on your trainer profile.',
+      'shop.why.recentlyViewed': 'Products you opened recently on this device.',
+      'shop.why.sellerDiscount': 'The seller has lowered the price.',
+      'shop.why.newArrival': 'Recently added to the shop.',
+      'shop.why.generic': "Suggested from what's popular on FitFlex.",
       'shop.why.bestSellers': 'The most bought on FitFlex in the last 30 days.',
       'shop.home.onlyLeftOne': 'Only 1 left',
       'shop.home.cartCountOne': 'Cart, 1 item',
@@ -8197,15 +8204,25 @@ class FFLocale extends ChangeNotifier {
       'shop.why.roleOwner': 'Unanunua kama mmiliki wa gym.',
       'shop.why.roleVendor': 'Unanunua kwa matumizi yako binafsi.',
       'shop.why.popularWithRole':
-          'Ni maarufu kwa wengine wanaonunua katika jukumu hili.',
+          'Ni maarufu kwa wengine wanaonunua katika nafasi hii.',
       'shop.why.boughtCategory': 'Uliwahi kununua {category}.',
       'shop.why.boughtProduct': 'Imependekezwa kwa sababu ulinunua {product}.',
       'shop.why.gender': 'Jinsia uliyoweka kwenye wasifu wako.',
       'shop.why.deliversToArea':
-          'Inafikishwa kwenye eneo lililo kwenye wasifu wako.',
+          'Ina delivery kwenye eneo lililo kwenye wasifu wako.',
       'shop.why.featured':
-          'Bidhaa zilizoangaziwa huchaguliwa na FitFlex au hulipiwa na wauzaji. Zilizolipiwa zimeandikwa “Iliyodhaminiwa”.',
+          'Bidhaa zilizoangaziwa huchaguliwa na FitFlex au hulipiwa na wauzaji. Zilizolipiwa zimeandikwa "Iliyodhaminiwa".',
       'shop.why.flashSale': 'Muuzaji ameweka punguzo kwa muda maalum.',
+      'shop.why.profileGoal':
+          'Inalingana na lengo la mazoezi kwenye wasifu wako.',
+      'shop.why.trainerSpecialty':
+          'Inalingana na utaalamu ulio kwenye wasifu wako wa trainer.',
+      'shop.why.recentlyViewed':
+          'Bidhaa ulizofungua hivi karibuni kwenye kifaa hiki.',
+      'shop.why.sellerDiscount': 'Muuzaji amepunguza bei.',
+      'shop.why.newArrival': 'Zimeongezwa dukani hivi karibuni.',
+      'shop.why.generic':
+          'Imependekezwa kutokana na kinachopendwa kwenye FitFlex.',
       'shop.why.bestSellers':
           'Zilizonunuliwa zaidi kwenye FitFlex katika siku 30 zilizopita.',
       'shop.home.onlyLeftOne': 'Imebaki 1 tu',

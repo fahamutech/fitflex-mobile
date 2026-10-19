@@ -1146,6 +1146,7 @@ void main() {
     });
   });
   qaRound1();
+  qaRound1b();
 }
 
 String _location(WidgetTester tester) => GoRouter.of(
@@ -1387,6 +1388,46 @@ void qaRound1() {
       })!;
       expect(await label(old, 'sw'), 'Iliyoangaziwa · Iliyodhaminiwa');
       expect(await label(old, 'en'), 'Featured · Sponsored');
+
+      // English keeps an admin's own wording; Swahili builds from codes.
+      final custom = PromotionTag.fromJson({
+        'id': 'pr',
+        'type': 'featured',
+        'label': 'Featured',
+        'commercial': true,
+        'disclosure': {
+          'codes': ['sponsored', 'featured'],
+          'en': 'Top pick · Sponsored',
+          'sw': 'Chaguo bora · Iliyodhaminiwa',
+        },
+      })!;
+      expect(await label(custom, 'en'), 'Top pick · Sponsored');
+      // Codes in the app's words, "Iliyodhaminiwa" moved to the end.
+      expect(await label(custom, 'sw'), 'Iliyoangaziwa · Iliyodhaminiwa');
+      // A paid placement whose wording forgets the paid word still ends
+      // with it.
+      final forgot = PromotionTag.fromJson({
+        'id': 'pr',
+        'type': 'featured',
+        'label': 'Featured',
+        'commercial': true,
+        'disclosure': {'en': 'Top pick'},
+      })!;
+      expect(await label(forgot, 'en'), 'Top pick · Sponsored');
+      expect(await label(forgot, 'sw'), 'Iliyoangaziwa · Iliyodhaminiwa');
+      // Not paid: nothing added.
+      final organic = PromotionTag.fromJson({
+        'id': 'pr',
+        'type': 'recommended',
+        'label': 'Recommended by FitFlex',
+        'disclosure': {
+          'codes': ['recommended'],
+          'en': 'Recommended by FitFlex',
+          'sw': 'Imependekezwa na FitFlex',
+        },
+      })!;
+      expect(await label(organic, 'en'), 'Recommended by FitFlex');
+      expect(await label(organic, 'sw'), 'Imependekezwa na FitFlex');
     });
 
     // 4 — timeout falls back.
@@ -1789,6 +1830,105 @@ void qaRound1() {
 
     test('no Back handler is left behind once the shop is gone', () {
       expect(rootBackHandlerCount, 0);
+    });
+  });
+}
+
+void qaRound1b() {
+  group('QA round 1 follow-up', () {
+    for (final lang in ['en', 'sw']) {
+      apiTest('Why: every server reason code has app wording ($lang)', (
+        tester,
+        api,
+      ) async {
+        const codes = {
+          'profile_goal': 'shop.why.profileGoal',
+          'trainer_specialty': 'shop.why.trainerSpecialty',
+          'recently_viewed': 'shop.why.recentlyViewed',
+          'seller_discount': 'shop.why.sellerDiscount',
+          'new_arrival': 'shop.why.newArrival',
+          'generic': 'shop.why.generic',
+          'flash_sale_seller_discount': 'shop.why.flashSale',
+        };
+        _seed(
+          api,
+          home: _home(
+            sections: [
+              {
+                ..._section(
+                  'essentials',
+                  'Essentials',
+                  'Bidhaa muhimu',
+                  ['p1'],
+                  reason: {'en': 'Server words', 'sw': 'Maneno ya seva'},
+                ),
+                'reasonCodes': [...codes.keys, 'role_context'],
+              },
+            ],
+          ),
+        );
+        final host = await _pump(tester, api, lang: lang);
+        await tapVisible(tester, _key('shop-home-why-essentials'));
+        for (final key in codes.values) {
+          expect(find.text(host.tr(key)), findsOneWidget, reason: key);
+          expect(host.tr(key), isNot(key));
+        }
+        // All codes were known: no server sentence.
+        expect(find.text('Server words'), findsNothing);
+        expect(find.text('Maneno ya seva'), findsNothing);
+        expect(
+          host.tr('shop.why.sellerDiscount'),
+          isNot(host.tr('shop.why.flashSale')),
+        );
+      });
+    }
+
+    apiTest('Why: only role_context -> the server sentence + role line', (
+      tester,
+      api,
+    ) async {
+      _seed(
+        api,
+        home: _home(
+          sections: [
+            {
+              ..._section(
+                'essentials',
+                'Training essentials',
+                'Mahitaji muhimu ya mazoezi',
+                ['p1'],
+                reason: {
+                  'en': 'Picked for people shopping as a member.',
+                  'sw': 'Imechaguliwa kwa wanaonunua kama mwanachama.',
+                },
+              ),
+              'reasonCodes': ['role_context'],
+            },
+          ],
+        ),
+      );
+      final host = await _pump(tester, api, lang: 'sw');
+      await tapVisible(tester, _key('shop-home-why-essentials'));
+      expect(
+        find.text('Imechaguliwa kwa wanaonunua kama mwanachama.'),
+        findsOneWidget,
+      );
+      expect(
+        tester.widget<Text>(_key('shop-why-role')).data,
+        host.tr('shop.why.roleMember'),
+      );
+    });
+
+    test('Swahili follows the glossary and the server copy', () {
+      final sw = FFLocale()..set(const Locale('sw'));
+      expect(
+        sw.t('shop.why.popularWithRole'),
+        'Ni maarufu kwa wengine wanaonunua katika nafasi hii.',
+      );
+      expect(sw.t('shop.why.popularWithRole'), isNot(contains('jukumu')));
+      expect(sw.t('shop.why.deliversToArea'), contains('delivery'));
+      expect(sw.t('shop.why.featured'), contains('"Iliyodhaminiwa"'));
+      expect(sw.t('shop.why.featured'), isNot(contains('“')));
     });
   });
 }

@@ -4,10 +4,17 @@ import '../i18n.dart';
 import '../promotion.dart';
 import 'ff_badge.dart';
 
-/// The label on a promoted listing: Featured, Promoted, Sponsored or
-/// "Recommended by FitFlex". Shown on every promoted card so a paid placement
-/// is never mistaken for an organic result. A custom label chosen by FitFlex
-/// is shown as it is; the standard ones are translated.
+/// The disclosure on a promoted listing (Featured, Promoted, Sponsored,
+/// "Recommended by FitFlex", Campaign, or a combination such as
+/// "Featured · Sponsored"), shown on every promoted card so a paid placement
+/// is never mistaken for an organic result.
+///
+/// English: the server's `disclosure.en` wording when present (so an
+/// admin's own wording, e.g. "Top pick · Sponsored", is kept), else the
+/// disclosure codes in the app's words, else the older single label.
+/// Swahili: the codes in the app's own words, else `disclosure.sw`, else the
+/// standard label for the type; never English text. A paid placement always
+/// ends with the Sponsored word ("Sponsored" / "Iliyodhaminiwa").
 class FFPromotionBadge extends StatelessWidget {
   const FFPromotionBadge({super.key, required this.tag});
 
@@ -28,36 +35,43 @@ class FFPromotionBadge extends StatelessWidget {
     _ => FFBadgeTone.defaultTone,
   };
 
-  /// The disclosure in the customer's language. Order of preference:
-  /// the server's disclosure codes as the app's own words (always the right
-  /// language); the server's disclosure text for this language; then the
-  /// older single label (in Swahili never the English text).
+  /// The disclosure in the customer's language (see the class comment).
   String text(BuildContext context) {
     final standard = _standard[tag.type];
-    final lang = FFLocaleScope.of(context).locale.languageCode;
-    if (tag.disclosureCodes.isNotEmpty &&
-        tag.disclosureCodes.every(_standard.containsKey)) {
-      return tag.disclosureCodes
-          .map((code) => context.tr('promo.$code'))
-          .join(' · ');
+    final english = FFLocaleScope.of(context).locale.languageCode == 'en';
+    final sponsored = context.tr('promo.sponsored');
+    final paid =
+        tag.commercial ||
+        tag.type == 'sponsored' ||
+        tag.disclosureCodes.contains('sponsored');
+    final codesKnown =
+        tag.disclosureCodes.isNotEmpty &&
+        tag.disclosureCodes.every(_standard.containsKey);
+    String fromCodes() => [
+      // "sponsored" last, so the paid word ends the line.
+      for (final code in tag.disclosureCodes)
+        if (code != 'sponsored') context.tr('promo.$code'),
+      if (tag.disclosureCodes.contains('sponsored')) sponsored,
+    ].join(' · ');
+
+    String text;
+    if (english && tag.disclosureEn.isNotEmpty) {
+      text = tag.disclosureEn;
+    } else if (codesKnown) {
+      text = fromCodes();
+    } else if (!english && tag.disclosureSw.isNotEmpty) {
+      text = tag.disclosureSw;
+    } else if (english && tag.label.isNotEmpty && tag.label != standard) {
+      // An older server's custom label (English only).
+      text = tag.label;
+    } else {
+      final own = context.tr('promo.${tag.type}');
+      text = own == 'promo.${tag.type}' ? context.tr('promo.featured') : own;
     }
-    final server = lang == 'sw' ? tag.disclosureSw : tag.disclosureEn;
-    if (server.isNotEmpty) return server;
-    // A custom label from the server is English-only today: in Swahili the
-    // translated standard label is used instead, never the English text.
-    if (lang == 'en' && tag.label.isNotEmpty && tag.label != standard) {
-      return tag.label;
+    if (paid && !text.trimRight().endsWith(sponsored)) {
+      text = '$text · $sponsored';
     }
-    final own = context.tr('promo.${tag.type}');
-    final base = own == 'promo.${tag.type}'
-        ? context.tr('promo.featured')
-        : own;
-    // The dropped custom label may have carried the paid disclosure
-    // ("Featured · Sponsored"): keep it for commercial placements.
-    if (lang != 'en' && tag.commercial && tag.type != 'sponsored') {
-      return '$base · ${context.tr('promo.sponsored')}';
-    }
-    return base;
+    return text;
   }
 
   @override

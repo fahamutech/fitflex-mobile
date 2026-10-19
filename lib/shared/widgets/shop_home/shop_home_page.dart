@@ -245,8 +245,16 @@ class ShopHomeViewState extends State<ShopHomeView> {
       'profile_gender' => context.tr('shop.why.gender'),
       'delivers_to_area' => context.tr('shop.why.deliversToArea'),
       'featured_disclosure' => context.tr('shop.why.featured'),
+      // Two different discounts: a time-limited flash sale (later phase)
+      // and a seller's ordinary lower price (the Deals section).
       'flash_sale_seller_discount' => context.tr('shop.why.flashSale'),
+      'seller_discount' => context.tr('shop.why.sellerDiscount'),
       'best_sellers_30d' => context.tr('shop.why.bestSellers'),
+      'profile_goal' => context.tr('shop.why.profileGoal'),
+      'trainer_specialty' => context.tr('shop.why.trainerSpecialty'),
+      'recently_viewed' => context.tr('shop.why.recentlyViewed'),
+      'new_arrival' => context.tr('shop.why.newArrival'),
+      'generic' => context.tr('shop.why.generic'),
       _ => null,
     };
   }
@@ -267,6 +275,9 @@ class ShopHomeViewState extends State<ShopHomeView> {
         lines.add(line);
       }
     }
+    // Nothing the app could say in its own words (only unknown codes, or
+    // just role_context): the server's sentence too.
+    if (lines.isEmpty) unknown = true;
     final server = section.reason?.of(lang);
     if (unknown && server != null && server.isNotEmpty) lines.add(server);
     final role = context.tr(_roleLine());

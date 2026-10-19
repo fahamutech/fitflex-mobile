@@ -359,15 +359,21 @@ void main() {
       },
     );
 
-    testWidgets('a custom label chosen by FitFlex is shown as it is', (
+    testWidgets('a custom label is kept, and a paid one ends with Sponsored', (
       tester,
     ) async {
+      // Changed 2026-10-19 (mobile#151): a paid placement always ends with
+      // the Sponsored word, whatever the custom wording.
       await badge(
         tester,
         const PromotionTag(id: 'p', type: 'sponsored', label: 'Partner pick'),
       );
+      expect(find.text('Partner pick · Sponsored'), findsOneWidget);
+      await badge(
+        tester,
+        const PromotionTag(id: 'p', type: 'featured', label: 'Partner pick'),
+      );
       expect(find.text('Partner pick'), findsOneWidget);
-      expect(find.text('Sponsored'), findsNothing);
     });
 
     testWidgets('an empty label falls back to the standard words', (
