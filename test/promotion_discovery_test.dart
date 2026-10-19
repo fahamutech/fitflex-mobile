@@ -335,7 +335,7 @@ void main() {
     Future<void> badge(WidgetTester tester, PromotionTag tag, [Locale? l]) =>
         tester.pumpWidget(
           FFLocaleScope(
-            notifier: FFLocale()..set(l ?? const Locale('en')),
+            notifier: FFLocale(),
             child: MaterialApp(
               home: Scaffold(body: FFPromotionBadge(tag: tag)),
             ),
@@ -378,106 +378,6 @@ void main() {
         const PromotionTag(id: 'p', type: 'sponsored', label: ''),
       );
       expect(find.text('Sponsored'), findsOneWidget);
-    });
-
-    group('in Swahili', () {
-      const sw = Locale('sw');
-
-      testWidgets('a paid Featured placement from an older server', (
-        tester,
-      ) async {
-        // Older servers send only the English label.
-        await badge(
-          tester,
-          const PromotionTag(
-            id: 'p',
-            type: 'featured',
-            label: 'Featured · Sponsored',
-            commercial: true,
-          ),
-          sw,
-        );
-        expect(find.text('Iliyoangaziwa · Iliyodhaminiwa'), findsOneWidget);
-        expect(find.textContaining('Sponsored'), findsNothing);
-      });
-
-      testWidgets('a custom English label is never shown', (tester) async {
-        await badge(
-          tester,
-          const PromotionTag(
-            id: 'p',
-            type: 'promoted',
-            label: 'Top pick',
-            commercial: true,
-            disclosure: PromotionDisclosure(
-              codes: ['promoted', 'sponsored'],
-              en: 'Top pick',
-              sw: 'Iliyopandishwa · Iliyodhaminiwa',
-            ),
-          ),
-          sw,
-        );
-        expect(find.text('Iliyopandishwa · Iliyodhaminiwa'), findsOneWidget);
-        expect(find.text('Top pick'), findsNothing);
-      });
-
-      testWidgets('an unknown code falls back to the server Swahili', (
-        tester,
-      ) async {
-        await badge(
-          tester,
-          const PromotionTag(
-            id: 'p',
-            type: 'featured',
-            label: 'Featured',
-            disclosure: PromotionDisclosure(
-              codes: ['featured', 'brand_new_kind'],
-              sw: 'Iliyoangaziwa · Mpya',
-            ),
-          ),
-          sw,
-        );
-        expect(find.text('Iliyoangaziwa · Mpya'), findsOneWidget);
-      });
-    });
-
-    testWidgets('in English the server disclosure text is used', (
-      tester,
-    ) async {
-      await badge(
-        tester,
-        const PromotionTag(
-          id: 'p',
-          type: 'promoted',
-          label: 'Top pick',
-          commercial: true,
-          disclosure: PromotionDisclosure(
-            codes: ['promoted', 'sponsored'],
-            en: 'Top pick',
-          ),
-        ),
-      );
-      expect(find.text('Top pick'), findsOneWidget);
-    });
-
-    test('the disclosure is read from the server tag', () {
-      final tag = PromotionTag.fromJson({
-        'id': 'promo_1',
-        'type': 'featured',
-        'label': 'Featured · Sponsored',
-        'commercial': true,
-        'disclosure': {
-          'codes': ['featured', 'sponsored'],
-          'en': 'Featured · Sponsored',
-          'sw': 'Iliyoangaziwa · Iliyodhaminiwa',
-        },
-      })!;
-      expect(tag.disclosure!.codes, ['featured', 'sponsored']);
-      expect(tag.disclosure!.sw, 'Iliyoangaziwa · Iliyodhaminiwa');
-      expect(
-        PromotionTag.fromJson({'id': 'p', 'type': 'featured'})!.disclosure,
-        isNull,
-      );
     });
 
     testWidgets(

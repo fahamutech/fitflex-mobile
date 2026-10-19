@@ -9,7 +9,6 @@ class PromotionTag {
     required this.label,
     this.commercial = false,
     this.token,
-    this.disclosure,
   });
 
   final String id;
@@ -24,10 +23,6 @@ class PromotionTag {
   /// the request had no session.
   final String? token;
 
-  /// The disclosure in both languages (functions#179). Null on older servers,
-  /// which send only the English [label].
-  final PromotionDisclosure? disclosure;
-
   static PromotionTag? fromJson(Object? json) {
     if (json is! Map) return null;
     final type = json['type'];
@@ -41,32 +36,7 @@ class PromotionTag {
         final String t when t.isNotEmpty => t,
         _ => null,
       },
-      disclosure: PromotionDisclosure.fromJson(json['disclosure']),
     );
-  }
-}
-
-/// `promotion.disclosure` from the server: the kinds of placement as codes
-/// (featured, promoted, sponsored, recommended, campaign; each maps to a
-/// `promo.<code>` string) and the full text in English and Swahili. A custom
-/// wording chosen by FitFlex appears only in [en]; [sw] is built from the codes.
-class PromotionDisclosure {
-  const PromotionDisclosure({required this.codes, this.en = '', this.sw = ''});
-
-  final List<String> codes;
-  final String en;
-  final String sw;
-
-  static PromotionDisclosure? fromJson(Object? json) {
-    if (json is! Map) return null;
-    final codes = switch (json['codes']) {
-      final List l => l.whereType<String>().where((c) => c.isNotEmpty).toList(),
-      _ => const <String>[],
-    };
-    final en = json['en']?.toString() ?? '';
-    final sw = json['sw']?.toString() ?? '';
-    if (codes.isEmpty && en.isEmpty && sw.isEmpty) return null;
-    return PromotionDisclosure(codes: codes, en: en, sw: sw);
   }
 }
 

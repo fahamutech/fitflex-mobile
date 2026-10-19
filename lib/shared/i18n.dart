@@ -6521,8 +6521,10 @@ class FFLocale extends ChangeNotifier {
       'trainerGoal.kindOpt.activeMinutes': 'Dakika za mazoezi',
       'trainerGoal.kindOpt.distance': 'Umbali',
       'trainerGoal.kindOpt.challenge': 'Challenge',
-      'trainerGoal.kindOpt.coaching': 'Lengo la trainer',
-      'trainerGoal.kind.coaching': 'Lengo la trainer',
+      'trainerGoal.kindOpt.coaching':
+          'Lengo la uTrainer', // TODO(sw-review): 2026-10-19 uTrainer ruling
+      'trainerGoal.kind.coaching':
+          'Lengo la uTrainer', // TODO(sw-review): 2026-10-19 uTrainer ruling
       'trainerGoal.kind.challenge': 'Lengo la challenge',
       'trainerGoal.challengeNotShared':
           'Malengo ya challenge yanapatikana mwanachama huyu akikushirikisha data ya challenge.',
@@ -6540,7 +6542,8 @@ class FFLocale extends ChangeNotifier {
       'trainerGoal.whenOpt.month': 'Kila mwezi',
       'trainerGoal.changeDates': 'Badilisha tarehe',
       'trainerGoal.error.target': 'Weka lengo zaidi ya 0.',
-      'trainerGoal.error.title': 'Eleza lengo ni nini.',
+      'trainerGoal.error.title':
+          'Eleza lengo la uTrainer ni nini.', // TODO(sw-review): 2026-10-19 uTrainer ruling
       'trainerGoal.error.wholeTimes': 'Idadi ya mara iwe namba nzima.',
       'trainerGoal.memberSees':
           '{name} ataona hili limewekwa na wewe. Anaweza kulisitisha au kuliondoa, lakini hawezi kubadilisha lengo.',
