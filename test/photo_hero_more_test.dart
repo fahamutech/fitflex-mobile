@@ -614,9 +614,14 @@ void main() {
       expect(_heroText(tester), contains('UPGRADE PLAN'));
       expect(_heroText(tester), contains('Move up a level.'));
       noNumbersOnHero(tester);
+      expect(find.textContaining('40,000'), findsWidgets);
+      expect(_inHero(find.textContaining('40,000')), isFalse);
+      // Pick the plan: the submit button (with the amount) is on the page.
+      await tester.tap(find.text(_tr('en', 'pass.pro')));
+      await tester.pumpAndSettle();
       expect(_key('upgrade-submit'), findsOneWidget);
       expect(_inHero(_key('upgrade-submit')), isFalse);
-      expect(find.textContaining('40,000'), findsWidgets);
+      noNumbersOnHero(tester);
       // The app bar no longer repeats the plan body.
       expect(find.text(_tr('en', 'member.planBody')), findsNothing);
     });
