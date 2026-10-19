@@ -4368,6 +4368,7 @@ class FFLocale extends ChangeNotifier {
       'hero.owner.accent': 'moving.',
       'member.nameFallback': 'Member',
       // Vendor stock ledger (S1, 2026-10-19).
+      'vendor.orders.cancelledMeanwhile': 'This order was cancelled.',
       'payment.status.refunded': 'Refunded',
       'payment.status.refund_pending': 'Refund pending',
       'payment.status.failed': 'Payment failed',
@@ -6122,7 +6123,7 @@ class FFLocale extends ChangeNotifier {
       'vendor.payment': 'Malipo',
       'vendor.pickupGym': 'Gym ya kuchukulia',
       'vendor.pickupGymUnknown': 'Jina la gym halipatikani',
-      'vendor.deliveryAddress': 'Anwani ya delivery',
+      'vendor.deliveryAddress': 'Anwani ya kufikisha',
       // Vendor tools S2 (Swahili for native review; variant = chaguo).
       'vendor.orders.ref': 'Oda {ref}',
       'vendor.orders.buyer': 'Mnunuzi: {name}',
@@ -8861,6 +8862,7 @@ class FFLocale extends ChangeNotifier {
       'member.nameFallback': 'Mwanachama',
       // Vendor stock ledger (S1, 2026-10-19): Swahili drafts pending native
       // review (design spec vendor-stock-ledger-s1 §8, plan §4).
+      'vendor.orders.cancelledMeanwhile': 'Oda hii imeghairiwa.',
       'payment.status.refunded': 'Imerejeshwa',
       'payment.status.refund_pending': 'Marejesho yanasubiri',
       'payment.status.failed': 'Malipo yameshindikana',

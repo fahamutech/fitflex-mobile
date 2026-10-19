@@ -497,6 +497,13 @@ class _VendorHomePageState extends State<VendorHomePage> {
       await AppScope.of(context).api.vendorUpdateOrderStatus(id, status);
       await _refresh();
     } on ApiException catch (e) {
+      if (mounted && e.code == 'order_cancelled') {
+        // Cancelled meanwhile (e.g. by the buyer): say so and show the list
+        // as it is now.
+        FFSnack.error(context, context.tr('vendor.orders.cancelledMeanwhile'));
+        await _refresh();
+        return;
+      }
       if (mounted) {
         final isStaff =
             AppScope.of(context).auth.user?['userType'] == 'vendor_staff';
