@@ -64,6 +64,8 @@ class _PosPageState extends State<PosPage> {
   bool _loading = true;
   bool _ready = false;
   bool _offline = false;
+  // The product list came from the server (not the device's copy).
+  bool _fresh = false;
   String? _cachedAt;
   _LoadProblem _problem = _LoadProblem.none;
   bool _notAllowed = false;
@@ -77,8 +79,7 @@ class _PosPageState extends State<PosPage> {
 
   /// Selling is off: staff disabled, or the business is suspended (the
   /// paused notice shows). Queued sales stay.
-  bool get _blocked =>
-      _notAllowed || _session?.pause == SalesSyncPause.suspended;
+  bool get _blocked => _notAllowed || (_session?.suspended ?? false);
 
   @override
   void initState() {
@@ -106,6 +107,9 @@ class _PosPageState extends State<PosPage> {
     if (session == null) return;
     _session = session..attach();
     await session.load();
+    // Kept "suspended" from an earlier visit: ask the server whether that
+    // still holds; selling stays off until a sales call succeeds.
+    if (session.suspended) unawaited(_checkSuspended(session));
     final draft = await session.loadDraft();
     if (!mounted) return;
     _cart.cart = draft ?? PosCart();
@@ -127,6 +131,17 @@ class _PosPageState extends State<PosPage> {
     }
     unawaited(_loadProfile());
     await _loadProducts();
+  }
+
+  Future<void> _checkSuspended(SalesSession session) async {
+    try {
+      await AppScope.of(context).api.vendorSales(limit: 1);
+      session.salesAnswered();
+    } on ApiException catch (e) {
+      if (e.code == 'vendor_suspended') session.markSuspended();
+    } catch (_) {
+      // Offline: stays as it was.
+    }
   }
 
   List<Map<String, dynamic>> _sellable(List<Map<String, dynamic>> rows) => [
@@ -164,6 +179,7 @@ class _PosPageState extends State<PosPage> {
       if (!mounted) return;
       setState(() {
         _products = _sellable(products);
+        _fresh = true;
         _cachedAt = DateTime.now().toUtc().toIso8601String();
         _offline = false;
         _problem = _LoadProblem.none;
@@ -204,6 +220,16 @@ class _PosPageState extends State<PosPage> {
   /// Known available: last loaded stock, minus sales waiting on this
   /// device, minus the cart (the server is the authority).
   int _available(Map<String, dynamic> p, String? variant, {bool cart = true}) {
+    final inCart = cart
+        ? _cart.cart.qtyOf(p['id']?.toString() ?? '', variant)
+        : 0;
+    final left = _stockFor(p, variant) - inCart;
+    return left < 0 ? 0 : left;
+  }
+
+  /// Known stock for the cart: last loaded stock minus sales waiting on this
+  /// device (not minus the cart).
+  int _stockFor(Map<String, dynamic> p, String? variant) {
     final id = p['id']?.toString() ?? '';
     final productStock = (p['stock'] as num?)?.toInt() ?? 0;
     var stock = productStock;
@@ -215,8 +241,7 @@ class _PosPageState extends State<PosPage> {
       }
     }
     final queued = _session?.queuedQty(id, variant) ?? 0;
-    final inCart = cart ? _cart.cart.qtyOf(id, variant) : 0;
-    final left = stock - queued - inCart;
+    final left = stock - queued;
     return left < 0 ? 0 : left;
   }
 
@@ -250,8 +275,7 @@ class _PosPageState extends State<PosPage> {
   }
 
   void _add(Map<String, dynamic> p, String? variant, String name) {
-    final available =
-        _available(p, variant) + _cart.cart.qtyOf(p['id'].toString(), variant);
+    final available = _stockFor(p, variant);
     var added = false;
     _cart.update(
       (c) => added = c.addOne(
@@ -262,7 +286,13 @@ class _PosPageState extends State<PosPage> {
         available: available,
       ),
     );
-    if (!added) return;
+    if (!added) {
+      // At the stock limit: say so instead of doing nothing.
+      final text = fillIn(context.tr('vendor.pos.onlyLeft'), {'n': available});
+      FFSnack.info(context, text);
+      _announce(text);
+      return;
+    }
     _clearFlag();
     HapticFeedback.selectionClick();
     _announce(fillIn(context.tr('vendor.pos.added'), {'name': name}));
@@ -527,10 +557,8 @@ class _PosPageState extends State<PosPage> {
       final isStaff =
           AppScope.of(context).auth.user?['userType'] == 'vendor_staff';
       if (code == 'vendor_suspended') {
+        // The paused notice says it (once); no extra snack.
         _session?.markSuspended();
-        _afterClose(
-          () => FFSnack.error(context, context.tr('vendor.sales.suspended')),
-        );
       } else {
         if (isVendorStaffDisabled(e, vendorStaff: isStaff)) {
           setState(() => _notAllowed = true);
@@ -1191,10 +1219,15 @@ class _PosPageState extends State<PosPage> {
   Widget _cartLine(PosLine line) {
     final theme = Theme.of(context);
     final p = _product(line.productId);
+    // Checked against the latest product list every build, so a kept cart
+    // reopened after a reload shows today's stock (S3 UAT).
+    final stock = p == null ? null : _stockFor(p, line.variant);
+    final inCart = _cart.cart.qtyOf(line.productId, line.variant);
     final canAdd =
-        line.qty < maxQtyPerLine &&
-        (p == null || _available(p, line.variant) > 0);
-    final atCap = p != null && _available(p, line.variant) <= 0;
+        line.qty < maxQtyPerLine && (stock == null || inCart < stock);
+    final atCap = stock != null && inCart >= stock;
+    // A kept line whose product is gone from a freshly loaded list.
+    final gone = p == null && _fresh;
     final flagged = _flagged == line.key;
     final focus = _lineFocus.putIfAbsent(line.key, FocusNode.new);
     if (flagged && _focusFlagged) {
@@ -1206,7 +1239,7 @@ class _PosPageState extends State<PosPage> {
     final muted = theme.textTheme.bodySmall?.copyWith(
       color: theme.colorScheme.onSurfaceVariant,
     );
-    final stockLeft = p == null ? null : _available(p, line.variant) + line.qty;
+    final stockLeft = stock;
     return Padding(
       key: Key('pos-line-${line.productId}-${line.variant ?? ''}'),
       padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
@@ -1302,6 +1335,16 @@ class _PosPageState extends State<PosPage> {
                 style: muted,
               ),
             // After a refusal the server's count replaces the old hint.
+            if (gone && !flagged)
+              Text(
+                fillIn(context.tr('vendor.pos.err.unavailable'), {
+                  'name': line.name,
+                }),
+                key: Key('pos-gone-${line.key}'),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: warningText(context),
+                ),
+              ),
             if (atCap && stockLeft != null && !flagged)
               Text(
                 fillIn(context.tr('vendor.pos.onlyLeft'), {'n': stockLeft}),

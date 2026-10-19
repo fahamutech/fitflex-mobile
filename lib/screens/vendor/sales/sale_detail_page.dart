@@ -314,6 +314,8 @@ class _VoidDialogState extends State<_VoidDialog> {
 
   Future<void> _submit() async {
     if (!_ok || _busy) return;
+    // D8: unfocus the reason before it is disabled (web semantics).
+    FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       _busy = true;
       _error = null;
