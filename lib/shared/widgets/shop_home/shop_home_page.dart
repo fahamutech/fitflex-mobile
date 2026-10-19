@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../app_scope.dart';
@@ -5,7 +7,6 @@ import '../../api_client.dart';
 import '../../api_error_message.dart';
 import '../../components/components.dart';
 import '../../design_tokens.dart';
-import '../../formatters.dart';
 import '../../i18n.dart';
 import '../../product_categories.dart';
 import '../../promotion_events.dart' show discoverSessionId;
@@ -15,18 +16,19 @@ import 'shop_category_row.dart';
 import 'shop_product_card.dart';
 import 'shop_product_rail.dart';
 
-/// The personalised Shop home (V2, Phase 1): search and cart, "Shop by
-/// category", then the sections the server chose, in the server's order.
-///
-/// It owns only the home request; the cart, product details, checkout and
-/// the product list belong to the shop screen around it (ShopBrowseBody),
-/// reached through the callbacks. When the backend answers 404
-/// `feature_disabled` or 403 `mode_not_allowed`, [onUnavailable] tells the
-/// screen to show today's shop instead.
 /// The server's placement for the marketplace: promotion events from the
 /// home must use it (anything else is refused as `invalid_placement`).
 const kShopHomePlacement = 'marketplace';
 
+/// The personalised Shop home (V2, Phase 1): search and cart, "Shop by
+/// category", then the sections the server chose, in the server's order.
+///
+/// It owns only the home request; the cart, product details, checkout, the
+/// product list and the sticky cart bar belong to the shop screen around it
+/// (ShopBrowseBody), reached through the callbacks. [onUnavailable] tells
+/// the screen to show today's shop instead: the backend has no shop home
+/// (404 / non-JSON), refuses it (403 after a retry without mode), or fails
+/// (5xx / timeout) before anything was shown.
 class ShopHomeView extends StatefulWidget {
   const ShopHomeView({
     super.key,
@@ -40,7 +42,13 @@ class ShopHomeView extends StatefulWidget {
     required this.onBrowseAll,
     required this.onCheckout,
     required this.onUnavailable,
-    this.ordering = false,
+    this.gutter = 16,
+    this.initialData,
+    this.onData,
+    this.catalogue,
+    this.catalogueFailed = false,
+    this.onNeedCatalogue,
+    this.onOfflineChanged,
   });
 
   final ShopHomeMode mode;
@@ -55,7 +63,23 @@ class ShopHomeView extends StatefulWidget {
   final VoidCallback onBrowseAll;
   final VoidCallback onCheckout;
   final VoidCallback onUnavailable;
-  final bool ordering;
+
+  /// Side padding of the page; rails scroll edge to edge inside it.
+  final double gutter;
+
+  /// The last home this screen loaded (kept by the screen), shown at once
+  /// while it is fetched again, and kept if that fails offline.
+  final ShopHomeData? initialData;
+  final ValueChanged<ShopHomeData>? onData;
+
+  /// Today's product list (GET /shop/products), for the "All products" grid
+  /// when the server sends no sections. Null until loaded.
+  final List<ShopProduct>? catalogue;
+  final bool catalogueFailed;
+  final VoidCallback? onNeedCatalogue;
+
+  /// Whether the last request failed for lack of a connection.
+  final ValueChanged<bool>? onOfflineChanged;
 
   @override
   State<ShopHomeView> createState() => ShopHomeViewState();
@@ -66,10 +90,12 @@ class ShopHomeViewState extends State<ShopHomeView> {
   Object? _error;
   bool _loading = true;
   int _load = 0;
+  bool _askedCatalogue = false;
 
   @override
   void initState() {
     super.initState();
+    _data = widget.initialData;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) reload();
     });
@@ -114,25 +140,36 @@ class ShopHomeViewState extends State<ShopHomeView> {
         _error = null;
         _loading = false;
       });
+      widget.onData?.call(data);
+      widget.onOfflineChanged?.call(false);
       ShopEvents.newLoad();
       ShopEvents.send(scope.api, 'shop_home_viewed', mode: _mode(data));
     } on ApiException catch (e) {
       if (!mounted || id != _load) return;
       if (e.status == 404 || e.status == 403) return _unavailable();
-      setState(() {
-        _error = e;
-        _loading = false;
-      });
+      // A server failure before anything is shown: today's shop (AC-02).
+      if (e.status >= 500 && _data == null) return _unavailable();
+      _failed(e);
     } on FormatException {
       // Not JSON (a backend without /shop/home answers with an HTML page).
       if (mounted && id == _load) _unavailable();
+    } on TimeoutException catch (e) {
+      // Too slow is treated as a server failure, not as being offline.
+      if (!mounted || id != _load) return;
+      if (_data == null) return _unavailable();
+      _failed(e);
     } catch (e) {
       if (!mounted || id != _load) return;
-      setState(() {
-        _error = e;
-        _loading = false;
-      });
+      _failed(e);
     }
+  }
+
+  void _failed(Object error) {
+    setState(() {
+      _error = error;
+      _loading = false;
+    });
+    widget.onOfflineChanged?.call(isNetworkError(error));
   }
 
   void _unavailable() {
@@ -180,17 +217,93 @@ class ShopHomeViewState extends State<ShopHomeView> {
     }
   }
 
-  /// "Why am I seeing this?": only the reason the server gave for the
-  /// section. (Phase 2 adds the personalisation setting here; TODO.)
-  Future<void> _showWhy(ShopHomeSection section, ShopText reason) async {
+  String _roleLine() => switch (_mode(_data)) {
+    ShopHomeMode.member => 'shop.why.roleMember',
+    ShopHomeMode.trainer => 'shop.why.roleTrainer',
+    ShopHomeMode.owner => 'shop.why.roleOwner',
+    ShopHomeMode.vendorPersonal => 'shop.why.roleVendor',
+  };
+
+  /// One translated bullet for a reason code, or null for a code the app
+  /// does not know (spec §8.3; the role line is shown separately).
+  String? _reasonLine(BuildContext context, ShopReasonCode reason) {
     final lang = FFLocaleScope.of(context).locale.languageCode;
+    String with_(String key, String name, String? value) =>
+        context.tr(key).replaceAll('{$name}', value ?? '');
+    return switch (reason.code) {
+      'popular_with_role' => context.tr('shop.why.popularWithRole'),
+      'bought_category' => with_(
+        'shop.why.boughtCategory',
+        'category',
+        shopCategoryText(reason.params['category'] ?? '').of(lang),
+      ),
+      'bought_product' => with_(
+        'shop.why.boughtProduct',
+        'product',
+        reason.params['productName'] ?? reason.params['product'],
+      ),
+      'profile_gender' => context.tr('shop.why.gender'),
+      'delivers_to_area' => context.tr('shop.why.deliversToArea'),
+      'featured_disclosure' => context.tr('shop.why.featured'),
+      'flash_sale_seller_discount' => context.tr('shop.why.flashSale'),
+      'best_sellers_30d' => context.tr('shop.why.bestSellers'),
+      _ => null,
+    };
+  }
+
+  /// "Why am I seeing this?" (spec §8.1): a bullet per reason code, in the
+  /// customer's language, then the role line. The server's own reason text
+  /// is used only for codes the app does not know (or when none are sent).
+  Future<void> _showWhy(ShopHomeSection section) async {
+    final lang = FFLocaleScope.of(context).locale.languageCode;
+    final lines = <String>[];
+    var unknown = section.reasonCodes.isEmpty;
+    for (final code in section.reasonCodes) {
+      if (code.code == 'role_context') continue;
+      final line = _reasonLine(context, code);
+      if (line == null) {
+        unknown = true;
+      } else if (!lines.contains(line)) {
+        lines.add(line);
+      }
+    }
+    final server = section.reason?.of(lang);
+    if (unknown && server != null && server.isNotEmpty) lines.add(server);
+    final role = context.tr(_roleLine());
     await showFFSheet<void>(
       context,
       title: context.tr('shop.why.title'),
-      child: Text(
-        reason.of(lang),
-        key: Key('shop-why-${section.key}'),
-        style: Theme.of(context).textTheme.bodyLarge,
+      child: Builder(
+        builder: (sheet) {
+          final theme = Theme.of(sheet);
+          return Column(
+            key: Key('shop-why-${section.key}'),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final line in lines)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ExcludeSemantics(
+                        child: Text('•  ', style: theme.textTheme.bodyLarge),
+                      ),
+                      Expanded(
+                        child: Text(line, style: theme.textTheme.bodyLarge),
+                      ),
+                    ],
+                  ),
+                ),
+              Text(
+                role,
+                key: const Key('shop-why-role'),
+                style: theme.textTheme.bodyMedium,
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -205,25 +318,32 @@ class ShopHomeViewState extends State<ShopHomeView> {
     return own == key ? context.tr('shop.section.generic') : own;
   }
 
+  Widget _padded(Widget child) => Padding(
+    padding: EdgeInsets.symmetric(horizontal: widget.gutter),
+    child: child,
+  );
+
   @override
   Widget build(BuildContext context) {
     final data = _data;
-    final children = <Widget>[_searchRow(context)];
+    final children = <Widget>[_padded(_searchRow(context))];
     if (data == null && _loading) {
-      children.add(const _ShopHomeSkeleton());
+      children.add(_padded(const _ShopHomeSkeleton()));
     } else if (data == null) {
-      children.add(_errorState(context));
+      children.add(_padded(_errorState(context)));
     } else {
       if (_error != null) {
         children.add(
-          Padding(
-            padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
-            child: FFAlert(
-              key: const Key('shop-home-offline-bar'),
-              message: context.tr(
-                isNetworkError(_error!)
-                    ? 'offline.banner'
-                    : 'shop.home.errorTitle',
+          _padded(
+            Padding(
+              padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
+              child: FFAlert(
+                key: const Key('shop-home-offline-bar'),
+                message: context.tr(
+                  isNetworkError(_error!)
+                      ? 'offline.banner'
+                      : 'shop.home.errorTitle',
+                ),
               ),
             ),
           ),
@@ -266,6 +386,7 @@ class ShopHomeViewState extends State<ShopHomeView> {
           const SizedBox(width: FFTokens.spacingSm),
           IconButton(
             key: const Key('shop-home-cart'),
+            style: shopIconButtonStyle(),
             tooltip: cartLabel,
             onPressed: () {
               if (widget.cart.isEmpty) {
@@ -300,6 +421,43 @@ class ShopHomeViewState extends State<ShopHomeView> {
     );
   }
 
+  Widget _gettingReady(BuildContext context) => _padded(
+    FFEmptyState(
+      key: const Key('shop-home-empty'),
+      icon: Icons.storefront_outlined,
+      title: context.tr('shop.home.emptyTitle'),
+      body: context.tr('shop.home.emptyBody'),
+    ),
+  );
+
+  Widget _card(ShopProduct product, String section, int i, double width) =>
+      _ImpressionOnce(
+        key: ValueKey('$section/${product.id}'),
+        onShown: () => _event(
+          'product_impression',
+          section: section,
+          productId: product.id,
+          position: i,
+          once: 'impression:$section:${product.id}',
+        ),
+        child: ShopProductCard(
+          product: product,
+          width: width,
+          qty: widget.cart.qtyOf(product.id),
+          placement: kShopHomePlacement,
+          onOpen: () {
+            _event(
+              'product_clicked',
+              section: section,
+              productId: product.id,
+              position: i,
+            );
+            widget.onOpen(product);
+          },
+          onAdd: () => _add(product, section, i),
+        ),
+      );
+
   List<Widget> _content(BuildContext context, ShopHomeData data) {
     final lang = FFLocaleScope.of(context).locale.languageCode;
     final products = <String, ShopProduct>{
@@ -317,20 +475,20 @@ class ShopHomeViewState extends State<ShopHomeView> {
         ),
     ].where((entry) => entry.$2.isNotEmpty).toList();
 
-    if (products.isEmpty || sections.isEmpty) {
-      return [
-        FFEmptyState(
-          key: const Key('shop-home-empty'),
-          icon: Icons.storefront_outlined,
-          title: context.tr('shop.home.emptyTitle'),
-          body: context.tr('shop.home.emptyBody'),
-          action: FFButton(
-            label: context.tr('shop.home.browseAll'),
-            variant: FFButtonVariant.ghost,
-            onPressed: widget.onBrowseAll,
-          ),
-        ),
-      ];
+    // No sections: the categories and an "All products" grid (spec §8.5),
+    // from the products sent, else today's product list.
+    List<ShopProduct>? grid;
+    if (sections.isEmpty) {
+      // The server's count says the shop is empty: no list to fetch.
+      if (data.allProductsCount == 0) return [_gettingReady(context)];
+      grid = products.isNotEmpty ? products.values.toList() : widget.catalogue;
+      if (grid == null && !widget.catalogueFailed && !_askedCatalogue) {
+        _askedCatalogue = true;
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => widget.onNeedCatalogue?.call(),
+        );
+      }
+      if (grid != null && grid.isEmpty) return [_gettingReady(context)];
     }
 
     final categories = data.categories.isNotEmpty
@@ -343,6 +501,7 @@ class ShopHomeViewState extends State<ShopHomeView> {
     return [
       ShopCategoryRow(
         categories: categories,
+        inset: widget.gutter,
         onSelected: (key) {
           _event('filter_applied');
           widget.onCategory(key);
@@ -354,14 +513,13 @@ class ShopHomeViewState extends State<ShopHomeView> {
           key: Key('shop-home-section-${section.key}'),
           sectionKey: section.key,
           title: _title(context, section, lang),
+          inset: widget.gutter,
           onShown: () => _event(
             'section_viewed',
             section: section.key,
             once: 'section:${section.key}',
           ),
-          onWhy: section.reason == null
-              ? null
-              : () => _showWhy(section, section.reason!),
+          onWhy: section.hasWhy ? () => _showWhy(section) : null,
           onViewAll: !section.showViewAll
               ? null
               : () {
@@ -370,54 +528,86 @@ class ShopHomeViewState extends State<ShopHomeView> {
                 },
           children: [
             for (var i = 0; i < items.length; i++)
-              _ImpressionOnce(
-                key: ValueKey('${section.key}/${items[i].id}'),
-                onShown: () => _event(
-                  'product_impression',
-                  section: section.key,
-                  productId: items[i].id,
-                  position: i,
-                  once: 'impression:${section.key}:${items[i].id}',
-                ),
-                child: ShopProductCard(
-                  product: items[i],
-                  width: width,
-                  qty: widget.cart.qtyOf(items[i].id),
-                  placement: kShopHomePlacement,
-                  onOpen: () {
-                    _event(
-                      'product_clicked',
-                      section: section.key,
-                      productId: items[i].id,
-                      position: i,
-                    );
-                    widget.onOpen(items[i]);
-                  },
-                  onAdd: () => _add(items[i], section.key, i),
-                ),
-              ),
+              _card(items[i], section.key, i, width),
           ],
         ),
-      Align(
-        child: FFButton(
-          key: const Key('shop-home-browse-all'),
-          label: context.tr('shop.home.browseAll'),
-          variant: FFButtonVariant.ghost,
-          onPressed: widget.onBrowseAll,
+      if (sections.isEmpty) _padded(_allProducts(context, grid)),
+      _padded(
+        Align(
+          child: FFButton(
+            key: const Key('shop-home-browse-all'),
+            label: context.tr('shop.home.browseAll'),
+            variant: FFButtonVariant.ghost,
+            onPressed: widget.onBrowseAll,
+          ),
         ),
       ),
-      if (!widget.cart.isEmpty) ...[
-        const SizedBox(height: FFTokens.spacingMd),
-        FFButton(
-          key: const Key('shop-home-checkout'),
-          label:
-              '${context.tr('shop.checkout')} · ${formatCurrency(widget.cart.totalTzs)}',
-          trailingIcon: Icons.arrow_forward,
-          onPressed: widget.ordering ? null : widget.onCheckout,
-          loading: widget.ordering,
-        ),
-      ],
     ];
+  }
+
+  /// "All products": a 2–4 column grid of the same cards.
+  Widget _allProducts(BuildContext context, List<ShopProduct>? products) {
+    final theme = Theme.of(context);
+    final Widget body;
+    if (products == null && widget.catalogueFailed) {
+      body = FFErrorState(
+        key: const Key('shop-home-grid-error'),
+        title: context.tr('shop.home.errorTitle'),
+        message: context.tr('shop.home.errorBody'),
+        onRetry: widget.onNeedCatalogue,
+      );
+    } else if (products == null) {
+      body = Semantics(
+        label: context.tr('shop.home.loading'),
+        child: const ExcludeSemantics(child: FFSkeletonList(count: 2)),
+      );
+    } else {
+      body = LayoutBuilder(
+        builder: (context, constraints) {
+          final available = constraints.maxWidth;
+          final columns = available < 560
+              ? 2
+              : available < 900
+              ? 3
+              : 4;
+          final width = (available - 12 * (columns - 1)) / columns;
+          return Wrap(
+            key: const Key('shop-home-grid'),
+            spacing: 12,
+            runSpacing: FFTokens.spacingMd,
+            children: [
+              for (var i = 0; i < products.length; i++)
+                _card(products[i], 'all_products', i, width),
+            ],
+          );
+        },
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Semantics(
+                header: true,
+                child: Text(
+                  context.tr('shop.home.allProducts'),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: FFTokens.spacingSm),
+          body,
+        ],
+      ),
+    );
   }
 }
 
@@ -446,7 +636,8 @@ class _ImpressionOnceState extends State<_ImpressionOnce> {
   Widget build(BuildContext context) => widget.child;
 }
 
-/// Category circles and two rails of card shapes; announced once.
+/// Category circles and two rails of card shapes, announced once as
+/// "Loading the shop" (one semantics node; the shapes are hidden).
 class _ShopHomeSkeleton extends StatelessWidget {
   const _ShopHomeSkeleton();
 
@@ -496,6 +687,7 @@ class _ShopHomeSkeleton extends StatelessWidget {
     return Semantics(
       key: const Key('shop-home-loading'),
       container: true,
+      liveRegion: true,
       label: context.tr('shop.home.loading'),
       child: ExcludeSemantics(
         child: Column(

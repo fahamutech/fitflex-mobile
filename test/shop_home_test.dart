@@ -4,17 +4,25 @@
 // The backend (GET /shop/home, POST /shop/events) is mocked at the HTTP level
 // with test/support/recording_api.dart, as the rest of the shop tests do.
 // The SHOP_HOME_V2 build flag is switched with debugShopHomeV2Override.
+import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:fitflexmobile/screens/vendor/vendor_home_page.dart';
 import 'package:fitflexmobile/shared/api_client.dart';
+import 'package:fitflexmobile/shared/components/components.dart';
 import 'package:fitflexmobile/shared/i18n.dart';
+import 'package:fitflexmobile/shared/promotion.dart';
 import 'package:fitflexmobile/shared/promotion_events.dart';
+import 'package:fitflexmobile/shared/root_back_navigation.dart';
 import 'package:fitflexmobile/shared/formatters.dart';
 import 'package:fitflexmobile/shared/shop_home.dart';
 import 'package:fitflexmobile/shared/widgets/shop_browse_page.dart';
@@ -178,15 +186,18 @@ Future<PageHost> _pump(
   double scale = 1,
   Size size = const Size(420, 900),
   bool keepRequests = true,
+  String? routePath,
+  String initialLocation = '/',
 }) => pumpPage(
   tester,
   api,
-  ShopBrowseBody(mode: mode),
+  ShopBrowseBody(mode: mode, routePath: routePath),
   user: _member,
   lang: lang,
   textScale: scale,
   size: size,
   keepRequests: keepRequests,
+  initialLocation: initialLocation,
 );
 
 Finder _key(String k) => find.byKey(Key(k));
@@ -341,9 +352,14 @@ void main() {
     ) async {
       _seed(
         api,
-        home: _home(sections: [], products: {}),
+        home: {
+          ..._home(sections: [], products: {}),
+          'allProductsCount': 0,
+        },
       );
       final host = await _pump(tester, api);
+      // The count says there is nothing: no product list is fetched.
+      expect(api.sent('GET', '/shop/products'), isFalse);
       expect(_key('shop-home-empty'), findsOneWidget);
       expect(find.text(host.tr('shop.home.emptyTitle')), findsOneWidget);
       expect(_key('shop-home-categories'), findsNothing);
@@ -572,15 +588,23 @@ void main() {
       });
     }
 
-    apiTest('a server error shows an error with Try again', (
+    apiTest('a 500 falls back to today\'s shop (AC-02), not an error', (
       tester,
       api,
     ) async {
       _seed(api);
       api.fail('GET /shop/home', 500);
+      await _pump(tester, api);
+      expect(_key('shop-home'), findsNothing);
+      expect(_key('shop-home-error'), findsNothing);
+      expect(_key('shop-product-p1'), findsOneWidget);
+    });
+
+    apiTest('a 400 still shows an error with Try again', (tester, api) async {
+      _seed(api);
+      api.fail('GET /shop/home', 400, {'error': 'invalid_query'});
       final host = await _pump(tester, api);
       expect(_key('shop-home-error'), findsOneWidget);
-      expect(find.text(host.tr('shop.home.errorTitle')), findsOneWidget);
       api.heal('GET /shop/home');
       api.on('GET /shop/home', _home());
       await tapVisible(tester, find.text(host.tr('common.retry')));
@@ -1119,6 +1143,652 @@ void main() {
       _seed(api);
       await _pump(tester, api, lang: 'sw');
       expect(find.text('Zipo 10'), findsWidgets);
+    });
+  });
+  qaRound1();
+}
+
+String _location(WidgetTester tester) => GoRouter.of(
+  tester.element(find.byType(ShopBrowseBody)),
+).routerDelegate.currentConfiguration.uri.toString();
+
+/// Records SystemNavigator.pop (the app closing on Android Back).
+List<String> _recordSystemPop(WidgetTester tester) {
+  final calls = <String>[];
+  tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+    SystemChannels.platform,
+    (call) async {
+      if (call.method == 'SystemNavigator.pop') calls.add(call.method);
+      return null;
+    },
+  );
+  addTearDown(
+    () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      null,
+    ),
+  );
+  return calls;
+}
+
+Map<String, dynamic> _many(int n) => _home(
+  sections: [
+    _section(
+      'best_sellers',
+      'Best sellers',
+      'Zinazouzwa zaidi',
+      [for (var i = 0; i < n; i++) 'm$i'],
+      reason: {'en': 'Why', 'sw': 'Kwa nini'},
+      query: {'sort': 'popularity'},
+    ),
+  ],
+  products: {
+    for (var i = 0; i < n; i++) 'm$i': _p('m$i', 'Item $i', price: 1000 + i),
+  },
+);
+
+void qaRound1() {
+  group('QA round 1', () {
+    // 1 — small catalogue.
+    apiTest('no sections: categories + an All products grid from the list', (
+      tester,
+      api,
+    ) async {
+      _seed(
+        api,
+        home: _home(sections: [], products: {}),
+      );
+      final host = await _pump(tester, api);
+      expect(api.sent('GET', '/shop/products'), isTrue);
+      expect(_key('shop-home-categories'), findsOneWidget);
+      expect(find.text(host.tr('shop.home.allProducts')), findsOneWidget);
+      expect(_key('shop-home-grid'), findsOneWidget);
+      expect(_key('shop-home-card-p1'), findsOneWidget);
+      expect(_key('shop-home-empty'), findsNothing);
+    });
+
+    apiTest('no sections, allProductsCount 3: the grid too', (
+      tester,
+      api,
+    ) async {
+      _seed(
+        api,
+        home: {
+          ..._home(sections: [], products: {}),
+          'allProductsCount': 3,
+        },
+      );
+      await _pump(tester, api);
+      expect(_key('shop-home-grid'), findsOneWidget);
+    });
+
+    apiTest('no sections and an empty list: getting ready', (
+      tester,
+      api,
+    ) async {
+      _seed(
+        api,
+        home: _home(sections: [], products: {}),
+        products: [],
+      );
+      await _pump(tester, api);
+      expect(_key('shop-home-empty'), findsOneWidget);
+    });
+
+    // 17 — no background catalogue on the home.
+    apiTest('the home does not fetch the product list or discovery', (
+      tester,
+      api,
+    ) async {
+      _seed(api, home: _home());
+      await _pump(tester, api);
+      expect(api.sent('GET', '/shop/products'), isFalse);
+      expect(api.sent('GET', '/discover/products'), isFalse);
+      expect(api.sent('GET', '/me/shop-orders'), isTrue);
+      await tapVisible(tester, _key('shop-home-viewall-deals'));
+      expect(api.sent('GET', '/shop/products'), isTrue);
+    });
+
+    // 2 — URL and Back.
+    apiTest('View all / category / product are kept in the URL', (
+      tester,
+      api,
+    ) async {
+      _seed(api, home: _home());
+      await _pump(tester, api, routePath: '/');
+      await tapVisible(
+        tester,
+        _key('shop-home-category-supplements_nutrition'),
+      );
+      expect(
+        _location(tester),
+        '/?view=results&category=supplements_nutrition',
+      );
+      await tapVisible(tester, find.text('Whey Protein'));
+      expect(_location(tester), contains('product=p1'));
+      await tester.tap(_key('shop-product-close'));
+      await tester.pumpAndSettle();
+      expect(_location(tester), isNot(contains('product=')));
+      // Browser Back to the home URL: the home is shown again.
+      GoRouter.of(tester.element(find.byType(ShopBrowseBody))).go('/');
+      await tester.pumpAndSettle();
+      expect(_key('shop-home'), findsOneWidget);
+      expect(_key('shop-back-to-home'), findsNothing);
+    });
+
+    apiTest('a refresh on a results URL restores the list and filters', (
+      tester,
+      api,
+    ) async {
+      _seed(api, home: _home());
+      final host = await _pump(
+        tester,
+        api,
+        routePath: '/',
+        initialLocation: '/?view=results&category=equipment&sort=price_asc',
+      );
+      expect(_key('shop-home'), findsNothing);
+      expect(_key('shop-product-p2'), findsOneWidget);
+      expect(_key('shop-product-p1'), findsNothing);
+      expect(find.text(host.tr('shop.priceLow')), findsWidgets);
+    });
+
+    apiTest('a refresh with ?product= reopens that product', (
+      tester,
+      api,
+    ) async {
+      _seed(api, home: _home());
+      api.on('GET /shop/products/p4', _shoes);
+      await _pump(tester, api, routePath: '/', initialLocation: '/?product=p4');
+      expect(_key('shop-detail-add-p4'), findsOneWidget);
+    });
+
+    apiTest('a link to a removed product: home + "no longer available"', (
+      tester,
+      api,
+    ) async {
+      _seed(api, home: _home());
+      final host = await _pump(
+        tester,
+        api,
+        routePath: '/',
+        initialLocation: '/?product=gone',
+      );
+      expect(host.snack(host.tr('shop.home.productGone')), findsOneWidget);
+      expect(_key('shop-home'), findsOneWidget);
+      expect(_location(tester), '/');
+    });
+
+    apiTest('Android Back: list -> home, then the app may close', (
+      tester,
+      api,
+    ) async {
+      final pops = _recordSystemPop(tester);
+      _seed(api, home: _home());
+      await _pump(tester, api);
+      await tapVisible(tester, _key('shop-home-viewall-deals'));
+      expect(_key('shop-home'), findsNothing);
+      handleRootBack(didPop: false);
+      await tester.pumpAndSettle();
+      expect(_key('shop-home'), findsOneWidget);
+      expect(pops, isEmpty);
+      handleRootBack(didPop: false);
+      expect(pops, ['SystemNavigator.pop']);
+    });
+
+    // 3 — disclosure in Swahili.
+    testWidgets('promotion disclosure: codes in the app language', (
+      tester,
+    ) async {
+      Future<String> label(PromotionTag tag, String lang) async {
+        await tester.pumpWidget(
+          FFLocaleScope(
+            notifier: FFLocale()..set(Locale(lang)),
+            child: MaterialApp(
+              home: Scaffold(body: FFPromotionBadge(tag: tag)),
+            ),
+          ),
+        );
+        return tester.widget<Text>(find.byType(Text).first).data!;
+      }
+
+      final tag = PromotionTag.fromJson({
+        'id': 'pr',
+        'type': 'featured',
+        'label': 'Featured · Sponsored',
+        'commercial': true,
+        'disclosure': {
+          'codes': ['featured', 'sponsored'],
+          'en': 'Featured · Sponsored',
+          'sw': 'Iliyoangaziwa · Iliyodhaminiwa',
+        },
+      })!;
+      expect(await label(tag, 'en'), 'Featured · Sponsored');
+      expect(await label(tag, 'sw'), 'Iliyoangaziwa · Iliyodhaminiwa');
+      // Unknown code: the server's text for the language.
+      final odd = PromotionTag.fromJson({
+        'id': 'pr',
+        'type': 'featured',
+        'label': 'Featured',
+        'disclosure': {
+          'codes': ['partner'],
+          'en': 'Partner pick',
+          'sw': 'Chaguo la mshirika',
+        },
+      })!;
+      expect(await label(odd, 'sw'), 'Chaguo la mshirika');
+      // An older server (label only): never English in Swahili, and a paid
+      // placement keeps "Sponsored".
+      final old = PromotionTag.fromJson({
+        'id': 'pr',
+        'type': 'featured',
+        'label': 'Featured · Sponsored',
+        'commercial': true,
+      })!;
+      expect(await label(old, 'sw'), 'Iliyoangaziwa · Iliyodhaminiwa');
+      expect(await label(old, 'en'), 'Featured · Sponsored');
+    });
+
+    // 4 — timeout falls back.
+    apiTest('a timeout from /shop/home falls back to today\'s shop', (
+      tester,
+      api,
+    ) async {
+      _seed(api);
+      api.onCall('GET /shop/home', (_) => throw TimeoutException('slow'));
+      await _pump(tester, api);
+      expect(_key('shop-home'), findsNothing);
+      expect(_key('shop-product-p1'), findsOneWidget);
+    });
+
+    // 5 — the cart snackbar goes away.
+    apiTest('"Added to cart" dismisses itself', (tester, api) async {
+      _seed(api, home: _home());
+      final host = await _pump(tester, api);
+      await tapVisible(tester, _key('shop-home-add-p1'));
+      expect(host.snack(host.tr('shop.home.added')), findsOneWidget);
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+      expect(host.snack(host.tr('shop.home.added')), findsNothing);
+    });
+
+    // 6 — phone layout.
+    apiTest('375px: 16px gutter, third card peeks, ~4.5 category tiles', (
+      tester,
+      api,
+    ) async {
+      _seed(api, home: _many(6));
+      await _pump(tester, api, size: const Size(375, 812));
+      expect(tester.getTopLeft(_key('shop-home-search')).dx, 16);
+      expect(tester.getTopLeft(_key('shop-home-card-m0')).dx, 16);
+      final third = tester.getTopLeft(_key('shop-home-card-m2')).dx;
+      expect(third, lessThan(375));
+      expect(third, greaterThan(375 - 60));
+      final visibleTiles = [
+        for (final k in [
+          'sportswear_footwear',
+          'supplements_nutrition',
+          'equipment',
+          'accessories_gear',
+          'food_drinks',
+        ])
+          if (tester.getTopLeft(_key('shop-home-category-$k')).dx < 375) k,
+      ];
+      expect(visibleTiles, hasLength(5)); // 4 whole + the 5th peeking
+      expect(
+        tester.getTopRight(_key('shop-home-category-food_drinks')).dx,
+        greaterThan(375),
+      );
+    });
+
+    apiTest('header: controls on the title line when they fit', (
+      tester,
+      api,
+    ) async {
+      _seed(api, home: _home());
+      await _pump(tester, api, size: const Size(375, 812));
+      final title = tester.getCenter(_key('shop-home-title-best_sellers')).dy;
+      final viewAll = tester.getCenter(_key('shop-home-viewall-best_sellers'));
+      expect((viewAll.dy - title).abs(), lessThan(4));
+    });
+
+    apiTest('header: a long title moves the controls to line 2, right', (
+      tester,
+      api,
+    ) async {
+      _seed(
+        api,
+        home: _home(
+          sections: [
+            _section(
+              'essentials',
+              'Essentials',
+              'Mahitaji muhimu ya mazoezi ya kila siku',
+              ['p1'],
+              reason: {'en': 'x', 'sw': 'x'},
+              query: {'category': 'equipment'},
+            ),
+          ],
+        ),
+      );
+      await _pump(
+        tester,
+        api,
+        lang: 'sw',
+        scale: 1.3,
+        size: const Size(375, 812),
+      );
+      final title = tester.getRect(_key('shop-home-title-essentials'));
+      final viewAll = tester.getRect(_key('shop-home-viewall-essentials'));
+      expect(viewAll.top, greaterThanOrEqualTo(title.bottom - 1));
+      expect(viewAll.right, closeTo(375 - 16, 2));
+    });
+
+    // 7 — desktop.
+    apiTest('1280px: centred 1200 column, tiles spread, rail arrows work', (
+      tester,
+      api,
+    ) async {
+      _seed(api, home: _many(10));
+      await _pump(tester, api, size: const Size(1280, 900));
+      final search = tester.getRect(_key('shop-home-search'));
+      expect(search.left, closeTo((1280 - 1232) / 2 + 16, 1));
+      final first = tester.getRect(
+        _key('shop-home-category-sportswear_footwear'),
+      );
+      final last = tester.getRect(_key('shop-home-category-other'));
+      expect(first.left, closeTo(search.left, 1));
+      expect(last.right, greaterThan(1280 - (1280 - 1232) / 2 - 16 - 2));
+      expect(_key('shop-home-prev-best_sellers'), findsOneWidget);
+      final before = tester.getTopLeft(_key('shop-home-card-m0')).dx;
+      await tester.tap(_key('shop-home-next-best_sellers'));
+      await tester.pumpAndSettle();
+      expect(tester.getTopLeft(_key('shop-home-card-m0')).dx, lessThan(before));
+    });
+
+    // 8 — 48dp targets, even with desktop density.
+    apiTest('targets are at least 48x48 (desktop density)', (
+      tester,
+      api,
+    ) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+      try {
+        _seed(api, home: _home());
+        await _pump(tester, api, size: const Size(1280, 900));
+        for (final k in [
+          'shop-home-why-best_sellers',
+          'shop-home-cart',
+          'shop-home-viewall-best_sellers',
+        ]) {
+          final size = tester.getSize(_key(k));
+          expect(size.width, greaterThanOrEqualTo(48), reason: k);
+          expect(size.height, greaterThanOrEqualTo(48), reason: k);
+        }
+        expect(
+          tester.getSize(find.byType(SegmentedButton<int>)).height,
+          greaterThanOrEqualTo(48),
+        );
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    // 9 — no word broken in the middle.
+    apiTest('category labels wrap on words ("Supplements" on one line)', (
+      tester,
+      api,
+    ) async {
+      _seed(api, home: _home());
+      await _pump(tester, api, scale: 1.3, size: const Size(375, 812));
+      for (final (key, word) in [
+        ('supplements_nutrition', 'Supplements'),
+        ('accessories_gear', 'Accessories'),
+      ]) {
+        final paragraph = tester.renderObject<RenderParagraph>(
+          find.descendant(
+            of: _key('shop-home-category-label-$key'),
+            matching: find.byType(RichText),
+          ),
+        );
+        final boxes = paragraph.getBoxesForSelection(
+          TextSelection(baseOffset: 0, extentOffset: word.length),
+        );
+        expect(boxes.map((b) => b.top).toSet(), hasLength(1), reason: word);
+      }
+    });
+
+    // 10 — disclosure never cut off.
+    apiTest('the Sponsored disclosure is not truncated at 200%', (
+      tester,
+      api,
+    ) async {
+      final promoted = {
+        ..._whey,
+        'promotion': {
+          'id': 'pr',
+          'type': 'featured',
+          'label': 'Featured · Sponsored',
+          'commercial': true,
+        },
+      };
+      _seed(
+        api,
+        home: _home(
+          sections: [
+            _section('featured', 'Featured', 'Zilizoangaziwa', ['p1']),
+          ],
+          products: {'p1': promoted},
+        ),
+      );
+      await _pump(tester, api, scale: 2, size: const Size(375, 812));
+      final paragraph = tester.renderObject<RenderParagraph>(
+        find.descendant(
+          of: find.byKey(const Key('promo-badge-featured')),
+          matching: find.byType(RichText),
+        ),
+      );
+      expect(paragraph.didExceedMaxLines, isFalse);
+      expect(paragraph.text.toPlainText(), 'Featured · Sponsored');
+    });
+
+    // 11 — the View all category is a selected chip.
+    apiTest('View all into a category shows it as a selected chip', (
+      tester,
+      api,
+    ) async {
+      _seed(api, home: _home());
+      await _pump(tester, api);
+      await tapVisible(tester, _key('shop-home-viewall-new_arrivals'));
+      final chip = tester.widget<FilterChip>(
+        find.ancestor(
+          of: find.text('Sportswear & footwear'),
+          matching: find.byType(FilterChip),
+        ),
+      );
+      expect(chip.selected, isTrue);
+    });
+
+    // 12 — offline after a load.
+    apiTest('offline: Browse -> My orders -> Browse keeps the home', (
+      tester,
+      api,
+    ) async {
+      _seed(api, home: _home());
+      final host = await _pump(tester, api);
+      expect(_key('shop-home-section-best_sellers'), findsOneWidget);
+      api.onCall(
+        'GET /shop/home',
+        (_) => throw http.ClientException('XMLHttpRequest error.'),
+      );
+      await tester.tap(find.text(host.tr('shop.myOrders')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(host.tr('shop.browse')));
+      await tester.pumpAndSettle();
+      expect(_key('shop-home-section-best_sellers'), findsOneWidget);
+      expect(_key('shop-home-offline-bar'), findsOneWidget);
+      expect(_key('shop-home-offline'), findsNothing);
+    });
+
+    // 13 — Why bullets.
+    for (final lang in ['en', 'sw']) {
+      apiTest('Why: translated bullets + the role line ($lang)', (
+        tester,
+        api,
+      ) async {
+        _seed(
+          api,
+          home: _home(
+            sections: [
+              {
+                ..._section(
+                  'best_sellers',
+                  'Best sellers',
+                  'Zinazouzwa zaidi',
+                  ['p1'],
+                  reason: {'en': 'Server words', 'sw': 'Maneno ya seva'},
+                ),
+                'reasonCodes': [
+                  'best_sellers_30d',
+                  {
+                    'code': 'bought_category',
+                    'params': {'category': 'equipment'},
+                  },
+                  'role_context',
+                  'mystery_code',
+                ],
+              },
+            ],
+          ),
+        );
+        final host = await _pump(tester, api, lang: lang);
+        await tapVisible(tester, _key('shop-home-why-best_sellers'));
+        expect(find.text(host.tr('shop.why.bestSellers')), findsOneWidget);
+        expect(
+          find.text(
+            host
+                .tr('shop.why.boughtCategory')
+                .replaceAll(
+                  '{category}',
+                  lang == 'sw'
+                      ? 'Vifaa vya gym na mazoezi'
+                      : 'Gym & fitness equipment',
+                ),
+          ),
+          findsOneWidget,
+        );
+        // The unknown code falls back to the server's own reason.
+        expect(
+          find.text(lang == 'sw' ? 'Maneno ya seva' : 'Server words'),
+          findsOneWidget,
+        );
+        expect(
+          tester.widget<Text>(_key('shop-why-role')).data,
+          host.tr('shop.why.roleMember'),
+        );
+      });
+    }
+
+    // 14 — sticky cart bar.
+    apiTest('a sticky cart bar opens the same checkout', (tester, api) async {
+      _seed(api, home: _home());
+      final host = await _pump(tester, api, size: const Size(375, 812));
+      expect(_key('shop-home-checkout'), findsNothing);
+      await tapVisible(tester, _key('shop-home-add-p1'));
+      await host.dismissSnacks();
+      final bar = tester.getRect(_key('shop-home-checkout'));
+      expect(bar.bottom, greaterThan(812 - 80));
+      expect(
+        find.descendant(
+          of: _key('shop-home-checkout'),
+          matching: find.text(
+            host
+                .tr('shop.home.cartBarOne')
+                .replaceAll('{total}', formatCurrency(85000)),
+          ),
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(_key('shop-home-checkout'));
+      await tester.pumpAndSettle();
+      expect(_key('shop-place-order'), findsOneWidget);
+    });
+
+    apiTest('offline: the cart bar says checkout needs a connection', (
+      tester,
+      api,
+    ) async {
+      _seed(api, home: _home());
+      final host = await _pump(tester, api);
+      await tapVisible(tester, _key('shop-home-add-p1'));
+      await host.dismissSnacks();
+      api.onCall(
+        'GET /shop/home',
+        (_) => throw http.ClientException('XMLHttpRequest error.'),
+      );
+      await tester.tap(find.text(host.tr('shop.myOrders')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(host.tr('shop.browse')));
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(
+          of: _key('shop-home-checkout'),
+          matching: find.text(host.tr('shop.home.checkoutOffline')),
+        ),
+        findsOneWidget,
+      );
+      expect(isEnabled(tester, _key('shop-home-checkout')), isFalse);
+    });
+
+    // 15 — focus outline and the loading label.
+    apiTest('a focused card shows an outline', (tester, api) async {
+      _seed(api, home: _home());
+      await _pump(tester, api);
+      FocusManager.instance.highlightStrategy =
+          FocusHighlightStrategy.alwaysTraditional;
+      addTearDown(
+        () => FocusManager.instance.highlightStrategy =
+            FocusHighlightStrategy.automatic,
+      );
+      expect(_key('shop-home-focus-ring'), findsNothing);
+      Focus.of(
+        tester.element(
+          find
+              .descendant(
+                of: _key('shop-home-card-p1'),
+                matching: find.text('Whey Protein'),
+              )
+              .first,
+        ),
+      ).requestFocus();
+      await tester.pumpAndSettle();
+      expect(_key('shop-home-focus-ring'), findsOneWidget);
+    });
+
+    apiTest('loading exposes exactly one "Loading the shop" node', (
+      tester,
+      api,
+    ) async {
+      _seed(api, home: _home());
+      final gate = api.hold('GET /shop/home');
+      final handle = tester.ensureSemantics();
+      await pumpPage(
+        tester,
+        api,
+        const ShopBrowseBody(),
+        user: _member,
+        size: const Size(420, 900),
+        settle: false,
+      );
+      await tester.pump();
+      await tester.pump();
+      expect(find.bySemanticsLabel('Loading the shop'), findsOneWidget);
+      gate.complete();
+      await tester.pumpAndSettle();
+      handle.dispose();
+    });
+
+    test('no Back handler is left behind once the shop is gone', () {
+      expect(rootBackHandlerCount, 0);
     });
   });
 }

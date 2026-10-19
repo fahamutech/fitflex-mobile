@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:go_router/go_router.dart';
 import '../file-export.dart';
 
 import '../../app_scope.dart';
@@ -14,9 +15,12 @@ import '../i18n.dart';
 import '../product_categories.dart';
 import '../promotion.dart';
 import '../promotion_events.dart';
+import '../root_back_navigation.dart';
 import '../shop_checkout.dart';
 import '../shop_home.dart';
 import 'shop_home/shop_home_page.dart';
+import 'shop_home/shop_product_card.dart'
+    show ShopOutOfStockBadge, shopOnSale, shopDiscountPercent;
 
 num _shopNumber(dynamic value, [num fallback = 0]) {
   if (value is num) return value;
@@ -224,11 +228,21 @@ class ShopBrowsePage extends StatelessWidget {
 }
 
 class ShopBrowseBody extends StatefulWidget {
-  const ShopBrowseBody({super.key, this.mode = ShopHomeMode.member});
+  const ShopBrowseBody({
+    super.key,
+    this.mode = ShopHomeMode.member,
+    this.routePath,
+  });
 
   /// The role this shop is opened as. Only used by the Shop home (V2 flag):
   /// it picks the suggestions, never which products can be browsed.
   final ShopHomeMode mode;
+
+  /// The route this shop is the page for (member and owner shop). With the
+  /// V2 flag on, the product list, its filters and an open product are kept
+  /// in this route's query (`?view=results&category=…&sort=…&product=…`), so
+  /// browser Back and a refresh work. Null (trainer tab): no URL.
+  final String? routePath;
 
   @override
   State<ShopBrowseBody> createState() => _ShopBrowseBodyState();
@@ -278,9 +292,30 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
 
   bool get _showHome => shopHomeV2Enabled && !_homeUnavailable && !_results;
 
+  // With the home on, today's product list (and discovery) is fetched only
+  // when something needs it: the list, the fallback, a reorder, the grid.
+  bool _catalogueLoaded = false;
+  bool _catalogueWanted = false;
+  bool get _needsCatalogue =>
+      !shopHomeV2Enabled || _homeUnavailable || _catalogueWanted;
+
+  /// The last home loaded, so switching to My orders and back (or going
+  /// offline) keeps what was on screen.
+  ShopHomeData? _homeCache;
+  bool _homeOffline = false;
+
+  // URL state (see [ShopBrowseBody.routePath]).
+  bool get _syncUrl => shopHomeV2Enabled && widget.routePath != null;
+  String? _lastLocation;
+  String? _openProductId;
+  BuildContext? _sheetContext;
+  bool _closingFromUrl = false;
+  ScaffoldMessengerState? _messenger;
+
   @override
   void initState() {
     super.initState();
+    addRootBackHandler(_onRootBack);
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
     _trackingTimer = Timer.periodic(
       const Duration(seconds: 10),
@@ -290,9 +325,134 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
 
   @override
   void dispose() {
+    removeRootBackHandler(_onRootBack);
+    // "Added to cart" belongs to the shop: it does not follow to other tabs.
+    // After this frame, and only if the app (and its messenger) is still
+    // there: on a full teardown the messenger goes too.
+    final messenger = _messenger;
+    if (shopHomeV2Enabled && messenger != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (messenger.mounted) messenger.removeCurrentSnackBar();
+      });
+    }
     _trackingTimer?.cancel();
     _searchController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _messenger = ScaffoldMessenger.maybeOf(context);
+    _syncFromUrl();
+  }
+
+  /// Android Back (and the shells' root PopScope): from the product list,
+  /// back to the Shop home instead of out of the app. Only for the shop the
+  /// user is looking at (the trainer shop sits in a hidden tab otherwise).
+  bool _onRootBack() {
+    if (!mounted || !shopHomeV2Enabled || _homeUnavailable) return false;
+    if (_section != 0 || !_results) return false;
+    if (!Visibility.of(context)) return false;
+    if (ModalRoute.of(context)?.isCurrent == false) return false;
+    _backToHome();
+    return true;
+  }
+
+  Map<String, String> _stateQuery() => {
+    if (_results) 'view': 'results',
+    if (_results && _category != null) 'category': _category!,
+    if (_results && _search.trim().isNotEmpty) 'q': _search.trim(),
+    if (_results && _sort != 'newest') 'sort': _sort,
+    if (_results && _promotionsOnly) 'promotions': 'true',
+    if (_results && _deliveryOnly) 'delivery': 'true',
+    'product': ?_openProductId,
+  };
+
+  /// Writes the current view into the URL (a new history entry, so browser
+  /// Back returns to the previous view).
+  void _pushUrl() {
+    if (!_syncUrl || !mounted) return;
+    final router = GoRouter.maybeOf(context);
+    if (router == null) return;
+    final query = _stateQuery();
+    final location = Uri(
+      path: widget.routePath,
+      queryParameters: query.isEmpty ? null : query,
+    ).toString();
+    if (location == _lastLocation) return;
+    _lastLocation = location;
+    router.go(location);
+  }
+
+  /// Reads the view from the URL: a refresh, a deep link or browser Back.
+  void _syncFromUrl() {
+    if (!_syncUrl) return;
+    Uri uri;
+    try {
+      uri = GoRouterState.of(context).uri;
+    } catch (_) {
+      return;
+    }
+    if (uri.path != widget.routePath) return;
+    final location = uri.toString();
+    if (location == _lastLocation) return;
+    _lastLocation = location;
+    final q = uri.queryParameters;
+    if (q['view'] == 'results') {
+      _applyResults(
+        search: q['q'] ?? '',
+        query: {
+          'category': ?q['category'],
+          'sort': ?q['sort'],
+          'promotions': ?q['promotions'],
+          'delivery': ?q['delivery'],
+        },
+      );
+    } else if (_results) {
+      _results = false;
+      _search = '';
+      _searchController.clear();
+      _category = null;
+      if (mounted) setState(() {});
+    }
+    final product = q['product'];
+    if (product != null && product != _openProductId) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _openProductById(product);
+      });
+    } else if (product == null && _sheetContext != null) {
+      _closingFromUrl = true;
+      final sheet = _sheetContext!;
+      if (sheet.mounted) Navigator.of(sheet).maybePop();
+    }
+  }
+
+  /// A product from the URL: from what is loaded, else from the server.
+  Future<void> _openProductById(String id) async {
+    final known = [
+      ..._products,
+      ..._featured,
+    ].where((p) => p.id == id).firstOrNull;
+    if (known != null) return _openProduct(known);
+    final messenger = FFSnack.of(context);
+    final gone = context.tr('shop.home.productGone');
+    try {
+      final json = await AppScope.of(context).api.shopProduct(id);
+      if (!mounted) return;
+      await _openProduct(ShopProduct.fromJson(json));
+    } catch (_) {
+      if (!mounted) return;
+      messenger.info(gone);
+      _openProductId = null;
+      _pushUrl();
+    }
+  }
+
+  /// Loads today's product list if it is not loaded yet.
+  Future<void> _ensureCatalogue() async {
+    _catalogueWanted = true;
+    if (!_catalogueLoaded) await _load();
   }
 
   void _shopEvent(String type, {String? productId}) {
@@ -311,6 +471,16 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
     String? category,
     Map<String, String> query = const {},
   }) {
+    _applyResults(search: search, category: category, query: query);
+    _pushUrl();
+  }
+
+  void _applyResults({
+    String? search,
+    String? category,
+    Map<String, String> query = const {},
+  }) {
+    if (!_catalogueLoaded) unawaited(_ensureCatalogue());
     setState(() {
       _results = true;
       _search = search ?? query['search'] ?? '';
@@ -338,12 +508,15 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
   static String? _nonEmpty(String? value) =>
       value == null || value.isEmpty ? null : value;
 
-  void _backToHome() => setState(() {
-    _results = false;
-    _search = '';
-    _searchController.clear();
-    _category = null;
-  });
+  void _backToHome() {
+    setState(() {
+      _results = false;
+      _search = '';
+      _searchController.clear();
+      _category = null;
+    });
+    _pushUrl();
+  }
 
   Future<void> _refreshTracking() async {
     if (!mounted ||
@@ -380,22 +553,26 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
 
   Future<void> _load() async {
     setState(() => _loading = true);
+    final catalogue = _needsCatalogue;
     try {
       final results = await Future.wait([
-        AppScope.of(context).api.listShopProducts(),
+        if (catalogue) AppScope.of(context).api.listShopProducts(),
         AppScope.of(context).api.myShopOrders(),
       ]);
       if (!mounted) return;
       setState(() {
-        _products = results[0]
-            .whereType<Map<String, dynamic>>()
-            .map(ShopProduct.fromJson)
-            .toList();
-        _orders = results[1].whereType<Map<String, dynamic>>().toList();
+        if (catalogue) {
+          _products = results.first
+              .whereType<Map<String, dynamic>>()
+              .map(ShopProduct.fromJson)
+              .toList();
+          _catalogueLoaded = true;
+        }
+        _orders = results.last.whereType<Map<String, dynamic>>().toList();
         _loading = false;
         _loadError = null;
       });
-      await _loadPromotions();
+      if (catalogue) await _loadPromotions();
     } catch (e) {
       // Offline or a server error: the list says so instead of "no products".
       if (mounted) {
@@ -662,16 +839,26 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
       'product',
       product.id,
     );
+    _openProductId = product.id;
+    _pushUrl();
     final buyNow = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) => _ProductDetailsSheet(
-        product: detailedProduct,
-        onAdd: () => _addToCart(detailedProduct),
-      ),
+      builder: (sheet) {
+        _sheetContext = sheet;
+        return _ProductDetailsSheet(
+          product: detailedProduct,
+          onAdd: () => _addToCart(detailedProduct),
+        );
+      },
     );
+    _sheetContext = null;
+    _openProductId = null;
     if (!mounted) return;
+    // Closed by the user (not by browser Back): drop it from the URL.
+    if (!_closingFromUrl) _pushUrl();
+    _closingFromUrl = false;
     setState(() {});
     if (buyNow == true) await _checkout();
   }
@@ -705,6 +892,9 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
   }
 
   Future<void> _reorder(Map<String, dynamic> order) async {
+    // The cart is filled from today's product list.
+    if (!_catalogueLoaded) await _ensureCatalogue();
+    if (!mounted) return;
     final result = await AppScope.of(
       context,
     ).api.reorderMarketplaceOrder(order['id'].toString());
@@ -761,70 +951,171 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
 
   @override
   Widget build(BuildContext context) {
-    return RefreshIndicator(
-      onRefresh: () async {
-        await _load();
-        if (_section == 0 && _showHome) await _homeKey.currentState?.reload();
-      },
-      child: ListView(
-        padding: const EdgeInsets.all(FFTokens.spacingLg),
-        children: [
-          SegmentedButton<int>(
-            segments: [
-              ButtonSegment(
-                value: 0,
-                icon: const Icon(Icons.storefront_outlined),
-                label: Text(context.tr('shop.browse')),
-              ),
-              ButtonSegment(
-                value: 1,
-                icon: const Icon(Icons.local_shipping_outlined),
-                label: Text(context.tr('shop.myOrders')),
-              ),
+    final home = _section == 0 && _showHome;
+    final segments = SegmentedButton<int>(
+      // 48dp targets whatever density the platform uses (AC-46).
+      style: const ButtonStyle(
+        minimumSize: WidgetStatePropertyAll(Size(0, 48)),
+        tapTargetSize: MaterialTapTargetSize.padded,
+        visualDensity: VisualDensity.standard,
+      ),
+      segments: [
+        ButtonSegment(
+          value: 0,
+          icon: const Icon(Icons.storefront_outlined),
+          label: Text(context.tr('shop.browse')),
+        ),
+        ButtonSegment(
+          value: 1,
+          icon: const Icon(Icons.local_shipping_outlined),
+          label: Text(context.tr('shop.myOrders')),
+        ),
+      ],
+      selected: {_section},
+      onSelectionChanged: (value) => setState(() => _section = value.first),
+    );
+    final list = LayoutBuilder(
+      builder: (context, constraints) {
+        // Shop home: a 16px gutter (rails scroll edge to edge inside it), in
+        // a centred column of at most 1200px on wide screens (spec §6).
+        const gutter = 16.0;
+        final side = home && constraints.maxWidth > 1200 + 2 * gutter
+            ? (constraints.maxWidth - 1200 - 2 * gutter) / 2
+            : 0.0;
+        return RefreshIndicator(
+          onRefresh: () async {
+            await _load();
+            if (_section == 0 && _showHome) {
+              await _homeKey.currentState?.reload();
+            }
+          },
+          child: ListView(
+            padding: home
+                ? EdgeInsets.symmetric(
+                    vertical: FFTokens.spacingLg,
+                    horizontal: side,
+                  )
+                : const EdgeInsets.all(FFTokens.spacingLg),
+            children: [
+              if (home)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: gutter),
+                  child: segments,
+                )
+              else
+                segments,
+              const SizedBox(height: FFTokens.spacingMd),
+              if (home)
+                ShopHomeView(
+                  key: _homeKey,
+                  mode: widget.mode,
+                  cart: _cart,
+                  gutter: gutter,
+                  initialData: _homeCache,
+                  onData: (data) => _homeCache = data,
+                  catalogue: _catalogueLoaded ? _products : null,
+                  catalogueFailed: !_catalogueLoaded && _loadError != null,
+                  onNeedCatalogue: () => unawaited(_ensureCatalogue()),
+                  onOfflineChanged: (offline) {
+                    if (mounted && offline != _homeOffline) {
+                      setState(() => _homeOffline = offline);
+                    }
+                  },
+                  onOpen: _openProduct,
+                  onAdd: (product) => _addToCart(product, track: false),
+                  onSearch: (text) => _openResults(search: text),
+                  onCategory: (key) => _openResults(category: key),
+                  onViewAll: (query) => _openResults(query: query),
+                  onBrowseAll: () => _openResults(),
+                  onCheckout: _checkout,
+                  onUnavailable: () {
+                    setState(() => _homeUnavailable = true);
+                    unawaited(_ensureCatalogue());
+                  },
+                )
+              else if (_loading)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(FFTokens.spacingXl),
+                    child: FFSpinner(),
+                  ),
+                )
+              else if (_section == 0)
+                ..._buildCatalogue()
+              else
+                ..._buildOrders(),
             ],
-            selected: {_section},
-            onSelectionChanged: (value) =>
-                setState(() => _section = value.first),
           ),
-          const SizedBox(height: FFTokens.spacingMd),
-          if (_section == 0 && _showHome)
-            ShopHomeView(
-              key: _homeKey,
-              mode: widget.mode,
-              cart: _cart,
-              ordering: _ordering,
-              onOpen: _openProduct,
-              onAdd: (product) => _addToCart(product, track: false),
-              onSearch: (text) => _openResults(search: text),
-              onCategory: (key) => _openResults(category: key),
-              onViewAll: (query) => _openResults(query: query),
-              onBrowseAll: () => _openResults(),
-              onCheckout: _checkout,
-              onUnavailable: () => setState(() => _homeUnavailable = true),
-            )
-          else if (_loading)
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.all(FFTokens.spacingXl),
-                child: FFSpinner(),
-              ),
-            )
-          else if (_section == 0)
-            ..._buildCatalogue()
-          else
-            ..._buildOrders(),
-        ],
+        );
+      },
+    );
+    if (!home || _cart.isEmpty) return list;
+    return Column(
+      children: [
+        Expanded(child: list),
+        _cartBar(context),
+      ],
+    );
+  }
+
+  /// The Shop home's sticky cart bar (spec §5.1 #10), above the bottom
+  /// navigation. It opens the same checkout as the list's button; offline it
+  /// is disabled and says checkout needs a connection.
+  Widget _cartBar(BuildContext context) {
+    final count = _cart.itemCount;
+    final total = formatCurrency(_cart.totalTzs);
+    final label = _homeOffline
+        ? context.tr('shop.home.checkoutOffline')
+        : (count == 1
+                  ? context.tr('shop.home.cartBarOne')
+                  : context
+                        .tr('shop.home.cartBar')
+                        .replaceAll('{count}', '$count'))
+              .replaceAll('{total}', total);
+    final a11y =
+        (count == 1
+                ? context.tr('shop.a11y.cartBarOne')
+                : context
+                      .tr('shop.a11y.cartBar')
+                      .replaceAll('{count}', '$count'))
+            .replaceAll('{total}', total);
+    final wide = MediaQuery.sizeOf(context).width >= 1024;
+    final button = Semantics(
+      button: true,
+      excludeSemantics: true,
+      label: _homeOffline ? label : a11y,
+      onTap: _homeOffline || _ordering ? null : _checkout,
+      child: FFButton(
+        key: const Key('shop-home-checkout'),
+        label: label,
+        trailingIcon: _homeOffline ? null : Icons.arrow_forward,
+        fullWidth: !wide,
+        onPressed: _homeOffline || _ordering ? null : _checkout,
+        loading: _ordering,
+      ),
+    );
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        child: wide
+            ? Align(
+                alignment: Alignment.centerRight,
+                child: SizedBox(width: 360, child: button),
+              )
+            : button,
       ),
     );
   }
 
   List<Widget> _buildCatalogue() {
     final featured = _visibleFeatured;
-    final categories = _products
-        .map((product) => product.category)
-        .whereType<String>()
-        .toSet()
-        .toList();
+    final categories = {
+      ..._products.map((product) => product.category).whereType<String>(),
+      // A category chosen on the home (tile, View all) is always a chip, and
+      // shows as selected, even when nothing in it is loaded yet.
+      ?_category,
+    }.toList();
     return [
       if (shopHomeV2Enabled && !_homeUnavailable)
         Align(
@@ -1458,26 +1749,31 @@ class _ProductTile extends StatelessWidget {
         },
         child: Row(
           children: [
-            Container(
-              width: 64,
-              height: 64,
-              clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(
-                color: colors.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(FFTokens.radiusMd),
-              ),
-              child: product.images.isEmpty
-                  ? Icon(Icons.shopping_bag_outlined, color: colors.primary)
-                  : FFRemoteImage(
-                      src: product.images.first,
-                      width: 64,
-                      height: 64,
-                      fit: BoxFit.cover,
-                      fallback: Icon(
-                        Icons.shopping_bag_outlined,
-                        color: colors.primary,
+            // Out of stock: the photo is dimmed (AC-14).
+            Opacity(
+              key: Key('shop-image-${product.id}'),
+              opacity: product.inStock ? 1 : 0.4,
+              child: Container(
+                width: 64,
+                height: 64,
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  color: colors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(FFTokens.radiusMd),
+                ),
+                child: product.images.isEmpty
+                    ? Icon(Icons.shopping_bag_outlined, color: colors.primary)
+                    : FFRemoteImage(
+                        src: product.images.first,
+                        width: 64,
+                        height: 64,
+                        fit: BoxFit.cover,
+                        fallback: Icon(
+                          Icons.shopping_bag_outlined,
+                          color: colors.primary,
+                        ),
                       ),
-                    ),
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -1500,13 +1796,56 @@ class _ProductTile extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 2),
                       child: FFPromotionBadge(tag: promotion!),
                     ),
-                  Text(
-                    formatCurrency(product.effectivePrice),
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: colors.primary,
-                      fontWeight: FontWeight.w700,
+                  if (!product.inStock)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: ShopOutOfStockBadge(
+                        key: Key('shop-oos-${product.id}'),
+                        label: context.tr('shop.outOfStock'),
+                      ),
                     ),
-                  ),
+                  if (shopOnSale(product)) ...[
+                    // Sale price in Fuel, the original struck through below;
+                    // read once as "Sale price …, was …".
+                    Text(
+                      formatCurrency(product.discountPriceTzs!),
+                      key: Key('shop-sale-${product.id}'),
+                      semanticsLabel: context
+                          .tr('shop.a11y.salePrice')
+                          .replaceAll(
+                            '{sale}',
+                            formatCurrency(product.discountPriceTzs!),
+                          )
+                          .replaceAll('{old}', formatCurrency(product.priceTzs))
+                          .replaceAll(
+                            '{pct}',
+                            '${shopDiscountPercent(product)}',
+                          ),
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? FFTokens.fuelOnDark
+                            : FFTokens.fuel,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    ExcludeSemantics(
+                      child: Text(
+                        formatCurrency(product.priceTzs),
+                        key: Key('shop-was-${product.id}'),
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: colors.onSurfaceVariant,
+                          decoration: TextDecoration.lineThrough,
+                        ),
+                      ),
+                    ),
+                  ] else
+                    Text(
+                      formatCurrency(product.effectivePrice),
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: colors.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   // A rating only with real reviews: never "★ 0.0".
                   Row(
                     children: [
@@ -1541,12 +1880,14 @@ class _ProductTile extends StatelessWidget {
                         onPressed: onRemove,
                       ),
                     if (qty > 0) Text('$qty'),
-                    IconButton(
-                      tooltip: context.tr('a11y.increase'),
-                      key: Key('shop-add-${product.id}'),
-                      icon: const Icon(Icons.add_circle_outline),
-                      onPressed: onAdd,
-                    ),
+                    // No cart button for an out-of-stock product (AC-14).
+                    if (product.inStock)
+                      IconButton(
+                        tooltip: context.tr('a11y.increase'),
+                        key: Key('shop-add-${product.id}'),
+                        icon: const Icon(Icons.add_circle_outline),
+                        onPressed: onAdd,
+                      ),
                   ],
                 ),
               ],

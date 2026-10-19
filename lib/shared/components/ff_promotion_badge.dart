@@ -28,10 +28,36 @@ class FFPromotionBadge extends StatelessWidget {
     _ => FFBadgeTone.defaultTone,
   };
 
+  /// The disclosure in the customer's language. Order of preference:
+  /// the server's disclosure codes as the app's own words (always the right
+  /// language); the server's disclosure text for this language; then the
+  /// older single label (in Swahili never the English text).
   String text(BuildContext context) {
     final standard = _standard[tag.type];
-    if (tag.label.isNotEmpty && tag.label != standard) return tag.label;
-    return context.tr('promo.${tag.type}');
+    final lang = FFLocaleScope.of(context).locale.languageCode;
+    if (tag.disclosureCodes.isNotEmpty &&
+        tag.disclosureCodes.every(_standard.containsKey)) {
+      return tag.disclosureCodes
+          .map((code) => context.tr('promo.$code'))
+          .join(' · ');
+    }
+    final server = lang == 'sw' ? tag.disclosureSw : tag.disclosureEn;
+    if (server.isNotEmpty) return server;
+    // A custom label from the server is English-only today: in Swahili the
+    // translated standard label is used instead, never the English text.
+    if (lang == 'en' && tag.label.isNotEmpty && tag.label != standard) {
+      return tag.label;
+    }
+    final own = context.tr('promo.${tag.type}');
+    final base = own == 'promo.${tag.type}'
+        ? context.tr('promo.featured')
+        : own;
+    // The dropped custom label may have carried the paid disclosure
+    // ("Featured · Sponsored"): keep it for commercial placements.
+    if (lang != 'en' && tag.commercial && tag.type != 'sponsored') {
+      return '$base · ${context.tr('promo.sponsored')}';
+    }
+    return base;
   }
 
   @override
@@ -39,5 +65,7 @@ class FFPromotionBadge extends StatelessWidget {
     key: Key('promo-badge-${tag.type}'),
     label: text(context),
     tone: tone,
+    // A disclosure is never cut off, at any text size (spec §10.8).
+    wrap: true,
   );
 }

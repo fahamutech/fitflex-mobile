@@ -281,9 +281,12 @@ void main() {
       await _pump(tester, api);
       expect(find.text('MuscleCo'), findsOneWidget);
       expect(find.text(formatCurrency(85000)), findsOneWidget);
-      // Yoga Mat is discounted: the discounted price is the one shown.
+      // Yoga Mat is discounted: the sale price, with the original struck
+      // through under it (AC-14 / spec §7.3, changed 2026-10-19).
       expect(find.text(formatCurrency(25000)), findsOneWidget);
-      expect(find.text(formatCurrency(30000)), findsNothing);
+      final was = tester.widget<Text>(_key('shop-was-p2'));
+      expect(was.data, formatCurrency(30000));
+      expect(was.style?.decoration, TextDecoration.lineThrough);
       expect(find.text(' 4.5 · 4 in stock'), findsOneWidget);
       // Yoga Mat has a rating but no reviews: no stars, no number, no "0.0".
       expect(find.text('10 in stock'), findsOneWidget);
@@ -510,7 +513,10 @@ void main() {
     ) async {
       _seed(api);
       final host = await _pump(tester, api);
-      expect(isEnabled(tester, _key('shop-add-p3')), isFalse);
+      // Out of stock: a badge, a dimmed photo and no cart button (AC-14).
+      expect(_key('shop-add-p3'), findsNothing);
+      expect(_key('shop-oos-p3'), findsOneWidget);
+      expect(tester.widget<Opacity>(_key('shop-image-p3')).opacity, 0.4);
       expect(isEnabled(tester, _key('shop-add-p1')), isTrue);
       await _add(tester, 'p1', 6);
       expect(

@@ -77,13 +77,40 @@ class ShopHomeCategory {
   final ShopText label;
 }
 
+/// One reason a section is shown, as a code the app translates (spec §8.3),
+/// with its values (e.g. `{category: equipment}`).
+class ShopReasonCode {
+  const ShopReasonCode(this.code, [this.params = const {}]);
+  final String code;
+  final Map<String, String> params;
+
+  /// Accepts `"best_sellers_30d"` or `{code, params}`; anything else is null.
+  static ShopReasonCode? fromJson(Object? json) {
+    if (json is String && json.isNotEmpty) return ShopReasonCode(json);
+    if (json is! Map) return null;
+    final code = json['code']?.toString() ?? '';
+    if (code.isEmpty) return null;
+    final params = json['params'];
+    return ShopReasonCode(
+      code,
+      params is Map
+          ? {
+              for (final e in params.entries)
+                if (e.value != null) e.key.toString(): e.value.toString(),
+            }
+          : const {},
+    );
+  }
+}
+
 class ShopHomeSection {
   const ShopHomeSection({
     required this.key,
     this.title,
     this.reason,
+    this.reasonCodes = const [],
     this.viewAll = const {},
-    this.hasMore = false,
+    this.hasMore,
     this.productIds = const [],
   });
 
@@ -95,18 +122,24 @@ class ShopHomeSection {
   final ShopText? title;
   final ShopText? reason;
 
+  /// Reason codes, shown as translated bullets in "Why am I seeing this?".
+  final List<ShopReasonCode> reasonCodes;
+
+  bool get hasWhy => reason != null || reasonCodes.isNotEmpty;
+
   /// The filters "View all" opens the product list with.
   final Map<String, String> viewAll;
 
-  /// Whether the server has more products for this section than it sent.
-  final bool hasMore;
+  /// Whether "View all" can show more than the rail (functions#179). Null
+  /// from an older backend that does not send it.
+  final bool? hasMore;
   final List<String> productIds;
 
   /// "View all" only leads somewhere when there are filters to open the list
   /// with, or more to see. Recently viewed is this device's own list: the
   /// product list cannot show it, so it never has one.
   bool get showViewAll =>
-      key != 'recently_viewed' && (viewAll.isNotEmpty || hasMore);
+      key != 'recently_viewed' && (hasMore ?? viewAll.isNotEmpty);
 
   factory ShopHomeSection.fromJson(Map<String, dynamic> json) {
     final viewAll = json['viewAll'];
@@ -115,7 +148,11 @@ class ShopHomeSection {
       key: json['key']?.toString() ?? '',
       title: ShopText.fromJson(json['title']),
       reason: ShopText.fromJson(json['reason']),
-      hasMore: json['hasMore'] == true,
+      reasonCodes: (json['reasonCodes'] as List? ?? [])
+          .map(ShopReasonCode.fromJson)
+          .whereType<ShopReasonCode>()
+          .toList(),
+      hasMore: json['hasMore'] is bool ? json['hasMore'] as bool : null,
       viewAll: query is Map
           ? {
               for (final e in query.entries)
@@ -141,6 +178,7 @@ class ShopHomeData {
     this.sections = const [],
     this.products = const {},
     this.serverNow,
+    this.allProductsCount,
   });
 
   final String mode;
@@ -151,6 +189,10 @@ class ShopHomeData {
   final Map<String, Map<String, dynamic>> products;
   final DateTime? serverNow;
 
+  /// How many products the shop lists in all (functions#179); 0 means the
+  /// shop is getting ready. Null from an older backend.
+  final int? allProductsCount;
+
   factory ShopHomeData.fromJson(Map<String, dynamic> json) {
     final rawProducts = json['products'];
     return ShopHomeData(
@@ -160,6 +202,9 @@ class ShopHomeData {
           .map((s) => s.toString())
           .toList(),
       serverNow: DateTime.tryParse(json['serverNow']?.toString() ?? ''),
+      allProductsCount: json['allProductsCount'] is num
+          ? (json['allProductsCount'] as num).toInt()
+          : null,
       categories: (json['categories'] as List? ?? [])
           .whereType<Map>()
           .map((c) {

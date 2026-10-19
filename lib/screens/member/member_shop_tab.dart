@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../router.dart';
 import '../../shared/shop_home.dart';
 import '../../shared/widgets/shop_browse_page.dart';
 
@@ -9,6 +10,9 @@ class MemberShopTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const ShopBrowseBody(mode: ShopHomeMode.member);
+    return const ShopBrowseBody(
+      mode: ShopHomeMode.member,
+      routePath: AppRoutes.memberShop,
+    );
   }
 }
