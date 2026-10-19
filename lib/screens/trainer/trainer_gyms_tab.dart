@@ -659,7 +659,7 @@ class _TrainerGymDetailPageState extends State<TrainerGymDetailPage> {
                 dot: true,
               ),
               FFBadge(
-                label: gym.tier.replaceAll('_', ' '),
+                label: gymTierLabel(context, gym),
                 tone: FFBadgeTone.brand,
               ),
             ],

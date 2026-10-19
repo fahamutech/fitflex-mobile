@@ -15,6 +15,7 @@ import '../../shared/pass_gyms.dart';
 import 'member_shell.dart';
 import 'widgets/mobile_money_pay.dart';
 import 'widgets/pass_gyms_sheet.dart';
+import 'widgets/gym_filters.dart';
 
 class MemberPaymentPage extends StatelessWidget {
   const MemberPaymentPage({super.key});
@@ -256,7 +257,7 @@ class _AvailableGymsSection extends StatelessWidget {
                         ),
                       ),
                       FFBadge(
-                        label: g.tier.replaceAll('_', ' '),
+                        label: gymTierLabel(context, g),
                         tone: FFBadgeTone.gray,
                       ),
                     ],

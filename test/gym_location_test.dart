@@ -3,6 +3,7 @@ import 'package:fitflexmobile/screens/member/member_gyms_tab.dart';
 import 'package:fitflexmobile/screens/member/member_home_tab.dart';
 import 'package:fitflexmobile/screens/member/widgets/gym_card.dart';
 import 'package:fitflexmobile/screens/member/widgets/trainer_card.dart';
+import 'package:fitflexmobile/shared/i18n.dart';
 import 'package:fitflexmobile/shared/models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -123,10 +124,16 @@ void main() {
     });
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(body: GymCard(gym: gym)),
+      FFLocaleScope(
+        notifier: FFLocale(),
+        child: MaterialApp(
+          home: Scaffold(body: GymCard(gym: gym)),
+        ),
       ),
     );
+
+    // The tier reads as a word, not the stored code.
+    expect(find.text('Standard'), findsOneWidget);
 
     expect(find.byType(GymVerifiedIcon), findsOneWidget);
     expect(find.byIcon(Icons.verified), findsOneWidget);
@@ -147,12 +154,15 @@ void main() {
     });
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Center(
-          child: SizedBox(
-            width: 173.7,
-            height: 241.3,
-            child: GymGridCard(gym: gym, distanceKm: 3.2),
+      FFLocaleScope(
+        notifier: FFLocale(),
+        child: MaterialApp(
+          home: Center(
+            child: SizedBox(
+              width: 173.7,
+              height: 241.3,
+              child: GymGridCard(gym: gym, distanceKm: 3.2),
+            ),
           ),
         ),
       ),

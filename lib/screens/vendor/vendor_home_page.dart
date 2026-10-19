@@ -19,6 +19,7 @@ import '../../shared/widgets/invitations.dart';
 import '../../shared/widgets/persona_switcher.dart';
 import '../../shared/widgets/terms_agreement.dart';
 import '../pin_flows.dart';
+import '../../shared/shop_checkout.dart';
 
 class VendorHomePage extends StatefulWidget {
   const VendorHomePage({super.key, this.open});
@@ -514,7 +515,8 @@ class _VendorHomePageState extends State<VendorHomePage> {
                 Text(items, style: Theme.of(context).textTheme.titleSmall),
                 const SizedBox(height: 4),
                 Text(
-                  '${formatCurrency(order['totalTzs'] as num? ?? 0)} · ${context.tr('vendor.status')}: $status',
+                  '${formatCurrency(order['totalTzs'] as num? ?? 0)} · ${context.tr('vendor.status')}: ${shopOrderStatusLabel(context, status)}',
+                  key: Key('vendor-order-status-${order['id']}'),
                 ),
                 Text(
                   '${context.tr('vendor.payment')}: ${order['paymentStatus'] ?? '-'} · ${order['paymentMethod'] ?? '-'}',
@@ -536,8 +538,10 @@ class _VendorHomePageState extends State<VendorHomePage> {
                     children: [
                       FFButton(
                         key: Key('vendor-next-${order['id']}'),
-                        label:
-                            '${context.tr('vendor.mark')} ${_nextOrderStatus(order).replaceAll('_', ' ')}',
+                        label: vendorMarkStatusLabel(
+                          context,
+                          _nextOrderStatus(order),
+                        ),
                         // Only paid orders can be fulfilled.
                         onPressed: _busy || order['paymentStatus'] == 'pending'
                             ? null

@@ -3,6 +3,8 @@
 // and which failures mean "we do not know whether the order was placed".
 import 'dart:math';
 
+import 'package:flutter/widgets.dart';
+
 import 'api_client.dart';
 import 'i18n.dart';
 
@@ -93,6 +95,45 @@ ShopOrderPayment shopOrderPayment(Map<dynamic, dynamic> order) {
     default:
       return ShopOrderPayment.awaitingConfirmation;
   }
+}
+
+/// Every order status the marketplace can send, buyer- or vendor-side: the
+/// canonical lifecycle in fitflex-functions `src/shared/order-lifecycle.mjs`
+/// (STATUSES) plus the legacy `confirmed` (= accepted) and `fulfilled`
+/// (= delivered) still found on old rows.
+const shopOrderStatuses = {
+  'pending',
+  'accepted',
+  'confirmed',
+  'processing',
+  'packed',
+  'dispatched',
+  'ready_for_pickup',
+  'delivered',
+  'fulfilled',
+  'cancelled',
+};
+
+/// i18n key for an order status; a status this app does not know yet gets a
+/// neutral "In progress" instead of its raw code.
+String shopOrderStatusKey(Object? status) {
+  final code = status?.toString() ?? '';
+  return shopOrderStatuses.contains(code)
+      ? 'shop.orderStatus.$code'
+      : 'shop.orderStatus.unknown';
+}
+
+/// An order status in the member's or vendor's language.
+String shopOrderStatusLabel(BuildContext context, Object? status) =>
+    context.tr(shopOrderStatusKey(status));
+
+/// The vendor's button for moving an order on to [next] ("Mark as packed").
+String vendorMarkStatusLabel(BuildContext context, String next) {
+  final key = 'vendor.markStatus.$next';
+  final label = context.tr(key);
+  return label == key
+      ? '${context.tr('vendor.mark')} ${shopOrderStatusLabel(context, next)}'
+      : label;
 }
 
 /// i18n key for the line shown under an order's total, or null when the order

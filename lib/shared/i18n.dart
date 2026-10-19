@@ -452,6 +452,12 @@ class FFLocale extends ChangeNotifier {
       'error.reason.noPermission':
           'Your account doesn\'t have permission for this. Ask the gym owner.',
       'error.reason.gymRequired': 'Choose a gym first',
+      'error.reason.operatorNotAssigned':
+          'Your account is not linked to a gym yet. Ask the gym owner.',
+      'error.reason.memberNotFound': 'We could not find this member',
+      'error.reason.gymNotFound': 'We could not find this gym',
+      'error.reason.tierNotConfigured':
+          'This pass is not set up yet. Contact FitFlex support.',
       'error.reason.emailAlreadyUsed': 'That email is already registered',
       'error.reason.invalidCredentials': 'Wrong email or PIN',
       'error.reason.accountSuspended':
@@ -1413,7 +1419,7 @@ class FFLocale extends ChangeNotifier {
       'error.reason.planNotOffered': 'this gym does not offer that plan',
       'error.reason.gymNotAvailable':
           'this gym is not taking subscriptions right now',
-      'error.reason.tierNotAvailable': 'this pass is not available right now',
+      'error.reason.tierNotAvailable': 'this pass is not on sale right now',
       'pay.product.fitflexPass': 'FitFlex Pass',
       'pay.product.gymPlan': 'Gym plan',
       'pay.product.trainerSession': 'Trainer session',
@@ -2459,7 +2465,7 @@ class FFLocale extends ChangeNotifier {
       'offline.banner': "You're offline. Showing what was last loaded.",
       'activity.getStarted.title': 'Your activity will show here',
       'activity.getStarted.body':
-          'Log an activity or finish a workout in FitFlex and it counts toward your goals, streaks and challenges. Connecting Apple Health and Health Connect is coming.',
+          'Log an activity or finish a workout in FitFlex and it counts toward your goals, streaks and challenges. Connecting Health Connect is coming.',
       'origin.link': 'Data sources',
       'origin.title': 'Where your activity data comes from',
       'origin.device': 'Device',
@@ -2475,7 +2481,7 @@ class FFLocale extends ChangeNotifier {
       'origin.byGym': 'By gym',
       'origin.sample': 'Sample',
       'origin.noDevicesYet':
-          'Connecting Apple Health and Health Connect is coming. Until then, nothing here is device data.',
+          'Connecting Health Connect is coming. Until then, nothing here is device data.',
       'origin.platform.apple_health': 'Apple Health',
       'origin.platform.health_connect': 'Health Connect',
       'origin.platform.fitbit': 'Fitbit',
@@ -2808,6 +2814,32 @@ class FFLocale extends ChangeNotifier {
       'ownerScan.reason_basic_daily_limit':
           'Basic plan can only visit one gym per day',
       'ownerScan.reason_gym_closed': 'Gym is currently closed',
+      'ownerScan.reason_gym_not_verified':
+          "This gym is not verified yet. FitFlex Pass members can't check in until FitFlex verifies it.",
+      'ownerScan.reason_tier_not_configured':
+          "This member's pass is not set up yet. Ask them to contact FitFlex support.",
+      'ownerScan.reason_unknown': "This member can't check in here right now.",
+      'tier.standard': 'Standard',
+      'tier.midtier': 'Mid-tier',
+      'tier.premium': 'Premium',
+      'tier.luxury_executive': 'Luxury / Executive',
+      'shop.orderStatus.pending': 'Pending',
+      'shop.orderStatus.accepted': 'Accepted',
+      'shop.orderStatus.confirmed': 'Accepted',
+      'shop.orderStatus.processing': 'Being prepared',
+      'shop.orderStatus.packed': 'Packed',
+      'shop.orderStatus.dispatched': 'On the way',
+      'shop.orderStatus.ready_for_pickup': 'Ready for pickup',
+      'shop.orderStatus.delivered': 'Delivered',
+      'shop.orderStatus.fulfilled': 'Delivered',
+      'shop.orderStatus.cancelled': 'Cancelled',
+      'shop.orderStatus.unknown': 'In progress',
+      'vendor.markStatus.accepted': 'Accept order',
+      'vendor.markStatus.processing': 'Mark as being prepared',
+      'vendor.markStatus.packed': 'Mark as packed',
+      'vendor.markStatus.dispatched': 'Mark as on the way',
+      'vendor.markStatus.ready_for_pickup': 'Mark as ready for pickup',
+      'vendor.markStatus.delivered': 'Mark as delivered',
       'owner.memberTypeAll': 'All',
       'owner.memberTypeDirect': 'Direct',
       'owner.memberTypeFitflex': 'FitFlex',
@@ -4548,6 +4580,13 @@ class FFLocale extends ChangeNotifier {
       'error.reason.noPermission':
           'Akaunti yako haina ruhusa ya hili. Muulize mmiliki wa gym.',
       'error.reason.gymRequired': 'Chagua gym kwanza',
+      // Swahili for native review.
+      'error.reason.operatorNotAssigned':
+          'Akaunti yako bado haijaunganishwa na gym. Muulize mmiliki wa gym.',
+      'error.reason.memberNotFound': 'Hatukumpata mwanachama huyu',
+      'error.reason.gymNotFound': 'Hatukuipata gym hii',
+      'error.reason.tierNotConfigured':
+          'Pasi hii bado haijawekwa tayari. Wasiliana na msaada wa FitFlex.',
       'error.reason.emailAlreadyUsed': 'Barua pepe hiyo tayari imesajiliwa',
       'error.reason.invalidCredentials': 'Barua pepe au PIN si sahihi',
       'error.reason.accountSuspended':
@@ -5592,7 +5631,8 @@ class FFLocale extends ChangeNotifier {
           'tayari una malipo yanayosubiri idhini kwa hili',
       'error.reason.planNotOffered': 'gym hii haitoi mpango huo',
       'error.reason.gymNotAvailable': 'gym hii haipokei wanachama kwa sasa',
-      'error.reason.tierNotAvailable': 'pasi hii haipatikani kwa sasa',
+      // Swahili for native review.
+      'error.reason.tierNotAvailable': 'pasi hii haiuzwi kwa sasa',
       'pay.product.fitflexPass': 'FitFlex Pass',
       'pay.product.gymPlan': 'Mpango wa gym',
       'pay.product.trainerSession': 'Kipindi cha mkufunzi',
@@ -6645,7 +6685,7 @@ class FFLocale extends ChangeNotifier {
       'offline.banner': 'Huna mtandao. Unaona kilichopakiwa mara ya mwisho.',
       'activity.getStarted.title': 'Shughuli zako zitaonekana hapa',
       'activity.getStarted.body':
-          'Rekodi shughuli au maliza mazoezi ndani ya FitFlex na yatahesabiwa kwenye malengo, mfululizo na challenge zako. Kuunganisha Apple Health na Health Connect kunakuja hivi karibuni.',
+          'Rekodi shughuli au maliza mazoezi ndani ya FitFlex na yatahesabiwa kwenye malengo, mfululizo na challenge zako. Kuunganisha Health Connect kunakuja hivi karibuni.',
       'origin.link': 'Vyanzo vya data',
       'origin.title': 'Data yako ya shughuli inatoka wapi',
       'origin.device': 'Kifaa',
@@ -6660,7 +6700,7 @@ class FFLocale extends ChangeNotifier {
       'origin.byGym': 'Na gym',
       'origin.sample': 'Mfano',
       'origin.noDevicesYet':
-          'Kuunganisha Apple Health na Health Connect kunakuja hivi karibuni. Hadi hapo, hakuna data ya kifaa hapa.',
+          'Kuunganisha Health Connect kunakuja hivi karibuni. Hadi hapo, hakuna data ya kifaa hapa.',
       'origin.platform.apple_health': 'Apple Health',
       'origin.platform.health_connect': 'Health Connect',
       'origin.platform.fitbit': 'Fitbit',
@@ -6926,6 +6966,35 @@ class FFLocale extends ChangeNotifier {
       'ownerScan.reason_basic_daily_limit':
           'Mpango wa Basic huruhusu gym moja tu kwa siku',
       'ownerScan.reason_gym_closed': 'Gym imefungwa kwa sasa',
+      // Swahili for native review.
+      'ownerScan.reason_gym_not_verified':
+          'Gym hii bado haijathibitishwa. Wanachama wa FitFlex Pass hawawezi kuingia hadi FitFlex iithibitishe.',
+      'ownerScan.reason_tier_not_configured':
+          'Pasi ya mwanachama huyu bado haijawekwa tayari. Mwombe awasiliane na msaada wa FitFlex.',
+      'ownerScan.reason_unknown':
+          'Mwanachama huyu hawezi kuingia hapa kwa sasa.',
+      // Tier names stay English (owner, Swahili review 2026-10-04).
+      'tier.standard': 'Standard',
+      'tier.midtier': 'Mid-tier',
+      'tier.premium': 'Premium',
+      'tier.luxury_executive': 'Luxury / Executive',
+      'shop.orderStatus.pending': 'Inasubiri',
+      'shop.orderStatus.accepted': 'Imekubaliwa',
+      'shop.orderStatus.confirmed': 'Imekubaliwa',
+      'shop.orderStatus.processing': 'Inaandaliwa',
+      'shop.orderStatus.packed': 'Imefungashwa',
+      'shop.orderStatus.dispatched': 'Iko njiani',
+      'shop.orderStatus.ready_for_pickup': 'Iko tayari kuchukuliwa',
+      'shop.orderStatus.delivered': 'Imefikishwa',
+      'shop.orderStatus.fulfilled': 'Imefikishwa',
+      'shop.orderStatus.cancelled': 'Imeghairiwa',
+      'shop.orderStatus.unknown': 'Inaendelea',
+      'vendor.markStatus.accepted': 'Kubali oda',
+      'vendor.markStatus.processing': 'Weka inaandaliwa',
+      'vendor.markStatus.packed': 'Weka imefungashwa',
+      'vendor.markStatus.dispatched': 'Weka iko njiani',
+      'vendor.markStatus.ready_for_pickup': 'Weka iko tayari kuchukuliwa',
+      'vendor.markStatus.delivered': 'Weka imefikishwa',
       'owner.memberTypeAll': 'Wote',
       'owner.memberTypeDirect': 'Moja kwa moja',
       'owner.memberTypeFitflex': 'FitFlex',
