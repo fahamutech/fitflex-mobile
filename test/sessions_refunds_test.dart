@@ -138,7 +138,7 @@ void main() {
 
     await tester.tap(find.byKey(const Key('session-cancel-tbk_1')));
     await tester.pumpAndSettle();
-    expect(find.textContaining('refunded TZS 20,000 in full'), findsOneWidget);
+    expect(find.textContaining('refunded TSh 20,000 in full'), findsOneWidget);
     await tester.tap(find.byKey(const Key('session-cancel-confirm')));
     await tester.pumpAndSettle();
 
@@ -227,8 +227,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('refund-ask')));
     await tester.pumpAndSettle();
-    expect(find.textContaining('TZS 150,000'), findsOneWidget);
-    expect(find.textContaining('TZS 20,000'), findsNothing);
+    expect(find.textContaining('TSh 150,000'), findsOneWidget);
+    expect(find.textContaining('TSh 20,000'), findsNothing);
 
     await tester.enterText(
       find.byKey(const Key('refund-note')),

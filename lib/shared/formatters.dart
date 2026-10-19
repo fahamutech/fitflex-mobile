@@ -18,10 +18,21 @@ String formatMoney(num value) {
   return isNegative ? '-${buf.toString()}' : buf.toString();
 }
 
+/// Display label for an ISO currency code. Tanzanian shillings are shown as
+/// "TSh" in English and Swahili (owner decision D-8, 2026-10-19); the ISO
+/// code "TZS" stays in data, API fields and payment payloads. Other codes
+/// are shown as given.
+String currencyLabel(String? code) {
+  final c = (code ?? '').trim();
+  if (c.isEmpty || c.toUpperCase() == 'TZS') return 'TSh';
+  return c;
+}
+
 /// Formats an amount as a currency string, e.g. `1234567` with currency
-/// `TZS` -> `TZS 1,234,567`.
+/// `TZS` -> `TSh 1,234,567`. [currency] is the ISO code (data value); it is
+/// mapped to its display label with [currencyLabel].
 String formatCurrency(num value, {String currency = 'TZS'}) {
-  return '$currency ${formatMoney(value)}';
+  return '${currencyLabel(currency)} ${formatMoney(value)}';
 }
 
 // ---------------------------------------------------------------------------

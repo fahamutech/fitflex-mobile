@@ -903,6 +903,13 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
           .where((value) => value.id == item['productId'])
           .firstOrNull;
       if (product == null) continue;
+      // Keep the option bought last time: products whose options keep their
+      // own stock cannot be ordered without one (400 variant_required).
+      final variant = item['variant']?.toString() ?? '';
+      if (variant.isNotEmpty &&
+          product.variants.any((option) => option.name == variant)) {
+        _cart.setVariant(product.id, variant);
+      }
       for (var count = 0; count < (item['qty'] as num? ?? 1); count++) {
         _cart.add(product);
       }

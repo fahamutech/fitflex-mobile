@@ -329,7 +329,7 @@ void main() {
 
       expect(find.text('Iron Paradise'), findsOneWidget);
       expect(find.text('standard plan, until 31 Oct 2026'), findsOneWidget);
-      expect(find.text('Paid: TZS 50000'), findsOneWidget);
+      expect(find.text('Paid: TSh 50000'), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('accept-inv_member')));
       await tester.pumpAndSettle();
@@ -522,7 +522,7 @@ void main() {
 
     expect(find.byKey(const Key('lapsed-inv_lapsed')), findsOneWidget);
     expect(
-      find.textContaining('Paid TZS 30000 but never accepted'),
+      find.textContaining('Paid TSh 30000 but never accepted'),
       findsOneWidget,
     );
     expect(find.byKey(const Key('refunded-inv_lapsed')), findsOneWidget);
