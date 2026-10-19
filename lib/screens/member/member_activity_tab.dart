@@ -12,7 +12,9 @@ import '../../shared/activity/workout.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
+import '../../shared/photo_hero_flag.dart';
 import 'member_shell.dart';
+import 'widgets/home_hero.dart';
 import 'widgets/phone_steps_card.dart';
 import 'widgets/run_widgets.dart';
 import 'widgets/activity_widgets.dart';
@@ -42,13 +44,190 @@ class MemberActivityTab extends StatefulWidget {
   State<MemberActivityTab> createState() => _MemberActivityTabState();
 }
 
+/// PHOTO_HERO_UI: each section's photo and headline keys (spec §24).
+const activityHeroSections = <String, (FFHeroPhoto, String)>{
+  'overview': (FFHeroPhoto.activityToday, 'hero.activity.today'),
+  'workouts': (FFHeroPhoto.activityTraining, 'hero.activity.training'),
+  'challenges': (FFHeroPhoto.activityChallenges, 'hero.activity.challenges'),
+  'progress': (FFHeroPhoto.activityProgress, 'hero.activity.progress'),
+};
+
 class _MemberActivityTabState extends State<MemberActivityTab> {
   late String _section = widget.initialSection;
+  final _heroKey = GlobalKey();
+  bool _precached = false;
+
+  /// Same rule as today for the page header's Log activity button.
+  bool _showLog(MemberData data) =>
+      data.activityLoaded &&
+      (data.activities.isNotEmpty || _section != 'overview');
+
+  /// The hero's height: fixed, so switching sections never moves the
+  /// segmented control (spec §24).
+  double _heroHeight(BuildContext context, double topInset) =>
+      topInset +
+      (Theme.of(context).brightness == Brightness.dark ? 228.0 : 252.0);
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (photoHeroUi && !_precached) {
+      _precached = true;
+      // All four photos at the hero's exact size, so a switch never shows
+      // the placeholder.
+      final data = MemberDataScope.of(context);
+      final width = MediaQuery.sizeOf(context).width;
+      final topInset = memberHeroTopInset(context, data);
+      precacheHeroPhotos(context, [
+        for (final v in activityHeroSections.values) v.$1,
+      ], box: Size(width, _heroHeight(context, topInset)));
+    }
+  }
+
+  Widget _hero(BuildContext context, MemberData data, {bool panel = false}) {
+    final (photo, key) = activityHeroSections[_section]!;
+    Widget logButton(Key? k) => FFButton(
+      key: k,
+      label: context.tr('logActivity.open'),
+      onPressed: () => openLogActivity(context),
+      variant: FFButtonVariant.onPhoto,
+      size: FFButtonSize.sm,
+      icon: Icons.add,
+    );
+    final topInset = memberHeroTopInset(context, data);
+    return FFPhotoHero(
+      key: const Key('activity-hero'),
+      photo: photo,
+      variant: panel ? FFHeroVariant.panel : FFHeroVariant.compact,
+      rounded: panel,
+      minHeight: panel ? 200 : _heroHeight(context, topInset),
+      topInset: panel ? 0 : topInset,
+      eyebrow: context.tr('activity.title'),
+      headlineLead: context.tr('$key.lead'),
+      headlineAccent: context.tr('$key.accent'),
+      // Room for the tallest section headline: the hero keeps one height.
+      headlineReserve: [
+        for (final (_, k) in activityHeroSections.values)
+          (context.tr('$k.lead'), context.tr('$k.accent')),
+      ],
+      actions: [
+        if (_showLog(data))
+          logButton(const Key('activity-log-open'))
+        else if (data.activityLoaded)
+          // Hidden on an empty Today (today's rule), but its room is kept
+          // so switching sections does not change the hero's height.
+          Visibility(
+            visible: false,
+            maintainSize: true,
+            maintainAnimation: true,
+            maintainState: true,
+            child: logButton(null),
+          ),
+      ],
+    );
+  }
+
+  /// Everything below the hero: the same as today, minus the page header.
+  List<Widget> _sheet(BuildContext context, MemberData data, DateTime today) =>
+      [
+        if (data.activityIsSample)
+          const Padding(
+            padding: EdgeInsets.only(bottom: FFTokens.spacingSm),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: ActivitySampleBadge(),
+            ),
+          ),
+        _sections(context),
+        const SizedBox(height: FFTokens.spacingMd),
+        ..._sectionContent(context, data, today),
+      ];
+
+  Widget _sections(BuildContext context) => SizedBox(
+    width: double.infinity,
+    child: FFSegmented(
+      key: const Key('activity-sections'),
+      value: _section,
+      options: [
+        ('overview', context.tr('activity.overview')),
+        ('workouts', context.tr('activity.workouts')),
+        ('challenges', context.tr('activity.challenges')),
+        ('progress', context.tr('activity.progress')),
+      ],
+      onChanged: (v) => setState(() => _section = v),
+    ),
+  );
+
+  List<Widget> _sectionContent(
+    BuildContext context,
+    MemberData data,
+    DateTime today,
+  ) => [
+    if (!data.activityLoaded)
+      const Padding(
+        padding: EdgeInsets.all(FFTokens.spacingXl),
+        child: Center(child: FFSpinner(size: 32)),
+      )
+    else
+      ...switch (_section) {
+        'workouts' => _workouts(context, data, today),
+        'challenges' => buildChallengesSection(context, data, today),
+        'progress' => buildProgressSection(context, data, today),
+        _ => _overview(context, data.activities, data.goals, today),
+      },
+  ];
+
+  /// PHOTO_HERO_UI: the section's photo hero leads; the rest sits on the
+  /// ground (dark) or an overlapping sheet (light).
+  Widget _buildPhotoHero(
+    BuildContext context,
+    MemberData data,
+    DateTime today,
+  ) {
+    if (MediaQuery.sizeOf(context).width >= 840) {
+      return ListView(
+        key: const Key('activity-scroll'),
+        padding: const EdgeInsets.all(FFTokens.spacingLg),
+        children: [
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 960),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _hero(context, data, panel: true),
+                  const SizedBox(height: FFTokens.spacingLg),
+                  ..._sheet(context, data, today),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+    return HeroTabScroll(
+      heroKey: _heroKey,
+      child: ListView(
+        key: const Key('activity-scroll'),
+        padding: EdgeInsets.zero,
+        children: [
+          KeyedSubtree(key: _heroKey, child: _hero(context, data)),
+          FFHeroSheet(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: _sheet(context, data, today),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final data = MemberDataScope.of(context);
     final today = widget.now ?? DateTime.now();
+    if (photoHeroUi) return _buildPhotoHero(context, data, today);
 
     return ListView(
       key: const Key('activity-scroll'),

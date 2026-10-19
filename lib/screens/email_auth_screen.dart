@@ -11,6 +11,7 @@ import '../shared/components/components.dart';
 import '../shared/design_tokens.dart';
 import '../shared/firebase_auth_service.dart';
 import '../shared/i18n.dart';
+import '../shared/photo_hero_flag.dart';
 import '../shared/pin_credentials.dart';
 import 'account_recovery.dart';
 import 'pin_flows.dart';
@@ -285,22 +286,155 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
     }
   }
 
+  void _back() {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go(AppRoutes.auth);
+    }
+  }
+
+  /// PHOTO_HERO_UI shows the hero only from this viewport height up; below
+  /// it (and above 1.15x text) the screen is today's, so OK never leaves the
+  /// screen (spec §22.1, C-6).
+  static const heroMinViewportHeight = 760.0;
+
+  Widget _showHideToggle(BuildContext context) => IconButton(
+    tooltip: _obscurePin
+        ? context.tr('a11y.showPin')
+        : context.tr('a11y.hidePin'),
+    icon: Icon(
+      _obscurePin ? Icons.visibility : Icons.visibility_off,
+      color: Theme.of(context).textTheme.bodySmall?.color,
+    ),
+    onPressed: () {
+      setState(() => _obscurePin = !_obscurePin);
+    },
+  );
+
+  /// Forgot PIN and the recovery links (unchanged conditions).
+  List<Widget> _links(BuildContext context) => [
+    if (widget.initialMode == EmailAuthMode.signIn && _resetOffered(context))
+      Center(
+        child: TextButton(
+          key: const Key('forgot-pin'),
+          onPressed: _busy || !AppScope.of(context).auth.pinResetEnabled
+              ? null
+              : _forgotPin,
+          child: Text(
+            context.tr('auth.forgotPin'),
+            style: TextStyle(
+              color: Theme.of(context).textTheme.bodySmall?.color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ),
+    if (widget.initialMode == EmailAuthMode.signIn &&
+        _resetOffered(context) &&
+        AppScope.of(context).auth.pinResetEnabled) ...[
+      Center(
+        child: FFButton(
+          key: const Key('recovery-link'),
+          label: context.tr('rec.link'),
+          onPressed: _busy ? null : _recover,
+          variant: FFButtonVariant.ghost,
+          size: FFButtonSize.sm,
+        ),
+      ),
+      if (_recoveryToken != null)
+        Center(
+          child: FFButton(
+            key: const Key('recovery-check'),
+            label: context.tr('rec.check'),
+            onPressed: _busy ? null : _checkRecovery,
+            variant: FFButtonVariant.ghost,
+            size: FFButtonSize.sm,
+          ),
+        ),
+    ],
+  ];
+
+  /// PHOTO_HERO_UI: keypad first. The hero takes what the dots, keypad and
+  /// links leave; none of them ever sits on the photo.
+  Widget _buildPhotoHero(BuildContext context) {
+    final signUp = widget.initialMode == EmailAuthMode.signUp;
+    // 4 rows of 68 (52px keys) on tall phones, 60 (44px keys) below.
+    final rowHeight = MediaQuery.sizeOf(context).height >= 844 ? 68.0 : 60.0;
+    return FFPhotoHeroPage(
+      pinnedContent: true,
+      heroMinViewportHeight: heroMinViewportHeight,
+      maxHeroTextScale: 1.15,
+      fallback: _buildToday,
+      contentMaxWidth: 400,
+      leading: IconButton(
+        tooltip: context.tr('a11y.back'),
+        icon: const Icon(Icons.arrow_back),
+        onPressed: _busy ? null : _back,
+      ),
+      actions: const [AppPrefsButtons()],
+      hero: (context, f) => FFPhotoHero(
+        key: const Key('pin-hero'),
+        photo: FFHeroPhoto.pin,
+        variant: f.variant,
+        minHeight: f.minHeight,
+        topInset: f.topInset,
+        wideHeadline: f.wide,
+        eyebrow: context.tr(signUp ? 'auth.createPin' : 'auth.verificationPin'),
+        headlineLead: context.tr(
+          signUp ? 'hero.pin.create.lead' : 'hero.pin.signIn.lead',
+        ),
+        headlineAccent: context.tr(
+          signUp ? 'hero.pin.create.accent' : 'hero.pin.signIn.accent',
+        ),
+        // The number or email typed on Sign in.
+        subline: widget.initialEmail.isEmpty ? null : widget.initialEmail,
+      ),
+      content: Column(
+        key: const Key('pin-pinned-content'),
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Stack(
+            alignment: Alignment.centerRight,
+            children: [
+              PinInputRow(pin: _pin, obscure: _obscurePin),
+              _showHideToggle(context),
+            ],
+          ),
+          const SizedBox(height: FFTokens.spacingMd),
+          SizedBox(
+            key: const Key('pin-keypad-box'),
+            height: rowHeight * 4,
+            child: CustomKeypad(
+              onDigit: _onDigit,
+              onDelete: _onDelete,
+              onOk: _submit,
+              okEnabled: _pin.length >= _minPinLength,
+              isLoading: _busy,
+            ),
+          ),
+          const SizedBox(height: FFTokens.spacingSm),
+          ..._links(context),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (photoHeroUi) return _buildPhotoHero(context);
+    return _buildToday(context);
+  }
+
+  /// Today's layout (flag off, short screens, large text).
+  Widget _buildToday(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
           tooltip: context.tr('a11y.back'),
           icon: const Icon(Icons.arrow_back),
-          onPressed: _busy
-              ? null
-              : () {
-                  if (context.canPop()) {
-                    context.pop();
-                  } else {
-                    context.go(AppRoutes.auth);
-                  }
-                },
+          onPressed: _busy ? null : _back,
         ),
         actions: const [AppPrefsButtons()],
       ),
@@ -340,18 +474,7 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
                     alignment: Alignment.centerRight,
                     children: [
                       PinInputRow(pin: _pin, obscure: _obscurePin),
-                      IconButton(
-                        tooltip: _obscurePin
-                            ? context.tr('a11y.showPin')
-                            : context.tr('a11y.hidePin'),
-                        icon: Icon(
-                          _obscurePin ? Icons.visibility : Icons.visibility_off,
-                          color: Theme.of(context).textTheme.bodySmall?.color,
-                        ),
-                        onPressed: () {
-                          setState(() => _obscurePin = !_obscurePin);
-                        },
-                      ),
+                      _showHideToggle(context),
                     ],
                   ),
                   const SizedBox(height: FFTokens.spacingXl * 1.5),
@@ -365,47 +488,7 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
                     ),
                   ),
                   const SizedBox(height: FFTokens.spacingLg),
-                  if (widget.initialMode == EmailAuthMode.signIn &&
-                      _resetOffered(context))
-                    Center(
-                      child: TextButton(
-                        key: const Key('forgot-pin'),
-                        onPressed:
-                            _busy || !AppScope.of(context).auth.pinResetEnabled
-                            ? null
-                            : _forgotPin,
-                        child: Text(
-                          context.tr('auth.forgotPin'),
-                          style: TextStyle(
-                            color: Theme.of(context).textTheme.bodySmall?.color,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  if (widget.initialMode == EmailAuthMode.signIn &&
-                      _resetOffered(context) &&
-                      AppScope.of(context).auth.pinResetEnabled) ...[
-                    Center(
-                      child: FFButton(
-                        key: const Key('recovery-link'),
-                        label: context.tr('rec.link'),
-                        onPressed: _busy ? null : _recover,
-                        variant: FFButtonVariant.ghost,
-                        size: FFButtonSize.sm,
-                      ),
-                    ),
-                    if (_recoveryToken != null)
-                      Center(
-                        child: FFButton(
-                          key: const Key('recovery-check'),
-                          label: context.tr('rec.check'),
-                          onPressed: _busy ? null : _checkRecovery,
-                          variant: FFButtonVariant.ghost,
-                          size: FFButtonSize.sm,
-                        ),
-                      ),
-                  ],
+                  ..._links(context),
                   const SizedBox(height: FFTokens.spacingMd),
                 ],
               ),

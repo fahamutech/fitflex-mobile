@@ -12,6 +12,7 @@ import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
+import '../../shared/photo_hero_flag.dart';
 import '../../shared/product_categories.dart';
 import '../../shared/tone_theme.dart';
 import '../../shared/widgets/product_category_picker.dart';
@@ -60,6 +61,79 @@ class _VendorHomePageState extends State<VendorHomePage> {
   VendorTools _tools = VendorTools.off;
   LowStockIndex _low = LowStockIndex.empty();
   late bool _lowOnly = widget.filter == 'low';
+
+  // PHOTO_HERO_UI (spec §25.2): a band hero on Products only.
+  final _heroKey = GlobalKey();
+  bool _heroVisible = true;
+  int? _heroTab;
+  bool _precached = false;
+
+  bool _heroOn(int tab) => photoHeroUi && tab == 0 && !_staffDisabled;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (photoHeroUi && !_precached) {
+      _precached = true;
+      precacheHeroPhotos(context, const [FFHeroPhoto.vendor]);
+    }
+  }
+
+  /// The FAB comes back once at least half of the hero has scrolled away;
+  /// until then the hero's Add product is the one on screen.
+  bool _onProductsScroll(ScrollNotification n) {
+    if (n.depth != 0) return false;
+    final h = _heroKey.currentContext?.size?.height ?? 0;
+    final visible = h == 0 || n.metrics.pixels < h / 2;
+    if (visible != _heroVisible) setState(() => _heroVisible = visible);
+    return false;
+  }
+
+  Widget _hero({bool loading = false}) {
+    final name = _profile['businessName']?.toString().trim() ?? '';
+    final pending = _pendingApproval;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
+      child: KeyedSubtree(
+        key: _heroKey,
+        child: FFHeroBand(
+          key: const Key('vendor-hero'),
+          photo: FFHeroPhoto.vendor,
+          eyebrow: name.isEmpty ? context.tr('vendor.title') : name,
+          headlineLoading: loading,
+          headlineLead: loading
+              ? null
+              : context.tr(
+                  pending ? 'hero.vendor.pending.lead' : 'hero.vendor.lead',
+                ),
+          headlineAccent: loading
+              ? null
+              : context.tr(
+                  pending ? 'hero.vendor.pending.accent' : 'hero.vendor.accent',
+                ),
+          actions: [
+            if (!loading)
+              FFButton(
+                key: const Key('vendor-add-product'),
+                label: context.tr('vendor.addProduct'),
+                icon: Icons.add,
+                onPressed: _busy ? null : () => _editProduct(),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// What leads the Products list under the flag: the hero, then the
+  /// pending banner (unchanged) directly under it.
+  List<Widget> _productsLead() => [
+    _hero(),
+    if (_pendingApproval) ...[
+      _pendingBannerCard(),
+      const SizedBox(height: FFTokens.spacingMd),
+    ],
+  ];
 
   bool get _ledger => _tools.stockLedger && _can('products');
 
@@ -451,6 +525,11 @@ class _VendorHomePageState extends State<VendorHomePage> {
     // The tab starts at Products; show the first section this user may use
     // when Products is not one of them.
     final tab = sections.contains(_tab) ? _tab : sections.first;
+    // A tab opens at its top, so the Products hero is in view again.
+    if (tab != _heroTab) {
+      _heroTab = tab;
+      _heroVisible = true;
+    }
     return Scaffold(
       appBar: AppBar(
         title: Text(context.tr('vendor.title')),
@@ -475,8 +554,10 @@ class _VendorHomePageState extends State<VendorHomePage> {
         children: [
           ListenableBuilder(
             listenable: AppScope.of(context).auth,
-            builder: (context, _) =>
-                _pendingApproval ? _pendingBanner() : const SizedBox.shrink(),
+            // Under the flag the Products hero carries it, just below.
+            builder: (context, _) => _pendingApproval && !_heroOn(tab)
+                ? _pendingBanner()
+                : const SizedBox.shrink(),
           ),
           if (_staffDisabled)
             Padding(
@@ -493,11 +574,24 @@ class _VendorHomePageState extends State<VendorHomePage> {
               ),
             ),
           Expanded(
-            child: _loading
+            child: _loading && _heroOn(tab)
+                ? ListView(
+                    padding: const EdgeInsets.all(FFTokens.spacingLg),
+                    children: [
+                      _hero(loading: true),
+                      const Center(child: FFSpinner()),
+                    ],
+                  )
+                : _loading
                 ? const Center(child: FFSpinner())
                 : RefreshIndicator(
                     onRefresh: () => _refresh(askTools: true),
                     child: switch (tab) {
+                      0 when _heroOn(tab) =>
+                        NotificationListener<ScrollNotification>(
+                          onNotification: _onProductsScroll,
+                          child: _productsTab(),
+                        ),
                       0 => _productsTab(),
                       1 => _ordersTab(),
                       2 => _paymentsTab(),
@@ -509,7 +603,10 @@ class _VendorHomePageState extends State<VendorHomePage> {
           ),
         ],
       ),
-      floatingActionButton: tab == 0
+      // Exactly one "vendor-add-product" at a time: the hero's while the
+      // hero shows, this one otherwise.
+      floatingActionButton:
+          tab == 0 && !(_heroOn(tab) && (_loading || _heroVisible))
           ? FloatingActionButton.extended(
               key: const Key('vendor-add-product'),
               onPressed: _busy ? null : () => _editProduct(),
@@ -600,44 +697,50 @@ class _VendorHomePageState extends State<VendorHomePage> {
       FFTokens.spacingLg,
       0,
     ),
-    child: FFCard(
-      key: const Key('vendor-pending-banner'),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(
-                Icons.hourglass_top_outlined,
-                size: 20,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              const SizedBox(width: FFTokens.spacingSm),
-              Expanded(child: Text(context.tr('vendor.pendingBanner'))),
-            ],
-          ),
-          const SizedBox(height: FFTokens.spacingSm),
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: FFButton(
-              key: const Key('vendor-pending-verification'),
-              label: context.tr('kyc.entry.title'),
-              onPressed: () => context.push(AppRoutes.verification),
-              variant: FFButtonVariant.secondary,
-              icon: Icons.verified_user_outlined,
+    child: _pendingBannerCard(),
+  );
+
+  Widget _pendingBannerCard() => FFCard(
+    key: const Key('vendor-pending-banner'),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              Icons.hourglass_top_outlined,
+              size: 20,
+              color: Theme.of(context).colorScheme.primary,
             ),
+            const SizedBox(width: FFTokens.spacingSm),
+            Expanded(child: Text(context.tr('vendor.pendingBanner'))),
+          ],
+        ),
+        const SizedBox(height: FFTokens.spacingSm),
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: FFButton(
+            key: const Key('vendor-pending-verification'),
+            label: context.tr('kyc.entry.title'),
+            onPressed: () => context.push(AppRoutes.verification),
+            variant: FFButtonVariant.secondary,
+            icon: Icons.verified_user_outlined,
           ),
-        ],
-      ),
+        ),
+      ],
     ),
   );
 
   Widget _productsTab() {
+    final lead = _heroOn(0) ? _productsLead() : const <Widget>[];
     if (_products.isEmpty) {
       return ListView(
         padding: const EdgeInsets.all(FFTokens.spacingLg),
-        children: [FFEmptyState(title: context.tr('vendor.noProducts'))],
+        children: [
+          ...lead,
+          FFEmptyState(title: context.tr('vendor.noProducts')),
+        ],
       );
     }
     final ledger = _ledger;
@@ -655,10 +758,13 @@ class _VendorHomePageState extends State<VendorHomePage> {
         vendorFabClearance,
       ),
       itemCount:
+          lead.length +
           products.length +
           (showFilter ? 1 : 0) +
           (lowOnly && products.isEmpty ? 1 : 0),
       itemBuilder: (context, index) {
+        if (index < lead.length) return lead[index];
+        index -= lead.length;
         if (showFilter) {
           if (index == 0) return _stockFilter();
           index -= 1;

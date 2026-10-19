@@ -11,8 +11,10 @@ import '../../shared/design_tokens.dart';
 import '../../shared/firebase_auth_service.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
+import '../../shared/photo_hero_flag.dart';
 import '../../shared/pin_credentials.dart';
 import 'member_shell.dart';
+import 'widgets/home_hero.dart';
 import 'widgets/membership_card.dart';
 import 'widgets/pass_state.dart';
 import 'member_edit_profile_page.dart';
@@ -29,6 +31,7 @@ class MemberProfileTab extends StatefulWidget {
 }
 
 class _MemberProfileTabState extends State<MemberProfileTab> {
+  final _heroKey = GlobalKey();
   String? _pinError(String value) {
     if (value.trim().isEmpty) return context.tr('onboarding.required');
     if (!RegExp(r'^\d+$').hasMatch(value)) {
@@ -244,12 +247,35 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
   Widget build(BuildContext context) {
     final data = MemberDataScope.of(context);
     final me = data.me;
-    final displayName = me?.user.resolvedName ?? 'Member';
+    final displayName =
+        me?.user.resolvedName ?? context.tr('member.nameFallback');
     final passState = passStateFor(data);
     final stateMessage = passState == PassState.active
         ? null
         : passStateMessage(context, data, passState);
     final tier = data.subscription?.tier;
+    final badge = FFBadge(
+      key: const Key('profile-plan-badge'),
+      label: data.subscription?.isDirect == true
+          ? context.tr('member.plan_${data.subscription?.plan ?? 'monthly'}')
+          : passState == PassState.pending
+          ? context.tr('pass.pending')
+          : tier != null && tier.isNotEmpty
+          ? _tierLabel(context, tier)
+          : context.tr('pass.state.noPass'),
+      tone: passState.badgeTone,
+      dot: true,
+    );
+    if (photoHeroUi) {
+      return _buildPhotoHero(
+        context,
+        data,
+        displayName: displayName,
+        badge: badge,
+        stateMessage: stateMessage,
+        passState: passState,
+      );
+    }
 
     return ListView(
       padding: const EdgeInsets.all(FFTokens.spacingLg),
@@ -275,19 +301,7 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    FFBadge(
-                      label: data.subscription?.isDirect == true
-                          ? context.tr(
-                              'member.plan_${data.subscription?.plan ?? 'monthly'}',
-                            )
-                          : passState == PassState.pending
-                          ? context.tr('pass.pending')
-                          : tier != null && tier.isNotEmpty
-                          ? _tierLabel(context, tier)
-                          : context.tr('pass.state.noPass'),
-                      tone: passState.badgeTone,
-                      dot: true,
-                    ),
+                    badge,
                   ],
                 ),
               ),
@@ -311,68 +325,193 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
         MembershipCard(subscription: data.subscription),
         const SizedBox(height: 12),
 
-        // Settings
-        FFSectionTitle(context.tr('member.accountSettings')),
-        FFActionTile(
-          key: const Key('profile-edit'),
-          icon: Icons.edit,
-          title: context.tr('member.editProfile'),
-          subtitle: context.tr('member.editProfileSubtitle'),
-          onTap: _openEditProfile,
-        ),
-        FFActionTile(
-          key: const Key('profile-community'),
-          icon: Icons.people_outline,
-          title: context.tr('community.title'),
-          subtitle: context.tr('community.profileHint'),
-          onTap: () => context.push(AppRoutes.memberCommunity),
-        ),
-        FFActionTile(
-          key: const Key('profile-benefits'),
-          icon: Icons.volunteer_activism_outlined,
-          title: context.tr('benefits.title'),
-          subtitle: context.tr('benefits.tile'),
-          onTap: () => context.push(AppRoutes.memberBenefits),
-        ),
-        FFActionTile(
-          key: const Key('profile-sessions'),
-          icon: Icons.event_repeat_outlined,
-          title: context.tr('sessions.title'),
-          subtitle: context.tr('sessions.tile'),
-          onTap: () => context.push(AppRoutes.memberSessions),
-        ),
-        FFActionTile(
-          key: const Key('profile-privacy'),
-          icon: Icons.privacy_tip_outlined,
-          title: context.tr('privacy.title'),
-          onTap: () => context.go(AppRoutes.memberPrivacy),
-        ),
-        FFActionTile(
-          icon: Icons.lock_outline,
-          title: context.tr('member.changePin'),
-          onTap: _openChangePinDialog,
-        ),
-        FFActionTile(
-          icon: Icons.help_outline,
-          title: context.tr('member.help'),
-          onTap: _openWhatsAppSupport,
-        ),
-        const InvitationsTile(),
-        const ContactDetailsTile(),
-        const PersonaSwitcherTile(),
-        const SizedBox(height: 16),
-        OutlinedButton.icon(
-          onPressed: _confirmSignOut,
-          icon: Icon(
-            Icons.logout,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
-          label: Text(
-            context.tr('home.signout'),
-            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-          ),
-        ),
+        ..._settings(context),
       ],
+    );
+  }
+
+  /// Account settings, the tiles and Sign out (the same in both layouts).
+  List<Widget> _settings(BuildContext context) => [
+    // Settings
+    FFSectionTitle(context.tr('member.accountSettings')),
+    FFActionTile(
+      key: const Key('profile-edit'),
+      icon: Icons.edit,
+      title: context.tr('member.editProfile'),
+      subtitle: context.tr('member.editProfileSubtitle'),
+      onTap: _openEditProfile,
+    ),
+    FFActionTile(
+      key: const Key('profile-community'),
+      icon: Icons.people_outline,
+      title: context.tr('community.title'),
+      subtitle: context.tr('community.profileHint'),
+      onTap: () => context.push(AppRoutes.memberCommunity),
+    ),
+    FFActionTile(
+      key: const Key('profile-benefits'),
+      icon: Icons.volunteer_activism_outlined,
+      title: context.tr('benefits.title'),
+      subtitle: context.tr('benefits.tile'),
+      onTap: () => context.push(AppRoutes.memberBenefits),
+    ),
+    FFActionTile(
+      key: const Key('profile-sessions'),
+      icon: Icons.event_repeat_outlined,
+      title: context.tr('sessions.title'),
+      subtitle: context.tr('sessions.tile'),
+      onTap: () => context.push(AppRoutes.memberSessions),
+    ),
+    FFActionTile(
+      key: const Key('profile-privacy'),
+      icon: Icons.privacy_tip_outlined,
+      title: context.tr('privacy.title'),
+      onTap: () => context.go(AppRoutes.memberPrivacy),
+    ),
+    FFActionTile(
+      icon: Icons.lock_outline,
+      title: context.tr('member.changePin'),
+      onTap: _openChangePinDialog,
+    ),
+    FFActionTile(
+      icon: Icons.help_outline,
+      title: context.tr('member.help'),
+      onTap: _openWhatsAppSupport,
+    ),
+    const InvitationsTile(),
+    const ContactDetailsTile(),
+    const PersonaSwitcherTile(),
+    const SizedBox(height: 16),
+    OutlinedButton.icon(
+      onPressed: _confirmSignOut,
+      icon: Icon(Icons.logout, color: Theme.of(context).colorScheme.onSurface),
+      label: Text(
+        context.tr('home.signout'),
+        style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+      ),
+    ),
+  ];
+
+  /// PHOTO_HERO_UI (spec §21): avatar and name on a compact hero under the
+  /// shell's transparent bar; the plan badge leads the solid content.
+  Widget _buildPhotoHero(
+    BuildContext context,
+    MemberData data, {
+    required String displayName,
+    required Widget badge,
+    required String? stateMessage,
+    required PassState passState,
+  }) {
+    final me = data.me;
+    final loading = me == null && !data.offline && !data.meLoadFailed;
+    final wide = MediaQuery.sizeOf(context).width >= 840;
+    final scale = MediaQuery.textScalerOf(context).scale(1);
+    final avatar = Container(
+      key: const Key('profile-hero-avatar'),
+      padding: const EdgeInsets.all(2),
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        // 10.6:1 on the 80% scrim, so the edge shows on any photo.
+        border: Border.fromBorderSide(
+          BorderSide(color: FFTokens.heroText, width: 2),
+        ),
+      ),
+      child: loading
+          ? const ClipOval(
+              child: SizedBox(
+                width: 48,
+                height: 48,
+                child: FFSkeleton(width: 48, height: 48, radius: 24),
+              ),
+            )
+          : FFAvatar(
+              name: displayName,
+              src: me?.user.photoUrl,
+              size: FFAvatarSize.lg,
+            ),
+    );
+    final height = MediaQuery.sizeOf(context).height;
+    final topInset = memberHeroTopInset(context, data);
+    final hero = FFPhotoHero(
+      key: const Key('profile-hero'),
+      photo: FFHeroPhoto.profile,
+      variant: wide ? FFHeroVariant.panel : FFHeroVariant.compact,
+      rounded: wide,
+      minHeight: wide ? 0 : (height * 0.3).clamp(240.0, double.infinity),
+      topInset: wide ? 0 : topInset,
+      leading: avatar,
+      eyebrow: context.tr('member.profile'),
+      // The name, no accent: an accent-coloured name reads as a link.
+      headlineLead: loading ? null : displayName,
+      headlineLoading: loading,
+      headlineMaxLines: scale > 1.15 ? 3 : 2,
+    );
+    final content = <Widget>[
+      // Nothing loaded yet: no plan to name (never "No pass yet").
+      if (me != null) ...[
+        Align(alignment: Alignment.centerLeft, child: badge),
+        const SizedBox(height: 12),
+      ] else if (loading) ...[
+        const Align(
+          alignment: Alignment.centerLeft,
+          child: FFSkeleton(
+            key: Key('profile-badge-loading'),
+            width: 120,
+            height: 24,
+          ),
+        ),
+        const SizedBox(height: 12),
+      ],
+      if (me != null && stateMessage != null) ...[
+        FFAlert(
+          key: const Key('profile-pass-state'),
+          message: stateMessage,
+          tone: passState.tone == PassTone.neutral
+              ? FFAlertTone.info
+              : FFAlertTone.warning,
+        ),
+        const SizedBox(height: 12),
+      ],
+      MembershipCard(subscription: data.subscription),
+      const SizedBox(height: 12),
+      ..._settings(context),
+    ];
+    if (wide) {
+      return ListView(
+        key: const Key('profile-scroll'),
+        padding: const EdgeInsets.all(FFTokens.spacingLg),
+        children: [
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 960),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  hero,
+                  const SizedBox(height: FFTokens.spacingLg),
+                  ...content,
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+    return HeroTabScroll(
+      heroKey: _heroKey,
+      child: ListView(
+        key: const Key('profile-scroll'),
+        padding: EdgeInsets.zero,
+        children: [
+          KeyedSubtree(key: _heroKey, child: hero),
+          FFHeroSheet(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: content,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

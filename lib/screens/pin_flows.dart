@@ -13,6 +13,7 @@ import '../shared/components/components.dart';
 import '../shared/design_tokens.dart';
 import '../shared/i18n.dart';
 import '../shared/pending_org_invite.dart';
+import '../shared/photo_hero_flag.dart';
 
 // Identity V2 · I7d: registering, signing in and recovering a PIN that
 // FitFlex keeps. A mobile number or email is proved once with a code; after
@@ -335,6 +336,52 @@ class _ChoosePinStepState extends State<ChoosePinStep> {
   }
 }
 
+/// PHOTO_HERO_UI (spec §22.2): Register, Forgot PIN and PIN setup share the
+/// `pin` photo. [keypad] steps pin their content under the hero and drop
+/// the hero where it would push OK below the fold; text steps scroll (the
+/// hero scrolls away when the keyboard opens). [headline] is a `.lead` /
+/// `.accent` key pair, or null for the eyebrow alone.
+Widget _flowScreen(
+  BuildContext context, {
+  required String title,
+  required Widget child,
+  String? headline,
+  bool keypad = false,
+}) {
+  if (!photoHeroUi) return _flowScaffold(context, title: title, child: child);
+  return FFPhotoHeroPage(
+    phoneFraction: 0.30,
+    shortPhoneFraction: 0.30,
+    phoneMinHeight: 220,
+    pinnedContent: keypad,
+    heroMinViewportHeight: keypad ? 800 : null,
+    maxHeroTextScale: keypad ? 1.15 : null,
+    fallback: keypad
+        ? (context) => _flowScaffold(context, title: title, child: child)
+        : null,
+    contentMaxWidth: 400,
+    leading: Builder(
+      builder: (context) => IconButton(
+        tooltip: context.tr('a11y.back'),
+        icon: const Icon(Icons.arrow_back),
+        onPressed: () => Navigator.of(context).maybePop(),
+      ),
+    ),
+    hero: (context, f) => FFPhotoHero(
+      key: const Key('pin-flow-hero'),
+      photo: FFHeroPhoto.pin,
+      variant: f.variant,
+      minHeight: f.minHeight,
+      topInset: f.topInset,
+      wideHeadline: f.wide,
+      eyebrow: title,
+      headlineLead: headline == null ? null : context.tr('$headline.lead'),
+      headlineAccent: headline == null ? null : context.tr('$headline.accent'),
+    ),
+    content: child,
+  );
+}
+
 Widget _flowScaffold(
   BuildContext context, {
   required String title,
@@ -493,9 +540,15 @@ class _RegisterFlowScreenState extends State<RegisterFlowScreen> {
         ],
       );
     }
-    return _flowScaffold(
+    return _flowScreen(
       context,
       title: context.tr('pin.registerTitle'),
+      headline: _token != null
+          ? 'hero.pin.create'
+          : _sentTo != null
+          ? 'hero.pin.code'
+          : null,
+      keypad: _token != null,
       child: step,
     );
   }
@@ -632,9 +685,11 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
         ],
       );
     }
-    return _flowScaffold(
+    return _flowScreen(
       context,
       title: context.tr('pin.forgotTitle'),
+      headline: _token != null ? 'hero.pin.create' : 'hero.pin.reset',
+      keypad: _token != null,
       child: step,
     );
   }
@@ -711,9 +766,11 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
   @override
   Widget build(BuildContext context) {
     final askCode = widget.needsCode && _code == null;
-    return _flowScaffold(
+    return _flowScreen(
       context,
       title: context.tr('pin.setupTitle'),
+      headline: askCode ? 'hero.pin.code' : 'hero.pin.create',
+      keypad: !askCode,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

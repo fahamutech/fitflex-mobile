@@ -31,7 +31,16 @@ class FFPhotoHeroPage extends StatefulWidget {
     this.shortPhoneFraction = 0.34,
     this.phoneMinHeight = 240,
     this.phoneVariant = FFHeroVariant.compact,
-  });
+    this.pinnedContent = false,
+    this.heroMinViewportHeight,
+    this.maxHeroTextScale,
+    this.fallback,
+    this.contentMaxWidth = 420,
+  }) : assert(
+         (heroMinViewportHeight == null && maxHeroTextScale == null) ||
+             fallback != null,
+         'a page that can drop its hero needs the no-hero layout',
+       );
 
   /// Builds the hero for the frame this layout picked.
   final Widget Function(BuildContext context, FFHeroFrame frame) hero;
@@ -50,6 +59,22 @@ class FFPhotoHeroPage extends StatefulWidget {
 
   /// [FFHeroVariant.full] or [FFHeroVariant.compact] below 1024 wide.
   final FFHeroVariant phoneVariant;
+
+  /// The content keeps its own height at the bottom of the screen and the
+  /// hero takes what is left; nothing scrolls (the PIN keypad, spec C-6).
+  final bool pinnedContent;
+
+  /// Below this viewport height (narrower than 1024), the page is drawn by
+  /// [fallback] instead: today's layout, no hero. Used where a hero would
+  /// push a control below the fold.
+  final double? heroMinViewportHeight;
+
+  /// Above this text scale the page is drawn by [fallback] too.
+  final double? maxHeroTextScale;
+
+  /// Today's layout, for when the hero is dropped.
+  final WidgetBuilder? fallback;
+  final double contentMaxWidth;
 
   @override
   State<FFPhotoHeroPage> createState() => _FFPhotoHeroPageState();
@@ -71,9 +96,18 @@ class _FFPhotoHeroPageState extends State<FFPhotoHeroPage> {
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
     final width = size.width;
+    if (width < 1024 && widget.fallback != null) {
+      final minH = widget.heroMinViewportHeight;
+      final maxScale = widget.maxHeroTextScale;
+      if ((minH != null && size.height < minH) ||
+          (maxScale != null &&
+              MediaQuery.textScalerOf(context).scale(1) > maxScale)) {
+        return widget.fallback!(context);
+      }
+    }
     final ground = Theme.of(context).scaffoldBackgroundColor;
     final content = ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 420),
+      constraints: BoxConstraints(maxWidth: widget.contentMaxWidth),
       child: widget.content,
     );
 
@@ -155,6 +189,67 @@ class _FFPhotoHeroPageState extends State<FFPhotoHeroPage> {
     final onPhoto = !_solid;
     Widget bar(Widget w) => onPhoto ? FFOnPhotoTheme(child: w) : w;
 
+    final Widget body;
+    if (widget.pinnedContent) {
+      // The hero fills what the content leaves; if the text needs more, the
+      // photo's top edge is cut, never the text or the content.
+      body = Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, c) => ClipRect(
+                child: OverflowBox(
+                  alignment: Alignment.bottomCenter,
+                  minHeight: c.maxHeight,
+                  maxHeight: double.infinity,
+                  child: KeyedSubtree(
+                    key: _heroKey,
+                    child: widget.hero(context, (
+                      variant: widget.phoneVariant,
+                      minHeight: c.maxHeight,
+                      topInset: topInset,
+                      wide: false,
+                    )),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          FFHeroSheet(
+            padding: EdgeInsets.fromLTRB(
+              FFTokens.spacingLg,
+              FFTokens.spacingMd,
+              FFTokens.spacingLg,
+              FFTokens.spacingMd + MediaQuery.paddingOf(context).bottom,
+            ),
+            child: Center(child: content),
+          ),
+        ],
+      );
+    } else {
+      body = NotificationListener<ScrollNotification>(
+        onNotification: (n) => _onScroll(n, topInset),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              hero,
+              FFHeroSheet(
+                padding: EdgeInsets.fromLTRB(
+                  FFTokens.spacingLg,
+                  FFTokens.spacingLg,
+                  FFTokens.spacingLg,
+                  FFTokens.spacingLg + MediaQuery.paddingOf(context).bottom,
+                ),
+                child: Center(child: content),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
@@ -181,26 +276,7 @@ class _FFPhotoHeroPageState extends State<FFPhotoHeroPage> {
           bar(Row(mainAxisSize: MainAxisSize.min, children: widget.actions)),
         ],
       ),
-      body: NotificationListener<ScrollNotification>(
-        onNotification: (n) => _onScroll(n, topInset),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              hero,
-              FFHeroSheet(
-                padding: EdgeInsets.fromLTRB(
-                  FFTokens.spacingLg,
-                  FFTokens.spacingLg,
-                  FFTokens.spacingLg,
-                  FFTokens.spacingLg + MediaQuery.paddingOf(context).bottom,
-                ),
-                child: Center(child: content),
-              ),
-            ],
-          ),
-        ),
-      ),
+      body: body,
     );
   }
 }

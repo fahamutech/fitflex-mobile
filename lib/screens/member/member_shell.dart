@@ -214,6 +214,17 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
     }
     if (_started) return;
     _started = true;
+    if (photoHeroUi) {
+      // Home's photos first, then the other member tabs (spec §28). The
+      // Activity tab pre-caches its four sections at their exact size.
+      precacheHeroPhotos(context, const [
+        FFHeroPhoto.homeStart,
+        FFHeroPhoto.homePass,
+        FFHeroPhoto.activityToday,
+        FFHeroPhoto.profile,
+        FFHeroPhoto.upgrade,
+      ]);
+    }
     WidgetsBinding.instance.addObserver(this);
     _refreshAll();
     // Phone step counting: read while the app is open.
@@ -618,9 +629,18 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
     context.go(routes[index]);
   }
 
-  /// Home's app bar over the hero: transparent with light icons until the
-  /// hero scrolls under it, then solid `surface` with the theme's colours.
+  /// Tabs whose app bar floats over a photo hero (PHOTO_HERO_UI).
+  static const heroTabRoutes = {
+    AppRoutes.memberHome,
+    AppRoutes.memberActivity,
+    '${AppRoutes.memberActivity}/progress',
+    AppRoutes.memberProfile,
+  };
+
+  /// The hero tabs' app bar: transparent with light icons until the hero
+  /// scrolls under it, then solid `surface` with the theme's colours.
   bool _homeBarSolid = false;
+  String? _heroBarLocation;
 
   /// The bar's own background is animated (not a `flexibleSpace` layer: the
   /// Scaffold gives the app bar a loose height, so a childless box there
@@ -710,11 +730,17 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
       AppRoutes.memberShop,
       AppRoutes.memberProfile,
     }.contains(location);
-    // PHOTO_HERO_UI: on Home at phone width the app bar floats over the hero.
+    // PHOTO_HERO_UI: on Home, Activity and Profile at phone width the app
+    // bar floats over the hero (spec C-7).
     final heroHome =
         photoHeroUi &&
-        location == AppRoutes.memberHome &&
+        heroTabRoutes.contains(location) &&
         MediaQuery.sizeOf(context).width < 840;
+    // A tab starts with its hero under a transparent bar.
+    if (location != _heroBarLocation) {
+      _heroBarLocation = location;
+      _homeBarSolid = false;
+    }
     return PopScope(
       canPop: !isRootTab,
       onPopInvokedWithResult: (didPop, _) {
