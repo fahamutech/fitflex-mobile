@@ -14,7 +14,8 @@
 //  * dropdown options are found by their visible text (`.last`, as the
 //    selected value is also shown in the field).
 // Known current behaviours characterized as-is (not endorsed):
-//  * A failed catalogue load is silent: no error message, just the empty state.
+//  * A failed catalogue load shows an error (or offline) state with Try again
+//    (changed 2026-10-19, Shop home V2 Phase 1; it used to say "no products").
 //  * Sending an enquiry, reordering, reviewing and filing a review show no
 //    confirmation or error message.
 import 'package:flutter/material.dart';
@@ -35,6 +36,7 @@ Map<String, dynamic> _p(
   num? discount,
   int stock = 5,
   num rating = 4,
+  int reviews = 0,
   int sold = 0,
   bool delivery = true,
 }) => {
@@ -47,6 +49,7 @@ Map<String, dynamic> _p(
   'discountPriceTzs': discount,
   'stock': stock,
   'rating': rating,
+  'reviewCount': reviews,
   'soldCount': sold,
   'deliveryAvailable': delivery,
 };
@@ -60,6 +63,7 @@ final _catalogue = [
     price: 85000,
     stock: 4,
     rating: 4.5,
+    reviews: 12,
     sold: 50,
   ),
   _p(
@@ -277,10 +281,16 @@ void main() {
       await _pump(tester, api);
       expect(find.text('MuscleCo'), findsOneWidget);
       expect(find.text(formatCurrency(85000)), findsOneWidget);
-      // Yoga Mat is discounted: the discounted price is the one shown.
+      // Yoga Mat is discounted: the sale price, with the original struck
+      // through under it (AC-14 / spec §7.3, changed 2026-10-19).
       expect(find.text(formatCurrency(25000)), findsOneWidget);
-      expect(find.text(formatCurrency(30000)), findsNothing);
+      final was = tester.widget<Text>(_key('shop-was-p2'));
+      expect(was.data, formatCurrency(30000));
+      expect(was.style?.decoration, TextDecoration.lineThrough);
       expect(find.text(' 4.5 · 4 in stock'), findsOneWidget);
+      // Yoga Mat has a rating but no reviews: no stars, no number, no "0.0".
+      expect(find.text('10 in stock'), findsOneWidget);
+      expect(find.textContaining('3.0'), findsNothing);
     });
 
     apiTest('an empty catalogue shows the empty message', (tester, api) async {
@@ -289,7 +299,7 @@ void main() {
       expect(find.text(host.tr('shop.noProducts')), findsOneWidget);
     });
 
-    apiTest('a failed load is silent: empty state, still usable', (
+    apiTest('a failed load says so with Try again (not "no products")', (
       tester,
       api,
     ) async {
@@ -297,7 +307,8 @@ void main() {
       api.fail('GET /shop/products');
       final host = await _pump(tester, api);
       expect(spinner, findsNothing);
-      expect(find.text(host.tr('shop.noProducts')), findsOneWidget);
+      expect(find.text(host.tr('shop.noProducts')), findsNothing);
+      expect(find.text(host.tr('shop.home.errorTitle')), findsOneWidget);
       expect(find.byType(SnackBar), findsNothing);
       await tester.enterText(_key('shop-search'), 'abc');
       await tester.pump();
@@ -502,7 +513,10 @@ void main() {
     ) async {
       _seed(api);
       final host = await _pump(tester, api);
-      expect(isEnabled(tester, _key('shop-add-p3')), isFalse);
+      // Out of stock: a badge, a dimmed photo and no cart button (AC-14).
+      expect(_key('shop-add-p3'), findsNothing);
+      expect(_key('shop-oos-p3'), findsOneWidget);
+      expect(tester.widget<Opacity>(_key('shop-image-p3')).opacity, 0.4);
       expect(isEnabled(tester, _key('shop-add-p1')), isTrue);
       await _add(tester, 'p1', 6);
       expect(

@@ -422,7 +422,7 @@ class _BackRow extends StatelessWidget {
 }
 
 /// Activity sharing → Gyms: check-ins and visit patterns are always the
-/// gym's; everything from the activity log is off unless switched on here.
+/// gym's; the extra items start on and can be switched off here.
 class GymSharingSection extends StatefulWidget {
   const GymSharingSection({super.key});
 

@@ -15,16 +15,27 @@ import 'member_shell.dart';
 import '../../shared/social.dart';
 import 'widgets/share_picker.dart';
 import 'widgets/activity_widgets.dart';
+import 'widgets/gym_visit_tile.dart' show withinVisit;
 
 /// Activity → Log activity: a session the member did without FitFlex
 /// tracking it. Saved through the existing `POST /me/activities` contract
 /// (sample mode keeps it in the session's sample log).
 class MemberLogActivityPage extends StatefulWidget {
-  const MemberLogActivityPage({super.key, this.now, this.initialType});
+  const MemberLogActivityPage({
+    super.key,
+    this.now,
+    this.initialType,
+    this.gymId,
+    this.startedAt,
+  });
 
   /// Injectable clock for tests.
   final DateTime? now;
   final ActivityType? initialType;
+
+  /// Logging from a gym visit: the gym, and when the member checked in.
+  final String? gymId;
+  final DateTime? startedAt;
 
   @override
   State<MemberLogActivityPage> createState() => _MemberLogActivityPageState();
@@ -49,8 +60,10 @@ class _MemberLogActivityPageState extends State<MemberLogActivityPage> {
   @override
   void initState() {
     super.initState();
-    // Default: today, starting an hour ago (on the quarter hour).
-    final start = _now.subtract(const Duration(hours: 1));
+    // From a gym visit: when the member checked in. Otherwise today,
+    // starting an hour ago. Either way on the quarter hour.
+    final start =
+        widget.startedAt?.toLocal() ?? _now.subtract(const Duration(hours: 1));
     _day = DateTime(start.year, start.month, start.day);
     _time = TimeOfDay(hour: start.hour, minute: start.minute ~/ 15 * 15);
   }
@@ -77,6 +90,7 @@ class _MemberLogActivityPageState extends State<MemberLogActivityPage> {
     notes: _notes.text,
     shareWith: _share?.toJson(),
     shareChosen: _shareChosen,
+    gymId: widget.gymId,
   );
 
   ShareWith? _share;
@@ -100,7 +114,14 @@ class _MemberLogActivityPageState extends State<MemberLogActivityPage> {
 
   Future<void> _save() async {
     final draft = _draft();
-    final errors = validateManualActivity(draft, _now);
+    final errors = {...validateManualActivity(draft, _now)};
+    // From a visit, the session has to fall within it to show under it.
+    final visitAt = widget.startedAt;
+    if (visitAt != null &&
+        !errors.containsKey('startedAt') &&
+        !withinVisit(visitAt, draft.startedAt)) {
+      errors['startedAt'] = 'logActivity.error.visitWindow';
+    }
     setState(() {
       _errors = errors;
       _submitError = null;
@@ -138,6 +159,22 @@ class _MemberLogActivityPageState extends State<MemberLogActivityPage> {
     }
   }
 
+  /// The visit's gym, by name when the app knows it.
+  String? _gymName(BuildContext context) {
+    final id = widget.gymId;
+    if (id == null) return null;
+    final data = context
+        .dependOnInheritedWidgetOfExactType<MemberDataScope>()
+        ?.notifier;
+    return data?.checkins
+            .where((c) => c.gymId == id)
+            .map((c) => c.gym?.name)
+            .nonNulls
+            .firstOrNull ??
+        data?.gyms.where((g) => g.id == id).map((g) => g.name).firstOrNull ??
+        id;
+  }
+
   String? _err(String field) {
     final key = _errors[field];
     return key == null ? null : context.tr(key);
@@ -167,6 +204,26 @@ class _MemberLogActivityPageState extends State<MemberLogActivityPage> {
         ),
         FFPageHeader(title: context.tr('logActivity.title')),
         Text(context.tr('logActivity.intro'), style: theme.textTheme.bodySmall),
+        if (_gymName(context) case final gym?) ...[
+          const SizedBox(height: FFTokens.spacingSm),
+          Row(
+            key: const Key('log-gym'),
+            children: [
+              Icon(
+                Icons.storefront_outlined,
+                size: FFTokens.iconSm,
+                color: theme.colorScheme.primary,
+              ),
+              const SizedBox(width: FFTokens.spacingXs),
+              Expanded(
+                child: Text(
+                  context.tr('logActivity.atGym').replaceAll('{gym}', gym),
+                  style: theme.textTheme.bodyMedium,
+                ),
+              ),
+            ],
+          ),
+        ],
         const SizedBox(height: FFTokens.spacingMd),
         Text(
           context.tr('logActivity.type').toUpperCase(),
@@ -377,10 +434,23 @@ class _MemberLogActivityPageState extends State<MemberLogActivityPage> {
   );
 }
 
-/// Opens Log activity, optionally with a type chosen.
-void openLogActivity(BuildContext context, {ActivityType? type}) =>
-    context.push(
-      type == null
-          ? AppRoutes.memberActivityLog
-          : '${AppRoutes.memberActivityLog}?type=${type.wire}',
-    );
+/// Opens Log activity, optionally with a type chosen, or for a gym visit
+/// ([gymId] and the check-in time [at]).
+void openLogActivity(
+  BuildContext context, {
+  ActivityType? type,
+  String? gymId,
+  DateTime? at,
+}) {
+  final query = {
+    'type': ?type?.wire,
+    'gymId': ?gymId,
+    'at': ?at?.toUtc().toIso8601String(),
+  };
+  context.push(
+    Uri(
+      path: AppRoutes.memberActivityLog,
+      queryParameters: query.isEmpty ? null : query,
+    ).toString(),
+  );
+}

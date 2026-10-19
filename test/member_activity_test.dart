@@ -1,4 +1,5 @@
 import 'package:fitflexmobile/screens/member/member_shell.dart';
+import 'package:fitflexmobile/screens/member/widgets/gym_visit_tile.dart';
 import 'package:fitflexmobile/screens/member/widgets/today_activity_card.dart';
 import 'package:fitflexmobile/shared/activity/activity.dart';
 import 'package:fitflexmobile/shared/activity/activity_summary.dart';
@@ -6,6 +7,7 @@ import 'package:fitflexmobile/shared/activity/goal.dart';
 import 'package:fitflexmobile/shared/activity/streaks.dart';
 import 'package:fitflexmobile/shared/design_tokens.dart';
 import 'package:fitflexmobile/shared/i18n.dart';
+import 'package:fitflexmobile/shared/models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -21,6 +23,7 @@ Activity _act(
   int? minutes,
   double? km,
   int? calories,
+  String? gymId,
 }) => Activity(
   id: id,
   userId: 'u1',
@@ -32,10 +35,20 @@ Activity _act(
   activeMinutes: minutes,
   distanceKm: km,
   calories: calories,
+  gymId: gymId,
 );
 
-DateTime _daysAgo(int n, [int hour = 8]) =>
-    DateTime(_now.year, _now.month, _now.day - n, hour);
+CheckIn _visit(String id, DateTime at, {String gymId = 'gym_1'}) => CheckIn(
+  id: id,
+  memberId: 'u1',
+  timestamp: at.toUtc().toIso8601String(),
+  gymTier: 'gold',
+  gymId: gymId,
+  gym: Gym.fromJson({'id': gymId, 'name': 'Iron House'}),
+);
+
+DateTime _daysAgo(int n, [int hour = 8, int minute = 0]) =>
+    DateTime(_now.year, _now.month, _now.day - n, hour, minute);
 
 /// Today: 6,240 steps (78% of 8,000), a 52-min run → 1 workout.
 /// Streak: today + 7 previous days of ≥30 active minutes, then a gap.
@@ -276,5 +289,221 @@ void main() {
     data.activityIsSample = true;
     await tester.pumpWidget(_wrap(TodayActivityCard(data: data), data));
     expect(find.byKey(const Key('activity-get-started')), findsNothing);
+  });
+
+  group('recent timeline with gym visits', () {
+    test('visits sit among activities, newest first', () {
+      final t = recentTimeline(
+        [_act('a1', _daysAgo(0, 7)), _act('a2', _daysAgo(2, 7))],
+        [_visit('v1', _daysAgo(1, 18))],
+      );
+      expect(t.map((e) => e.at), [
+        _daysAgo(0, 7),
+        _daysAgo(1, 18),
+        _daysAgo(2, 7),
+      ]);
+      expect(t[1], isA<RecentVisitEntry>());
+    });
+
+    test(
+      'the next day still counts; past 48 hours or well before does not',
+      () {
+        final visitAt = _daysAgo(3, 18);
+        final t = recentTimeline(
+          [
+            _act(
+              'next-day',
+              visitAt.add(const Duration(hours: 30)),
+              gymId: 'gym_1',
+            ),
+            _act(
+              'too-late',
+              visitAt.add(const Duration(hours: 49)),
+              gymId: 'gym_1',
+            ),
+            _act(
+              'too-early',
+              visitAt.subtract(const Duration(hours: 2)),
+              gymId: 'gym_1',
+            ),
+            _act(
+              'warm-up',
+              visitAt.subtract(const Duration(minutes: 30)),
+              gymId: 'gym_1',
+            ),
+          ],
+          [_visit('v1', visitAt)],
+          limit: null,
+        );
+        final visit = t.whereType<RecentVisitEntry>().single;
+        expect(visit.activities.map((a) => a.id), ['warm-up', 'next-day']);
+        expect(
+          t.whereType<RecentActivityEntry>().map((e) => e.activity.id).toSet(),
+          {'too-late', 'too-early'},
+        );
+      },
+    );
+
+    test('weeks of the month: W1 1–7 … W4 22 to month end', () {
+      expect(monthWeekOf(DateTime(2026, 1, 1)).week, 1);
+      expect(monthWeekOf(DateTime(2026, 1, 7)).week, 1);
+      expect(monthWeekOf(DateTime(2026, 1, 8)).week, 2);
+      expect(monthWeekOf(DateTime(2026, 1, 21)).week, 3);
+      expect(monthWeekOf(DateTime(2026, 1, 31)).week, 4);
+      expect(monthWeekRange((year: 2026, month: 1, week: 4)), (
+        DateTime(2026, 1, 22),
+        DateTime(2026, 1, 31),
+      ));
+      expect(
+        monthWeekRange((year: 2026, month: 2, week: 4)).$2,
+        DateTime(2026, 2, 28),
+      );
+    });
+
+    test('groups newest week first, entries keep their order', () {
+      final t = recentTimeline(
+        [
+          _act('feb2', DateTime(2026, 2, 3, 9)),
+          _act('jan31', DateTime(2026, 1, 31, 9)),
+          _act('jan23', DateTime(2026, 1, 23, 9)),
+          _act('jan2', DateTime(2026, 1, 2, 9)),
+        ],
+        const [],
+        limit: null,
+      );
+      final g = groupByMonthWeek(t);
+      expect(g.map((e) => (e.$1.month, e.$1.week)), [(2, 1), (1, 4), (1, 1)]);
+      expect(g[1].$2.map((e) => e.at.day), [31, 23]);
+    });
+
+    test('an activity at the visit gym that day goes inside the visit', () {
+      final lifted = _act(
+        'lift',
+        _daysAgo(1, 19),
+        type: ActivityType.strength,
+        source: ActivitySource.manual,
+        gymId: 'gym_1',
+      );
+      final elsewhere = _act('other-gym', _daysAgo(1, 9), gymId: 'gym_2');
+      final t = recentTimeline(
+        [lifted, elsewhere],
+        [_visit('v1', _daysAgo(1, 18))],
+      );
+      expect(t.length, 2);
+      final visit = t.whereType<RecentVisitEntry>().single;
+      expect(visit.activities.map((a) => a.id), ['lift']);
+      expect(t.whereType<RecentActivityEntry>().map((e) => e.activity.id), [
+        'other-gym',
+      ]);
+    });
+
+    test('two visits the same day: the activity joins the closer one', () {
+      final t = recentTimeline(
+        [_act('pm', _daysAgo(1, 18), gymId: 'gym_1')],
+        [_visit('am', _daysAgo(1, 7)), _visit('eve', _daysAgo(1, 17))],
+      );
+      final byId = {
+        for (final v in t.whereType<RecentVisitEntry>())
+          v.checkin.id: v.activities.length,
+      };
+      expect(byId, {'am': 0, 'eve': 1});
+    });
+
+    test('keeps at most eight rows', () {
+      final t = recentTimeline(
+        [for (var d = 0; d < 6; d++) _act('a$d', _daysAgo(d))],
+        [for (var d = 0; d < 6; d++) _visit('v$d', _daysAgo(d, 18))],
+      );
+      expect(t.length, 8);
+    });
+  });
+
+  testWidgets('Recent activity offers View more', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(_wrap(MemberActivityTab(now: _now), _data()));
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('activity-view-more')),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('View more'), findsOneWidget);
+  });
+
+  testWidgets('a plain gym visit opens to log what was done', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+
+    final data = _data()..checkins = [_visit('v1', _daysAgo(0, 19))];
+    await tester.pumpWidget(_wrap(MemberActivityTab(now: _now), data));
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('visit-v1')),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Gym visit · Iron House'), findsOneWidget);
+    expect(find.textContaining('Nothing logged yet'), findsOneWidget);
+    expect(find.byKey(const Key('visit-log-v1')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('visit-toggle-v1')));
+    await tester.pump();
+    expect(find.byKey(const Key('visit-log-v1')), findsOneWidget);
+    expect(find.text('Log what you did'), findsOneWidget);
+  });
+
+  testWidgets('a visit with a logged session lists it once, inside', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+
+    final data = _data(
+      activities: [
+        ..._history(),
+        _act(
+          'lift',
+          _daysAgo(0, 19, 30),
+          type: ActivityType.strength,
+          source: ActivitySource.manual,
+          minutes: 50,
+          gymId: 'gym_1',
+        ),
+      ]..sort((a, b) => b.startedAt.compareTo(a.startedAt)),
+    )..checkins = [_visit('v1', _daysAgo(0, 19))];
+    await tester.pumpWidget(_wrap(MemberActivityTab(now: _now), data));
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('visit-v1')),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.textContaining('1 logged'), findsOneWidget);
+    expect(find.byKey(const Key('activity-lift')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('visit-toggle-v1')));
+    await tester.pump();
+    expect(find.byKey(const Key('activity-lift')), findsOneWidget);
+    expect(find.text('Log another activity'), findsOneWidget);
+  });
+
+  testWidgets('a visit past 90 days can be opened but not logged', (
+    tester,
+  ) async {
+    final c = _visit('old', _daysAgo(100, 18));
+    await tester.pumpWidget(
+      _wrap(
+        GymVisitTile(
+          entry: RecentVisitEntry(c, _daysAgo(100, 18), const []),
+          now: _now,
+        ),
+        _data(),
+      ),
+    );
+    await tester.tap(find.byKey(const Key('visit-toggle-old')));
+    await tester.pump();
+    expect(find.byKey(const Key('visit-too-old-old')), findsOneWidget);
+    expect(find.byKey(const Key('visit-log-old')), findsNothing);
   });
 }

@@ -124,7 +124,10 @@ class _Api extends ApiClient {
   Map<String, dynamic> lookupDelivery = {'sms': false, 'whatsapp': false};
 
   @override
-  Future<Map<String, dynamic>> friendLookup({String? email, String? phone}) async {
+  Future<Map<String, dynamic>> friendLookup({
+    String? email,
+    String? phone,
+  }) async {
     calls.add('lookup:${phone ?? email}');
     return {
       'result': {
@@ -149,9 +152,20 @@ class _Api extends ApiClient {
       if (inviteDelivery.isNotEmpty) 'delivery': inviteDelivery,
     };
   }
+
+  Object? defaultShare;
+  Object? savedDefault = 'unset';
+
+  @override
+  Future<Map<String, dynamic>> updateSocialSettings(Object? share) async {
+    savedDefault = share;
+    defaultShare = share;
+    return {};
+  }
+
   @override
   Future<Map<String, dynamic>> socialSettings() async => {
-    'defaultShare': null,
+    'defaultShare': defaultShare,
     'inviteCode': 'AB12CD34',
     'hasCompany': true,
     'publicProfile': publicProfile,
@@ -331,6 +345,7 @@ void main() {
       'public': false,
       'groups': ['g1'],
       'company': false,
+      'allGroups': false,
     });
     expect(ShareWith.wire(const ShareWith()), isNull);
     final item = FeedItem.fromJson(_item());
@@ -388,33 +403,37 @@ void main() {
     expect(find.byKey(const Key('feed-empty')), findsOneWidget);
   });
 
-  testWidgets('people: no invite-code card, follow back, search by name, contact picker button', (
-    tester,
-  ) async {
-    _tall(tester);
-    final api = _Api();
-    await tester.pumpWidget(
-      _app(api, const MemberCommunityPage(initialTab: 2)),
-    );
-    await tester.pumpAndSettle();
-    expect(find.byKey(const Key('my-invite-code')), findsNothing);
-    expect(find.byKey(const Key('people-pick-contact')), findsOneWidget);
-    expect(find.text('Follow back'), findsOneWidget);
-    await tester.tap(find.byKey(const Key('follow-cy')));
-    await tester.pumpAndSettle();
-    expect(api.calls, contains('follow:cy'));
-    expect(find.text('Follow back'), findsNothing);
+  testWidgets(
+    'people: no invite-code card, follow back, search by name, contact picker button',
+    (tester) async {
+      _tall(tester);
+      final api = _Api();
+      await tester.pumpWidget(
+        _app(api, const MemberCommunityPage(initialTab: 2)),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('my-invite-code')), findsNothing);
+      expect(find.byKey(const Key('people-pick-contact')), findsOneWidget);
+      expect(find.text('Follow back'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('follow-cy')));
+      await tester.pumpAndSettle();
+      expect(api.calls, contains('follow:cy'));
+      expect(find.text('Follow back'), findsNothing);
 
-    await tester.enterText(find.byKey(const Key('people-search')), 'QW12ER34');
-    await tester.testTextInput.receiveAction(TextInputAction.search);
-    await tester.pumpAndSettle();
-    expect(
-      api.calls,
-      contains('find:QW12ER34:'),
-      reason: 'a name search; invite codes are no longer searched',
-    );
-    expect(find.text('Dee Kweka'), findsOneWidget);
-  });
+      await tester.enterText(
+        find.byKey(const Key('people-search')),
+        'QW12ER34',
+      );
+      await tester.testTextInput.receiveAction(TextInputAction.search);
+      await tester.pumpAndSettle();
+      expect(
+        api.calls,
+        contains('find:QW12ER34:'),
+        reason: 'a name search; invite codes are no longer searched',
+      );
+      expect(find.text('Dee Kweka'), findsOneWidget);
+    },
+  );
 
   testWidgets('sent requests show the number you invited', (tester) async {
     _tall(tester);
@@ -451,7 +470,10 @@ void main() {
       _app(api, const MemberCommunityPage(initialTab: 2)),
     );
     await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const Key('people-search')), '0650387211');
+    await tester.enterText(
+      find.byKey(const Key('people-search')),
+      '0650387211',
+    );
     await tester.testTextInput.receiveAction(TextInputAction.search);
     await tester.pumpAndSettle();
     expect(
@@ -495,38 +517,42 @@ void main() {
       200,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(
-      find.textContaining('Sent by FitFlex on WhatsApp'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('Sent by FitFlex on WhatsApp'), findsOneWidget);
     expect(
       find.textContaining('Not on WhatsApp, so FitFlex sent an SMS'),
       findsOneWidget,
     );
   });
 
-  testWidgets('invite where FitFlex could not send: says why, then the share sheet', (
-    tester,
-  ) async {
-    _tall(tester);
-    final api = _Api()
-      ..lookupDelivery = {'sms': true, 'whatsapp': true}
-      ..inviteDelivery = {
-        'whatsapp': 'skipped:whatsapp_not_available',
-        'sms': 'skipped:sms_not_configured',
-      };
-    await tester.pumpWidget(
-      _app(api, const MemberCommunityPage(initialTab: 2)),
-    );
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const Key('people-search')), '0650387211');
-    await tester.testTextInput.receiveAction(TextInputAction.search);
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('friend-invite-share')));
-    await tester.pump(const Duration(milliseconds: 300));
-    expect(find.textContaining('SMS is not set up yet.'), findsOneWidget);
-    expect(find.textContaining('WhatsApp is not set up yet.'), findsOneWidget);
-  });
+  testWidgets(
+    'invite where FitFlex could not send: says why, then the share sheet',
+    (tester) async {
+      _tall(tester);
+      final api = _Api()
+        ..lookupDelivery = {'sms': true, 'whatsapp': true}
+        ..inviteDelivery = {
+          'whatsapp': 'skipped:whatsapp_not_available',
+          'sms': 'skipped:sms_not_configured',
+        };
+      await tester.pumpWidget(
+        _app(api, const MemberCommunityPage(initialTab: 2)),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('people-search')),
+        '0650387211',
+      );
+      await tester.testTextInput.receiveAction(TextInputAction.search);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('friend-invite-share')));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.textContaining('SMS is not set up yet.'), findsOneWidget);
+      expect(
+        find.textContaining('WhatsApp is not set up yet.'),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets('groups: join a listed group, or by code', (tester) async {
     _tall(tester);
@@ -633,6 +659,7 @@ void main() {
       'public': false,
       'groups': ['g1'],
       'company': true,
+      'allGroups': false,
     });
   });
 
@@ -717,5 +744,137 @@ void main() {
     expect(result!.share!.public, isTrue);
     expect(result!.share!.followers, isTrue);
     expect(result!.share!.friends, isFalse);
+  });
+
+  group('default audience for new activities', () {
+    Future<_Api> pumpSection(WidgetTester tester, Object? stored) async {
+      _tall(tester);
+      final api = _Api()
+        ..publicProfile = true
+        ..defaultShare = stored
+        ..groups = [
+          {
+            'id': 'g1',
+            'name': 'Dar Runners',
+            'memberCount': 3,
+            'you': {'role': 'member', 'status': 'active'},
+          },
+        ];
+      await tester.pumpWidget(
+        _app(api, const SingleChildScrollView(child: SocialPrivacySection())),
+      );
+      await tester.pumpAndSettle();
+      return api;
+    }
+
+    testWidgets('the server default reads Public · All my groups', (
+      tester,
+    ) async {
+      await pumpSection(tester, {'public': true, 'allGroups': true});
+      expect(find.text('Public · All my groups'), findsOneWidget);
+    });
+
+    testWidgets('choosing All my groups saves allGroups true', (tester) async {
+      final api = await pumpSection(tester, {'public': true});
+      await tester.tap(find.byKey(const Key('privacy-default-share')));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Every group you are in, including groups you join later.'),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const Key('share-all-groups')));
+      await tester.pumpAndSettle();
+      // Each group is covered, so it can't be picked separately.
+      final g1 = tester.widget<CheckboxListTile>(
+        find.byKey(const Key('share-group-g1')),
+      );
+      expect(g1.value, isTrue);
+      expect(g1.onChanged, isNull);
+      await tester.tap(find.byKey(const Key('share-done')));
+      await tester.pumpAndSettle();
+      expect(api.savedDefault, {
+        'v': 2,
+        'friends': false,
+        'followers': false,
+        'public': true,
+        'groups': <String>[],
+        'company': false,
+        'allGroups': true,
+      });
+    });
+
+    testWidgets('switching All my groups off round-trips allGroups false', (
+      tester,
+    ) async {
+      final api = await pumpSection(tester, {
+        'public': true,
+        'allGroups': true,
+      });
+      await tester.tap(find.byKey(const Key('privacy-default-share')));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<CheckboxListTile>(find.byKey(const Key('share-all-groups')))
+            .value,
+        isTrue,
+      );
+      await tester.tap(find.byKey(const Key('share-all-groups')));
+      await tester.tap(find.byKey(const Key('share-done')));
+      await tester.pumpAndSettle();
+      expect((api.savedDefault as Map)['allGroups'], isFalse);
+      expect((api.savedDefault as Map)['public'], isTrue);
+    });
+
+    testWidgets('Only you switches everything off', (tester) async {
+      final api = await pumpSection(tester, {
+        'public': true,
+        'allGroups': true,
+      });
+      await tester.tap(find.byKey(const Key('privacy-default-share')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('share-private')));
+      await tester.tap(find.byKey(const Key('share-done')));
+      await tester.pumpAndSettle();
+      expect(api.savedDefault, isNull);
+    });
+
+    testWidgets('a single activity picker has no All my groups choice', (
+      tester,
+    ) async {
+      _tall(tester);
+      final api = _Api()
+        ..groups = [
+          {
+            'id': 'g1',
+            'name': 'Dar Runners',
+            'memberCount': 3,
+            'you': {'role': 'member', 'status': 'active'},
+          },
+        ];
+      ({ShareWith? share, bool cancelled})? result;
+      await tester.pumpWidget(
+        _app(
+          api,
+          Scaffold(
+            body: Builder(
+              builder: (context) => TextButton(
+                onPressed: () async => result = await pickShare(
+                  context,
+                  initial: const ShareWith(allGroups: true),
+                ),
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('share-all-groups')), findsNothing);
+      await tester.tap(find.byKey(const Key('share-done')));
+      await tester.pumpAndSettle();
+      expect(result!.share!.groups, ['g1']);
+      expect(result!.share!.allGroups, isFalse);
+    });
   });
 }

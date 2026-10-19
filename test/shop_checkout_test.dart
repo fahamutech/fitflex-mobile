@@ -77,6 +77,10 @@ void main() {
         shopCheckoutErrorKey(ApiException(404, {'error': 'product_not_found'})),
         'shop.errUnavailable',
       );
+      expect(
+        shopCheckoutErrorKey(ApiException(409, {'error': 'vendor_unavailable'})),
+        'shop.errVendorUnavailable',
+      );
       expect(shopCheckoutErrorKey(ApiException(422, {})), isNull);
     });
   });
@@ -102,6 +106,7 @@ void main() {
         'shop.errInsufficientStock',
         'shop.errPriceChanged',
         'shop.errUnavailable',
+        'shop.errVendorUnavailable',
         'shop.errVariantRequired',
         'shop.errChanged',
         'shop.addressRequired',

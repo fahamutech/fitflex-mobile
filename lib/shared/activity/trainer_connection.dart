@@ -1,7 +1,7 @@
 /// Trainer ↔ member connections and what a member shares with a trainer.
 ///
-/// A connection starts as the member's request; nothing is shared until
-/// the member switches individual permissions on.
+/// A connection starts as the member's request. Every permission starts
+/// on; the member can switch any of them off, then or later.
 library;
 
 import 'challenge.dart';
@@ -29,6 +29,9 @@ class TrainerPermissions {
   final Set<TrainerPermission> granted;
 
   const TrainerPermissions([this.granted = const {}]);
+
+  /// Everything on: where a new connection starts.
+  static final all = TrainerPermissions({...TrainerPermission.values});
 
   factory TrainerPermissions.fromJson(Object? json) {
     final map = json is Map ? json : const {};

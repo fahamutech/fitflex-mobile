@@ -101,6 +101,9 @@ class FFSnack {
         backgroundColor: bg,
         elevation: 2,
         duration: Duration(seconds: tone == _SnackTone.error ? 6 : 4),
+        // A snackbar with an action would otherwise stay until dismissed
+        // (Flutter's default) and follow the user to other screens.
+        persist: false,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(FFTokens.radiusMd),
           side: BorderSide(color: border),

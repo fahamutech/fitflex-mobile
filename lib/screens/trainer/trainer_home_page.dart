@@ -13,6 +13,7 @@ import '../../shared/inbox/inbox_pages.dart';
 import '../../shared/models.dart';
 import '../../shared/root_back_navigation.dart';
 import '../../shared/widgets/partner_not_verified.dart';
+import '../../shared/shop_home.dart';
 import '../../shared/widgets/shop_browse_page.dart';
 import '../../shared/widgets/social_links.dart';
 import '../../shared/widgets/trainer_form_page.dart';
@@ -319,7 +320,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
             children: [
               _dashboardTab(),
               const TrainerClientsTab(),
-              const ShopBrowseBody(),
+              const ShopBrowseBody(mode: ShopHomeMode.trainer),
               TrainerGymsTab(
                 key: _gymsTabKey,
                 onProfileChanged: _refreshProfile,

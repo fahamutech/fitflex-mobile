@@ -113,6 +113,7 @@ String? shopCheckoutErrorKey(Object error) {
     'insufficient_stock' => 'shop.errInsufficientStock',
     'price_changed' => 'shop.errPriceChanged',
     'product_not_found' => 'shop.errUnavailable',
+    'vendor_unavailable' => 'shop.errVendorUnavailable',
     'variant_not_found' => 'shop.errUnavailable',
     'variant_required' => 'shop.errVariantRequired',
     'idempotency_key_reused' => 'shop.errChanged',

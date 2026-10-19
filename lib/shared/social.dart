@@ -2,8 +2,9 @@
 ///
 /// Who sees a shared activity: friends (you follow each other), followers
 /// (anyone who follows you), everyone (public, with a public profile),
-/// members of chosen groups, and colleagues at the same company. Everything
-/// is private until the member shares it.
+/// members of chosen groups, and colleagues at the same company. New
+/// activities follow the member's default, which starts as public and all
+/// their groups; the member can change or switch it off.
 library;
 
 /// Who one activity is shared with. `null` everywhere means private.
@@ -14,6 +15,7 @@ class ShareWith {
     this.public = false,
     this.groups = const [],
     this.company = false,
+    this.allGroups = false,
   });
 
   /// You follow each other.
@@ -27,8 +29,17 @@ class ShareWith {
   final List<String> groups;
   final bool company;
 
+  /// Every group the member is in, including ones joined later. Only used
+  /// for the default audience; one activity names its groups in [groups].
+  final bool allGroups;
+
   bool get isPrivate =>
-      !friends && !followers && !public && groups.isEmpty && !company;
+      !friends &&
+      !followers &&
+      !public &&
+      groups.isEmpty &&
+      !company &&
+      !allGroups;
 
   static ShareWith? fromJson(Object? v) {
     if (v is! Map) return null;
@@ -40,12 +51,14 @@ class ShareWith {
         for (final g in (v['groups'] as List? ?? const [])) g.toString(),
       ],
       company: v['company'] == true,
+      allGroups: v['allGroups'] == true,
     );
     return s.isPrivate ? null : s;
   }
 
   /// `v: 2` tells the server `followers` means everyone who follows you
-  /// (older app builds used it for friends).
+  /// (older app builds used it for friends). `allGroups` is always sent:
+  /// the server reads a missing value as false.
   Map<String, dynamic> toJson() => {
     'v': 2,
     'friends': friends,
@@ -53,11 +66,33 @@ class ShareWith {
     'public': public,
     'groups': groups,
     'company': company,
+    'allGroups': allGroups,
   };
 
   /// The JSON to send: null for private.
   static Object? wire(ShareWith? s) =>
       s == null || s.isPrivate ? null : s.toJson();
+
+  @override
+  bool operator ==(Object other) =>
+      other is ShareWith &&
+      other.friends == friends &&
+      other.followers == followers &&
+      other.public == public &&
+      other.company == company &&
+      other.allGroups == allGroups &&
+      other.groups.length == groups.length &&
+      other.groups.toSet().containsAll(groups);
+
+  @override
+  int get hashCode => Object.hash(
+    friends,
+    followers,
+    public,
+    company,
+    allGroups,
+    Object.hashAllUnordered(groups),
+  );
 }
 
 enum Relationship {
@@ -328,7 +363,7 @@ class SocialSettings {
   final ShareWith? defaultShare;
 
   /// Findable by name by anyone, with a profile of public posts and a
-  /// place in Explore. Off by default.
+  /// place in Explore. On by default; the member can switch it off.
   final bool publicProfile;
   final String inviteCode;
   final bool hasCompany;
