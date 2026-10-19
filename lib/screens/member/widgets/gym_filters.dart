@@ -1,3 +1,6 @@
+import 'package:flutter/widgets.dart';
+
+import '../../../shared/i18n.dart';
 import '../../../shared/models.dart';
 
 /// A9 — member gym discovery filter model. Pure and unit-testable.
@@ -42,12 +45,27 @@ class GymFilter {
 
 String _norm(Object? v) => v?.toString().trim().toLowerCase() ?? '';
 
-String gymTierKey(Gym gym) {
-  final t = _norm(gym.tier).replaceAll('-', '_').replaceAll(' ', '_');
+String gymTierKey(Gym gym) => tierKeyOf(gym.tier);
+
+/// A stored gym tier in its one canonical spelling ("Mid-tier" → midtier).
+String tierKeyOf(Object? tier) {
+  final t = _norm(tier).replaceAll('-', '_').replaceAll(' ', '_');
   if (t == 'mid_tier' || t == 'midrange' || t == 'mid_range') return 'midtier';
   if (t == 'luxury' || t == 'executive') return 'luxury_executive';
   return t;
 }
+
+/// A gym tier as members read it ("Mid-tier"), never the stored code
+/// ("midtier"). A tier the app does not know yet is shown tidied up.
+String tierLabel(BuildContext context, String tierKey) {
+  final key = 'tier.$tierKey';
+  final label = context.tr(key);
+  return label == key ? tierKey.replaceAll('_', ' ') : label;
+}
+
+/// [tierLabel] for a gym, whatever spelling the server stored.
+String gymTierLabel(BuildContext context, Gym gym) =>
+    tierLabel(context, gymTierKey(gym));
 
 bool _matchesPrice(Gym g, String price) {
   final rate = g.ratePerMonth ?? g.perVisitRate;

@@ -8,6 +8,7 @@ import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import '../../shared/widgets/gym_form_page.dart';
 import 'owner_shell.dart';
+import '../member/widgets/gym_filters.dart';
 
 /// Owner — manage gyms grid view with add / edit / delete.
 class OwnerManageGymsPage extends StatelessWidget {
@@ -275,7 +276,7 @@ class _OwnerGymGridCard extends StatelessWidget {
                     spacing: 4,
                     runSpacing: 4,
                     children: [
-                      FFPill(label: gym['tier']?.toString() ?? ''),
+                      FFPill(label: tierLabel(context, tierKeyOf(gym['tier']))),
                       FFPill(
                         label:
                             gym['status']?.toString() ??

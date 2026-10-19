@@ -653,6 +653,8 @@ void main() {
       expect(api.sent('GET', '/shop/vendors/v1'), isTrue);
       expect(_key('shop-vendor-storefront'), findsOneWidget);
       expect(find.text('Great store'), findsOneWidget);
+      expect(_key('shop-store-rating'), findsOneWidget);
+      expect(_key('shop-store-no-reviews'), findsNothing);
       await tester.tap(_key('shop-store-close'));
       await tester.pumpAndSettle();
 
@@ -661,6 +663,27 @@ void main() {
       expect(_key('shop-vendor-storefront'), findsNothing);
       expect(host.snack(host.tr('shop.storeLoadFailed')), findsOneWidget);
     });
+  });
+
+  apiTest('a store with no reviews says so instead of "★ 0.0 (0)"', (
+    tester,
+    api,
+  ) async {
+    _seed(api);
+    api.on('GET /shop/vendors/v1', {
+      'businessName': 'FitFlex Performance Store',
+      'rating': 0,
+      'reviewCount': 0,
+      'products': [_catalogue[0]],
+      'reviews': [],
+    });
+    final host = await _pump(tester, api);
+    await _openDetail(tester, 'Whey Protein');
+    await tapVisible(tester, _key('shop-visit-store'));
+    expect(_key('shop-store-rating'), findsNothing);
+    expect(_key('shop-store-no-reviews'), findsOneWidget);
+    expect(find.text(host.tr('reviews.none')), findsOneWidget);
+    expect(find.textContaining('0.0'), findsNothing);
   });
 
   group('checkout', () {
@@ -1053,14 +1076,17 @@ void main() {
       final host = await _pump(tester, api);
       await _openMyOrders(tester, host);
       expect(find.text('${host.tr('shop.order')} o1'), findsOneWidget);
-      // Statuses are words, not the server's codes (QA round 2).
+      // Statuses are worded, never raw codes (backend order-lifecycle.mjs).
       expect(
         find.text(
           '${formatCurrency(170000)} · ${host.tr('shop.orderStatus.accepted')}',
         ),
         findsOneWidget,
       );
-      expect(find.text(host.tr('shop.orderStatus.placed')), findsOneWidget);
+      expect(find.text('accepted'), findsNothing);
+      // "placed" is not a status the server sends: a neutral word, not the code.
+      expect(find.text('placed'), findsNothing);
+      expect(find.text(host.tr('shop.orderStatus.unknown')), findsOneWidget);
       expect(find.text(host.tr('shop.orderStatus.accepted')), findsOneWidget);
     });
 

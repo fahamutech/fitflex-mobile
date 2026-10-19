@@ -542,7 +542,8 @@ void main() {
       expect(find.text('2× Whey Protein'), findsOneWidget);
       expect(
         find.text(
-          '${formatCurrency(170000)} · ${host.tr('vendor.status')}: pending',
+          '${formatCurrency(170000)} · ${host.tr('vendor.status')}: '
+          '${host.tr('shop.orderStatus.pending')}',
         ),
         findsOneWidget,
       );
@@ -613,8 +614,9 @@ void main() {
       );
       await _tab(tester, 'orders');
       for (var i = 0; i < cases.length; i++) {
-        final label =
-            '${host.tr('vendor.mark')} ${cases[i].$3.replaceAll('_', ' ')}';
+        // Worded per status ("Mark as packed"), never the raw code.
+        final label = host.tr('vendor.markStatus.${cases[i].$3}');
+        expect(label, isNot(contains('_')));
         final button = find.byKey(Key('vendor-next-o$i'));
         await tester.ensureVisible(button);
         expect(

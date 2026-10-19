@@ -14,6 +14,7 @@ import '../../shared/pass_gyms.dart';
 import 'member_shell.dart';
 import 'widgets/mobile_money_pay.dart';
 import 'widgets/pass_gyms_sheet.dart';
+import 'widgets/gym_filters.dart';
 
 /// How long a FitFlex Pass lasts once its payment is approved. The server
 /// sets 30 days at purchase and moves both dates to the approval moment
@@ -278,7 +279,7 @@ class _AvailableGymsSection extends StatelessWidget {
                         ),
                       ),
                       FFBadge(
-                        label: g.tier.replaceAll('_', ' '),
+                        label: gymTierLabel(context, g),
                         tone: FFBadgeTone.gray,
                       ),
                     ],
