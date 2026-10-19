@@ -94,6 +94,7 @@ class _StockHistoryPageState extends State<StockHistoryPage> {
     }
     final tools = await VendorToolsOptions.of(context);
     if (!mounted) return;
+    _walkInSales = tools.walkInSales;
     if (!tools.stockLedger) {
       context.go('/vendor/home?open=products');
       return;
@@ -255,6 +256,9 @@ class _StockHistoryPageState extends State<StockHistoryPage> {
 
   /// Opens Orders, unless this order is not in the vendor's list yet (an
   /// unpaid order): then say so rather than show an Orders tab without it.
+  /// S3: rows of walk-in sales link to the sale (feature on + `sales`).
+  bool _walkInSales = false;
+
   Future<void> _openOrder(String orderId) async {
     if (_visibleOrders == null) await _loadVisibleOrders();
     if (!mounted) return;
@@ -677,6 +681,24 @@ class _StockHistoryPageState extends State<StockHistoryPage> {
               variant: FFButtonVariant.ghost,
               size: FFButtonSize.sm,
               onPressed: () => _openOrder(docId),
+            )
+          : Text(text, style: theme.textTheme.bodySmall);
+    }
+    if (doc != null && doc['type'] == 'sale') {
+      final saleId = doc['id']?.toString() ?? '';
+      final text = fillIn(context.tr('vendor.stock.sale'), {
+        'number': doc['number'] ?? '',
+      });
+      orderLink =
+          _walkInSales &&
+              canVendor(context, 'sales') &&
+              RegExp(r'^[A-Za-z0-9._:-]{1,100}$').hasMatch(saleId)
+          ? FFButton(
+              key: Key('stock-sale-$id'),
+              label: text,
+              variant: FFButtonVariant.ghost,
+              size: FFButtonSize.sm,
+              onPressed: () => context.push('/vendor/sales/$saleId'),
             )
           : Text(text, style: theme.textTheme.bodySmall);
     }

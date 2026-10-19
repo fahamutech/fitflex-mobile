@@ -18,6 +18,7 @@ class VendorTools {
     this.stockLedger = false,
     this.canSeeCost = false,
     this.buyerContact = false,
+    this.walkInSales = false,
   });
 
   /// Everything off: the old screens.
@@ -33,6 +34,10 @@ class VendorTools {
   /// (VENDOR_ORDER_BUYER_CONTACT). The server enforces it; the app only uses
   /// it to explain why the phone and address are gone.
   final bool buyerContact;
+
+  /// S3: walk-in (counter) sales — POS, sales history, void
+  /// (VENDOR_WALKIN_SALES). Exactly `true` from the server, else off.
+  final bool walkInSales;
 }
 
 class _Cached {
@@ -64,6 +69,7 @@ class VendorToolsOptions {
         stockLedger: options['stockLedger'] == true,
         canSeeCost: options['canSeeCost'] == true,
         buyerContact: options['buyerContact'] == true,
+        walkInSales: options['walkInSales'] == true,
       );
       _cache[api] = _Cached(token, tools);
       return tools;
@@ -123,7 +129,13 @@ const adjustReasons = [
 const inReasons = {'restock', 'returned', 'found'};
 const outReasons = {'damaged', 'expired', 'lost'};
 
-const _labelledReasons = {...adjustReasons, 'reserve', 'release'};
+const _labelledReasons = {
+  ...adjustReasons,
+  'reserve',
+  'release',
+  'sale',
+  'sale_void',
+};
 
 /// The words for a ledger row's reason; never the raw code.
 String stockReasonLabel(BuildContext context, String? reason) => context.tr(
