@@ -4499,6 +4499,12 @@ class FFLocale extends ChangeNotifier {
       'vendor.costForbidden':
           'Only the shop owner and admin staff can set the cost price.',
       // Vendor tools · S3: walk-in sales (POS, receipts, history, sync).
+      'vendor.sales.err.voidNotAllowed': 'You don\'t have permission to void sales.',
+      'vendor.pos.err.clock': 'Check your phone\'s date and time, then try again.',
+      'vendor.pos.err.tooOld': 'This sale is more than 7 days old, so it can\'t keep its original date.',
+      'vendor.sync.recordToday': 'Record with today\'s date',
+      'vendor.sync.originally': 'originally {date}',
+      'vendor.sync.conflictStockGeneric': 'Not enough stock for an item in this sale.',
       'vendor.sales.tab': 'Sales',
       'vendor.permission.sales': 'Shop sales',
       'vendor.sales.noAccess': 'You don\'t have access to shop sales.',
@@ -4619,8 +4625,7 @@ class FFLocale extends ChangeNotifier {
       'vendor.pos.notFiscal': 'This is not a TRA fiscal receipt.',
       'vendor.pos.receiptLanguage': 'Receipt language',
       'vendor.pos.share': 'Share receipt',
-      'vendor.pos.shareProvisional':
-          'Provisional receipt, number to follow (ref {ref})',
+      'vendor.pos.shareProvisional': 'Provisional receipt (ref {ref})',
       'vendor.pos.done': 'Done',
       'vendor.sales.title': 'Sales',
       'vendor.sales.today': 'Today',
@@ -4652,14 +4657,10 @@ class FFLocale extends ChangeNotifier {
       'vendor.sales.voided': 'Sale {number} voided. Items are back in stock.',
       'vendor.sales.voidedBy': 'Voided by {name}, {time}: {reason}',
       'vendor.sales.alreadyVoided': 'This sale was already voided.',
-      'vendor.sales.voidHasRefunds':
-          'This sale has refunds, so it can\'t be voided.',
       'vendor.sales.voidOffline':
           'Voiding needs a connection. Nothing was changed.',
-      'vendor.sales.voidNotOwn':
-          'You can only void sales you recorded yourself.',
-      'vendor.sales.voidTooOld':
-          'You can only void a sale on the day it was made. Ask the shop owner.',
+      'vendor.sales.voidNotOwn': 'You can only void sales you recorded yourself. Ask the business owner.',
+      'vendor.sales.voidTooOld': 'You can only void a sale on the day it was made. Ask the business owner.',
       'vendor.sales.suspended':
           'This business is suspended. Shop sales are paused; sales saved on this device stay here.',
       'vendor.stock.reason.sale': 'Shop sale',
@@ -9199,6 +9200,12 @@ class FFLocale extends ChangeNotifier {
       'vendor.costForbidden':
           'Mmiliki wa duka na wafanyakazi wa admin tu ndio wanaweza kuweka bei ya kununua.',
       // Vendor tools · S3 (rasimu: kwa ukaguzi wa mzawa wa Kiswahili).
+      'vendor.sales.err.voidNotAllowed': 'Huna ruhusa ya kubatilisha mauzo.',
+      'vendor.pos.err.clock': 'Angalia tarehe na saa ya simu yako, kisha jaribu tena.',
+      'vendor.pos.err.tooOld': 'Mauzo haya yana zaidi ya siku 7, hivyo hayawezi kubaki na tarehe yake ya awali.',
+      'vendor.sync.recordToday': 'Rekodi kwa tarehe ya leo',
+      'vendor.sync.originally': 'awali {date}',
+      'vendor.sync.conflictStockGeneric': 'Stock haitoshi kwa bidhaa moja kwenye mauzo haya.',
       'vendor.sales.tab': 'Mauzo',
       'vendor.permission.sales': 'Mauzo ya dukani',
       'vendor.sales.noAccess': 'Huna ruhusa ya mauzo ya dukani.',
@@ -9226,8 +9233,8 @@ class FFLocale extends ChangeNotifier {
           'Bidhaa {n}, jumla {amount}. Fungua bidhaa za mauzo.',
       'vendor.pos.cartTitle': 'Bidhaa za mauzo',
       'vendor.pos.cartEmpty': 'Ongeza bidhaa kuanza mauzo.',
-      'vendor.pos.increase': 'Ongeza moja {name}',
-      'vendor.pos.decrease': 'Punguza moja {name}',
+      'vendor.pos.increase': 'Ongeza {name} moja',
+      'vendor.pos.decrease': 'Punguza {name} moja',
       'vendor.pos.onlyLeft': 'Zipo {n} tu kwenye Stock.',
       'vendor.pos.editLine': 'Hariri {name}',
       'vendor.pos.qty': 'Idadi',
@@ -9261,8 +9268,7 @@ class FFLocale extends ChangeNotifier {
       'vendor.pos.clearSale': 'Futa mauzo',
       'vendor.pos.clearConfirm': 'Uondoe bidhaa zote kwenye mauzo haya?',
       'vendor.pos.draftKept': 'Mauzo yako ambayo hayajakamilika yamehifadhiwa.',
-      'vendor.pos.offlineBanner':
-          'Uko nje ya mtandao. Stock inayoonyeshwa ni ya {time} na huenda si sahihi.',
+      'vendor.pos.offlineBanner': 'Huna mtandao. Stock inayoonyeshwa ni ya {time} na huenda si sahihi.',
       'vendor.pos.noCache':
           'Unganisha mtandao mara moja ili kupakia bidhaa zako.',
       'vendor.pos.payTitle': 'Malipo',
@@ -9310,21 +9316,20 @@ class FFLocale extends ChangeNotifier {
           'Hakuna mtandao. Mauzo yamehifadhiwa kwenye simu hii na yatatumwa.',
       'vendor.documents.receipt': 'Risiti',
       'vendor.pos.receiptNo': 'Risiti {number}',
-      'vendor.pos.waitingSync': 'Inasubiri kutumwa',
+      'vendor.pos.waitingSync': 'Yanasubiri kutumwa',
       'vendor.pos.waitingSyncBody':
           'Imehifadhiwa kwenye kifaa hiki. Itapata namba ya risiti ukirudi mtandaoni.',
       'vendor.pos.tempRef': 'Kumbukumbu ya muda {ref}',
-      'vendor.pos.servedBy': 'Muhudumu: {name}',
+      'vendor.pos.servedBy': 'Mhudumu: {name}',
       'vendor.pos.receiptFooter': 'Malipo yamepokelewa na {business}.',
       'vendor.pos.notFiscal': 'Hii si risiti ya kodi ya TRA.',
       'vendor.pos.receiptLanguage': 'Lugha ya risiti',
       'vendor.pos.share': 'Tuma risiti',
-      'vendor.pos.shareProvisional':
-          'Risiti ya muda, namba itafuata (kumb. {ref})',
+      'vendor.pos.shareProvisional': 'Risiti ya muda (kumb. {ref})',
       'vendor.pos.done': 'Maliza',
       'vendor.sales.title': 'Mauzo',
       'vendor.sales.today': 'Leo',
-      'vendor.sales.filter.all': 'Zote',
+      'vendor.sales.filter.all': 'Yote',
       'vendor.sales.filter.completed': 'Yamekamilika',
       'vendor.sales.filter.voided': 'Yamebatilishwa',
       'vendor.sales.filter.mine': 'Yangu tu',
@@ -9338,8 +9343,8 @@ class FFLocale extends ChangeNotifier {
           'Bado hakuna mauzo ya dukani. Rekodi mauzo yako ya kwanza.',
       'vendor.sales.failed': 'Imeshindikana kupakia mauzo.',
       'vendor.sales.rowLabel': 'Risiti {number}, {amount}, {time}, {status}',
-      'vendor.sales.voidedBadge': 'Imebatilishwa',
-      'vendor.sales.offlineBadge': 'Ilirekodiwa bila mtandao',
+      'vendor.sales.voidedBadge': 'Yamebatilishwa',
+      'vendor.sales.offlineBadge': 'Yalirekodiwa nje ya mtandao',
       'vendor.sales.overrideBadge': 'Bei imebadilishwa',
       'vendor.sales.recordedAt': 'Ilifika FitFlex {time}',
       'vendor.sales.noteLabel': 'Maelezo: {note}',
@@ -9355,16 +9360,11 @@ class FFLocale extends ChangeNotifier {
           'Mauzo {number} yamebatilishwa. Bidhaa zimerudi kwenye Stock.',
       'vendor.sales.voidedBy': 'Yamebatilishwa na {name}, {time}: {reason}',
       'vendor.sales.alreadyVoided': 'Mauzo haya yalishabatilishwa.',
-      'vendor.sales.voidHasRefunds':
-          'Mauzo haya yana marejesho, hivyo hayawezi kubatilishwa.',
       'vendor.sales.voidOffline':
           'Kubatilisha kunahitaji mtandao. Hakuna kilichobadilishwa.',
-      'vendor.sales.voidNotOwn':
-          'Unaweza kubatilisha mauzo uliyorekodi wewe mwenyewe tu.',
-      'vendor.sales.voidTooOld':
-          'Unaweza kubatilisha mauzo siku ile ile yalipofanyika tu. Muombe mmiliki wa duka.',
-      'vendor.sales.suspended':
-          'Biashara hii imesitishwa. Mauzo ya dukani yamesimamishwa; mauzo yaliyohifadhiwa kwenye kifaa hiki yanabaki hapa.',
+      'vendor.sales.voidNotOwn': 'Unaweza kubatilisha mauzo uliyoyarekodi wewe mwenyewe tu. Muombe mmiliki wa biashara.',
+      'vendor.sales.voidTooOld': 'Unaweza kubatilisha mauzo siku yalipofanyika tu. Muombe mmiliki wa biashara.',
+      'vendor.sales.suspended': 'Biashara hii imesimamishwa. Mauzo ya dukani yamesitishwa; mauzo yaliyohifadhiwa kwenye kifaa hiki yanabaki hapa.',
       'vendor.stock.reason.sale': 'Mauzo ya dukani',
       'vendor.stock.reason.sale_void':
           'Mauzo yamebatilishwa, imerudi kwenye Stock',
@@ -9383,8 +9383,7 @@ class FFLocale extends ChangeNotifier {
       'vendor.sync.waiting': 'Yanasubiri',
       'vendor.sync.conflictStock':
           'Stock haitoshi kwa {name}: zimebaki {available}, mauzo haya yana {qty}.',
-      'vendor.sync.conflictOther':
-          'FitFlex imeshindwa kurekodi mauzo haya: {reason}',
+      'vendor.sync.conflictOther': 'Imeshindikana kurekodi mauzo haya: {reason}',
       'vendor.sync.conflictNotAllowed': 'Huna tena ruhusa ya kurekodi mauzo.',
       'vendor.sync.conflictTooOld': 'Mauzo haya ni ya zamani mno kurekodiwa.',
       'vendor.sync.howToFix':

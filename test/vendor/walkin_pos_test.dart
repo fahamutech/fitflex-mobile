@@ -138,7 +138,8 @@ void main() {
       RegExp(r'^[A-Za-z0-9._:-]{8,100}$').hasMatch(body['clientRef']),
       isTrue,
     );
-    expect(DateTime.tryParse(body['soldAt'] as String)?.isUtc, isTrue);
+    // Recorded online: the server's clock, not the phone's.
+    expect(body.containsKey('soldAt'), isFalse);
     expect(textContaining('ROUTE-RECEIPT sal_1'), findsOneWidget);
     // The draft is gone.
     final prefs = await SharedPreferences.getInstance();
@@ -284,6 +285,10 @@ void main() {
         (queue.single as Map)['body']['clientRef'],
         (sent[0].body as Map)['clientRef'],
       );
+      // Kept on the device with its sale time; it was first sent online.
+      expect((queue.single as Map)['body']['soldAt'], isNotNull);
+      expect((queue.single as Map)['sentOnline'], isTrue);
+      expect((sent[0].body as Map).containsKey('soldAt'), isFalse);
       expect(textContaining('ROUTE-QUEUED'), findsOneWidget);
     },
   );
@@ -477,6 +482,109 @@ void main() {
       expect(find.text(host.tr('vendor.pos.noProductsAccess')), findsOneWidget);
     },
   );
+
+  apiTest(
+    'insufficient_stock without product or count: a generic line, no "0"',
+    (tester, api) async {
+      seedPos(api);
+      api.fail('POST /vendor/sales', 409, {'error': 'insufficient_stock'});
+      final host = await pumpPos(tester, api);
+      await addWhey(tester);
+      await openPayment(tester);
+      await tapVisible(tester, find.byKey(const Key('pos-complete')));
+      await tester.pumpAndSettle();
+      expect(
+        find.text(host.tr('vendor.sync.conflictStockGeneric')),
+        findsOneWidget,
+      );
+      expect(textContaining('Only 0'), findsNothing);
+    },
+  );
+
+  apiTest(
+    "edited offline sale too old: Record with today's date resends without soldAt",
+    (tester, api) async {
+      SharedPreferences.setMockInitialValues({
+        'vendor_pos_draft.v1.v1': jsonEncode({
+          'lines': [
+            {
+              'productId': 'p1',
+              'name': 'Whey',
+              'listPriceTzs': 45000,
+              'qty': 1,
+              'discountTzs': 0,
+            },
+          ],
+          'soldAt': '2026-10-01T08:00:00.000Z',
+          'keepSoldAt': true,
+          'replacesClientRef': 'sale_old_000001',
+        }),
+      });
+      seedPos(api);
+      api.onCall('POST /vendor/sales', (r) {
+        final body = r.body as Map;
+        if (body.containsKey('soldAt')) {
+          return RawResponse(
+            400,
+            jsonEncode({
+              'error': 'sold_at_out_of_range',
+              'earliest': '2026-10-12T10:00:00.000Z',
+              'latest': '2026-10-19T10:05:00.000Z',
+            }),
+          );
+        }
+        return {'sale': serverSale()};
+      });
+      final host = await pumpPos(tester, api);
+      await host.dismissSnacks();
+      await openPayment(tester);
+      await tapVisible(tester, find.byKey(const Key('pos-complete')));
+      expect(find.text(host.tr('vendor.pos.err.tooOld')), findsOneWidget);
+      await tapVisible(tester, find.byKey(const Key('pos-record-today')));
+      await tester.pumpAndSettle();
+      final sent = api.where('POST', '/vendor/sales');
+      expect(sent, hasLength(2));
+      expect((sent[0].body as Map)['soldAt'], '2026-10-01T08:00:00.000Z');
+      final last = sent[1].body as Map;
+      expect(last.containsKey('soldAt'), isFalse);
+      expect(last['clientRef'], isNot((sent[0].body as Map)['clientRef']));
+      expect(last['note'], startsWith('originally 1 Oct 2026'));
+      expect(textContaining('ROUTE-RECEIPT sal_1'), findsOneWidget);
+    },
+  );
+
+  apiTest("soldAt ahead of the server: Check your phone's date and time", (
+    tester,
+    api,
+  ) async {
+    SharedPreferences.setMockInitialValues({
+      'vendor_pos_draft.v1.v1': jsonEncode({
+        'lines': [
+          {
+            'productId': 'p1',
+            'name': 'Whey',
+            'listPriceTzs': 45000,
+            'qty': 1,
+            'discountTzs': 0,
+          },
+        ],
+        'soldAt': '2030-01-01T08:00:00.000Z',
+        'keepSoldAt': true,
+      }),
+    });
+    seedPos(api);
+    api.fail('POST /vendor/sales', 400, {
+      'error': 'sold_at_out_of_range',
+      'earliest': '2026-10-12T10:00:00.000Z',
+      'latest': '2026-10-19T10:05:00.000Z',
+    });
+    final host = await pumpPos(tester, api);
+    await host.dismissSnacks();
+    await openPayment(tester);
+    await tapVisible(tester, find.byKey(const Key('pos-complete')));
+    expect(find.text(host.tr('vendor.pos.err.clock')), findsOneWidget);
+    expect(find.byKey(const Key('pos-record-today')), findsNothing);
+  });
 
   apiTest('Swahili POS at 375 and text scale 2: no overflow', (
     tester,

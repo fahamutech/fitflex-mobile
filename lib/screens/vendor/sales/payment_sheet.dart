@@ -15,7 +15,13 @@ import 'sales_widgets.dart';
 
 /// What the POS made of one Complete.
 class PayAttempt {
-  const PayAttempt._(this.kind, {this.messageKey, this.values, this.index});
+  const PayAttempt._(
+    this.kind, {
+    this.messageKey,
+    this.values,
+    this.index,
+    this.action,
+  });
 
   /// The sheet closes; the POS carries on (receipt, cart, snack).
   const PayAttempt.close() : this._(PayAttemptKind.close);
@@ -25,11 +31,13 @@ class PayAttempt {
     String messageKey, {
     Map<String, Object?>? values,
     int? index,
+    String? action,
   }) : this._(
          PayAttemptKind.stay,
          messageKey: messageKey,
          values: values,
          index: index,
+         action: action,
        );
 
   /// 5xx: the sheet stays with Try again and "Save and sync later".
@@ -39,6 +47,10 @@ class PayAttempt {
   final String? messageKey;
   final Map<String, Object?>? values;
   final int? index;
+
+  /// A fix the seller can choose in the sheet, e.g. `recordToday` (a sale
+  /// too old to keep its date is recorded with today's date).
+  final String? action;
 }
 
 enum PayAttemptKind { close, stay, server }
@@ -66,10 +78,18 @@ class _Row {
 }
 
 class PaymentSheet extends StatefulWidget {
-  const PaymentSheet({super.key, required this.totalTzs, required this.submit});
+  const PaymentSheet({
+    super.key,
+    required this.totalTzs,
+    required this.submit,
+    this.onAction,
+  });
 
   final int totalTzs;
   final PaySubmit submit;
+
+  /// Applies a [PayAttempt.action] before Complete is tried again.
+  final void Function(String action)? onAction;
 
   @override
   State<PaymentSheet> createState() => _PaymentSheetState();
@@ -83,6 +103,7 @@ class _PaymentSheetState extends State<PaymentSheet> {
   bool _server = false;
   String? _problem;
   int? _problemIndex;
+  String? _action;
 
   @override
   void dispose() {
@@ -106,6 +127,7 @@ class _PaymentSheetState extends State<PaymentSheet> {
   void _edited() => setState(() {
     _problem = null;
     _problemIndex = null;
+    _action = null;
     _server = false;
   });
 
@@ -137,6 +159,7 @@ class _PaymentSheetState extends State<PaymentSheet> {
             out.values ?? const {},
           );
           _problemIndex = out.index;
+          _action = out.action;
         });
       case PayAttemptKind.server:
         setState(() {
@@ -211,6 +234,23 @@ class _PaymentSheetState extends State<PaymentSheet> {
                 tone: FFAlertTone.error,
               ),
             ),
+            if (_action == 'recordToday' && widget.onAction != null) ...[
+              const SizedBox(height: FFTokens.spacingSm),
+              FFButton(
+                key: const Key('pos-record-today'),
+                label: context.tr('vendor.sync.recordToday'),
+                variant: FFButtonVariant.secondary,
+                fullWidth: true,
+                visualDensity: VisualDensity.standard,
+                onPressed: _saving
+                    ? null
+                    : () {
+                        widget.onAction!('recordToday');
+                        _edited();
+                        _complete();
+                      },
+              ),
+            ],
           ],
           const SizedBox(height: FFTokens.spacingMd),
           FFAlert(

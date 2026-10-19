@@ -158,8 +158,7 @@ class _PosPageState extends State<PosPage> {
         if (isVendorStaffDisabled(e, vendorStaff: isStaff)) {
           _notAllowed = true;
         } else if (e.status == 403) {
-          // Staff with `sales` but not `products`: the server does not
-          // give them the product list (reported as a backend gap).
+          // Refused the product list (e.g. a permission was removed).
           if (!hadCache) _problem = _LoadProblem.noAccess;
         } else if (!hadCache) {
           _problem = _LoadProblem.failed;
@@ -371,6 +370,9 @@ class _PosPageState extends State<PosPage> {
       child: PaymentSheet(
         totalTzs: _cart.cart.totals.totalTzs,
         submit: _submit,
+        onAction: (action) {
+          if (action == 'recordToday') _recordToday();
+        },
       ),
     );
   }
@@ -398,11 +400,15 @@ class _PosPageState extends State<PosPage> {
     if (session == null) return const PayAttempt.close();
     final api = AppScope.of(context).api;
     final display = _display();
+    // Online: no soldAt (the server's clock). Kept on the device: the same
+    // clientRef with the time of the first Complete.
     final body = _cart.cart.requestBody(payments);
+    final queuedBody = _cart.cart.requestBody(payments, queued: true);
+    final sentOnline = !_cart.cart.keepSoldAt;
     // Persist the fixed key and time before sending: a retry after an app
     // kill reuses them.
     await session.saveDraft(_cart.cart);
-    if (queue) return _queue(body, display);
+    if (queue) return _queue(queuedBody, display, sentOnline: sentOnline);
     try {
       final res = await api.vendorRecordSale(body);
       final sale = res['sale'];
@@ -413,14 +419,28 @@ class _PosPageState extends State<PosPage> {
       if (!mounted) return const PayAttempt.close();
       return _refused(e);
     } catch (_) {
-      return _queue(body, display);
+      return _queue(queuedBody, display, sentOnline: sentOnline);
     }
+  }
+
+  /// "Record with today's date": an edited offline sale older than the
+  /// server accepts loses its original time (kept in the note).
+  void _recordToday() {
+    final lang = FFLocaleScope.of(context).locale.languageCode;
+    final when = eatDayOf(_cart.cart.soldAt);
+    final originally = fillIn(context.tr('vendor.sync.originally'), {
+      'date': when == null
+          ? ''
+          : formatDate(DateTime(when.year, when.month, when.day), locale: lang),
+    });
+    _cart.update((c) => c.recordToday(originally));
   }
 
   Future<PayAttempt> _queue(
     Map<String, dynamic> body,
-    Map<String, dynamic> display,
-  ) async {
+    Map<String, dynamic> display, {
+    bool sentOnline = false,
+  }) async {
     final session = _session!;
     final replaces = _cart.cart.replacesClientRef;
     await session.enqueue(
@@ -428,6 +448,7 @@ class _PosPageState extends State<PosPage> {
         body: body,
         display: display,
         queuedAt: DateTime.now().toUtc().toIso8601String(),
+        sentOnline: sentOnline,
       ),
     );
     if (replaces != null) await session.remove(replaces);
@@ -519,18 +540,23 @@ class _PosPageState extends State<PosPage> {
         );
       case 'insufficient_stock':
         final line = _lineFor(body);
-        final available = (body['available'] as num?)?.toInt() ?? 0;
-        _updateStock(
-          body['productId']?.toString(),
-          body['variant']?.toString(),
-          available,
-        );
+        final available = (body['available'] as num?)?.toInt();
+        if (available != null) {
+          _updateStock(
+            body['productId']?.toString(),
+            body['variant']?.toString(),
+            available,
+          );
+        }
         _flag(
           line,
-          fillIn(context.tr('vendor.pos.err.stock'), {
-            'available': available,
-            'name': line?.name ?? '',
-          }),
+          line == null || available == null
+              // Without the product or the count: no blank name, no "0".
+              ? context.tr('vendor.sync.conflictStockGeneric')
+              : fillIn(context.tr('vendor.pos.err.stock'), {
+                  'available': available,
+                  'name': line.name,
+                }),
         );
         // Nothing was recorded: the next Complete is a new sale.
         _cart.update((c) => c.changed());
@@ -556,6 +582,16 @@ class _PosPageState extends State<PosPage> {
           }),
         );
         return const PayAttempt.close();
+      case 'sold_at_out_of_range':
+        // Only an edited offline sale sends soldAt: too old → it can be
+        // recorded with today's date; ahead of the server → the clock.
+        if (soldAtTooOld(_cart.cart.soldAt, body)) {
+          return const PayAttempt.stay(
+            'vendor.pos.err.tooOld',
+            action: 'recordToday',
+          );
+        }
+        return const PayAttempt.stay('vendor.pos.err.clock');
       case 'client_ref_reused':
         // The key was used for another sale: a new one next time.
         _cart.update((c) => c.clientRef = null);
@@ -604,7 +640,7 @@ class _PosPageState extends State<PosPage> {
     });
     _afterClose(() {
       _announce(text, assertive: true);
-      if (!_wide && line != null) _openCart();
+      if (!_wide) _openCart();
       final focus = line == null ? null : _lineFocus[line.key];
       focus?.requestFocus();
     });
@@ -1103,9 +1139,9 @@ class _PosPageState extends State<PosPage> {
           visualDensity: VisualDensity.standard,
           onPressed: _notAllowed ? null : (onCharge ?? _charge),
         ),
-        if (_flagged != null &&
-            cart.lines.every((l) => l.key != _flagged) &&
-            _flagText != null) ...[
+        // A refusal about no particular line (or one already removed).
+        if (_flagText != null &&
+            cart.lines.every((l) => l.key != _flagged)) ...[
           const SizedBox(height: FFTokens.spacingSm),
           FFAlert(message: _flagText!, tone: FFAlertTone.error),
         ],

@@ -244,12 +244,18 @@ DateTime? eatDayOf(String? iso) {
   return DateTime.utc(eat.year, eat.month, eat.day);
 }
 
-const _width = 30;
+/// WhatsApp on a phone shows about 32 characters a line (spec §4.2).
+const receiptWidth = 32;
 
+/// A label and an amount on one line, the amount right-aligned. When both
+/// do not fit (a long method + reference), the label takes its own line and
+/// the amount goes under it, still right-aligned, so the column holds.
 String _row(String label, String amount, {String indent = ''}) {
   final left = '$indent$label';
-  final gap = _width - left.length - amount.length;
-  return '$left${' ' * (gap < 1 ? 1 : gap)}$amount';
+  final gap = receiptWidth - left.length - amount.length;
+  if (gap >= 1) return '$left${' ' * gap}$amount';
+  final pad = receiptWidth - amount.length;
+  return '$left\n${' ' * (pad < 0 ? 0 : pad)}$amount';
 }
 
 /// The receipt as plain text (spec §4.2), in the language [t] answers in.

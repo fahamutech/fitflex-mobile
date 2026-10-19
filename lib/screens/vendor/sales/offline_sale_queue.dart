@@ -35,6 +35,7 @@ class QueuedSale {
     this.lastAttemptAt,
     this.state = 'waiting',
     this.error,
+    this.sentOnline = false,
   });
 
   /// The exact request (with its clientRef and soldAt).
@@ -51,6 +52,16 @@ class QueuedSale {
 
   /// The server's refusal (conflicts): `{code, status, body}`.
   Map<String, dynamic>? error;
+
+  /// The till first sent this sale online, without `soldAt` (the server's
+  /// clock), before it was kept here. If that send was in fact recorded, the
+  /// server answers client_ref_reused to this body (with `soldAt`); the
+  /// queue then replays the online body to get the recorded sale.
+  final bool sentOnline;
+
+  /// The body as the till sent it online (no soldAt).
+  Map<String, dynamic> get onlineBody =>
+      Map<String, dynamic>.from(body)..remove('soldAt');
 
   String get clientRef => body['clientRef']?.toString() ?? '';
   bool get isConflict => state == 'conflict';
@@ -83,6 +94,7 @@ class QueuedSale {
     'lastAttemptAt': ?lastAttemptAt,
     'state': state,
     'error': ?error,
+    if (sentOnline) 'sentOnline': true,
   };
 
   static QueuedSale? fromJson(Object? raw) {
@@ -103,6 +115,7 @@ class QueuedSale {
       error: raw['error'] is Map
           ? Map<String, dynamic>.from(raw['error'] as Map)
           : null,
+      sentOnline: raw['sentOnline'] == true,
     );
   }
 }
@@ -181,6 +194,7 @@ class SalesSession extends ChangeNotifier with WidgetsBindingObserver {
   int _attached = 0;
   int _draftCount = 0;
   String? _lastTry;
+  DateTime? _retryAt;
 
   /// Server sales that a queued sale became, by clientRef (this session).
   final Map<String, Map<String, dynamic>> synced = {};
@@ -311,6 +325,24 @@ class SalesSession extends ChangeNotifier with WidgetsBindingObserver {
     await _save();
     notifyListeners();
     _schedule();
+  }
+
+  /// "Record with today's date" for a sale too old to keep its date: the
+  /// same lines and payments under a new clientRef, no soldAt (the server's
+  /// now), and the original date in the note. Then it syncs.
+  Future<void> recordToday(String clientRef, String originally) async {
+    await load();
+    final item = byRef(clientRef);
+    if (item == null) return;
+    final next = QueuedSale(
+      body: recordTodayBody(item.body, originally),
+      display: item.display,
+      queuedAt: item.queuedAt,
+    );
+    _queue[_queue.indexOf(item)] = next;
+    await _save();
+    notifyListeners();
+    await sync(manual: true);
   }
 
   /// "Try again" on a conflict: the unchanged sale, same clientRef.
@@ -476,11 +508,17 @@ class SalesSession extends ChangeNotifier with WidgetsBindingObserver {
     if (_attached == 0 || waiting.isEmpty) return;
     if (_pause != SalesSyncPause.none) return;
     // Back-off after failures: 60 s → 2 min → 5 min (cap).
-    final delay = switch (_failures) {
+    var delay = switch (_failures) {
       0 || 1 => timerDelay,
       2 => timerDelay * 2,
       _ => timerDelay * 5,
     };
+    // 429: not before the server's Retry-After.
+    final retryAt = _retryAt;
+    if (retryAt != null) {
+      final wait = retryAt.difference(_now());
+      if (wait > delay) delay = wait;
+    }
     _timer = Timer(delay, () => unawaited(sync()));
   }
 
@@ -500,6 +538,11 @@ class SalesSession extends ChangeNotifier with WidgetsBindingObserver {
       _pause = SalesSyncPause.none;
     }
     if (_pause != SalesSyncPause.none) return Future.value();
+    // Rate limited: automatic attempts wait for Retry-After.
+    final retryAt = _retryAt;
+    if (!manual && retryAt != null && _now().isBefore(retryAt)) {
+      return Future.value();
+    }
     final run = _syncLoop();
     _running = run;
     notifyListeners();
@@ -520,9 +563,18 @@ class SalesSession extends ChangeNotifier with WidgetsBindingObserver {
       item.lastAttemptAt = _lastTry = _now().toUtc().toIso8601String();
       notifyListeners();
       try {
-        final res = await api.vendorRecordSale(item.body);
+        Map<String, dynamic> res;
+        try {
+          res = await api.vendorRecordSale(item.body);
+        } on ApiException catch (e) {
+          // The online send was recorded after all: fetch it by replaying
+          // that exact body (same clientRef → 200 with the same sale).
+          if (!item.sentOnline || e.code != 'client_ref_reused') rethrow;
+          res = await api.vendorRecordSale(item.onlineBody);
+        }
         final sale = res['sale'];
         _queue.remove(item);
+        _retryAt = null;
         if (sale is Map) {
           synced[item.clientRef] = Map<String, dynamic>.from(sale);
           final number = sale['number']?.toString();
@@ -576,7 +628,13 @@ class SalesSession extends ChangeNotifier with WidgetsBindingObserver {
       _pause = SalesSyncPause.notAllowed;
       return true;
     }
-    if (e.status >= 500 || e.status == 408 || e.status == 429) {
+    if (e.status == 429) {
+      item.state = 'waiting';
+      final after = (body['retryAfterSeconds'] as num?)?.toInt() ?? 60;
+      _retryAt = _now().add(Duration(seconds: after.clamp(1, 3600)));
+      return true;
+    }
+    if (e.status >= 500 || e.status == 408) {
       item.state = 'waiting';
       _failures = min(_failures + 1, 3);
       return true;

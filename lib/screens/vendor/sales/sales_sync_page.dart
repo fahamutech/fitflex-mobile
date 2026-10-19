@@ -83,6 +83,14 @@ class _SalesSyncPageState extends State<SalesSyncPage> {
 
     final key = saleErrorKey(code, reason: body['reason']?.toString());
     switch (key) {
+      case 'vendor.sync.conflictStock'
+          when body['productId'] == null || body['available'] == null:
+        // Without the product or the count: no blank name, no "0 left".
+        return context.tr('vendor.sync.conflictStockGeneric');
+      case 'vendor.sync.conflictTooOld'
+          when !soldAtTooOld(q.body['soldAt']?.toString(), body):
+        // Ahead of the server's clock: the phone's date is wrong.
+        return context.tr('vendor.pos.err.clock');
       case 'vendor.sync.conflictStock':
         final qty = rows
             .where(
@@ -150,6 +158,19 @@ class _SalesSyncPageState extends State<SalesSyncPage> {
       ], replaces: q.clientRef),
     );
     if (mounted) unawaited(context.push(posRoute));
+  }
+
+  Future<void> _recordToday(QueuedSale q) async {
+    final when = eatDayOf(q.body['soldAt']?.toString());
+    final originally = fillIn(context.tr('vendor.sync.originally'), {
+      'date': when == null
+          ? ''
+          : formatDate(
+              DateTime(when.year, when.month, when.day),
+              locale: _lang(),
+            ),
+    });
+    await _session?.recordToday(q.clientRef, originally);
   }
 
   Future<void> _discard(QueuedSale q) async {
@@ -294,6 +315,10 @@ class _SalesSyncPageState extends State<SalesSyncPage> {
   Widget _conflictCard(QueuedSale q, bool canCount, bool paused) {
     final theme = Theme.of(context);
     final stock = q.errorCode == 'insufficient_stock';
+    // Older than the server keeps (7 days): record it with today's date.
+    final tooOld =
+        q.errorCode == 'sold_at_out_of_range' &&
+        soldAtTooOld(q.body['soldAt']?.toString(), q.errorBody);
     return Padding(
       key: Key('sync-conflict-${q.clientRef}'),
       padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
@@ -320,7 +345,10 @@ class _SalesSyncPageState extends State<SalesSyncPage> {
               ],
             ),
             MoneyRow(
-              eatDateTime(q.body['soldAt']?.toString(), locale: _lang()),
+              eatDateTime(
+                (q.body['soldAt'] ?? q.queuedAt).toString(),
+                locale: _lang(),
+              ),
               formatCurrency(q.totalTzs),
               strong: true,
             ),
@@ -346,6 +374,14 @@ class _SalesSyncPageState extends State<SalesSyncPage> {
                     variant: FFButtonVariant.secondary,
                     visualDensity: VisualDensity.standard,
                     onPressed: () => _count(q),
+                  ),
+                if (tooOld && !paused)
+                  FFButton(
+                    key: Key('sync-record-today-${q.clientRef}'),
+                    label: context.tr('vendor.sync.recordToday'),
+                    variant: FFButtonVariant.secondary,
+                    visualDensity: VisualDensity.standard,
+                    onPressed: () => _recordToday(q),
                   ),
                 FFButton(
                   key: Key('sync-retry-${q.clientRef}'),
@@ -382,7 +418,10 @@ class _SalesSyncPageState extends State<SalesSyncPage> {
 Widget queuedSaleRow(BuildContext context, QueuedSale q) {
   final theme = Theme.of(context);
   final lang = FFLocaleScope.of(context).locale.languageCode;
-  final time = eatDateTime(q.body['soldAt']?.toString(), locale: lang);
+  final time = eatDateTime(
+    (q.body['soldAt'] ?? q.queuedAt).toString(),
+    locale: lang,
+  );
   final ref = tempRefOf(q.clientRef);
   final waitingLabel = context.tr(
     q.isConflict ? 'vendor.sync.needsFixing' : 'vendor.pos.waitingSync',

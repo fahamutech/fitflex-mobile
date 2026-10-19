@@ -323,8 +323,6 @@ class _VoidDialogState extends State<_VoidDialog> {
           setState(
             () => _fieldError = context.tr('vendor.sales.voidReasonMissing'),
           );
-        case 'has_refunds':
-          setState(() => _error = context.tr('vendor.sales.voidHasRefunds'));
         case 'void_not_allowed':
           setState(
             () => _error = context.tr(
@@ -339,7 +337,7 @@ class _VoidDialogState extends State<_VoidDialog> {
           setState(
             () => _error = context.tr(
               e.status == 403
-                  ? 'vendor.pos.err.notAllowed'
+                  ? 'vendor.sales.err.voidNotAllowed'
                   : 'vendor.saveFailed',
             ),
           );

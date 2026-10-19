@@ -164,9 +164,69 @@ void main() {
           now: () => DateTime.utc(2026, 10, 19, 12),
         );
         expect(again['clientRef'], first['clientRef']);
-        expect(again['soldAt'], '2026-10-19T11:05:00.000Z');
+        // Online: no soldAt (the server's clock decides).
+        expect(first.containsKey('soldAt'), isFalse);
+        expect(again.containsKey('soldAt'), isFalse);
+        // Kept on the device: same key, the time of the first Complete.
+        final queued = cart.requestBody(const [], queued: true);
+        expect(queued['clientRef'], first['clientRef']);
+        expect(queued['soldAt'], '2026-10-19T11:05:00.000Z');
       },
     );
+
+    test(
+      '"Record with today\'s date": new key, no soldAt, date in the note',
+      () {
+        final cart = PosCart.fromQueuedRequest(
+          {
+            'clientRef': 'sale_old_000001',
+            'soldAt': '2026-10-01T08:00:00.000Z',
+            'lines': [
+              {'productId': 'p1', 'qty': 1},
+            ],
+            'note': 'Blue one',
+          },
+          [
+            {'name': 'Whey', 'listPriceTzs': 45000},
+          ],
+          replaces: 'sale_old_000001',
+        );
+        final before = cart.requestBody(const []);
+        expect(before['soldAt'], '2026-10-01T08:00:00.000Z');
+        cart.recordToday('originally 1 Oct 2026');
+        final after = cart.requestBody(const []);
+        expect(after.containsKey('soldAt'), isFalse);
+        expect(after['clientRef'], isNot(before['clientRef']));
+        expect(after['note'], 'Blue one · originally 1 Oct 2026');
+        expect(cart.replacesClientRef, 'sale_old_000001');
+      },
+    );
+
+    test('queued body recorded today; note stays within 200 characters', () {
+      final body = recordTodayBody(
+        {
+          'clientRef': 'sale_old_000001',
+          'soldAt': '2026-10-01T08:00:00.000Z',
+          'lines': [],
+          'note': 'x' * 200,
+        },
+        'originally 1 Oct 2026',
+        makeClientRef: () => 'sale_new_000001',
+      );
+      expect(body.containsKey('soldAt'), isFalse);
+      expect(body['clientRef'], 'sale_new_000001');
+      expect((body['note'] as String).length, lessThanOrEqualTo(maxSaleNote));
+      expect(body['note'], endsWith('originally 1 Oct 2026'));
+    });
+
+    test('sold_at_out_of_range: too old vs a phone clock ahead', () {
+      const range = {
+        'earliest': '2026-10-12T10:00:00.000Z',
+        'latest': '2026-10-20T10:05:00.000Z',
+      };
+      expect(soldAtTooOld('2026-10-10T10:00:00.000Z', range), isTrue);
+      expect(soldAtTooOld('2026-10-25T10:00:00.000Z', range), isFalse);
+    });
 
     test('any cart change means a new clientRef at the next Complete', () {
       final cart = cartOf([
@@ -480,6 +540,28 @@ void main() {
       expect(text, contains('Payment received by Dar Gear.'));
       expect(text, contains('This is not a TRA fiscal receipt.'));
       expect(text, isNot(contains('TZS')));
+      // Columns hold at 32 characters; a long method + reference wraps
+      // and its amount stays right-aligned under it.
+      for (final line in text.split('\n')) {
+        if (line.contains('Payment received') || line.contains('fiscal')) {
+          continue;
+        }
+        expect(line.length, lessThanOrEqualTo(32), reason: line);
+      }
+      final long = ReceiptData.fromSale({
+        ...sale,
+        'payments': [
+          {
+            'method': 'airtel_money',
+            'amountTzs': 100000,
+            'reference': 'AB12CD34EF56GH',
+          },
+        ],
+      });
+      final lines = receiptShareText(long, en.t, 'en').split('\n');
+      final i = lines.indexOf('Airtel Money (AB12CD34EF56GH)');
+      expect(i, greaterThan(0));
+      expect(lines[i + 1], '${' ' * 25}100,000');
     });
 
     test('share text in Kiswahili uses the Swahili labels', () {
@@ -522,7 +604,7 @@ void main() {
       final en = FFLocale()..set(const Locale('en'));
       expect(
         receiptShareText(data, en.t, 'en'),
-        contains('Provisional receipt, number to follow (ref 123456)'),
+        contains('Provisional receipt (ref 123456)'),
       );
     });
 

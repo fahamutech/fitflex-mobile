@@ -511,6 +511,60 @@ void main() {
       },
     );
 
+    apiTest("too old: Record with today's date; ahead: check the phone clock", (
+      tester,
+      api,
+    ) async {
+      const range = {
+        'earliest': '2026-10-12T10:00:00.000Z',
+        'latest': '2026-10-19T10:05:00.000Z',
+      };
+      final old = queuedEntry(
+        'sale_o_00000001',
+        state: 'conflict',
+        error: {'code': 'sold_at_out_of_range', 'status': 400, 'body': range},
+      );
+      (old['body'] as Map)['soldAt'] = '2026-10-01T08:00:00.000Z';
+      final ahead = queuedEntry(
+        'sale_f_00000002',
+        state: 'conflict',
+        error: {'code': 'sold_at_out_of_range', 'status': 400, 'body': range},
+      );
+      (ahead['body'] as Map)['soldAt'] = '2030-01-01T08:00:00.000Z';
+      seedQueue('vendor_sale_queue.v1.v1', [old, ahead]);
+      seedPos(api);
+      api.onCall(
+        'POST /vendor/sales',
+        (r) => {'sale': serverSale(number: 'R-000004')},
+      );
+      final host = await pumpPage(
+        tester,
+        api,
+        const SalesSyncPage(),
+        user: vendorUser2,
+        size: const Size(400, 1600),
+        extraRoutes: salesRoutes,
+      );
+      expect(find.text(host.tr('vendor.sync.conflictTooOld')), findsOneWidget);
+      expect(find.text(host.tr('vendor.pos.err.clock')), findsOneWidget);
+      expect(
+        find.byKey(const Key('sync-record-today-sale_f_00000002')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const Key('sync-edit-sale_o_00000001')),
+        findsOneWidget,
+      );
+      await tapVisible(
+        tester,
+        find.byKey(const Key('sync-record-today-sale_o_00000001')),
+      );
+      final body = api.where('POST', '/vendor/sales').first.body as Map;
+      expect(body.containsKey('soldAt'), isFalse);
+      expect(body['clientRef'], isNot('sale_o_00000001'));
+      expect(body['note'], 'originally 1 Oct 2026');
+    });
+
     apiTest('staff without products: asked to get someone to count', (
       tester,
       api,

@@ -300,8 +300,14 @@ class PosCart {
   }
 
   /// Fixes the key and the sale time (once) and returns the request body.
+  ///
+  /// A sale recorded online sends no `soldAt`: the server uses its own clock
+  /// (a wrong phone clock cannot misdate it). `soldAt` is sent only for a
+  /// sale kept on the device ([queued]) or an edited offline sale that keeps
+  /// its original time ([keepSoldAt]).
   Map<String, dynamic> requestBody(
     List<Map<String, dynamic>> payments, {
+    bool queued = false,
     String Function()? makeClientRef,
     DateTime Function()? now,
   }) {
@@ -310,12 +316,22 @@ class PosCart {
     final trimmed = note.trim();
     return {
       'clientRef': clientRef,
-      'soldAt': soldAt,
+      if (queued || keepSoldAt) 'soldAt': soldAt,
       'lines': [for (final l in lines) l.toRequest()],
       if (saleDiscountTzs > 0) 'discountTzs': saleDiscountTzs,
       'payments': payments,
       if (trimmed.isNotEmpty) 'note': trimmed,
     };
+  }
+
+  /// "Record with today's date" (a sale older than the server accepts):
+  /// a new key, no `soldAt` (the server's now), and the original date in
+  /// the note ([originally] is e.g. "originally 12 Oct 2026").
+  void recordToday(String originally) {
+    note = withOriginalDate(note, originally);
+    keepSoldAt = false;
+    soldAt = null;
+    clientRef = null;
   }
 
   Map<String, dynamic> toJson() => {
@@ -490,3 +506,38 @@ String saleErrorKey(String? code, {String? reason}) => switch (code) {
   'vendor_suspended' => 'vendor.sales.suspended',
   _ => 'vendor.sync.conflictOther',
 };
+
+/// [note] with "originally {date}" added, within the 200-character limit.
+String withOriginalDate(String note, String originally) {
+  final base = note.trim();
+  final joined = base.isEmpty ? originally : '$base · $originally';
+  if (joined.length <= maxSaleNote) return joined;
+  final room = maxSaleNote - originally.length - 3;
+  return room <= 0
+      ? originally.substring(0, maxSaleNote)
+      : '${base.substring(0, room)} · $originally';
+}
+
+/// A queued request recorded "with today's date": a new clientRef, no
+/// soldAt, the original date in the note.
+Map<String, dynamic> recordTodayBody(
+  Map<String, dynamic> body,
+  String originally, {
+  String Function()? makeClientRef,
+}) => {
+  ...Map<String, dynamic>.from(body)..remove('soldAt'),
+  'clientRef': (makeClientRef ?? newSaleClientRef)(),
+  'note': withOriginalDate(body['note']?.toString() ?? '', originally),
+};
+
+/// Whether a refused `soldAt` was too old (before the server's earliest),
+/// as opposed to ahead of its clock (the phone's date is wrong).
+bool soldAtTooOld(String? soldAt, Map body) {
+  final sold = DateTime.tryParse(soldAt ?? '');
+  final earliest = DateTime.tryParse(body['earliest']?.toString() ?? '');
+  if (sold == null) return false;
+  if (earliest == null) {
+    return DateTime.now().toUtc().difference(sold) > const Duration(days: 7);
+  }
+  return sold.isBefore(earliest);
+}

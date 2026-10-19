@@ -329,6 +329,119 @@ void main() {
     });
   });
 
+  test(
+    'sent online first, then queued: client_ref_reused fetches the recorded sale',
+    () async {
+      await api.run(() async {
+        api.onCall('POST /vendor/sales', (r) {
+          final body = r.body as Map;
+          // The first online send (no soldAt) was recorded after all.
+          if (body.containsKey('soldAt')) {
+            return RawResponse(409, jsonEncode({'error': 'client_ref_reused'}));
+          }
+          return saleFor('sale_a_000001', 'R-000009');
+        });
+        final s = session();
+        final q = queued('sale_a_000001');
+        await s.enqueue(
+          QueuedSale(
+            body: q.body,
+            display: q.display,
+            queuedAt: q.queuedAt,
+            sentOnline: true,
+          ),
+        );
+        await s.sync();
+        final sent = api.where('POST', '/vendor/sales');
+        expect(sent, hasLength(2));
+        expect((sent[1].body as Map).containsKey('soldAt'), isFalse);
+        expect((sent[1].body as Map)['clientRef'], 'sale_a_000001');
+        expect(s.isEmpty, isTrue);
+        expect(s.synced['sale_a_000001']?['number'], 'R-000009');
+      });
+    },
+  );
+
+  test(
+    'client_ref_reused on a sale never sent online stays a conflict',
+    () async {
+      await api.run(() async {
+        api.fail('POST /vendor/sales', 409, {'error': 'client_ref_reused'});
+        final s = session();
+        await s.enqueue(queued('sale_a_000001'));
+        await s.sync();
+        expect(api.where('POST', '/vendor/sales'), hasLength(1));
+        expect(s.conflicts.single.errorCode, 'client_ref_reused');
+      });
+    },
+  );
+
+  test('429: automatic attempts wait for retryAfterSeconds', () async {
+    await api.run(() async {
+      var now = DateTime.utc(2026, 10, 19, 10);
+      api.fail('POST /vendor/sales', 429, {
+        'error': 'rate_limited',
+        'retryAfterSeconds': 120,
+      });
+      final s = SalesSession(
+        api: client,
+        vendorId: 'v1',
+        personId: 'u1',
+        now: () => now,
+      );
+      await s.enqueue(queued('sale_a_000001'));
+      await s.sync();
+      expect(s.waiting, hasLength(1));
+      api.clear();
+      now = now.add(const Duration(seconds: 60));
+      await s.sync();
+      expect(
+        api.sent('POST', '/vendor/sales'),
+        isFalse,
+        reason: 'before Retry-After',
+      );
+      api.heal('POST /vendor/sales');
+      api.onCall(
+        'POST /vendor/sales',
+        (_) => saleFor('sale_a_000001', 'R-000001'),
+      );
+      now = now.add(const Duration(seconds: 61));
+      await s.sync();
+      expect(s.isEmpty, isTrue);
+    });
+  });
+
+  test(
+    'too old: "Record with today\'s date" sends a new clientRef, no soldAt',
+    () async {
+      await api.run(() async {
+        api.fail('POST /vendor/sales', 400, {
+          'error': 'sold_at_out_of_range',
+          'earliest': '2026-10-12T10:00:00.000Z',
+          'latest': '2026-10-19T10:05:00.000Z',
+        });
+        final s = session();
+        await s.enqueue(
+          queued('sale_a_000001', at: '2026-10-01T10:00:00.000Z'),
+        );
+        await s.sync();
+        expect(s.conflicts.single.errorCode, 'sold_at_out_of_range');
+        api.heal('POST /vendor/sales');
+        api.onCall(
+          'POST /vendor/sales',
+          (r) => saleFor((r.body as Map)['clientRef'], 'R-000003'),
+        );
+        api.clear();
+        await s.recordToday('sale_a_000001', 'originally 1 Oct 2026');
+        final body = api.only('POST', '/vendor/sales').body as Map;
+        expect(body.containsKey('soldAt'), isFalse);
+        expect(body['clientRef'], isNot('sale_a_000001'));
+        expect(body['note'], 'originally 1 Oct 2026');
+        expect(s.isEmpty, isTrue);
+      });
+    },
+  );
+
   test('identity: vendor acts for itself, staff for their vendor', () {
     expect(SalesSession.identityOf({'id': 'v1', 'userType': 'vendor'}), (
       vendorId: 'v1',
