@@ -43,3 +43,31 @@ Future<bool> showFFConfirmDialog(
   );
   return result ?? false;
 }
+
+/// The sign-in error dialog shared by Sign in, Sign up and email sign-in:
+/// a translated title, the [message] and a translated Close button.
+/// [onClose] runs after the dialog is closed with the button.
+Future<void> showFFAuthErrorDialog(
+  BuildContext context,
+  String message, {
+  VoidCallback? onClose,
+}) {
+  return showDialog<void>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      key: const Key('auth-error-dialog'),
+      title: Text(ctx.tr('auth.errorDialog.title')),
+      content: Text(message),
+      actions: [
+        TextButton(
+          key: const Key('auth-error-close'),
+          onPressed: () {
+            Navigator.of(ctx).pop();
+            onClose?.call();
+          },
+          child: Text(ctx.tr('common.close')),
+        ),
+      ],
+    ),
+  );
+}

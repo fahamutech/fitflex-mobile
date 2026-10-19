@@ -8,6 +8,7 @@ import '../../../shared/i18n.dart';
 import '../../../shared/models.dart';
 import '../../../shared/tone_theme.dart';
 import '../member_shell.dart';
+import '../../../shared/photo_hero_flag.dart';
 import 'pass_state.dart';
 
 class PassSummaryCard extends StatelessWidget {
@@ -17,12 +18,32 @@ class PassSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // PHOTO_HERO_UI: a profile request that failed for a non-network reason
+    // gets the generic error and Retry instead of spinning forever.
+    if (photoHeroUi && data.me == null && !data.offline && data.meLoadFailed) {
+      return FFErrorState(
+        key: const Key('pass-summary-error'),
+        retryLabel: context.tr('home.retry'),
+        onRetry: () => _retry(context),
+      );
+    }
     // Until the profile arrives we don't know the pass, so don't flash
     // "Choose a pass" at a member who already has one.
     if (data.me == null && !data.offline) {
       return const FFCard(
         key: Key('pass-summary-loading'),
         child: SizedBox(height: 120, child: Center(child: FFSpinner(size: 32))),
+      );
+    }
+    // Offline before the profile ever arrived: we don't know the pass, so
+    // say we couldn't load it rather than "No pass yet".
+    if (data.me == null && data.offline) {
+      return FFErrorState(
+        key: const Key('pass-summary-error'),
+        icon: Icons.cloud_off_outlined,
+        title: context.tr('home.passError.title'),
+        retryLabel: context.tr('home.retry'),
+        onRetry: () => _retry(context),
       );
     }
     final theme = Theme.of(context);
@@ -35,55 +56,103 @@ class PassSummaryCard extends StatelessWidget {
         ? null
         : (directDaysLeft / directDurationDays).clamp(0, 1).toDouble();
 
+    // A working pass leads with its own name and status. A purchase still
+    // waiting for approval is a different pass, so it gets its own amber
+    // line below instead of borrowing this card's title or badge.
+    final hasPass = state.canShowQr;
+    final pendingAside = hasPass ? pending : null;
+
     // With no pass the title says so once; the sentence and the button
     // below carry the invitation, so the badge is left out.
-    final title = sub == null
-        ? (pending != null
-              ? _tierLabel(context, pending.tier)
-              : context.tr('pass.state.noPassYet'))
-        : sub.isDirect
-        ? (sub.homeGym?.name ?? context.tr('member.membership'))
-        : context.tr('pass.${sub.tier}');
-    final status = pending != null
-        ? context.tr('pass.pending')
-        : sub == null
-        ? null
-        : _statusLabel(context, sub.status);
+    final String title;
+    final String? status;
+    if (hasPass || (pending == null && sub != null)) {
+      title = sub!.isDirect
+          ? (sub.homeGym?.name ?? context.tr('member.membership'))
+          : context.tr('pass.${sub.tier}');
+      // Ending soon says so on the badge instead of "Active", flag on or off
+      // (owner, 2026-10-19). Low visits keeps the status wording for now.
+      status = state == PassState.endingSoon
+          ? context.tr('pass.badge.endingSoon')
+          : _statusLabel(context, sub.status);
+    } else if (pending != null) {
+      title =
+          _pendingName(context, pending) ??
+          context.tr('pass.state.pendingPurchaseAny');
+      status = context.tr('pass.pending');
+    } else {
+      title = context.tr('pass.state.noPassYet');
+      status = null;
+    }
 
     return FFCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      context.tr('member.yourPass'),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+          LayoutBuilder(
+            builder: (context, box) {
+              final rowWidth = box.maxWidth;
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          context.tr('member.yourPass'),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          title,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      title,
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
+                  ),
+                  if (status != null) ...[
+                    const SizedBox(width: FFTokens.spacingSm),
+                    // At most 60% of the row, so a longer label ("Inaisha
+                    // karibuni" at large text) ends in an ellipsis instead of
+                    // overflowing; short labels are unaffected.
+                    ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: rowWidth * 0.6),
+                      child: FFBadge(
+                        key: const Key('pass-status-badge'),
+                        label: status,
+                        tone: photoHeroUi && _actSoon(state)
+                            ? FFBadgeTone.fuel
+                            : state.badgeTone,
+                        dot: true,
                       ),
                     ),
                   ],
-                ),
-              ),
-              if (status != null) ...[
-                const SizedBox(width: FFTokens.spacingSm),
-                FFBadge(label: status, tone: state.badgeTone, dot: true),
-              ],
-            ],
+                ],
+              );
+            },
           ),
-          if (sub?.isDirect == true) ...[
+          if (pendingAside != null) ...[
+            const SizedBox(height: FFTokens.spacingSm),
+            FFBadge(
+              key: const Key('pass-pending-purchase'),
+              label: switch (_pendingName(context, pendingAside)) {
+                final name? =>
+                  context
+                      .tr('pass.state.pendingPurchase')
+                      .replaceAll('{tier}', name),
+                null => context.tr('pass.state.pendingPurchaseAny'),
+              },
+              tone: FFBadgeTone.warning,
+              dot: true,
+              wrap: true,
+            ),
+          ],
+          if (sub?.isDirect == true && (hasPass || pending == null)) ...[
             const SizedBox(height: 10),
             Text(
               context.tr('member.plan_${sub!.plan ?? 'monthly'}'),
@@ -198,7 +267,13 @@ class PassSummaryCard extends StatelessWidget {
               .replaceAll('{total}', '$cap');
 
     final tone = FFToneTheme.of(context);
-    final ringColor = state.tone == PassTone.warning
+    // PHOTO_HERO_UI: ending soon and few visits are Fuel ("act soon", canon
+    // V2, F-5); payment pending stays amber.
+    final ringColor = photoHeroUi && _actSoon(state)
+        ? (theme.brightness == Brightness.dark
+              ? FFTokens.fuelOnDark
+              : FFTokens.fuel)
+        : state.tone == PassTone.warning
         ? tone.warning.dot
         : theme.colorScheme.primary;
     return Row(
@@ -251,7 +326,13 @@ class PassSummaryCard extends StatelessWidget {
     );
   }
 
+  static bool _actSoon(PassState s) =>
+      s == PassState.endingSoon || s == PassState.lowVisits;
+
   /// Refreshes the QR and profile first so the next screen is current.
+  static Future<void> go(BuildContext context, String route) =>
+      _go(context, route);
+
   static Future<void> _go(BuildContext context, String route) async {
     final shellState = context.findAncestorStateOfType<MemberShellState>();
     await shellState?.refreshQr();
@@ -260,11 +341,25 @@ class PassSummaryCard extends StatelessWidget {
     context.go(route);
   }
 
+  /// Loads the profile again (and the QR once it says there is a pass).
+  Future<void> _retry(BuildContext context) async {
+    final shellState = context.findAncestorStateOfType<MemberShellState>();
+    await shellState?.refreshMe();
+    if (data.canCheckIn) await shellState?.refreshQr();
+  }
+
   /// The pass name for a tier, or the tier itself for one the app doesn't know.
   static String _tierLabel(BuildContext context, String tier) {
     final key = 'pass.$tier';
     final label = context.tr(key);
     return label == key ? tier : label;
+  }
+
+  /// What a waiting payment buys: the pass tier, or the gym for a gym plan.
+  static String? _pendingName(BuildContext context, PaymentRequest pending) {
+    if (pending.tier.isNotEmpty) return _tierLabel(context, pending.tier);
+    final gym = pending.gymName?.trim() ?? '';
+    return gym.isEmpty ? null : gym;
   }
 
   /// Translated status, falling back to the raw value for new ones.

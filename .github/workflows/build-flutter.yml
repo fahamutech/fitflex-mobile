@@ -1,12 +1,15 @@
 name: Build Flutter APK
 
-# PR check: analyze, test and build a debug APK. Merges to main are built and
+# PR and release-candidate check: analyze, test and build a debug APK. Merges to main are built and
 # sent to testers by distribute-android.yml, so main isn't built twice. The
 # debug APK is not stored (it filled the artifact quota); tagged releases are.
 on:
   pull_request:
-    branches: [main]
+    branches: [main, release-candidate]
   push:
+    # release-candidate is checked on every merge; it is never deployed from
+    # here (deploy-web.yml and distribute-android.yml only run for main).
+    branches: [release-candidate]
     tags: ['v*']
   workflow_dispatch:
 
@@ -17,6 +20,9 @@ jobs:
 
     env:
       API_BASE: ${{ vars.API_BASE || 'https://fitflex-faas.bfast.smartstock.co.tz' }}
+      # Shop home V2 (on/off). Set repo variable SHOP_HOME_V2=true to switch it on;
+      # the server also needs SHOP_HOME_V2=1, otherwise the app falls back to today's shop.
+      SHOP_HOME_V2: ${{ vars.SHOP_HOME_V2 || 'false' }}
 
     steps:
       - name: Checkout repository
@@ -59,11 +65,11 @@ jobs:
 
       - name: Build debug APK
         if: "!startsWith(github.ref, 'refs/tags/v')"
-        run: flutter build apk --debug --dart-define=API_BASE="$API_BASE"
+        run: flutter build apk --debug --dart-define=API_BASE="$API_BASE" --dart-define=SHOP_HOME_V2="$SHOP_HOME_V2"
 
       - name: Build release APK (tags only)
         if: startsWith(github.ref, 'refs/tags/v')
-        run: flutter build apk --release --dart-define=API_BASE="$API_BASE"
+        run: flutter build apk --release --dart-define=API_BASE="$API_BASE" --dart-define=SHOP_HOME_V2="$SHOP_HOME_V2"
 
       - name: Keep release APK (tags only)
         if: startsWith(github.ref, 'refs/tags/v')

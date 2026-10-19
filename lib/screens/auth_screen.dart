@@ -9,6 +9,7 @@ import '../shared/api_client.dart';
 import '../shared/api_error_message.dart';
 import '../shared/auth_state.dart';
 import '../shared/components/components.dart';
+import '../shared/photo_hero_flag.dart';
 import '../shared/design_tokens.dart';
 import '../shared/firebase_auth_service.dart';
 import '../shared/i18n.dart';
@@ -106,19 +107,7 @@ class _AuthScreenState extends State<AuthScreen>
 
   void _showErrorDialog(String message) {
     if (!mounted) return;
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Authentication Error'),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
+    showFFAuthErrorDialog(context, message);
   }
 
   Future<void> _handleSessionApiError(ApiException e) async {
@@ -191,9 +180,131 @@ class _AuthScreenState extends State<AuthScreen>
     _continueWithEmail(mode: mode);
   }
 
+  /// Everything under the title: Google, OR, the identifier, Continue and
+  /// Create account. Shared by both layouts.
+  List<Widget> _formChildren(BuildContext context, bool loading) => [
+    // Google sign-in
+    FFGoogleSignInButton(
+      label: context.tr('auth.continueWithGoogle').toUpperCase(),
+      onTap: loading ? null : _signInWithGoogle,
+      loading: _busy,
+    ),
+    const SizedBox(height: 28),
+    FFDividerLabel(label: context.tr('auth.or')),
+    const SizedBox(height: 28),
+    // Email/Phone field
+    FFTextField(
+      key: const Key('login-identifier'),
+      controller: _emailCtrl,
+      enabled: !loading,
+      keyboardType: TextInputType.emailAddress,
+      autofillHints: const [AutofillHints.email],
+      hint: context.tr('auth.emailOrPhone'),
+      errorText: _inputError,
+      prefixIcon: const Icon(Icons.mail_outline_rounded),
+      textInputAction: TextInputAction.done,
+      onFieldSubmitted: loading ? null : (_) => _attemptContinue(),
+    ),
+    const SizedBox(height: 24),
+    // CONTINUE button
+    FilledButton(
+      key: const Key('login-continue'),
+      onPressed: loading ? null : () => _attemptContinue(),
+      child: loading
+          ? FFSpinner(size: 18, color: Theme.of(context).colorScheme.onPrimary)
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  context.tr('lang.continue').toUpperCase(),
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    // The text style carries the body
+                    // colour; on the primary fill the
+                    // label must use on-primary.
+                    color: Theme.of(context).colorScheme.onPrimary,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(width: FFTokens.spacingSm),
+                const Icon(Icons.chevron_right, size: FFTokens.iconMd),
+              ],
+            ),
+    ),
+    if (_error != null) ...[
+      const SizedBox(height: 16),
+      FFAlert(message: _error!, tone: FFAlertTone.error),
+    ],
+    const SizedBox(height: 24),
+    Wrap(
+      alignment: WrapAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        Text(
+          context.tr('auth.noAccount'),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: Theme.of(context).textTheme.bodySmall?.color,
+          ),
+        ),
+        FFButton(
+          label: context.tr('auth.createAccount'),
+          onPressed: loading ? null : () => context.push(AppRoutes.role),
+          variant: FFButtonVariant.ghost,
+          size: FFButtonSize.sm,
+        ),
+      ],
+    ),
+  ];
+
+  /// PHOTO_HERO_UI: the compact photo hero carries the title.
+  bool _precachedHome = false;
+
+  Widget _buildPhotoHero(BuildContext context, bool loading) {
+    // Home's photos are next once this screen completes (§9).
+    if (!_precachedHome) {
+      _precachedHome = true;
+      precacheHeroPhotos(context, const [
+        FFHeroPhoto.homeStart,
+        FFHeroPhoto.homePass,
+      ]);
+    }
+    return FFPhotoHeroPage(
+      leading: IconButton(
+        tooltip: context.tr('a11y.back'),
+        icon: const Icon(Icons.arrow_back),
+        onPressed: loading ? null : () => context.go(AppRoutes.language),
+      ),
+      logo: const FFWordmark(),
+      actions: const [AppPrefsButtons()],
+      hero: (context, f) => FFPhotoHero(
+        photo: FFHeroPhoto.signIn,
+        variant: f.variant,
+        minHeight: f.minHeight,
+        topInset: f.topInset,
+        wideHeadline: f.wide,
+        logo: f.wide ? const FFWordmark() : null,
+        eyebrow: context.tr('auth.signIn'),
+        headlineLead: context.tr('hero.signIn.lead'),
+        headlineAccent: context.tr('hero.signIn.accent'),
+        subline: context.tr('hero.signIn.sub'),
+      ),
+      content: FadeTransition(
+        opacity: _fadeAnim,
+        child: SlideTransition(
+          position: _slideAnim,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: _formChildren(context, loading),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final loading = _busy || _recovering;
+    if (photoHeroUi) return _buildPhotoHero(context, loading);
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -227,97 +338,7 @@ class _AuthScreenState extends State<AuthScreen>
                         style: Theme.of(context).textTheme.headlineMedium,
                       ),
                       const SizedBox(height: 36),
-                      // Google sign-in
-                      FFGoogleSignInButton(
-                        label: context
-                            .tr('auth.continueWithGoogle')
-                            .toUpperCase(),
-                        onTap: loading ? null : _signInWithGoogle,
-                        loading: _busy,
-                      ),
-                      const SizedBox(height: 28),
-                      FFDividerLabel(label: context.tr('auth.or')),
-                      const SizedBox(height: 28),
-                      // Email/Phone field
-                      FFTextField(
-                        key: const Key('login-identifier'),
-                        controller: _emailCtrl,
-                        enabled: !loading,
-                        keyboardType: TextInputType.emailAddress,
-                        autofillHints: const [AutofillHints.email],
-                        hint: context.tr('auth.emailOrPhone'),
-                        errorText: _inputError,
-                        prefixIcon: const Icon(Icons.mail_outline_rounded),
-                        textInputAction: TextInputAction.done,
-                        onFieldSubmitted: loading
-                            ? null
-                            : (_) => _attemptContinue(),
-                      ),
-                      const SizedBox(height: 24),
-                      // CONTINUE button
-                      FilledButton(
-                        key: const Key('login-continue'),
-                        onPressed: loading ? null : () => _attemptContinue(),
-                        child: loading
-                            ? FFSpinner(
-                                size: 18,
-                                color: Theme.of(context).colorScheme.onPrimary,
-                              )
-                            : Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    context.tr('lang.continue').toUpperCase(),
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelLarge
-                                        ?.copyWith(
-                                          // The text style carries the body
-                                          // colour; on the primary fill the
-                                          // label must use on-primary.
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.onPrimary,
-                                          fontWeight: FontWeight.w800,
-                                          letterSpacing: 1.2,
-                                        ),
-                                  ),
-                                  const SizedBox(width: FFTokens.spacingSm),
-                                  const Icon(
-                                    Icons.chevron_right,
-                                    size: FFTokens.iconMd,
-                                  ),
-                                ],
-                              ),
-                      ),
-                      if (_error != null) ...[
-                        const SizedBox(height: 16),
-                        FFAlert(message: _error!, tone: FFAlertTone.error),
-                      ],
-                      const SizedBox(height: 24),
-                      Wrap(
-                        alignment: WrapAlignment.center,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          Text(
-                            context.tr('auth.noAccount'),
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(
-                                  color: Theme.of(
-                                    context,
-                                  ).textTheme.bodySmall?.color,
-                                ),
-                          ),
-                          FFButton(
-                            label: context.tr('auth.createAccount'),
-                            onPressed: loading
-                                ? null
-                                : () => context.push(AppRoutes.role),
-                            variant: FFButtonVariant.ghost,
-                            size: FFButtonSize.sm,
-                          ),
-                        ],
-                      ),
+                      ..._formChildren(context, loading),
                     ],
                   ),
                 ),

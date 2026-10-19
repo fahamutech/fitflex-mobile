@@ -704,10 +704,22 @@ class ApiClient {
     return await _request('GET', '/me/checkins?$query');
   }
 
-  Future<Map<String, dynamic>> requestPass(String tier) async => await _request(
+  /// [reference] is the member's mobile-money transaction ID and
+  /// [payerPhone] the number they paid from, sent only while manual Lipa
+  /// Namba payment is on (fitflex-functions#188).
+  Future<Map<String, dynamic>> requestPass(
+    String tier, {
+    String? reference,
+    String? payerPhone,
+  }) async => await _request(
     'POST',
     '/me/subscribe',
-    body: {'tier': tier, 'type': 'platform_pass'},
+    body: {
+      'tier': tier,
+      'type': 'platform_pass',
+      'reference': ?reference,
+      'payerPhone': ?payerPhone,
+    },
   );
 
   Future<Map<String, dynamic>> subscribe(String tier) async =>
@@ -747,18 +759,38 @@ class ApiClient {
       await _request('GET', '/me/upgrade-options') as Map<String, dynamic>;
 
   /// Upgrade the FitFlex Pass by paying the price difference.
-  Future<Map<String, dynamic>> upgradePass(String tier) async =>
-      await _request('POST', '/me/upgrade', body: {'tier': tier})
+  Future<Map<String, dynamic>> upgradePass(
+    String tier, {
+    String? reference,
+    String? payerPhone,
+  }) async =>
+      await _request(
+            'POST',
+            '/me/upgrade',
+            body: {
+              'tier': tier,
+              'reference': ?reference,
+              'payerPhone': ?payerPhone,
+            },
+          )
           as Map<String, dynamic>;
 
   /// A7: subscribe to a gym's own Daily/Weekly/Monthly plan.
   Future<Map<String, dynamic>> subscribeDirect({
     required String gymId,
     required String plan,
+    String? reference,
+    String? payerPhone,
   }) async => await _request(
     'POST',
     '/me/subscribe',
-    body: {'type': 'direct_sub', 'homeGymId': gymId, 'plan': plan},
+    body: {
+      'type': 'direct_sub',
+      'homeGymId': gymId,
+      'plan': plan,
+      'reference': ?reference,
+      'payerPhone': ?payerPhone,
+    },
   );
 
   Future<Map<String, dynamic>> myQr() async => await _request('GET', '/me/qr');
@@ -1900,6 +1932,53 @@ class ApiClient {
     productId == null ? '/vendor/products' : '/vendor/products/$productId',
     body: data,
   );
+
+  // ── Vendor tools (stock ledger, S1) ─────────────────────────────────────
+
+  /// Which vendor tools this server has switched on, e.g.
+  /// `{stockLedger: true, ...}`. Anything but `true` means "not on".
+  Future<Map<String, dynamic>> vendorToolsOptions() async =>
+      await _request('GET', '/vendor/tools/options');
+
+  /// Records a stock change with a reason. Answers `{movement, product}`;
+  /// a retried [body] (same `clientRef`) gets the first answer back.
+  Future<Map<String, dynamic>> vendorAdjustStock(
+    String productId,
+    Map<String, dynamic> body,
+  ) async => await _request(
+    'POST',
+    '/vendor/products/${Uri.encodeComponent(productId)}/stock-adjustments',
+    body: body,
+  );
+
+  /// One product's stock history, newest first. [from] / [to] are EAT days
+  /// (YYYY-MM-DD, inclusive).
+  Future<Map<String, dynamic>> vendorStockMovements(
+    String productId, {
+    String? from,
+    String? to,
+    String? variant,
+    int? limit,
+    String? cursor,
+  }) async {
+    final query = <String, String>{
+      'from': ?from,
+      'to': ?to,
+      if (variant != null && variant.isNotEmpty) 'variant': variant,
+      if (limit != null) 'limit': '$limit',
+      if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+    };
+    final path =
+        '/vendor/products/${Uri.encodeComponent(productId)}/stock-movements';
+    return await _request(
+      'GET',
+      query.isEmpty ? path : '$path?${Uri(queryParameters: query).query}',
+    );
+  }
+
+  /// Products and variants at or below their reorder level.
+  Future<List<dynamic>> vendorLowStock() async =>
+      await _request('GET', '/vendor/stock/low');
 
   Future<List<dynamic>> vendorOrders() async =>
       await _request('GET', '/vendor/orders');

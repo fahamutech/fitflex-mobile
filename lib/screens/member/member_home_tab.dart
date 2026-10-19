@@ -11,6 +11,8 @@ import 'widgets/phone_steps_card.dart';
 import 'widgets/challenge_widgets.dart';
 import 'widgets/goal_widgets.dart';
 import 'widgets/home_cards.dart';
+import 'widgets/home_hero.dart';
+import '../../shared/photo_hero_flag.dart';
 import 'widgets/pass_summary_card.dart';
 import 'widgets/today_activity_card.dart';
 import 'widgets/workout_widgets.dart';
@@ -28,12 +30,17 @@ class MemberHomeTab extends StatefulWidget {
 class _MemberHomeTabState extends State<MemberHomeTab> {
   double? _userLat;
   double? _userLng;
+  final _heroKey = GlobalKey();
+  bool _heroPassed = false;
 
   @override
   void initState() {
     super.initState();
     // Refresh QR and user data when home tab becomes visible
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (photoHeroUi && mounted) {
+        const HomeHeroAppBarNotification(solid: false).dispatch(context);
+      }
       _refreshData();
       _fetchLocation();
     });
@@ -83,6 +90,7 @@ class _MemberHomeTabState extends State<MemberHomeTab> {
     );
     bool has(HomeCardKind k) => picks.any((p) => p.kind == k);
 
+    if (photoHeroUi) return _buildPhotoHero(context, data, picks, now, has);
     return ListView(
       key: const Key('member-home'),
       padding: const EdgeInsets.all(FFTokens.spacingLg),
@@ -103,6 +111,85 @@ class _MemberHomeTabState extends State<MemberHomeTab> {
             child: _card(context, data, p, now, has),
           ),
       ],
+    );
+  }
+
+  /// PHOTO_HERO_UI: a photo hero leads; content sits on the ground (dark)
+  /// or an overlapping sheet (light).
+  Widget _buildPhotoHero(
+    BuildContext context,
+    MemberData data,
+    List<HomeCardPick> picks,
+    DateTime now,
+    bool Function(HomeCardKind) has,
+  ) {
+    final wide = MediaQuery.sizeOf(context).width >= 840;
+    final showCard = homeShowsPassCard(data);
+    final body = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (!showCard && homeHeroStateFor(data) == HomeHeroState.none)
+          const Padding(
+            padding: EdgeInsets.only(bottom: FFTokens.spacingSm),
+            child: HowFitFlexWorksCard(),
+          ),
+        for (final p in picks)
+          if (p.kind != HomeCardKind.passport || showCard)
+            KeyedSubtree(
+              key: Key('home-card-${p.kind.name}'),
+              child: _card(context, data, p, now, has),
+            ),
+      ],
+    );
+
+    if (wide) {
+      return ListView(
+        key: const Key('member-home'),
+        padding: const EdgeInsets.all(FFTokens.spacingLg),
+        children: [
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 960),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  MemberHomeHero(data: data, now: now, panel: true),
+                  const SizedBox(height: FFTokens.spacingLg),
+                  body,
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Under the shell's transparent app bar; the offline strip sits below it.
+    final topInset =
+        MediaQuery.paddingOf(context).top + (data.offline ? 56.0 : 0.0);
+    return NotificationListener<ScrollUpdateNotification>(
+      onNotification: (n) {
+        if (n.depth != 0) return false;
+        final h = _heroKey.currentContext?.size?.height ?? 0;
+        final passed =
+            h > 0 && n.metrics.pixels >= h - MediaQuery.paddingOf(context).top;
+        if (passed != _heroPassed) {
+          _heroPassed = passed;
+          HomeHeroAppBarNotification(solid: passed).dispatch(context);
+        }
+        return false;
+      },
+      child: ListView(
+        key: const Key('member-home'),
+        padding: EdgeInsets.zero,
+        children: [
+          KeyedSubtree(
+            key: _heroKey,
+            child: MemberHomeHero(data: data, now: now, topInset: topInset),
+          ),
+          FFHeroSheet(child: body),
+        ],
+      ),
     );
   }
 

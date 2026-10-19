@@ -4,6 +4,7 @@ import '../router.dart';
 import '../shared/i18n.dart';
 import '../shared/design_tokens.dart';
 import '../shared/components/components.dart';
+import '../shared/photo_hero_flag.dart';
 
 class LanguageScreen extends StatefulWidget {
   const LanguageScreen({super.key});
@@ -53,8 +54,93 @@ class _LanguageScreenState extends State<LanguageScreen>
     router.go(AppRoutes.auth);
   }
 
+  bool _precached = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (photoHeroUi && !_precached) {
+      _precached = true;
+      precacheHeroPhotos(context, const [
+        FFHeroPhoto.language,
+        FFHeroPhoto.signIn,
+        FFHeroPhoto.role,
+        FFHeroPhoto.signUp,
+      ]);
+    }
+  }
+
+  /// PHOTO_HERO_UI: the photo hero with both taglines, then the picker.
+  Widget _buildPhotoHero(BuildContext context) {
+    final l = FFLocaleScope.of(context);
+    final continueLabel = switch (_selected) {
+      null => context.tr('hero.lang.continueBoth'),
+      final lang => l.tIn(lang, 'lang.continue'),
+    };
+    return FFPhotoHeroPage(
+      phoneVariant: FFHeroVariant.full,
+      phoneFraction: 0.56,
+      shortPhoneFraction: 0.52,
+      phoneMinHeight: 320,
+      logo: const FFWordmark(),
+      actions: const [ThemeToggleButton()],
+      hero: (context, f) => FFPhotoHero(
+        photo: FFHeroPhoto.language,
+        variant: f.variant,
+        minHeight: f.minHeight,
+        topInset: f.topInset,
+        wideHeadline: f.wide,
+        logo: f.wide ? const FFWordmark() : null,
+        eyebrow: context.tr('hero.eyebrow.brand'),
+        // No language is chosen yet, so the hero speaks both.
+        headlineLead: l.tIn('en', 'hero.tagline.lead'),
+        headlineAccent: l.tIn('en', 'hero.tagline.accent'),
+        secondLead: l.tIn('sw', 'hero.tagline.lead'),
+        secondAccent: l.tIn('sw', 'hero.tagline.accent'),
+      ),
+      content: FadeTransition(
+        opacity: _fadeAnim,
+        child: SlideTransition(
+          position: _slideAnim,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                context.tr('hero.lang.prompt'),
+                key: const Key('lang-prompt'),
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: FFTokens.spacingMd),
+              FFChoiceTile(
+                key: const Key('langEnglish'),
+                title: context.tr('lang.name.en'),
+                selected: _selected == 'en',
+                onSelected: () => _select('en'),
+              ),
+              const SizedBox(height: FFTokens.spacingSm + 4),
+              FFChoiceTile(
+                key: const Key('langKiswahili'),
+                title: context.tr('lang.name.sw'),
+                selected: _selected == 'sw',
+                onSelected: () => _select('sw'),
+              ),
+              const SizedBox(height: FFTokens.spacingLg),
+              FFButton(
+                key: const Key('lang-continue'),
+                fullWidth: true,
+                label: continueLabel,
+                onPressed: _selected != null ? _continue : null,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (photoHeroUi) return _buildPhotoHero(context);
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -78,31 +164,30 @@ class _LanguageScreenState extends State<LanguageScreen>
                       children: [
                         SizedBox(height: FFTokens.spacingXl * 3),
                         Text(
-                          'Choose language',
+                          context.tr('lang.title'),
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.headlineMedium,
                         ),
                         const SizedBox(height: FFTokens.spacingMd),
                         Text(
-                          'Chagua lugha unayoipenda',
+                          context.tr('lang.slogan'),
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                         SizedBox(height: FFTokens.spacingXl * 1.5),
-                        _LanguageTile(
+                        // Each language is named in its own language.
+                        FFChoiceTile(
                           key: const Key('langEnglish'),
-                          title: 'English',
-                          subtitle: 'International Standard',
+                          title: context.tr('lang.name.en'),
                           selected: _selected == 'en',
-                          onTap: () => _select('en'),
+                          onSelected: () => _select('en'),
                         ),
                         const SizedBox(height: FFTokens.spacingMd),
-                        _LanguageTile(
+                        FFChoiceTile(
                           key: const Key('langKiswahili'),
-                          title: 'Swahili',
-                          subtitle: 'Lugha ya Kiswahili',
+                          title: context.tr('lang.name.sw'),
                           selected: _selected == 'sw',
-                          onTap: () => _select('sw'),
+                          onSelected: () => _select('sw'),
                         ),
                       ],
                     ),
@@ -113,7 +198,7 @@ class _LanguageScreenState extends State<LanguageScreen>
                   child: SizedBox(
                     width: double.infinity,
                     child: FFButton(
-                      label: 'Continue',
+                      label: context.tr('lang.continue'),
                       onPressed: _selected != null ? _continue : null,
                     ),
                   ),
@@ -123,90 +208,6 @@ class _LanguageScreenState extends State<LanguageScreen>
           ),
         ),
       ),
-    );
-  }
-}
-
-class _LanguageTile extends StatelessWidget {
-  const _LanguageTile({
-    super.key,
-    required this.title,
-    required this.subtitle,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String title;
-  final String subtitle;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: FFTokens.motionMedium,
-        curve: FFTokens.motionCurve,
-        padding: const EdgeInsets.symmetric(
-          horizontal: FFTokens.spacingLg,
-          vertical: FFTokens.spacingMd,
-        ),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(FFTokens.radiusXl),
-          border: Border.all(
-            color: selected
-                ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).colorScheme.outline,
-            width: selected ? 2 : 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: FFTokens.spacingXs),
-                  Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
-                ],
-              ),
-            ),
-            _RadioDot(selected: selected),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _RadioDot extends StatelessWidget {
-  const _RadioDot({required this.selected});
-
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
-    final muted = Theme.of(context).colorScheme.outline;
-    return Container(
-      width: FFTokens.spacingLg,
-      height: FFTokens.spacingLg,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: selected ? primary : null,
-        border: Border.all(color: selected ? primary : muted, width: 2),
-      ),
-      child: selected
-          ? Center(
-              child: CircleAvatar(
-                radius: 5,
-                backgroundColor: Theme.of(context).colorScheme.onPrimary,
-              ),
-            )
-          : null,
     );
   }
 }

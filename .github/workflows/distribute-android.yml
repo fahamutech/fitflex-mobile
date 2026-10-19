@@ -28,6 +28,9 @@ jobs:
 
     env:
       API_BASE: ${{ vars.API_BASE || 'https://fitflex-faas.bfast.smartstock.co.tz' }}
+      # Shop home V2 (on/off). Set repo variable SHOP_HOME_V2=true to switch it on;
+      # the server also needs SHOP_HOME_V2=1, otherwise the app falls back to today's shop.
+      SHOP_HOME_V2: ${{ vars.SHOP_HOME_V2 || 'false' }}
       # Comma-separated App Distribution group aliases (Firebase console →
       # App Distribution → Testers & Groups).
       TESTER_GROUPS: ${{ vars.FIREBASE_TESTER_GROUPS || 'testers' }}
@@ -88,7 +91,7 @@ jobs:
           flutter pub get
           flutter build apk --release \
             --build-number=$((100 + ${{ github.run_number }})) \
-            --dart-define=API_BASE="$API_BASE"
+            --dart-define=API_BASE="$API_BASE" --dart-define=SHOP_HOME_V2="$SHOP_HOME_V2"
 
       # Testers first: nothing after this may stop a build reaching them.
       - name: Distribute to testers

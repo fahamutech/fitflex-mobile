@@ -120,6 +120,14 @@ flutter:
     - assets/brand/fitflex-icon.png
     - assets/brand/logo-pin.png
     - assets/brand/logo-runner.png
+    # Photo heroes (PHOTO_HERO_UI). 1x here, 2x in 2.0x/; licences in
+    # assets/photos/hero/LICENSES.md (not bundled).
+    - assets/photos/hero/hero_language.webp
+    - assets/photos/hero/hero_sign_in.webp
+    - assets/photos/hero/hero_sign_up.webp
+    - assets/photos/hero/hero_role.webp
+    - assets/photos/hero/hero_home_start.webp
+    - assets/photos/hero/hero_home_pass.webp
 
   # FitFlex Africa design system type: Inter (UI + display) and JetBrains
   # Mono (uppercase data labels). Bundled so they work offline. SIL OFL,

@@ -659,7 +659,7 @@ class _TrainerGymDetailPageState extends State<TrainerGymDetailPage> {
                 dot: true,
               ),
               FFBadge(
-                label: gym.tier.replaceAll('_', ' '),
+                label: gymTierLabel(context, gym),
                 tone: FFBadgeTone.brand,
               ),
             ],
@@ -896,7 +896,7 @@ class _TrainerGymSheetState extends State<TrainerGymSheet> {
 
   Widget _currentPassCard(BuildContext context, Map current) {
     final active = current['status'] == 'active';
-    final until = current['expiresAt']?.toString().split('T').first ?? '';
+    final until = context.localDate(current['expiresAt'], fallback: '');
     return FFCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

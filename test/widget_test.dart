@@ -45,7 +45,7 @@ void main() {
     );
 
     expect(find.text('English'), findsOneWidget);
-    expect(find.text('Swahili'), findsOneWidget);
+    expect(find.text('Kiswahili'), findsOneWidget);
     expect(find.text('Choose language'), findsOneWidget);
   });
 }

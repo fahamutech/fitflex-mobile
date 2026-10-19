@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../app_scope.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
+import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
 import 'owner_shell.dart';
 import 'widgets/latest_checkins_card.dart';
@@ -21,8 +22,6 @@ class OwnerCheckinsPage extends StatefulWidget {
 class _OwnerCheckinsPageState extends State<OwnerCheckinsPage> {
   DateTime? _statsFrom;
   DateTime? _statsTo;
-
-  String _dateOnly(DateTime value) => value.toIso8601String().split('T').first;
 
   Future<void> _pickStatsRange() async {
     final now = DateTime.now();
@@ -70,7 +69,7 @@ class _OwnerCheckinsPageState extends State<OwnerCheckinsPage> {
             : null);
 
     final rangeLabel = (_statsFrom != null && _statsTo != null)
-        ? '${_dateOnly(_statsFrom!)} → ${_dateOnly(_statsTo!)}'
+        ? '${context.localDate(_statsFrom)} → ${context.localDate(_statsTo)}'
         : context.tr('owner.allTime');
 
     final bool isTab = widget.gymId == null;
@@ -123,12 +122,18 @@ class _OwnerCheckinsPageState extends State<OwnerCheckinsPage> {
               }
               var items = (snap.data ?? []).cast<Map<String, dynamic>>();
               if (_statsFrom != null && _statsTo != null) {
+                // Days are the owner's days (EAT), not UTC: a 22:30Z
+                // check-in belongs to the next morning here.
+                final from = _statsFrom!;
+                final toExclusive = DateTime(
+                  _statsTo!.year,
+                  _statsTo!.month,
+                  _statsTo!.day + 1,
+                );
                 items = items.where((c) {
-                  final ts = DateTime.tryParse(
-                    c['timestamp']?.toString() ?? '',
-                  );
-                  if (ts == null) return false;
-                  return !ts.isBefore(_statsFrom!) && !ts.isAfter(_statsTo!);
+                  final at = localDateTime(c['timestamp']);
+                  if (at == null) return false;
+                  return !at.isBefore(from) && at.isBefore(toExclusive);
                 }).toList();
               }
               if (items.isEmpty) {

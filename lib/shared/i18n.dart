@@ -49,6 +49,11 @@ class FFLocale extends ChangeNotifier {
     return (_messages[lang] ?? const {})[key] ?? _messages['en']![key] ?? key;
   }
 
+  /// The line for [key] in [lang], whatever language is active. For
+  /// screens that show both languages at once (the language picker).
+  String tIn(String lang, String key) =>
+      (_messages[lang] ?? const {})[key] ?? _messages['en']![key] ?? key;
+
   static const _supported = {'en', 'sw'};
 
   /// Every key defined for [lang], so tests can check both languages match.
@@ -452,10 +457,18 @@ class FFLocale extends ChangeNotifier {
       'error.reason.noPermission':
           'Your account doesn\'t have permission for this. Ask the gym owner.',
       'error.reason.gymRequired': 'Choose a gym first',
+      'error.reason.operatorNotAssigned':
+          'Your account is not linked to a gym yet. Ask the gym owner.',
+      'error.reason.memberNotFound': 'We could not find this member',
+      'error.reason.gymNotFound': 'We could not find this gym',
+      'error.reason.tierNotConfigured':
+          'This pass is not set up yet. Contact FitFlex support.',
       'error.reason.emailAlreadyUsed': 'That email is already registered',
       'error.reason.invalidCredentials': 'Wrong email or PIN',
       'error.reason.accountSuspended':
           'This account is suspended. Contact support',
+      'error.reason.vendorStaffInactive':
+          'Your staff access is disabled. Ask the business owner.',
       'error.reason.activeSubscriptionRequired':
           'You need an active plan for this',
       'confirm.signout': 'Are you sure you want to sign out of this account?',
@@ -655,6 +668,40 @@ class FFLocale extends ChangeNotifier {
       'member.upgradePlan': 'Upgrade plan',
       'momo.title': 'Pay with mobile money',
       'momo.payNow': 'Pay now',
+      'momo.pageBody':
+          'Pay with mobile money. Your pass starts as soon as the payment goes through.',
+      'manualPay.title': 'How to pay',
+      'manualPay.step1':
+          'Pay {amount} to Lipa Namba {number} (account name {name}).',
+      'manualPay.step1Network':
+          'Pay {amount} to Lipa Namba {number} (account name {name}, network {network}).',
+      'manualPay.step2':
+          'Keep the confirmation SMS. It has the transaction ID.',
+      'manualPay.step3':
+          'Enter the transaction ID below and submit. FitFlex checks it, then your plan starts.',
+      'manualPay.copy': 'Copy number',
+      'manualPay.copied': 'Lipa Namba copied',
+      'manualPay.idLabel': 'Transaction ID',
+      'manualPay.idHint': 'e.g. QJK3H7XY2P',
+      'manualPay.idShown': 'Transaction ID: {id}',
+      'manualPay.phoneLabel': 'Number you paid from',
+      'manualPay.phoneHint': 'e.g. 0712 345 678',
+      'manualPay.phoneHelp': 'The mobile money number the payment came from.',
+      'manualPay.phoneRequired': 'Enter the number you paid from',
+      'manualPay.phoneInvalid':
+          'Enter a Tanzanian mobile number, e.g. 0712 345 678',
+      'manualPay.paidFrom': 'Paid from',
+      'manualPay.paidFromShown': 'Paid from: {phone}',
+      'manualPay.idRequired': 'Enter the transaction ID from your payment SMS',
+      'manualPay.idInvalid':
+          "That doesn't look like a transaction ID. Check the SMS and try again.",
+      'manualPay.idDuplicate':
+          'This transaction ID has already been used. Check the SMS and try again.',
+      'manualPay.submit': 'Submit transaction ID',
+      'manualPay.submitted':
+          "Transaction ID sent. Your plan starts once we've matched the payment.",
+      'manualPay.pageBody':
+          'Pay the Lipa Namba below, then enter the transaction ID. FitFlex checks it before your pass starts.',
       'momo.intro':
           'We will send a payment request to your phone. Approve it with your PIN to finish.',
       'momo.phone': 'Mobile money number',
@@ -1413,7 +1460,18 @@ class FFLocale extends ChangeNotifier {
       'error.reason.planNotOffered': 'this gym does not offer that plan',
       'error.reason.gymNotAvailable':
           'this gym is not taking subscriptions right now',
-      'error.reason.tierNotAvailable': 'this pass is not available right now',
+      'error.reason.tierNotAvailable': 'this pass is not on sale right now',
+      'error.reason.paymentReferenceRequired':
+          'enter the transaction ID from your payment SMS',
+      'error.reason.paymentReferenceInvalid':
+          'that transaction ID is not valid',
+      'error.reason.paymentReferenceDuplicate':
+          'that transaction ID has already been used',
+      'error.reason.manualPaymentSubmitted':
+          'this payment was already sent with a transaction ID and is waiting for approval',
+      'error.reason.payerPhoneRequired':
+          'enter the mobile number you paid from',
+      'error.reason.payerPhoneInvalid': 'that is not a Tanzanian mobile number',
       'pay.product.fitflexPass': 'FitFlex Pass',
       'pay.product.gymPlan': 'Gym plan',
       'pay.product.trainerSession': 'Trainer session',
@@ -1538,7 +1596,22 @@ class FFLocale extends ChangeNotifier {
       'vendor.payment': 'Payment',
       'vendor.pickupGym': 'Pickup gym',
       'vendor.deliveryAddress': 'Delivery address',
-      'vendor.mark': 'Mark',
+      // Vendor tools S2: order privacy (orders tab).
+      'vendor.orders.ref': 'Order {ref}',
+      'vendor.orders.buyer': 'Buyer: {name}',
+      'vendor.orders.buyerUnnamed': 'FitFlex member',
+      'vendor.orders.call': 'Call {phone}',
+      'vendor.orders.callBuyer': 'Call the buyer on {phone}',
+      'vendor.orders.callFailed':
+          'Could not open the phone app. Call {phone} instead.',
+      'vendor.orders.variant': 'Variant: {name}',
+      'vendor.orders.contactUntil':
+          'You can see the phone and address until {date}.',
+      'vendor.orders.contactHidden':
+          "The buyer's phone and address are hidden 7 days after delivery.",
+      'vendor.orders.addressHidden':
+          'The delivery address is hidden 7 days after delivery.',
+      'vendor.updateStatus': 'Update status',
       'vendor.todaySales': "Today's sales",
       'vendor.weeklySales': 'Weekly sales',
       'vendor.monthlySales': 'Monthly sales',
@@ -2463,12 +2536,12 @@ class FFLocale extends ChangeNotifier {
       'offline.banner': "You're offline. Showing what was last loaded.",
       'activity.getStarted.title': 'Your activity will show here',
       'activity.getStarted.body':
-          'Log an activity or finish a workout in FitFlex and it counts toward your goals, streaks and challenges. Connecting Apple Health and Health Connect is coming.',
+          'Log an activity or finish a workout in FitFlex and it counts toward your goals, streaks and challenges. Connecting Health Connect is coming.',
       'origin.link': 'Data sources',
       'origin.title': 'Where your activity data comes from',
       'origin.device': 'Device',
       'origin.deviceBody':
-          'Measured by your phone, watch or wearable through Apple Health or Health Connect. FitFlex only ever shows readings a connected device recorded. It never estimates or fills in device data.',
+          'Measured by your phone, watch or wearable through Health Connect. FitFlex only ever shows readings a connected device recorded. It never estimates or fills in device data.',
       'origin.fitflex': 'FitFlex',
       'origin.fitflexBody':
           'Created by FitFlex itself, for example when you finish a workout in the app.',
@@ -2479,7 +2552,7 @@ class FFLocale extends ChangeNotifier {
       'origin.byGym': 'By gym',
       'origin.sample': 'Sample',
       'origin.noDevicesYet':
-          'Connecting Apple Health and Health Connect is coming. Until then, nothing here is device data.',
+          'Connecting Health Connect is coming. Until then, nothing here is device data.',
       'origin.platform.apple_health': 'Apple Health',
       'origin.platform.health_connect': 'Health Connect',
       'origin.platform.fitbit': 'Fitbit',
@@ -2537,6 +2610,8 @@ class FFLocale extends ChangeNotifier {
       'pass.state.pending':
           "We're confirming your payment. Your QR unlocks as soon as it's confirmed.",
       'pass.state.viewPayment': 'View payment',
+      'pass.state.pendingPurchase': 'Payment pending: {tier}',
+      'pass.state.pendingPurchaseAny': 'A payment is pending',
       'pass.state.lowVisits': '{n} visits left',
       'pass.state.noVisits': 'No visits left on this pass',
       'pass.state.lowVisitsHint': 'Plan your next pass before it runs out.',
@@ -2547,6 +2622,7 @@ class FFLocale extends ChangeNotifier {
       'pass.state.left': 'left',
       'pass.state.usedOf': '{used} of {total} used',
       'pass.state.endsOn': 'Ends {date}',
+      'pass.badge.endingSoon': 'Ending soon',
       'pass.gymAccess': 'Gym access',
       'pass.gymAccess.standard': 'Standard gyms',
       'pass.gymAccess.midtier': 'Standard + Mid-tier gyms',
@@ -2812,6 +2888,32 @@ class FFLocale extends ChangeNotifier {
       'ownerScan.reason_basic_daily_limit':
           'Basic plan can only visit one gym per day',
       'ownerScan.reason_gym_closed': 'Gym is currently closed',
+      'ownerScan.reason_gym_not_verified':
+          "This gym is not verified yet. FitFlex Pass members can't check in until FitFlex verifies it.",
+      'ownerScan.reason_tier_not_configured':
+          "This member's pass is not set up yet. Ask them to contact FitFlex support.",
+      'ownerScan.reason_unknown': "This member can't check in here right now.",
+      'tier.standard': 'Standard',
+      'tier.midtier': 'Mid-tier',
+      'tier.premium': 'Premium',
+      'tier.luxury_executive': 'Luxury / Executive',
+      'shop.orderStatus.pending': 'Pending',
+      'shop.orderStatus.accepted': 'Accepted',
+      'shop.orderStatus.confirmed': 'Accepted',
+      'shop.orderStatus.processing': 'Being prepared',
+      'shop.orderStatus.packed': 'Packed',
+      'shop.orderStatus.dispatched': 'On the way',
+      'shop.orderStatus.ready_for_pickup': 'Ready for pickup',
+      'shop.orderStatus.delivered': 'Delivered',
+      'shop.orderStatus.fulfilled': 'Delivered',
+      'shop.orderStatus.cancelled': 'Cancelled',
+      'shop.orderStatus.unknown': 'In progress',
+      'vendor.markStatus.accepted': 'Accept order',
+      'vendor.markStatus.processing': 'Mark as being prepared',
+      'vendor.markStatus.packed': 'Mark as packed',
+      'vendor.markStatus.dispatched': 'Mark as on the way',
+      'vendor.markStatus.ready_for_pickup': 'Mark as ready for pickup',
+      'vendor.markStatus.delivered': 'Mark as delivered',
       'owner.memberTypeAll': 'All',
       'owner.memberTypeDirect': 'Direct',
       'owner.memberTypeFitflex': 'FitFlex',
@@ -2844,6 +2946,9 @@ class FFLocale extends ChangeNotifier {
       'member.priceRange': 'Price range',
       'member.startDate': 'Start date',
       'member.endDate': 'End date',
+      'member.passStartsOnApproval': 'Starts when payment is approved',
+      'member.passLength': 'Pass length',
+      'member.passLastsFromApproval': 'Lasts {days} days from approval',
       'member.moreGyms': 'more gyms',
       'passGyms.sheetTitle': '{tier} — gyms you can visit',
       'passGyms.view': 'View gyms',
@@ -4083,6 +4188,7 @@ class FFLocale extends ChangeNotifier {
       'error.reason.reviewTextTooLong': 'the review is over 1000 characters',
       // Shop home V2 (Phase 1, 2026-10-18).
       'shop.home.cart': 'Cart',
+      'shop.orderStatus.placed': 'Placed',
       'shop.home.productGone': 'This product is no longer available',
       'shop.home.allProducts': 'All products',
       'shop.home.cartBar': '{count} items · {total}',
@@ -4161,6 +4267,168 @@ class FFLocale extends ChangeNotifier {
       'shop.a11y.inCart': '{name}, {qty} in cart. Add one more',
       'shop.a11y.category': '{category}, category',
       'shop.a11y.viewAll': 'View all, {section}',
+      // Pre-sign-in fixes (2026-10-19). Language names are written in their
+      // own language on purpose, so they read the same in both maps.
+      'lang.name.en': 'English',
+      'lang.name.sw': 'Kiswahili',
+      'auth.errorDialog.title': "Couldn't sign you in",
+      'home.passError.title': "We couldn't load your pass.",
+      // Photo hero (PHOTO_HERO_UI, 2026-10-19). Headline lead and accent are
+      // separate keys so the accent can be styled.
+      'hero.eyebrow.brand': 'FITFLEX AFRICA',
+      'hero.tagline.lead': 'Fitness without',
+      'hero.tagline.accent': 'limits.',
+      'hero.lang.prompt': 'Choose your language · Chagua lugha yako',
+      'hero.lang.continueBoth': 'Continue · Endelea',
+      'hero.signIn.lead': 'Welcome',
+      'hero.signIn.accent': 'back.',
+      'hero.signIn.sub': 'Your pass, your QR and your progress, in one place.',
+      'hero.signUp.member.lead': 'One pass.',
+      'hero.signUp.member.accent': 'Many gyms.',
+      'hero.signUp.owner.lead': 'Grow your',
+      'hero.signUp.owner.accent': 'gym.',
+      'hero.signUp.trainer.lead': 'Coach on',
+      'hero.signUp.trainer.accent': 'your terms.',
+      'hero.signUp.vendor.lead': 'Sell to people',
+      'hero.signUp.vendor.accent': 'who train.',
+      'hero.signUp.staff.lead': 'Welcome to',
+      'hero.signUp.staff.accent': 'the team.',
+      'home.hero.none.lead': "Let's get you",
+      'home.hero.none.accent': 'training.',
+      'home.hero.pending.lead': 'One step',
+      'home.hero.pending.accent': 'to go.',
+      'home.hero.ended.lead': 'Ready to',
+      'home.hero.ended.accent': 'come back?',
+      'home.hero.active.lead': 'Ready to',
+      'home.hero.active.accent': 'train?',
+      'home.hero.findGym': 'Find a gym',
+      'home.hero.exploreGyms': 'Explore gyms',
+      'home.hero.nextPass': 'Choose your next pass',
+      'home.hero.chip.endingSoon': 'PASS ENDS SOON',
+      'home.hero.chip.lowVisits': 'FEW VISITS LEFT',
+      'home.how.title': 'How FitFlex works',
+      'home.how.step1': 'Choose a pass that fits your month.',
+      'home.how.step2': 'Show your QR at a partner gym.',
+      'home.how.step3': 'Train, and track every visit here.',
+      // Vendor stock ledger (S1, 2026-10-19).
+      'vendor.stock.orderNotVisible':
+          'This order isn\'t in your orders yet. It appears there once it is paid.',
+      'vendor.stock.lowVariantsOne': '1 variant low',
+      'vendor.stock.customRange': '{from} to {to}',
+      'vendor.form.fixErrors':
+          'Some fields need fixing. They are marked above.',
+      'vendor.form.priceRequired': 'Enter a price above 0.',
+      'vendor.form.nameRequired': 'Enter the product name.',
+      'vendor.stock.variantHistory': '{product} · {variant}',
+      'vendor.stock.retryEntry':
+          'Something went wrong with this entry. Nothing was saved. Tap save again.',
+      'vendor.stock.currentUnknown':
+          'Couldn\'t read the current stock. Wait for it to load and try again.',
+      'vendor.stock.directionMissing': 'Choose Add or Remove.',
+      'vendor.stock.variantsChanged':
+          'The variants of this product changed. Choose a variant again.',
+      'vendor.stock.range.customShort': 'Dates',
+      'vendor.stock.range.30dShort': '30 days',
+      'vendor.stock.range.7dShort': '7 days',
+      'vendor.stock.deltaNone': 'No change',
+      'vendor.stock.changedForm':
+          'Stock changed since you opened this product. Check the new number and save again.',
+      'vendor.stock.noteTooLong': 'Note is too long (max 200 characters).',
+      'vendor.costPrice': 'Cost price',
+      'vendor.costPriceHelp': 'Only you and your admin staff can see this.',
+      'vendor.stock.reorderLevel': 'Reorder level',
+      'vendor.stock.reorderHelp':
+          'We\'ll alert you when stock falls to this number.',
+      'vendor.stock.initial': 'Starting stock',
+      'vendor.stock.current': 'In stock now',
+      'vendor.stock.readOnlyHelp':
+          'To change stock, use Adjust stock so the change is recorded.',
+      'vendor.stock.totalFromVariants': 'Total from variants',
+      'vendor.variant.add': 'Add variant',
+      'vendor.variant.name': 'Variant name',
+      'vendor.variant.remove': 'Remove variant {name}',
+      'vendor.variant.newStartsAtZero':
+          'New variants start at 0. Save, then use Adjust stock to add stock.',
+      'vendor.variant.removeHasStock':
+          'Bring this variant\'s stock to 0 with Adjust stock before removing it.',
+      'vendor.variant.nameRequired': 'Enter a name for each variant.',
+      'vendor.variant.duplicateName': 'Two variants have the same name.',
+      'vendor.form.wholeNumber': 'Enter a whole number, 0 or more.',
+      'vendor.stock.adjust': 'Adjust stock',
+      'vendor.stock.adjustFor': 'Adjust stock: {name}',
+      'vendor.stock.variantLabel': 'Variant',
+      'vendor.stock.pickVariant': 'Choose a variant',
+      'vendor.stock.reasonLabel': 'Why is stock changing?',
+      'vendor.stock.reason.count': 'Counted',
+      'vendor.stock.reason.damaged': 'Damaged',
+      'vendor.stock.reason.expired': 'Expired',
+      'vendor.stock.reason.lost': 'Lost',
+      'vendor.stock.reason.found': 'Found',
+      'vendor.stock.reason.returned': 'Returned',
+      'vendor.stock.reason.restock': 'Restocked',
+      'vendor.stock.reason.other': 'Other',
+      'vendor.stock.reason.reserve': 'Order placed',
+      'vendor.stock.reason.release': 'Order cancelled, back in stock',
+      'vendor.stock.reason.unknown': 'Stock change',
+      'vendor.stock.counted': 'Counted quantity',
+      'vendor.stock.difference': 'Difference: {delta}',
+      'vendor.stock.noDifference': 'Matches current stock',
+      'vendor.stock.direction': 'Add or remove?',
+      'vendor.stock.add': 'Add',
+      'vendor.stock.remove': 'Remove',
+      'vendor.stock.quantityIn': 'Quantity to add',
+      'vendor.stock.quantityOut': 'Quantity to remove',
+      'vendor.stock.after': 'Stock after: {n}',
+      'vendor.stock.note': 'Note (optional)',
+      'vendor.stock.noteRequired': 'Note (required)',
+      'vendor.stock.noteMissing': 'Add a note to explain this change.',
+      'vendor.stock.quantityInvalid': 'Enter a whole number greater than 0.',
+      'vendor.stock.save': 'Save change',
+      'vendor.stock.saveCount': 'Save count',
+      'vendor.stock.changed':
+          'Stock changed while you were counting. Count again.',
+      'vendor.stock.insufficient':
+          'Only {n} in stock. You can\'t remove more than that.',
+      'vendor.stock.nothingSaved': 'Nothing was saved.',
+      'vendor.stock.updated': 'Stock updated from {before} to {after}',
+      'vendor.stock.notAllowed': 'You don\'t have permission to change stock.',
+      'vendor.stock.notFound': 'This product is no longer available.',
+      'vendor.stock.history': 'Stock history',
+      'vendor.stock.opening': 'Opening stock',
+      'vendor.stock.closing': 'Closing stock',
+      'vendor.stock.range.7d': 'Last 7 days',
+      'vendor.stock.range.30d': 'Last 30 days',
+      'vendor.stock.range.custom': 'Choose dates',
+      'vendor.stock.loading': 'Loading stock history',
+      'vendor.stock.historyEmpty': 'No stock changes in these dates.',
+      'vendor.stock.historyFailed': 'Could not load stock history.',
+      'vendor.stock.loadMore': 'Load more',
+      'vendor.stock.by': 'By {name}',
+      'vendor.stock.bySystem': 'FitFlex (automatic)',
+      'vendor.stock.order': 'Order {ref}',
+      'vendor.stock.fromProductForm': 'Changed in the product form',
+      'vendor.stock.toVariants': 'Moved to stock per variant',
+      'vendor.stock.deltaIn': '{n} added',
+      'vendor.stock.deltaOut': '{n} removed',
+      'vendor.stock.rowLabel':
+          '{reason}, {delta}, from {before} to {after}, {time}, {actor}',
+      'vendor.stock.backToProducts': 'Back to products',
+      'vendor.stock.low': 'Low stock',
+      'vendor.stock.lowBadge': 'Low stock',
+      'vendor.stock.lowFilter': 'Low stock ({n})',
+      'vendor.stock.all': 'All products',
+      'vendor.stock.lowEmpty': 'Nothing is low on stock.',
+      'vendor.stock.lowVariants': '{n} variants low',
+      'vendor.stock.lowNavLabel': '{n} low on stock',
+      'vendor.productActions': 'Actions for {name}',
+      'vendor.stock.noProductsAccess': 'You don\'t have access to products.',
+      'inbox.open.lowStock': 'View stock',
+      'vendor.variant.hasReservations':
+          'Variant {name} has orders waiting. Remove it after they are completed or cancelled.',
+      'vendor.variant.stockMixed':
+          'Give every variant a stock number, or none.',
+      'vendor.costForbidden':
+          'Only the shop owner and admin staff can set the cost price.',
     },
     'sw': {
       'app.title': 'FitFlex',
@@ -4552,10 +4820,20 @@ class FFLocale extends ChangeNotifier {
       'error.reason.noPermission':
           'Akaunti yako haina ruhusa ya hili. Muulize mmiliki wa gym.',
       'error.reason.gymRequired': 'Chagua gym kwanza',
+      // Swahili for native review.
+      'error.reason.operatorNotAssigned':
+          'Akaunti yako bado haijaunganishwa na gym. Muulize mmiliki wa gym.',
+      'error.reason.memberNotFound': 'Hatukumpata mwanachama huyu',
+      'error.reason.gymNotFound': 'Hatukuipata gym hii',
+      'error.reason.tierNotConfigured':
+          'Pasi hii bado haijawekwa tayari. Wasiliana na msaada wa FitFlex.',
       'error.reason.emailAlreadyUsed': 'Barua pepe hiyo tayari imesajiliwa',
       'error.reason.invalidCredentials': 'Barua pepe au PIN si sahihi',
       'error.reason.accountSuspended':
           'Akaunti hii imesimamishwa. Wasiliana na huduma kwa wateja',
+      // Swahili for native review (vendor tools S2).
+      'error.reason.vendorStaffInactive':
+          'Ruhusa yako ya mfanyakazi imezimwa. Wasiliana na mmiliki wa biashara.',
       'error.reason.activeSubscriptionRequired':
           'Unahitaji mpango ulio hai kwa hili',
       'confirm.signout': 'Una uhakika unataka kutoka kwenye akaunti hii?',
@@ -4821,11 +5099,46 @@ class FFLocale extends ChangeNotifier {
       'member.profile': 'Wasifu',
       'member.yourPass': 'Pasi yako',
       'member.upgradePlan': 'Boresha mpango',
-      'momo.title': 'Lipa kwa pesa ya simu',
+      'momo.title': 'Lipa kwa mtandao wa simu',
       'momo.payNow': 'Lipa sasa',
+      // Swahili for native review (manual Lipa Namba payment, A3).
+      'momo.pageBody':
+          'Lipa kwa mtandao wa simu. Pasi yako inaanza mara malipo yanapokamilika.',
+      'manualPay.title': 'Jinsi ya kulipa',
+      'manualPay.step1':
+          'Lipa {amount} kwa Lipa Namba {number} (jina la akaunti {name}).',
+      'manualPay.step1Network':
+          'Lipa {amount} kwa Lipa Namba {number} (jina la akaunti {name}, mtandao {network}).',
+      'manualPay.step2': 'Hifadhi SMS ya uthibitisho. Ina namba ya muamala.',
+      'manualPay.step3':
+          'Weka namba ya muamala hapa chini kisha utume. FitFlex itaikagua, kisha mpango wako utaanza.',
+      'manualPay.copy': 'Nakili namba',
+      'manualPay.copied': 'Lipa Namba imenakiliwa',
+      'manualPay.idLabel': 'Namba ya muamala',
+      'manualPay.idHint': 'mf. QJK3H7XY2P',
+      'manualPay.idShown': 'Namba ya muamala: {id}',
+      'manualPay.phoneLabel': 'Namba uliyolipia',
+      'manualPay.phoneHint': 'mf. 0712 345 678',
+      'manualPay.phoneHelp': 'Namba ya mtandao wa simu iliyotumika kulipa.',
+      'manualPay.phoneRequired': 'Weka namba uliyolipia',
+      'manualPay.phoneInvalid':
+          'Weka namba ya simu ya Tanzania, mf. 0712 345 678',
+      'manualPay.paidFrom': 'Imelipwa kutoka',
+      'manualPay.paidFromShown': 'Imelipwa kutoka: {phone}',
+      'manualPay.idRequired':
+          'Weka namba ya muamala kutoka kwenye SMS ya malipo',
+      'manualPay.idInvalid':
+          'Hii haionekani kuwa namba ya muamala. Angalia SMS ujaribu tena.',
+      'manualPay.idDuplicate':
+          'Namba hii ya muamala imeshatumika. Angalia SMS ujaribu tena.',
+      'manualPay.submit': 'Tuma namba ya muamala',
+      'manualPay.submitted':
+          'Namba ya muamala imetumwa. Mpango wako utaanza tukishalinganisha malipo.',
+      'manualPay.pageBody':
+          'Lipa kwa Lipa Namba hapa chini, kisha weka namba ya muamala. FitFlex huikagua kabla pasi yako haijaanza.',
       'momo.intro':
           'Tutatuma ombi la malipo kwenye simu yako. Likubali kwa PIN yako ili kukamilisha.',
-      'momo.phone': 'Namba ya pesa ya simu',
+      'momo.phone': 'Namba ya mtandao wa simu',
       'momo.phoneHint': 'mf. 0712 345 678',
       'momo.send': 'Tuma ombi la malipo kwa {phone}',
       'momo.waitingTitle': 'Angalia simu yako',
@@ -4859,7 +5172,7 @@ class FFLocale extends ChangeNotifier {
           'Ombi la malipo halikukubaliwa. Hakikisha namba kisha ujaribu tena.',
       'error.reason.paymentNotPending': 'Malipo haya hayasubiri kulipwa tena.',
       'error.reason.notPayableThisWay':
-          'Malipo haya bado hayawezi kulipwa kwa pesa ya simu.',
+          'Malipo haya bado hayawezi kulipwa kwa mtandao wa simu.',
       'upgrade.currentPlan': 'Mpango wako wa sasa',
       'upgrade.choose': 'Chagua mpango wa juu zaidi',
       'upgrade.pay': 'Lipa {amount} zaidi',
@@ -5596,11 +5909,23 @@ class FFLocale extends ChangeNotifier {
           'tayari una malipo yanayosubiri idhini kwa hili',
       'error.reason.planNotOffered': 'gym hii haitoi mpango huo',
       'error.reason.gymNotAvailable': 'gym hii haipokei wanachama kwa sasa',
-      'error.reason.tierNotAvailable': 'pasi hii haipatikani kwa sasa',
+      // Swahili for native review.
+      'error.reason.tierNotAvailable': 'pasi hii haiuzwi kwa sasa',
+      'error.reason.paymentReferenceRequired':
+          'weka namba ya muamala kutoka kwenye SMS ya malipo',
+      'error.reason.paymentReferenceInvalid': 'namba hiyo ya muamala si sahihi',
+      'error.reason.paymentReferenceDuplicate':
+          'namba hiyo ya muamala imeshatumika',
+      'error.reason.manualPaymentSubmitted':
+          'malipo haya yameshatumwa kwa namba ya muamala na yanasubiri idhini',
+      'error.reason.payerPhoneRequired': 'weka namba ya simu uliyolipia',
+      'error.reason.payerPhoneInvalid': 'hiyo si namba ya simu ya Tanzania',
       'pay.product.fitflexPass': 'FitFlex Pass',
       'pay.product.gymPlan': 'Mpango wa gym',
-      'pay.product.trainerSession': 'Kipindi cha mkufunzi',
-      'pay.product.trainerPass': 'Pasi ya mkufunzi ya gym',
+      'pay.product.trainerSession':
+          'Kipindi cha trainer', // TODO(sw-review): 2026-10-19 glossary fix
+      'pay.product.trainerPass':
+          'Pasi ya trainer ya gym', // TODO(sw-review): 2026-10-19 glossary fix
       'pay.product.shopOrder': 'Oda ya duka',
       'member.gymPlanPending':
           'Malipo yako ya mpango katika gym hii yanasubiri idhini.',
@@ -5713,7 +6038,7 @@ class FFLocale extends ChangeNotifier {
       'vendor.discountPrice': 'Bei ya punguzo (TSh)',
       'vendor.sku': 'SKU',
       'vendor.weight': 'Uzito (kg)',
-      'vendor.variants': 'Aina mbadala',
+      'vendor.variants': 'Machaguo',
       'vendor.variantsHint': 'Vanilla, Chokoleti, Kubwa',
       'vendor.visible': 'Ionekane sokoni baada ya kuidhinishwa',
       'vendor.payments': 'Malipo',
@@ -5722,7 +6047,22 @@ class FFLocale extends ChangeNotifier {
       'vendor.payment': 'Malipo',
       'vendor.pickupGym': 'Gym ya kuchukulia',
       'vendor.deliveryAddress': 'Anwani ya delivery',
-      'vendor.mark': 'Weka',
+      // Vendor tools S2 (Swahili for native review; variant = chaguo).
+      'vendor.orders.ref': 'Oda {ref}',
+      'vendor.orders.buyer': 'Mnunuzi: {name}',
+      'vendor.orders.buyerUnnamed': 'Mwanachama wa FitFlex',
+      'vendor.orders.call': 'Piga {phone}',
+      'vendor.orders.callBuyer': 'Mpigie mnunuzi kwa {phone}',
+      'vendor.orders.callFailed':
+          'Imeshindikana kufungua simu. Piga {phone} mwenyewe.',
+      'vendor.orders.variant': 'Chaguo: {name}',
+      'vendor.orders.contactUntil': 'Unaweza kuona simu na anwani hadi {date}.',
+      'vendor.orders.contactHidden':
+          'Simu na anwani ya mnunuzi hufichwa siku 7 baada ya kufikishwa.',
+      'vendor.orders.addressHidden':
+          'Anwani ya kufikisha hufichwa siku 7 baada ya kufikishwa.',
+      // Swahili for native review.
+      'vendor.updateStatus': 'Sasisha hali',
       'vendor.todaySales': 'Mauzo ya leo',
       'vendor.weeklySales': 'Mauzo ya wiki',
       'vendor.monthlySales': 'Mauzo ya mwezi',
@@ -6053,7 +6393,7 @@ class FFLocale extends ChangeNotifier {
       'training.focusOn': "Mkazo: {areas}",
       'training.restNote': "Siku zisizo na kipindi ni za kupumzika.",
       'training.privacyNote':
-          "Mpango na mazoezi yako ni yako. Wakufunzi na gym wanayaona tu ikiwa umechagua kushiriki.",
+          "Mpango na mazoezi yako ni yako. Ma-trainer na gym wanayaona tu ikiwa umechagua kushiriki.", // TODO(sw-review): 2026-10-19 glossary fix
       'training.failed':
           "Imeshindikana. Angalia mtandao wako kisha ujaribu tena.",
       'training.change': "Badilisha mpango wangu",
@@ -6110,7 +6450,8 @@ class FFLocale extends ChangeNotifier {
       'training.weekday.5': "Ijumaa",
       'training.weekday.6': "Jumamosi",
       'training.weekday.7': "Jumapili",
-      'training.yourTrainer': "mkufunzi wako",
+      'training.yourTrainer':
+          "trainer wako", // TODO(sw-review): 2026-10-19 glossary fix
       'training.fromTrainer': "Kutoka kwa {name}",
       'training.offerFrom': "{name} amekuandalia mpango",
       'training.offerView': "Uangalie",
@@ -6183,12 +6524,13 @@ class FFLocale extends ChangeNotifier {
           "Imeshindikana kuhifadhi mabadiliko. Angalia mtandao wako kisha ujaribu tena.",
       'trainerPlan.saved': "Mpango umesasishwa.",
       'trainerPlan.savedActive': "Mpango umesasishwa. {name} amearifiwa.",
-      'inbox.open.trainer': "Angalia mkufunzi",
+      'inbox.open.trainer':
+          "Angalia trainer", // TODO(sw-review): 2026-10-19 glossary fix
       'inbox.open.trainingOffer': "Angalia mpango",
       'inbox.open.trainingPlan': "Angalia mpango wangu",
       'training.offerGone': "Mpango huu hausubiri tena jibu lako",
       'training.offerGoneBody':
-          "Huenda umeshaujibu, au mkufunzi wako ameuondoa au ametuma mpya.",
+          "Huenda umeshaujibu, au trainer wako ameuondoa au ametuma mpya.", // TODO(sw-review): 2026-10-19 glossary fix
       'training.offerAlreadyYours': "Tayari unatumia mpango huu",
       'inbox.open.clients': "Fungua wateja",
       'inbox.open.sessions': "Angalia vipindi",
@@ -6200,7 +6542,8 @@ class FFLocale extends ChangeNotifier {
       'inbox.open.payments': "Angalia malipo",
       'inbox.open.checkins': "Angalia walioingia",
       'inbox.open.member': "Angalia mwanachama",
-      'inbox.open.gymTrainers': "Angalia wakufunzi",
+      'inbox.open.gymTrainers':
+          "Angalia ma-trainer", // TODO(sw-review): 2026-10-19 glossary fix
       'inbox.open.gyms': "Angalia gym zangu",
       'inbox.open.earnings': "Angalia mapato",
       'checkinAlerts.title': "Arifa za kuingia",
@@ -6546,7 +6889,8 @@ class FFLocale extends ChangeNotifier {
       'goal.range': '{what}, {range}',
       'goal.assignedBy': 'Limewekwa na {name}',
       'goal.label.trainer': 'Lengo la trainer',
-      'goal.label.coaching': 'Lengo la ukocha',
+      'goal.label.coaching':
+          'Lengo la uTrainer', // TODO(sw-review): 2026-10-19 uTrainer ruling
       'goal.group.trainer': 'Kutoka kwa trainer wako',
       'goal.group.yours': 'Malengo yako',
       'goal.markDone': 'Nimemaliza',
@@ -6569,8 +6913,10 @@ class FFLocale extends ChangeNotifier {
       'trainerGoal.kindOpt.activeMinutes': 'Dakika za mazoezi',
       'trainerGoal.kindOpt.distance': 'Umbali',
       'trainerGoal.kindOpt.challenge': 'Challenge',
-      'trainerGoal.kindOpt.coaching': 'Lengo la trainer',
-      'trainerGoal.kind.coaching': 'Lengo la trainer',
+      'trainerGoal.kindOpt.coaching':
+          'Lengo la uTrainer', // TODO(sw-review): 2026-10-19 uTrainer ruling
+      'trainerGoal.kind.coaching':
+          'Lengo la uTrainer', // TODO(sw-review): 2026-10-19 uTrainer ruling
       'trainerGoal.kind.challenge': 'Lengo la challenge',
       'trainerGoal.challengeNotShared':
           'Malengo ya challenge yanapatikana mwanachama huyu akikushirikisha data ya challenge.',
@@ -6588,7 +6934,8 @@ class FFLocale extends ChangeNotifier {
       'trainerGoal.whenOpt.month': 'Kila mwezi',
       'trainerGoal.changeDates': 'Badilisha tarehe',
       'trainerGoal.error.target': 'Weka lengo zaidi ya 0.',
-      'trainerGoal.error.title': 'Eleza lengo ni nini.',
+      'trainerGoal.error.title':
+          'Eleza lengo la uTrainer ni nini.', // TODO(sw-review): 2026-10-19 uTrainer ruling
       'trainerGoal.error.wholeTimes': 'Idadi ya mara iwe namba nzima.',
       'trainerGoal.memberSees':
           '{name} ataona hili limewekwa na wewe. Anaweza kulisitisha au kuliondoa, lakini hawezi kubadilisha lengo.',
@@ -6653,12 +7000,12 @@ class FFLocale extends ChangeNotifier {
       'offline.banner': 'Huna mtandao. Unaona kilichopakiwa mara ya mwisho.',
       'activity.getStarted.title': 'Shughuli zako zitaonekana hapa',
       'activity.getStarted.body':
-          'Rekodi shughuli au maliza mazoezi ndani ya FitFlex na yatahesabiwa kwenye malengo, mfululizo na challenge zako. Kuunganisha Apple Health na Health Connect kunakuja hivi karibuni.',
+          'Rekodi shughuli au maliza mazoezi ndani ya FitFlex na yatahesabiwa kwenye malengo, mfululizo na challenge zako. Kuunganisha Health Connect kunakuja hivi karibuni.',
       'origin.link': 'Vyanzo vya data',
       'origin.title': 'Data yako ya shughuli inatoka wapi',
       'origin.device': 'Kifaa',
       'origin.deviceBody':
-          'Imepimwa na simu, saa au kifaa chako cha kuvaa kupitia Apple Health au Health Connect. FitFlex huonyesha tu vipimo vilivyorekodiwa na kifaa kilichounganishwa. Haikadirii wala haijazi data ya kifaa.',
+          'Imepimwa na simu, saa au kifaa chako cha kuvaa kupitia Health Connect. FitFlex huonyesha tu vipimo vilivyorekodiwa na kifaa kilichounganishwa. Haikadirii wala haijazi data ya kifaa.',
       'origin.fitflex': 'FitFlex',
       'origin.fitflexBody':
           'Imetengenezwa na FitFlex yenyewe, kwa mfano unapomaliza mazoezi ndani ya app.',
@@ -6668,7 +7015,7 @@ class FFLocale extends ChangeNotifier {
       'origin.byGym': 'Na gym',
       'origin.sample': 'Mfano',
       'origin.noDevicesYet':
-          'Kuunganisha Apple Health na Health Connect kunakuja hivi karibuni. Hadi hapo, hakuna data ya kifaa hapa.',
+          'Kuunganisha Health Connect kunakuja hivi karibuni. Hadi hapo, hakuna data ya kifaa hapa.',
       'origin.platform.apple_health': 'Apple Health',
       'origin.platform.health_connect': 'Health Connect',
       'origin.platform.fitbit': 'Fitbit',
@@ -6737,6 +7084,9 @@ class FFLocale extends ChangeNotifier {
       'pass.state.pending':
           'Tunathibitisha malipo yako. QR yako itafunguka mara yatakapothibitishwa.',
       'pass.state.viewPayment': 'Angalia malipo',
+      // Swahili for native review.
+      'pass.state.pendingPurchase': 'Malipo yanasubiriwa: {tier}',
+      'pass.state.pendingPurchaseAny': 'Kuna malipo yanayosubiriwa',
       'pass.state.lowVisits': 'Zimebaki ziara {n}',
       'pass.state.noVisits': 'Hakuna ziara zilizobaki kwenye pasi hii',
       'pass.state.lowVisitsHint': 'Panga pasi yako ijayo kabla hii haijaisha.',
@@ -6747,6 +7097,7 @@ class FFLocale extends ChangeNotifier {
       'pass.state.left': 'zimebaki',
       'pass.state.usedOf': 'Umetumia {used} kati ya {total}',
       'pass.state.endsOn': 'Inaisha {date}',
+      'pass.badge.endingSoon': 'Inaisha karibuni',
       'pass.gymAccess': 'Ufikiaji wa gym',
       'pass.gymAccess.standard': 'Gym za kawaida',
       'pass.gymAccess.midtier': 'Gym za kawaida + kati',
@@ -6934,6 +7285,35 @@ class FFLocale extends ChangeNotifier {
       'ownerScan.reason_basic_daily_limit':
           'Mpango wa Basic huruhusu gym moja tu kwa siku',
       'ownerScan.reason_gym_closed': 'Gym imefungwa kwa sasa',
+      // Swahili for native review.
+      'ownerScan.reason_gym_not_verified':
+          'Gym hii bado haijathibitishwa. Wanachama wa FitFlex Pass hawawezi kuingia hadi FitFlex iithibitishe.',
+      'ownerScan.reason_tier_not_configured':
+          'Pasi ya mwanachama huyu bado haijawekwa tayari. Mwombe awasiliane na msaada wa FitFlex.',
+      'ownerScan.reason_unknown':
+          'Mwanachama huyu hawezi kuingia hapa kwa sasa.',
+      // Tier names stay English (owner, Swahili review 2026-10-04).
+      'tier.standard': 'Standard',
+      'tier.midtier': 'Mid-tier',
+      'tier.premium': 'Premium',
+      'tier.luxury_executive': 'Luxury / Executive',
+      'shop.orderStatus.pending': 'Inasubiri',
+      'shop.orderStatus.accepted': 'Imekubaliwa',
+      'shop.orderStatus.confirmed': 'Imekubaliwa',
+      'shop.orderStatus.processing': 'Inaandaliwa',
+      'shop.orderStatus.packed': 'Imefungashwa',
+      'shop.orderStatus.dispatched': 'Iko njiani',
+      'shop.orderStatus.ready_for_pickup': 'Iko tayari kuchukuliwa',
+      'shop.orderStatus.delivered': 'Imefikishwa',
+      'shop.orderStatus.fulfilled': 'Imefikishwa',
+      'shop.orderStatus.cancelled': 'Imeghairiwa',
+      'shop.orderStatus.unknown': 'Inaendelea',
+      'vendor.markStatus.accepted': 'Kubali oda',
+      'vendor.markStatus.processing': 'Anza kuandaa',
+      'vendor.markStatus.packed': 'Fungasha oda',
+      'vendor.markStatus.dispatched': 'Tuma njiani',
+      'vendor.markStatus.ready_for_pickup': 'Weka tayari kuchukuliwa',
+      'vendor.markStatus.delivered': 'Thibitisha imefikishwa',
       'owner.memberTypeAll': 'Wote',
       'owner.memberTypeDirect': 'Moja kwa moja',
       'owner.memberTypeFitflex': 'FitFlex',
@@ -6966,6 +7346,10 @@ class FFLocale extends ChangeNotifier {
       'member.priceRange': 'Kiwango cha bei',
       'member.startDate': 'Tarehe ya kuanza',
       'member.endDate': 'Tarehe ya mwisho',
+      // Swahili for native review.
+      'member.passStartsOnApproval': 'Inaanza malipo yakiidhinishwa',
+      'member.passLength': 'Muda wa pasi',
+      'member.passLastsFromApproval': 'Siku {days} tangu kuidhinishwa',
       'member.moreGyms': 'gym zaidi',
       'passGyms.sheetTitle': '{tier} — gym unazoweza kutembelea',
       'passGyms.view': 'Tazama gym',
@@ -7023,7 +7407,8 @@ class FFLocale extends ChangeNotifier {
       'owner.statementReference': 'Kumbukumbu ya malipo',
       'owner.statementAccount': 'Akaunti ya malipo',
       'owner.statementPass': 'Pasi',
-      'owner.statementSponsored': 'Imedhaminiwa',
+      'owner.statementSponsored':
+          'Iliyodhaminiwa', // TODO(sw-review): 2026-10-19 glossary fix
       'owner.statementBracket.daily': 'Bei ya siku',
       'owner.statementBracket.weekly': 'Wiki moja',
       'owner.statementBracket.double_weekly': 'Wiki mbili',
@@ -7737,7 +8122,7 @@ class FFLocale extends ChangeNotifier {
       'msgPrefs.smsConsent.agree': 'Ndiyo, nitumie ofa',
       'msgPrefs.smsReminders': 'Vikumbusho kwa SMS',
       'msgPrefs.smsReminders.body':
-          'Ujumbe kabla ya kipindi cha mkufunzi kuanza na kabla ya pass yako kuisha.',
+          'Ujumbe kabla ya kipindi cha trainer kuanza na kabla ya pasi yako kuisha.', // TODO(sw-review): 2026-10-19 glossary fix
       'msgPrefs.alwaysOn':
           'Ujumbe kuhusu uanachama wako, kulipia tena, malipo na matangazo ya gym huja kwenye Ujumbe wako kila wakati, ili usikose jambo muhimu.',
       // Trainer interface: calendar, weekly hours, socials, trainer passes.
@@ -8029,7 +8414,8 @@ class FFLocale extends ChangeNotifier {
       'kyc.item.vetting_score': 'Alama za ukaguzi',
       'kyc.item.gym_tier': 'Daraja la gym',
       'kyc.item.payout_account': 'Akaunti ya malipo',
-      'kyc.item.certification': 'Cheti cha ukocha',
+      'kyc.item.certification':
+          'Cheti cha uTrainer', // TODO(sw-review): 2026-10-19 uTrainer ruling
       'kyc.item.specialisation': 'Utaalamu',
       'kyc.item.liability_cover': 'Bima ya dhima',
       'kyc.item.contact': 'Mawasiliano ya biashara',
@@ -8144,7 +8530,8 @@ class FFLocale extends ChangeNotifier {
           'Cheti chako cha BRELA cha usajili wa biashara au cha kuandikishwa kwa kampuni.',
       'kyc.doc.intro.tin_certificate': 'Cheti chako cha TIN kutoka TRA.',
       'kyc.doc.intro.business_licence': 'Leseni yako ya biashara iliyo hai.',
-      'kyc.doc.intro.certification': 'Cheti chako cha ukocha.',
+      'kyc.doc.intro.certification':
+          'Cheti chako cha uTrainer.', // TODO(sw-review): 2026-10-19 uTrainer ruling
       'kyc.doc.intro.liability_insurance':
           'Cheti chako cha bima ya dhima ya kitaaluma.',
       'kyc.doc.intro.representative_authority':
@@ -8218,6 +8605,8 @@ class FFLocale extends ChangeNotifier {
       'error.reason.reviewTextTooLong': 'maoni yamezidi herufi 1000',
       // Shop home V2 (Phase 1, 2026-10-18): Swahili pending native review.
       'shop.home.cart': 'Kikapu',
+      // Order statuses (2026-10-20): Swahili pending native review.
+      'shop.orderStatus.placed': 'Imeagizwa',
       'shop.home.productGone': 'Bidhaa hii haipatikani tena',
       'shop.home.allProducts': 'Bidhaa zote',
       'shop.home.cartBar': 'Bidhaa {count} · {total}',
@@ -8302,6 +8691,168 @@ class FFLocale extends ChangeNotifier {
       'shop.a11y.inCart': '{name}, {qty} kwenye kikapu. Ongeza moja zaidi',
       'shop.a11y.category': 'Aina: {category}',
       'shop.a11y.viewAll': 'Tazama zote, {section}',
+      // Pre-sign-in fixes (2026-10-19): Swahili pending native review.
+      'lang.name.en': 'English',
+      'lang.name.sw': 'Kiswahili',
+      'auth.errorDialog.title': 'Hatukuweza kukuingiza',
+      'home.passError.title': 'Hatukuweza kupakia pasi yako.',
+      // Photo hero (PHOTO_HERO_UI, 2026-10-19): Swahili pending native review.
+      'hero.eyebrow.brand': 'FITFLEX AFRICA',
+      'hero.tagline.lead': 'Pamoja tuna',
+      'hero.tagline.accent': 'nguvu.',
+      'hero.lang.prompt': 'Choose your language · Chagua lugha yako',
+      'hero.lang.continueBoth': 'Continue · Endelea',
+      'hero.signIn.lead': 'Karibu',
+      'hero.signIn.accent': 'tena.',
+      'hero.signIn.sub': 'Pasi yako, QR yako na maendeleo yako, mahali pamoja.',
+      'hero.signUp.member.lead': 'Pasi moja.',
+      'hero.signUp.member.accent': 'Gym nyingi.',
+      'hero.signUp.owner.lead': 'Kuza',
+      'hero.signUp.owner.accent': 'gym yako.',
+      'hero.signUp.trainer.lead': 'Fundisha kwa',
+      'hero.signUp.trainer.accent': 'njia yako.',
+      'hero.signUp.vendor.lead': 'Uza kwa',
+      'hero.signUp.vendor.accent': 'wanaofanya mazoezi.',
+      'hero.signUp.staff.lead': 'Karibu',
+      'hero.signUp.staff.accent': 'kwenye timu.',
+      'home.hero.none.lead': 'Tuanze',
+      'home.hero.none.accent': 'mazoezi.',
+      'home.hero.pending.lead': 'Hatua',
+      'home.hero.pending.accent': 'moja tu.',
+      'home.hero.ended.lead': 'Uko tayari',
+      'home.hero.ended.accent': 'kurudi?',
+      'home.hero.active.lead': 'Tayari kwa',
+      'home.hero.active.accent': 'mazoezi?',
+      'home.hero.findGym': 'Tafuta gym',
+      'home.hero.exploreGyms': 'Tazama gym',
+      'home.hero.nextPass': 'Chagua pasi yako ijayo',
+      'home.hero.chip.endingSoon': 'PASI INAISHA KARIBUNI',
+      'home.hero.chip.lowVisits': 'ZIARA ZIMEBAKI CHACHE',
+      'home.how.title': 'Jinsi FitFlex inavyofanya kazi',
+      'home.how.step1': 'Chagua pasi inayokufaa kwa mwezi wako.',
+      'home.how.step2': 'Onyesha QR yako kwenye gym mshirika.',
+      'home.how.step3': 'Fanya mazoezi, na fuatilia kila ziara hapa.',
+      // Vendor stock ledger (S1, 2026-10-19): Swahili drafts pending native
+      // review (design spec vendor-stock-ledger-s1 §8, plan §4).
+      'vendor.stock.orderNotVisible':
+          'Oda hii bado haipo kwenye oda zako. Itaonekana humo ikishalipwa.',
+      'vendor.stock.lowVariantsOne': 'Chaguo 1 lina Stock chache',
+      'vendor.stock.customRange': '{from} hadi {to}',
+      'vendor.form.fixErrors':
+          'Baadhi ya sehemu zinahitaji kurekebishwa. Zimeonyeshwa hapo juu.',
+      'vendor.form.priceRequired': 'Weka bei iliyo zaidi ya 0.',
+      'vendor.form.nameRequired': 'Weka jina la bidhaa.',
+      'vendor.stock.variantHistory': '{product} · chaguo {variant}',
+      'vendor.stock.retryEntry':
+          'Kuna hitilafu kwenye ingizo hili. Hakuna kilichohifadhiwa. Bonyeza hifadhi tena.',
+      'vendor.stock.currentUnknown':
+          'Imeshindikana kusoma Stock iliyopo. Subiri ipakie kisha ujaribu tena.',
+      'vendor.stock.directionMissing': 'Chagua Ongeza au Ondoa.',
+      'vendor.stock.variantsChanged':
+          'Machaguo ya bidhaa hii yamebadilika. Chagua chaguo tena.',
+      'vendor.stock.range.customShort': 'Tarehe',
+      'vendor.stock.range.30dShort': 'Siku 30',
+      'vendor.stock.range.7dShort': 'Siku 7',
+      'vendor.stock.deltaNone': 'Hakuna badiliko',
+      'vendor.stock.changedForm':
+          'Stock imebadilika tangu ulipofungua bidhaa hii. Angalia idadi mpya kisha uhifadhi tena.',
+      'vendor.stock.noteTooLong': 'Maelezo ni marefu mno (herufi 200 zaidi).',
+      'vendor.costPrice': 'Bei ya kununua',
+      'vendor.costPriceHelp': 'Wewe na wasimamizi wako pekee ndio mnaoiona.',
+      'vendor.stock.reorderLevel': 'Kiwango cha kuagiza tena',
+      'vendor.stock.reorderHelp':
+          'Tutakujulisha Stock ikishuka hadi idadi hii.',
+      'vendor.stock.initial': 'Stock ya kuanzia',
+      'vendor.stock.current': 'Stock iliyopo sasa',
+      'vendor.stock.readOnlyHelp':
+          'Kubadilisha Stock, tumia Rekebisha Stock ili mabadiliko yarekodiwe.',
+      'vendor.stock.totalFromVariants': 'Jumla ya machaguo yote',
+      'vendor.variant.add': 'Ongeza chaguo',
+      'vendor.variant.name': 'Jina la chaguo',
+      'vendor.variant.remove': 'Ondoa chaguo {name}',
+      'vendor.variant.newStartsAtZero':
+          'Machaguo mapya yanaanza na 0. Hifadhi, kisha tumia Rekebisha Stock kuongeza Stock.',
+      'vendor.variant.removeHasStock':
+          'Punguza Stock ya chaguo hili hadi 0 kwa Rekebisha Stock kabla ya kuliondoa.',
+      'vendor.variant.nameRequired': 'Weka jina kwa kila chaguo.',
+      'vendor.variant.duplicateName': 'Machaguo mawili yana jina moja.',
+      'vendor.form.wholeNumber': 'Weka namba kamili, 0 au zaidi.',
+      'vendor.stock.adjust': 'Rekebisha Stock',
+      'vendor.stock.adjustFor': 'Rekebisha Stock: {name}',
+      'vendor.stock.variantLabel': 'Chaguo',
+      'vendor.stock.pickVariant': 'Chagua chaguo',
+      'vendor.stock.reasonLabel': 'Kwa nini Stock inabadilika?',
+      'vendor.stock.reason.count': 'Imehesabiwa',
+      'vendor.stock.reason.damaged': 'Imeharibika',
+      'vendor.stock.reason.expired': 'Imeisha muda',
+      'vendor.stock.reason.lost': 'Imepotea',
+      'vendor.stock.reason.found': 'Imepatikana',
+      'vendor.stock.reason.returned': 'Imerudishwa',
+      'vendor.stock.reason.restock': 'Stock imeongezwa',
+      'vendor.stock.reason.other': 'Nyingine',
+      'vendor.stock.reason.reserve': 'Oda imewekwa',
+      'vendor.stock.reason.release': 'Oda imeghairiwa, imerudi kwenye Stock',
+      'vendor.stock.reason.unknown': 'Badiliko la Stock',
+      'vendor.stock.counted': 'Idadi uliyohesabu',
+      'vendor.stock.difference': 'Tofauti: {delta}',
+      'vendor.stock.noDifference': 'Inalingana na Stock iliyopo',
+      'vendor.stock.direction': 'Ongeza au ondoa?',
+      'vendor.stock.add': 'Ongeza',
+      'vendor.stock.remove': 'Ondoa',
+      'vendor.stock.quantityIn': 'Idadi ya kuongeza',
+      'vendor.stock.quantityOut': 'Idadi ya kuondoa',
+      'vendor.stock.after': 'Stock itakuwa: {n}',
+      'vendor.stock.note': 'Maelezo (si lazima)',
+      'vendor.stock.noteRequired': 'Maelezo (lazima)',
+      'vendor.stock.noteMissing': 'Ongeza maelezo ya mabadiliko haya.',
+      'vendor.stock.quantityInvalid': 'Weka namba kamili zaidi ya 0.',
+      'vendor.stock.save': 'Hifadhi mabadiliko',
+      'vendor.stock.saveCount': 'Hifadhi hesabu',
+      'vendor.stock.changed':
+          'Stock imebadilika ulipokuwa ukihesabu. Hesabu tena.',
+      'vendor.stock.insufficient': 'Zipo {n} tu. Huwezi kuondoa zaidi ya hizo.',
+      'vendor.stock.nothingSaved': 'Hakuna kilichohifadhiwa.',
+      'vendor.stock.updated': 'Stock imesasishwa kutoka {before} hadi {after}',
+      'vendor.stock.notAllowed': 'Huna ruhusa ya kubadilisha Stock.',
+      'vendor.stock.notFound': 'Bidhaa hii haipatikani tena.',
+      'vendor.stock.history': 'Historia ya Stock',
+      'vendor.stock.opening': 'Stock mwanzoni',
+      'vendor.stock.closing': 'Stock mwishoni',
+      'vendor.stock.range.7d': 'Siku 7 zilizopita',
+      'vendor.stock.range.30d': 'Siku 30 zilizopita',
+      'vendor.stock.range.custom': 'Chagua tarehe',
+      'vendor.stock.loading': 'Inapakia historia ya Stock',
+      'vendor.stock.historyEmpty':
+          'Hakuna mabadiliko ya Stock katika tarehe hizi.',
+      'vendor.stock.historyFailed':
+          'Imeshindikana kupakia historia ya Stock. Jaribu tena.',
+      'vendor.stock.loadMore': 'Pakia zaidi',
+      'vendor.stock.by': 'Imefanywa na {name}',
+      'vendor.stock.bySystem': 'FitFlex (kiotomatiki)',
+      'vendor.stock.order': 'Oda {ref}',
+      'vendor.stock.fromProductForm': 'Imebadilishwa kwenye fomu ya bidhaa',
+      'vendor.stock.toVariants': 'Imehamishiwa kwenye Stock ya kila chaguo',
+      'vendor.stock.deltaIn': 'Zimeongezwa {n}',
+      'vendor.stock.deltaOut': 'Zimeondolewa {n}',
+      'vendor.stock.rowLabel':
+          '{reason}, {delta}, kutoka {before} hadi {after}, {time}, {actor}',
+      'vendor.stock.backToProducts': 'Rudi kwenye bidhaa',
+      'vendor.stock.low': 'Stock inakaribia kuisha',
+      'vendor.stock.lowBadge': 'Stock chache',
+      'vendor.stock.lowFilter': 'Stock chache ({n})',
+      'vendor.stock.all': 'Bidhaa zote',
+      'vendor.stock.lowEmpty': 'Hakuna bidhaa yenye Stock chache.',
+      'vendor.stock.lowVariants': 'Machaguo {n} yana Stock chache',
+      'vendor.stock.lowNavLabel': '{n} zina Stock chache',
+      'vendor.productActions': 'Vitendo vya {name}',
+      'vendor.stock.noProductsAccess': 'Huna ruhusa ya kuona bidhaa.',
+      'inbox.open.lowStock': 'Angalia Stock',
+      'vendor.variant.hasReservations':
+          'Chaguo {name} lina oda zinazosubiri. Liondoe baada ya oda hizo kukamilika au kughairiwa.',
+      'vendor.variant.stockMixed':
+          'Weka idadi ya Stock kwa kila chaguo, au usiweke kwa lolote.',
+      'vendor.costForbidden':
+          'Mmiliki wa duka na wafanyakazi wa admin tu ndio wanaweza kuweka bei ya kununua.',
     },
   };
 }

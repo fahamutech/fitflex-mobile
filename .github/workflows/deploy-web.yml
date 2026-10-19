@@ -24,6 +24,9 @@ jobs:
     # production URL.
     env:
       API_BASE: ${{ vars.API_BASE || 'https://fitflex-faas.bfast.smartstock.co.tz' }}
+      # Shop home V2 (on/off). Set repo variable SHOP_HOME_V2=true to switch it on;
+      # the server also needs SHOP_HOME_V2=1, otherwise the app falls back to today's shop.
+      SHOP_HOME_V2: ${{ vars.SHOP_HOME_V2 || 'false' }}
 
     steps:
       - name: Checkout repository
@@ -46,7 +49,7 @@ jobs:
         run: flutter pub get
 
       - name: Build web release
-        run: flutter build web --release --dart-define=API_BASE="$API_BASE"
+        run: flutter build web --release --dart-define=API_BASE="$API_BASE" --dart-define=SHOP_HOME_V2="$SHOP_HOME_V2"
 
       - name: Deploy to Firebase Hosting (live)
         if: github.event_name != 'pull_request'

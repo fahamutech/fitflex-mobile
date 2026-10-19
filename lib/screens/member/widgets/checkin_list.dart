@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../shared/components/components.dart';
 import '../../../shared/i18n.dart';
 import '../../../shared/models.dart';
+import '../../../shared/formatters.dart';
 
 class CheckinList extends StatelessWidget {
   const CheckinList({super.key, required this.checkins, this.limit = 5});
@@ -22,7 +23,7 @@ class CheckinList extends StatelessWidget {
         return FFActionTile(
           icon: Icons.check_circle_outline,
           title: gymName,
-          subtitle: c.timestamp,
+          subtitle: context.localDateTimeText(c.timestamp, fallback: ''),
           onTap: () {},
         );
       }).toList(),

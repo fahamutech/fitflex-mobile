@@ -18,6 +18,7 @@ import '../../shared/widgets/photo_gallery.dart';
 import 'widgets/gym_card.dart';
 import 'widgets/gym_plans_sheet.dart';
 import 'widgets/trainer_card.dart';
+import 'widgets/gym_filters.dart';
 
 class MemberGymDetailPage extends StatefulWidget {
   const MemberGymDetailPage({super.key, required this.gymId});
@@ -155,7 +156,7 @@ class _MemberGymDetailPageState extends State<MemberGymDetailPage> {
               ),
               const SizedBox(width: 6),
               FFBadge(
-                label: gym.tier.replaceAll('_', ' '),
+                label: gymTierLabel(context, gym),
                 tone: FFBadgeTone.brand,
               ),
               if (gym.isFreeOnline) ...[
