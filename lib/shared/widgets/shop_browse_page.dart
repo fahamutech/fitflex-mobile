@@ -12,6 +12,7 @@ import '../design_tokens.dart';
 import '../formatters.dart';
 import '../discovery_loader.dart';
 import '../i18n.dart';
+import '../payment_labels.dart';
 import '../product_categories.dart';
 import '../promotion.dart';
 import '../promotion_events.dart';
@@ -2241,15 +2242,18 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
                 key: const Key('shop-payment-method'),
                 value: _payment,
                 label: context.tr('shop.paymentMethod'),
-                items: const [
-                  DropdownMenuItem(value: 'mpesa', child: Text('M-Pesa')),
-                  DropdownMenuItem(
-                    value: 'airtel_money',
-                    child: Text('Airtel Money'),
-                  ),
-                  DropdownMenuItem(value: 'mixx', child: Text('Mixx')),
-                  DropdownMenuItem(value: 'card', child: Text('Card')),
-                  DropdownMenuItem(value: 'bank', child: Text('Bank')),
+                items: [
+                  for (final method in const [
+                    'mpesa',
+                    'airtel_money',
+                    'mixx',
+                    'card',
+                    'bank',
+                  ])
+                    DropdownMenuItem(
+                      value: method,
+                      child: Text(shopPaymentMethodLabel(context, method)),
+                    ),
                 ],
                 onChanged: (value) =>
                     setState(() => _payment = value ?? 'mpesa'),

@@ -119,7 +119,8 @@ void main() {
     );
     // No order number yet: a short id; the vendor may open orders.
     expect(find.byKey(const Key('stock-order-m1')), findsOneWidget);
-    expect(find.text('Order ef123456'), findsOneWidget);
+    // Same order number as Orders and the portal: last 6, in capitals.
+    expect(find.text('Order 123456'), findsOneWidget);
     expect(find.byKey(const Key('stock-load-more')), findsNothing);
   });
 
@@ -253,7 +254,7 @@ void main() {
       },
     );
     expect(find.byKey(const Key('stock-order-m1')), findsNothing);
-    expect(find.text('Order ord_1'), findsOneWidget);
+    expect(find.text('Order ORD_1'), findsOneWidget);
   });
 
   apiTest('unknown reasons are never shown raw (Swahili)', (tester, api) async {

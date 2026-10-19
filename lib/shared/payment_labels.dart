@@ -54,18 +54,29 @@ String passGymAccessLabel(BuildContext context, String? gymAccess) {
   return label == key ? id : label;
 }
 
-/// A shop order's payment status ("Paid", sw "Imelipwa"); an unknown value
-/// is shown as sent, a missing one as "-".
-String shopPaymentStatusLabel(BuildContext context, Object? status) =>
-    _known(context, 'payment.status', status);
+/// A shop payment method in words (`mpesa` → "M-Pesa"); the code itself,
+/// tidied, for one this app does not know yet; [fallback] when there is none.
+String shopPaymentMethodLabel(
+  BuildContext context,
+  Object? method, {
+  String fallback = '-',
+}) => _codeLabel(context, 'payment.method', method, fallback);
 
-/// How a shop order is paid ("M-Pesa", "Bank"), in the member's language.
-String shopPaymentMethodLabel(BuildContext context, Object? method) =>
-    _known(context, 'payment.method', method);
+/// A shop order's payment status in words (`paid` → "Paid" / "Imelipwa").
+String shopPaymentStatusLabel(
+  BuildContext context,
+  Object? status, {
+  String fallback = '-',
+}) => _codeLabel(context, 'payment.status', status, fallback);
 
-String _known(BuildContext context, String prefix, Object? value) {
-  final id = value?.toString().trim() ?? '';
-  if (id.isEmpty) return '-';
+String _codeLabel(
+  BuildContext context,
+  String prefix,
+  Object? code,
+  String fallback,
+) {
+  final id = code?.toString().trim() ?? '';
+  if (id.isEmpty) return fallback;
   final key = '$prefix.$id';
   final label = context.tr(key);
   return label == key ? id.replaceAll('_', ' ') : label;

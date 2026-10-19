@@ -444,7 +444,7 @@ void main() {
       expect(passGymAccessLabel(ctx, 'midtier'), 'Gym za kawaida + kati');
       expect(passGymAccessLabel(ctx, 'new_level'), 'new_level');
       expect(shopPaymentStatusLabel(ctx, 'paid'), 'Imelipwa');
-      expect(shopPaymentStatusLabel(ctx, 'pending'), 'Inasubiri');
+      expect(shopPaymentStatusLabel(ctx, 'pending'), 'Inasubiri malipo');
       expect(shopPaymentMethodLabel(ctx, 'bank'), 'Uhamisho wa benki');
       expect(shopPaymentMethodLabel(ctx, 'mpesa'), 'M-Pesa');
       expect(shopPaymentStatusLabel(ctx, null), '-');
