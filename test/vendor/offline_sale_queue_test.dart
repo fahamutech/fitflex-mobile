@@ -442,6 +442,41 @@ void main() {
     },
   );
 
+  test(
+    'an answer without the sale keeps it queued (not proof it was recorded)',
+    () async {
+      await api.run(() async {
+        api.on('POST /vendor/sales', <String, dynamic>{});
+        final s = session();
+        await s.enqueue(queued('sale_a_000001'));
+        await s.sync();
+        expect(s.waiting, hasLength(1));
+        expect(s.synced, isEmpty);
+      });
+    },
+  );
+
+  test(
+    'the business header is kept for offline receipts, nothing else',
+    () async {
+      await api.run(() async {
+        final s = session();
+        await s.saveBusiness({
+          'businessName': 'Dar Gear',
+          'contactNumber': '+255700000001',
+          'address': 'Masaki',
+          'settlementAccount': {'account': '0123456789'},
+          'email': 'store@x.test',
+        });
+        expect(await s.loadBusiness(), {
+          'businessName': 'Dar Gear',
+          'contactNumber': '+255700000001',
+          'address': 'Masaki',
+        });
+      });
+    },
+  );
+
   test('identity: vendor acts for itself, staff for their vendor', () {
     expect(SalesSession.identityOf({'id': 'v1', 'userType': 'vendor'}), (
       vendorId: 'v1',

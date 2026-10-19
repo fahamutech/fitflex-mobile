@@ -98,12 +98,18 @@ class _SaleReceiptPageState extends State<SaleReceiptPage> {
     setState(() {});
   }
 
+  /// The receipt header: the server's profile, else the one this device
+  /// kept (offline, or staff who may not read the profile).
   Future<void> _loadProfile() async {
+    final api = AppScope.of(context).api;
+    final session = SalesSession.of(context);
     try {
-      final p = await AppScope.of(context).api.vendorProfile();
+      final p = await api.vendorProfile();
+      await session?.saveBusiness(p);
       if (mounted) setState(() => _profile = p);
     } catch (_) {
-      // Staff may not read the profile: no business header then.
+      final kept = await session?.loadBusiness() ?? const {};
+      if (mounted && kept.isNotEmpty) setState(() => _profile = kept);
     }
   }
 
@@ -145,8 +151,13 @@ class _SaleReceiptPageState extends State<SaleReceiptPage> {
     final ref = widget.clientRef;
     final queued = ref == null ? null : _session?.byRef(ref);
     if (queued != null) {
-      final data = ReceiptData.fromQueued(queued.body, queued.display);
-      return data;
+      // A sale queued before the header was known gets the kept one.
+      return ReceiptData.fromQueued(queued.body, {
+        'business': ?_profile['businessName'],
+        'contact': ?_profile['contactNumber'],
+        'address': ?_profile['address'],
+        ...queued.display,
+      });
     }
     return null;
   }

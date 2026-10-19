@@ -183,6 +183,7 @@ class SalesSession extends ChangeNotifier with WidgetsBindingObserver {
   String get queueKey => 'vendor_sale_queue.$vendorId.$personId';
   String get draftKey => 'vendor_pos_draft.$vendorId.$personId';
   String get productsKey => 'vendor_pos_products.$vendorId';
+  String get businessKey => 'vendor_pos_business.$vendorId';
 
   List<QueuedSale> _queue = [];
   bool _loaded = false;
@@ -402,6 +403,37 @@ class SalesSession extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> clearDraft() => saveDraft(PosCart());
 
+  // Business header (receipts made offline) -------------------------------
+
+  /// Keeps what a receipt header needs from the business profile.
+  Future<void> saveBusiness(Map<String, dynamic> profile) async {
+    final keep = {
+      for (final f in const ['businessName', 'contactNumber', 'address'])
+        if ((profile[f]?.toString() ?? '').trim().isNotEmpty) f: profile[f],
+    };
+    if (keep.isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(businessKey, jsonEncode(keep));
+  }
+
+  Future<Map<String, dynamic>> loadBusiness() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(businessKey);
+      final data = raw == null ? null : jsonDecode(raw);
+      return data is Map ? Map<String, dynamic>.from(data) : {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  /// The till was told the business is suspended (403 vendor_suspended).
+  void markSuspended() {
+    if (_pause == SalesSyncPause.suspended) return;
+    _pause = SalesSyncPause.suspended;
+    notifyListeners();
+  }
+
   // Product cache ---------------------------------------------------------
 
   Future<void> saveProducts(List<Map<String, dynamic>> products) async {
@@ -573,13 +605,13 @@ class SalesSession extends ChangeNotifier with WidgetsBindingObserver {
           res = await api.vendorRecordSale(item.onlineBody);
         }
         final sale = res['sale'];
+        // An answer without the sale is not proof it was recorded: keep it.
+        if (sale is! Map) throw StateError('no sale in the answer');
         _queue.remove(item);
         _retryAt = null;
-        if (sale is Map) {
-          synced[item.clientRef] = Map<String, dynamic>.from(sale);
-          final number = sale['number']?.toString();
-          if (number != null) _syncedNumbers.add(number);
-        }
+        synced[item.clientRef] = Map<String, dynamic>.from(sale);
+        final number = sale['number']?.toString();
+        if (number != null) _syncedNumbers.add(number);
         _failures = 0;
         await _save();
         notifyListeners();

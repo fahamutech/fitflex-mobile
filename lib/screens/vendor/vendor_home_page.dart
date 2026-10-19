@@ -30,6 +30,7 @@ import 'stock/stock_history_page.dart';
 import 'stock/stock_options.dart';
 import 'stock/variant_rows_editor.dart';
 import 'sales/offline_sale_queue.dart';
+import 'sales/sale_models.dart' show pluralKey;
 import 'sales/sales_history_tab.dart';
 import 'sales/sales_widgets.dart';
 
@@ -185,15 +186,22 @@ class _VendorHomePageState extends State<VendorHomePage> {
   void _show(String? part) {
     final section = _sectionOf[part];
     if (section == null) return;
-    // Sales appears once the tools answer; ask for it now and the tab
-    // shows when it does (the bar falls back to the first section).
-    if (section == _salesSection && _can('sales')) {
-      setState(() => _tab = section);
+    // Which tabs exist is known only once the tools (walk-in sales) and the
+    // profile have loaded: keep the request until then, so the profile's
+    // "finish your profile" redirect or a missing Sales tab cannot win.
+    if (_loading) {
+      _pendingOpen = part;
       return;
     }
     if (!_sections.contains(section)) return;
     setState(() => _tab = section);
   }
+
+  /// A requested section (`open=`) waiting for the tab list to be known.
+  String? _pendingOpen;
+
+  /// The unfinished-profile redirect to Business has happened.
+  bool _profileNudged = false;
 
   bool get _walkInSales => _tools.walkInSales && _can('sales');
 
@@ -225,10 +233,11 @@ class _VendorHomePageState extends State<VendorHomePage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _sales = SalesSession.of(context)?..attach();
+      final sales = SalesSession.of(context)?..attach();
+      setState(() => _sales = sales);
       _sales?.signedIn();
+      _pendingOpen = widget.open;
       _refresh();
-      if (mounted) _show(widget.open);
       // Vendors have no sign-up form of their own, so the vendor terms are
       // asked here the first time (and again if a new version is published).
       askToAgreeTerms(context, quiet: true);
@@ -325,9 +334,13 @@ class _VendorHomePageState extends State<VendorHomePage> {
       _orders = loaded.orders ?? _orders;
       if (loaded.profile != null) {
         _profile = loaded.profile!;
+        // An unfinished profile opens on Business once (the first load), not
+        // on every refresh: pulling to refresh on Sales stays on Sales.
         if (_profile['status'] != 'published' &&
             !_pendingApproval &&
-            !isStaff) {
+            !isStaff &&
+            !_profileNudged) {
+          _profileNudged = true;
           _tab = 4;
         }
       }
@@ -337,6 +350,11 @@ class _VendorHomePageState extends State<VendorHomePage> {
       _staffDisabled = staffDisabled;
       _tools = toolsNow;
       _loading = false;
+      // Now the tabs are known: honour `open=` (Done after a sale, a
+      // notification, a deep link).
+      final wanted = _sectionOf[_pendingOpen];
+      _pendingOpen = null;
+      if (wanted != null && _sections.contains(wanted)) _tab = wanted;
     });
     if (toolsNow.walkInSales) {
       _sales?.featureOn();
@@ -609,6 +627,23 @@ class _VendorHomePageState extends State<VendorHomePage> {
                 ? _pendingBanner()
                 : const SizedBox.shrink(),
           ),
+          // Sales still on this device with the Sales tab gone (feature
+          // off) and no Business tab to show them on: reachable here.
+          if (_sales != null && !sections.contains(4))
+            ListenableBuilder(
+              listenable: _sales!,
+              builder: (context, _) => _sales!.isEmpty || _walkInSales
+                  ? const SizedBox.shrink()
+                  : Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        FFTokens.spacingLg,
+                        FFTokens.spacingSm,
+                        FFTokens.spacingLg,
+                        0,
+                      ),
+                      child: _salesWaitingTile(),
+                    ),
+            ),
           if (_staffDisabled)
             Padding(
               padding: const EdgeInsets.fromLTRB(
@@ -1311,20 +1346,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
                 ? const SizedBox.shrink()
                 : Padding(
                     padding: const EdgeInsets.only(top: FFTokens.spacingMd),
-                    child: FFCard(
-                      child: ListTile(
-                        key: const Key('vendor-sales-waiting-tile'),
-                        contentPadding: EdgeInsets.zero,
-                        leading: const Icon(Icons.cloud_upload_outlined),
-                        title: Text(
-                          fillIn(context.tr('vendor.sync.tile'), {
-                            'n': _sales!.all.length,
-                          }),
-                        ),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () => context.push(salesSyncRoute),
-                      ),
-                    ),
+                    child: _salesWaitingTile(),
                   ),
           ),
         const SizedBox(height: FFTokens.spacingLg),
@@ -1387,6 +1409,20 @@ class _VendorHomePageState extends State<VendorHomePage> {
       ],
     );
   }
+
+  /// "Sales waiting to sync (n)" → the sync screen (S3).
+  Widget _salesWaitingTile() => FFCard(
+    child: ListTile(
+      key: const Key('vendor-sales-waiting-tile'),
+      contentPadding: EdgeInsets.zero,
+      leading: const Icon(Icons.cloud_upload_outlined),
+      title: Text(
+        fillIn(context.tr('vendor.sync.tile'), {'n': _sales!.all.length}),
+      ),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => context.push(salesSyncRoute),
+    ),
+  );
 
   Widget _restrictedTab() {
     return ListView(
@@ -2488,7 +2524,9 @@ Future<bool> confirmLeaveWithQueuedSales(
     context: context,
     builder: (dialog) => AlertDialog(
       key: const Key('vendor-sales-leave-dialog'),
-      content: Text(fillIn(context.tr('vendor.sync.signOutWarn'), {'n': n})),
+      content: Text(
+        fillIn(context.tr(pluralKey('vendor.sync.signOutWarn', n)), {'n': n}),
+      ),
       actions: [
         FFButton(
           label: context.tr('common.cancel'),
