@@ -12,6 +12,7 @@ import '../../shared/discovery_loader.dart';
 import '../../shared/promotion_events.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
+import '../../shared/photo_footer_flag.dart';
 import '../../shared/photo_hero_flag.dart';
 import '../../shared/promotion.dart';
 import 'member_shell.dart';
@@ -28,6 +29,9 @@ class MemberGymsTab extends StatefulWidget {
 
 class _MemberGymsTabState extends State<MemberGymsTab> {
   final TextEditingController _searchCtrl = TextEditingController();
+
+  /// The band's heading: the footer's Back to top moves focus here.
+  final FocusNode _heroFocus = FocusNode(debugLabel: 'gyms-hero-heading');
   String _search = '';
   String _filter = 'all';
   String _priceFilter = 'any';
@@ -88,6 +92,7 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
   void dispose() {
     _loader.dispose();
     _searchCtrl.dispose();
+    _heroFocus.dispose();
     super.dispose();
   }
 
@@ -270,6 +275,7 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
                       FFHeroBand(
                         key: const Key('gyms-hero'),
                         photo: FFHeroPhoto.gyms,
+                        headingFocusNode: _heroFocus,
                         minHeight: 160,
                         wideHeight: 200,
                         // Not "Discover gyms": the section strip below
@@ -667,6 +673,18 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
                     ),
                   ),
                 ),
+              ),
+            // PHOTO_FOOTER_UI (spec §33.6): once loaded, with results.
+            if (photoFooterUi)
+              FFPhotoFooter.sliver(
+                key: const Key('gyms-footer'),
+                pageKey: 'member.gyms',
+                top: FFHeroPhoto.gyms,
+                backToTop: true,
+                headingFocus: _heroFocus,
+                enabled: data.gymsLoaded && gyms.isNotEmpty,
+                // The grid already ends with 24px of padding.
+                gap: FFTokens.spacingXl - FFTokens.spacingLg,
               ),
           ],
         );

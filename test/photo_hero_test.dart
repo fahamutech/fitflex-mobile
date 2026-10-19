@@ -628,7 +628,19 @@ void main() {
         );
       }
     }
-    // Owner 2026-10-19: no place footer anywhere.
-    expect(en.where((k) => k.contains('footer')), isEmpty);
+    // Owner 2026-10-19: no place footer anywhere (the hero.footer.place /
+    // login.hero.footer keys and the "Dar es Salaam · Tanzania" line). The
+    // photo footer band's sign-off (footer.*, decision D-2) is not one.
+    expect(
+      en.where((k) => k.contains('footer') && !k.startsWith('footer.')),
+      isEmpty,
+    );
+    for (final lang in ['en', 'sw']) {
+      for (final k in FFLocale.keysOf(
+        lang,
+      ).where((k) => k.startsWith('footer.'))) {
+        expect(FFLocale.textOf(lang, k), isNot(contains('Dar es Salaam')));
+      }
+    }
   });
 }

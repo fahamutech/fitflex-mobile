@@ -5,6 +5,7 @@ import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/tone_theme.dart';
 import '../../shared/i18n.dart';
+import '../../shared/photo_footer_flag.dart';
 import '../../shared/photo_hero_flag.dart';
 import 'owner_shell.dart';
 import '../../shared/widgets/challenge_manager_page.dart';
@@ -214,11 +215,21 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
 
     final bool showChart = directCount > 0 || fitflexCount > 0;
 
-    return ListView(
+    return footerListView(
       padding: const EdgeInsets.symmetric(
         horizontal: FFTokens.spacingLg,
         vertical: FFTokens.spacingMd,
       ),
+      // PHOTO_FOOTER_UI (spec §33.6): once the dashboard has loaded.
+      footer: photoFooterUi
+          ? FFPhotoFooter.sliver(
+              key: const Key('owner-home-footer'),
+              pageKey: 'owner.home',
+              top: FFHeroPhoto.owner,
+              enabled: dashboard != null,
+              gap: FFTokens.spacingXl - FFTokens.spacingMd,
+            )
+          : null,
       children: [
         if (hero) ...[
           // PHOTO_HERO_UI (spec §25.3): the greeting and the daily job on a

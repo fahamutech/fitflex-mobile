@@ -14,6 +14,7 @@ import '../../shared/i18n.dart';
 import '../../shared/manual_payment.dart';
 import '../../shared/models.dart';
 import '../../shared/pass_gyms.dart';
+import '../../shared/photo_footer_flag.dart';
 import '../../shared/photo_hero_flag.dart';
 import '../../shared/payment_labels.dart';
 import 'widgets/mobile_money_pay.dart';
@@ -118,6 +119,31 @@ class MemberPassesPage extends StatelessWidget {
   );
 
   Widget _buildPhotoHero(BuildContext context, MemberData data) {
+    final listed =
+        data.pendingPass == null && data.passesLoaded && data.passes.isNotEmpty;
+    return _PassesScroll(
+      // Footer (spec §33.6): once the pass list is shown; never while the
+      // pending-payment card is on screen. In upgrade mode the gate decides
+      // (options shown, no manual-payment fields).
+      gated: listed && data.hasActivePass,
+      footerEnabled: listed,
+      appBar: AppBar(
+        leading: IconButton(
+          tooltip: context.tr('a11y.back'),
+          onPressed: () => context.go(AppRoutes.memberHome),
+          icon: const Icon(Icons.arrow_back),
+        ),
+        title: Text(context.tr('pay.product.fitflexPass')),
+      ),
+      children: (onGateReady) => _photoHeroBody(context, data, onGateReady),
+    );
+  }
+
+  List<Widget> _photoHeroBody(
+    BuildContext context,
+    MemberData data,
+    ValueChanged<bool> onGateReady,
+  ) {
     final List<Widget> body;
     if (data.pendingPass != null) {
       body = [
@@ -140,6 +166,7 @@ class MemberPassesPage extends StatelessWidget {
       body = [
         _UpgradeGate(
           withHero: true,
+          onFooterReady: onGateReady,
           fallback: Column(
             children: [buyHero(context), ...normalList(context, data)],
           ),
@@ -148,21 +175,7 @@ class MemberPassesPage extends StatelessWidget {
     } else {
       body = [buyHero(context), ...normalList(context, data)];
     }
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          tooltip: context.tr('a11y.back'),
-          onPressed: () => context.go(AppRoutes.memberHome),
-          icon: const Icon(Icons.arrow_back),
-        ),
-        title: Text(context.tr('pay.product.fitflexPass')),
-      ),
-      body: ListView(
-        key: const Key('passes-scroll'),
-        padding: const EdgeInsets.all(FFTokens.spacingLg),
-        children: body,
-      ),
-    );
+    return body;
   }
 
   Widget _loadError(BuildContext context, MemberData data) => Center(
@@ -260,9 +273,17 @@ class MemberPassesPage extends StatelessWidget {
 /// sees the higher plans and what each costs them (the difference); anyone
 /// else, or a member with nothing to upgrade from, gets [fallback].
 class _UpgradeGate extends StatefulWidget {
-  const _UpgradeGate({required this.fallback, this.withHero = false});
+  const _UpgradeGate({
+    required this.fallback,
+    this.withHero = false,
+    this.onFooterReady,
+  });
 
   final Widget fallback;
+
+  /// PHOTO_FOOTER_UI: whether the page footer may show (the options or the
+  /// buy list are on screen, and no manual-payment fields).
+  final ValueChanged<bool>? onFooterReady;
 
   /// PHOTO_HERO_UI: lead with the Upgrade plan band hero.
   final bool withHero;
@@ -378,6 +399,16 @@ class _UpgradeGateState extends State<_UpgradeGate> {
     }
   }
 
+  bool? _reportedReady;
+
+  void _footerReady(bool ready) {
+    if (widget.onFooterReady == null || _reportedReady == ready) return;
+    _reportedReady = ready;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.onFooterReady?.call(ready);
+    });
+  }
+
   /// The Upgrade plan hero: eyebrow only while loading or on an error; the
   /// headline says whether there is a higher plan. No price, date or count.
   Widget _hero(BuildContext context, {String? key}) => Padding(
@@ -402,13 +433,20 @@ class _UpgradeGateState extends State<_UpgradeGate> {
         final error = snap.error;
         final done = snap.connectionState == ConnectionState.done;
         // Buy mode draws its own hero (the fallback).
-        if (done && error is ApiException) return _build(context);
+        if (done && error is ApiException) {
+          _footerReady(true);
+          return _build(context);
+        }
         final options = snap.data?['options'] as List?;
         final key = !done || error != null || !snap.hasData
             ? null
             : (options == null || options.isEmpty)
             ? 'hero.upgrade.top'
             : 'hero.upgrade';
+        // The manual-payment fields are a payment step: no footer (§33.6).
+        _footerReady(
+          key != null && !(_modes.manual != null && _selected != null),
+        );
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -922,6 +960,55 @@ class _SelectablePass extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// The Upgrade plan page under PHOTO_HERO_UI: the page, its scroll view and,
+/// with PHOTO_FOOTER_UI, the photo footer: shown when [footerEnabled], or in
+/// upgrade mode ([gated]) once the upgrade gate says it may.
+class _PassesScroll extends StatefulWidget {
+  const _PassesScroll({
+    required this.appBar,
+    required this.children,
+    required this.footerEnabled,
+    required this.gated,
+  });
+
+  final PreferredSizeWidget appBar;
+  final List<Widget> Function(ValueChanged<bool> onGateReady) children;
+  final bool footerEnabled;
+  final bool gated;
+
+  @override
+  State<_PassesScroll> createState() => _PassesScrollState();
+}
+
+class _PassesScrollState extends State<_PassesScroll> {
+  bool _gateReady = false;
+
+  void _onGateReady(bool ready) {
+    if (mounted && ready != _gateReady) setState(() => _gateReady = ready);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: widget.appBar,
+      body: footerListView(
+        key: const Key('passes-scroll'),
+        padding: const EdgeInsets.all(FFTokens.spacingLg),
+        footer: photoFooterUi
+            ? FFPhotoFooter.sliver(
+                key: const Key('passes-footer'),
+                pageKey: 'member.passes',
+                top: FFHeroPhoto.upgrade,
+                enabled: widget.gated ? _gateReady : widget.footerEnabled,
+                gap: FFTokens.spacingXl - FFTokens.spacingLg,
+              )
+            : null,
+        children: widget.children(_onGateReady),
       ),
     );
   }

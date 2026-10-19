@@ -12,6 +12,7 @@ import 'widgets/challenge_widgets.dart';
 import 'widgets/goal_widgets.dart';
 import 'widgets/home_cards.dart';
 import 'widgets/home_hero.dart';
+import '../../shared/photo_footer_flag.dart';
 import '../../shared/photo_hero_flag.dart';
 import 'widgets/pass_summary_card.dart';
 import 'widgets/today_activity_card.dart';
@@ -142,10 +143,26 @@ class _MemberHomeTabState extends State<MemberHomeTab> {
       ],
     );
 
+    // PHOTO_FOOTER_UI (spec §33.6): once the profile has loaded.
+    Widget? footer({required bool padded}) => photoFooterUi
+        ? FFPhotoFooter.sliver(
+            key: const Key('home-footer'),
+            pageKey: 'member.home',
+            top: homeHeroStateFor(data) == HomeHeroState.pass
+                ? FFHeroPhoto.homePass
+                : FFHeroPhoto.homeStart,
+            enabled: data.me != null,
+            gap: padded
+                ? FFTokens.spacingXl - FFTokens.spacingLg
+                : FFTokens.spacingXl,
+          )
+        : null;
+
     if (wide) {
-      return ListView(
+      return footerListView(
         key: const Key('member-home'),
         padding: const EdgeInsets.all(FFTokens.spacingLg),
+        footer: footer(padded: true),
         children: [
           Center(
             child: ConstrainedBox(
@@ -179,9 +196,9 @@ class _MemberHomeTabState extends State<MemberHomeTab> {
         }
         return false;
       },
-      child: ListView(
+      child: footerListView(
         key: const Key('member-home'),
-        padding: EdgeInsets.zero,
+        footer: footer(padded: false),
         children: [
           KeyedSubtree(
             key: _heroKey,

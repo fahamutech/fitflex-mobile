@@ -7,6 +7,7 @@ import '../../shared/discovery_loader.dart';
 import '../../shared/promotion_events.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
+import '../../shared/photo_footer_flag.dart';
 import '../../shared/photo_hero_flag.dart';
 import '../../shared/promotion.dart';
 import 'member_shell.dart';
@@ -22,6 +23,9 @@ class MemberTrainersTab extends StatefulWidget {
 
 class _MemberTrainersTabState extends State<MemberTrainersTab> {
   final TextEditingController _searchCtrl = TextEditingController();
+
+  /// The band's heading: the footer's Back to top moves focus here.
+  final FocusNode _heroFocus = FocusNode(debugLabel: 'trainers-hero-heading');
   String _search = '';
   String _filter = 'all';
 
@@ -81,6 +85,7 @@ class _MemberTrainersTabState extends State<MemberTrainersTab> {
   void dispose() {
     _loader.dispose();
     _searchCtrl.dispose();
+    _heroFocus.dispose();
     super.dispose();
   }
 
@@ -172,6 +177,7 @@ class _MemberTrainersTabState extends State<MemberTrainersTab> {
                       FFHeroBand(
                         key: const Key('trainers-hero'),
                         photo: FFHeroPhoto.trainers,
+                        headingFocusNode: _heroFocus,
                         minHeight: 160,
                         wideHeight: 200,
                         eyebrow: context.tr('member.trainers'),
@@ -375,6 +381,18 @@ class _MemberTrainersTabState extends State<MemberTrainersTab> {
                     childAspectRatio: 0.68,
                   ),
                 ),
+              ),
+            // PHOTO_FOOTER_UI (spec §33.6): once loaded, with results.
+            if (photoFooterUi)
+              FFPhotoFooter.sliver(
+                key: const Key('trainers-footer'),
+                pageKey: 'member.trainers',
+                top: FFHeroPhoto.trainers,
+                backToTop: true,
+                headingFocus: _heroFocus,
+                enabled: data.trainersLoaded && trainers.isNotEmpty,
+                // The grid already ends with 24px of padding.
+                gap: FFTokens.spacingXl - FFTokens.spacingLg,
               ),
           ],
         );
