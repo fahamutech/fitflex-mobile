@@ -3,6 +3,7 @@
 
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:fitflexmobile/app_scope.dart';
 import 'package:fitflexmobile/router.dart';
@@ -274,19 +275,47 @@ void main() {
   group('photo choice (spec §33.6, AC-M4)', () {
     test('the stand-in mapping equals the spec table', () {
       expect(footerPagePhotos, {
-        'member.home': FFHeroPhoto.footerWindow,
-        'member.activity': FFHeroPhoto.footerBoxing,
-        'member.profile': FFHeroPhoto.footerStairs,
-        'member.passes': FFHeroPhoto.footerWarmGym,
-        'member.gyms': FFHeroPhoto.footerBoxing,
-        'member.trainers': FFHeroPhoto.footerWindow,
-        'member.shop': FFHeroPhoto.footerStairs,
-        'member.gymDetail': FFHeroPhoto.footerWindow,
-        'member.trainerDetail': FFHeroPhoto.footerStairs,
-        'trainer.home': FFHeroPhoto.footerBoxing,
-        'vendor.products': FFHeroPhoto.footerWarmGym,
-        'owner.home': FFHeroPhoto.footerStairs,
+        'member.home': FFHeroPhoto.footerStudio,
+        'member.activity': FFHeroPhoto.footerGymFloor,
+        'member.profile': FFHeroPhoto.footerRack,
+        'member.passes': FFHeroPhoto.footerRack,
+        'member.gyms': FFHeroPhoto.footerStudio,
+        'member.trainers': FFHeroPhoto.footerGymFloor,
+        'member.shop': FFHeroPhoto.footerShelves,
+        'member.gymDetail': FFHeroPhoto.footerRack,
+        'member.trainerDetail': FFHeroPhoto.footerStudio,
+        'trainer.home': FFHeroPhoto.footerShelves,
+        'vendor.products': FFHeroPhoto.footerRack,
+        'owner.home': FFHeroPhoto.footerStudio,
       });
+    });
+
+    test('the pool: four different scenes', () {
+      expect(footerPhotoPool.map((p) => p.sourceId).toSet(), hasLength(4));
+    });
+
+    test('pages one step apart never share a footer photo', () {
+      // Member tabs in nav order, then the links between pages (§33.6).
+      const steps = [
+        ('member.home', 'member.activity'),
+        ('member.activity', 'member.gyms'),
+        ('member.gyms', 'member.shop'),
+        ('member.shop', 'member.profile'),
+        ('member.activity', 'member.profile'),
+        ('member.home', 'member.passes'),
+        ('member.home', 'member.shop'),
+        ('member.gyms', 'member.trainers'),
+        ('member.gyms', 'member.gymDetail'),
+        ('member.trainers', 'member.trainerDetail'),
+        ('member.gymDetail', 'member.trainerDetail'),
+      ];
+      for (final (a, b) in steps) {
+        expect(
+          footerPagePhotos[a]!.sourceId,
+          isNot(footerPagePhotos[b]!.sourceId),
+          reason: '$a / $b',
+        );
+      }
     });
 
     test('never the same scene as any top photo the page can show', () {
@@ -322,15 +351,15 @@ void main() {
     });
 
     test('a clash with the top photo moves to the next pool photo', () {
-      // footerWarmGym shares the Trainers band's scene.
+      // footerStudio shares the Profile photo's scene.
       expect(
-        footerPhotoFor('member.passes', top: FFHeroPhoto.trainers),
-        FFHeroPhoto.footerBoxing,
+        footerPhotoFor('member.home', top: FFHeroPhoto.profile),
+        FFHeroPhoto.footerGymFloor,
       );
-      // footerWindow shares the trainer home photo's scene.
+      // footerShelves shares the vendor photo's scene (pool wraps around).
       expect(
-        footerPhotoFor('member.home', top: FFHeroPhoto.trainer),
-        FFHeroPhoto.footerStairs,
+        footerPhotoFor('member.shop', top: FFHeroPhoto.vendor),
+        FFHeroPhoto.footerStudio,
       );
       // A page not in the table: a stable pick, the same every time.
       expect(footerPhotoFor('some.page'), footerPhotoFor('some.page'));
@@ -352,7 +381,8 @@ void main() {
         tester.getTopLeft(_key('photo-footer')).dy,
         greaterThan(tester.getBottomLeft(find.byType(GymGridCard).last).dy),
       );
-      expect(find.text("That's all for now."), findsOneWidget);
+      expect(find.text('FitFlex Africa'), findsOneWidget);
+      expect(find.text("That's all for now."), findsNothing);
       expect(_key('photo-footer-back-to-top'), findsOneWidget);
       // 24px corners, inside the page padding.
       expect(tester.getTopLeft(_key('photo-footer')).dx, FFTokens.spacingLg);
@@ -628,6 +658,78 @@ void main() {
       expect(_key('photo-footer-photo'), findsOneWidget);
     });
 
+    footerTest('brand lockup: mark on a light plate, name and tagline', (
+      tester,
+      api,
+    ) async {
+      await _host(tester, page());
+      await _toEnd(tester, 'page');
+      final band = tester.getRect(_key('photo-footer'));
+      final logo = _key('photo-footer-logo');
+      expect(logo, findsOneWidget);
+      final img = tester.widget<Image>(logo);
+      expect((img.image as ResizeImage).imageProvider, isA<AssetImage>());
+      expect(
+        ((img.image as ResizeImage).imageProvider as AssetImage).assetName,
+        'assets/brand/fitflex-icon.png',
+      );
+      final size = tester.getSize(logo);
+      expect(size.width, greaterThanOrEqualTo(40));
+      expect(size.height, greaterThanOrEqualTo(40));
+      // Full opacity: no Opacity / FadeTransition between band and mark.
+      expect(
+        find.ancestor(of: logo, matching: find.byType(Opacity)),
+        findsNothing,
+      );
+      // A light round plate under the navy pin, larger than the mark.
+      final plate = tester.widget<Container>(_key('photo-footer-plate'));
+      final deco = plate.decoration! as BoxDecoration;
+      expect(deco.shape, BoxShape.circle);
+      expect(deco.color, FFTokens.heroText);
+      expect(
+        tester.getSize(_key('photo-footer-plate')).width,
+        greaterThan(size.width),
+      );
+      // Name (Inter 900, heroText) and tagline (heroTextBody), centred.
+      final brand = tester.widget<Text>(_key('photo-footer-brand'));
+      expect(brand.data, 'FitFlex Africa');
+      expect(brand.style!.fontWeight, FontWeight.w900);
+      expect(brand.style!.fontFamily, FFTokens.fontSans);
+      expect(brand.style!.color, FFTokens.heroText);
+      final tagline = tester.widget<Text>(_key('photo-footer-tagline'));
+      expect(tagline.data, 'Fitness Without Limits');
+      expect(tagline.style!.color, FFTokens.heroTextBody);
+      // Order: mark, name, tagline; all inside the band.
+      expect(
+        tester.getRect(logo).bottom,
+        lessThanOrEqualTo(tester.getRect(_key('photo-footer-brand')).top),
+      );
+      expect(
+        tester.getRect(_key('photo-footer-brand')).bottom,
+        lessThanOrEqualTo(tester.getRect(_key('photo-footer-tagline')).top),
+      );
+      expect(band.contains(tester.getCenter(logo)), isTrue);
+      expect(tester.getCenter(logo).dx, closeTo(band.center.dx, 0.5));
+      expect(find.text("That's all for now."), findsNothing);
+    });
+
+    test('i18n: no end line; brand words the same in English and Swahili', () {
+      for (final lang in ['en', 'sw']) {
+        expect(FFLocale.keysOf(lang), isNot(contains('footer.endLine')));
+        expect(FFLocale.textOf(lang, 'footer.brand'), 'FitFlex Africa');
+        expect(
+          FFLocale.textOf(lang, 'footer.tagline'),
+          'Fitness Without Limits',
+        );
+      }
+      // The English tagline is the splash tagline.
+      expect(
+        FFLocale.textOf('en', 'footer.tagline'),
+        FFLocale.textOf('en', 'splash.tagline'),
+      );
+      expect(FFLocale.textOf('sw', 'footer.backToTop'), 'Rudi juu');
+    });
+
     footerTest('high contrast: navy ground, no photo, same text', (
       tester,
       api,
@@ -638,10 +740,12 @@ void main() {
       expect(_key('photo-footer-photo'), findsNothing);
       final ground = tester.widget<ColoredBox>(_key('photo-footer-ground'));
       expect(ground.color, FFTokens.heroPlaceholder);
-      expect(find.text("That's all for now."), findsOneWidget);
+      expect(find.text('FitFlex Africa'), findsOneWidget);
+      expect(find.text('Fitness Without Limits'), findsOneWidget);
+      expect(_key('photo-footer-logo'), findsOneWidget);
     });
 
-    footerTest('screen reader: one text node and the button; no "FitFlex"', (
+    footerTest('screen reader: one lockup node and the button; mark silent', (
       tester,
       api,
     ) async {
@@ -651,7 +755,7 @@ void main() {
       final node = tester.getSemantics(
         find
             .ancestor(
-              of: _key('photo-footer-line'),
+              of: _key('photo-footer-lockup'),
               matching: find.byWidgetPredicate(
                 (w) => w is Semantics && w.container,
               ),
@@ -669,9 +773,12 @@ void main() {
       }
 
       walk(node);
-      expect(labels, ["That's all for now.", 'Back to top'], reason: '$labels');
-      // The wordmark's own "FitFlex" label is not read in the footer.
-      expect(labels.where((l) => l.contains('FitFlex')), isEmpty);
+      expect(labels, [
+        'FitFlex Africa, Fitness Without Limits',
+        'Back to top',
+      ], reason: '$labels');
+      // The mark is decorative: no separate "FitFlex" (app.title) label.
+      expect(labels.where((l) => l == 'FitFlex'), isEmpty);
       expect(
         tester.getSemantics(_key('photo-footer-back-to-top')),
         matchesSemantics(
@@ -702,15 +809,19 @@ void main() {
         await _toEnd(tester, 'page');
       });
       expect(errors, isEmpty, reason: errors.join('\n'));
-      expect(find.text('Hiyo ndiyo yote kwa sasa.'), findsOneWidget);
+      // Owner 2026-10-20: the brand words are the same in Swahili.
+      expect(find.text('FitFlex Africa'), findsOneWidget);
+      expect(find.text('Fitness Without Limits'), findsOneWidget);
+      expect(find.text('Hiyo ndiyo yote kwa sasa.'), findsNothing);
       expect(find.text('Rudi juu'), findsOneWidget);
-      final line = tester.renderObject<RenderParagraph>(
-        find.descendant(
-          of: _key('photo-footer-line'),
-          matching: find.byType(RichText),
-        ),
-      );
-      expect(line.didExceedMaxLines, isFalse);
+      for (final k in ['photo-footer-brand', 'photo-footer-tagline']) {
+        final line = tester.renderObject<RenderParagraph>(
+          find.descendant(of: _key(k), matching: find.byType(RichText)),
+        );
+        expect(line.didExceedMaxLines, isFalse, reason: k);
+        // One line each, even at 1.3x on a 360 phone.
+        expect(line.size.height, lessThan(2 * 22 * 1.3), reason: k);
+      }
     });
 
     for (final reduce in [false, true]) {
@@ -775,8 +886,8 @@ void main() {
       for (final p in footerPhotoPool) {
         final x1 = File('assets/photos/hero/${p.file}.webp');
         final x2 = File('assets/photos/hero/2.0x/${p.file}.webp');
-        expect(x2.lengthSync(), lessThanOrEqualTo(40 * 1000), reason: p.name);
-        expect(x1.lengthSync(), lessThanOrEqualTo(12 * 1000), reason: p.name);
+        expect(x2.lengthSync(), lessThanOrEqualTo(60 * 1000), reason: p.name);
+        expect(x1.lengthSync(), lessThanOrEqualTo(25 * 1000), reason: p.name);
         for (final f in [x1, x2]) {
           expect(_webpChunks(f), ['VP8 '], reason: f.path);
         }
@@ -798,6 +909,51 @@ void main() {
       expect(total, lessThanOrEqualTo(1600 * 1000));
     });
 
+    test('sharp set: 1080px wide at 2x, 540 at 1x, 16:7 (from the file)', () {
+      for (final p in footerPhotoPool) {
+        final (w2, h2) = _vp8Size(
+          File('assets/photos/hero/2.0x/${p.file}.webp'),
+        );
+        final (w1, h1) = _vp8Size(File('assets/photos/hero/${p.file}.webp'));
+        expect(w2, greaterThanOrEqualTo(1080), reason: p.name);
+        expect(w1, greaterThanOrEqualTo(540), reason: p.name);
+        expect(w2 / h2, closeTo(16 / 7, 0.01), reason: p.name);
+        expect(w1 / h1, closeTo(16 / 7, 0.01), reason: p.name);
+        expect(p.aspect, closeTo(w2 / h2, 0.001), reason: p.name);
+      }
+      // The licence rows record source crops at least as large as the
+      // output: never upscaled.
+      final licences = File(
+        'assets/photos/hero/LICENSES.md',
+      ).readAsStringSync();
+      for (final p in footerPhotoPool) {
+        final row = licences
+            .split('\n')
+            .firstWhere((l) => l.startsWith('| `${p.file}.webp`'));
+        final m = RegExp(r'\((\d+)x(\d+), 16:7\)').firstMatch(row)!;
+        expect(int.parse(m[1]!), greaterThanOrEqualTo(1080), reason: p.name);
+        expect(int.parse(m[2]!), greaterThanOrEqualTo(472), reason: p.name);
+      }
+    });
+
+    testWidgets('sharp set: decoded size at 2x is at least 1080 wide', (
+      tester,
+    ) async {
+      await tester.runAsync(() async {
+        for (final p in footerPhotoPool) {
+          final bytes = File(
+            'assets/photos/hero/2.0x/${p.file}.webp',
+          ).readAsBytesSync();
+          final codec = await ui.instantiateImageCodec(bytes);
+          final frame = await codec.getNextFrame();
+          expect(frame.image.width, greaterThanOrEqualTo(1080), reason: p.name);
+          expect(frame.image.height, greaterThanOrEqualTo(472), reason: p.name);
+          frame.image.dispose();
+          codec.dispose();
+        }
+      });
+    });
+
     test('distribute-android: photo_footer only on manual runs', () {
       final wf = File(
         '.github/workflows/distribute-android.yml',
@@ -813,6 +969,20 @@ void main() {
       expect(wf, contains('--dart-define=PHOTO_FOOTER_UI="\$PHOTO_FOOTER_UI"'));
     });
   });
+}
+
+/// Width and height from a simple (lossy, `VP8 `) WebP's frame header.
+(int, int) _vp8Size(File f) {
+  final b = f.readAsBytesSync();
+  expect(String.fromCharCodes(b.sublist(12, 16)), 'VP8 ');
+  // Chunk data: 3-byte frame tag, start code 9d 01 2a, then 14-bit sizes.
+  final d = 20;
+  expect(b.sublist(d + 3, d + 6), [0x9d, 0x01, 0x2a]);
+  final data = ByteData.sublistView(b);
+  return (
+    data.getUint16(d + 6, Endian.little) & 0x3fff,
+    data.getUint16(d + 8, Endian.little) & 0x3fff,
+  );
 }
 
 List<String> _webpChunks(File f) {
