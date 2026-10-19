@@ -1712,6 +1712,8 @@ class _VendorProductFormState extends State<VendorProductForm> {
       child: FFButton(
         key: const Key('vendor-product-save'),
         label: context.tr('vendor.save'),
+        // A full 48dp target on web and desktop too.
+        visualDensity: VisualDensity.standard,
         loading: _saving,
         onPressed: _saving ? null : _submit,
       ),
