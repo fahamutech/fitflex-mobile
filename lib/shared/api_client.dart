@@ -689,8 +689,20 @@ class ApiClient {
   Future<List<dynamic>> listTrainers() async =>
       await _request('GET', '/trainers');
 
-  Future<List<dynamic>> myCheckins() async =>
-      await _request('GET', '/me/checkins');
+  /// The member's check-ins, newest first. Without a range the server sends
+  /// the newest 50; with one, every check-in from [from] up to [to].
+  Future<List<dynamic>> myCheckins({DateTime? from, DateTime? to}) async {
+    if (from == null && to == null) {
+      return await _request('GET', '/me/checkins');
+    }
+    final query = Uri(
+      queryParameters: {
+        'from': ?from?.toUtc().toIso8601String(),
+        'to': ?to?.toUtc().toIso8601String(),
+      },
+    ).query;
+    return await _request('GET', '/me/checkins?$query');
+  }
 
   Future<Map<String, dynamic>> requestPass(String tier) async => await _request(
     'POST',
