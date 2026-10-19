@@ -4,6 +4,7 @@ import '../router.dart';
 import '../shared/i18n.dart';
 import '../shared/design_tokens.dart';
 import '../shared/components/components.dart';
+import '../shared/photo_hero_flag.dart';
 
 class LanguageScreen extends StatefulWidget {
   const LanguageScreen({super.key});
@@ -53,8 +54,93 @@ class _LanguageScreenState extends State<LanguageScreen>
     router.go(AppRoutes.auth);
   }
 
+  bool _precached = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (photoHeroUi && !_precached) {
+      _precached = true;
+      precacheHeroPhotos(context, const [
+        FFHeroPhoto.language,
+        FFHeroPhoto.signIn,
+        FFHeroPhoto.role,
+        FFHeroPhoto.signUp,
+      ]);
+    }
+  }
+
+  /// PHOTO_HERO_UI: the photo hero with both taglines, then the picker.
+  Widget _buildPhotoHero(BuildContext context) {
+    final l = FFLocaleScope.of(context);
+    final continueLabel = switch (_selected) {
+      null => context.tr('hero.lang.continueBoth'),
+      final lang => l.tIn(lang, 'lang.continue'),
+    };
+    return FFPhotoHeroPage(
+      phoneVariant: FFHeroVariant.full,
+      phoneFraction: 0.56,
+      shortPhoneFraction: 0.52,
+      phoneMinHeight: 320,
+      logo: const FFWordmark(),
+      actions: const [ThemeToggleButton()],
+      hero: (context, f) => FFPhotoHero(
+        photo: FFHeroPhoto.language,
+        variant: f.variant,
+        minHeight: f.minHeight,
+        topInset: f.topInset,
+        wideHeadline: f.wide,
+        logo: f.wide ? const FFWordmark() : null,
+        eyebrow: context.tr('hero.eyebrow.brand'),
+        // No language is chosen yet, so the hero speaks both.
+        headlineLead: l.tIn('en', 'hero.tagline.lead'),
+        headlineAccent: l.tIn('en', 'hero.tagline.accent'),
+        secondLead: l.tIn('sw', 'hero.tagline.lead'),
+        secondAccent: l.tIn('sw', 'hero.tagline.accent'),
+      ),
+      content: FadeTransition(
+        opacity: _fadeAnim,
+        child: SlideTransition(
+          position: _slideAnim,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                context.tr('hero.lang.prompt'),
+                key: const Key('lang-prompt'),
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: FFTokens.spacingMd),
+              FFChoiceTile(
+                key: const Key('langEnglish'),
+                title: context.tr('lang.name.en'),
+                selected: _selected == 'en',
+                onSelected: () => _select('en'),
+              ),
+              const SizedBox(height: FFTokens.spacingSm + 4),
+              FFChoiceTile(
+                key: const Key('langKiswahili'),
+                title: context.tr('lang.name.sw'),
+                selected: _selected == 'sw',
+                onSelected: () => _select('sw'),
+              ),
+              const SizedBox(height: FFTokens.spacingLg),
+              FFButton(
+                key: const Key('lang-continue'),
+                fullWidth: true,
+                label: continueLabel,
+                onPressed: _selected != null ? _continue : null,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (photoHeroUi) return _buildPhotoHero(context);
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,

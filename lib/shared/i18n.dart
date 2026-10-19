@@ -49,6 +49,11 @@ class FFLocale extends ChangeNotifier {
     return (_messages[lang] ?? const {})[key] ?? _messages['en']![key] ?? key;
   }
 
+  /// The line for [key] in [lang], whatever language is active. For
+  /// screens that show both languages at once (the language picker).
+  String tIn(String lang, String key) =>
+      (_messages[lang] ?? const {})[key] ?? _messages['en']![key] ?? key;
+
   static const _supported = {'en', 'sw'};
 
   /// Every key defined for [lang], so tests can check both languages match.
@@ -4163,6 +4168,43 @@ class FFLocale extends ChangeNotifier {
       'lang.name.sw': 'Kiswahili',
       'auth.errorDialog.title': "Couldn't sign you in",
       'home.passError.title': "We couldn't load your pass.",
+      // Photo hero (PHOTO_HERO_UI, 2026-10-19). Headline lead and accent are
+      // separate keys so the accent can be styled.
+      'hero.eyebrow.brand': 'FITFLEX AFRICA',
+      'hero.tagline.lead': 'Fitness without',
+      'hero.tagline.accent': 'limits.',
+      'hero.lang.prompt': 'Choose your language · Chagua lugha yako',
+      'hero.lang.continueBoth': 'Continue · Endelea',
+      'hero.signIn.lead': 'Welcome',
+      'hero.signIn.accent': 'back.',
+      'hero.signIn.sub': 'Your pass, your QR and your progress, in one place.',
+      'hero.signUp.member.lead': 'One pass.',
+      'hero.signUp.member.accent': 'Many gyms.',
+      'hero.signUp.owner.lead': 'Grow your',
+      'hero.signUp.owner.accent': 'gym.',
+      'hero.signUp.trainer.lead': 'Coach on',
+      'hero.signUp.trainer.accent': 'your terms.',
+      'hero.signUp.vendor.lead': 'Sell to people',
+      'hero.signUp.vendor.accent': 'who train.',
+      'hero.signUp.staff.lead': 'Welcome to',
+      'hero.signUp.staff.accent': 'the team.',
+      'home.hero.none.lead': "Let's get you",
+      'home.hero.none.accent': 'training.',
+      'home.hero.pending.lead': 'One step',
+      'home.hero.pending.accent': 'to go.',
+      'home.hero.ended.lead': 'Ready to',
+      'home.hero.ended.accent': 'come back?',
+      'home.hero.active.lead': 'Ready to',
+      'home.hero.active.accent': 'train?',
+      'home.hero.findGym': 'Find a gym',
+      'home.hero.exploreGyms': 'Explore gyms',
+      'home.hero.nextPass': 'Choose your next pass',
+      'home.hero.chip.endingSoon': 'PASS ENDS SOON',
+      'home.hero.chip.lowVisits': 'FEW VISITS LEFT',
+      'home.how.title': 'How FitFlex works',
+      'home.how.step1': 'Choose a pass that fits your month.',
+      'home.how.step2': 'Show your QR at a partner gym.',
+      'home.how.step3': 'Train, and track every visit here.',
     },
     'sw': {
       'app.title': 'FitFlex',
@@ -8305,6 +8347,42 @@ class FFLocale extends ChangeNotifier {
       'lang.name.sw': 'Kiswahili',
       'auth.errorDialog.title': 'Hatukuweza kukuingiza',
       'home.passError.title': 'Hatukuweza kupakia pasi yako.',
+      // Photo hero (PHOTO_HERO_UI, 2026-10-19): Swahili pending native review.
+      'hero.eyebrow.brand': 'FITFLEX AFRICA',
+      'hero.tagline.lead': 'Pamoja tuna',
+      'hero.tagline.accent': 'nguvu.',
+      'hero.lang.prompt': 'Choose your language · Chagua lugha yako',
+      'hero.lang.continueBoth': 'Continue · Endelea',
+      'hero.signIn.lead': 'Karibu',
+      'hero.signIn.accent': 'tena.',
+      'hero.signIn.sub': 'Pasi yako, QR yako na maendeleo yako, mahali pamoja.',
+      'hero.signUp.member.lead': 'Pasi moja.',
+      'hero.signUp.member.accent': 'Gym nyingi.',
+      'hero.signUp.owner.lead': 'Kuza',
+      'hero.signUp.owner.accent': 'gym yako.',
+      'hero.signUp.trainer.lead': 'Fundisha kwa',
+      'hero.signUp.trainer.accent': 'njia yako.',
+      'hero.signUp.vendor.lead': 'Uza kwa',
+      'hero.signUp.vendor.accent': 'wanaofanya mazoezi.',
+      'hero.signUp.staff.lead': 'Karibu',
+      'hero.signUp.staff.accent': 'kwenye timu.',
+      'home.hero.none.lead': 'Tuanze',
+      'home.hero.none.accent': 'mazoezi.',
+      'home.hero.pending.lead': 'Hatua',
+      'home.hero.pending.accent': 'moja tu.',
+      'home.hero.ended.lead': 'Uko tayari',
+      'home.hero.ended.accent': 'kurudi?',
+      'home.hero.active.lead': 'Tayari kwa',
+      'home.hero.active.accent': 'mazoezi?',
+      'home.hero.findGym': 'Tafuta gym',
+      'home.hero.exploreGyms': 'Tazama gym',
+      'home.hero.nextPass': 'Chagua pasi yako ijayo',
+      'home.hero.chip.endingSoon': 'PASI INAISHA KARIBUNI',
+      'home.hero.chip.lowVisits': 'ZIARA ZIMEBAKI CHACHE',
+      'home.how.title': 'Jinsi FitFlex inavyofanya kazi',
+      'home.how.step1': 'Chagua pasi inayokufaa kwa mwezi wako.',
+      'home.how.step2': 'Onyesha QR yako kwenye gym mshirika.',
+      'home.how.step3': 'Fanya mazoezi, na fuatilia kila ziara hapa.',
     },
   };
 }

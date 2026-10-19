@@ -8,6 +8,7 @@ import '../../../shared/i18n.dart';
 import '../../../shared/models.dart';
 import '../../../shared/tone_theme.dart';
 import '../member_shell.dart';
+import '../../../shared/photo_hero_flag.dart';
 import 'pass_state.dart';
 
 class PassSummaryCard extends StatelessWidget {
@@ -17,6 +18,15 @@ class PassSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // PHOTO_HERO_UI: a profile request that failed for a non-network reason
+    // gets the generic error and Retry instead of spinning forever.
+    if (photoHeroUi && data.me == null && !data.offline && data.meLoadFailed) {
+      return FFErrorState(
+        key: const Key('pass-summary-error'),
+        retryLabel: context.tr('home.retry'),
+        onRetry: () => _retry(context),
+      );
+    }
     // Until the profile arrives we don't know the pass, so don't flash
     // "Choose a pass" at a member who already has one.
     if (data.me == null && !data.offline) {
@@ -90,7 +100,13 @@ class PassSummaryCard extends StatelessWidget {
               ),
               if (status != null) ...[
                 const SizedBox(width: FFTokens.spacingSm),
-                FFBadge(label: status, tone: state.badgeTone, dot: true),
+                FFBadge(
+                  label: status,
+                  tone: photoHeroUi && _actSoon(state)
+                      ? FFBadgeTone.fuel
+                      : state.badgeTone,
+                  dot: true,
+                ),
               ],
             ],
           ),
@@ -209,7 +225,13 @@ class PassSummaryCard extends StatelessWidget {
               .replaceAll('{total}', '$cap');
 
     final tone = FFToneTheme.of(context);
-    final ringColor = state.tone == PassTone.warning
+    // PHOTO_HERO_UI: ending soon and few visits are Fuel ("act soon", canon
+    // V2, F-5); payment pending stays amber.
+    final ringColor = photoHeroUi && _actSoon(state)
+        ? (theme.brightness == Brightness.dark
+              ? FFTokens.fuelOnDark
+              : FFTokens.fuel)
+        : state.tone == PassTone.warning
         ? tone.warning.dot
         : theme.colorScheme.primary;
     return Row(
@@ -262,7 +284,13 @@ class PassSummaryCard extends StatelessWidget {
     );
   }
 
+  static bool _actSoon(PassState s) =>
+      s == PassState.endingSoon || s == PassState.lowVisits;
+
   /// Refreshes the QR and profile first so the next screen is current.
+  static Future<void> go(BuildContext context, String route) =>
+      _go(context, route);
+
   static Future<void> _go(BuildContext context, String route) async {
     final shellState = context.findAncestorStateOfType<MemberShellState>();
     await shellState?.refreshQr();

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app_scope.dart';
@@ -22,6 +23,8 @@ import '../../shared/models.dart';
 import '../../shared/root_back_navigation.dart';
 import '../../shared/inbox/inbox_pages.dart';
 import '../../shared/components/components.dart';
+import '../../shared/photo_hero_flag.dart';
+import 'widgets/home_hero.dart';
 
 export 'member_home_tab.dart';
 export 'member_activity_tab.dart';
@@ -97,6 +100,9 @@ class MemberData extends ChangeNotifier {
   /// The last refresh couldn't reach FitFlex. Screens keep showing what was
   /// loaded before; the shell says so.
   bool offline = false;
+
+  /// The last profile request failed for a reason other than the network.
+  bool meLoadFailed = false;
 
   bool get hasActivePass => me?.hasActivePass == true;
 
@@ -291,13 +297,18 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
           ..me = MemberMeResponse.fromJson(
             Map<String, dynamic>.from(res as Map),
           )
-          ..offline = false,
+          ..offline = false
+          ..meLoadFailed = false,
       );
       // Distance from phone steps uses the member's height.
       if (_data.activityLoaded) _showActivities();
     } catch (error) {
       // The profile call is the connectivity check for the whole shell.
-      if (isNetworkError(error)) _data.update((d) => d.offline = true);
+      if (isNetworkError(error)) {
+        _data.update((d) => d.offline = true);
+      } else {
+        _data.update((d) => d.meLoadFailed = true);
+      }
     }
   }
 
@@ -607,6 +618,77 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
     context.go(routes[index]);
   }
 
+  /// Home's app bar over the hero: transparent with light icons until the
+  /// hero scrolls under it, then solid with the theme's colours.
+  bool _homeBarSolid = false;
+
+  PreferredSizeWidget _heroAppBar(BuildContext context) {
+    final onPhoto = !_homeBarSolid;
+    Widget bar(Widget w) => onPhoto ? FFOnPhotoTheme(child: w) : w;
+    return AppBar(
+      automaticallyImplyLeading: false,
+      backgroundColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      foregroundColor: onPhoto ? FFTokens.heroText : null,
+      systemOverlayStyle: onPhoto ? SystemUiOverlayStyle.light : null,
+      flexibleSpace: AnimatedOpacity(
+        opacity: _homeBarSolid ? 1 : 0,
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 150),
+        child: ColoredBox(color: Theme.of(context).colorScheme.surface),
+      ),
+      title: bar(Text(context.tr('app.title'))),
+      actions: [
+        bar(
+          const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [InboxBellButton(), AppPrefsButtons()],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _heroHomeBody(BuildContext context) {
+    final top = MediaQuery.paddingOf(context).top + kToolbarHeight;
+    return NotificationListener<HomeHeroAppBarNotification>(
+      onNotification: (n) {
+        if (n.solid != _homeBarSolid) setState(() => _homeBarSolid = n.solid);
+        return true;
+      },
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: RefreshIndicator(
+              edgeOffset: top,
+              onRefresh: _refreshAll,
+              child: widget.child,
+            ),
+          ),
+          // The offline strip keeps its place under the app bar, on a solid
+          // surface so it stays readable over the photo.
+          Positioned(
+            top: top,
+            left: 0,
+            right: 0,
+            child: ListenableBuilder(
+              listenable: _data,
+              builder: (context, _) => _data.offline
+                  ? ColoredBox(
+                      color: Theme.of(context).colorScheme.surface,
+                      child: _OfflineBanner(onRetry: _refreshAll),
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
@@ -618,6 +700,11 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
       AppRoutes.memberShop,
       AppRoutes.memberProfile,
     }.contains(location);
+    // PHOTO_HERO_UI: on Home at phone width the app bar floats over the hero.
+    final heroHome =
+        photoHeroUi &&
+        location == AppRoutes.memberHome &&
+        MediaQuery.sizeOf(context).width < 840;
     return PopScope(
       canPop: !isRootTab,
       onPopInvokedWithResult: (didPop, _) {
@@ -626,27 +713,32 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
       child: MemberDataScope(
         data: _data,
         child: Scaffold(
-          appBar: AppBar(
-            automaticallyImplyLeading: false,
-            title: Text(context.tr('app.title')),
-            actions: const [InboxBellButton(), AppPrefsButtons()],
-          ),
-          body: Column(
-            children: [
-              ListenableBuilder(
-                listenable: _data,
-                builder: (context, _) => _data.offline
-                    ? _OfflineBanner(onRetry: _refreshAll)
-                    : const SizedBox.shrink(),
-              ),
-              Expanded(
-                child: RefreshIndicator(
-                  onRefresh: _refreshAll,
-                  child: widget.child,
+          extendBodyBehindAppBar: heroHome,
+          appBar: heroHome
+              ? _heroAppBar(context)
+              : AppBar(
+                  automaticallyImplyLeading: false,
+                  title: Text(context.tr('app.title')),
+                  actions: const [InboxBellButton(), AppPrefsButtons()],
                 ),
-              ),
-            ],
-          ),
+          body: heroHome
+              ? _heroHomeBody(context)
+              : Column(
+                  children: [
+                    ListenableBuilder(
+                      listenable: _data,
+                      builder: (context, _) => _data.offline
+                          ? _OfflineBanner(onRetry: _refreshAll)
+                          : const SizedBox.shrink(),
+                    ),
+                    Expanded(
+                      child: RefreshIndicator(
+                        onRefresh: _refreshAll,
+                        child: widget.child,
+                      ),
+                    ),
+                  ],
+                ),
           bottomNavigationBar: NavigationBar(
             selectedIndex: _tabIndex,
             onDestinationSelected: _onTab,

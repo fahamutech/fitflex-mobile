@@ -8,6 +8,7 @@ import '../shared/api_client.dart';
 import '../shared/api_error_message.dart';
 import '../shared/auth_state.dart';
 import '../shared/components/components.dart';
+import '../shared/photo_hero_flag.dart';
 import '../shared/design_tokens.dart';
 import '../shared/firebase_auth_service.dart';
 import '../shared/i18n.dart';
@@ -171,9 +172,114 @@ class _SignUpScreenState extends State<SignUpScreen>
     );
   }
 
+  /// Google, OR, the identifier and Continue. Shared by both layouts.
+  List<Widget> _formChildren(BuildContext context, bool loading) => [
+    FFGoogleSignInButton(
+      label: context.tr('auth.continueWithGoogle').toUpperCase(),
+      onTap: loading ? null : _signInWithGoogle,
+      loading: _busy,
+    ),
+    const SizedBox(height: 28),
+    FFDividerLabel(label: context.tr('auth.or')),
+    const SizedBox(height: 28),
+    FFTextField(
+      controller: _emailCtrl,
+      enabled: !loading,
+      keyboardType: TextInputType.emailAddress,
+      autofillHints: const [AutofillHints.email],
+      hint: context.tr('auth.emailOrPhone'),
+      errorText: _inputError,
+      prefixIcon: const Icon(Icons.mail_outline_rounded),
+      textInputAction: TextInputAction.done,
+      onFieldSubmitted: loading ? null : (_) => _attemptContinue(),
+    ),
+    const SizedBox(height: 24),
+    FilledButton(
+      onPressed: loading ? null : _attemptContinue,
+      child: loading
+          ? FFSpinner(size: 18, color: Theme.of(context).colorScheme.onPrimary)
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  context.tr('lang.continue').toUpperCase(),
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    // The text style carries the body
+                    // colour; on the primary fill the
+                    // label must use on-primary.
+                    color: Theme.of(context).colorScheme.onPrimary,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(width: FFTokens.spacingSm),
+                const Icon(Icons.chevron_right, size: FFTokens.iconMd),
+              ],
+            ),
+    ),
+  ];
+
+  /// Hero copy keys for the chosen account type.
+  static String _roleKey(String role) => switch (role) {
+    'gym_owner' => 'owner',
+    'trainer' => 'trainer',
+    'vendor' => 'vendor',
+    'gym_staff' => 'staff',
+    _ => 'member',
+  };
+
+  /// PHOTO_HERO_UI: the hero names the chosen role and what it is for.
+  bool _precachedHome = false;
+
+  Widget _buildPhotoHero(BuildContext context, bool loading) {
+    // Home's photos are next once this screen completes (§9).
+    if (!_precachedHome) {
+      _precachedHome = true;
+      precacheHeroPhotos(context, const [
+        FFHeroPhoto.homeStart,
+        FFHeroPhoto.homePass,
+      ]);
+    }
+    final role = _roleKey(AppScope.of(context).auth.role);
+    return FFPhotoHeroPage(
+      leading: IconButton(
+        tooltip: context.tr('a11y.back'),
+        icon: const Icon(Icons.arrow_back),
+        onPressed: loading
+            ? null
+            : () =>
+                  context.canPop() ? context.pop() : context.go(AppRoutes.auth),
+      ),
+      actions: const [AppPrefsButtons()],
+      hero: (context, f) => FFPhotoHero(
+        key: Key('signup-hero-$role'),
+        photo: FFHeroPhoto.signUp,
+        variant: f.variant,
+        minHeight: f.minHeight,
+        topInset: f.topInset,
+        wideHeadline: f.wide,
+        eyebrow: context.tr('role.$role'),
+        headlineLead: context.tr('hero.signUp.$role.lead'),
+        headlineAccent: context.tr('hero.signUp.$role.accent'),
+        subline: context.tr('role.${role}Body'),
+      ),
+      content: FadeTransition(
+        opacity: _fadeAnim,
+        child: SlideTransition(
+          position: _slideAnim,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: _formChildren(context, loading),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final loading = _busy;
+    if (photoHeroUi) return _buildPhotoHero(context, loading);
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -210,64 +316,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                         style: Theme.of(context).textTheme.headlineMedium,
                       ),
                       const SizedBox(height: 36),
-                      FFGoogleSignInButton(
-                        label: context
-                            .tr('auth.continueWithGoogle')
-                            .toUpperCase(),
-                        onTap: loading ? null : _signInWithGoogle,
-                        loading: _busy,
-                      ),
-                      const SizedBox(height: 28),
-                      FFDividerLabel(label: context.tr('auth.or')),
-                      const SizedBox(height: 28),
-                      FFTextField(
-                        controller: _emailCtrl,
-                        enabled: !loading,
-                        keyboardType: TextInputType.emailAddress,
-                        autofillHints: const [AutofillHints.email],
-                        hint: context.tr('auth.emailOrPhone'),
-                        errorText: _inputError,
-                        prefixIcon: const Icon(Icons.mail_outline_rounded),
-                        textInputAction: TextInputAction.done,
-                        onFieldSubmitted: loading
-                            ? null
-                            : (_) => _attemptContinue(),
-                      ),
-                      const SizedBox(height: 24),
-                      FilledButton(
-                        onPressed: loading ? null : _attemptContinue,
-                        child: loading
-                            ? FFSpinner(
-                                size: 18,
-                                color: Theme.of(context).colorScheme.onPrimary,
-                              )
-                            : Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    context.tr('lang.continue').toUpperCase(),
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelLarge
-                                        ?.copyWith(
-                                          // The text style carries the body
-                                          // colour; on the primary fill the
-                                          // label must use on-primary.
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.onPrimary,
-                                          fontWeight: FontWeight.w800,
-                                          letterSpacing: 1.2,
-                                        ),
-                                  ),
-                                  const SizedBox(width: FFTokens.spacingSm),
-                                  const Icon(
-                                    Icons.chevron_right,
-                                    size: FFTokens.iconMd,
-                                  ),
-                                ],
-                              ),
-                      ),
+                      ..._formChildren(context, loading),
                     ],
                   ),
                 ),
