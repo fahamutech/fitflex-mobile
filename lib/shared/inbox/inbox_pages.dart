@@ -60,6 +60,8 @@ String? routeForMessage(BuildContext context, InboxMessage m) {
       type: m.type,
       gymId: m.data['gymId']?.toString() ?? m.gymId,
       memberId: m.data['memberId']?.toString(),
+      productId: m.data['productId']?.toString(),
+      variant: m.data['variant']?.toString(),
     );
   }
   if (role != 'member') return null;
@@ -221,6 +223,15 @@ class _InboxPageState extends State<InboxPage> {
     return (
       title: context.tr('friendInvite.cardTitle'),
       body: context.tr('friendInvite.cardBody').replaceFirst('{name}', who),
+    );
+  }
+  // Partner notices may carry their own Swahili (e.g. vendor_low_stock).
+  if (FFLocaleScope.of(context).locale.languageCode == 'sw') {
+    final title = m.data['titleSw']?.toString() ?? '';
+    final body = m.data['bodySw']?.toString() ?? '';
+    return (
+      title: title.isEmpty ? m.title : title,
+      body: body.isEmpty ? m.body : body,
     );
   }
   return (title: m.title, body: m.body);
