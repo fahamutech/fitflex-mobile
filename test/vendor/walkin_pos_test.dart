@@ -101,6 +101,9 @@ void main() {
         find.text(host.tr('vendor.pos.items').replaceAll('{n}', '2')),
         findsOneWidget,
       );
+      // The refused tap says why (S3 UAT 2).
+      expect(host.snack('Only 2 in stock.'), findsOneWidget);
+      await host.dismissSnacks();
       await tester.tap(find.byKey(const Key('pos-cart-bar')));
       await tester.pumpAndSettle();
       expect(find.text('Only 2 in stock.'), findsOneWidget);

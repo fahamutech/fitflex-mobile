@@ -140,6 +140,10 @@ class _PaymentSheetState extends State<PaymentSheet> {
   Future<void> _complete({bool queue = false}) async {
     final check = _check;
     if (!check.canComplete || _saving) return;
+    // D8: let go of the focused field BEFORE it is disabled. Disabling a
+    // focused text field throws in Flutter web's semantics text editing
+    // (with accessibility on).
+    FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       _saving = true;
       _problem = null;
@@ -182,125 +186,138 @@ class _PaymentSheetState extends State<PaymentSheet> {
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) FocusManager.instance.primaryFocus?.unfocus();
       },
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            context.tr('vendor.pos.amountDue'),
-            style: theme.textTheme.labelLarge,
-          ),
-          Text(
-            formatCurrency(widget.totalTzs),
-            key: const Key('pos-pay-total'),
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
-          ),
-          const SizedBox(height: FFTokens.spacingMd),
-          if (check.nothingToPay)
-            Text(
-              context.tr('vendor.pos.nothingToPay'),
-              key: const Key('pos-nothing-to-pay'),
-            )
-          else ...[
-            for (var i = 0; i < _rows.length; i++) _rowEditor(context, i),
-            if (check.remainingTzs > 0 && _rows.length < maxSalePayments)
-              Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: FFButton(
-                  key: const Key('pos-add-payment'),
-                  label: context.tr('vendor.pos.addPayment'),
-                  icon: Icons.add,
-                  variant: FFButtonVariant.ghost,
-                  visualDensity: VisualDensity.standard,
-                  onPressed: _saving
-                      ? null
-                      : () {
-                          setState(
-                            () => _rows.add(
-                              _Row(PaymentRow(amountTzs: check.remainingTzs)),
-                            ),
-                          );
-                          _edited();
-                        },
+      // Escape closes the sheet on web / desktop (not while saving).
+      child: CallbackShortcuts(
+        bindings: {
+          const SingleActivator(LogicalKeyboardKey.escape): () {
+            if (!_saving) Navigator.of(context).maybePop();
+          },
+        },
+        child: Focus(
+          autofocus: true,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                context.tr('vendor.pos.amountDue'),
+                style: theme.textTheme.labelLarge,
+              ),
+              Text(
+                formatCurrency(widget.totalTzs),
+                key: const Key('pos-pay-total'),
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),
-          ],
-          if (status != null) ...[
-            const SizedBox(height: FFTokens.spacingSm),
-            Semantics(liveRegion: true, child: status),
-          ],
-          if (_problem != null) ...[
-            const SizedBox(height: FFTokens.spacingSm),
-            Semantics(
-              liveRegion: true,
-              child: FFAlert(
-                key: const Key('pos-pay-problem'),
-                message: _problem!,
-                tone: FFAlertTone.error,
+              const SizedBox(height: FFTokens.spacingMd),
+              if (check.nothingToPay)
+                Text(
+                  context.tr('vendor.pos.nothingToPay'),
+                  key: const Key('pos-nothing-to-pay'),
+                )
+              else ...[
+                for (var i = 0; i < _rows.length; i++) _rowEditor(context, i),
+                if (check.remainingTzs > 0 && _rows.length < maxSalePayments)
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: FFButton(
+                      key: const Key('pos-add-payment'),
+                      label: context.tr('vendor.pos.addPayment'),
+                      icon: Icons.add,
+                      variant: FFButtonVariant.ghost,
+                      visualDensity: VisualDensity.standard,
+                      onPressed: _saving
+                          ? null
+                          : () {
+                              setState(
+                                () => _rows.add(
+                                  _Row(
+                                    PaymentRow(amountTzs: check.remainingTzs),
+                                  ),
+                                ),
+                              );
+                              _edited();
+                            },
+                    ),
+                  ),
+              ],
+              if (status != null) ...[
+                const SizedBox(height: FFTokens.spacingSm),
+                Semantics(liveRegion: true, child: status),
+              ],
+              if (_problem != null) ...[
+                const SizedBox(height: FFTokens.spacingSm),
+                Semantics(
+                  liveRegion: true,
+                  child: FFAlert(
+                    key: const Key('pos-pay-problem'),
+                    message: _problem!,
+                    tone: FFAlertTone.error,
+                  ),
+                ),
+                if (_action == 'recordToday' && widget.onAction != null) ...[
+                  const SizedBox(height: FFTokens.spacingSm),
+                  FFButton(
+                    key: const Key('pos-record-today'),
+                    label: context.tr('vendor.sync.recordToday'),
+                    variant: FFButtonVariant.secondary,
+                    fullWidth: true,
+                    visualDensity: VisualDensity.standard,
+                    onPressed: _saving
+                        ? null
+                        : () {
+                            widget.onAction!('recordToday');
+                            _edited();
+                            _complete();
+                          },
+                  ),
+                ],
+              ],
+              const SizedBox(height: FFTokens.spacingMd),
+              FFAlert(
+                key: const Key('pos-money-notice'),
+                message: context.tr('vendor.pos.moneyNotice'),
               ),
-            ),
-            if (_action == 'recordToday' && widget.onAction != null) ...[
-              const SizedBox(height: FFTokens.spacingSm),
-              FFButton(
-                key: const Key('pos-record-today'),
-                label: context.tr('vendor.sync.recordToday'),
-                variant: FFButtonVariant.secondary,
-                fullWidth: true,
-                visualDensity: VisualDensity.standard,
-                onPressed: _saving
-                    ? null
-                    : () {
-                        widget.onAction!('recordToday');
-                        _edited();
-                        _complete();
-                      },
-              ),
+              const SizedBox(height: FFTokens.spacingMd),
+              if (_server) ...[
+                FFAlert(
+                  key: const Key('pos-server-error'),
+                  message: context.tr('vendor.pos.err.server'),
+                  tone: FFAlertTone.error,
+                ),
+                const SizedBox(height: FFTokens.spacingSm),
+                FFButton(
+                  key: const Key('pos-retry'),
+                  label: context.tr('common.retry'),
+                  fullWidth: true,
+                  visualDensity: VisualDensity.standard,
+                  loading: _saving,
+                  onPressed: () => _complete(),
+                ),
+                const SizedBox(height: FFTokens.spacingSm),
+                FFButton(
+                  key: const Key('pos-sync-later'),
+                  label: context.tr('vendor.pos.syncLater'),
+                  variant: FFButtonVariant.secondary,
+                  fullWidth: true,
+                  visualDensity: VisualDensity.standard,
+                  onPressed: _saving ? null : () => _complete(queue: true),
+                ),
+              ] else
+                FFButton(
+                  key: const Key('pos-complete'),
+                  label: context.tr(
+                    _saving ? 'vendor.pos.completing' : 'vendor.pos.complete',
+                  ),
+                  fullWidth: true,
+                  maxLines: 2,
+                  visualDensity: VisualDensity.standard,
+                  loading: _saving,
+                  onPressed: check.canComplete ? () => _complete() : null,
+                ),
             ],
-          ],
-          const SizedBox(height: FFTokens.spacingMd),
-          FFAlert(
-            key: const Key('pos-money-notice'),
-            message: context.tr('vendor.pos.moneyNotice'),
           ),
-          const SizedBox(height: FFTokens.spacingMd),
-          if (_server) ...[
-            FFAlert(
-              key: const Key('pos-server-error'),
-              message: context.tr('vendor.pos.err.server'),
-              tone: FFAlertTone.error,
-            ),
-            const SizedBox(height: FFTokens.spacingSm),
-            FFButton(
-              key: const Key('pos-retry'),
-              label: context.tr('common.retry'),
-              fullWidth: true,
-              visualDensity: VisualDensity.standard,
-              loading: _saving,
-              onPressed: () => _complete(),
-            ),
-            const SizedBox(height: FFTokens.spacingSm),
-            FFButton(
-              key: const Key('pos-sync-later'),
-              label: context.tr('vendor.pos.syncLater'),
-              variant: FFButtonVariant.secondary,
-              fullWidth: true,
-              visualDensity: VisualDensity.standard,
-              onPressed: _saving ? null : () => _complete(queue: true),
-            ),
-          ] else
-            FFButton(
-              key: const Key('pos-complete'),
-              label: context.tr(
-                _saving ? 'vendor.pos.completing' : 'vendor.pos.complete',
-              ),
-              fullWidth: true,
-              maxLines: 2,
-              visualDensity: VisualDensity.standard,
-              loading: _saving,
-              onPressed: check.canComplete ? () => _complete() : null,
-            ),
-        ],
+        ),
       ),
     );
   }

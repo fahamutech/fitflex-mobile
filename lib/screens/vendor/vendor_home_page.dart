@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../shared/inbox/inbox_pages.dart';
@@ -275,6 +277,8 @@ class _VendorHomePageState extends State<VendorHomePage> {
     // refused to a staff member) must not hide the others. A part that
     // fails keeps what it showed before.
     var failed = false;
+    // No answer at all (not a refusal): the device is offline.
+    var offline = false;
     // S2: the business owner turned this staff member's access off.
     var staffDisabled = false;
     Future<T?> part<T>(
@@ -295,6 +299,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
         return null;
       } catch (_) {
         if (!quiet) failed = true;
+        offline = true;
         return null;
       }
     }
@@ -328,9 +333,18 @@ class _VendorHomePageState extends State<VendorHomePage> {
       enquiries: maps(await enquiries),
       staff: maps(await staff),
     );
+    // Offline with nothing shown yet: the copy the POS keeps on the device
+    // (S3), rather than "no products yet". A fresh list refreshes that copy.
+    var products0 = loaded.products;
+    if (products0 != null) {
+      unawaited(_sales?.saveProducts(products0));
+    } else if (offline && _products.isEmpty && _can('products')) {
+      final kept = await _sales?.loadProducts();
+      if (kept != null && kept.products.isNotEmpty) products0 = kept.products;
+    }
     if (!mounted) return;
     setState(() {
-      _products = loaded.products ?? _products;
+      _products = products0 ?? _products;
       _orders = loaded.orders ?? _orders;
       if (loaded.profile != null) {
         _profile = loaded.profile!;
@@ -363,14 +377,77 @@ class _VendorHomePageState extends State<VendorHomePage> {
     }
     if (staffDisabled) {
       FFSnack.error(context, context.tr('error.reason.vendorStaffInactive'));
+    } else if (failed && offline) {
+      // Offline: say what still works (selling, on the Sales tab).
+      final onSales = _sections.contains(_tab) && _tab == _salesSection;
+      FFSnack.info(
+        context,
+        context.tr(
+          onSales ? 'vendor.sales.offlineToast' : 'vendor.offlineKept',
+        ),
+      );
     } else if (failed) {
       FFSnack.error(context, context.tr('vendor.loadFailed'));
     }
+    _watchTools(toolsNow);
     await _loadStockTools(toolsNow);
+  }
+
+  // Options read from the device copy (offline start): ask the server
+  // again once it answers anything, or every minute, and update the tabs in
+  // place (the Sales tab appears or goes without a reload).
+  Timer? _toolsRetry;
+  ApiClient? _watchedApi;
+  bool _toolsAsking = false;
+
+  void _watchTools(VendorTools tools) {
+    if (tools.fromCache) {
+      if (_watchedApi == null) {
+        _watchedApi = AppScope.of(context).api..addSuccessListener(_onOnline);
+        _toolsRetry = Timer.periodic(
+          const Duration(seconds: 60),
+          (_) => _askToolsAgain(),
+        );
+      }
+    } else {
+      _stopWatchingTools();
+    }
+  }
+
+  void _stopWatchingTools() {
+    _watchedApi?.removeSuccessListener(_onOnline);
+    _watchedApi = null;
+    _toolsRetry?.cancel();
+    _toolsRetry = null;
+  }
+
+  void _onOnline(String method, String path) {
+    if (path == '/vendor/tools/options') return;
+    scheduleMicrotask(_askToolsAgain);
+  }
+
+  Future<void> _askToolsAgain() async {
+    if (_toolsAsking || !mounted) return;
+    _toolsAsking = true;
+    try {
+      final tools = await VendorToolsOptions.of(context, refresh: true);
+      if (!mounted) return;
+      setState(() => _tools = tools);
+      if (tools.walkInSales) {
+        _sales?.featureOn();
+      } else {
+        _sales?.featureOff();
+      }
+      _watchTools(tools);
+      if (!tools.fromCache) await _loadStockTools(tools);
+    } finally {
+      _toolsAsking = false;
+    }
   }
 
   @override
   void dispose() {
+    _stopWatchingTools();
     _sales?.detach();
     super.dispose();
   }
