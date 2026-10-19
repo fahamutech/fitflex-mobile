@@ -203,6 +203,12 @@ class VariantRowsEditor extends StatelessWidget {
 
   Widget _row(BuildContext context, int index, VariantDraft row) {
     final label = row.trimmedName;
+    // Typing in a row means the vendor keeps it: drop the remove warning.
+    void edited() {
+      row.removeBlocked = false;
+      onChanged();
+    }
+
     String fieldLabel(String key) =>
         label.isEmpty ? context.tr(key) : '$label: ${context.tr(key)}';
     final digits = [FilteringTextInputFormatter.digitsOnly];
@@ -222,7 +228,7 @@ class VariantRowsEditor extends StatelessWidget {
           keyboardType: TextInputType.number,
           inputFormatters: digits,
           label: fieldLabel('vendor.stock.initial'),
-          onChanged: (_) => onChanged(),
+          onChanged: (_) => edited(),
         );
       }
       if (row.isNew || row.storedStock == null) return const SizedBox.shrink();
@@ -253,7 +259,7 @@ class VariantRowsEditor extends StatelessWidget {
             FFButton(
               key: Key('variant-adjust-$index'),
               label: context.tr('vendor.stock.adjust'),
-              tooltip: fillIn(context.tr('vendor.stock.adjustFor'), {
+              semanticLabel: fillIn(context.tr('vendor.stock.adjustFor'), {
                 'name': row.original,
               }),
               variant: FFButtonVariant.ghost,
@@ -272,7 +278,7 @@ class VariantRowsEditor extends StatelessWidget {
             keyboardType: TextInputType.number,
             inputFormatters: digits,
             label: fieldLabel('vendor.costPrice'),
-            onChanged: (_) => onChanged(),
+            onChanged: (_) => edited(),
           );
     final reorder = FFTextField(
       key: Key('variant-reorder-$index'),
@@ -281,7 +287,7 @@ class VariantRowsEditor extends StatelessWidget {
       keyboardType: TextInputType.number,
       inputFormatters: digits,
       label: fieldLabel('vendor.stock.reorderLevel'),
-      onChanged: (_) => onChanged(),
+      onChanged: (_) => edited(),
     );
     final hasStockCell = creating || (!row.isNew && row.storedStock != null);
 
@@ -300,7 +306,7 @@ class VariantRowsEditor extends StatelessWidget {
                   enabled: enabled,
                   label: context.tr('vendor.variant.name'),
                   errorText: nameError,
-                  onChanged: (_) => onChanged(),
+                  onChanged: (_) => edited(),
                 ),
               ),
               IconButton(
@@ -309,10 +315,16 @@ class VariantRowsEditor extends StatelessWidget {
                   'name': label,
                 }),
                 icon: const Icon(Icons.delete_outline),
+                // 48dp even where the platform density is compact (web).
+                style: IconButton.styleFrom(
+                  minimumSize: const Size(48, 48),
+                  tapTargetSize: MaterialTapTargetSize.padded,
+                ),
                 onPressed: enabled ? () => _remove(row) : null,
               ),
             ],
           ),
+          const SizedBox(height: FFTokens.spacingSm),
           LayoutBuilder(
             builder: (context, box) {
               final cells = <Widget>[
@@ -330,20 +342,27 @@ class VariantRowsEditor extends StatelessWidget {
                   ],
                 ],
               );
+              // Swahili labels are longer: give each field more room before
+              // putting fields side by side.
+              final sw = FFLocaleScope.of(context).locale.languageCode == 'sw';
+              final minField = sw ? 200.0 : 140.0;
               bool fits(int n) =>
                   !scaled &&
-                  box.maxWidth >= n * 160 + (n - 1) * FFTokens.spacingMd;
+                  box.maxWidth >= n * minField + (n - 1) * FFTokens.spacingMd;
+              Widget stack(List<Widget> items) => Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (var i = 0; i < items.length; i++) ...[
+                    if (i > 0) const SizedBox(height: FFTokens.spacingSm),
+                    items[i],
+                  ],
+                ],
+              );
               if (fits(cells.length)) return line(cells);
               if (cells.length == 3 && fits(2)) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [line(cells.sublist(0, 2)), cells[2]],
-                );
+                return stack([line(cells.sublist(0, 2)), cells[2]]);
               }
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: cells,
-              );
+              return stack(cells);
             },
           ),
           if (row.removeBlocked || error == 'vendor.variant.removeHasStock')

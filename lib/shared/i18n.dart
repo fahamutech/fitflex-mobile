@@ -4245,6 +4245,14 @@ class FFLocale extends ChangeNotifier {
       'shop.a11y.category': '{category}, category',
       'shop.a11y.viewAll': 'View all, {section}',
       // Vendor stock ledger (S1, 2026-10-19).
+      'vendor.stock.orderNotVisible':
+          'This order isn\'t in your orders yet. It appears there once it is paid.',
+      'vendor.stock.lowVariantsOne': '1 variant low',
+      'vendor.stock.customRange': '{from} to {to}',
+      'vendor.form.fixErrors':
+          'Some fields need fixing. They are marked above.',
+      'vendor.form.priceRequired': 'Enter a price above 0.',
+      'vendor.form.nameRequired': 'Enter the product name.',
       'vendor.stock.variantHistory': '{product} · {variant}',
       'vendor.stock.retryEntry':
           'Something went wrong with this entry. Nothing was saved. Tap save again.',
@@ -4316,7 +4324,7 @@ class FFLocale extends ChangeNotifier {
       'vendor.stock.insufficient':
           'Only {n} in stock. You can\'t remove more than that.',
       'vendor.stock.nothingSaved': 'Nothing was saved.',
-      'vendor.stock.updated': 'Stock updated: {before} → {after}',
+      'vendor.stock.updated': 'Stock updated from {before} to {after}',
       'vendor.stock.notAllowed': 'You don\'t have permission to change stock.',
       'vendor.stock.notFound': 'This product is no longer available.',
       'vendor.stock.history': 'Stock history',
@@ -4345,7 +4353,7 @@ class FFLocale extends ChangeNotifier {
       'vendor.stock.all': 'All products',
       'vendor.stock.lowEmpty': 'Nothing is low on stock.',
       'vendor.stock.lowVariants': '{n} variants low',
-      'vendor.stock.lowNavLabel': 'Products, {n} low on stock',
+      'vendor.stock.lowNavLabel': '{n} low on stock',
       'vendor.productActions': 'Actions for {name}',
       'vendor.stock.noProductsAccess': 'You don\'t have access to products.',
       'inbox.open.lowStock': 'View stock',
@@ -8589,6 +8597,14 @@ class FFLocale extends ChangeNotifier {
       'shop.a11y.viewAll': 'Tazama zote, {section}',
       // Vendor stock ledger (S1, 2026-10-19): Swahili drafts pending native
       // review (design spec vendor-stock-ledger-s1 §8, plan §4).
+      'vendor.stock.orderNotVisible':
+          'Oda hii bado haipo kwenye oda zako. Itaonekana humo ikishalipwa.',
+      'vendor.stock.lowVariantsOne': 'Chaguo 1 lina Stock chache',
+      'vendor.stock.customRange': '{from} hadi {to}',
+      'vendor.form.fixErrors':
+          'Baadhi ya sehemu zinahitaji kurekebishwa. Zimeonyeshwa hapo juu.',
+      'vendor.form.priceRequired': 'Weka bei iliyo zaidi ya 0.',
+      'vendor.form.nameRequired': 'Weka jina la bidhaa.',
       'vendor.stock.variantHistory': '{product} · chaguo {variant}',
       'vendor.stock.retryEntry':
           'Kuna hitilafu kwenye ingizo hili. Hakuna kilichohifadhiwa. Bonyeza hifadhi tena.',
@@ -8659,7 +8675,7 @@ class FFLocale extends ChangeNotifier {
           'Stock imebadilika ulipokuwa ukihesabu. Hesabu tena.',
       'vendor.stock.insufficient': 'Zipo {n} tu. Huwezi kuondoa zaidi ya hizo.',
       'vendor.stock.nothingSaved': 'Hakuna kilichohifadhiwa.',
-      'vendor.stock.updated': 'Stock imesasishwa: {before} → {after}',
+      'vendor.stock.updated': 'Stock imesasishwa kutoka {before} hadi {after}',
       'vendor.stock.notAllowed': 'Huna ruhusa ya kubadilisha Stock.',
       'vendor.stock.notFound': 'Bidhaa hii haipatikani tena.',
       'vendor.stock.history': 'Historia ya Stock',
@@ -8690,7 +8706,7 @@ class FFLocale extends ChangeNotifier {
       'vendor.stock.all': 'Bidhaa zote',
       'vendor.stock.lowEmpty': 'Hakuna bidhaa yenye Stock chache.',
       'vendor.stock.lowVariants': 'Machaguo {n} yana Stock chache',
-      'vendor.stock.lowNavLabel': 'Bidhaa, {n} zina Stock chache',
+      'vendor.stock.lowNavLabel': '{n} zina Stock chache',
       'vendor.productActions': 'Vitendo vya {name}',
       'vendor.stock.noProductsAccess': 'Huna ruhusa ya kuona bidhaa.',
       'inbox.open.lowStock': 'Angalia Stock',

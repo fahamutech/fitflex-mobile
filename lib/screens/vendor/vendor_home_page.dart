@@ -13,6 +13,7 @@ import '../../shared/design_tokens.dart';
 import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
 import '../../shared/product_categories.dart';
+import '../../shared/tone_theme.dart';
 import '../../shared/widgets/product_category_picker.dart';
 import '../../shared/widgets/ff_photo_picker_field.dart';
 import '../../shared/widgets/partner_payouts_page.dart';
@@ -156,54 +157,76 @@ class _VendorHomePageState extends State<VendorHomePage> {
     if (!mounted) return;
     // Which vendor tools are on; never fails (off when it cannot tell).
     final tools = VendorToolsOptions.of(context, refresh: askTools);
-    try {
-      final results = await Future.wait([
-        _can('products')
-            ? AppScope.of(context).api.vendorProducts()
-            : Future<List<dynamic>>.value([]),
-        _can('orders')
-            ? AppScope.of(context).api.vendorOrders()
-            : Future<List<dynamic>>.value([]),
-        AppScope.of(context).api.vendorProfile(),
-        _can('payments')
-            ? AppScope.of(context).api.vendorPayments()
-            : Future<Map<String, dynamic>>.value({}),
-        _can('customers')
-            ? AppScope.of(context).api.vendorEnquiries()
-            : Future<List<dynamic>>.value([]),
-        _can('staff')
-            ? AppScope.of(context).api.vendorStaff()
-            : Future<List<dynamic>>.value([]),
-      ]);
-      if (!mounted) return;
-      setState(() {
-        _products = (results[0] as List)
-            .whereType<Map<String, dynamic>>()
-            .toList();
-        _orders = (results[1] as List)
-            .whereType<Map<String, dynamic>>()
-            .toList();
-        _profile = results[2] as Map<String, dynamic>;
+    final api = AppScope.of(context).api;
+    final isStaff =
+        AppScope.of(context).auth.user?['userType'] == 'vendor_staff';
+    // Each part loads on its own: one failing (e.g. the business profile
+    // refused to a staff member) must not hide the others. A part that
+    // fails keeps what it showed before.
+    var failed = false;
+    Future<T?> part<T>(
+      bool allowed,
+      Future<T> Function() load,
+      T none, {
+      bool quiet = false,
+    }) async {
+      if (!allowed) return none;
+      try {
+        return await load();
+      } on ApiException {
+        if (!quiet) failed = true;
+        return null;
+      } catch (_) {
+        if (!quiet) failed = true;
+        return null;
+      }
+    }
+
+    List<Map<String, dynamic>>? maps(List<dynamic>? rows) =>
+        rows?.whereType<Map<String, dynamic>>().toList();
+    final products = part(_can('products'), api.vendorProducts, <dynamic>[]);
+    final orders = part(_can('orders'), api.vendorOrders, <dynamic>[]);
+    // Staff do not manage the business profile; its failure stays quiet.
+    final profile = part(
+      true,
+      api.vendorProfile,
+      <String, dynamic>{},
+      quiet: isStaff,
+    );
+    final payments = part(
+      _can('payments'),
+      api.vendorPayments,
+      <String, dynamic>{},
+    );
+    final enquiries = part(_can('customers'), api.vendorEnquiries, <dynamic>[]);
+    final staff = part(_can('staff'), api.vendorStaff, <dynamic>[]);
+    final loaded = (
+      products: maps(await products),
+      orders: maps(await orders),
+      profile: await profile,
+      payments: await payments,
+      enquiries: maps(await enquiries),
+      staff: maps(await staff),
+    );
+    if (!mounted) return;
+    setState(() {
+      _products = loaded.products ?? _products;
+      _orders = loaded.orders ?? _orders;
+      if (loaded.profile != null) {
+        _profile = loaded.profile!;
         if (_profile['status'] != 'published' &&
             !_pendingApproval &&
-            AppScope.of(context).auth.user?['userType'] != 'vendor_staff') {
+            !isStaff) {
           _tab = 4;
         }
-        _payments = results[3] as Map<String, dynamic>;
-        _enquiries = (results[4] as List)
-            .whereType<Map<String, dynamic>>()
-            .toList();
-        _staff = (results[5] as List)
-            .whereType<Map<String, dynamic>>()
-            .toList();
-        _loading = false;
-      });
-      await _loadStockTools(await tools);
-    } on ApiException {
-      if (!mounted) return;
-      setState(() => _loading = false);
-      FFSnack.error(context, context.tr('vendor.loadFailed'));
-    }
+      }
+      _payments = loaded.payments ?? _payments;
+      _enquiries = loaded.enquiries ?? _enquiries;
+      _staff = loaded.staff ?? _staff;
+      _loading = false;
+    });
+    if (failed) FFSnack.error(context, context.tr('vendor.loadFailed'));
+    await _loadStockTools(await tools);
   }
 
   /// The stock ledger's extras: on/off, and which products are low. The
@@ -508,10 +531,18 @@ class _VendorHomePageState extends State<VendorHomePage> {
   Widget _lowBadge(Widget icon) {
     final n = _ledger ? _low.count : 0;
     if (n == 0) return icon;
+    // Low stock is a nudge, not an error: the warning tone, not red. The
+    // tab's own label says "Products", so the badge only adds the count.
+    final warning = FFToneTheme.of(context).warning;
     return Semantics(
       label: fillIn(context.tr('vendor.stock.lowNavLabel'), {'n': n}),
+      excludeSemantics: true,
       child: Badge(
         key: const Key('vendor-nav-low-badge'),
+        // The tone pair inverted: a solid amber dot that stands out on the
+        // bar, with the pair's pale colour for the count (same >= 4.5:1).
+        backgroundColor: warning.fg,
+        textColor: warning.bg,
         label: Text(n > 99 ? '99+' : '$n'),
         child: icon,
       ),
@@ -620,6 +651,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
                       children: [
                         subtitle,
                         const SizedBox(height: FFTokens.spacingXs),
+                        // Badges wrap and are never cut off; both are read.
                         Wrap(
                           spacing: FFTokens.spacingXs,
                           runSpacing: FFTokens.spacingXs,
@@ -628,20 +660,32 @@ class _VendorHomePageState extends State<VendorHomePage> {
                               key: Key('vendor-low-badge-$id'),
                               label: context.tr('vendor.stock.lowBadge'),
                               tone: FFBadgeTone.warning,
+                              wrap: true,
                             ),
                             if (lowVariants.isNotEmpty)
                               FFBadge(
+                                key: Key('vendor-low-variants-$id'),
                                 label: fillIn(
-                                  context.tr('vendor.stock.lowVariants'),
+                                  context.tr(
+                                    lowVariants.length == 1
+                                        ? 'vendor.stock.lowVariantsOne'
+                                        : 'vendor.stock.lowVariants',
+                                  ),
                                   {'n': lowVariants.length},
                                 ),
                                 tone: FFBadgeTone.warning,
+                                wrap: true,
                               ),
                           ],
                         ),
                       ],
                     ),
               trailing: PopupMenuButton<String>(
+                // 48dp even where the density is compact (web).
+                style: IconButton.styleFrom(
+                  minimumSize: const Size(48, 48),
+                  tapTargetSize: MaterialTapTargetSize.padded,
+                ),
                 tooltip: ledger
                     ? fillIn(context.tr('vendor.productActions'), {
                         'name': name,
@@ -1178,6 +1222,11 @@ class _VendorProductFormState extends State<VendorProductForm> {
   final List<VariantDraft> _variantRows = [];
   Map<int, String> _variantErrors = const {};
   String? _saveError;
+  String? _nameError;
+  String? _priceError;
+  final _nameKey = GlobalKey();
+  final _priceKey = GlobalKey();
+  final _variantsKey = GlobalKey();
   bool _saving = false;
   String? _image;
   String? _secondImage;
@@ -1309,13 +1358,44 @@ class _VendorProductFormState extends State<VendorProductForm> {
   /// The body with the ledger on. Null when something needs fixing first.
   Map<String, dynamic>? _ledgerBody() {
     final errors = validateVariants(_variantRows);
+    final price = num.tryParse(_price.text.trim());
+    final nameError = _name.text.trim().isEmpty
+        ? context.tr('vendor.form.nameRequired')
+        : null;
+    final priceError = price == null || price <= 0
+        ? context.tr('vendor.form.priceRequired')
+        : null;
+    final invalid =
+        nameError != null || priceError != null || errors.isNotEmpty;
     setState(() {
       _variantErrors = errors;
-      _saveError = null;
+      _nameError = nameError;
+      _priceError = priceError;
+      // Never a silent Save: say what to fix, next to the button too.
+      _saveError = invalid ? context.tr('vendor.form.fixErrors') : null;
     });
+    if (invalid) {
+      // Bring the first problem into view.
+      final target = nameError != null
+          ? _nameKey
+          : priceError != null
+          ? _priceKey
+          : _variantsKey;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final ctx = target.currentContext;
+        if (ctx != null && ctx.mounted) {
+          Scrollable.ensureVisible(
+            ctx,
+            duration: const Duration(milliseconds: 200),
+          );
+        }
+      });
+      return null;
+    }
     final common = _common();
-    if (common == null || errors.isNotEmpty) return null;
-    if (_variantRows.any((r) => r.removeBlocked)) return null;
+    if (common == null) return null;
+    // A variant the vendor tried to remove while it had stock stays in the
+    // list (it was never removed), so it is simply saved as kept.
     int? whole(TextEditingController c) => int.tryParse(c.text.trim());
     return {
       ...common,
@@ -1488,10 +1568,15 @@ class _VendorProductFormState extends State<VendorProductForm> {
         ],
       ),
     ),
-    FFTextField(
-      key: const Key('vendor-product-name'),
-      controller: _name,
-      label: context.tr('vendor.name'),
+    KeyedSubtree(
+      key: _nameKey,
+      child: FFTextField(
+        key: const Key('vendor-product-name'),
+        controller: _name,
+        label: context.tr('vendor.name'),
+        errorText: _ledger ? _nameError : null,
+        onChanged: _ledger ? (_) => _clearFieldError() : null,
+      ),
     ),
     FFTextField(
       key: const Key('vendor-product-brand'),
@@ -1509,12 +1594,29 @@ class _VendorProductFormState extends State<VendorProductForm> {
     ),
   ];
 
-  Widget _priceField() => FFTextField(
-    key: const Key('vendor-product-price'),
-    controller: _price,
-    keyboardType: TextInputType.number,
-    label: context.tr('vendor.price'),
+  Widget _priceField() => KeyedSubtree(
+    key: _priceKey,
+    child: FFTextField(
+      key: const Key('vendor-product-price'),
+      controller: _price,
+      keyboardType: TextInputType.number,
+      label: context.tr('vendor.price'),
+      errorText: _ledger ? _priceError : null,
+      onChanged: _ledger ? (_) => _clearFieldError() : null,
+    ),
   );
+
+  /// Typing clears the previous save's messages.
+  void _clearFieldError() {
+    if (_nameError == null && _priceError == null && _saveError == null) {
+      return;
+    }
+    setState(() {
+      _nameError = null;
+      _priceError = null;
+      _saveError = null;
+    });
+  }
 
   List<Widget> _middleFields() => [
     FFTextField(
@@ -1578,10 +1680,17 @@ class _VendorProductFormState extends State<VendorProductForm> {
   Widget _pair(Widget a, Widget b) => LayoutBuilder(
     builder: (context, box) {
       final scaled = MediaQuery.textScalerOf(context).scale(1) >= 1.3;
-      if (scaled || box.maxWidth < 2 * 160 + FFTokens.spacingMd) {
+      // Swahili labels ("Kiwango cha kuagiza tena") need more room.
+      final sw = FFLocaleScope.of(context).locale.languageCode == 'sw';
+      final minField = sw ? 200.0 : 160.0;
+      if (scaled || box.maxWidth < 2 * minField + FFTokens.spacingMd) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [a, b],
+          children: [
+            a,
+            const SizedBox(height: FFTokens.spacingSm),
+            b,
+          ],
         );
       }
       return Row(
@@ -1677,12 +1786,17 @@ class _VendorProductFormState extends State<VendorProductForm> {
               ..._middleFields(),
               const SizedBox(height: FFTokens.spacingMd),
               VariantRowsEditor(
+                key: _variantsKey,
                 rows: _variantRows,
                 creating: _creating,
                 showCost: widget.canSeeCost,
                 errors: _variantErrors,
                 enabled: !_saving,
-                onChanged: () => setState(() {}),
+                // Editing variants clears the last save's messages.
+                onChanged: () => setState(() {
+                  _variantErrors = const {};
+                  _saveError = null;
+                }),
                 onAdjust: widget.onAdjust == null ? null : _adjust,
               ),
               ..._bottomFields(),

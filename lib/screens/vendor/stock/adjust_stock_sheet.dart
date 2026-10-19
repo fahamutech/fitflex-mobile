@@ -124,6 +124,8 @@ class _AdjustStockSheetState extends State<AdjustStockSheet> {
   bool _saveFailed = false;
   // A specific problem to fix before saving again (an i18n key).
   String? _notice;
+  // Focus the quantity once the save has finished (after a 409).
+  bool _refocusQuantity = false;
   String? _quantityError;
   String? _noteError;
 
@@ -209,7 +211,9 @@ class _AdjustStockSheetState extends State<AdjustStockSheet> {
       _reason != null &&
       _kind != null &&
       _quantityValid &&
-      !_insufficient;
+      !_insufficient &&
+      // Other needs a note before it can be saved.
+      (_reason != 'other' || _note.text.trim().isNotEmpty);
 
   /// Anything the vendor changes makes this a new entry.
   void _edited() {
@@ -282,7 +286,15 @@ class _AdjustStockSheetState extends State<AdjustStockSheet> {
       if (!mounted) return;
       setState(() => _networkFailed = true);
     }
-    if (mounted) setState(() => _busy = false);
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (_refocusQuantity) {
+      // After the field is enabled again (it is disabled while saving).
+      _refocusQuantity = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _quantityFocus.requestFocus();
+      });
+    }
   }
 
   /// The product's variants changed under the vendor (renamed, removed, or
@@ -316,7 +328,7 @@ class _AdjustStockSheetState extends State<AdjustStockSheet> {
           _clientRef = null;
           _quantity.clear();
         });
-        _quantityFocus.requestFocus();
+        _refocusQuantity = true;
       case 'insufficient_stock':
         setState(() {
           if (current != null) _setStock(current);
@@ -507,12 +519,22 @@ class _AdjustStockSheetState extends State<AdjustStockSheet> {
                       key: Key('adjust-reason-$reason'),
                       label: context.tr('vendor.stock.reason.$reason'),
                       filled: _reason == reason,
-                      onTap: _busy
-                          ? null
-                          : () {
-                              _reason = reason;
-                              _edited();
-                            },
+                      // Always tappable (keeps its size while saving);
+                      // ignored while a save is in flight.
+                      onTap: () {
+                        if (_busy) return;
+                        final wasCount = _reason == 'count';
+                        // A new reason is a new entry: start the number over.
+                        if (reason != _reason) _quantity.clear();
+                        _reason = reason;
+                        _noteError = null;
+                        _edited();
+                        if (reason == 'count' && !wasCount) {
+                          WidgetsBinding.instance.addPostFrameCallback(
+                            (_) => _quantityFocus.requestFocus(),
+                          );
+                        }
+                      },
                     ),
                   ),
               ],
@@ -537,12 +559,11 @@ class _AdjustStockSheetState extends State<AdjustStockSheet> {
                         key: Key('adjust-direction-$dir'),
                         label: context.tr(key),
                         filled: _direction == dir,
-                        onTap: _busy
-                            ? null
-                            : () {
-                                _direction = dir;
-                                _edited();
-                              },
+                        onTap: () {
+                          if (_busy) return;
+                          _direction = dir;
+                          _edited();
+                        },
                       ),
                     ),
                 ],
