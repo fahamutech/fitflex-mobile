@@ -9,6 +9,8 @@ import '../../../shared/design_tokens.dart';
 import '../../../shared/formatters.dart';
 import '../../../shared/i18n.dart';
 import '../../../shared/models.dart';
+import '../../../shared/manual_payment.dart';
+import '../member_shell.dart';
 
 /// A7 — Gym direct plan model derived from the gym's own rates.
 class GymPlan {
@@ -57,22 +59,66 @@ class _GymPlansSheetState extends State<GymPlansSheet> {
   String? _selectedPlan;
   bool _busy = false;
   String? _error;
+  PaymentModes _modes = PaymentModes.none;
+  final _manualInput = ManualPaymentInput();
+
+  @override
+  void initState() {
+    super.initState();
+    // Read without depending on it: initState may not register dependencies.
+    final scope = context.getInheritedWidgetOfExactType<AppScope>();
+    if (scope == null) return;
+    loadPaymentModes(scope.api).then((m) {
+      if (!mounted) return;
+      _manualInput.prefillPhone(
+        context
+            .getInheritedWidgetOfExactType<MemberDataScope>()
+            ?.notifier
+            ?.me
+            ?.user
+            .phone,
+      );
+      setState(() => _modes = m);
+    });
+  }
+
+  @override
+  void dispose() {
+    _manualInput.dispose();
+    super.dispose();
+  }
 
   Future<void> _subscribe() async {
     final plan = _selectedPlan;
     if (plan == null || _busy) return;
+    final manual = _modes.manual;
+    String? reference;
+    String? payerPhone;
+    if (manual != null) {
+      final ready = _manualInput.check(manual);
+      if (ready == null) {
+        setState(() {});
+        return;
+      }
+      reference = ready.reference;
+      payerPhone = ready.payerPhone;
+    }
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
-      final created = await AppScope.of(
-        context,
-      ).api.subscribeDirect(gymId: widget.gym.id, plan: plan);
+      final created = await AppScope.of(context).api.subscribeDirect(
+        gymId: widget.gym.id,
+        plan: plan,
+        reference: reference,
+        payerPhone: payerPhone,
+      );
       if (!mounted) return;
-      // With mobile money switched on, pay straight away.
+      // With mobile money switched on, pay straight away; a transaction ID
+      // means it was already paid by hand.
       final req = created['paymentRequest'];
-      if (req is Map) {
+      if (manual == null && req is Map) {
         await offerMobileMoney(
           context,
           paymentRequestId: req['id'] as String?,
@@ -82,9 +128,12 @@ class _GymPlansSheetState extends State<GymPlansSheet> {
       if (mounted) Navigator.pop(context, true);
     } on ApiException catch (e) {
       if (!mounted) return;
+      final onField = manual != null && _manualInput.takeServerError(e);
       setState(() {
         _busy = false;
-        _error = apiErrorMessage(FFLocaleScope.of(context), e);
+        if (!onField) {
+          _error = apiErrorMessage(FFLocaleScope.of(context), e);
+        }
       });
     } catch (_) {
       if (!mounted) return;
@@ -105,56 +154,88 @@ class _GymPlansSheetState extends State<GymPlansSheet> {
           right: FFTokens.spacingLg,
           bottom: MediaQuery.of(context).viewInsets.bottom + FFTokens.spacingLg,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              context.tr('member.gymPlansTitle'),
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 4),
-            Text(widget.gym.name, style: Theme.of(context).textTheme.bodySmall),
-            const SizedBox(height: 4),
-            Text(
-              context.tr('member.gymPlansNote'),
-              style: Theme.of(context).textTheme.labelSmall,
-            ),
-            const SizedBox(height: 14),
-            if (plans.isEmpty)
-              FFEmptyState(title: context.tr('member.noGymPlans'))
-            else
-              ...plans.map(
-                (p) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: _PlanTile(
-                    key: Key('gym-plan-${p.id}'),
-                    plan: p,
-                    selected: _selectedPlan == p.id,
-                    onTap: _busy
-                        ? null
-                        : () => setState(() => _selectedPlan = p.id),
+        // Scrolls when the Lipa Namba steps and the keyboard need the room.
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                context.tr('member.gymPlansTitle'),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                widget.gym.name,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                context.tr('member.gymPlansNote'),
+                style: Theme.of(context).textTheme.labelSmall,
+              ),
+              const SizedBox(height: 14),
+              if (plans.isEmpty)
+                FFEmptyState(title: context.tr('member.noGymPlans'))
+              else
+                ...plans.map(
+                  (p) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: _PlanTile(
+                      key: Key('gym-plan-${p.id}'),
+                      plan: p,
+                      selected: _selectedPlan == p.id,
+                      onTap: _busy
+                          ? null
+                          : () => setState(() => _selectedPlan = p.id),
+                    ),
                   ),
                 ),
-              ),
-            if (_error != null) ...[
-              const SizedBox(height: 6),
-              FFAlert(message: _error!, tone: FFAlertTone.error),
-            ],
-            const SizedBox(height: 10),
-            if (plans.isNotEmpty)
-              SizedBox(
-                width: double.infinity,
-                child: FFButton(
-                  key: const Key('gym-plan-subscribe'),
-                  label: context.tr('member.subscribe'),
-                  onPressed: _selectedPlan == null || _busy ? null : _subscribe,
-                  loading: _busy,
+              if (_modes.manual != null && _selectedPlan != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6, bottom: 6),
+                  child: ManualPaymentFields(
+                    key: const Key('gym-plan-manual-pay'),
+                    manual: _modes.manual!,
+                    amountLabel: formatCurrency(
+                      plans
+                              .where((p) => p.id == _selectedPlan)
+                              .firstOrNull
+                              ?.price ??
+                          0,
+                    ),
+                    input: _manualInput,
+                    enabled: !_busy,
+                    onChanged: (_) {
+                      if (_manualInput.clearErrors()) setState(() {});
+                    },
+                  ),
                 ),
-              ),
-          ],
+              if (_error != null) ...[
+                const SizedBox(height: 6),
+                FFAlert(message: _error!, tone: FFAlertTone.error),
+              ],
+              const SizedBox(height: 10),
+              if (plans.isNotEmpty)
+                SizedBox(
+                  width: double.infinity,
+                  child: FFButton(
+                    key: const Key('gym-plan-subscribe'),
+                    label: context.tr(
+                      _modes.manual != null
+                          ? 'manualPay.submit'
+                          : 'member.subscribe',
+                    ),
+                    onPressed: _selectedPlan == null || _busy
+                        ? null
+                        : _subscribe,
+                    loading: _busy,
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

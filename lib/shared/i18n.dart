@@ -661,6 +661,40 @@ class FFLocale extends ChangeNotifier {
       'member.upgradePlan': 'Upgrade plan',
       'momo.title': 'Pay with mobile money',
       'momo.payNow': 'Pay now',
+      'momo.pageBody':
+          'Pay with mobile money. Your pass starts as soon as the payment goes through.',
+      'manualPay.title': 'How to pay',
+      'manualPay.step1':
+          'Pay {amount} to Lipa Namba {number} (account name {name}).',
+      'manualPay.step1Network':
+          'Pay {amount} to Lipa Namba {number} (account name {name}, network {network}).',
+      'manualPay.step2':
+          'Keep the confirmation SMS. It has the transaction ID.',
+      'manualPay.step3':
+          'Enter the transaction ID below and submit. FitFlex checks it, then your plan starts.',
+      'manualPay.copy': 'Copy number',
+      'manualPay.copied': 'Lipa Namba copied',
+      'manualPay.idLabel': 'Transaction ID',
+      'manualPay.idHint': 'e.g. QJK3H7XY2P',
+      'manualPay.idShown': 'Transaction ID: {id}',
+      'manualPay.phoneLabel': 'Number you paid from',
+      'manualPay.phoneHint': 'e.g. 0712 345 678',
+      'manualPay.phoneHelp': 'The mobile money number the payment came from.',
+      'manualPay.phoneRequired': 'Enter the number you paid from',
+      'manualPay.phoneInvalid':
+          'Enter a Tanzanian mobile number, e.g. 0712 345 678',
+      'manualPay.paidFrom': 'Paid from',
+      'manualPay.paidFromShown': 'Paid from: {phone}',
+      'manualPay.idRequired': 'Enter the transaction ID from your payment SMS',
+      'manualPay.idInvalid':
+          "That doesn't look like a transaction ID. Check the SMS and try again.",
+      'manualPay.idDuplicate':
+          'This transaction ID has already been used. Check the SMS and try again.',
+      'manualPay.submit': 'Submit transaction ID',
+      'manualPay.submitted':
+          "Transaction ID sent. Your plan starts once we've matched the payment.",
+      'manualPay.pageBody':
+          'Pay the Lipa Namba below, then enter the transaction ID. FitFlex checks it before your pass starts.',
       'momo.intro':
           'We will send a payment request to your phone. Approve it with your PIN to finish.',
       'momo.phone': 'Mobile money number',
@@ -1420,6 +1454,17 @@ class FFLocale extends ChangeNotifier {
       'error.reason.gymNotAvailable':
           'this gym is not taking subscriptions right now',
       'error.reason.tierNotAvailable': 'this pass is not on sale right now',
+      'error.reason.paymentReferenceRequired':
+          'enter the transaction ID from your payment SMS',
+      'error.reason.paymentReferenceInvalid':
+          'that transaction ID is not valid',
+      'error.reason.paymentReferenceDuplicate':
+          'that transaction ID has already been used',
+      'error.reason.manualPaymentSubmitted':
+          'this payment was already sent with a transaction ID and is waiting for approval',
+      'error.reason.payerPhoneRequired':
+          'enter the mobile number you paid from',
+      'error.reason.payerPhoneInvalid': 'that is not a Tanzanian mobile number',
       'pay.product.fitflexPass': 'FitFlex Pass',
       'pay.product.gymPlan': 'Gym plan',
       'pay.product.trainerSession': 'Trainer session',
@@ -4977,11 +5022,46 @@ class FFLocale extends ChangeNotifier {
       'member.profile': 'Wasifu',
       'member.yourPass': 'Pasi yako',
       'member.upgradePlan': 'Boresha mpango',
-      'momo.title': 'Lipa kwa pesa ya simu',
+      'momo.title': 'Lipa kwa mtandao wa simu',
       'momo.payNow': 'Lipa sasa',
+      // Swahili for native review (manual Lipa Namba payment, A3).
+      'momo.pageBody':
+          'Lipa kwa mtandao wa simu. Pasi yako inaanza mara malipo yanapokamilika.',
+      'manualPay.title': 'Jinsi ya kulipa',
+      'manualPay.step1':
+          'Lipa {amount} kwa Lipa Namba {number} (jina la akaunti {name}).',
+      'manualPay.step1Network':
+          'Lipa {amount} kwa Lipa Namba {number} (jina la akaunti {name}, mtandao {network}).',
+      'manualPay.step2': 'Hifadhi SMS ya uthibitisho. Ina namba ya muamala.',
+      'manualPay.step3':
+          'Weka namba ya muamala hapa chini kisha utume. FitFlex itaikagua, kisha mpango wako utaanza.',
+      'manualPay.copy': 'Nakili namba',
+      'manualPay.copied': 'Lipa Namba imenakiliwa',
+      'manualPay.idLabel': 'Namba ya muamala',
+      'manualPay.idHint': 'mf. QJK3H7XY2P',
+      'manualPay.idShown': 'Namba ya muamala: {id}',
+      'manualPay.phoneLabel': 'Namba uliyolipia',
+      'manualPay.phoneHint': 'mf. 0712 345 678',
+      'manualPay.phoneHelp': 'Namba ya mtandao wa simu iliyotumika kulipa.',
+      'manualPay.phoneRequired': 'Weka namba uliyolipia',
+      'manualPay.phoneInvalid':
+          'Weka namba ya simu ya Tanzania, mf. 0712 345 678',
+      'manualPay.paidFrom': 'Imelipwa kutoka',
+      'manualPay.paidFromShown': 'Imelipwa kutoka: {phone}',
+      'manualPay.idRequired':
+          'Weka namba ya muamala kutoka kwenye SMS ya malipo',
+      'manualPay.idInvalid':
+          'Hii haionekani kuwa namba ya muamala. Angalia SMS ujaribu tena.',
+      'manualPay.idDuplicate':
+          'Namba hii ya muamala imeshatumika. Angalia SMS ujaribu tena.',
+      'manualPay.submit': 'Tuma namba ya muamala',
+      'manualPay.submitted':
+          'Namba ya muamala imetumwa. Mpango wako utaanza tukishalinganisha malipo.',
+      'manualPay.pageBody':
+          'Lipa kwa Lipa Namba hapa chini, kisha weka namba ya muamala. FitFlex huikagua kabla pasi yako haijaanza.',
       'momo.intro':
           'Tutatuma ombi la malipo kwenye simu yako. Likubali kwa PIN yako ili kukamilisha.',
-      'momo.phone': 'Namba ya pesa ya simu',
+      'momo.phone': 'Namba ya mtandao wa simu',
       'momo.phoneHint': 'mf. 0712 345 678',
       'momo.send': 'Tuma ombi la malipo kwa {phone}',
       'momo.waitingTitle': 'Angalia simu yako',
@@ -5015,7 +5095,7 @@ class FFLocale extends ChangeNotifier {
           'Ombi la malipo halikukubaliwa. Hakikisha namba kisha ujaribu tena.',
       'error.reason.paymentNotPending': 'Malipo haya hayasubiri kulipwa tena.',
       'error.reason.notPayableThisWay':
-          'Malipo haya bado hayawezi kulipwa kwa pesa ya simu.',
+          'Malipo haya bado hayawezi kulipwa kwa mtandao wa simu.',
       'upgrade.currentPlan': 'Mpango wako wa sasa',
       'upgrade.choose': 'Chagua mpango wa juu zaidi',
       'upgrade.pay': 'Lipa {amount} zaidi',
@@ -5754,6 +5834,15 @@ class FFLocale extends ChangeNotifier {
       'error.reason.gymNotAvailable': 'gym hii haipokei wanachama kwa sasa',
       // Swahili for native review.
       'error.reason.tierNotAvailable': 'pasi hii haiuzwi kwa sasa',
+      'error.reason.paymentReferenceRequired':
+          'weka namba ya muamala kutoka kwenye SMS ya malipo',
+      'error.reason.paymentReferenceInvalid': 'namba hiyo ya muamala si sahihi',
+      'error.reason.paymentReferenceDuplicate':
+          'namba hiyo ya muamala imeshatumika',
+      'error.reason.manualPaymentSubmitted':
+          'malipo haya yameshatumwa kwa namba ya muamala na yanasubiri idhini',
+      'error.reason.payerPhoneRequired': 'weka namba ya simu uliyolipia',
+      'error.reason.payerPhoneInvalid': 'hiyo si namba ya simu ya Tanzania',
       'pay.product.fitflexPass': 'FitFlex Pass',
       'pay.product.gymPlan': 'Mpango wa gym',
       'pay.product.trainerSession': 'Kipindi cha mkufunzi',
