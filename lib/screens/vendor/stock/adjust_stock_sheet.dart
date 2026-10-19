@@ -11,6 +11,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 
 import '../../../app_scope.dart';
@@ -285,6 +286,9 @@ class _AdjustStockSheetState extends State<AdjustStockSheet> {
       // reference, so "Try again" cannot record it twice.
       if (!mounted) return;
       setState(() => _networkFailed = true);
+      _announce(
+        '${context.tr('error.network')} ${context.tr('vendor.stock.nothingSaved')}',
+      );
     }
     if (!mounted) return;
     setState(() => _busy = false);
@@ -309,11 +313,25 @@ class _AdjustStockSheetState extends State<AdjustStockSheet> {
     _refresh();
   }
 
+  /// Says [message] to a screen reader now (alerts that appear in the
+  /// sheet are not always picked up as a live region on web).
+  void _announce(String message) {
+    SemanticsService.sendAnnouncement(
+      View.of(context),
+      message,
+      Directionality.of(context),
+      assertiveness: Assertiveness.assertive,
+    );
+  }
+
   void _onApiError(ApiException e) {
     final body = e.body is Map ? e.body as Map : const {};
     final current = (body['currentStock'] as num?)?.toInt();
     if (e.status >= 500) {
       setState(() => _networkFailed = true);
+      _announce(
+        '${context.tr('error.network')} ${context.tr('vendor.stock.nothingSaved')}',
+      );
       return;
     }
     void notice(String key) => setState(() {
@@ -329,6 +347,7 @@ class _AdjustStockSheetState extends State<AdjustStockSheet> {
           _quantity.clear();
         });
         _refocusQuantity = true;
+        _announce(context.tr('vendor.stock.changed'));
       case 'insufficient_stock':
         setState(() {
           if (current != null) _setStock(current);
@@ -614,6 +633,7 @@ class _AdjustStockSheetState extends State<AdjustStockSheet> {
             const SizedBox(height: FFTokens.spacingMd),
             FFButton(
               key: const Key('adjust-save'),
+              visualDensity: VisualDensity.standard,
               label: context.tr(
                 _networkFailed
                     ? 'common.retry'
@@ -628,6 +648,7 @@ class _AdjustStockSheetState extends State<AdjustStockSheet> {
             const SizedBox(height: FFTokens.spacingSm),
             FFButton(
               key: const Key('adjust-cancel'),
+              visualDensity: VisualDensity.standard,
               label: context.tr('common.cancel'),
               variant: FFButtonVariant.ghost,
               fullWidth: true,
@@ -658,7 +679,10 @@ class _AdjustStockSheetState extends State<AdjustStockSheet> {
       }
     }
     return Semantics(
+      container: true,
       liveRegion: true,
+      label: text ?? '',
+      excludeSemantics: true,
       child: Padding(
         padding: const EdgeInsets.only(top: FFTokens.spacingXs),
         child: Text(

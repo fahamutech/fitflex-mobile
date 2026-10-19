@@ -418,6 +418,7 @@ class _StockHistoryPageState extends State<StockHistoryPage> {
             title: context.tr('vendor.stock.historyEmpty'),
             action: FFButton(
               label: context.tr('vendor.stock.adjust'),
+              visualDensity: VisualDensity.standard,
               onPressed: _adjust,
             ),
           ),
@@ -433,6 +434,7 @@ class _StockHistoryPageState extends State<StockHistoryPage> {
         if (_cursor != null)
           FFButton(
             key: const Key('stock-load-more'),
+            visualDensity: VisualDensity.standard,
             label: context.tr(
               _moreFailed ? 'common.retry' : 'vendor.stock.loadMore',
             ),
@@ -509,6 +511,7 @@ class _StockHistoryPageState extends State<StockHistoryPage> {
                 : AlignmentDirectional.centerStart,
             child: FFButton(
               key: const Key('stock-adjust'),
+              visualDensity: VisualDensity.standard,
               label: context.tr('vendor.stock.adjust'),
               icon: Icons.tune,
               fullWidth: !wide,
@@ -670,75 +673,73 @@ class _StockHistoryPageState extends State<StockHistoryPage> {
       padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
       child: FFCard(
         key: Key('stock-row-$id'),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 64),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Semantics(
-                label: label,
-                excludeSemantics: true,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Text(title, style: theme.textTheme.titleSmall),
+        // Sized by its content: no blank band when a row has no note.
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Semantics(
+              label: label,
+              excludeSemantics: true,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(title, style: theme.textTheme.titleSmall),
+                      ),
+                      Text(
+                        formatDelta(delta),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                          color: delta > 0
+                              ? tones.success.fg
+                              : theme.colorScheme.onSurface,
                         ),
-                        Text(
-                          formatDelta(delta),
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontFeatures: const [FontFeature.tabularFigures()],
-                            color: delta > 0
-                                ? tones.success.fg
-                                : theme.colorScheme.onSurface,
-                          ),
+                      ),
+                    ],
+                  ),
+                  Text.rich(
+                    TextSpan(
+                      style: small,
+                      children: [
+                        ...?beforeAfter,
+                        TextSpan(
+                          text:
+                              (beforeAfter == null ? '' : ' · ') +
+                              [
+                                when,
+                                who,
+                              ].where((p) => p.isNotEmpty).join(' · '),
                         ),
                       ],
                     ),
-                    Text.rich(
-                      TextSpan(
-                        style: small,
-                        children: [
-                          ...?beforeAfter,
-                          TextSpan(
-                            text:
-                                (beforeAfter == null ? '' : ' · ') +
-                                [
-                                  when,
-                                  who,
-                                ].where((p) => p.isNotEmpty).join(' · '),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                  ),
+                ],
+              ),
+            ),
+            if (note != null)
+              InkWell(
+                onTap: () => setState(
+                  () => expanded ? _expanded.remove(id) : _expanded.add(id),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.only(top: FFTokens.spacingXs),
+                  child: Text(
+                    note,
+                    maxLines: expanded ? null : 3,
+                    overflow: expanded ? null : TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium,
+                  ),
                 ),
               ),
-              if (note != null)
-                InkWell(
-                  onTap: () => setState(
-                    () => expanded ? _expanded.remove(id) : _expanded.add(id),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: FFTokens.spacingXs),
-                    child: Text(
-                      note,
-                      maxLines: expanded ? null : 3,
-                      overflow: expanded ? null : TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                  ),
-                ),
-              if (orderLink != null)
-                Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: orderLink,
-                ),
-            ],
-          ),
+            if (orderLink != null)
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: orderLink,
+              ),
+          ],
         ),
       ),
     );

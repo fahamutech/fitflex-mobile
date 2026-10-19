@@ -1736,6 +1736,14 @@ class _VendorProductFormState extends State<VendorProductForm> {
     );
   }
 
+  /// [children] with a small token gap between each.
+  List<Widget> _spaced(List<Widget> children) => [
+    for (var i = 0; i < children.length; i++) ...[
+      if (i > 0) const SizedBox(height: FFTokens.spacingSm),
+      children[i],
+    ],
+  ];
+
   Widget _ledgerForm(BuildContext context) {
     final digits = [FilteringTextInputFormatter.digitsOnly];
     final reorder = FFTextField(
@@ -1755,7 +1763,9 @@ class _VendorProductFormState extends State<VendorProductForm> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+            // Token spacing between fields, so floating labels never touch
+            // the field above.
+            children: _spaced([
               ..._topFields(),
               _pair(_priceField(), _ledgerStockField()),
               if (!_creating && widget.onAdjust != null)
@@ -1766,6 +1776,7 @@ class _VendorProductFormState extends State<VendorProductForm> {
                     label: context.tr('vendor.stock.adjust'),
                     icon: Icons.tune,
                     variant: FFButtonVariant.ghost,
+                    visualDensity: VisualDensity.standard,
                     onPressed: () => _adjust(),
                   ),
                 ),
@@ -1784,7 +1795,6 @@ class _VendorProductFormState extends State<VendorProductForm> {
               else
                 reorder,
               ..._middleFields(),
-              const SizedBox(height: FFTokens.spacingMd),
               VariantRowsEditor(
                 key: _variantsKey,
                 rows: _variantRows,
@@ -1800,7 +1810,7 @@ class _VendorProductFormState extends State<VendorProductForm> {
                 onAdjust: widget.onAdjust == null ? null : _adjust,
               ),
               ..._bottomFields(),
-            ],
+            ]),
           ),
         ),
       ),

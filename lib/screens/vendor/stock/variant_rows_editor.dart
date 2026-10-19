@@ -174,6 +174,7 @@ class VariantRowsEditor extends StatelessWidget {
               label: context.tr('vendor.variant.add'),
               icon: Icons.add,
               variant: FFButtonVariant.ghost,
+              visualDensity: VisualDensity.standard,
               onPressed: enabled
                   ? () {
                       rows.add(VariantDraft());
@@ -209,8 +210,9 @@ class VariantRowsEditor extends StatelessWidget {
       onChanged();
     }
 
-    String fieldLabel(String key) =>
-        label.isEmpty ? context.tr(key) : '$label: ${context.tr(key)}';
+    // Short visible labels (a long variant name would cut them off); the
+    // row's fields are grouped under the variant name for screen readers.
+    String fieldLabel(String key) => context.tr(key);
     final digits = [FilteringTextInputFormatter.digitsOnly];
     final error = errors[index];
     final nameError =
@@ -232,27 +234,29 @@ class VariantRowsEditor extends StatelessWidget {
         );
       }
       if (row.isNew || row.storedStock == null) return const SizedBox.shrink();
-      return Row(
+      // The count, then "Adjust stock" on its own line: side by side the
+      // label was squeezed to a few pixels and broke per character.
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Semantics(
-              label:
-                  '${fieldLabel('vendor.stock.current')}: ${row.storedStock}',
-              excludeSemantics: true,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    context.tr('vendor.stock.current'),
-                    style: Theme.of(context).textTheme.labelSmall,
-                  ),
-                  Text(
-                    formatStock(row.storedStock!),
-                    key: Key('variant-stock-value-$index'),
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ],
-              ),
+          Semantics(
+            label:
+                '${label.isEmpty ? '' : '$label: '}${context.tr('vendor.stock.current')}: ${row.storedStock}',
+            excludeSemantics: true,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.tr('vendor.stock.current'),
+                  key: Key('variant-stock-label-$index'),
+                  style: Theme.of(context).textTheme.labelSmall,
+                ),
+                Text(
+                  formatStock(row.storedStock!),
+                  key: Key('variant-stock-value-$index'),
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ],
             ),
           ),
           if (onAdjust != null)
@@ -262,7 +266,10 @@ class VariantRowsEditor extends StatelessWidget {
               semanticLabel: fillIn(context.tr('vendor.stock.adjustFor'), {
                 'name': row.original,
               }),
+              icon: Icons.tune,
               variant: FFButtonVariant.ghost,
+              // A full 48dp target on web and desktop too.
+              visualDensity: VisualDensity.standard,
               onPressed: enabled ? () => onAdjust!(row.original!) : null,
             ),
         ],
@@ -325,45 +332,50 @@ class VariantRowsEditor extends StatelessWidget {
             ],
           ),
           const SizedBox(height: FFTokens.spacingSm),
-          LayoutBuilder(
-            builder: (context, box) {
-              final cells = <Widget>[
-                if (hasStockCell) stockCell(),
-                ?cost,
-                reorder,
-              ];
-              final scaled = MediaQuery.textScalerOf(context).scale(1) >= 1.3;
-              Widget line(List<Widget> items) => Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (var i = 0; i < items.length; i++) ...[
-                    if (i > 0) const SizedBox(width: FFTokens.spacingMd),
-                    Expanded(child: items[i]),
+          Semantics(
+            container: true,
+            label: label,
+            child: LayoutBuilder(
+              builder: (context, box) {
+                final cells = <Widget>[
+                  if (hasStockCell) stockCell(),
+                  ?cost,
+                  reorder,
+                ];
+                final scaled = MediaQuery.textScalerOf(context).scale(1) >= 1.3;
+                Widget line(List<Widget> items) => Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (var i = 0; i < items.length; i++) ...[
+                      if (i > 0) const SizedBox(width: FFTokens.spacingMd),
+                      Expanded(child: items[i]),
+                    ],
                   ],
-                ],
-              );
-              // Swahili labels are longer: give each field more room before
-              // putting fields side by side.
-              final sw = FFLocaleScope.of(context).locale.languageCode == 'sw';
-              final minField = sw ? 200.0 : 140.0;
-              bool fits(int n) =>
-                  !scaled &&
-                  box.maxWidth >= n * minField + (n - 1) * FFTokens.spacingMd;
-              Widget stack(List<Widget> items) => Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  for (var i = 0; i < items.length; i++) ...[
-                    if (i > 0) const SizedBox(height: FFTokens.spacingSm),
-                    items[i],
+                );
+                // Swahili labels are longer: give each field more room before
+                // putting fields side by side.
+                final sw =
+                    FFLocaleScope.of(context).locale.languageCode == 'sw';
+                final minField = sw ? 200.0 : 140.0;
+                bool fits(int n) =>
+                    !scaled &&
+                    box.maxWidth >= n * minField + (n - 1) * FFTokens.spacingMd;
+                Widget stack(List<Widget> items) => Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (var i = 0; i < items.length; i++) ...[
+                      if (i > 0) const SizedBox(height: FFTokens.spacingSm),
+                      items[i],
+                    ],
                   ],
-                ],
-              );
-              if (fits(cells.length)) return line(cells);
-              if (cells.length == 3 && fits(2)) {
-                return stack([line(cells.sublist(0, 2)), cells[2]]);
-              }
-              return stack(cells);
-            },
+                );
+                if (fits(cells.length)) return line(cells);
+                if (cells.length == 3 && fits(2)) {
+                  return stack([line(cells.sublist(0, 2)), cells[2]]);
+                }
+                return stack(cells);
+              },
+            ),
           ),
           if (row.removeBlocked || error == 'vendor.variant.removeHasStock')
             Padding(
