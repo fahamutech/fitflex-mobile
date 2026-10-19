@@ -5,6 +5,7 @@ import 'package:fitflexmobile/shared/components/components.dart';
 import 'package:fitflexmobile/shared/design_tokens.dart';
 import 'package:fitflexmobile/shared/i18n.dart';
 import 'package:fitflexmobile/shared/models.dart';
+import 'package:fitflexmobile/shared/photo_hero_flag.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -71,10 +72,11 @@ Future<void> _pumpCard(
   MemberData data, {
   Widget Function(MemberData)? body,
   ThemeData? theme,
+  String lang = 'en',
 }) async {
   await tester.pumpWidget(
     FFLocaleScope(
-      notifier: FFLocale(),
+      notifier: FFLocale()..set(Locale(lang)),
       child: MaterialApp(
         theme: theme ?? buildTheme(),
         supportedLocales: const [Locale('en'), Locale('sw')],
@@ -248,6 +250,71 @@ void main() {
       await _pumpCard(tester, _data(subscription: _pass(status: 'expired')));
       expect(find.text('Pay again'), findsOneWidget);
       expect(find.text('Show my QR'), findsNothing);
+    });
+  });
+
+  group('status badge when the pass is ending soon (owner 2026-10-19)', () {
+    tearDown(() => debugPhotoHeroUiOverride = null);
+
+    FFBadge badge(WidgetTester tester) =>
+        tester.widget<FFBadge>(find.byKey(const Key('pass-status-badge')));
+
+    for (final flag in [false, true]) {
+      for (final (lang, ending, active) in [
+        ('en', 'Ending soon', 'Active'),
+        ('sw', 'Inaisha karibuni', 'Hai'),
+      ]) {
+        testWidgets('PHOTO_HERO_UI=$flag, $lang: reads "$ending", not '
+            '"$active"', (tester) async {
+          debugPhotoHeroUiOverride = flag;
+          await _pumpCard(
+            tester,
+            _data(subscription: _pass(daysLeft: 2), used: 5, cap: 12),
+            lang: lang,
+          );
+          expect(badge(tester).label, ending);
+          expect(find.text(ending), findsOneWidget);
+          expect(find.text(active), findsNothing);
+          // Fuel under the flag; today's warning tone with it off.
+          expect(
+            badge(tester).tone,
+            flag ? FFBadgeTone.fuel : FFBadgeTone.warning,
+          );
+          // The used line beside the ring stays (owner: keep).
+          expect(
+            find.text(lang == 'en' ? '5 of 12 used' : 'Umetumia 5 kati ya 12'),
+            findsOneWidget,
+          );
+        });
+      }
+    }
+
+    testWidgets('a gym membership ending soon reads "Ending soon" too', (
+      tester,
+    ) async {
+      debugPhotoHeroUiOverride = false;
+      await _pumpCard(tester, _data(subscription: _direct(daysLeft: 2)));
+      expect(badge(tester).label, 'Ending soon');
+    });
+
+    testWidgets('an active pass still reads Active', (tester) async {
+      debugPhotoHeroUiOverride = false;
+      await _pumpCard(tester, _data(subscription: _pass(), used: 7));
+      expect(badge(tester).label, 'Active');
+    });
+
+    testWidgets('low visits keeps its current badge wording', (tester) async {
+      debugPhotoHeroUiOverride = false;
+      await _pumpCard(tester, _data(subscription: _pass(), used: 15));
+      expect(badge(tester).label, 'Active');
+    });
+
+    test('the badge key has Swahili of its own', () {
+      expect(FFLocale.textOf('en', 'pass.badge.endingSoon'), 'Ending soon');
+      expect(
+        FFLocale.textOf('sw', 'pass.badge.endingSoon'),
+        'Inaisha karibuni',
+      );
     });
   });
 

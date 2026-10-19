@@ -65,50 +65,66 @@ class PassSummaryCard extends StatelessWidget {
         : sub.isDirect
         ? (sub.homeGym?.name ?? context.tr('member.membership'))
         : context.tr('pass.${sub.tier}');
+    // Ending soon says so on the badge instead of "Active", flag on or off
+    // (owner, 2026-10-19). Low visits keeps the status wording for now.
     final status = pending != null
         ? context.tr('pass.pending')
         : sub == null
         ? null
+        : state == PassState.endingSoon
+        ? context.tr('pass.badge.endingSoon')
         : _statusLabel(context, sub.status);
 
     return FFCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      context.tr('member.yourPass'),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+          LayoutBuilder(
+            builder: (context, box) {
+              final rowWidth = box.maxWidth;
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          context.tr('member.yourPass'),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          title,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      title,
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
+                  ),
+                  if (status != null) ...[
+                    const SizedBox(width: FFTokens.spacingSm),
+                    // At most 60% of the row, so a longer label ("Inaisha
+                    // karibuni" at large text) ends in an ellipsis instead of
+                    // overflowing; short labels are unaffected.
+                    ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: rowWidth * 0.6),
+                      child: FFBadge(
+                        key: const Key('pass-status-badge'),
+                        label: status,
+                        tone: photoHeroUi && _actSoon(state)
+                            ? FFBadgeTone.fuel
+                            : state.badgeTone,
+                        dot: true,
                       ),
                     ),
                   ],
-                ),
-              ),
-              if (status != null) ...[
-                const SizedBox(width: FFTokens.spacingSm),
-                FFBadge(
-                  label: status,
-                  tone: photoHeroUi && _actSoon(state)
-                      ? FFBadgeTone.fuel
-                      : state.badgeTone,
-                  dot: true,
-                ),
-              ],
-            ],
+                ],
+              );
+            },
           ),
           if (sub?.isDirect == true) ...[
             const SizedBox(height: 10),
