@@ -88,9 +88,9 @@ void main() {
   });
 
   test('money taken off is shown with a minus sign', () {
-    expect(signedCurrency(-3500), '−TZS 3,500');
-    expect(signedCurrency(3500), 'TZS 3,500');
-    expect(signedCurrency(0), 'TZS 0');
+    expect(signedCurrency(-3500), '−TSh 3,500');
+    expect(signedCurrency(3500), 'TSh 3,500');
+    expect(signedCurrency(0), 'TSh 0');
   });
 
   testWidgets('list card shows the month, status, hold and amount', (
@@ -117,7 +117,7 @@ void main() {
     expect(find.text('October 2026'), findsOneWidget);
     expect(find.text('Being prepared'), findsOneWidget);
     expect(find.text('On hold'), findsOneWidget);
-    expect(find.text('TZS 105,000'), findsOneWidget);
+    expect(find.text('TSh 105,000'), findsOneWidget);
     await tester.tap(find.byKey(const Key('statement-st-oct')));
     expect(opened, 1);
   });
@@ -136,9 +136,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('September 2026'), findsOneWidget);
-    expect(find.text('TZS 120,000'), findsOneWidget);
-    expect(find.text('−TZS 15,000'), findsOneWidget);
-    expect(find.text('TZS 101,500'), findsOneWidget);
+    expect(find.text('TSh 120,000'), findsOneWidget);
+    expect(find.text('−TSh 15,000'), findsOneWidget);
+    expect(find.text('TSh 101,500'), findsOneWidget);
     expect(find.text('6 Oct 2026'), findsOneWidget);
     expect(find.text('MPESA-QK7H2L9'), findsOneWidget);
     expect(find.text('····4821'), findsOneWidget);

@@ -4,6 +4,7 @@ import '../../app_scope.dart';
 import '../api_client.dart';
 import '../components/components.dart';
 import '../design_tokens.dart';
+import '../formatters.dart';
 import '../i18n.dart';
 import '../models.dart';
 import 'ff_photo_gallery_field.dart';
@@ -305,9 +306,12 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
                     width: 116,
                     value: _currency,
                     label: 'Currency',
-                    items: const [
-                      DropdownMenuItem(value: 'TZS', child: Text('TZS')),
-                      DropdownMenuItem(value: 'USD', child: Text('USD')),
+                    items: [
+                      DropdownMenuItem(
+                        value: 'TZS',
+                        child: Text(currencyLabel('TZS')),
+                      ),
+                      const DropdownMenuItem(value: 'USD', child: Text('USD')),
                     ],
                     onChanged: (v) => setState(() => _currency = v ?? 'TZS'),
                   ),

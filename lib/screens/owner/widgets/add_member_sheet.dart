@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../shared/i18n.dart';
 import '../../../shared/components/components.dart';
+import '../../../shared/formatters.dart';
 
 /// Bottom sheet for adding a direct member (by owner).
 class AddMemberSheet extends StatefulWidget {
@@ -128,7 +129,7 @@ class _AddMemberSheetState extends State<AddMemberSheet> {
               FFTextField(
                 controller: _amountCtrl,
                 label: context.tr('owner.paidAmount'),
-                suffixText: 'TZS',
+                suffixText: currencyLabel('TZS'),
                 keyboardType: TextInputType.number,
               ),
               const SizedBox(height: 12),
