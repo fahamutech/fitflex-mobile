@@ -1,11 +1,11 @@
 import 'dart:convert';
 import 'dart:typed_data';
-import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 import 'models.dart';
 import 'promotion.dart';
+import 'rest_log.dart';
 
 class ApiException implements Exception {
   final int status;
@@ -39,7 +39,9 @@ const kLiveApiBase = 'https://fitflex-faas.bfast.smartstock.co.tz';
 const kIdentityV2Client = 'identity-v2';
 
 class ApiClient {
-  ApiClient({String? baseUrl}) : baseUrl = baseUrl ?? _resolveBaseUrl();
+  ApiClient({String? baseUrl, RestLogger? logger})
+    : baseUrl = baseUrl ?? _resolveBaseUrl(),
+      _log = logger ?? RestLogger();
 
   static String _resolveBaseUrl() {
     // 1. Compile-time --dart-define wins (CI/CD, prod builds).
@@ -62,6 +64,7 @@ class ApiClient {
   }
 
   final String baseUrl;
+  final RestLogger _log;
   String? _token;
   void Function()? onUnauthorized;
 
@@ -98,7 +101,7 @@ class ApiClient {
     };
     late http.Response res;
     final encoded = body == null ? null : jsonEncode(body);
-    _logRequest(method, uri, headers, encoded);
+    _log.request(method, uri, headers, encoded);
     try {
       switch (method) {
         case 'GET':
@@ -130,12 +133,10 @@ class ApiClient {
           throw ArgumentError('Unsupported method $method');
       }
     } catch (e) {
-      _logError(method, uri, e);
+      _log.error(method, uri, e);
       if (attempt < 2 && _isRetryableError(e)) {
         final delayMs = attempt == 0 ? 400 : 1200;
-        debugPrint(
-          '[REST] retrying $method $uri (attempt ${attempt + 1}) after ${delayMs}ms',
-        );
+        _log.retry(method, uri, attempt + 1, delayMs);
         await Future.delayed(Duration(milliseconds: delayMs));
         return _doRequest(
           method,
@@ -147,7 +148,7 @@ class ApiClient {
       }
       rethrow;
     }
-    _logResponse(method, uri, res);
+    _log.response(method, uri, res.statusCode, res.body);
     final decoded = res.body.isEmpty ? null : jsonDecode(res.body);
     if (res.statusCode >= 200 && res.statusCode < 300) return decoded;
     // A 401 always means this bearer session can no longer be used.  Do not
@@ -172,46 +173,6 @@ class ApiClient {
           msg.contains('no address associated');
     }
     return false;
-  }
-
-  void _logRequest(
-    String method,
-    Uri uri,
-    Map<String, String> headers,
-    String? body,
-  ) {
-    final safeHeaders = Map<String, String>.from(headers);
-    if (safeHeaders.containsKey('authorization')) {
-      safeHeaders['authorization'] = 'Bearer <redacted>';
-    }
-    debugPrint('[REST] --> $method $uri');
-    debugPrint('[REST] headers: $safeHeaders');
-    if (body != null) debugPrint('[REST] request: ${_safeBody(body)}');
-  }
-
-  void _logResponse(String method, Uri uri, http.Response res) {
-    debugPrint('[REST] <-- ${res.statusCode} $method $uri');
-    debugPrint('[REST] response: ${_safeBody(res.body)}');
-  }
-
-  void _logError(String method, Uri uri, Object error) {
-    debugPrint('[REST] !! $method $uri');
-    debugPrint('[REST] error: $error');
-  }
-
-  String _safeBody(String body) {
-    var text = body;
-    text = text.replaceAll(
-      RegExp(r'"idToken"\s*:\s*"[^"]+"'),
-      '"idToken":"<redacted>"',
-    );
-    text = text.replaceAll(
-      RegExp(r'"token"\s*:\s*"[^"]+"'),
-      '"token":"<redacted>"',
-    );
-    return text.length > 4000
-        ? '${text.substring(0, 4000)}...<truncated>'
-        : text;
   }
 
   Future<Map<String, dynamic>> requestOtp(String phone, String userType) async {
@@ -2525,11 +2486,11 @@ class ApiClient {
       );
     if (_token != null) request.headers['authorization'] = 'Bearer $_token';
     if (docType != null) request.fields['docType'] = docType;
-    debugPrint('[REST] --> POST $uri (multipart, ${bytes.length} bytes)');
+    _log.multipart('POST', uri, bytes.length);
     // Documents can be a few MB on a slow connection: allow longer than JSON calls.
     final streamed = await request.send().timeout(const Duration(seconds: 90));
     final res = await http.Response.fromStream(streamed);
-    _logResponse('POST', uri, res);
+    _log.response('POST', uri, res.statusCode, res.body);
     final decoded = res.body.isEmpty ? null : jsonDecode(res.body);
     if (res.statusCode >= 200 && res.statusCode < 300) {
       return (decoded as Map).cast<String, dynamic>();
