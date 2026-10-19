@@ -213,7 +213,7 @@ void main() {
       );
       expect(
         find.text(
-          'Pay TZS 120,000 to Lipa Namba 5123456 '
+          'Pay TSh 120,000 to Lipa Namba 5123456 '
           '(account name FitFlex Africa Ltd, network M-Pesa).',
         ),
         findsOneWidget,
