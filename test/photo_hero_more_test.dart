@@ -365,11 +365,9 @@ void main() {
       final key = find.ancestor(of: ok, matching: find.byType(Material)).first;
       expect(tester.getRect(key).bottom, lessThanOrEqualTo(height));
       expect(tester.getRect(key).top, greaterThanOrEqualTo(0));
-      // Today's layout (no hero) sizes its keys from the space left, as
-      // before this change; the hero layout keeps them at 44px or more.
-      if (find.byType(FFPhotoHero).evaluate().isNotEmpty) {
-        expect(tester.getSize(key).height, greaterThanOrEqualTo(44));
-      }
+      // Both layouts keep the keys at 44px or more (the no-hero layout
+      // since fix/activity-pin-layout).
+      expect(tester.getSize(key).height, greaterThanOrEqualTo(44));
     }
 
     for (final dark in [false, true]) {
@@ -1400,14 +1398,9 @@ void main() {
             settle: !key.startsWith('activity'),
           );
           FlutterError.onError = previous;
-          // Overflows that also happen with the flag off (Activity's
-          // "Recent" row and an FFActionTile, Swahili at 1.3x) are not this
-          // change's; anything in the hero is.
-          final unexpected = _unexpectedErrors(errors, const [
-            // The "Recent" row (title + ghost link), below the hero.
-            'member_activity_tab.dart',
-            'ff_action_tile.dart',
-          ]);
+          // The Activity "Recent" row and activity tiles no longer
+          // overflow (fix/activity-pin-layout), so nothing is set aside.
+          final unexpected = _unexpectedErrors(errors, const []);
           expect(unexpected, isEmpty, reason: unexpected.join('\n---\n'));
           for (final e in errors) {
             expect(e.toString(), isNot(contains('ff_photo_hero')));

@@ -447,50 +447,61 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 400),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: FFTokens.spacingLg),
-                  Text(
-                    widget.initialMode == EmailAuthMode.signUp
-                        ? context.tr('auth.createPin')
-                        : context.tr('auth.verificationPin'),
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
-                  const SizedBox(height: FFTokens.spacingSm),
-                  Text(
-                    widget.initialEmail,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.primary,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.5,
+              // The keypad keeps 44px keys on short phones: the title
+              // block gives way (and scrolls) before the keys shrink.
+              child: PinPadLayout(
+                key: const Key('pin-pad-layout'),
+                gaps: (
+                  FFTokens.spacingXl * 1.5,
+                  FFTokens.spacingXl * 1.5,
+                  FFTokens.spacingLg,
+                ),
+                header: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: FFTokens.spacingLg),
+                    Text(
+                      widget.initialMode == EmailAuthMode.signUp
+                          ? context.tr('auth.createPin')
+                          : context.tr('auth.verificationPin'),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.headlineMedium,
                     ),
-                  ),
-                  const SizedBox(height: FFTokens.spacingXl * 1.5),
-                  Stack(
-                    alignment: Alignment.centerRight,
-                    children: [
-                      PinInputRow(pin: _pin, obscure: _obscurePin),
-                      _showHideToggle(context),
-                    ],
-                  ),
-                  const SizedBox(height: FFTokens.spacingXl * 1.5),
-                  Expanded(
-                    child: CustomKeypad(
-                      onDigit: _onDigit,
-                      onDelete: _onDelete,
-                      onOk: _submit,
-                      okEnabled: _pin.length >= _minPinLength,
-                      isLoading: _busy,
+                    const SizedBox(height: FFTokens.spacingSm),
+                    Text(
+                      widget.initialEmail,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: FFTokens.spacingLg),
-                  ..._links(context),
-                  const SizedBox(height: FFTokens.spacingMd),
-                ],
+                  ],
+                ),
+                pinned: Stack(
+                  alignment: Alignment.centerRight,
+                  children: [
+                    PinInputRow(pin: _pin, obscure: _obscurePin),
+                    _showHideToggle(context),
+                  ],
+                ),
+                keypad: CustomKeypad(
+                  onDigit: _onDigit,
+                  onDelete: _onDelete,
+                  onOk: _submit,
+                  okEnabled: _pin.length >= _minPinLength,
+                  isLoading: _busy,
+                ),
+                footer: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    ..._links(context),
+                    const SizedBox(height: FFTokens.spacingMd),
+                  ],
+                ),
               ),
             ),
           ),

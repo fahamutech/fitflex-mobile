@@ -138,17 +138,24 @@ class ActivityTimelineTile extends StatelessWidget {
     }
     return FFActionTile(
       key: Key('activity-${a.id}'),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ActivityOriginLabel(activity: a),
-          if (workoutId != null || opensRun)
-            Icon(
-              Icons.chevron_right,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-              size: FFTokens.iconMd,
-            ),
-        ],
+      // At most a third of the screen, so a long origin ("Imeingizwa na
+      // mtu" at large text) wraps instead of squeezing the title.
+      trailing: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.sizeOf(context).width / 3,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(child: ActivityOriginLabel(activity: a)),
+            if (workoutId != null || opensRun)
+              Icon(
+                Icons.chevron_right,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                size: FFTokens.iconMd,
+              ),
+          ],
+        ),
       ),
       icon: activityTypeIcon(a.type),
       title: title,
@@ -207,15 +214,19 @@ class ActivityOriginLabel extends StatelessWidget {
             children: [
               Icon(icon, size: FFTokens.iconSm, color: muted),
               const SizedBox(width: FFTokens.spacing2xs),
-              Text(
-                label,
-                style: theme.textTheme.labelSmall?.copyWith(color: muted),
+              Flexible(
+                child: Text(
+                  label,
+                  textAlign: TextAlign.end,
+                  style: theme.textTheme.labelSmall?.copyWith(color: muted),
+                ),
               ),
             ],
           ),
           if (detail != null)
             Text(
               detail,
+              textAlign: TextAlign.end,
               style: theme.textTheme.labelSmall?.copyWith(color: muted),
             ),
         ],
