@@ -11,6 +11,7 @@ import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
 import '../../shared/inbox/inbox_pages.dart';
 import '../../shared/models.dart';
+import '../../shared/photo_hero_flag.dart';
 import '../../shared/root_back_navigation.dart';
 import '../../shared/widgets/partner_not_verified.dart';
 import '../../router.dart';
@@ -65,6 +66,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
     super.didChangeDependencies();
     if (_started) return;
     _started = true;
+    if (photoHeroUi) precacheHeroPhotos(context, const [FFHeroPhoto.trainer]);
     _refreshAll();
     _show(widget.open);
   }
@@ -389,59 +391,92 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
     final socials = SocialLinks.fromJson(trainer?['socialLinks']);
     final gyms = (trainer?['gyms'] as List?)?.whereType<Map>().toList() ?? [];
     return _tabScroll([
-      const PartnerNotVerifiedNotice(),
-      // Quick gym access: show the check-in QR, or scan the gym's QR.
-      FFCard(
-        key: const Key('trainer-checkin-card'),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.door_front_door_outlined, size: 20),
-                const SizedBox(width: 8),
-                Text(
-                  context.tr('checkin.title'),
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ],
+      if (photoHeroUi) ...[
+        // PHOTO_HERO_UI (spec §25.1): the hero carries the gym check-in; the
+        // QR itself opens in its own solid sheet, never on the photo.
+        FFHeroBand(
+          key: const Key('trainer-hero'),
+          photo: FFHeroPhoto.trainer,
+          eyebrow: heroGreeting(
+            context,
+            DateTime.now(),
+            trainer?['displayName']?.toString() ?? _displayName,
+          ),
+          headlineLead: context.tr('hero.trainer.lead'),
+          headlineAccent: context.tr('hero.trainer.accent'),
+          subline: context.tr('checkin.body'),
+          actions: [
+            FFButton(
+              key: const Key('trainer-checkin-scan'),
+              label: context.tr('checkin.scan'),
+              icon: Icons.qr_code_scanner,
+              onPressed: _scanGymQr,
             ),
-            const SizedBox(height: 4),
-            Text(
-              context.tr('checkin.body'),
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: FilledButton.icon(
-                    key: const Key('trainer-checkin-qr'),
-                    onPressed: _showMyQr,
-                    icon: const Icon(Icons.qr_code_2, size: 18),
-                    label: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(context.tr('checkin.showQr')),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    key: const Key('trainer-checkin-scan'),
-                    onPressed: _scanGymQr,
-                    icon: const Icon(Icons.qr_code_scanner, size: 18),
-                    label: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(context.tr('checkin.scan')),
-                    ),
-                  ),
-                ),
-              ],
+            FFButton(
+              key: const Key('trainer-checkin-qr'),
+              label: context.tr('checkin.showQr'),
+              icon: Icons.qr_code_2,
+              variant: FFButtonVariant.onPhoto,
+              onPressed: _showMyQr,
             ),
           ],
         ),
-      ),
+        const SizedBox(height: FFTokens.spacingMd),
+      ],
+      const PartnerNotVerifiedNotice(),
+      // Quick gym access: show the check-in QR, or scan the gym's QR.
+      if (!photoHeroUi)
+        FFCard(
+          key: const Key('trainer-checkin-card'),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.door_front_door_outlined, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    context.tr('checkin.title'),
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                context.tr('checkin.body'),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.icon(
+                      key: const Key('trainer-checkin-qr'),
+                      onPressed: _showMyQr,
+                      icon: const Icon(Icons.qr_code_2, size: 18),
+                      label: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(context.tr('checkin.showQr')),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      key: const Key('trainer-checkin-scan'),
+                      onPressed: _scanGymQr,
+                      icon: const Icon(Icons.qr_code_scanner, size: 18),
+                      label: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(context.tr('checkin.scan')),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       const SizedBox(height: 14),
       Text(
         context.tr('trainer.dashboardBody'),

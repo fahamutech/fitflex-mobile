@@ -441,13 +441,14 @@ void main() {
   });
 
   group('Pre-sign-in screens under the flag', () {
-    testWidgets('language: both taglines; Continue follows the choice', (
+    testWidgets('language: English tagline only; Continue follows choice', (
       tester,
     ) async {
       await _pump(tester, const LanguageScreen());
       expect(find.byType(FFPhotoHero), findsOneWidget);
       expect(_heroText(tester), contains('Fitness without limits.'));
-      expect(_heroText(tester), contains('Pamoja tuna nguvu.'));
+      // Owner 2026-10-19 (spec §19, AC-A10): no Swahili tagline line.
+      expect(_heroText(tester), isNot(contains('Pamoja')));
       expect(find.text('Continue · Endelea'), findsOneWidget);
       await tester.tap(find.byKey(const Key('langKiswahili')));
       await tester.pumpAndSettle();

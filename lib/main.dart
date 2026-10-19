@@ -331,7 +331,7 @@ class _FitFlexAppState extends State<FitFlexApp> with WidgetsBindingObserver {
                   minScaleFactor: 1.0,
                   maxScaleFactor: 1.3,
                   child: KineticSplashGate(
-                    tagline: widget.locale.t('splash.tagline'),
+                    tagline: splashTagline(widget.locale),
                     child: RecoveryBannerHost(
                       child: child ?? const SizedBox.shrink(),
                     ),

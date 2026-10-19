@@ -3,6 +3,8 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
+import '../i18n.dart';
+
 /// Kill switch: `--dart-define=SPLASH_ANIMATION=false`. Off by default under
 /// MOCK_AUTH so UAT and widget runs are not delayed by it.
 const bool kSplashAnimation = bool.fromEnvironment(
@@ -35,18 +37,27 @@ double _bounce(double x) {
   return n1 * (x -= 2.625 / d1) * x + 0.984375;
 }
 
+/// The line under "FitFlex Africa" on the splash: the English tagline in
+/// English; in Swahili no line at all (owner 2026-10-19: "Pamoja tuna
+/// nguvu" removed from the splash, nothing in its place).
+String? splashTagline(FFLocale locale) =>
+    locale.locale.languageCode == 'sw' ? null : locale.t('splash.tagline');
+
 /// Plays once per cold start over [child], then fades away and is removed.
 /// Tap to skip. With "reduce motion" it shows the finished logo briefly.
 class KineticSplashGate extends StatefulWidget {
   const KineticSplashGate({
     super.key,
     required this.child,
-    required this.tagline,
+    this.tagline,
     this.enabled = kSplashAnimation,
   });
 
   final Widget child;
-  final String tagline;
+
+  /// The line under "FitFlex Africa"; null shows no line (Swahili, owner
+  /// 2026-10-19: "Pamoja tuna nguvu" removed, nothing in its place).
+  final String? tagline;
   final bool enabled;
 
   @override
@@ -134,10 +145,10 @@ class _KineticSplashGateState extends State<KineticSplashGate>
 }
 
 class _SplashFrame extends StatelessWidget {
-  const _SplashFrame({required this.t, required this.tagline});
+  const _SplashFrame({required this.t, this.tagline});
 
   final double t;
-  final String tagline;
+  final String? tagline;
 
   @override
   Widget build(BuildContext context) {
@@ -174,16 +185,18 @@ class _SplashFrame extends StatelessWidget {
                         decoration: TextDecoration.none,
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      tagline,
-                      style: const TextStyle(
-                        color: _teal,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        decoration: TextDecoration.none,
+                    if (tagline case final line?) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        line,
+                        style: const TextStyle(
+                          color: _teal,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          decoration: TextDecoration.none,
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),

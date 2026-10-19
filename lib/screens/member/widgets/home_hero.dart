@@ -286,3 +286,53 @@ class HomeHeroAppBarNotification extends Notification {
 
   final bool solid;
 }
+
+/// Wraps a member tab whose hero sits under the shell's transparent app bar
+/// (Activity, Profile; spec C-7): tells the shell to start transparent and
+/// to turn solid once the hero (under [heroKey]) has passed under the bar.
+class HeroTabScroll extends StatefulWidget {
+  const HeroTabScroll({super.key, required this.heroKey, required this.child});
+
+  final GlobalKey heroKey;
+  final Widget child;
+
+  @override
+  State<HeroTabScroll> createState() => _HeroTabScrollState();
+}
+
+class _HeroTabScrollState extends State<HeroTabScroll> {
+  bool _passed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        const HomeHeroAppBarNotification(solid: false).dispatch(context);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return NotificationListener<ScrollUpdateNotification>(
+      onNotification: (n) {
+        if (n.depth != 0) return false;
+        final h = widget.heroKey.currentContext?.size?.height ?? 0;
+        final passed =
+            h > 0 && n.metrics.pixels >= h - MediaQuery.paddingOf(context).top;
+        if (passed != _passed) {
+          _passed = passed;
+          HomeHeroAppBarNotification(solid: passed).dispatch(context);
+        }
+        return false;
+      },
+      child: widget.child,
+    );
+  }
+}
+
+/// The hero's top inset on a member tab under the shell's transparent bar:
+/// the status bar and app bar, plus the offline strip when it shows.
+double memberHeroTopInset(BuildContext context, MemberData data) =>
+    MediaQuery.paddingOf(context).top + (data.offline ? 56.0 : 0.0);

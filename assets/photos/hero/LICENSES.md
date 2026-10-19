@@ -6,7 +6,7 @@ All files come from the parent repo's `social/brand/photos/` (branch `release-ca
 
 Processing (2026-10-19): cropped to the hero aspect ratio, converted to sRGB, resized, re-encoded as WebP (quality 72). Metadata (EXIF, GPS, ICC) is not carried over. 1x files sit in this folder, 2x files in `2.0x/`.
 
-No photo shows an identifiable person, so no model releases are needed. No location or gym consent applies (the photos are not of FitFlex partner gyms and are not presented as such). No expiry.
+No photo shows an identifiable person, so no model releases are needed. Four addendum photos (`hero_pin`, `hero_upgrade`, `hero_activity_challenges`, `hero_trainer`) show hands, arms, a torso or a leg; each is cropped so that no face is in frame (owner decision 2026-10-19: backs, hands or unclear faces only). No location or gym consent applies (the photos are not of FitFlex partner gyms and are not presented as such). No expiry.
 
 | File | Used on | Source page | Photographer | Licence | Crop (source px, l,t,r,b) | 2x size | 2x bytes | 1x bytes | People |
 |---|---|---|---|---|---|---|---|---|---|
@@ -16,7 +16,21 @@ No photo shows an identifiable person, so no model releases are needed. No locat
 | `hero_role.webp` | Choose role | https://www.pexels.com/photo/29526371/ "Modern well-equipped gym with diverse fitness equipment" | foad shariyati | Pexels licence | 0,420,1500,1264 (16:9) | 1280x720 | 113,856 | 45,572 | none |
 | `hero_home_start.webp` | Home: no pass, pending, ended, loading, offline | https://www.pexels.com/photo/29526371/ (same as above) | foad shariyati | Pexels licence | 0,0,1500,1875 (4:5) | 864x1080 | 110,646 | 41,474 | none |
 | `hero_home_pass.webp` | Home: active, few visits, ending soon | https://www.pexels.com/photo/5312212/ "Dumbbells in Close Up Photography" | Joel de la cruz | Pexels licence | 0,0,1491,994 (3:2) | 1080x720 | 24,256 | 10,758 | none (background blurred) |
+| `hero_profile.webp` | Member Profile | https://www.pexels.com/photo/4716814/ "Black and Gray Exercise Equipment" | Denys Gromov | Pexels licence | 600,150,1500,750 (3:2) | 900x600 | 25,540 | 10,746 | none |
+| `hero_pin.webp` | PIN entry; Register, Forgot PIN and PIN setup flows | https://www.pexels.com/photo/7432872/ "A Man in Striped Shirt Using His Mobile Phone" | August de Richelieu | Pexels licence | 250,330,1255,1000 (3:2) | 1005x670 | 26,096 | 9,104 | hands, forearms and shirt only; the crop starts well below the chin, no face in frame; phone screen blank |
+| `hero_upgrade.webp` | Upgrade plan / buy a pass (/member/passes) | https://www.pexels.com/photo/4720565/ "Man Getting Medicine Ball" | Ketut Subiyanto | Pexels licence | 0,1000,1500,2000 (3:2) | 1080x720 | 26,076 | 9,964 | one hand and arm behind the balls; the crop starts below the chin, no face in frame |
+| `hero_activity_today.webp` | Activity: Today | https://www.pexels.com/photo/12250460/ "Treadmills at Gym" | Mario García | Pexels licence | 0,125,1500,1125 (3:2) | 1080x720 | 74,654 | 26,934 | none |
+| `hero_activity_training.webp` | Activity: Training | https://www.pexels.com/photo/9545909/ "Equipments Inside the Gym" | TUBARONES PHOTOGRAPHY | Pexels licence | 700,300,1500,833 (3:2) | 800x533 | 33,168 | 13,000 | none |
+| `hero_activity_challenges.webp` | Activity: Challenges | https://www.pexels.com/photo/4720518/ "Man in Blue Tank Top" | Ketut Subiyanto | Pexels licence | 300,420,1200,1000 (~3:2) | 900x580 | 23,398 | 7,880 | torso, arms and hands clapping chalk; the crop starts below the chin, no face in frame |
+| `hero_activity_progress.webp` | Activity: Progress | https://www.pexels.com/photo/3916766/ "Black and Red Dumbbells on Brown Wooden Floor" | Andrea Piacquadio | Pexels licence | 0,0,1458,972 (3:2) | 1080x720 | 35,554 | 15,738 | none |
+| `hero_trainer.webp` | Trainer home (stand-in, spec O-22) | https://www.pexels.com/photo/6388387/ "Grayscale Photo of a Woman Using Battle Ropes" | Tima Miroshnichenko | Pexels licence | 0,470,840,1000 (~1.6:1) | 840x530 | 9,792 | 3,820 | one hand, forearm and one leg/shoe at the right edge; face and torso outside the crop, no face in frame |
+| `hero_vendor.webp` | Vendor home, Products tab (stand-in, spec O-22) | https://www.pexels.com/photo/9545914/ "Gym Equipment Inside the Fitness Gym" | TUBARONES PHOTOGRAPHY | Pexels licence | 620,250,1500,837 (3:2) | 880x587 | 38,004 | 16,130 | none |
+| `hero_owner.webp` | Gym owner home | https://www.pexels.com/photo/29526371/ "Modern well-equipped gym with diverse fitness equipment" | foad shariyati | Pexels licence | 0,1000,1500,2000 (3:2) | 1080x720 | 60,784 | 24,550 | none (the small figure in the full frame is outside this crop) |
 
-Total added: 409,056 bytes at 2x + 161,982 bytes at 1x = 571,038 bytes (budget 1.2 MB).
+Total added (2026-10-19, first set): 409,056 bytes at 2x + 161,982 bytes at 1x = 571,038 bytes.
+
+Addendum set (2026-10-19, spec §26, same processing; brightness graded per the spec's factor before export): 352,066 bytes at 2x + 137,866 bytes at 1x = 489,932 bytes.
+
+All hero assets together: 1,061,970 bytes (budget 1.6 MB, spec §26).
 
 These photos are not Tanzanian; they are a stop-gap (spec O-1). Replace with own photos before the flag is turned on in production.

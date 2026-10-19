@@ -128,6 +128,16 @@ flutter:
     - assets/photos/hero/hero_role.webp
     - assets/photos/hero/hero_home_start.webp
     - assets/photos/hero/hero_home_pass.webp
+    - assets/photos/hero/hero_profile.webp
+    - assets/photos/hero/hero_pin.webp
+    - assets/photos/hero/hero_upgrade.webp
+    - assets/photos/hero/hero_activity_today.webp
+    - assets/photos/hero/hero_activity_training.webp
+    - assets/photos/hero/hero_activity_challenges.webp
+    - assets/photos/hero/hero_activity_progress.webp
+    - assets/photos/hero/hero_trainer.webp
+    - assets/photos/hero/hero_vendor.webp
+    - assets/photos/hero/hero_owner.webp
 
   # FitFlex Africa design system type: Inter (UI + display) and JetBrains
   # Mono (uppercase data labels). Bundled so they work offline. SIL OFL,
