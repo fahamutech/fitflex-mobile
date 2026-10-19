@@ -242,6 +242,13 @@ class _VendorHomePageState extends State<VendorHomePage> {
       await _refresh();
     } on ApiException catch (e) {
       if (!mounted) return;
+      if (e.code == 'stock_changed') {
+        // Stock moved (e.g. an order) while the form was open: say so and
+        // show the current count; the vendor edits again.
+        FFSnack.error(context, context.tr('vendor.stock.changed'));
+        await _refresh();
+        return;
+      }
       FFSnack.error(context, _saveFailedText(e));
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -1187,6 +1194,13 @@ class _VendorProductFormState extends State<VendorProductForm> {
   bool _visible = true;
 
   bool get _creating => widget.product == null;
+
+  /// The stock the form loaded (sent as `stockSeen` with a changed stock).
+  int get _stockLoaded => (widget.product?['stock'] as num?)?.toInt() ?? 0;
+
+  /// Whether the vendor changed the Stock field (ledger off).
+  bool get _stockEdited =>
+      _stock.text.trim() != (widget.product?['stock']?.toString() ?? '');
   bool get _ledger => widget.stockLedger;
 
   @override
@@ -1274,10 +1288,16 @@ class _VendorProductFormState extends State<VendorProductForm> {
     if (common == null) return;
     Navigator.pop(context, {
       ...common,
-      // A product's stock is set when it is created. An edit never sends
-      // it: the form may have been open while buyers reserved stock, and
-      // the server keeps the stored count (live-bug fix, S1 / F2).
+      // A new product sends its starting stock. An edit sends stock only
+      // when the vendor changed it, with the count the form loaded
+      // (`stockSeen`), so a form left open while buyers reserved stock does
+      // not overwrite it (live-bug fix, S1 / F2). Variants never carry
+      // stock on an edit; the server keeps their stored counts.
       if (_creating) 'stock': int.tryParse(_stock.text.trim()) ?? 0,
+      if (!_creating && _stockEdited) ...{
+        'stock': int.tryParse(_stock.text.trim()) ?? 0,
+        'stockSeen': _stockLoaded,
+      },
       'variants': _variants.text
           .split(',')
           .map((value) => value.trim())
@@ -1431,8 +1451,6 @@ class _VendorProductFormState extends State<VendorProductForm> {
                       key: const Key('vendor-product-stock'),
                       controller: _stock,
                       keyboardType: TextInputType.number,
-                      // Stock is set once, when the product is created.
-                      readOnly: !_creating,
                       label: context.tr('vendor.stock'),
                     ),
                   ),
