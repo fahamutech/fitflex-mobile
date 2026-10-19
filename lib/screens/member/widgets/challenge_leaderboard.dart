@@ -59,7 +59,12 @@ class _JoinSheetState extends State<_JoinSheet> {
     final c = widget.challenge;
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.all(FFTokens.spacingLg),
+        padding: EdgeInsets.fromLTRB(
+          FFTokens.spacingLg,
+          FFTokens.spacingLg,
+          FFTokens.spacingLg,
+          FFTokens.spacingLg + MediaQuery.of(context).viewInsets.bottom,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -69,70 +74,84 @@ class _JoinSheetState extends State<_JoinSheet> {
               style: theme.textTheme.titleLarge,
             ),
             const SizedBox(height: FFTokens.spacingMd),
-            if (c.mode == ChallengeMode.teams) ...[
-              Text(
-                context.tr('leaderboard.pickTeam'),
-                style: theme.textTheme.labelLarge,
-              ),
-              Wrap(
-                spacing: FFTokens.spacingSm,
-                children: [
-                  for (final t in c.teams)
-                    ChoiceChip(
-                      key: Key('join-team-${t.id}'),
-                      label: Text(t.name),
-                      selected: _teamId == t.id,
-                      onSelected: (_) => setState(() => _teamId = t.id),
-                    ),
-                ],
-              ),
-              const SizedBox(height: FFTokens.spacingMd),
-            ],
-            if (c.mode == ChallengeMode.gymVsGym) ...[
-              Text(
-                context.tr('leaderboard.pickGym'),
-                style: theme.textTheme.labelLarge,
-              ),
-              if (widget.myGyms.isEmpty)
-                Text(
-                  context.tr('leaderboard.noGyms'),
-                  style: theme.textTheme.bodySmall,
-                )
-              else
-                Wrap(
-                  spacing: FFTokens.spacingSm,
+            // Teams or gyms plus the notes can outgrow a small phone: the
+            // choices scroll, the title and Join button stay put.
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    for (final g in widget.myGyms)
-                      ChoiceChip(
-                        key: Key('join-gym-${g.gym.id}'),
-                        label: Text(g.gym.name ?? ''),
-                        selected: _gymId == g.gym.id,
-                        onSelected: (_) => setState(() => _gymId = g.gym.id),
+                    if (c.mode == ChallengeMode.teams) ...[
+                      Text(
+                        context.tr('leaderboard.pickTeam'),
+                        style: theme.textTheme.labelLarge,
                       ),
+                      Wrap(
+                        spacing: FFTokens.spacingSm,
+                        children: [
+                          for (final t in c.teams)
+                            ChoiceChip(
+                              key: Key('join-team-${t.id}'),
+                              label: Text(t.name),
+                              selected: _teamId == t.id,
+                              onSelected: (_) => setState(() => _teamId = t.id),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: FFTokens.spacingMd),
+                    ],
+                    if (c.mode == ChallengeMode.gymVsGym) ...[
+                      Text(
+                        context.tr('leaderboard.pickGym'),
+                        style: theme.textTheme.labelLarge,
+                      ),
+                      if (widget.myGyms.isEmpty)
+                        Text(
+                          context.tr('leaderboard.noGyms'),
+                          style: theme.textTheme.bodySmall,
+                        )
+                      else
+                        Wrap(
+                          spacing: FFTokens.spacingSm,
+                          children: [
+                            for (final g in widget.myGyms)
+                              ChoiceChip(
+                                key: Key('join-gym-${g.gym.id}'),
+                                label: Text(g.gym.name ?? ''),
+                                selected: _gymId == g.gym.id,
+                                onSelected: (_) =>
+                                    setState(() => _gymId = g.gym.id),
+                              ),
+                          ],
+                        ),
+                      const SizedBox(height: FFTokens.spacingMd),
+                    ],
+                    if (c.mode == ChallengeMode.department)
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          bottom: FFTokens.spacingMd,
+                        ),
+                        child: Text(
+                          context.tr('leaderboard.departmentNote'),
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ),
+                    FFAlert(
+                      key: const Key('join-sharing-note'),
+                      message: context.tr('leaderboard.joinNote'),
+                    ),
+                    const SizedBox(height: FFTokens.spacingSm),
+                    SwitchListTile(
+                      key: const Key('join-leaderboard'),
+                      contentPadding: EdgeInsets.zero,
+                      value: _optIn,
+                      onChanged: (v) => setState(() => _optIn = v),
+                      title: Text(context.tr('leaderboard.optIn')),
+                      subtitle: Text(context.tr('leaderboard.optInHint')),
+                    ),
                   ],
                 ),
-              const SizedBox(height: FFTokens.spacingMd),
-            ],
-            if (c.mode == ChallengeMode.department)
-              Padding(
-                padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
-                child: Text(
-                  context.tr('leaderboard.departmentNote'),
-                  style: theme.textTheme.bodySmall,
-                ),
               ),
-            FFAlert(
-              key: const Key('join-sharing-note'),
-              message: context.tr('leaderboard.joinNote'),
-            ),
-            const SizedBox(height: FFTokens.spacingSm),
-            SwitchListTile(
-              key: const Key('join-leaderboard'),
-              contentPadding: EdgeInsets.zero,
-              value: _optIn,
-              onChanged: (v) => setState(() => _optIn = v),
-              title: Text(context.tr('leaderboard.optIn')),
-              subtitle: Text(context.tr('leaderboard.optInHint')),
             ),
             const SizedBox(height: FFTokens.spacingSm),
             SizedBox(

@@ -313,6 +313,68 @@ void main() {
     expect(choice, (teamId: null, gymId: 'g2', leaderboardOptIn: true));
   });
 
+  for (final lang in ['en', 'sw']) {
+    testWidgets('join sheet scrolls on a small phone ($lang): no overflow', (
+      tester,
+    ) async {
+      // 320x568 logical: the smallest phones we support.
+      tester.view.physicalSize = const Size(640, 1136);
+      tester.view.devicePixelRatio = 2;
+      addTearDown(tester.view.reset);
+      final teams = [
+        for (var i = 1; i <= 12; i++)
+          {'id': 't$i', 'name': 'Team number $i from the office'},
+      ];
+      final c = _c(joined: false, mode: 'teams', teams: teams);
+      JoinChoice? choice;
+      final locale = FFLocale()..set(Locale(lang));
+      await tester.pumpWidget(
+        AppScope(
+          api: _FakeApi(),
+          auth: AuthState(_FakeApi()),
+          child: FFLocaleScope(
+            notifier: locale,
+            child: MaterialApp(
+              theme: buildTheme(),
+              home: Scaffold(
+                body: Builder(
+                  builder: (context) => TextButton(
+                    onPressed: () async =>
+                        choice = await showJoinChallengeSheet(
+                          context,
+                          challenge: c,
+                          myGyms: const [],
+                        ),
+                    child: const Text('open'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.byKey(const Key('join-sharing-note')), findsOneWidget);
+
+      // The last team and the leaderboard switch can be scrolled to.
+      await tester.ensureVisible(find.byKey(const Key('join-team-t12')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('join-team-t12')));
+      await tester.ensureVisible(find.byKey(const Key('join-leaderboard')));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      await tester.ensureVisible(find.byKey(const Key('join-confirm')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('join-confirm')));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(choice, (teamId: 't12', gymId: null, leaderboardOptIn: true));
+    });
+  }
+
   testWidgets(
     'leaderboard: where you would be, who chose to be listed, teams',
     (tester) async {
