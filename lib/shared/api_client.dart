@@ -70,6 +70,16 @@ class ApiClient {
 
   void setToken(String? token) => _token = token;
 
+  final List<void Function(String method, String path)> _successListeners = [];
+
+  /// Called after every request that got a 2xx answer (a sign the device is
+  /// online). Vendor walk-in sales use it to sync queued sales (S3).
+  void addSuccessListener(void Function(String method, String path) l) =>
+      _successListeners.add(l);
+
+  void removeSuccessListener(void Function(String method, String path) l) =>
+      _successListeners.remove(l);
+
   Future<dynamic> _request(
     String method,
     String path, {
@@ -158,7 +168,16 @@ class ApiClient {
         // route it does not have, a proxy's 502 page) still becomes an
         // ApiException, with no body: its HTML never reaches the UI.
         : _decodeErrorBody(res.body);
-    if (ok) return decoded;
+    if (ok) {
+      for (final l in List.of(_successListeners)) {
+        try {
+          l(method, path);
+        } catch (_) {
+          // A listener never breaks the request.
+        }
+      }
+      return decoded;
+    }
     // A 401 always means this bearer session can no longer be used.  Do not
     // rely on a particular backend error shape: gateways and proxies often
     // return their own 401 payloads.
@@ -2011,6 +2030,52 @@ class ApiClient {
       query.isEmpty ? path : '$path?${Uri(queryParameters: query).query}',
     );
   }
+
+  // ── Vendor walk-in sales (S3) ───────────────────────────────────────────
+
+  /// Records a walk-in sale. 201 and a replay (200, same `clientRef`) both
+  /// answer `{sale}`.
+  Future<Map<String, dynamic>> vendorRecordSale(
+    Map<String, dynamic> body,
+  ) async => await _request('POST', '/vendor/sales', body: body);
+
+  /// Walk-in sales, newest first, with the range summary. [from] / [to] are
+  /// EAT days (YYYY-MM-DD, inclusive).
+  Future<Map<String, dynamic>> vendorSales({
+    String? from,
+    String? to,
+    String? status,
+    bool mine = false,
+    int? limit,
+    String? cursor,
+  }) async {
+    final query = <String, String>{
+      'from': ?from,
+      'to': ?to,
+      if (status != null && status.isNotEmpty) 'status': status,
+      if (mine) 'createdBy': 'me',
+      if (limit != null) 'limit': '$limit',
+      if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+    };
+    return await _request(
+      'GET',
+      query.isEmpty
+          ? '/vendor/sales'
+          : '/vendor/sales?${Uri(queryParameters: query).query}',
+    );
+  }
+
+  Future<Map<String, dynamic>> vendorSale(String saleId) async =>
+      await _request('GET', '/vendor/sales/${Uri.encodeComponent(saleId)}');
+
+  Future<Map<String, dynamic>> vendorVoidSale(
+    String saleId,
+    String reason,
+  ) async => await _request(
+    'POST',
+    '/vendor/sales/${Uri.encodeComponent(saleId)}/void',
+    body: {'reason': reason},
+  );
 
   /// Products and variants at or below their reorder level.
   Future<List<dynamic>> vendorLowStock() async =>

@@ -443,13 +443,18 @@ Future<bool> openInvitePersonSheet(
   required String gymId,
   required String role,
   String orgType = 'gym',
+  bool vendorSales = false,
 }) async {
   final sent = await showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
-    builder: (_) =>
-        _InvitePersonSheet(gymId: gymId, role: role, orgType: orgType),
+    builder: (_) => _InvitePersonSheet(
+      gymId: gymId,
+      role: role,
+      orgType: orgType,
+      vendorSales: vendorSales,
+    ),
   );
   return sent == true;
 }
@@ -459,11 +464,15 @@ class _InvitePersonSheet extends StatefulWidget {
     required this.gymId,
     required this.role,
     this.orgType = 'gym',
+    this.vendorSales = false,
   });
 
   final String gymId;
   final String role;
   final String orgType;
+
+  /// S3: offer the shop's `sales` permission (walk-in sales on).
+  final bool vendorSales;
 
   @override
   State<_InvitePersonSheet> createState() => _InvitePersonSheetState();
@@ -619,11 +628,21 @@ class _InvitePersonSheetState extends State<_InvitePersonSheet> {
                 ],
                 onChanged: sent
                     ? null
-                    : (v) => setState(() => _vendorRole = v ?? _vendorRole),
+                    : (v) => setState(() {
+                        _vendorRole = v ?? _vendorRole;
+                        // Q-15: the Sales role starts with `sales`.
+                        if (_vendorRole == 'sales' && widget.vendorSales) {
+                          _vendorPerms.add('sales');
+                        }
+                      }),
               ),
               // An admin holds every permission, so there is nothing to choose.
               if (_vendorRole != 'admin')
-                for (final permission in _vendorPermissions)
+                for (final permission in [
+                  ..._vendorPermissions.take(2),
+                  if (widget.vendorSales) 'sales',
+                  ..._vendorPermissions.skip(2),
+                ])
                   CheckboxListTile(
                     key: Key('invite-vendor-permission-$permission'),
                     dense: true,

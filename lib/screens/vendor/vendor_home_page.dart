@@ -28,6 +28,9 @@ import 'stock/adjust_stock_sheet.dart';
 import 'stock/stock_history_page.dart';
 import 'stock/stock_options.dart';
 import 'stock/variant_rows_editor.dart';
+import 'sales/offline_sale_queue.dart';
+import 'sales/sales_history_tab.dart';
+import 'sales/sales_widgets.dart';
 
 /// Bottom padding for vendor lists: the extended FAB (56) plus margins.
 const vendorFabClearance = 96.0;
@@ -36,7 +39,7 @@ class VendorHomePage extends StatefulWidget {
   const VendorHomePage({super.key, this.open, this.filter});
 
   /// The section to show first — where a notification leads: `orders`,
-  /// `enquiries`, `products` or `payments`.
+  /// `enquiries`, `products`, `payments` or `sales`.
   final String? open;
 
   /// `low`: start the product list on the low-stock filter (stock ledger).
@@ -61,6 +64,8 @@ class _VendorHomePageState extends State<VendorHomePage> {
   VendorTools _tools = VendorTools.off;
   LowStockIndex _low = LowStockIndex.empty();
   late bool _lowOnly = widget.filter == 'low';
+  // Vendor tools · S3: walk-in sales kept on this device (synced from here).
+  SalesSession? _sales;
 
   // PHOTO_HERO_UI (spec §25.2): a band hero on Products only.
   final _heroKey = GlobalKey();
@@ -169,14 +174,27 @@ class _VendorHomePageState extends State<VendorHomePage> {
     'orders': 1,
     'payments': 2,
     'enquiries': 3,
+    'sales': _salesSection,
   };
+
+  /// S3: the Sales tab (after Orders in the bar).
+  static const _salesSection = 6;
 
   /// Shows the section a notification is about, if this person may see it.
   void _show(String? part) {
     final section = _sectionOf[part];
-    if (section == null || !_sections.contains(section)) return;
+    if (section == null) return;
+    // Sales appears once the tools answer; ask for it now and the tab
+    // shows when it does (the bar falls back to the first section).
+    if (section == _salesSection && _can('sales')) {
+      setState(() => _tab = section);
+      return;
+    }
+    if (!_sections.contains(section)) return;
     setState(() => _tab = section);
   }
+
+  bool get _walkInSales => _tools.walkInSales && _can('sales');
 
   @override
   void didUpdateWidget(VendorHomePage old) {
@@ -191,6 +209,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
     final sections = <int>[
       if (_can('products')) 0,
       if (_can('orders')) 1,
+      if (_walkInSales) _salesSection,
       if (_can('payments') || _can('reports')) 2,
       if (_can('customers')) 3,
       if (_can('staff') ||
@@ -204,6 +223,9 @@ class _VendorHomePageState extends State<VendorHomePage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _sales = SalesSession.of(context)?..attach();
+      _sales?.signedIn();
       _refresh();
       if (mounted) _show(widget.open);
       // Vendors have no sign-up form of their own, so the vendor terms are
@@ -285,6 +307,9 @@ class _VendorHomePageState extends State<VendorHomePage> {
     );
     final enquiries = part(_can('customers'), api.vendorEnquiries, <dynamic>[]);
     final staff = part(_can('staff'), api.vendorStaff, <dynamic>[]);
+    // Known before the sections are drawn, so a sales-only staff member
+    // opens on Sales without a "no access" flash.
+    final toolsNow = await tools;
     final loaded = (
       products: maps(await products),
       orders: maps(await orders),
@@ -309,14 +334,26 @@ class _VendorHomePageState extends State<VendorHomePage> {
       _enquiries = loaded.enquiries ?? _enquiries;
       _staff = loaded.staff ?? _staff;
       _staffDisabled = staffDisabled;
+      _tools = toolsNow;
       _loading = false;
     });
+    if (toolsNow.walkInSales) {
+      _sales?.featureOn();
+    } else {
+      _sales?.featureOff();
+    }
     if (staffDisabled) {
       FFSnack.error(context, context.tr('error.reason.vendorStaffInactive'));
     } else if (failed) {
       FFSnack.error(context, context.tr('vendor.loadFailed'));
     }
-    await _loadStockTools(await tools);
+    await _loadStockTools(toolsNow);
+  }
+
+  @override
+  void dispose() {
+    _sales?.detach();
+    super.dispose();
   }
 
   /// The stock ledger's extras: on/off, and which products are low. The
@@ -522,6 +559,8 @@ class _VendorHomePageState extends State<VendorHomePage> {
   }
 
   Future<void> _signOut() async {
+    if (!await confirmLeaveWithQueuedSales(context)) return;
+    if (!mounted) return;
     await AppScope.of(context).auth.signOut();
     if (mounted) context.go(AppRoutes.language);
   }
@@ -543,7 +582,10 @@ class _VendorHomePageState extends State<VendorHomePage> {
         actions: [
           // Orders, questions and decisions arrive here as well as by push.
           const InboxBellButton(),
-          const PersonaSwitchButton(),
+          PersonaSwitchButton(
+            confirmLeave: (c) =>
+                confirmLeaveWithQueuedSales(c, switching: true),
+          ),
           // English <-> Swahili in place, the same shared switch members and
           // owners use; the choice is remembered (owner, 2026-10-19).
           const LanguageToggleButton(key: Key('vendor-language')),
@@ -604,6 +646,9 @@ class _VendorHomePageState extends State<VendorHomePage> {
                       2 => _paymentsTab(),
                       3 => _enquiriesTab(),
                       4 => _businessTab(),
+                      _salesSection => const VendorSalesTab(
+                        key: Key('vendor-sales-tab'),
+                      ),
                       _ => _restrictedTab(),
                     },
                   ),
@@ -619,6 +664,27 @@ class _VendorHomePageState extends State<VendorHomePage> {
               onPressed: _busy ? null : () => _editProduct(),
               icon: const Icon(Icons.add),
               label: Text(context.tr('vendor.addProduct')),
+            )
+          : tab == _salesSection && !_loading && _sales != null
+          ? ListenableBuilder(
+              listenable: _sales!,
+              builder: (context, _) {
+                final n = _sales!.draftCount;
+                return FloatingActionButton.extended(
+                  key: const Key('vendor-pos-new'),
+                  onPressed: _staffDisabled
+                      ? null
+                      : () => context.push(posRoute),
+                  icon: const Icon(Icons.add_shopping_cart),
+                  label: Text(
+                    n > 0
+                        ? fillIn(context.tr('vendor.pos.continueSale'), {
+                            'n': n,
+                          })
+                        : context.tr('vendor.pos.newSale'),
+                  ),
+                );
+              },
             )
           : null,
       // A navigation bar needs two or more destinations; with one section
@@ -643,6 +709,13 @@ class _VendorHomePageState extends State<VendorHomePage> {
                     icon: const Icon(Icons.receipt_long_outlined),
                     selectedIcon: const Icon(Icons.receipt_long),
                     label: context.tr('vendor.orders'),
+                  ),
+                if (sections.contains(_salesSection))
+                  NavigationDestination(
+                    key: const Key('vendor-nav-sales'),
+                    icon: const Icon(Icons.point_of_sale_outlined),
+                    selectedIcon: const Icon(Icons.point_of_sale),
+                    label: context.tr('vendor.sales.tab'),
                   ),
                 if (sections.contains(2))
                   NavigationDestination(
@@ -1203,6 +1276,31 @@ class _VendorHomePageState extends State<VendorHomePage> {
             ],
           ),
         ),
+        // S3: sales still on this device while the Sales tab is gone
+        // (feature switched off). They are never deleted for that.
+        if (_sales != null)
+          ListenableBuilder(
+            listenable: _sales!,
+            builder: (context, _) => _sales!.isEmpty || _walkInSales
+                ? const SizedBox.shrink()
+                : Padding(
+                    padding: const EdgeInsets.only(top: FFTokens.spacingMd),
+                    child: FFCard(
+                      child: ListTile(
+                        key: const Key('vendor-sales-waiting-tile'),
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.cloud_upload_outlined),
+                        title: Text(
+                          fillIn(context.tr('vendor.sync.tile'), {
+                            'n': _sales!.all.length,
+                          }),
+                        ),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => context.push(salesSyncRoute),
+                      ),
+                    ),
+                  ),
+          ),
         const SizedBox(height: FFTokens.spacingLg),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1304,6 +1402,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
         gymId: _vendorId,
         role: 'staff',
         orgType: 'vendor',
+        vendorSales: _tools.walkInSales,
       );
       if (mounted) await _refresh();
       return;
@@ -1312,7 +1411,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) => const VendorStaffForm(),
+      builder: (_) => VendorStaffForm(walkInSales: _tools.walkInSales),
     );
     if (result == null || !mounted) return;
     await AppScope.of(context).api.vendorCreateStaff(result);
@@ -2191,7 +2290,10 @@ class _VendorProfileFormState extends State<VendorProfileForm> {
 }
 
 class VendorStaffForm extends StatefulWidget {
-  const VendorStaffForm({super.key});
+  const VendorStaffForm({super.key, this.walkInSales = false});
+
+  /// S3: offer the `sales` permission (only while walk-in sales are on).
+  final bool walkInSales;
 
   @override
   State<VendorStaffForm> createState() => _VendorStaffFormState();
@@ -2235,9 +2337,10 @@ class _VendorStaffFormState extends State<VendorStaffForm> {
 
   @override
   Widget build(BuildContext context) {
-    const permissions = [
+    final permissions = [
       'products',
       'orders',
+      if (widget.walkInSales) 'sales',
       'customers',
       'reports',
       'payments',
@@ -2306,7 +2409,13 @@ class _VendorStaffFormState extends State<VendorStaffForm> {
                     child: Text(context.tr('vendor.roleCare')),
                   ),
                 ],
-                onChanged: (value) => setState(() => _role = value ?? _role),
+                onChanged: (value) => setState(() {
+                  _role = value ?? _role;
+                  // Q-15: the Sales role starts with the sales permission.
+                  if (_role == 'sales' && widget.walkInSales) {
+                    _permissions.add('sales');
+                  }
+                }),
               ),
               for (final permission in permissions)
                 CheckboxListTile(
@@ -2335,4 +2444,56 @@ class _VendorStaffFormState extends State<VendorStaffForm> {
       ),
     );
   }
+}
+
+/// S3: before signing out or switching persona with sales still on this
+/// device, say they stay here and offer Sync now. True to carry on.
+Future<bool> confirmLeaveWithQueuedSales(
+  BuildContext context, {
+  bool switching = false,
+}) async {
+  final session = SalesSession.of(context);
+  if (session == null) return true;
+  await session.load();
+  if (!context.mounted) return false;
+  final n = session.all.length;
+  if (n == 0) return true;
+  final choice = await showDialog<String>(
+    context: context,
+    builder: (dialog) => AlertDialog(
+      key: const Key('vendor-sales-leave-dialog'),
+      content: Text(fillIn(context.tr('vendor.sync.signOutWarn'), {'n': n})),
+      actions: [
+        FFButton(
+          label: context.tr('common.cancel'),
+          variant: FFButtonVariant.ghost,
+          visualDensity: VisualDensity.standard,
+          onPressed: () => Navigator.of(dialog).pop(),
+        ),
+        FFButton(
+          key: const Key('vendor-sales-leave-sync'),
+          label: context.tr('vendor.sync.now'),
+          variant: FFButtonVariant.secondary,
+          visualDensity: VisualDensity.standard,
+          onPressed: () => Navigator.of(dialog).pop('sync'),
+        ),
+        FFButton(
+          key: const Key('vendor-sales-leave-anyway'),
+          label: context.tr(
+            switching
+                ? 'vendor.sync.switchAnyway'
+                : 'vendor.sync.signOutAnyway',
+          ),
+          variant: FFButtonVariant.destructive,
+          visualDensity: VisualDensity.standard,
+          onPressed: () => Navigator.of(dialog).pop('leave'),
+        ),
+      ],
+    ),
+  );
+  if (choice == 'sync') {
+    await session.sync(manual: true);
+    return false;
+  }
+  return choice == 'leave';
 }
