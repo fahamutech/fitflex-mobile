@@ -719,7 +719,9 @@ GoRouter buildRouter(AuthState auth) {
           final dup = extra is Map && extra['phoneDuplicate'] is Map
               ? Map<String, dynamic>.from(extra['phoneDuplicate'] as Map)
               : null;
+          // Keyed by id: another customer is a fresh page (UAT D1).
           return CustomerProfilePage(
+            key: ValueKey('customer-${state.pathParameters['customerId']}'),
             customerId: state.pathParameters['customerId']!,
             phoneDuplicate: dup,
           );

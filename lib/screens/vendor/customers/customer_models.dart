@@ -514,7 +514,9 @@ String statementShareText({
           'date': formatDay(s.dueDate, locale: lang),
         }),
         if (s.daysOverdue > 0)
-          _fill(t('vendor.customers.daysOverdue'), {'n': s.daysOverdue}),
+          _fill(t(pluralKey('vendor.customers.daysOverdue', s.daysOverdue)), {
+            'n': s.daysOverdue,
+          }),
       ];
       b.writeln('  ${parts.join(' · ')}');
     }

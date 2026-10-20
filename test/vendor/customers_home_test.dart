@@ -10,6 +10,8 @@ import 'package:fitflexmobile/screens/vendor/vendor_home_page.dart';
 import 'package:fitflexmobile/shared/i18n.dart';
 import 'package:fitflexmobile/shared/inbox/inbox_controller.dart';
 
+import 'package:fitflexmobile/screens/vendor/customers/customers_widgets.dart';
+
 import '../support/recording_api.dart';
 import 'customers_support.dart';
 import 'stock_support.dart';
@@ -111,7 +113,10 @@ void main() {
     );
     expect(find.byKey(const Key('owed-summary')), findsOneWidget);
     expect(find.byKey(const Key('owed-row-cus_1')), findsOneWidget);
-    expect(find.text(host.tr('vendor.aging.d1_30')), findsOneWidget);
+    expect(
+      find.text(agingTileLabel('d1_30', host.tr('vendor.aging.d1_30'))),
+      findsOneWidget,
+    );
     api.clear();
     await tapVisible(tester, find.byKey(const Key('owed-bucket-d1_30')));
     final req = api.only('GET', '/vendor/receivables/aging');
