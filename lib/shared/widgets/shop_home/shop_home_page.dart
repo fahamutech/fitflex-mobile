@@ -56,6 +56,8 @@ class ShopHomeView extends StatefulWidget {
     this.heroFocusNode,
     this.onHasContent,
     this.onBanner,
+    this.bannerIndex = 0,
+    this.onBannerIndex,
   });
 
   final ShopHomeMode mode;
@@ -103,6 +105,11 @@ class ShopHomeView extends StatefulWidget {
   /// A hero banner's button was tapped (Phase 2 S1): open its target. The
   /// carousel is shown only when this is set and the server sent banners.
   final ValueChanged<ShopBanner>? onBanner;
+
+  /// The slide last shown, so coming back from a banner's target shows it
+  /// again.
+  final int bannerIndex;
+  final ValueChanged<int>? onBannerIndex;
 
   @override
   State<ShopHomeView> createState() => ShopHomeViewState();
@@ -404,6 +411,8 @@ class ShopHomeViewState extends State<ShopHomeView> {
               child: ShopBannerCarousel(
                 banners: banners,
                 onOpen: widget.onBanner!,
+                initialIndex: widget.bannerIndex,
+                onIndexChanged: widget.onBannerIndex,
               ),
             ),
           )
@@ -421,6 +430,19 @@ class ShopHomeViewState extends State<ShopHomeView> {
                 headlineLead: context.tr('hero.shop.lead'),
                 headlineAccent: context.tr('hero.shop.accent'),
               ),
+            ),
+          )
+        // Banners on but none live for this role, and no band (owner and
+        // trainer shops; member with PHOTO_HERO_UI off): the navy fallback
+        // slide (S1-AC-15). Not while the shop is still getting ready.
+        : widget.onBanner != null &&
+              data != null &&
+              data.bannersOn &&
+              data.allProductsCount != 0
+        ? _padded(
+            Padding(
+              padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
+              child: ShopFallbackSlide(onBrowseAll: widget.onBrowseAll),
             ),
           )
         : null;

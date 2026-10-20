@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../app_scope.dart';
+import '../../../router.dart';
 import '../../../shared/api_client.dart';
 import '../../../shared/api_error_message.dart';
 import '../../../shared/components/components.dart';
@@ -111,6 +113,9 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
   final Map<String, GlobalKey> _anchors = {};
 
   PickedBannerImage? _image;
+
+  /// Why the last picked photo was not kept (type, size, pixels).
+  String? _pickError;
 
   /// The banner's photo already on the server (published files, or the
   /// private preview that needs the session).
@@ -234,7 +239,7 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
     final out = <String, String>{};
     final image = _image;
     if (image == null && !_hasExistingImage) {
-      out['image'] = context.tr('merch.banner.imageRequired');
+      out['image'] = _pickError ?? context.tr('merch.banner.imageRequired');
     } else if (image != null) {
       final problem = image.problemKey;
       if (problem != null) out['image'] = context.tr(problem);
@@ -342,6 +347,7 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
   }
 
   String? _errorFor(String key) =>
+      (key == 'image' ? _serverErrors[key] ?? _pickError : null) ??
       _serverErrors[key] ?? (_submitted ? _errors()[key] : null);
 
   Map<String, dynamic> _body() {
@@ -624,7 +630,7 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
       if (!mounted) return;
       messenger.success(locale.t('merch.sent'));
       _dirty = false;
-      Navigator.of(context).pop(true);
+      _leave(true);
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
@@ -632,7 +638,7 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
       if (closing != null) {
         messenger.error(locale.t(closing));
         _dirty = false;
-        Navigator.of(context).pop(true);
+        _leave(true);
         return;
       }
       final account = _accountError(e);
@@ -698,10 +704,15 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
     final picker = debugBannerImagePicker ?? pickBannerImageFromGallery;
     final picked = await picker();
     if (picked == null || !mounted) return;
+    // Checked at once (type, 5 MB, 1600 × 1000): a photo that cannot be
+    // used is not kept, and says why under the field.
+    final problem = picked.problemKey;
     setState(() {
+      _pickError = problem == null ? null : context.tr(problem);
+      _serverErrors.remove('image');
+      if (problem != null) return;
       _image = picked;
       _dirty = true;
-      _serverErrors.remove('image');
     });
   }
 
@@ -762,7 +773,18 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
   Future<void> _cancel() async {
     if (await _confirmDiscard() && mounted) {
       _dirty = false;
-      Navigator.of(context).pop(false);
+      _leave(false);
+    }
+  }
+
+  /// Back to the list: the page that opened the form, or (when the form was
+  /// opened from its own address, e.g. after a refresh) /vendor/merch.
+  void _leave(bool sent) {
+    final nav = Navigator.of(context);
+    if (nav.canPop()) {
+      nav.pop(sent);
+    } else {
+      context.go(AppRoutes.vendorMerch);
     }
   }
 
@@ -826,6 +848,8 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
             controller: _text[field]![l],
             focusNode: _node('$field.$l'),
             label: context.tr('merch.field.$l'),
+            // "Headline: first part, English": the field and the language.
+            semanticsLabel: '$label, ${context.tr('merch.field.$l')}',
             errorText: _errorFor('$field.$l'),
             enabled: !_busy,
             maxLines: field == 'subline' || field == 'imageAlt' ? 2 : 1,
@@ -897,6 +921,8 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
               ),
               icon: Icons.photo_library_outlined,
               variant: FFButtonVariant.secondary,
+              visualDensity: VisualDensity.standard,
+              maxLines: 2,
               onPressed: _busy ? null : _pickImage,
             ),
           ),
@@ -1195,6 +1221,7 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
               icon: Icons.event_outlined,
               variant: FFButtonVariant.secondary,
               fullWidth: true,
+              visualDensity: VisualDensity.standard,
               maxLines: 2,
               semanticLabel:
                   '${context.tr(start ? 'merch.dates.starts' : 'merch.dates.ends')}, '
@@ -1334,6 +1361,8 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
             key: const Key('merch-send'),
             label: context.tr('merch.send'),
             fullWidth: true,
+            visualDensity: VisualDensity.standard,
+            maxLines: 2,
             loading: _busy,
             onPressed: _busy ? null : _send,
           ),
@@ -1343,6 +1372,7 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
             label: context.tr('common.cancel'),
             variant: FFButtonVariant.ghost,
             fullWidth: true,
+            visualDensity: VisualDensity.standard,
             onPressed: _busy ? null : _cancel,
           ),
         ],
@@ -1355,7 +1385,7 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
         if (await _confirmDiscard() && mounted) {
           _dirty = false;
           setState(() {});
-          if (context.mounted) Navigator.of(context).pop(false);
+          if (context.mounted) _leave(false);
         }
       },
       child: Scaffold(
