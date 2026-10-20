@@ -31,6 +31,7 @@ class TrainerSessionsSheet extends StatefulWidget {
 
 class _TrainerSessionsSheetState extends State<TrainerSessionsSheet> {
   List<Map<String, dynamic>> _sessions = [];
+  String? _busyId;
   bool _loading = true;
   DateTime _date = DateTime.now();
 
@@ -55,6 +56,63 @@ class _TrainerSessionsSheetState extends State<TrainerSessionsSheet> {
       });
     } on ApiException {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  /// What the server says I may do with this booked session now
+  /// (`actions.canComplete`, `actions.canMarkNoShow`). No `actions` (flag
+  /// off, or a manual session) means neither.
+  bool _allowed(Map<String, dynamic> s, String action) =>
+      s['source'] == 'booking' && (s['actions'] as Map?)?[action] == true;
+
+  /// Mark completed, or record that the client didn't come, after a confirm
+  /// that says what follows.
+  Future<void> _recordOutcome(
+    Map<String, dynamic> s, {
+    required bool noShow,
+  }) async {
+    final label = context.tr(
+      noShow ? 'trainer.markNoShow' : 'trainer.completeSession',
+    );
+    final confirmed = await showFFConfirmDialog(
+      context,
+      title: label,
+      message: context.tr(
+        noShow ? 'trainer.markNoShowConfirm' : 'trainer.completeSessionConfirm',
+      ),
+      cancelLabel: context.tr('common.close'),
+      confirmLabel: label,
+      confirmKey: Key(
+        noShow ? 'trainer-noshow-confirm' : 'trainer-complete-confirm',
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final messenger = FFSnack.of(context);
+    final locale = FFLocaleScope.of(context);
+    final done = context.tr(
+      noShow ? 'trainer.noShowRecorded' : 'trainer.sessionCompleted',
+    );
+    final api = AppScope.of(context).api;
+    final id = s['id'].toString();
+    setState(() => _busyId = id);
+    try {
+      if (noShow) {
+        await api.trainerMarkNoShow(id);
+      } else {
+        await api.trainerCompleteBooking(id);
+      }
+      await _load();
+      messenger.success(done);
+    } catch (e) {
+      messenger.error(
+        e is ApiException && e.code == 'feature_disabled'
+            ? locale.t('trainer.outcomesUnavailable')
+            : errorMessage(locale, e),
+      );
+      // What I may do may have changed (window closed, flag turned off).
+      await _load();
+    } finally {
+      if (mounted) setState(() => _busyId = null);
     }
   }
 
@@ -160,7 +218,10 @@ class _TrainerSessionsSheetState extends State<TrainerSessionsSheet> {
                         memberName ??
                         s['customerName']?.toString() ??
                         context.tr('trainer.walkIn');
-                    return ListTile(
+                    final canComplete = _allowed(s, 'canComplete');
+                    final canNoShow = _allowed(s, 'canMarkNoShow');
+                    final busy = _busyId == s['id']?.toString();
+                    final tile = ListTile(
                       contentPadding: EdgeInsets.zero,
                       onLongPress: _canCancel(s)
                           ? () => _cancelBooking(s)
@@ -171,7 +232,21 @@ class _TrainerSessionsSheetState extends State<TrainerSessionsSheet> {
                             : Icons.person_add_alt,
                         color: Theme.of(context).colorScheme.primary,
                       ),
-                      title: Text(customer),
+                      // The badge drops under the name when the row is narrow.
+                      title: Wrap(
+                        spacing: FFTokens.spacingXs,
+                        runSpacing: FFTokens.spacingXs,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Text(customer),
+                          if (s['status'] == 'no_show')
+                            FFBadge(
+                              key: Key('trainer-status-${s['id']}'),
+                              label: context.tr('booking.status.no_show'),
+                              tone: FFBadgeTone.gray,
+                            ),
+                        ],
+                      ),
                       subtitle: Text(
                         [
                           if (s['slot'] != null) s['slot'].toString(),
@@ -198,6 +273,42 @@ class _TrainerSessionsSheetState extends State<TrainerSessionsSheet> {
                             ),
                         ],
                       ),
+                    );
+                    if (!canComplete && !canNoShow) return tile;
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        tile,
+                        Wrap(
+                          spacing: FFTokens.spacingXs,
+                          runSpacing: FFTokens.spacingXs,
+                          children: [
+                            if (canComplete)
+                              FFButton(
+                                key: Key('trainer-complete-${s['id']}'),
+                                label: context.tr('trainer.completeSession'),
+                                onPressed: busy
+                                    ? null
+                                    : () => _recordOutcome(s, noShow: false),
+                                variant: FFButtonVariant.secondary,
+                                size: FFButtonSize.sm,
+                                icon: Icons.check_circle_outline,
+                              ),
+                            if (canNoShow)
+                              FFButton(
+                                key: Key('trainer-noshow-${s['id']}'),
+                                label: context.tr('trainer.markNoShow'),
+                                onPressed: busy
+                                    ? null
+                                    : () => _recordOutcome(s, noShow: true),
+                                variant: FFButtonVariant.ghost,
+                                size: FFButtonSize.sm,
+                                icon: Icons.person_off_outlined,
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: FFTokens.spacingSm),
+                      ],
                     );
                   },
                 ),

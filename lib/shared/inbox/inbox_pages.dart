@@ -80,6 +80,7 @@ String? routeForMessage(BuildContext context, InboxMessage m) {
     gymId: m.gymId,
     trainerId: m.data['trainerId']?.toString(),
     planId: m.data['planId']?.toString(),
+    bookingId: m.data['bookingId']?.toString(),
   );
 }
 
@@ -234,16 +235,14 @@ class _InboxPageState extends State<InboxPage> {
       body: context.tr('friendInvite.cardBody').replaceFirst('{name}', who),
     );
   }
-  // Partner notices may carry their own Swahili (e.g. vendor_low_stock).
-  if (FFLocaleScope.of(context).locale.languageCode == 'sw') {
-    final title = m.data['titleSw']?.toString() ?? '';
-    final body = m.data['bodySw']?.toString() ?? '';
-    return (
-      title: title.isEmpty ? m.title : title,
-      body: body.isEmpty ? m.body : body,
-    );
-  }
-  return (title: m.title, body: m.body);
+  // Some notices carry their own Swahili (vendor_low_stock,
+  // trainer_booking_no_show…).
+  return localisedNoticeText(
+    lang: FFLocaleScope.of(context).locale.languageCode,
+    data: m.data,
+    title: m.title,
+    body: m.body,
+  );
 }
 
 class _MessageTile extends StatelessWidget {

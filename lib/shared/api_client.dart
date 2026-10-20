@@ -1647,7 +1647,9 @@ class ApiClient {
     Map<String, dynamic> data,
   ) async => await _request('PUT', '/trainer/me', body: data);
 
-  /// C3: sessions for a date (bookings + manual). Defaults to today.
+  /// C3: sessions for a date (bookings + manual). Defaults to today. With
+  /// TRAINER_SESSION_OUTCOMES on, each `source: "booking"` entry carries
+  /// `actions: { canComplete, canMarkNoShow }` (fitflex-functions#231).
   Future<Map<String, dynamic>> trainerSessions({String? date}) async {
     final path = (date == null || date.isEmpty)
         ? '/trainer/sessions'
@@ -1954,6 +1956,22 @@ class ApiClient {
   /// Trainer: cancel a session any time before it starts; the member is refunded.
   Future<Map<String, dynamic>> trainerCancelBooking(String bookingId) async =>
       await _request('POST', '/trainer/bookings/$bookingId/cancel');
+
+  /// Trainer: the session took place. Only once it has started
+  /// (409 `session_not_started` with `startsAt`).
+  Future<Map<String, dynamic>> trainerCompleteBooking(String bookingId) async =>
+      await _request(
+        'POST',
+        '/trainer/bookings/${Uri.encodeComponent(bookingId)}/complete',
+      );
+
+  /// Trainer: the client didn't come. The session is paid as booked and the
+  /// member is told. 404 `feature_disabled` while the flag is off.
+  Future<Map<String, dynamic>> trainerMarkNoShow(String bookingId) async =>
+      await _request(
+        'POST',
+        '/trainer/bookings/${Uri.encodeComponent(bookingId)}/no-show',
+      );
 
   Future<Map<String, dynamic>> myRefunds() async =>
       await _request('GET', '/me/refunds');
