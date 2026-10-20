@@ -9,11 +9,13 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:fitflexmobile/router.dart';
 import 'package:fitflexmobile/screens/vendor/merch/banner_form_page.dart';
+import 'package:fitflexmobile/screens/vendor/merch/banner_form_route.dart';
 import 'package:fitflexmobile/screens/vendor/merch/banner_models.dart';
 import 'package:fitflexmobile/screens/vendor/merch/vendor_banners_page.dart';
 import 'package:fitflexmobile/screens/vendor/vendor_home_page.dart';
@@ -151,7 +153,31 @@ Future<PageHost> _pumpPage(
   lang: lang,
   textScale: scale,
   size: const Size(400, 900),
+  extraRoutes: merchRoutes,
 );
+
+/// The banner form's own addresses (QA round 1, item 16).
+final merchRoutes = <RouteBase>[
+  GoRoute(
+    path: AppRoutes.vendorMerch,
+    builder: (_, state) =>
+        VendorBannersPage(now: _clock, item: state.uri.queryParameters['item']),
+  ),
+  GoRoute(
+    path: AppRoutes.vendorMerchNew,
+    builder: (_, state) => VendorBannerFormRoute(
+      now: _clock,
+      copyId: state.uri.queryParameters['copy'],
+    ),
+  ),
+  GoRoute(
+    path: '/vendor/merch/banner/:bannerId/edit',
+    builder: (_, state) => VendorBannerFormRoute(
+      now: _clock,
+      bannerId: state.pathParameters['bannerId'],
+    ),
+  ),
+];
 
 Finder _key(String k) => find.byKey(Key(k));
 
@@ -1490,6 +1516,321 @@ void main() {
       expect(b.reasonNote, 'Says "best in Dar"');
       expect(b.rejectLabelKey, 'merch.reject.claim');
       expect(b.ctaKey, 'view_product');
+    });
+  });
+
+  group('QA round 1 (design-QA + UAT)', () {
+    apiTest('#4 Propose, Send, Cancel, Choose image, dates are 48dp', (
+      tester,
+      api,
+    ) async {
+      _seedPage(api);
+      await _pumpPage(tester, api);
+      expect(
+        tester.getSize(_key('merch-propose')).height,
+        greaterThanOrEqualTo(48),
+      );
+      await _openNewForm(tester);
+      for (final k in [
+        'merch-send',
+        'merch-cancel',
+        'merch-pick-image',
+        'merch-startsAt',
+        'merch-endsAt',
+      ]) {
+        await tester.ensureVisible(_key(k));
+        expect(
+          tester.getSize(_key(k)).height,
+          greaterThanOrEqualTo(48),
+          reason: k,
+        );
+      }
+    });
+
+    apiTest('#5 each text field is read as field + language', (
+      tester,
+      api,
+    ) async {
+      final handle = tester.ensureSemantics();
+      _seedPage(api);
+      await _pumpPage(tester, api);
+      await _openNewForm(tester);
+      expect(
+        tester
+            .getSemantics(
+              find
+                  .descendant(
+                    of: _key('merch-field-headlineLead-en'),
+                    matching: find.byType(EditableText),
+                  )
+                  .first,
+            )
+            .label,
+        contains('Headline: first part, English'),
+      );
+      expect(
+        tester
+            .getSemantics(
+              find
+                  .descendant(
+                    of: _key('merch-field-imageAlt-sw'),
+                    matching: find.byType(EditableText),
+                  )
+                  .first,
+            )
+            .label,
+        contains('Image description, Kiswahili'),
+      );
+      handle.dispose();
+    });
+
+    test('#6 links and phone numbers are checked before prices', () {
+      expect(bannerTextProblem('Call 0712 345 678'), 'contact');
+      expect(bannerTextProblem('Piga +255 712 345 678'), 'contact');
+      expect(bannerTextProblem('TSh 50,000'), 'price');
+    });
+
+    apiTest('#6 a phone number in the form says "Remove links…"', (
+      tester,
+      api,
+    ) async {
+      _seedPage(api);
+      final host = await _pumpPage(tester, api);
+      await _openNewForm(tester);
+      await _type(tester, 'headlineAccent', 'en', 'call 0712 345 678');
+      await _send(tester);
+      expect(
+        _errorText(tester, 'headlineAccent', 'en'),
+        host.tr('merch.banner.noLinks'),
+      );
+    });
+
+    apiTest('#7 pending vendor: spec copy + Verification centre; its banners '
+        'listed without Edit or Send', (tester, api) async {
+      _seedPage(
+        api,
+        banners: [_banner('b5', 'draft'), _banner('b1', 'pending_approval')],
+      );
+      final host = await _pumpPage(
+        tester,
+        api,
+        user: const {
+          'id': 'v1',
+          'userType': 'vendor',
+          'approvalStatus': 'pending_approval',
+        },
+      );
+      expect(_key('merch-pending'), findsOneWidget);
+      expect(find.text(host.tr('merch.pendingTitle')), findsOneWidget);
+      expect(find.text(host.tr('merch.pendingBody')), findsOneWidget);
+      expect(find.text('Open Verification centre'), findsOneWidget);
+      expect(_key('merch-propose'), findsNothing);
+      expect(_key('merch-banner-b5'), findsOneWidget);
+      expect(_key('merch-edit-b5'), findsNothing);
+      expect(_key('merch-submit-b5'), findsNothing);
+      // Taking one back is always allowed.
+      expect(_key('merch-withdraw-b1'), findsOneWidget);
+    });
+
+    apiTest('#7 suspended (staff): no Propose, no Edit', (tester, api) async {
+      _seedPage(api);
+      api.on(
+        'GET /vendor/shop-banners',
+        _list(
+          [_banner('b1', 'pending_approval')],
+          canPropose: false,
+          reason: 'vendor_suspended',
+        ),
+      );
+      final host = await _pumpPage(
+        tester,
+        api,
+        user: const {
+          'id': 's1',
+          'userType': 'vendor_staff',
+          'vendorId': 'v1',
+          'vendorPermissions': ['products'],
+        },
+      );
+      expect(_key('merch-propose'), findsNothing);
+      expect(find.text(host.tr('merch.suspended')), findsOneWidget);
+      expect(_key('merch-edit-b1'), findsNothing);
+    });
+
+    apiTest('#8 the page title wraps (Swahili, 130%), never "…"', (
+      tester,
+      api,
+    ) async {
+      _seedPage(api);
+      await pumpPage(
+        tester,
+        api,
+        VendorBannersPage(now: _clock),
+        user: vendorUser,
+        lang: 'sw',
+        textScale: 1.3,
+        size: const Size(375, 812),
+        extraRoutes: merchRoutes,
+      );
+      expect(tester.takeException(), isNull);
+      final title = tester.widget<Text>(_key('merch-title'));
+      expect(title.maxLines, 2);
+      expect(title.overflow, isNot(TextOverflow.ellipsis));
+      final paragraph = tester.renderObject<RenderParagraph>(
+        find.descendant(
+          of: _key('merch-title'),
+          matching: find.byType(RichText),
+        ),
+      );
+      expect(paragraph.didExceedMaxLines, isFalse);
+    });
+
+    apiTest('#9 "Ended" uses endedAt', (tester, api) async {
+      _seedPage(
+        api,
+        banners: [
+          {
+            ..._banner('b8', 'ended', statusReason: 'ended_by_vendor'),
+            'endedAt': '2026-10-27T09:00:00Z',
+          },
+        ],
+      );
+      await _pumpPage(tester, api);
+      expect(_txt(tester, _key('merch-line-b8')), 'Ended 27 Oct 2026, 12:00');
+    });
+
+    apiTest('#10 rejected without a note: the category alone', (
+      tester,
+      api,
+    ) async {
+      _seedPage(
+        api,
+        banners: [_banner('b2', 'rejected', statusReason: 'link')],
+      );
+      await _pumpPage(tester, api, lang: 'sw');
+      expect(
+        _txt(tester, _key('merch-line-b2')),
+        'Sababu: Kiungo au bidhaa isiyo sahihi',
+      );
+    });
+
+    apiTest('#11 a wrong photo is refused when picked, and a good one '
+        'clears it', (tester, api) async {
+      _seedPage(api);
+      final host = await _pumpPage(tester, api);
+      await _openNewForm(tester);
+      debugBannerImagePicker = () async => _image(width: 1200, height: 800);
+      await tapVisible(tester, _key('merch-pick-image'));
+      expect(
+        _txt(tester, _key('merch-error-image')),
+        host.tr('merch.banner.imageSize'),
+      );
+      // Not kept: no confirmations asked for it.
+      expect(_key('merch-check-rights'), findsNothing);
+      debugBannerImagePicker = () async => _image();
+      await tapVisible(tester, _key('merch-pick-image'));
+      expect(_key('merch-error-image'), findsNothing);
+      expect(_key('merch-check-rights'), findsOneWidget);
+    });
+
+    apiTest('#12 the Products-tab entry says how many wait for approval', (
+      tester,
+      api,
+    ) async {
+      seedVendorHome(
+        api,
+        products: [stockProduct('p1', 'Roller')],
+        tools: _merchOn,
+      );
+      api.onCall('GET /vendor/shop-banners', (r) {
+        expect(Uri.splitQueryString(r.query)['status'], 'pending_approval');
+        return {
+          ..._list([_banner('b1', 'pending_approval')]),
+          'total': 3,
+        };
+      });
+      final host = await pumpVendorHome(tester, api);
+      expect(
+        find.text(host.tr('merch.entry.waiting').replaceAll('{n}', '3')),
+        findsOneWidget,
+      );
+    });
+
+    apiTest('#16 the form has its own address; a refresh restores it', (
+      tester,
+      api,
+    ) async {
+      _seedPage(api, banners: [_banner('b1', 'pending_approval')]);
+      await _pumpPage(tester, api);
+      await tapVisible(tester, _key('merch-propose'));
+      expect(
+        GoRouter.of(
+          tester.element(find.byType(VendorBannerFormPage)),
+        ).state.uri.toString(),
+        AppRoutes.vendorMerchNew,
+      );
+      // Opened straight from its address (a refresh): the banner is loaded.
+      await pumpPage(
+        tester,
+        api,
+        const SizedBox(),
+        user: vendorUser,
+        size: const Size(400, 900),
+        initialLocation: AppRoutes.vendorMerchEdit('b1'),
+        extraRoutes: merchRoutes,
+      );
+      expect(_key('merch-banner-form'), findsOneWidget);
+      expect(
+        tester
+            .widget<TextField>(
+              find.descendant(
+                of: _key('merch-field-headlineAccent-en'),
+                matching: find.byType(TextField),
+              ),
+            )
+            .controller!
+            .text,
+        'faster b1',
+      );
+    });
+
+    apiTest('#16 an address for a banner that is not mine says so', (
+      tester,
+      api,
+    ) async {
+      _seedPage(api, banners: [_banner('b1', 'pending_approval')]);
+      final host = await pumpPage(
+        tester,
+        api,
+        const SizedBox(),
+        user: vendorUser,
+        size: const Size(400, 900),
+        initialLocation: AppRoutes.vendorMerchEdit('zz'),
+        extraRoutes: merchRoutes,
+      );
+      expect(_key('merch-form-blocked'), findsOneWidget);
+      expect(find.text(host.tr('merch.notYours')), findsOneWidget);
+    });
+
+    apiTest('#16 after sending from a refreshed form: back to the list', (
+      tester,
+      api,
+    ) async {
+      _seedPage(api, banners: [_banner('b1', 'pending_approval')]);
+      await pumpPage(
+        tester,
+        api,
+        const SizedBox(),
+        user: vendorUser,
+        size: const Size(400, 900),
+        initialLocation: AppRoutes.vendorMerchEdit('b1'),
+        extraRoutes: merchRoutes,
+      );
+      api.on('PATCH /vendor/shop-banners/b1', {
+        'banner': _banner('b1', 'pending_approval'),
+      });
+      await _send(tester);
+      expect(find.byType(VendorBannersPage), findsOneWidget);
     });
   });
 }

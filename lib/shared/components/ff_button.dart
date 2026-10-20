@@ -29,6 +29,7 @@ class FFButton extends StatelessWidget {
     this.visualDensity,
     this.maxLines = 1,
     this.semanticLabel,
+    this.focusNode,
   });
 
   final String label;
@@ -54,6 +55,9 @@ class FFButton extends StatelessWidget {
   /// What a screen reader says instead of [label], when the visible words
   /// alone are ambiguous (e.g. one "Adjust" button per row).
   final String? semanticLabel;
+
+  /// The button's own focus node (a page that draws its own focus ring).
+  final FocusNode? focusNode;
 
   double get _minHeight => switch (size) {
     FFButtonSize.sm => 40,
@@ -131,21 +135,25 @@ class FFButton extends StatelessWidget {
     Widget button = switch (variant) {
       FFButtonVariant.primary => FilledButton(
         onPressed: handler,
+        focusNode: focusNode,
         style: style,
         child: content,
       ),
       FFButtonVariant.destructive => FilledButton(
         onPressed: handler,
+        focusNode: focusNode,
         style: destructiveStyle,
         child: content,
       ),
       FFButtonVariant.secondary => OutlinedButton(
         onPressed: handler,
+        focusNode: focusNode,
         style: style,
         child: content,
       ),
       FFButtonVariant.onPhoto => OutlinedButton(
         onPressed: handler,
+        focusNode: focusNode,
         style: style.merge(
           OutlinedButton.styleFrom(
             foregroundColor: FFTokens.heroText,
@@ -164,6 +172,7 @@ class FFButton extends StatelessWidget {
       ),
       FFButtonVariant.ghost => TextButton(
         onPressed: handler,
+        focusNode: focusNode,
         style: style,
         child: content,
       ),

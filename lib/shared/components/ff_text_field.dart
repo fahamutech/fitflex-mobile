@@ -38,6 +38,7 @@ class FFTextField extends StatelessWidget {
     this.helperMaxLines = 3,
     this.errorMaxLines = 3,
     this.scrollPadding = const EdgeInsets.all(20),
+    this.semanticsLabel,
   });
 
   final TextEditingController? controller;
@@ -82,6 +83,11 @@ class FFTextField extends StatelessWidget {
   /// keyboard; a larger bottom keeps the button under it in view too.
   final EdgeInsets scrollPadding;
 
+  /// What a screen reader says for the field instead of [label], when the
+  /// visible label alone is not enough ("English" under a "Headline"
+  /// heading reads "Headline, English").
+  final String? semanticsLabel;
+
   @override
   Widget build(BuildContext context) {
     return TextFormField(
@@ -107,7 +113,10 @@ class FFTextField extends StatelessWidget {
       autovalidateMode: autovalidateMode,
       scrollPadding: scrollPadding,
       decoration: InputDecoration(
-        labelText: label,
+        labelText: semanticsLabel == null ? label : null,
+        label: semanticsLabel == null || label == null
+            ? null
+            : Text(label!, semanticsLabel: semanticsLabel),
         hintText: hint,
         errorText: errorText,
         helperText: helperText,

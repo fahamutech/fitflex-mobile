@@ -107,7 +107,11 @@ class VendorBanner {
     this.ctaKey,
     this.endedByFitflex = false,
     this.allowedActions,
+    this.endedAt,
   });
+
+  /// When it actually ended (early or at its end time).
+  final DateTime? endedAt;
 
   final String id;
 
@@ -210,6 +214,7 @@ class VendorBanner {
           ? json['ctaKey'] as String
           : null,
       endedByFitflex: json['endedByFitflex'] == true,
+      endedAt: _date(json['endedAt']),
       allowedActions: actions is List
           ? [for (final a in actions) a.toString()]
           : null,
@@ -338,12 +343,14 @@ final _contactPatterns = [
 ];
 
 /// What is wrong with a banner [text] under the server's text rules:
-/// `price` (checked first, as the server does), `contact`, or null.
+/// `contact` (checked first, as the server does), `price`, or null.
 String? bannerTextProblem(String text) {
   final t = normaliseBannerText(text);
   if (t.isEmpty) return null;
-  if (_pricePatterns.any((re) => re.hasMatch(t))) return 'price';
+  // Links and phone numbers first, as the server checks them (so a phone
+  // number gets "Remove links and phone numbers", not the price message).
   if (_contactPatterns.any((re) => re.hasMatch(t))) return 'contact';
+  if (_pricePatterns.any((re) => re.hasMatch(t))) return 'price';
   return null;
 }
 

@@ -297,6 +297,21 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
   /// The store's name when the list was opened from a banner's "Visit
   /// store" (shown as the list's heading); empty otherwise.
   String _vendorName = '';
+
+  /// The carousel slide shown last (Back from a banner's target).
+  int _bannerIndex = 0;
+
+  /// The store heading for a seller's product list: the banner's name, or
+  /// (after a refresh) the name on that seller's products.
+  String get _storeName {
+    if (_vendorName.isNotEmpty) return _vendorName;
+    for (final p in _products) {
+      if (p.vendorId != _vendorId) continue;
+      final name = p.vendor['businessName']?.toString().trim() ?? '';
+      if (name.isNotEmpty) return name;
+    }
+    return '';
+  }
   num? _minPrice;
   num? _maxPrice;
   num? _minRating;
@@ -1143,6 +1158,8 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
                   onViewAll: (query) => _openResults(query: query),
                   onBrowseAll: () => _openResults(),
                   onBanner: _openBanner,
+                  bannerIndex: _bannerIndex,
+                  onBannerIndex: (i) => _bannerIndex = i,
                   onCheckout: _checkout,
                   onUnavailable: () {
                     setState(() => _homeUnavailable = true);
@@ -1248,13 +1265,13 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
             icon: Icons.arrow_back,
           ),
         ),
-      if (_vendorId.isNotEmpty && _vendorName.isNotEmpty)
+      if (_vendorId.isNotEmpty && _storeName.isNotEmpty)
         Padding(
           padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
           child: Semantics(
             header: true,
             child: Text(
-              _vendorName,
+              _storeName,
               key: const Key('shop-results-vendor'),
               style: Theme.of(
                 context,
