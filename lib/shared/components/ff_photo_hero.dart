@@ -221,6 +221,8 @@ class FFPhotoHero extends StatelessWidget {
     this.clearPhoto = 0,
     this.maxHeight = double.infinity,
     this.excludeHeadingSemantics = false,
+    this.fillHeight = false,
+    this.panelSidePad,
   }) : assert(
          (photo == null) != (networkImage == null),
          'Give exactly one of photo or networkImage',
@@ -298,6 +300,15 @@ class FFPhotoHero extends StatelessWidget {
   /// the hero as one node with its own label (a carousel slide: "Banner 1
   /// of 3"). The actions stay separate buttons.
   final bool excludeHeadingSemantics;
+
+  /// Under a fixed height (a carousel slide sized to the tallest), the text
+  /// stays at the bottom over the scrim and the photo fills the rest. Off:
+  /// the hero is as tall as its text needs, as before.
+  final bool fillHeight;
+
+  /// The panel's side padding instead of the default (room for arrows
+  /// inside the photo's edges). Null: as before.
+  final double? panelSidePad;
 
   /// The accent colour for the current theme: Volt on dark, brand-500 on
   /// light (large text only).
@@ -394,6 +405,9 @@ class FFPhotoHero extends StatelessWidget {
       ),
     );
     return Stack(
+      // fillHeight: a tight height reaches the body, so its photo-only
+      // zone grows and the text keeps to the bottom.
+      fit: fillHeight ? StackFit.passthrough : StackFit.loose,
       children: [
         Positioned.fill(
           child: _HeroPhotoLayer(photo: photo, networkImage: networkImage),
@@ -441,7 +455,8 @@ class FFPhotoHero extends StatelessWidget {
   bool get _tall => clearPhoto > 0 || maxHeight.isFinite;
 
   /// The panel's left padding (and right): canon h1 panels get more room.
-  double get _panelPad => wideHeadline ? 64.0 : FFTokens.spacingXl;
+  double get _panelPad =>
+      panelSidePad ?? (wideHeadline ? 64.0 : FFTokens.spacingXl);
 
   /// Width of the panel's text column in a panel [width] wide.
   double _panelTextWidth(double width) =>

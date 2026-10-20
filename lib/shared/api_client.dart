@@ -2006,12 +2006,14 @@ class ApiClient {
   Future<Map<String, dynamic>> vendorShopBanners({
     int limit = 100,
     String? cursor,
+    String? status,
   }) async {
     final out = await _request(
       'GET',
       _withQuery('/vendor/shop-banners', {
         'limit': '$limit',
         if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+        if (status != null && status.isNotEmpty) 'status': status,
       }),
     );
     if (out is List) return {'items': out};
