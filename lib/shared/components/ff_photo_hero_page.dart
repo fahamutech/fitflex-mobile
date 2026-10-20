@@ -1,15 +1,21 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../design_tokens.dart';
 import 'ff_photo_hero.dart';
 
-/// Where and how big a page's hero is drawn.
+/// Where and how big a page's hero is drawn. [clearPhoto] and [maxHeight]
+/// are the taller hero's (spec §5.3; 0 and infinity when it is off): pass
+/// them on to [FFPhotoHero].
 typedef FFHeroFrame = ({
   FFHeroVariant variant,
   double minHeight,
   double topInset,
   bool wide,
+  double clearPhoto,
+  double maxHeight,
 });
 
 /// Layout for the pre-sign-in screens with a photo hero (§6):
@@ -36,6 +42,8 @@ class FFPhotoHeroPage extends StatefulWidget {
     this.maxHeroTextScale,
     this.fallback,
     this.contentMaxWidth = 420,
+    this.tallContentReserve,
+    this.tallReserveGrowth = 0,
   }) : assert(
          (heroMinViewportHeight == null && maxHeroTextScale == null) ||
              fallback != null,
@@ -75,6 +83,18 @@ class FFPhotoHeroPage extends StatefulWidget {
   /// Today's layout, for when the hero is dropped.
   final WidgetBuilder? fallback;
   final double contentMaxWidth;
+
+  /// Taller hero (owner 2026-10-20, spec §5.3), phones only, from
+  /// [FFTokens.heroTallMinViewport] tall: the hero aims for
+  /// [heroTallClearTarget] px of clear photo, but stays within the viewport
+  /// height minus this reserve, the room below the hero up to the bottom of
+  /// the content's first must-see control (Sign in: Continue), plus a small
+  /// margin. Null: the hero keeps today's height. Not for [pinnedContent].
+  final double? tallContentReserve;
+
+  /// How much [tallContentReserve] grows per 1.0 of text scale above 1.0x
+  /// (that content grows with the text too).
+  final double tallReserveGrowth;
 
   @override
   State<FFPhotoHeroPage> createState() => _FFPhotoHeroPageState();
@@ -123,6 +143,8 @@ class _FFPhotoHeroPageState extends State<FFPhotoHeroPage> {
                 minHeight: size.height,
                 topInset: 0,
                 wide: true,
+                clearPhoto: 0,
+                maxHeight: double.infinity,
               )),
             ),
             Expanded(
@@ -169,6 +191,20 @@ class _FFPhotoHeroPageState extends State<FFPhotoHeroPage> {
                       ? widget.shortPhoneFraction
                       : widget.phoneFraction))
               .clamp(widget.phoneMinHeight, double.infinity);
+    // Taller hero (§5.3): phones only, not over a pinned keypad.
+    final reserve = widget.tallContentReserve;
+    final scale = MediaQuery.textScalerOf(context).scale(1);
+    final tall = reserve != null && !tablet && !widget.pinnedContent;
+    final clearPhoto = tall ? heroTallClearTarget(size.height, scale) : 0.0;
+    // The reserve is measured on the light sheet, which overlaps the hero;
+    // on the dark ground the content starts that much lower.
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final maxHeight = clearPhoto > 0
+        ? size.height -
+              reserve! -
+              (dark ? FFTokens.heroSheetOverlap : 0) -
+              widget.tallReserveGrowth * math.max(0.0, scale - 1)
+        : double.infinity;
     Widget hero = KeyedSubtree(
       key: _heroKey,
       child: widget.hero(context, (
@@ -176,6 +212,8 @@ class _FFPhotoHeroPageState extends State<FFPhotoHeroPage> {
         minHeight: heroMin.toDouble(),
         topInset: topInset,
         wide: false,
+        clearPhoto: clearPhoto,
+        maxHeight: maxHeight,
       )),
     );
     if (tablet) {
@@ -210,6 +248,8 @@ class _FFPhotoHeroPageState extends State<FFPhotoHeroPage> {
                       minHeight: c.maxHeight,
                       topInset: topInset,
                       wide: false,
+                      clearPhoto: 0,
+                      maxHeight: double.infinity,
                     )),
                   ),
                 ),
