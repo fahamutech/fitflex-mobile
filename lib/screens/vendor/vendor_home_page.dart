@@ -26,6 +26,8 @@ import '../../shared/widgets/persona_switcher.dart';
 import '../../shared/widgets/terms_agreement.dart';
 import '../pin_flows.dart';
 import '../../shared/shop_checkout.dart';
+import 'customers/customers_tab.dart';
+import 'customers/customers_widgets.dart';
 import 'orders/vendor_order_card.dart';
 import 'stock/adjust_stock_sheet.dart';
 import 'stock/stock_history_page.dart';
@@ -40,11 +42,15 @@ import 'sales/sales_widgets.dart';
 const vendorFabClearance = 96.0;
 
 class VendorHomePage extends StatefulWidget {
-  const VendorHomePage({super.key, this.open, this.filter});
+  const VendorHomePage({super.key, this.open, this.filter, this.view});
 
   /// The section to show first — where a notification leads: `orders`,
-  /// `enquiries`, `products`, `payments` or `sales`.
+  /// `enquiries`, `products`, `payments`, `sales` or `customers`.
   final String? open;
+
+  /// S4: with `open=customers`, which segment: `list`, `owed` or
+  /// `messages`.
+  final String? view;
 
   /// `low`: start the product list on the low-stock filter (stock ledger).
   final String? filter;
@@ -70,6 +76,10 @@ class _VendorHomePageState extends State<VendorHomePage> {
   late bool _lowOnly = widget.filter == 'low';
   // Vendor tools · S3: walk-in sales kept on this device (synced from here).
   SalesSession? _sales;
+  // Vendor tools · S4: the Customers tab's segment.
+  String _customersView = 'list';
+  final _customersListKey = GlobalKey<CustomersListViewState>();
+  final _owedKey = GlobalKey<OwedViewState>();
 
   // PHOTO_HERO_UI (spec §25.2): a band hero on Products only.
   final _heroKey = GlobalKey();
@@ -178,8 +188,23 @@ class _VendorHomePageState extends State<VendorHomePage> {
     'orders': 1,
     'payments': 2,
     'enquiries': 3,
+    'customers': 3,
     'sales': _salesSection,
   };
+
+  /// S4: the segment a request opens (`open=enquiries` → Messages).
+  void _pickView(String? open, String? view) {
+    if (open == 'enquiries') {
+      _customersView = 'messages';
+    } else if (open == 'customers') {
+      _customersView = const {'list', 'owed', 'messages'}.contains(view)
+          ? view!
+          : 'list';
+    }
+  }
+
+  /// S4: tab 3 is "Customers" (with segments) when the tool is on.
+  bool get _customersTab => _tools.customers && _can('customers');
 
   /// S3: the Sales tab (after Orders in the bar).
   static const _salesSection = 6;
@@ -188,6 +213,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
   void _show(String? part) {
     final section = _sectionOf[part];
     if (section == null) return;
+    _pickView(part, widget.view);
     // Which tabs exist is known only once the tools (walk-in sales) and the
     // profile have loaded: keep the request until then, so the profile's
     // "finish your profile" redirect or a missing Sales tab cannot win.
@@ -210,7 +236,10 @@ class _VendorHomePageState extends State<VendorHomePage> {
   @override
   void didUpdateWidget(VendorHomePage old) {
     super.didUpdateWidget(old);
-    if (widget.open != old.open) _show(widget.open);
+    if (widget.open != old.open ||
+        (widget.open == 'customers' && widget.view != old.view)) {
+      _show(widget.open);
+    }
     if (widget.filter != old.filter) {
       setState(() => _lowOnly = widget.filter == 'low');
     }
@@ -239,6 +268,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
       setState(() => _sales = sales);
       _sales?.signedIn();
       _pendingOpen = widget.open;
+      _pickView(widget.open, widget.view);
       _refresh();
       // Vendors have no sign-up form of their own, so the vendor terms are
       // asked here the first time (and again if a new version is published).
@@ -657,6 +687,8 @@ class _VendorHomePageState extends State<VendorHomePage> {
   Future<void> _signOut() async {
     if (!await confirmLeaveWithQueuedSales(context)) return;
     if (!mounted) return;
+    // S4: customer names held in memory go with the session.
+    CustomerRepository.clear(AppScope.of(context).api);
     await AppScope.of(context).auth.signOut();
     if (mounted) context.go(AppRoutes.language);
   }
@@ -747,7 +779,14 @@ class _VendorHomePageState extends State<VendorHomePage> {
                 : _loading
                 ? const Center(child: FFSpinner())
                 : RefreshIndicator(
-                    onRefresh: () => _refresh(askTools: true),
+                    onRefresh: () async {
+                      // S4: the customer lists reload with the page.
+                      if (tab == 3 && _customersTab) {
+                        unawaited(_customersListKey.currentState?.reload());
+                        unawaited(_owedKey.currentState?.reload());
+                      }
+                      await _refresh(askTools: true);
+                    },
                     child: switch (tab) {
                       0 when _heroOn(tab) =>
                         NotificationListener<ScrollNotification>(
@@ -757,6 +796,14 @@ class _VendorHomePageState extends State<VendorHomePage> {
                       0 => _productsTab(),
                       1 => _ordersTab(),
                       2 => _paymentsTab(),
+                      3 when _customersTab => VendorCustomersTab(
+                        key: const Key('vendor-customers-tab'),
+                        view: _customersView,
+                        onView: (v) => setState(() => _customersView = v),
+                        messages: _enquiriesTab(),
+                        listKey: _customersListKey,
+                        owedKey: _owedKey,
+                      ),
                       3 => _enquiriesTab(),
                       4 => _businessTab(),
                       _salesSection => const VendorSalesTab(
@@ -777,6 +824,20 @@ class _VendorHomePageState extends State<VendorHomePage> {
               onPressed: _busy ? null : () => _editProduct(),
               icon: const Icon(Icons.add),
               label: Text(context.tr('vendor.addProduct')),
+            )
+          : tab == 3 && _customersTab && _customersView == 'list' && !_loading
+          ? FloatingActionButton.extended(
+              key: const Key('vendor-customers-add'),
+              onPressed: _staffDisabled
+                  ? null
+                  : () async {
+                      await context.push(newCustomerRoute);
+                      if (mounted) {
+                        unawaited(_customersListKey.currentState?.reload());
+                      }
+                    },
+              icon: const Icon(Icons.person_add_alt),
+              label: Text(context.tr('vendor.customers.add')),
             )
           : tab == _salesSection && !_loading && _sales != null
           ? ListenableBuilder(
@@ -838,12 +899,19 @@ class _VendorHomePageState extends State<VendorHomePage> {
                     label: context.tr('vendor.payments'),
                   ),
                 if (sections.contains(3))
-                  NavigationDestination(
-                    key: const Key('vendor-nav-enquiries'),
-                    icon: const Icon(Icons.forum_outlined),
-                    selectedIcon: const Icon(Icons.forum),
-                    label: context.tr('vendor.enquiries'),
-                  ),
+                  _customersTab
+                      ? NavigationDestination(
+                          key: const Key('vendor-nav-customers'),
+                          icon: const Icon(Icons.people_outline),
+                          selectedIcon: const Icon(Icons.people),
+                          label: context.tr('vendor.customers.tab'),
+                        )
+                      : NavigationDestination(
+                          key: const Key('vendor-nav-enquiries'),
+                          icon: const Icon(Icons.forum_outlined),
+                          selectedIcon: const Icon(Icons.forum),
+                          label: context.tr('vendor.enquiries'),
+                        ),
                 if (sections.contains(4))
                   NavigationDestination(
                     key: const Key('vendor-nav-business'),
@@ -1550,7 +1618,10 @@ class _VendorHomePageState extends State<VendorHomePage> {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) => VendorStaffForm(walkInSales: _tools.walkInSales),
+      builder: (_) => VendorStaffForm(
+        walkInSales: _tools.walkInSales,
+        customersTool: _tools.customers,
+      ),
     );
     if (result == null || !mounted) return;
     await AppScope.of(context).api.vendorCreateStaff(result);
@@ -2429,10 +2500,17 @@ class _VendorProfileFormState extends State<VendorProfileForm> {
 }
 
 class VendorStaffForm extends StatefulWidget {
-  const VendorStaffForm({super.key, this.walkInSales = false});
+  const VendorStaffForm({
+    super.key,
+    this.walkInSales = false,
+    this.customersTool = false,
+  });
 
   /// S3: offer the `sales` permission (only while walk-in sales are on).
   final bool walkInSales;
+
+  /// S4: `customers` now also covers balances and payments; say so.
+  final bool customersTool;
 
   @override
   State<VendorStaffForm> createState() => _VendorStaffFormState();
@@ -2561,6 +2639,9 @@ class _VendorStaffFormState extends State<VendorStaffForm> {
                   dense: true,
                   value: _permissions.contains(permission),
                   title: Text(context.tr('vendor.permission.$permission')),
+                  subtitle: permission == 'customers' && widget.customersTool
+                      ? Text(context.tr('vendor.permission.customersHint'))
+                      : null,
                   onChanged: (selected) => setState(() {
                     if (selected == true) {
                       _permissions.add(permission);

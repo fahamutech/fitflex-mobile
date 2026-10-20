@@ -11,7 +11,9 @@
 // - Nothing is ever deleted because the feature went off; only Discard
 //   removes a queued sale.
 // - shared_preferences (localStorage on web) is not encrypted: no cost price
-//   and no customer data are stored (S3 has none).
+//   and no customer data are stored. S4: a paid sale with a customer keeps
+//   the customer's opaque id only (never a name or phone); a pay-later sale
+//   is never queued.
 //
 // Pattern from SmartStock's offline_sale_queue.dart; no new packages.
 import 'dart:async';
@@ -366,6 +368,21 @@ class SalesSession extends ChangeNotifier with WidgetsBindingObserver {
     await sync(manual: true);
   }
 
+  /// S4 "Try again without customer": the customer was archived or is gone,
+  /// so the same sale is sent again without one (same clientRef: the
+  /// refused attempt recorded nothing).
+  Future<void> retryWithoutCustomer(String clientRef) async {
+    await load();
+    final item = byRef(clientRef);
+    if (item == null) return;
+    item.body.remove('customerId');
+    item.state = 'waiting';
+    item.error = null;
+    await _save();
+    notifyListeners();
+    await sync(manual: true);
+  }
+
   /// Units of a product (or variant) in sales still waiting on this device.
   int queuedQty(String productId, String? variant) {
     var n = 0;
@@ -679,6 +696,14 @@ class SalesSession extends ChangeNotifier with WidgetsBindingObserver {
       item.state = 'waiting';
       _pause = SalesSyncPause.signedOut;
       return true;
+    }
+    // S4: customers switched off while a sale with a customer waited: that
+    // sale needs fixing (send it without the customer); the rest go on.
+    if (e.status == 404 &&
+        code == 'feature_disabled' &&
+        body['feature'] == 'customers') {
+      conflict();
+      return false;
     }
     if (e.status == 404 && code == 'feature_disabled') {
       item.state = 'waiting';

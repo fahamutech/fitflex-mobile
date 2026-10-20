@@ -201,6 +201,7 @@ class PosCart {
     this.soldAt,
     this.replacesClientRef,
     this.keepSoldAt = false,
+    this.customerId,
   }) : lines = lines ?? [];
 
   final List<PosLine> lines;
@@ -218,6 +219,28 @@ class PosCart {
 
   /// An edited conflict keeps the original sale time.
   bool keepSoldAt;
+
+  /// S4: the customer of this sale — an opaque id only. Their name is never
+  /// stored on the device (A-02); see [customerName].
+  String? customerId;
+
+  /// The customer's name for the chip, in memory only (never in [toJson]).
+  String? customerName;
+
+  /// S4: what the chosen customer already owes (people with `customers`
+  /// only), for the pay-later warning. In memory only.
+  int? customerOwedTzs;
+  int? customerOverdueTzs;
+
+  /// Sets or clears the customer. A different customer is a different
+  /// sale: a new key at the next Complete.
+  void setCustomer(String? id, {String? name, int? owedTzs, int? overdueTzs}) {
+    if (id != customerId) clientRef = null;
+    customerId = id;
+    customerName = id == null ? null : name;
+    customerOwedTzs = id == null ? null : owedTzs;
+    customerOverdueTzs = id == null ? null : overdueTzs;
+  }
 
   bool get isEmpty => lines.isEmpty;
   int get itemCount => lines.fold(0, (s, l) => s + l.qty);
@@ -302,6 +325,7 @@ class PosCart {
     soldAt = null;
     replacesClientRef = null;
     keepSoldAt = false;
+    setCustomer(null);
   }
 
   /// Fixes the key and the sale time (once) and returns the request body.
@@ -310,11 +334,15 @@ class PosCart {
   /// (a wrong phone clock cannot misdate it). `soldAt` is sent only for a
   /// sale kept on the device ([queued]) or an edited offline sale that keeps
   /// its original time ([keepSoldAt]).
+  ///
+  /// S4: `customerId` when a customer is attached. A pay-later sale passes
+  /// [creditDueDate] (kind `credit`); it is never queued.
   Map<String, dynamic> requestBody(
     List<Map<String, dynamic>> payments, {
     bool queued = false,
     String Function()? makeClientRef,
     DateTime Function()? now,
+    String? creditDueDate,
   }) {
     clientRef ??= (makeClientRef ?? newSaleClientRef)();
     soldAt ??= (now ?? DateTime.now)().toUtc().toIso8601String();
@@ -326,6 +354,11 @@ class PosCart {
       if (saleDiscountTzs > 0) 'discountTzs': saleDiscountTzs,
       'payments': payments,
       if (trimmed.isNotEmpty) 'note': trimmed,
+      'customerId': ?customerId,
+      if (creditDueDate != null) ...{
+        'kind': 'credit',
+        'dueDate': creditDueDate,
+      },
     };
   }
 
@@ -347,6 +380,8 @@ class PosCart {
     'soldAt': ?soldAt,
     'replacesClientRef': ?replacesClientRef,
     if (keepSoldAt) 'keepSoldAt': true,
+    // The id only: never the customer's name or phone (A-02, spec §8).
+    'customerId': ?customerId,
   };
 
   static PosCart fromJson(Object? raw) {
@@ -361,6 +396,7 @@ class PosCart {
       soldAt: raw['soldAt']?.toString(),
       replacesClientRef: raw['replacesClientRef']?.toString(),
       keepSoldAt: raw['keepSoldAt'] == true,
+      customerId: raw['customerId']?.toString(),
     );
   }
 
@@ -396,6 +432,7 @@ class PosCart {
       soldAt: body['soldAt']?.toString(),
       keepSoldAt: true,
       replacesClientRef: replaces,
+      customerId: body['customerId']?.toString(),
     );
   }
 }

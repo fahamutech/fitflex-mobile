@@ -14,6 +14,9 @@ import '../../../shared/formatters.dart';
 import '../../../shared/i18n.dart';
 import '../stock/stock_history_page.dart' show stockRangePickerTheme;
 import '../stock/stock_options.dart';
+import '../customers/customer_models.dart' show customerDisplayName;
+import '../customers/customer_profile_page.dart' show saleKindBadges;
+import '../customers/customers_widgets.dart' show owedHomeRoute, intOf;
 import 'offline_sale_queue.dart';
 import 'receipt_data.dart';
 import 'sales_sync_page.dart' show queuedSaleRow;
@@ -34,6 +37,10 @@ class VendorSalesTabState extends State<VendorSalesTab> {
   DateTimeRange? _custom;
   String _status = 'all';
   bool _mine = false;
+  // S4: only pay-later sales (kind=credit), and the "Owed to you" card.
+  bool _credit = false;
+  VendorTools _tools = VendorTools.off;
+  Map<String, dynamic>? _owed;
   List<Map<String, dynamic>> _sales = [];
   Map<String, dynamic>? _summary;
   String? _cursor;
@@ -88,6 +95,14 @@ class VendorSalesTabState extends State<VendorSalesTab> {
     });
     final (from, to) = _period;
     final api = AppScope.of(context).api;
+    _tools = await VendorToolsOptions.of(context);
+    if (!mounted) return;
+    if (!_tools.customers) _credit = false;
+    if (_tools.customers && canVendor(context, 'customers')) {
+      unawaited(_loadOwed());
+    } else if (_owed != null) {
+      setState(() => _owed = null);
+    }
     try {
       final res = await api.vendorSales(
         from: from,
@@ -95,10 +110,11 @@ class VendorSalesTabState extends State<VendorSalesTab> {
         status: _status,
         mine: _mine,
         limit: 50,
+        kind: _credit ? 'credit' : null,
       );
       var neverSold = false;
       final rows = (res['sales'] as List? ?? []).whereType<Map>().toList();
-      if (rows.isEmpty && _status == 'all' && !_mine) {
+      if (rows.isEmpty && _status == 'all' && !_mine && !_credit) {
         // An empty range: has this shop ever sold anything?
         try {
           final any = await api.vendorSales(limit: 1);
@@ -134,6 +150,63 @@ class VendorSalesTabState extends State<VendorSalesTab> {
     }
   }
 
+  /// "Owed to you: TZS X · n overdue" (people with `customers`).
+  Future<void> _loadOwed() async {
+    try {
+      final res = await AppScope.of(
+        context,
+      ).api.vendorReceivablesAging(limit: 1);
+      if (!mounted) return;
+      setState(
+        () => _owed = res['totals'] is Map
+            ? Map<String, dynamic>.from(res['totals'] as Map)
+            : null,
+      );
+    } catch (_) {
+      // The card simply does not show.
+      if (mounted && _owed != null) setState(() => _owed = null);
+    }
+  }
+
+  Widget? _owedCard() {
+    final t = _owed;
+    if (t == null || intOf(t['owedTzs']) <= 0) return null;
+    final n = intOf(t['overdueSaleCount']);
+    final text = fillIn(context.tr('vendor.owed.card'), {
+      'amount': formatCurrency(intOf(t['owedTzs'])),
+      'n': n,
+    });
+    return Padding(
+      padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
+      child: FFCard(
+        padding: EdgeInsets.zero,
+        child: Semantics(
+          button: true,
+          label: text,
+          excludeSemantics: true,
+          child: InkWell(
+            key: const Key('sales-owed-card'),
+            onTap: () => context.go(owedHomeRoute),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 56),
+              child: Padding(
+                padding: const EdgeInsets.all(FFTokens.spacingMd),
+                child: Row(
+                  children: [
+                    const Icon(Icons.account_balance_wallet_outlined),
+                    const SizedBox(width: FFTokens.spacingSm),
+                    Expanded(child: Text(text)),
+                    const Icon(Icons.chevron_right),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _more() async {
     final cursor = _cursor;
     if (cursor == null || _loadingMore) return;
@@ -150,6 +223,7 @@ class VendorSalesTabState extends State<VendorSalesTab> {
         mine: _mine,
         limit: 50,
         cursor: cursor,
+        kind: _credit ? 'credit' : null,
       );
       if (!mounted) return;
       setState(() {
@@ -205,7 +279,9 @@ class VendorSalesTabState extends State<VendorSalesTab> {
       builder: (context, _) => LayoutBuilder(
         builder: (context, box) {
           final wide = box.maxWidth >= 900;
+          final owed = _owedCard();
           final controls = <Widget>[
+            ?owed,
             _rangeControl(),
             const SizedBox(height: FFTokens.spacingSm),
             _filters(),
@@ -289,6 +365,16 @@ class VendorSalesTabState extends State<VendorSalesTab> {
         filled: _mine,
         onTap: () => _filter(() => _mine = !_mine),
       ),
+      if (_tools.customers)
+        Semantics(
+          selected: _credit,
+          child: FFPill(
+            key: const Key('sales-filter-credit'),
+            label: context.tr('vendor.sales.filter.credit'),
+            filled: _credit,
+            onTap: () => _filter(() => _credit = !_credit),
+          ),
+        ),
     ],
   );
 
@@ -344,6 +430,14 @@ class VendorSalesTabState extends State<VendorSalesTab> {
                 MoneyRow(
                   methodLabel(context.tr, m['method']?.toString()),
                   formatCurrency((m['amountTzs'] as num?) ?? 0),
+                ),
+              // S4: what was left owing at the counter (byMethod + this =
+              // total). Only sent to people with `customers`.
+              if (((s['payLaterTzs'] as num?) ?? 0) > 0)
+                MoneyRow(
+                  context.tr('vendor.sales.payLaterBadge'),
+                  formatCurrency(s['payLaterTzs'] as num),
+                  key: const Key('sales-summary-paylater'),
                 ),
             ],
           ],
@@ -440,6 +534,10 @@ class VendorSalesTabState extends State<VendorSalesTab> {
         ? (s['createdBy'] as Map)['name']?.toString()
         : null;
     final methods = methodsSummary(context, (s['methods'] as List? ?? []));
+    final customer = s['customer'] is Map
+        ? customerDisplayName(s['customer'] as Map, context.tr)
+        : null;
+    final kindBadges = saleKindBadges(context, s);
     final status = context.tr(
       voided ? 'vendor.sales.voidedBadge' : 'vendor.sales.filter.completed',
     );
@@ -457,6 +555,16 @@ class VendorSalesTabState extends State<VendorSalesTab> {
               'time': time,
               'status': status,
             }),
+            ?customer,
+            if (s['kind'] == 'credit') ...[
+              context.tr('vendor.sales.payLaterBadge'),
+              if (!voided)
+                (s['balanceTzs'] as num? ?? 0) > 0
+                    ? fillIn(context.tr('vendor.sales.owesBadge'), {
+                        'amount': formatCurrency(s['balanceTzs'] as num),
+                      })
+                    : context.tr('vendor.sales.paidOffBadge'),
+            ],
             if (late) context.tr('vendor.sales.offlineBadge'),
             if (override) context.tr('vendor.sales.overrideBadge'),
           ].join(', '),
@@ -492,15 +600,24 @@ class VendorSalesTabState extends State<VendorSalesTab> {
                       ],
                     ),
                     Text(
-                      [time, if (methods.isNotEmpty) methods, ?by].join(' · '),
+                      [
+                        time,
+                        if (methods.isNotEmpty) methods,
+                        ?by,
+                        ?customer,
+                      ].join(' · '),
                       style: theme.textTheme.bodySmall,
                     ),
-                    if (voided || late || override) ...[
+                    if (voided ||
+                        late ||
+                        override ||
+                        kindBadges.isNotEmpty) ...[
                       const SizedBox(height: FFTokens.spacingXs),
                       Wrap(
                         spacing: FFTokens.spacingXs,
                         runSpacing: FFTokens.spacingXs,
                         children: [
+                          ...kindBadges,
                           if (voided)
                             FFBadge(
                               label: context.tr('vendor.sales.voidedBadge'),
