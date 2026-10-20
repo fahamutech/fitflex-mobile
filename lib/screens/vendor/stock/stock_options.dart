@@ -32,6 +32,7 @@ class VendorTools {
     this.banners = false,
     this.documents = false,
     this.vat = false,
+    this.vatInForce,
     this.fromCache = false,
   });
 
@@ -70,6 +71,11 @@ class VendorTools {
   /// Exactly `true`, else none of them.
   final bool vat;
 
+  /// S5: the vendor's VAT is in force right now (verified, certificate
+  /// stands), from the options answer. Null when the server does not send
+  /// it (older backend): screens then ask GET /vendor/tax-profile.
+  final bool? vatInForce;
+
   /// The answer is the one kept on this device (the server could not be
   /// reached): ask again once the connection is back.
   final bool fromCache;
@@ -86,6 +92,9 @@ class VendorTools {
             (options['merch'] as Map)['banners'] == true,
         documents: options['documents'] == true,
         vat: options['vat'] == true,
+        vatInForce: options['vatInForce'] is bool
+            ? options['vatInForce'] as bool
+            : null,
         fromCache: fromCache,
       );
 }

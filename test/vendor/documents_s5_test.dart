@@ -1181,10 +1181,15 @@ void main() {
       expect(body!.containsKey('vatCode'), isFalse);
     });
 
-    apiTest('home: verified vendor gets the field; not verified does not', (
-      tester,
-      api,
-    ) async {
+    /// The vendor home with one product; answers whether the product form
+    /// shows the VAT code field.
+    Future<bool> homeShowsVatField(
+      WidgetTester tester,
+      RecordingApi api, {
+      required Map<String, dynamic> tools,
+      Map<String, dynamic> user = owner,
+      Map<String, dynamic>? taxProfile,
+    }) async {
       api.on('GET /vendor/products', [
         {
           'id': 'p1',
@@ -1204,25 +1209,30 @@ void main() {
       api.on('GET /vendor/payments', {});
       api.on('GET /vendor/enquiries', []);
       api.on('GET /vendor/staff', []);
-      api.on('GET /vendor/tools/options', {'stockLedger': true, 'vat': true});
+      api.on('GET /vendor/tools/options', {'stockLedger': true, ...tools});
       api.on('GET /vendor/stock/low', []);
-      api.on('GET /vendor/tax-profile', {
-        'taxProfile': {'status': 'pending', 'verified': null},
-      });
+      if (taxProfile != null) {
+        api.on('GET /vendor/tax-profile', {'taxProfile': taxProfile});
+      } else {
+        // Staff without `payments` (as the server answers).
+        api.fail('GET /vendor/tax-profile', 403, {
+          'error': 'vendor_permission_forbidden',
+        });
+      }
       api.on('GET /vendor/tax-rates', {
         'codes': [
           {'code': 'A', 'ratePct': 18, 'exempt': false},
+          {'code': 'E', 'ratePct': null, 'exempt': true},
         ],
       });
       final host = await pumpPage(
         tester,
         api,
         const VendorHomePage(),
-        user: owner,
+        user: user,
         size: const Size(420, 1200),
+        keepRequests: true,
       );
-      // Never verified: no codes asked, no field.
-      expect(api.sent('GET', '/vendor/tax-rates'), isFalse);
       await tester.tap(
         find.descendant(
           of: find.byKey(const Key('vendor-product-p1')),
@@ -1232,7 +1242,108 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text(host.tr('vendor.edit')).last);
       await tester.pumpAndSettle();
-      expect(find.byKey(const Key('vendor-product-vat-code')), findsNothing);
+      return find
+          .byKey(const Key('vendor-product-vat-code'))
+          .evaluate()
+          .isNotEmpty;
+    }
+
+    apiTest('products-only staff + vatInForce true: field, no tax profile', (
+      tester,
+      api,
+    ) async {
+      final shown = await homeShowsVatField(
+        tester,
+        api,
+        tools: {'vat': true, 'vatInForce': true},
+        user: staffUser(['products'], role: 'products'),
+      );
+      expect(shown, isTrue);
+      expect(api.sent('GET', '/vendor/tax-profile'), isFalse);
+      expect(api.sent('GET', '/vendor/tax-rates'), isTrue);
+    });
+
+    apiTest('vatInForce false: no field, nothing asked (wins over profile)', (
+      tester,
+      api,
+    ) async {
+      final shown = await homeShowsVatField(
+        tester,
+        api,
+        tools: {'vat': true, 'vatInForce': false},
+        taxProfile: {
+          'status': 'verified',
+          'verified': {'vrn': '40012345X'},
+        },
+      );
+      expect(shown, isFalse);
+      expect(api.sent('GET', '/vendor/tax-profile'), isFalse);
+      expect(api.sent('GET', '/vendor/tax-rates'), isFalse);
+    });
+
+    apiTest('vat off: no field even with vatInForce true', (tester, api) async {
+      final shown = await homeShowsVatField(
+        tester,
+        api,
+        tools: {'vat': false, 'vatInForce': true},
+      );
+      expect(shown, isFalse);
+      expect(api.sent('GET', '/vendor/tax-rates'), isFalse);
+    });
+
+    apiTest('no vatInForce (older backend): verified profile → field', (
+      tester,
+      api,
+    ) async {
+      final shown = await homeShowsVatField(
+        tester,
+        api,
+        tools: {'vat': true},
+        taxProfile: {
+          'status': 'verified',
+          'verified': {'vrn': '40012345X'},
+        },
+      );
+      expect(shown, isTrue);
+      expect(api.sent('GET', '/vendor/tax-profile'), isTrue);
+    });
+
+    apiTest('no vatInForce: never verified → no field, no codes asked', (
+      tester,
+      api,
+    ) async {
+      final shown = await homeShowsVatField(
+        tester,
+        api,
+        tools: {'vat': true},
+        taxProfile: {'status': 'pending', 'verified': null},
+      );
+      expect(shown, isFalse);
+      expect(api.sent('GET', '/vendor/tax-rates'), isFalse);
+    });
+
+    apiTest('no vatInForce: products-only staff (profile 403) → no field', (
+      tester,
+      api,
+    ) async {
+      final shown = await homeShowsVatField(
+        tester,
+        api,
+        tools: {'vat': true},
+        user: staffUser(['products'], role: 'products'),
+      );
+      expect(shown, isFalse);
+      expect(api.sent('GET', '/vendor/tax-rates'), isFalse);
+    });
+
+    test('tools: vatInForce only as a boolean, else unknown', () {
+      expect(VendorTools.fromOptions({'vatInForce': true}).vatInForce, isTrue);
+      expect(
+        VendorTools.fromOptions({'vatInForce': false}).vatInForce,
+        isFalse,
+      );
+      expect(VendorTools.fromOptions({'vatInForce': 'yes'}).vatInForce, isNull);
+      expect(VendorTools.fromOptions({}).vatInForce, isNull);
     });
   });
 

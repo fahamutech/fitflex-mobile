@@ -215,8 +215,10 @@ class _VendorHomePageState extends State<VendorHomePage> {
   );
 
   /// S5: the VAT codes a product may use, or null to hide the field. Shown
-  /// only with `vat` on and the vendor VAT-verified at some point (§6.4);
-  /// anything unknown hides it (fail closed).
+  /// only with `vat` on and the vendor's VAT in force (§6.4). The options
+  /// answer says so in `vatInForce` (any staff with `products` can read
+  /// it); without that field, the tax profile is asked (vendor and
+  /// `payments` staff only). Anything unknown hides it (fail closed).
   List<VatCodeOption>? _vatCodes;
 
   Future<void> _loadVat(VendorTools tools) async {
@@ -224,8 +226,10 @@ class _VendorHomePageState extends State<VendorHomePage> {
     if (tools.vat && _can('products')) {
       try {
         final api = AppScope.of(context).api;
-        final profile = TaxProfile.fromJson(await api.vendorTaxProfile());
-        if (profile.everVerified) {
+        final inForce =
+            tools.vatInForce ??
+            TaxProfile.fromJson(await api.vendorTaxProfile()).everVerified;
+        if (inForce) {
           final list = vatCodesOf(await api.vendorTaxRates());
           if (list.isNotEmpty) codes = list;
         }
