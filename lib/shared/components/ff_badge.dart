@@ -4,8 +4,19 @@ import '../tone_theme.dart';
 
 /// Badge tone matching portal's BadgeTone. [fuel] is the solid "act soon"
 /// tone (deals, discounts): white on Fuel, 5.35:1, the same in both themes.
-/// It is not an error colour.
-enum FFBadgeTone { defaultTone, gray, brand, success, danger, warning, fuel }
+/// It is not an error colour. [onPhoto] sits on a photo (a Shop home
+/// banner's "From {vendor}" chip): white on slate-950 at 75%, 9.68:1 even
+/// over a pure-white photo, the same in both themes.
+enum FFBadgeTone {
+  defaultTone,
+  gray,
+  brand,
+  success,
+  danger,
+  warning,
+  fuel,
+  onPhoto,
+}
 
 /// Pill badge — matches portal's Badge component.
 class FFBadge extends StatelessWidget {
@@ -15,6 +26,7 @@ class FFBadge extends StatelessWidget {
     this.tone = FFBadgeTone.defaultTone,
     this.dot = false,
     this.wrap = false,
+    this.maxLines,
   });
 
   final String label;
@@ -24,6 +36,10 @@ class FFBadge extends StatelessWidget {
   /// Let the label wrap onto more lines instead of being cut off (labels that
   /// must be read in full, such as a paid-placement disclosure).
   final bool wrap;
+
+  /// With [wrap]: at most this many lines, then an ellipsis (a chip on a
+  /// photo that must not grow over the headline). Null: no limit.
+  final int? maxLines;
 
   @override
   Widget build(BuildContext context) {
@@ -39,6 +55,12 @@ class FFBadge extends StatelessWidget {
         bg: FFTokens.fuel,
         fg: Colors.white,
         border: FFTokens.fuel,
+        dot: Colors.white,
+      ),
+      FFBadgeTone.onPhoto => FFToneColors(
+        bg: FFTokens.heroScrim.withValues(alpha: 0.75),
+        fg: Colors.white,
+        border: FFTokens.heroScrim.withValues(alpha: 0.75),
         dot: Colors.white,
       ),
     };
@@ -71,8 +93,8 @@ class FFBadge extends StatelessWidget {
           Flexible(
             child: Text(
               label,
-              maxLines: wrap ? null : 1,
-              overflow: wrap ? null : TextOverflow.ellipsis,
+              maxLines: wrap ? maxLines : 1,
+              overflow: wrap && maxLines == null ? null : TextOverflow.ellipsis,
               softWrap: wrap,
               style: Theme.of(
                 context,
