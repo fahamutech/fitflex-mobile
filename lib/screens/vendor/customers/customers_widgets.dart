@@ -165,10 +165,32 @@ String rateLimitedText(BuildContext context, Object e) {
   });
 }
 
-/// Five aging tiles (Not due yet … Over 90 days): 3 + 2 on a phone, five
-/// in a row from 900 wide, two per row at large text. Zero tiles stay,
-/// muted, so the positions never move. With [onSelect] each tile is a
-/// filter toggle.
+/// An aging bucket's label for a tile: a day range never breaks inside
+/// the numbers ("1–30", word joiners around the dash) or between a word and
+/// the number after it ("Siku 1–30", "siku 90": non-breaking space). Other
+/// spaces wrap as usual, so "Bado muda haujafika" and "Zaidi ya siku 90"
+/// still fit a narrow tile at large text.
+String agingTileLabel(String bucket, String label) {
+  if (bucket == 'current') return label;
+  return label
+      .replaceAll(RegExp(r' (?=\d)'), '\u00A0')
+      .replaceAll('–', '\u2060–\u2060');
+}
+
+/// How many aging tiles share a row: five from 900 wide; two when narrow
+/// (under 300) or at large text; else three (spec §5.1: 3 + 2 at 375).
+int agingTilesPerRow(double width, double textScale) {
+  if (width >= 900) return 5;
+  if (width < 300 || textScale > 1.3) return 2;
+  return 3;
+}
+
+/// Five aging tiles (Not due yet … Over 90 days). Zero tiles stay, muted,
+/// so the positions never move. With [onSelect] each tile is a filter
+/// toggle that says whether it is selected.
+///
+/// UAT D2: labels wrap and are never cut; every amount has the same size
+/// (it wraps between "TSh" and the figure if it must, never shrinks).
 class AgingTiles extends StatelessWidget {
   const AgingTiles({
     super.key,
@@ -185,21 +207,25 @@ class AgingTiles extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return LayoutBuilder(
       builder: (context, box) {
-        final big = MediaQuery.textScalerOf(context).scale(1) > 1.3;
-        final perRow = box.maxWidth >= 900 ? 5 : (big ? 2 : 3);
-        const gap = FFTokens.spacingSm;
+        final perRow = agingTilesPerRow(
+          box.maxWidth,
+          MediaQuery.textScalerOf(context).scale(1),
+        );
+        // Very narrow (a 320 phone at large text): a tighter gap and side
+        // padding so "Siku 1–30" still fits on one line.
+        final tight = box.maxWidth < 300;
+        final gap = tight ? FFTokens.spacingXs : FFTokens.spacingSm;
         final w = (box.maxWidth - gap * (perRow - 1)) / perRow;
         return Wrap(
           spacing: gap,
-          runSpacing: gap,
+          runSpacing: FFTokens.spacingSm,
           children: [
             for (final b in agingBuckets)
               SizedBox(
                 width: w,
-                child: _tile(context, theme, b, intOf(aging[b])),
+                child: _tile(context, b, intOf(aging[b]), tight: tight),
               ),
           ],
         );
@@ -207,17 +233,56 @@ class AgingTiles extends StatelessWidget {
     );
   }
 
-  Widget _tile(BuildContext context, ThemeData theme, String b, int amount) {
+  Widget _tile(
+    BuildContext context,
+    String b,
+    int amount, {
+    bool tight = false,
+  }) {
+    final theme = Theme.of(context);
     final label = context.tr('vendor.aging.$b');
     final value = formatCurrency(amount);
     final isSelected = selected == b;
-    final tile = Opacity(
-      opacity: amount == 0 ? 0.6 : 1,
-      child: FFStatTile(
-        icon: b == 'current' ? Icons.schedule : Icons.warning_amber_outlined,
-        value: value,
-        label: label,
-        fitValue: true,
+    final muted = amount == 0;
+    final fg = muted
+        ? theme.colorScheme.onSurfaceVariant
+        : theme.colorScheme.onSurface;
+    final body = Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: tight ? FFTokens.spacingXs : FFTokens.spacingSm,
+        vertical: FFTokens.spacingSm,
+      ),
+      constraints: const BoxConstraints(minHeight: 48),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        border: Border.all(
+          color: isSelected
+              ? theme.colorScheme.primary
+              : theme.colorScheme.outlineVariant,
+          width: isSelected ? 2 : 1,
+        ),
+        borderRadius: BorderRadius.circular(FFTokens.radiusLg),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            value,
+            key: Key('$keyPrefix-$b-amount'),
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: fg,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+          const SizedBox(height: FFTokens.spacing2xs),
+          Text(
+            agingTileLabel(b, label),
+            key: Key('$keyPrefix-$b-label'),
+            style: theme.textTheme.bodySmall?.copyWith(color: fg),
+          ),
+        ],
       ),
     );
     if (onSelect == null) {
@@ -226,31 +291,23 @@ class AgingTiles extends StatelessWidget {
         container: true,
         label: '$label, $value',
         excludeSemantics: true,
-        child: tile,
+        child: body,
       );
     }
     return Semantics(
       key: Key('$keyPrefix-$b'),
+      container: true,
       button: true,
       selected: isSelected,
       label: '$label, $value',
       excludeSemantics: true,
       child: Material(
         color: Colors.transparent,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(FFTokens.radiusMd),
-          side: BorderSide(
-            color: isSelected ? theme.colorScheme.primary : Colors.transparent,
-            width: 2,
-          ),
-        ),
+        borderRadius: BorderRadius.circular(FFTokens.radiusLg),
         child: InkWell(
-          borderRadius: BorderRadius.circular(FFTokens.radiusMd),
+          borderRadius: BorderRadius.circular(FFTokens.radiusLg),
           onTap: () => onSelect!(b),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 48),
-            child: tile,
-          ),
+          child: body,
         ),
       ),
     );

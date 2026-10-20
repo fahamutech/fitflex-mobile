@@ -140,13 +140,29 @@ class _StatementPageState extends State<StatementPage> {
                 child: ListView(
                   padding: const EdgeInsets.all(FFTokens.spacingLg),
                   children: [
+                    // UAT D8: the 32-character lines of the shared text are
+                    // never re-wrapped on screen — monospace, one line each,
+                    // scrolling sideways when the screen is narrower. D6: a
+                    // screen reader gets the whole statement as one text.
                     FFCard(
                       key: const Key('statement-preview'),
-                      child: SelectableText(
-                        _text(lang),
-                        style: const TextStyle(
-                          fontFamily: 'JetBrains Mono',
-                          height: 1.4,
+                      child: Semantics(
+                        key: const Key('statement-preview-semantics'),
+                        container: true,
+                        label: _text(lang),
+                        excludeSemantics: true,
+                        child: SingleChildScrollView(
+                          key: const Key('statement-preview-scroll'),
+                          scrollDirection: Axis.horizontal,
+                          child: Text(
+                            _text(lang),
+                            key: const Key('statement-preview-text'),
+                            softWrap: false,
+                            style: const TextStyle(
+                              fontFamily: 'JetBrains Mono',
+                              height: 1.4,
+                            ),
+                          ),
                         ),
                       ),
                     ),

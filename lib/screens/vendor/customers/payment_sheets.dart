@@ -2,6 +2,7 @@
 // payment receipt (§7.2) and voiding a payment (§6.4). Online only: a
 // payment is never queued (the over-payment check needs the live balance).
 // Only `customers` records and voids payments (Q-3).
+import '../../../shared/network/browser_online.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -111,7 +112,18 @@ class _RecordPaymentSheetState extends State<RecordPaymentSheet> {
   List<OpenSale> get _open => openSalesOf(_customer);
 
   @override
+  void initState() {
+    super.initState();
+    BrowserOnline.instance.addListener(_onBrowserOnline);
+  }
+
+  void _onBrowserOnline() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   void dispose() {
+    BrowserOnline.instance.removeListener(_onBrowserOnline);
     _amount.dispose();
     _reference.dispose();
     _note.dispose();
@@ -122,6 +134,7 @@ class _RecordPaymentSheetState extends State<RecordPaymentSheet> {
   }
 
   CustomerPaymentCheck get _check => CustomerPaymentCheck(
+    online: BrowserOnline.instance.value,
     owedTzs: _owed,
     amountTzs: int.tryParse(_amount.text) ?? 0,
     method: _method,
@@ -268,10 +281,10 @@ class _RecordPaymentSheetState extends State<RecordPaymentSheet> {
             return;
           }
           _problem = isRateLimited(e)
-                ? rateLimitedText(context, e)
-                : context.tr(e.status >= 500
-                ? 'vendor.pay.failed'
-                : 'vendor.saveFailed');
+              ? rateLimitedText(context, e)
+              : context.tr(
+                  e.status >= 500 ? 'vendor.pay.failed' : 'vendor.saveFailed',
+                );
       }
     } catch (_) {
       // No answer: nothing recorded yet (or unknown). Try again resends the
@@ -458,8 +471,19 @@ class _RecordPaymentSheetState extends State<RecordPaymentSheet> {
               style: theme.textTheme.labelLarge,
             ),
             if (_manual == null)
+              // Its own node (UAT D6): read out as one polite update, never
+              // merged into the method chips above it.
               Semantics(
+                key: const Key('pay-preview-region'),
+                container: true,
                 liveRegion: true,
+                label: preview.isEmpty
+                    ? context.tr('vendor.pay.oldestFirst')
+                    : [
+                        context.tr('vendor.pay.appliesTo'),
+                        for (final l in preview) _previewText(l),
+                      ].join('. '),
+                excludeSemantics: true,
                 child: Column(
                   key: const Key('pay-preview'),
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -475,6 +499,7 @@ class _RecordPaymentSheetState extends State<RecordPaymentSheet> {
               for (final f in _manual!) _manualRow(f),
               if (check.allocMismatch)
                 Semantics(
+                  container: true,
                   liveRegion: true,
                   child: Text(
                     fillIn(context.tr('vendor.pay.allocMismatch'), {
@@ -510,6 +535,7 @@ class _RecordPaymentSheetState extends State<RecordPaymentSheet> {
             if (_problem != null) ...[
               const SizedBox(height: FFTokens.spacingSm),
               Semantics(
+                container: true,
                 liveRegion: true,
                 child: FFAlert(
                   key: const Key('pay-problem'),
@@ -519,6 +545,18 @@ class _RecordPaymentSheetState extends State<RecordPaymentSheet> {
               ),
             ],
             const SizedBox(height: FFTokens.spacingMd),
+            if (!BrowserOnline.instance.value) ...[
+              Semantics(
+                container: true,
+                liveRegion: true,
+                child: Text(
+                  context.tr('vendor.pay.offline'),
+                  key: const Key('pay-offline'),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+              const SizedBox(height: FFTokens.spacingXs),
+            ],
             FFButton(
               key: const Key('pay-save'),
               label: fillIn(context.tr('vendor.pay.save'), {
@@ -536,19 +574,19 @@ class _RecordPaymentSheetState extends State<RecordPaymentSheet> {
     );
   }
 
-  Widget _previewLine(AllocationLine l) => Text(
-    l.paysOff
-        ? fillIn(context.tr('vendor.pay.paysOff'), {
-            'number': l.sale.number,
-            'amount': formatCurrency(l.amountTzs),
-          })
-        : fillIn(context.tr('vendor.pay.paysPart'), {
-            'amount': formatCurrency(l.amountTzs),
-            'number': l.sale.number,
-            'left': formatCurrency(l.leftTzs),
-          }),
-    key: Key('pay-preview-${l.sale.id}'),
-  );
+  Widget _previewLine(AllocationLine l) =>
+      Text(_previewText(l), key: Key('pay-preview-${l.sale.id}'));
+
+  String _previewText(AllocationLine l) => l.paysOff
+      ? fillIn(context.tr('vendor.pay.paysOff'), {
+          'number': l.sale.number,
+          'amount': formatCurrency(l.amountTzs),
+        })
+      : fillIn(context.tr('vendor.pay.paysPart'), {
+          'amount': formatCurrency(l.amountTzs),
+          'number': l.sale.number,
+          'left': formatCurrency(l.leftTzs),
+        });
 
   Widget _manualRow(_SaleField f) {
     final lang = FFLocaleScope.of(context).locale.languageCode;
@@ -995,10 +1033,12 @@ class _VoidPaymentDialogState extends State<VoidPaymentDialog> {
           _error = context.tr('vendor.sales.voidReasonMissing');
         default:
           _error = isRateLimited(e)
-                ? rateLimitedText(context, e)
-                : context.tr(e.status == 403
-                ? 'vendor.customers.noAccess'
-                : 'vendor.saveFailed');
+              ? rateLimitedText(context, e)
+              : context.tr(
+                  e.status == 403
+                      ? 'vendor.customers.noAccess'
+                      : 'vendor.saveFailed',
+                );
       }
     } catch (_) {
       if (mounted) _error = context.tr('vendor.pay.voidOffline');
@@ -1034,6 +1074,7 @@ class _VoidPaymentDialogState extends State<VoidPaymentDialog> {
               if (_error != null) ...[
                 const SizedBox(height: FFTokens.spacingSm),
                 Semantics(
+                  container: true,
                   liveRegion: true,
                   child: FFAlert(
                     key: const Key('payment-void-error'),
