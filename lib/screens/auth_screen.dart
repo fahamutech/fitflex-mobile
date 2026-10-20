@@ -270,6 +270,10 @@ class _AuthScreenState extends State<AuthScreen>
       ]);
     }
     return FFPhotoHeroPage(
+      // Taller hero (spec §5.3): the photo gives way so Continue stays on
+      // screen (Google, the field and Continue are 264px below the hero).
+      tallContentReserve: 272,
+      tallReserveGrowth: 60,
       leading: IconButton(
         tooltip: context.tr('a11y.back'),
         icon: const Icon(Icons.arrow_back),
@@ -282,6 +286,8 @@ class _AuthScreenState extends State<AuthScreen>
         variant: f.variant,
         minHeight: f.minHeight,
         topInset: f.topInset,
+        clearPhoto: f.clearPhoto,
+        maxHeight: f.maxHeight,
         wideHeadline: f.wide,
         logo: f.wide ? const FFWordmark() : null,
         eyebrow: context.tr('auth.signIn'),
