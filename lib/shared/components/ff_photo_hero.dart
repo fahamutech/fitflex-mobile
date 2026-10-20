@@ -7,11 +7,13 @@ import 'ff_skeleton.dart';
 
 /// Bundled hero photos (people-free licensed stock until FitFlex has its own
 /// shoot; see assets/photos/hero/LICENSES.md). Never fetched from a network.
+/// No crop shows another gym's or brand's logo or signage (owner rule
+/// 2026-10-20): the treadmill photo with a "smart fit" gym logo is banned.
 enum FFHeroPhoto {
-  language('hero_language', 4 / 5, 'pexels-12250460'),
+  language('hero_language', 4 / 5, 'pexels-4716814'),
   signIn('hero_sign_in', 4 / 5, 'scene-tubarones-9545'),
   signUp('hero_sign_up', 4 / 5, 'pexels-3916766'),
-  role('hero_role', 16 / 9, 'pexels-29526371'),
+  role('hero_role', 1080 / 608, 'pexels-29526371'),
 
   /// Home with no QR: no pass, payment pending, ended.
   homeStart('hero_home_start', 4 / 5, 'pexels-29526371'),
@@ -27,8 +29,8 @@ enum FFHeroPhoto {
   activityToday(
     'hero_activity_today',
     3 / 2,
-    'pexels-12250460',
-    Alignment(-0.2, -0.3),
+    'pexels-4173217',
+    Alignment(0.1, 0.2),
   ),
   activityTraining(
     'hero_activity_training',
