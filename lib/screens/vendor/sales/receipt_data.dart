@@ -184,6 +184,9 @@ class ReceiptData {
     bool vat = false,
   }) {
     final vatTzs = vat ? _int(sale['vatIncludedTzs']) : 0;
+    // Zero-rated (C) and exempt (E) sales have rows but no VAT amount.
+    final vatRows = vat ? vatRowsOf(sale['vatSummary']) : const <DocVatRow>[];
+    final vatApplied = vatTzs > 0 || vatRows.isNotEmpty;
     Map? person(Object? v) => v is Map ? v : null;
     final soldAt = _str(sale['soldAt']);
     final recordedAt = _str(sale['recordedAt']);
@@ -212,7 +215,7 @@ class ReceiptData {
             discountTzs: _int(l['discountTzs']),
             lineTotalTzs: _int(l['lineTotalTzs']),
             priceChangedBy: _str(person(l['priceChangedBy'])?['name']),
-            vatCode: vatTzs > 0 ? _str(l['vatCode']) : null,
+            vatCode: vatApplied ? _str(l['vatCode']) : null,
           ),
       ],
       subtotalTzs: _int(sale['subtotalTzs']),
@@ -249,7 +252,7 @@ class ReceiptData {
       ],
       invoiceNumber: documents ? _str(sale['invoiceNumber']) : null,
       vatIncludedTzs: vatTzs,
-      vatSummary: vatTzs > 0 ? vatRowsOf(sale['vatSummary']) : const [],
+      vatSummary: vatRows,
     );
   }
 
@@ -426,7 +429,7 @@ String receiptShareText(
     );
   }
   b.writeln(_row(t('vendor.pos.total'), formatCurrency(r.totalTzs)));
-  if (r.vatIncludedTzs > 0) {
+  if (r.hasVat) {
     // S5: VAT is inside the prices; the total is unchanged.
     b.writeln(
       fill('vendor.doc.includesVat', {

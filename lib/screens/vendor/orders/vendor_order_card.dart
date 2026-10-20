@@ -29,6 +29,10 @@ import '../stock/stock_options.dart';
 Future<bool> Function(Uri uri) vendorOrderDialer = (uri) =>
     launchUrl(uri, mode: LaunchMode.externalApplication);
 
+/// S5: an order has my invoice once my part was paid, also after a refund
+/// was asked for or made (the invoice then reads as the server says).
+const invoicePaymentStatuses = {'paid', 'refund_pending', 'refunded'};
+
 /// The order number shown to the vendor; see [shopOrderRef].
 String vendorOrderRef(Map<String, dynamic> order) => shopOrderRef(order);
 
@@ -187,7 +191,9 @@ class VendorOrderCard extends StatelessWidget {
           // S5: my invoice, once my part of the order is paid (§4.4).
           if (tools.documents &&
               canVendor(context, 'orders') &&
-              order['paymentStatus']?.toString() == 'paid' &&
+              invoicePaymentStatuses.contains(
+                order['paymentStatus']?.toString(),
+              ) &&
               documentIdPattern.hasMatch(_id))
             Align(
               alignment: AlignmentDirectional.centerStart,

@@ -158,6 +158,9 @@ class _DocumentShareSheetState extends State<DocumentShareSheet> {
   _Row? _busy;
   bool _unavailable = false;
   bool _createFailed = false;
+
+  /// 429 rate_limited: seconds to wait before another link.
+  int? _waitSeconds;
   bool _pdfFailed = false;
   _Row? _retry;
   bool _more = false;
@@ -218,6 +221,7 @@ class _DocumentShareSheetState extends State<DocumentShareSheet> {
     setState(() {
       _busy = row;
       _createFailed = false;
+      _waitSeconds = null;
       _notice = null;
     });
     try {
@@ -245,6 +249,13 @@ class _DocumentShareSheetState extends State<DocumentShareSheet> {
         _closeWith(_t('vendor.sales.suspended'));
       } else if (e.status == 403) {
         _closeWith(_t('vendor.documents.noAccess'));
+      } else if (e.status == 429) {
+        final body = e.body is Map ? e.body as Map : const {};
+        final s = body['retryAfterSeconds'];
+        setState(() {
+          _waitSeconds = s is num && s > 0 ? s.ceil() : 60;
+          _retry = row;
+        });
       } else {
         setState(() {
           _createFailed = true;
@@ -522,6 +533,20 @@ class _DocumentShareSheetState extends State<DocumentShareSheet> {
             FFAlert(
               key: const Key('doc-share-unavailable'),
               message: _t('vendor.documents.unavailable'),
+            ),
+          ],
+          if (_waitSeconds != null) ...[
+            const SizedBox(height: FFTokens.spacingSm),
+            Semantics(
+              container: true,
+              liveRegion: true,
+              child: FFAlert(
+                key: const Key('doc-share-rate-limited'),
+                message: fillIn(_t('vendor.documents.rateLimited'), {
+                  'n': _waitSeconds,
+                }),
+                tone: FFAlertTone.warning,
+              ),
             ),
           ],
           if (_createFailed || _pdfFailed) ...[

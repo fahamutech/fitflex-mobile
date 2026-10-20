@@ -275,6 +275,9 @@ class _TaxDetailsPageState extends State<TaxDetailsPage> {
           setState(() => _vrnError = context.tr('vendor.tax.vrnInvalid'));
         case 'tin_invalid':
           setState(() => _tinError = context.tr('vendor.tax.tinInvalid'));
+        case 'kyc_tin_invalid':
+          // The TIN comes from the verification case and is not 9 digits.
+          setState(() => _tinError = context.tr('vendor.tax.kycTinInvalid'));
         case 'tin_required':
           setState(() => _tinError = context.tr('vendor.tax.tinRequired'));
         case 'certificate_required':

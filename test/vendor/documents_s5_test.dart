@@ -350,6 +350,30 @@ void main() {
       expect(out.copied.single, url);
     });
 
+    apiTest('429 rate_limited: "Wait {n} seconds", then a retry works', (
+      tester,
+      api,
+    ) async {
+      final out = Outside()..install();
+      api.fail('POST /vendor/sales/sal_1/share', 429, {
+        'error': 'rate_limited',
+        'retryAfterSeconds': 37,
+      });
+      await pumpReceipt(tester, api);
+      await openSheet(tester);
+      await tester.tap(find.byKey(const Key('doc-share-copy')));
+      await tester.pumpAndSettle();
+      expect(find.text('Too many tries. Wait 37 seconds.'), findsOneWidget);
+      expect(find.byKey(const Key('doc-share-create-failed')), findsNothing);
+      expect(out.copied, isEmpty);
+      api.heal('POST /vendor/sales/sal_1/share');
+      api.on('POST /vendor/sales/sal_1/share', shareAnswer());
+      await tester.tap(find.byKey(const Key('doc-share-copy')));
+      await tester.pumpAndSettle();
+      expect(out.copied.single, url);
+      expect(find.byKey(const Key('doc-share-rate-limited')), findsNothing);
+    });
+
     apiTest('403: the sheet closes with "no access"', (tester, api) async {
       Outside().install();
       api.fail('POST /vendor/sales/sal_1/share', 403, {
@@ -623,6 +647,33 @@ void main() {
       expect(find.text('VRN 40012345X'), findsOneWidget);
       // The total the customer pays is unchanged (prices include VAT).
       expect(find.text('TSh 45,000'), findsOneWidget);
+    });
+
+    apiTest('exempt-only sale (VAT 0): the VAT block still shows', (
+      tester,
+      api,
+    ) async {
+      await pumpReceipt(
+        tester,
+        api,
+        tools: {...docsOn, 'vat': true},
+        sale: {
+          ...serverSale(),
+          'vatIncludedTzs': 0,
+          'vatSummary': [
+            {'code': 'E', 'ratePct': null, 'netTzs': 45000, 'vatTzs': 0},
+          ],
+          'lines': [
+            {
+              ...(serverSale()['lines'] as List).first as Map<String, dynamic>,
+              'vatCode': 'E',
+            },
+          ],
+        },
+      );
+      expect(find.byKey(const Key('doc-vat-block')), findsOneWidget);
+      expect(find.text('E Exempt'), findsOneWidget);
+      expect(find.text('45,000 E'), findsOneWidget);
     });
 
     apiTest('vat off: no VAT block anywhere, no document asked (AC-2)', (
@@ -1000,6 +1051,21 @@ void main() {
       await tapVisible(tester, find.byKey(const Key('tax-save')));
       expect(find.byKey(const Key('tax-save-error')), findsOneWidget);
       expect(find.text(host.tr('vendor.tax.ownerOnly')), findsOneWidget);
+    });
+
+    apiTest('kyc_tin_invalid: the TIN field says to fix it in verification', (
+      tester,
+      api,
+    ) async {
+      api.on(
+        'GET /vendor/tax-profile',
+        profile(registered: true, status: 'pending'),
+      );
+      api.fail('PUT /vendor/tax-profile', 400, {'error': 'kyc_tin_invalid'});
+      final host = await pumpTax(tester, api);
+      await tapVisible(tester, find.byKey(const Key('tax-save')));
+      expect(find.text(host.tr('vendor.tax.kycTinInvalid')), findsOneWidget);
+      expect(find.byKey(const Key('tax-save-error')), findsNothing);
     });
 
     apiTest('409 tax_profile_changed reloads with a notice', (
@@ -1462,6 +1528,52 @@ void main() {
       expect(find.byKey(const Key('vendor-order-invoice-ord_3')), findsNothing);
     });
 
+    apiTest('order card: Invoice after a refund too; not for failed', (
+      tester,
+      api,
+    ) async {
+      final on = VendorTools.fromOptions({'documents': true});
+      await pumpPage(
+        tester,
+        api,
+        ListView(
+          children: [
+            for (final (id, pay) in const [
+              ('ord_rp', 'refund_pending'),
+              ('ord_rf', 'refunded'),
+              ('ord_fl', 'failed'),
+              ('ord_cx', 'cancelled'),
+            ])
+              VendorOrderCard(
+                order: {
+                  ...order(payment: pay),
+                  'id': id,
+                },
+                tools: on,
+              ),
+          ],
+        ),
+        user: owner,
+        size: const Size(420, 2400),
+      );
+      expect(
+        find.byKey(const Key('vendor-order-invoice-ord_rp')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('vendor-order-invoice-ord_rf')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('vendor-order-invoice-ord_fl')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const Key('vendor-order-invoice-ord_cx')),
+        findsNothing,
+      );
+    });
+
     apiTest('vendor order invoice: seller, sold via, VAT summary, TSh', (
       tester,
       api,
@@ -1708,8 +1820,8 @@ void main() {
         'vendor.customers.asOf': 'Kufikia {date}',
         'vendor.tax.stop': 'Zima VAT',
         'vendor.tax.certNotStanding':
-            'Cheti chako cha VAT hakikubaliki tena. VAT haitahesabiwa '
-            'kwenye mauzo mapya hadi utume cheti kipya.',
+            'Cheti chako cha VAT hakikubaliki tena. VAT inasimama kwenye '
+            'mauzo mapya hadi utume kipya.',
       };
       want.forEach((k, v) => expect(FFLocale.textOf('sw', k), v, reason: k));
       expect(
