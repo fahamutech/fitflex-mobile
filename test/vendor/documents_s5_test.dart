@@ -1068,6 +1068,29 @@ void main() {
       expect(put.containsKey('vrn'), isFalse);
     });
 
+    apiTest('verified certificate no longer stands: notice + Send again', (
+      tester,
+      api,
+    ) async {
+      api.on(
+        'GET /vendor/tax-profile',
+        profile(
+          status: 'verified',
+          registered: true,
+          verified: {'vrn': '40012345X', 'certificateStands': false},
+        ),
+      );
+      await pumpTax(tester, api);
+      expect(
+        find.text(
+          'Your VAT certificate is no longer accepted. VAT stops on new '
+          'sales until you send a new one.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('tax-send-again')), findsOneWidget);
+    });
+
     test('push vendor_vat_verified / rejected open Tax details', () {
       for (final type in ['vendor_vat_verified', 'vendor_vat_rejected']) {
         expect(
@@ -1674,6 +1697,30 @@ void main() {
             k,
       ];
       expect(left, isEmpty);
+    });
+
+    test('Swahili audit wording (drafts, native review)', () {
+      const want = {
+        'vendor.doc.servedBy': 'Mhudumu: {name}',
+        'vendor.product.vatCode': 'Msimbo wa VAT',
+        'vendor.product.vatA11y': 'Msimbo wa VAT wa {product}',
+        'vendor.product.vatInvalid': 'Chagua msimbo wa VAT kwenye orodha.',
+        'vendor.customers.asOf': 'Kufikia {date}',
+        'vendor.tax.stop': 'Zima VAT',
+        'vendor.tax.certNotStanding':
+            'Cheti chako cha VAT hakikubaliki tena. VAT haitahesabiwa '
+            'kwenye mauzo mapya hadi utume cheti kipya.',
+      };
+      want.forEach((k, v) => expect(FFLocale.textOf('sw', k), v, reason: k));
+      expect(
+        FFLocale.textOf('sw', 'error.network'),
+        startsWith('Hakuna intaneti.'),
+      );
+      expect(
+        FFLocale.textOf('sw', 'error.network'),
+        isNot(contains('muunganisho')),
+      );
+      expect(FFLocale.textOf('en', 'vendor.tax.certNoLongerStands'), isNull);
     });
 
     test('placeholders match between languages', () {

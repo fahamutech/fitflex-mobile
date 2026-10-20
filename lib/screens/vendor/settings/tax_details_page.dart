@@ -324,7 +324,7 @@ class _TaxDetailsPageState extends State<TaxDetailsPage> {
     final lang = FFLocaleScope.of(context).locale.languageCode;
     final (String message, FFAlertTone tone) = switch (p.status) {
       _ when p.everVerified && !p.certificateStands => (
-        context.tr('vendor.tax.certNoLongerStands'),
+        context.tr('vendor.tax.certNotStanding'),
         FFAlertTone.warning,
       ),
       _ when p.changePending => (
