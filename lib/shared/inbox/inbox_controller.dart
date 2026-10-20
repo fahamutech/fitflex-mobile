@@ -181,6 +181,9 @@ String partnerLinkFor({required String side, required String type}) =>
         'vendor_low_stock' => 'lowStock',
         // S3: a walk-in sale was voided (sent to the vendor account).
         'vendor_sale_voided' => 'sale',
+        // S4: the daily overdue digest, and a payment voided by staff.
+        'vendor_customers_overdue' => 'owed',
+        'vendor_customer_payment_voided' => 'customer',
         _ => '',
       },
       'gym' => switch (type) {
@@ -206,6 +209,7 @@ String? partnerRouteFor({
   String? productId,
   String? variant,
   String? saleId,
+  String? customerId,
 }) {
   bool ok(String? id) => id != null && _safeId.hasMatch(id);
   return switch (partnerLinkFor(side: side, type: type)) {
@@ -231,6 +235,10 @@ String? partnerRouteFor({
     // The sale detail checks the feature and the `sales` permission.
     'sale' when ok(saleId) => '/vendor/sales/$saleId',
     'sale' => '/vendor/home?open=sales',
+    // The customer pages check the feature and the `customers` permission.
+    'owed' => '/vendor/home?open=customers&view=owed',
+    'customer' when ok(customerId) => '/vendor/customers/$customerId',
+    'customer' => '/vendor/home?open=customers',
     'checkins' when ok(gymId) => '/owner/gyms/$gymId/checkins',
     'member' when ok(memberId) => '/owner/members/$memberId',
     'memberPayments' when ok(memberId) => '/owner/members/$memberId/payments',

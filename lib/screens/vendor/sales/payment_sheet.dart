@@ -2,6 +2,7 @@
 // possibly with several methods, and the change to give back. The sheet
 // mirrors the server's rules; the POS sends the sale and tells the sheet
 // whether to close or to show a problem.
+import '../../../shared/network/browser_online.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -9,6 +10,7 @@ import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
 import '../../../shared/formatters.dart';
 import '../../../shared/i18n.dart';
+import '../customers/customer_models.dart';
 import '../stock/stock_options.dart';
 import 'sale_models.dart';
 import 'sales_widgets.dart';
@@ -55,11 +57,44 @@ class PayAttempt {
 
 enum PayAttemptKind { close, stay, server }
 
+/// [creditDueDate]: a pay-later sale (S4) due that EAT day.
 typedef PaySubmit =
     Future<PayAttempt> Function(
       List<Map<String, dynamic>> payments, {
       bool queue,
+      String? creditDueDate,
     });
+
+/// The customer attached to the sale, as the sheet shows it.
+typedef SaleCustomer = ({
+  String? id,
+  String? name,
+  int? owedTzs,
+  int? overdueTzs,
+});
+
+/// S4: what pay later needs from the POS. Null when this person may not
+/// sell on credit (needs `sales` and `customers`, and both tools on).
+class PayLaterSetup {
+  const PayLaterSetup({
+    required this.online,
+    required this.saleDay,
+    required this.customer,
+    required this.pickCustomer,
+  });
+
+  /// Pay later is online only (never queued).
+  final bool online;
+
+  /// The sale's EAT day (YYYY-MM-DD): due dates run from it to +365.
+  final String saleDay;
+
+  /// The cart's customer right now.
+  final SaleCustomer Function() customer;
+
+  /// Opens the customer picker (updates the cart).
+  final Future<void> Function() pickCustomer;
+}
 
 class _Row {
   _Row(PaymentRow row)
@@ -83,10 +118,14 @@ class PaymentSheet extends StatefulWidget {
     required this.totalTzs,
     required this.submit,
     this.onAction,
+    this.payLater,
   });
 
   final int totalTzs;
   final PaySubmit submit;
+
+  /// S4 pay later; null hides it.
+  final PayLaterSetup? payLater;
 
   /// Applies a [PayAttempt.action] before Complete is tried again.
   final void Function(String action)? onAction;
@@ -105,8 +144,14 @@ class _PaymentSheetState extends State<PaymentSheet> {
   int? _problemIndex;
   String? _action;
 
+  // S4 pay later.
+  bool _credit = false;
+  String _due = '7';
+  String? _customDue;
+
   @override
   void dispose() {
+    BrowserOnline.instance.removeListener(_onBrowserOnline);
     for (final r in _rows) {
       r.dispose();
     }
@@ -135,6 +180,101 @@ class _PaymentSheetState extends State<PaymentSheet> {
     r.row.amountTzs = amount;
     r.amount.text = '$amount';
     _edited();
+  }
+
+  /// Pay later needs a connection: the POS's own signal and (web) the
+  /// browser's online state.
+  bool _online(PayLaterSetup setup) =>
+      setup.online && BrowserOnline.instance.value;
+
+  @override
+  void initState() {
+    super.initState();
+    BrowserOnline.instance.addListener(_onBrowserOnline);
+  }
+
+  void _onBrowserOnline() {
+    if (mounted) setState(() {});
+  }
+
+  CreditCheck get _creditCheck =>
+      CreditCheck(widget.totalTzs, [for (final r in _rows) r.row]);
+
+  String? get _dueDate {
+    final setup = widget.payLater;
+    if (setup == null) return null;
+    if (_due == 'custom') return _customDue;
+    return addDaysTo(setup.saleDay, int.parse(_due));
+  }
+
+  bool get _creditReady {
+    final setup = widget.payLater;
+    if (setup == null) return false;
+    final c = setup.customer();
+    return _creditCheck.canComplete(
+      hasCustomer: c.id != null,
+      hasDueDate: _dueDate != null,
+      online: setup.online && BrowserOnline.instance.value,
+    );
+  }
+
+  Future<void> _completeCredit() async {
+    if (!_creditReady || _saving) return;
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() {
+      _saving = true;
+      _problem = null;
+      _server = false;
+    });
+    final out = await widget.submit(
+      _creditCheck.toRequest(),
+      creditDueDate: _dueDate,
+    );
+    if (!mounted) return;
+    if (out.kind == PayAttemptKind.close) {
+      FocusManager.instance.primaryFocus?.unfocus();
+      Navigator.of(context).pop(true);
+      return;
+    }
+    // A pay-later sale is never kept on the device: every other answer
+    // stays here with its reason; Complete tries again (same key).
+    setState(() {
+      _saving = false;
+      _problem = fillIn(
+        context.tr(out.messageKey ?? 'vendor.pos.credit.failed'),
+        out.values ?? const {},
+      );
+      _problemIndex = out.index;
+    });
+  }
+
+  Future<void> _chooseDue() async {
+    final setup = widget.payLater!;
+    final range = dueDateRange(setup.saleDay);
+    DateTime local(String day) {
+      final d = parseDay(day)!;
+      return DateTime(d.year, d.month, d.day);
+    }
+
+    final picked = await showDatePicker(
+      context: context,
+      firstDate: local(range.earliest),
+      lastDate: local(range.latest),
+      initialDate: local(_dueDate ?? addDaysTo(setup.saleDay, defaultDueDays)),
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _due = 'custom';
+      _customDue = dayString(
+        DateTime.utc(picked.year, picked.month, picked.day),
+      );
+    });
+    _edited();
+  }
+
+  Future<void> _pickCustomer() async {
+    await widget.payLater?.pickCustomer();
+    if (mounted) _edited();
   }
 
   Future<void> _complete({bool queue = false}) async {
@@ -195,130 +335,411 @@ class _PaymentSheetState extends State<PaymentSheet> {
         },
         child: Focus(
           autofocus: true,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                context.tr('vendor.pos.amountDue'),
-                style: theme.textTheme.labelLarge,
-              ),
-              Text(
-                formatCurrency(widget.totalTzs),
-                key: const Key('pos-pay-total'),
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
-              ),
-              const SizedBox(height: FFTokens.spacingMd),
-              if (check.nothingToPay)
-                Text(
-                  context.tr('vendor.pos.nothingToPay'),
-                  key: const Key('pos-nothing-to-pay'),
-                )
-              else ...[
-                for (var i = 0; i < _rows.length; i++) _rowEditor(context, i),
-                if (check.remainingTzs > 0 && _rows.length < maxSalePayments)
-                  Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: FFButton(
-                      key: const Key('pos-add-payment'),
-                      label: context.tr('vendor.pos.addPayment'),
-                      icon: Icons.add,
-                      variant: FFButtonVariant.ghost,
-                      visualDensity: VisualDensity.standard,
-                      onPressed: _saving
-                          ? null
-                          : () {
-                              setState(
-                                () => _rows.add(
-                                  _Row(
-                                    PaymentRow(amountTzs: check.remainingTzs),
-                                  ),
-                                ),
-                              );
-                              _edited();
-                            },
+          child: _credit
+              ? _creditBody(context)
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      context.tr('vendor.pos.amountDue'),
+                      style: theme.textTheme.labelLarge,
                     ),
-                  ),
-              ],
-              if (status != null) ...[
-                const SizedBox(height: FFTokens.spacingSm),
-                Semantics(liveRegion: true, child: status),
-              ],
-              if (_problem != null) ...[
-                const SizedBox(height: FFTokens.spacingSm),
-                Semantics(
-                  liveRegion: true,
-                  child: FFAlert(
-                    key: const Key('pos-pay-problem'),
-                    message: _problem!,
-                    tone: FFAlertTone.error,
-                  ),
+                    Text(
+                      formatCurrency(widget.totalTzs),
+                      key: const Key('pos-pay-total'),
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                    const SizedBox(height: FFTokens.spacingMd),
+                    if (check.nothingToPay)
+                      Text(
+                        context.tr('vendor.pos.nothingToPay'),
+                        key: const Key('pos-nothing-to-pay'),
+                      )
+                    else ...[
+                      for (var i = 0; i < _rows.length; i++)
+                        _rowEditor(context, i),
+                      if (check.remainingTzs > 0 &&
+                          _rows.length < maxSalePayments)
+                        Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: FFButton(
+                            key: const Key('pos-add-payment'),
+                            label: context.tr('vendor.pos.addPayment'),
+                            icon: Icons.add,
+                            variant: FFButtonVariant.ghost,
+                            visualDensity: VisualDensity.standard,
+                            onPressed: _saving
+                                ? null
+                                : () {
+                                    setState(
+                                      () => _rows.add(
+                                        _Row(
+                                          PaymentRow(
+                                            amountTzs: check.remainingTzs,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                    _edited();
+                                  },
+                          ),
+                        ),
+                    ],
+                    if (status != null) ...[
+                      const SizedBox(height: FFTokens.spacingSm),
+                      Semantics(
+                        container: true,
+                        liveRegion: true,
+                        child: status,
+                      ),
+                    ],
+                    ..._payLaterEntry(context, check),
+                    if (_problem != null) ...[
+                      const SizedBox(height: FFTokens.spacingSm),
+                      Semantics(
+                        container: true,
+                        liveRegion: true,
+                        child: FFAlert(
+                          key: const Key('pos-pay-problem'),
+                          message: _problem!,
+                          tone: FFAlertTone.error,
+                        ),
+                      ),
+                      if (_action == 'recordToday' &&
+                          widget.onAction != null) ...[
+                        const SizedBox(height: FFTokens.spacingSm),
+                        FFButton(
+                          key: const Key('pos-record-today'),
+                          label: context.tr('vendor.sync.recordToday'),
+                          variant: FFButtonVariant.secondary,
+                          fullWidth: true,
+                          visualDensity: VisualDensity.standard,
+                          onPressed: _saving
+                              ? null
+                              : () {
+                                  widget.onAction!('recordToday');
+                                  _edited();
+                                  _complete();
+                                },
+                        ),
+                      ],
+                    ],
+                    const SizedBox(height: FFTokens.spacingMd),
+                    FFAlert(
+                      key: const Key('pos-money-notice'),
+                      message: context.tr('vendor.pos.moneyNotice'),
+                    ),
+                    const SizedBox(height: FFTokens.spacingMd),
+                    if (_server) ...[
+                      FFAlert(
+                        key: const Key('pos-server-error'),
+                        message: context.tr('vendor.pos.err.server'),
+                        tone: FFAlertTone.error,
+                      ),
+                      const SizedBox(height: FFTokens.spacingSm),
+                      FFButton(
+                        key: const Key('pos-retry'),
+                        label: context.tr('common.retry'),
+                        fullWidth: true,
+                        visualDensity: VisualDensity.standard,
+                        loading: _saving,
+                        onPressed: () => _complete(),
+                      ),
+                      const SizedBox(height: FFTokens.spacingSm),
+                      FFButton(
+                        key: const Key('pos-sync-later'),
+                        label: context.tr('vendor.pos.syncLater'),
+                        variant: FFButtonVariant.secondary,
+                        fullWidth: true,
+                        visualDensity: VisualDensity.standard,
+                        onPressed: _saving
+                            ? null
+                            : () => _complete(queue: true),
+                      ),
+                    ] else
+                      FFButton(
+                        key: const Key('pos-complete'),
+                        label: context.tr(
+                          _saving
+                              ? 'vendor.pos.completing'
+                              : 'vendor.pos.complete',
+                        ),
+                        fullWidth: true,
+                        maxLines: 2,
+                        visualDensity: VisualDensity.standard,
+                        loading: _saving,
+                        onPressed: check.canComplete ? () => _complete() : null,
+                      ),
+                  ],
                 ),
-                if (_action == 'recordToday' && widget.onAction != null) ...[
-                  const SizedBox(height: FFTokens.spacingSm),
-                  FFButton(
-                    key: const Key('pos-record-today'),
-                    label: context.tr('vendor.sync.recordToday'),
-                    variant: FFButtonVariant.secondary,
-                    fullWidth: true,
-                    visualDensity: VisualDensity.standard,
-                    onPressed: _saving
-                        ? null
-                        : () {
-                            widget.onAction!('recordToday');
-                            _edited();
-                            _complete();
-                          },
-                  ),
-                ],
-              ],
-              const SizedBox(height: FFTokens.spacingMd),
-              FFAlert(
-                key: const Key('pos-money-notice'),
-                message: context.tr('vendor.pos.moneyNotice'),
-              ),
-              const SizedBox(height: FFTokens.spacingMd),
-              if (_server) ...[
-                FFAlert(
-                  key: const Key('pos-server-error'),
-                  message: context.tr('vendor.pos.err.server'),
-                  tone: FFAlertTone.error,
-                ),
-                const SizedBox(height: FFTokens.spacingSm),
-                FFButton(
-                  key: const Key('pos-retry'),
-                  label: context.tr('common.retry'),
-                  fullWidth: true,
-                  visualDensity: VisualDensity.standard,
-                  loading: _saving,
-                  onPressed: () => _complete(),
-                ),
-                const SizedBox(height: FFTokens.spacingSm),
-                FFButton(
-                  key: const Key('pos-sync-later'),
-                  label: context.tr('vendor.pos.syncLater'),
-                  variant: FFButtonVariant.secondary,
-                  fullWidth: true,
-                  visualDensity: VisualDensity.standard,
-                  onPressed: _saving ? null : () => _complete(queue: true),
-                ),
-              ] else
-                FFButton(
-                  key: const Key('pos-complete'),
-                  label: context.tr(
-                    _saving ? 'vendor.pos.completing' : 'vendor.pos.complete',
-                  ),
-                  fullWidth: true,
-                  maxLines: 2,
-                  visualDensity: VisualDensity.standard,
-                  loading: _saving,
-                  onPressed: check.canComplete ? () => _complete() : null,
-                ),
-            ],
-          ),
         ),
       ),
+    );
+  }
+
+  /// "Pay later" under the rows while something is left to pay (§3.3).
+  List<Widget> _payLaterEntry(BuildContext context, PaymentCheck check) {
+    final setup = widget.payLater;
+    if (setup == null || check.nothingToPay || check.remainingTzs <= 0) {
+      return const [];
+    }
+    return [
+      const SizedBox(height: FFTokens.spacingSm),
+      FFButton(
+        key: const Key('vendor-pos-paylater'),
+        label: context.tr('vendor.pos.payLater'),
+        icon: Icons.schedule,
+        variant: FFButtonVariant.secondary,
+        fullWidth: true,
+        visualDensity: VisualDensity.standard,
+        onPressed: _saving || !_online(setup)
+            ? null
+            : () {
+                setState(() => _credit = true);
+                _edited();
+                if (setup.customer().id == null) _pickCustomer();
+              },
+      ),
+      if (!_online(setup))
+        Semantics(
+          container: true,
+          liveRegion: true,
+          child: Text(
+            context.tr('vendor.pos.credit.needsConnection'),
+            key: const Key('pos-paylater-offline'),
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ),
+    ];
+  }
+
+  Widget _creditBody(BuildContext context) {
+    final theme = Theme.of(context);
+    final setup = widget.payLater!;
+    final lang = FFLocaleScope.of(context).locale.languageCode;
+    final credit = _creditCheck;
+    final customer = setup.customer();
+    final due = _dueDate;
+    final owed = customer.owedTzs ?? 0;
+    final overdue = customer.overdueTzs ?? 0;
+    String? status;
+    if (credit.fullyPaid) {
+      status = context.tr('vendor.pos.credit.fullyPaid');
+    } else if (credit.wouldGiveChange) {
+      status = context.tr('vendor.pos.credit.noChange');
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Semantics(
+          header: true,
+          child: Text(
+            fillIn(context.tr('vendor.pos.credit.title'), {
+              'amount': formatCurrency(credit.balanceTzs),
+            }),
+            key: const Key('pos-credit-title'),
+            style: theme.textTheme.titleMedium,
+          ),
+        ),
+        const SizedBox(height: FFTokens.spacingSm),
+        // Customer (required).
+        Semantics(
+          button: true,
+          label: customer.id == null
+              ? context.tr('vendor.pos.customer.pick')
+              : fillIn(context.tr('vendor.receipt.customer'), {
+                  'name':
+                      customer.name ?? context.tr('vendor.customers.unnamed'),
+                }),
+          excludeSemantics: true,
+          child: ListTile(
+            key: const Key('pos-credit-customer'),
+            minTileHeight: 56,
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.person_outline),
+            title: Text(
+              customer.id == null
+                  ? context.tr('vendor.pos.customer.pick')
+                  : customer.name ?? context.tr('vendor.customers.unnamed'),
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: _saving ? null : _pickCustomer,
+          ),
+        ),
+        if (customer.id != null && owed > 0)
+          Padding(
+            padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
+            child: FFAlert(
+              key: const Key('pos-credit-already-owes'),
+              message: [
+                fillIn(context.tr('vendor.pos.credit.alreadyOwes'), {
+                  'name':
+                      customer.name ?? context.tr('vendor.customers.unnamed'),
+                  'amount': formatCurrency(owed),
+                }),
+                if (overdue > 0)
+                  fillIn(context.tr('vendor.customers.overdueAmount'), {
+                    'amount': formatCurrency(overdue),
+                  }),
+              ].join(' '),
+              tone: FFAlertTone.warning,
+            ),
+          ),
+        Text(
+          context.tr('vendor.pos.dueDate'),
+          style: theme.textTheme.labelLarge,
+        ),
+        const SizedBox(height: FFTokens.spacingXs),
+        Wrap(
+          spacing: FFTokens.spacingXs,
+          runSpacing: FFTokens.spacingXs,
+          children: [
+            for (final d in const ['7', '14', '30'])
+              Semantics(
+                inMutuallyExclusiveGroup: true,
+                selected: _due == d,
+                child: FFPill(
+                  key: Key('pos-due-$d'),
+                  label: context.tr('vendor.pos.credit.in$d'),
+                  filled: _due == d,
+                  onTap: _saving
+                      ? null
+                      : () {
+                          setState(() => _due = d);
+                          _edited();
+                        },
+                ),
+              ),
+            Semantics(
+              inMutuallyExclusiveGroup: true,
+              selected: _due == 'custom',
+              child: FFPill(
+                key: const Key('pos-due-custom'),
+                label: context.tr('vendor.pos.credit.choose'),
+                filled: _due == 'custom',
+                onTap: _saving ? null : _chooseDue,
+              ),
+            ),
+          ],
+        ),
+        if (due != null)
+          Padding(
+            padding: const EdgeInsets.only(top: FFTokens.spacingXs),
+            child: Text(
+              fillIn(context.tr('vendor.pos.credit.dueOn'), {
+                'date': formatDay(due, locale: lang),
+              }),
+              key: const Key('pos-due-resolved'),
+            ),
+          ),
+        const SizedBox(height: FFTokens.spacingMd),
+        Text(
+          context.tr('vendor.pos.credit.paidNow'),
+          style: theme.textTheme.labelLarge,
+        ),
+        const SizedBox(height: FFTokens.spacingXs),
+        for (var i = 0; i < _rows.length; i++) _rowEditor(context, i),
+        if (_rows.length < maxSalePayments)
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: FFButton(
+              key: const Key('pos-add-payment'),
+              label: context.tr('vendor.pos.addPayment'),
+              icon: Icons.add,
+              variant: FFButtonVariant.ghost,
+              visualDensity: VisualDensity.standard,
+              onPressed: _saving
+                  ? null
+                  : () {
+                      setState(() => _rows.add(_Row(PaymentRow())));
+                      _edited();
+                    },
+            ),
+          ),
+        Semantics(
+          container: true,
+          liveRegion: true,
+          child: Text(
+            fillIn(context.tr('vendor.pos.credit.balance'), {
+              'amount': formatCurrency(credit.balanceTzs),
+            }),
+            key: const Key('pos-credit-balance'),
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+        ),
+        if (status != null) ...[
+          const SizedBox(height: FFTokens.spacingSm),
+          Semantics(
+            container: true,
+            liveRegion: true,
+            child: Text(
+              status,
+              key: const Key('pos-credit-status'),
+              style: theme.textTheme.titleSmall?.copyWith(
+                color: warningText(context),
+              ),
+            ),
+          ),
+        ],
+        if (_problem != null) ...[
+          const SizedBox(height: FFTokens.spacingSm),
+          Semantics(
+            container: true,
+            liveRegion: true,
+            child: FFAlert(
+              key: const Key('pos-pay-problem'),
+              message: _problem!,
+              tone: FFAlertTone.error,
+            ),
+          ),
+        ],
+        const SizedBox(height: FFTokens.spacingMd),
+        FFAlert(
+          key: const Key('pos-money-notice'),
+          message: context.tr('vendor.pos.moneyNotice'),
+        ),
+        const SizedBox(height: FFTokens.spacingXs),
+        FFAlert(
+          key: const Key('pos-credit-notice'),
+          message: context.tr('vendor.pos.credit.notice'),
+        ),
+        if (!_online(setup)) ...[
+          const SizedBox(height: FFTokens.spacingXs),
+          Text(
+            context.tr('vendor.pos.credit.needsConnection'),
+            style: theme.textTheme.bodySmall,
+          ),
+        ],
+        const SizedBox(height: FFTokens.spacingMd),
+        FFButton(
+          key: const Key('pos-credit-complete'),
+          label: context.tr('vendor.pos.credit.complete'),
+          fullWidth: true,
+          maxLines: 2,
+          visualDensity: VisualDensity.standard,
+          loading: _saving,
+          onPressed: _creditReady ? _completeCredit : null,
+        ),
+        const SizedBox(height: FFTokens.spacingSm),
+        FFButton(
+          key: const Key('pos-credit-back'),
+          label: context.tr('vendor.pos.credit.backToFull'),
+          variant: FFButtonVariant.ghost,
+          fullWidth: true,
+          maxLines: 2,
+          visualDensity: VisualDensity.standard,
+          onPressed: _saving
+              ? null
+              : () {
+                  setState(() => _credit = false);
+                  _edited();
+                },
+        ),
+      ],
     );
   }
 
@@ -404,7 +825,7 @@ class _PaymentSheetState extends State<PaymentSheet> {
                     style: Theme.of(context).textTheme.labelLarge,
                   ),
                 ),
-                if (_rows.length >= 2)
+                if (_rows.length >= 2 || _credit)
                   IconButton(
                     key: Key('pos-remove-payment-$index'),
                     style: IconButton.styleFrom(

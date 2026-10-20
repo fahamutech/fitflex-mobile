@@ -212,6 +212,7 @@ class _FitFlexAppState extends State<FitFlexApp> with WidgetsBindingObserver {
         productId: data['productId']?.toString(),
         variant: data['variant']?.toString(),
         saleId: data['saleId']?.toString(),
+        customerId: data['customerId']?.toString(),
       );
       if (direct != null) {
         _router.go(direct);

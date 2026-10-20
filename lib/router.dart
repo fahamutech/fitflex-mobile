@@ -57,6 +57,10 @@ import 'screens/vendor/sales/receipt_page.dart';
 import 'screens/vendor/sales/sale_detail_page.dart';
 import 'screens/vendor/sales/sales_sync_page.dart';
 import 'screens/vendor/sales/sales_widgets.dart' show salesIdPattern;
+import 'screens/vendor/customers/customer_form_page.dart';
+import 'screens/vendor/customers/customer_profile_page.dart';
+import 'screens/vendor/customers/statement_page.dart';
+import 'screens/vendor/customers/customers_widgets.dart' show customerIdPattern;
 import 'screens/partner/verification/verification_center_page.dart';
 import 'shared/widgets/invitations.dart';
 import 'shared/pending_org_invite.dart';
@@ -206,6 +210,11 @@ final _vendorStockPath = RegExp(
 /// Walk-in sales pages (S3). Pending vendors may sell too (Q-4).
 final _vendorSalesPath = RegExp(
   r'^/vendor/sales/(new|sync|receipt/queued/[A-Za-z0-9._:-]{1,100}|receipt/[A-Za-z0-9._:-]{1,100}|[A-Za-z0-9._:-]{1,100})$',
+);
+
+/// Customer pages (S4). Pending vendors keep their own records too.
+final _vendorCustomersPath = RegExp(
+  r'^/vendor/customers/(new|[A-Za-z0-9._:-]{1,100}(/edit|/statement|/sales/[A-Za-z0-9._:-]{1,100})?)$',
 );
 
 String routeForSignedInUser(AuthState auth) {
@@ -502,7 +511,8 @@ GoRouter buildRouter(AuthState auth) {
           if (loc == AppRoutes.vendorHome ||
               loc == AppRoutes.verification ||
               _vendorStockPath.hasMatch(loc) ||
-              _vendorSalesPath.hasMatch(loc)) {
+              _vendorSalesPath.hasMatch(loc) ||
+              _vendorCustomersPath.hasMatch(loc)) {
             return null;
           }
           return AppRoutes.vendorHome;
@@ -687,7 +697,65 @@ GoRouter buildRouter(AuthState auth) {
         builder: (context, state) => VendorHomePage(
           open: state.uri.queryParameters['open'],
           filter: state.uri.queryParameters['filter'],
+          view: state.uri.queryParameters['view'],
         ),
+      ),
+      // Vendor customers (S4). Each page checks the feature and the
+      // `customers` permission itself; `new` comes before `:customerId`.
+      GoRoute(
+        path: '/vendor/customers/new',
+        name: 'vendorCustomerNew',
+        builder: (context, state) => const CustomerFormPage(),
+      ),
+      GoRoute(
+        path: '/vendor/customers/:customerId',
+        name: 'vendorCustomer',
+        redirect: (context, state) =>
+            customerIdPattern.hasMatch(state.pathParameters['customerId'] ?? '')
+            ? null
+            : '${AppRoutes.vendorHome}?open=customers',
+        builder: (context, state) {
+          final extra = state.extra;
+          final dup = extra is Map && extra['phoneDuplicate'] is Map
+              ? Map<String, dynamic>.from(extra['phoneDuplicate'] as Map)
+              : null;
+          // Keyed by id: another customer is a fresh page (UAT D1).
+          return CustomerProfilePage(
+            key: ValueKey('customer-${state.pathParameters['customerId']}'),
+            customerId: state.pathParameters['customerId']!,
+            phoneDuplicate: dup,
+          );
+        },
+        routes: [
+          GoRoute(
+            path: 'edit',
+            name: 'vendorCustomerEdit',
+            builder: (context, state) => CustomerFormPage(
+              customerId: state.pathParameters['customerId'],
+            ),
+          ),
+          // A sale from the customer's profile: the customer gate, read
+          // through the customer-scoped endpoint; Share / Void only for
+          // people who also have `sales`.
+          GoRoute(
+            path: 'sales/:saleId',
+            name: 'vendorCustomerSale',
+            redirect: (context, state) =>
+                salesIdPattern.hasMatch(state.pathParameters['saleId'] ?? '')
+                ? null
+                : '${AppRoutes.vendorHome}?open=customers',
+            builder: (context, state) => SaleDetailPage(
+              saleId: state.pathParameters['saleId']!,
+              customerId: state.pathParameters['customerId'],
+            ),
+          ),
+          GoRoute(
+            path: 'statement',
+            name: 'vendorCustomerStatement',
+            builder: (context, state) =>
+                StatementPage(customerId: state.pathParameters['customerId']!),
+          ),
+        ],
       ),
       GoRoute(
         path: '/vendor/products/:productId/stock',

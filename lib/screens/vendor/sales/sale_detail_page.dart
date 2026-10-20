@@ -14,6 +14,10 @@ import '../../../shared/api_client.dart';
 import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
 import '../../../shared/i18n.dart';
+import '../../../shared/formatters.dart';
+import '../../../shared/network/browser_online.dart';
+import '../customers/customers_widgets.dart';
+import '../customers/payment_sheets.dart';
 import '../stock/stock_options.dart';
 import 'offline_sale_queue.dart';
 import 'receipt_data.dart';
@@ -39,8 +43,15 @@ bool canVoidSale(
 }
 
 class SaleDetailPage extends StatefulWidget {
-  const SaleDetailPage({super.key, required this.saleId});
+  const SaleDetailPage({super.key, required this.saleId, this.customerId});
   final String saleId;
+
+  /// S4: opened from this customer's profile. The page then checks the
+  /// customers gate (not the sales one) and reads the sale through
+  /// GET /vendor/customers/:id/sales/:saleId, so staff with `customers`
+  /// but not `sales` can see it. Share and Void stay for people who also
+  /// have `sales` (and walk-in sales on).
+  final String? customerId;
 
   @override
   State<SaleDetailPage> createState() => _SaleDetailPageState();
@@ -54,16 +65,31 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
   bool _failed = false;
   bool _suspended = false;
   String? _lang;
+  VendorTools _tools = VendorTools.off;
 
   @override
   void initState() {
     super.initState();
+    BrowserOnline.instance.addListener(_onBrowserOnline);
     WidgetsBinding.instance.addPostFrameCallback((_) => _start());
   }
 
+  void _onBrowserOnline() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    BrowserOnline.instance.removeListener(_onBrowserOnline);
+    super.dispose();
+  }
+
   Future<void> _start() async {
-    final tools = await enterSalesRoute(context);
+    final tools = widget.customerId == null
+        ? await enterSalesRoute(context)
+        : await enterCustomersRoute(context);
     if (tools == null || !mounted) return;
+    _tools = tools;
     final api = AppScope.of(context).api;
     final session = SalesSession.of(context);
     () async {
@@ -86,7 +112,10 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
       _failed = false;
     });
     try {
-      final res = await AppScope.of(context).api.vendorSale(widget.saleId);
+      final api = AppScope.of(context).api;
+      final res = widget.customerId == null
+          ? await api.vendorSale(widget.saleId)
+          : await api.vendorCustomerSale(widget.customerId!, widget.saleId);
       if (!mounted) return;
       setState(() {
         _sale = res['sale'] is Map
@@ -117,15 +146,28 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
     if (context.canPop()) {
       context.pop();
     } else {
-      context.go(salesHomeRoute);
+      context.go(
+        widget.customerId == null
+            ? salesHomeRoute
+            : customerRoute(widget.customerId!),
+      );
     }
   }
+
+  /// Share and Void are sales actions: the sales tool on and `sales`.
+  bool get _salesActions =>
+      widget.customerId == null ||
+      (_tools.walkInSales && canVendor(context, 'sales'));
 
   Future<void> _void(ReceiptData data) async {
     final out = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (_) =>
-          _VoidDialog(saleId: widget.saleId, number: data.number ?? ''),
+      builder: (_) => _VoidDialog(
+        saleId: widget.saleId,
+        number: data.number ?? '',
+        credit: data.credit,
+        customerId: data.customerId,
+      ),
     );
     if (!mounted || out == null) return;
     if (out['sale'] is Map) {
@@ -139,6 +181,34 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
       if (key != null) FFSnack.info(context, context.tr(key));
       await _load();
     }
+  }
+
+  /// S4: customers screens are on and this person has `customers`.
+  bool get _seesCustomers =>
+      _tools.customers && canVendor(context, 'customers');
+
+  Future<void> _recordPayment(ReceiptData data) async {
+    final id = data.customerId;
+    if (id == null) return;
+    // Fresh balances first; no connection → the form never opens.
+    final Map<String, dynamic> customer;
+    try {
+      final res = await AppScope.of(context).api.vendorCustomer(id);
+      final c = res['customer'];
+      if (c is! Map) throw ApiException(404, null);
+      customer = Map<String, dynamic>.from(c);
+    } on ApiException {
+      if (mounted) {
+        FFSnack.error(context, context.tr('vendor.customers.failed'));
+      }
+      return;
+    } catch (_) {
+      if (mounted) FFSnack.error(context, context.tr('vendor.pay.offline'));
+      return;
+    }
+    if (!mounted) return;
+    final out = await recordCustomerPayment(context, customer: customer);
+    if (out != null && mounted) await _load();
   }
 
   Future<void> _share(ReceiptData data, String lang) async {
@@ -162,7 +232,7 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
         ? null
         : ReceiptData.fromSale(sale, profile: _profile);
     final user = AppScope.of(context).auth.user;
-    final mayVoid = data != null && canVoidSale(user, data);
+    final mayVoid = data != null && _salesActions && canVoidSale(user, data);
     return Scaffold(
       appBar: AppBar(
         leading: BackButton(onPressed: _back),
@@ -244,6 +314,49 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
                       t: (k) => locale.tIn(lang, k),
                       audit: true,
                     ),
+                    // From the profile itself there is nothing to go back to.
+                    if (widget.customerId == null &&
+                        data.hasCustomer &&
+                        _seesCustomers &&
+                        customerIdPattern.hasMatch(data.customerId!)) ...[
+                      const SizedBox(height: FFTokens.spacingSm),
+                      Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: FFButton(
+                          key: const Key('sale-detail-customer'),
+                          label: data.customerName == null
+                              ? context.tr(data.unnamedCustomerKey)
+                              : data.customerName!,
+                          icon: Icons.person_outline,
+                          variant: FFButtonVariant.ghost,
+                          visualDensity: VisualDensity.standard,
+                          onPressed: () =>
+                              context.push(customerRoute(data.customerId!)),
+                        ),
+                      ),
+                    ],
+                    // The receipt above is historical; what is owed now:
+                    if (data.credit && !data.voided) ...[
+                      const SizedBox(height: FFTokens.spacingSm),
+                      MoneyRow(
+                        context.tr('vendor.pay.stillOwed'),
+                        formatCurrency(data.balanceTzs),
+                        strong: true,
+                        key: const Key('sale-detail-balance-now'),
+                      ),
+                    ],
+                    if (data.credit && data.liveAllocations.isNotEmpty) ...[
+                      const SizedBox(height: FFTokens.spacingSm),
+                      Text(
+                        context.tr('vendor.customers.payments'),
+                        style: Theme.of(context).textTheme.labelLarge,
+                      ),
+                      for (final a in data.liveAllocations)
+                        MoneyRow(
+                          a['number']?.toString() ?? '',
+                          formatCurrency((a['amountTzs'] as num?) ?? 0),
+                        ),
+                    ],
                     const SizedBox(height: FFTokens.spacingMd),
                     if (!data.voided)
                       ReceiptLanguageToggle(
@@ -255,7 +368,7 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
                       spacing: FFTokens.spacingSm,
                       runSpacing: FFTokens.spacingSm,
                       children: [
-                        if (!data.voided)
+                        if (!data.voided && _salesActions)
                           FFButton(
                             key: const Key('sale-detail-share'),
                             label: context.tr('vendor.pos.share'),
@@ -263,6 +376,19 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
                             variant: FFButtonVariant.secondary,
                             visualDensity: VisualDensity.standard,
                             onPressed: () => _share(data, lang),
+                          ),
+                        if (data.credit &&
+                            !data.voided &&
+                            data.balanceTzs > 0 &&
+                            _seesCustomers)
+                          FFButton(
+                            key: const Key('sale-detail-record-payment'),
+                            label: context.tr('vendor.pay.record'),
+                            icon: Icons.payments_outlined,
+                            visualDensity: VisualDensity.standard,
+                            onPressed: BrowserOnline.instance.value
+                                ? () => _recordPayment(data)
+                                : null,
                           ),
                         if (mayVoid)
                           FFButton(
@@ -275,6 +401,20 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
                           ),
                       ],
                     ),
+                    if (data.credit &&
+                        !data.voided &&
+                        data.balanceTzs > 0 &&
+                        _seesCustomers &&
+                        !BrowserOnline.instance.value)
+                      Semantics(
+                        container: true,
+                        liveRegion: true,
+                        child: Text(
+                          context.tr('vendor.pay.offline'),
+                          key: const Key('sale-detail-pay-offline'),
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -284,9 +424,18 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
 }
 
 class _VoidDialog extends StatefulWidget {
-  const _VoidDialog({required this.saleId, required this.number});
+  const _VoidDialog({
+    required this.saleId,
+    required this.number,
+    this.credit = false,
+    this.customerId,
+  });
   final String saleId;
   final String number;
+
+  /// S4: a pay-later sale (its balance is cancelled with it).
+  final bool credit;
+  final String? customerId;
 
   @override
   State<_VoidDialog> createState() => _VoidDialogState();
@@ -297,6 +446,9 @@ class _VoidDialogState extends State<_VoidDialog> {
   bool _busy = false;
   String? _error;
   String? _fieldError;
+
+  /// S4 (Q-2): customer payments allocated to the sale: `{id, number}`.
+  List<Map> _payments = const [];
 
   @override
   void dispose() {
@@ -347,6 +499,16 @@ class _VoidDialogState extends State<_VoidDialog> {
           );
         case 'vendor_suspended':
           setState(() => _error = context.tr('vendor.sales.suspended'));
+        case 'sale_has_payments':
+          final pays = (body['payments'] as List? ?? [])
+              .whereType<Map>()
+              .toList();
+          setState(() {
+            _payments = pays;
+            _error = fillIn(context.tr('vendor.sales.voidHasPayments'), {
+              'numbers': pays.map((p) => p['number']).join(', '),
+            });
+          });
         default:
           setState(
             () => _error = context.tr(
@@ -386,6 +548,13 @@ class _VoidDialogState extends State<_VoidDialog> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(context.tr('vendor.sales.voidBody')),
+              if (widget.credit) ...[
+                const SizedBox(height: FFTokens.spacingSm),
+                Text(
+                  context.tr('vendor.sales.voidCreditBody'),
+                  key: const Key('sale-void-credit-body'),
+                ),
+              ],
               const SizedBox(height: FFTokens.spacingMd),
               FFTextField(
                 key: const Key('sale-void-reason'),
@@ -408,6 +577,39 @@ class _VoidDialogState extends State<_VoidDialog> {
                     tone: FFAlertTone.error,
                   ),
                 ),
+                // Links to each payment: void those first (§6.3).
+                if (widget.customerId != null &&
+                    canVendor(context, 'customers'))
+                  Wrap(
+                    spacing: FFTokens.spacingXs,
+                    children: [
+                      for (final p in _payments)
+                        if (customerIdPattern.hasMatch('${p['id']}'))
+                          FFButton(
+                            key: Key('sale-void-payment-${p['id']}'),
+                            label: p['number']?.toString() ?? '',
+                            variant: FFButtonVariant.ghost,
+                            visualDensity: VisualDensity.standard,
+                            onPressed: _busy
+                                ? null
+                                : () async {
+                                    final changed = await openPaymentById(
+                                      context,
+                                      customerId: widget.customerId!,
+                                      paymentId: p['id'].toString(),
+                                    );
+                                    if (changed && mounted) {
+                                      setState(() {
+                                        _payments = _payments
+                                            .where((x) => x['id'] != p['id'])
+                                            .toList();
+                                        if (_payments.isEmpty) _error = null;
+                                      });
+                                    }
+                                  },
+                          ),
+                    ],
+                  ),
               ],
             ],
           ),
