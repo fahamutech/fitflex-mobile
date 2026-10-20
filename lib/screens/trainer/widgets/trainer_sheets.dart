@@ -31,11 +31,6 @@ class TrainerSessionsSheet extends StatefulWidget {
 
 class _TrainerSessionsSheetState extends State<TrainerSessionsSheet> {
   List<Map<String, dynamic>> _sessions = [];
-
-  /// Booking id → what the server says I may do with it now
-  /// (`canComplete`, `canMarkNoShow`). Only bookings that carry `actions`
-  /// are here: none at all while TRAINER_SESSION_OUTCOMES is off.
-  Map<String, Map> _actions = const {};
   String? _busyId;
   bool _loading = true;
   DateTime _date = DateTime.now();
@@ -49,26 +44,14 @@ class _TrainerSessionsSheetState extends State<TrainerSessionsSheet> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final api = AppScope.of(context).api;
-      final res = await api.trainerSessions(date: _dateOnly(_date));
-      final sessions = (res['sessions'] as List? ?? [])
-          .whereType<Map<String, dynamic>>()
-          .toList();
-      // The day's list has no `actions`; my bookings do. Without them (or if
-      // they can't be read) no outcome buttons are shown.
-      var actions = const <String, Map>{};
-      if (sessions.any((s) => s['source'] == 'booking')) {
-        try {
-          actions = {
-            for (final b in await api.trainerBookings())
-              if (b['actions'] is Map) '${b['id']}': b['actions'] as Map,
-          };
-        } catch (_) {}
-      }
+      final res = await AppScope.of(
+        context,
+      ).api.trainerSessions(date: _dateOnly(_date));
       if (!mounted) return;
       setState(() {
-        _sessions = sessions;
-        _actions = actions;
+        _sessions = (res['sessions'] as List? ?? [])
+            .whereType<Map<String, dynamic>>()
+            .toList();
         _loading = false;
       });
     } on ApiException {
@@ -76,8 +59,11 @@ class _TrainerSessionsSheetState extends State<TrainerSessionsSheet> {
     }
   }
 
+  /// What the server says I may do with this booked session now
+  /// (`actions.canComplete`, `actions.canMarkNoShow`). No `actions` (flag
+  /// off, or a manual session) means neither.
   bool _allowed(Map<String, dynamic> s, String action) =>
-      s['source'] == 'booking' && _actions['${s['id']}']?[action] == true;
+      s['source'] == 'booking' && (s['actions'] as Map?)?[action] == true;
 
   /// Mark completed, or record that the client didn't come, after a confirm
   /// that says what follows.

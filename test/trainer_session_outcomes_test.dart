@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:fitflexmobile/app_scope.dart';
 import 'package:fitflexmobile/screens/member/member_sessions_page.dart';
+import 'package:fitflexmobile/screens/member/widgets/trainer_actions_sheet.dart';
 import 'package:fitflexmobile/screens/trainer/widgets/trainer_sheets.dart';
 import 'package:fitflexmobile/shared/api_client.dart';
 import 'package:fitflexmobile/shared/api_error_message.dart';
@@ -26,7 +27,7 @@ import 'package:fitflexmobile/shared/widgets/reviews_section.dart';
 class _TrainerApi extends ApiClient {
   _TrainerApi({this.actions}) : super(baseUrl: 'http://localhost:0');
 
-  /// `actions` on booking tbk_1, as GET /trainer/bookings returns it.
+  /// `actions` on booking tbk_1, as GET /trainer/sessions returns it.
   /// Null = the flag is off: no `actions` key at all.
   Map<String, dynamic>? actions;
   String status = 'confirmed';
@@ -47,6 +48,7 @@ class _TrainerApi extends ApiClient {
         'amountTzs': 30000,
         'member': {'displayName': 'Asha Mushi'},
         'gym': {'name': 'Kilele Fitness'},
+        'actions': ?actions,
       },
       // A manual session never gets outcome buttons.
       {
@@ -60,14 +62,6 @@ class _TrainerApi extends ApiClient {
       },
     ],
   };
-
-  @override
-  Future<List<Map<String, dynamic>>> trainerBookings() async {
-    calls.add('bookings');
-    return [
-      {'id': 'tbk_1', 'status': status, 'actions': ?actions},
-    ];
-  }
 
   @override
   Future<Map<String, dynamic>> trainerCompleteBooking(String bookingId) async {
@@ -203,7 +197,8 @@ void main() {
       await tester.pumpWidget(_trainerApp(api));
       await tester.pumpAndSettle();
       expect(find.text('Asha Mushi'), findsOneWidget);
-      expect(api.calls, ['bookings']);
+      // Only the day's sessions are read: no second bookings call.
+      expect(api.calls, isEmpty);
       expect(find.byKey(const Key('trainer-complete-tbk_1')), findsNothing);
       expect(find.byKey(const Key('trainer-noshow-tbk_1')), findsNothing);
       expect(find.byKey(const Key('trainer-complete-tss_1')), findsNothing);
@@ -371,6 +366,36 @@ void main() {
       );
     });
 
+    for (final (code, status, expected) in [
+      (
+        'booking_changed',
+        409,
+        'was just changed by someone else; reload and try again',
+      ),
+      (
+        'booking_on_trainer_statement',
+        409,
+        'is on a payout statement already, so only FitFlex can change it',
+      ),
+      ('invalid_booking_time', 400, 'has no readable date or time'),
+      ('booking_cancelled', 409, 'was cancelled and can no longer be changed'),
+    ]) {
+      testWidgets('complete refused: $code', (tester) async {
+        await refused(
+          tester,
+          noShow: false,
+          error: ApiException(status, {
+            'error': code,
+            if (code == 'booking_on_trainer_statement') ...{
+              'statementId': 'tst_1',
+              'statementStatus': 'approved',
+            },
+          }),
+          expected: expected,
+        );
+      });
+    }
+
     testWidgets('no-show while the feature is off', (tester) async {
       await refused(
         tester,
@@ -378,14 +403,6 @@ void main() {
         error: ApiException(404, {'error': 'feature_disabled'}),
         expected: "Recording session outcomes isn't available yet.",
       );
-    });
-
-    testWidgets('the bookings list failing hides the buttons', (tester) async {
-      _size(tester);
-      await tester.pumpWidget(_trainerApp(_FailingBookingsApi()));
-      await tester.pumpAndSettle();
-      expect(find.text('Asha Mushi'), findsOneWidget);
-      expect(find.byKey(const Key('trainer-complete-tbk_1')), findsNothing);
     });
 
     testWidgets('Swahili at 360 wide: buttons fit, no overflow', (
@@ -451,6 +468,53 @@ void main() {
     });
   });
 
+  group('member: booking a trainer', () {
+    for (final lang in ['en', 'sw']) {
+      testWidgets('a trainer booking themself is told why ($lang)', (
+        tester,
+      ) async {
+        _size(tester);
+        final api = _OwnSessionsApi();
+        await tester.pumpWidget(
+          AppScope(
+            api: api,
+            auth: AuthState(api),
+            child: FFLocaleScope(
+              notifier: FFLocale()..set(Locale(lang)),
+              child: MaterialApp(
+                home: Scaffold(
+                  body: SingleChildScrollView(
+                    child: TrainerBookingSheet(
+                      trainer: TrainerProfile(
+                        id: 'trn_1',
+                        displayName: 'Coach Asha',
+                        hourlyRateTzs: 20000,
+                        gymIds: const ['gym_1'],
+                        status: 'active',
+                      ),
+                      gymId: 'gym_1',
+                      slots: const [(date: '2099-05-05', slot: '07:00')],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(api.quotes, 1);
+        expect(
+          find.text(
+            lang == 'sw'
+                ? 'Huwezi kuweka vipindi vyako mwenyewe. Chagua trainer mwingine.'
+                : "You can't book your own sessions. Choose another trainer.",
+          ),
+          findsOneWidget,
+        );
+      });
+    }
+  });
+
   group('member: the no-show notice', () {
     test('links to that booking', () {
       expect(
@@ -472,8 +536,15 @@ void main() {
       );
     });
 
-    test('push text follows the app language', () {
-      const data = {'titleSw': 'Hukuhudhuria kipindi', 'bodySw': 'Mwili'};
+    test('push text follows the app language, not the saved locale', () {
+      // Saved locale sw: the top-level text is Swahili; the app is English.
+      const data = {
+        'locale': 'sw',
+        'titleEn': 'Missed session',
+        'bodyEn': 'Body',
+        'titleSw': 'Hukuhudhuria kipindi',
+        'bodySw': 'Mwili',
+      };
       expect(
         localisedNoticeText(
           lang: 'sw',
@@ -487,10 +558,15 @@ void main() {
         localisedNoticeText(
           lang: 'en',
           data: data,
-          title: 'Missed session',
-          body: 'Body',
+          title: 'Hukuhudhuria kipindi',
+          body: 'Mwili',
         ),
         (title: 'Missed session', body: 'Body'),
+      );
+      // Older notices without the copies keep the server's text.
+      expect(
+        localisedNoticeText(lang: 'sw', data: const {}, title: 'T', body: 'B'),
+        (title: 'T', body: 'B'),
       );
     });
 
@@ -552,6 +628,11 @@ void main() {
         {'error': 'booking_not_confirmed'},
         {'error': 'no_show_window_passed'},
         {'error': 'no_show_window_passed', 'closedAt': '2026-10-22T07:00:00Z'},
+        {'error': 'booking_cancelled'},
+        {'error': 'booking_changed'},
+        {'error': 'booking_on_trainer_statement', 'statementId': 'tst_1'},
+        {'error': 'invalid_booking_time'},
+        {'error': 'cannot_book_own_sessions'},
       ]) {
         final text = apiErrorMessage(locale, ApiException(409, body));
         expect(text.contains('_'), isFalse, reason: '$lang $body: $text');
@@ -573,10 +654,18 @@ void main() {
   });
 }
 
-class _FailingBookingsApi extends _TrainerApi {
-  _FailingBookingsApi() : super(actions: _both);
+class _OwnSessionsApi extends ApiClient {
+  _OwnSessionsApi() : super(baseUrl: 'http://localhost:0');
+
+  int quotes = 0;
 
   @override
-  Future<List<Map<String, dynamic>>> trainerBookings() async =>
-      throw ApiException(500, {'error': 'server_error'});
+  Future<Map<String, dynamic>> quoteTrainerBooking({
+    required String trainerId,
+    required String gymId,
+    required List<Map<String, String>> slots,
+  }) async {
+    quotes++;
+    throw ApiException(403, {'error': 'cannot_book_own_sessions'});
+  }
 }

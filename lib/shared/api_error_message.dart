@@ -162,6 +162,11 @@ String? _knownReason(FFLocale locale, String reason) {
     'booking_not_confirmable': 'error.reason.bookingNotConfirmable',
     'booking_not_confirmed': 'error.reason.bookingNotConfirmed',
     'no_show_window_passed': 'error.reason.noShowWindowPassed',
+    'booking_cancelled': 'error.reason.bookingCancelled',
+    'booking_changed': 'error.reason.bookingChanged',
+    'booking_on_trainer_statement': 'error.reason.bookingOnTrainerStatement',
+    'invalid_booking_time': 'error.reason.invalidBookingTime',
+    'cannot_book_own_sessions': 'error.reason.cannotBookOwnSessions',
     // Pass and gym-plan purchases.
     'payment_already_pending': 'error.reason.paymentAlreadyPending',
     'plan_not_offered': 'error.reason.planNotOffered',

@@ -1485,6 +1485,17 @@ class FFLocale extends ChangeNotifier {
           'a missed session can only be recorded within 48 hours of its start',
       'error.reason.noShowWindowPassedAt':
           'the time to record a missed session ended {time}',
+      'error.reason.bookingCancelled':
+          'this session was cancelled and can no longer be changed',
+      'error.reason.bookingChanged':
+          'this session was just changed by someone else; reload and try again',
+      'error.reason.bookingOnTrainerStatement':
+          'this session is on a payout statement already, so only FitFlex can change it',
+      'error.reason.invalidBookingTime':
+          'this session has no readable date or time; contact FitFlex',
+      'error.reason.cannotBookOwnSessions': "you can't book your own sessions",
+      'member.cannotBookOwnSessions':
+          "You can't book your own sessions. Choose another trainer.",
       'error.reason.cancelWindowPassed':
           'less than 24 hours to go, so this session can no longer be cancelled',
       'error.reason.paymentAlreadyPending':
@@ -6622,6 +6633,18 @@ class FFLocale extends ChangeNotifier {
           'kutohudhuria kunaweza kurekodiwa ndani ya saa 48 tangu kipindi kuanza pekee',
       'error.reason.noShowWindowPassedAt':
           'muda wa kurekodi kutohudhuria uliisha {time}',
+      'error.reason.bookingCancelled':
+          'kipindi hiki kimeghairiwa na hakiwezi kubadilishwa tena',
+      'error.reason.bookingChanged':
+          'kipindi hiki kimebadilishwa na mtu mwingine sasa hivi; pakia upya kisha ujaribu tena',
+      'error.reason.bookingOnTrainerStatement':
+          'kipindi hiki kiko tayari kwenye taarifa ya malipo, hivyo ni FitFlex pekee inayoweza kukibadilisha',
+      'error.reason.invalidBookingTime':
+          'tarehe au saa ya kipindi hiki haisomeki; wasiliana na FitFlex',
+      'error.reason.cannotBookOwnSessions':
+          'huwezi kuweka vipindi vyako mwenyewe',
+      'member.cannotBookOwnSessions':
+          'Huwezi kuweka vipindi vyako mwenyewe. Chagua trainer mwingine.',
       'error.reason.cancelWindowPassed':
           'zimebaki chini ya saa 24, hivyo kipindi hiki hakiwezi kughairiwa tena',
       'error.reason.paymentAlreadyPending':

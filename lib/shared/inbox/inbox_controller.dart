@@ -150,23 +150,21 @@ String? memberRouteFor({
   };
 }
 
-/// A notice's words in the app language: some notices carry their own
-/// Swahili in `data.titleSw` / `data.bodySw` (vendor_low_stock,
-/// trainer_booking_no_show…). English, or a missing Swahili line, keeps the
-/// server's text.
+/// A notice's words in the app language. Some notices carry both languages
+/// in their data (`titleEn`/`bodyEn`, `titleSw`/`bodySw`, e.g.
+/// trainer_booking_no_show), while the top-level title/body follow the
+/// member's saved `locale`, which may differ from the app's. The app
+/// language's copy wins; a missing line keeps the server's text.
 ({String title, String body}) localisedNoticeText({
   required String lang,
   required Map<String, dynamic> data,
   required String title,
   required String body,
 }) {
-  if (lang != 'sw') return (title: title, body: body);
-  final titleSw = data['titleSw']?.toString().trim() ?? '';
-  final bodySw = data['bodySw']?.toString().trim() ?? '';
-  return (
-    title: titleSw.isEmpty ? title : titleSw,
-    body: bodySw.isEmpty ? body : bodySw,
-  );
+  final suffix = lang == 'sw' ? 'Sw' : 'En';
+  final t = data['title$suffix']?.toString().trim() ?? '';
+  final b = data['body$suffix']?.toString().trim() ?? '';
+  return (title: t.isEmpty ? title : t, body: b.isEmpty ? body : b);
 }
 
 final _safeId = RegExp(r'^[A-Za-z0-9_-]{1,64}$');
