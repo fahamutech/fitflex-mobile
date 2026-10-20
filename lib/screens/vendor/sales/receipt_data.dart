@@ -424,7 +424,7 @@ String receiptShareText(
   if (r.business != null) {
     b.writeln(
       fill(
-        r.credit ? 'vendor.receipt.footerCredit' : 'vendor.pos.receiptFooter',
+        r.credit ? 'vendor.receipt.closingCredit' : 'vendor.pos.receiptFooter',
         {'business': r.business},
       ),
     );

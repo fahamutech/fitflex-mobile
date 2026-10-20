@@ -762,15 +762,8 @@ void main() {
     // Owner 2026-10-19: no place footer anywhere (the hero.footer.place /
     // login.hero.footer keys and the "Dar es Salaam · Tanzania" line). The
     // photo footer band's sign-off (footer.*, decision D-2) is not one.
-    // A receipt's closing line (vendor.receipt.footerCredit, S4) is not a
-    // place footer.
     expect(
-      en.where(
-        (k) =>
-            k.contains('footer') &&
-            !k.startsWith('footer.') &&
-            !k.startsWith('vendor.receipt.'),
-      ),
+      en.where((k) => k.contains('footer') && !k.startsWith('footer.')),
       isEmpty,
     );
     for (final lang in ['en', 'sw']) {

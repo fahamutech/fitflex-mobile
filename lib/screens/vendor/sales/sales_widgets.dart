@@ -379,7 +379,7 @@ class ReceiptView extends StatelessWidget {
             Text(
               _fill(
                 data.credit
-                    ? 'vendor.receipt.footerCredit'
+                    ? 'vendor.receipt.closingCredit'
                     : 'vendor.pos.receiptFooter',
                 {'business': data.business},
               ),
