@@ -237,6 +237,7 @@ class _AuthScreenState extends State<AuthScreen>
     ],
     const SizedBox(height: 24),
     Wrap(
+      key: const Key('login-create-account-link'),
       alignment: WrapAlignment.center,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
@@ -270,10 +271,14 @@ class _AuthScreenState extends State<AuthScreen>
       ]);
     }
     return FFPhotoHeroPage(
-      // Taller hero (spec §5.3): the photo gives way so Continue stays on
-      // screen (Google, the field and Continue are 264px below the hero).
-      tallContentReserve: 272,
-      tallReserveGrowth: 60,
+      // Taller hero (spec §5.3): the photo gives way so the "Create account"
+      // link, the first control that must stay on screen here (owner
+      // 2026-10-20), is on screen with Continue above it. Google, the field
+      // and Continue are 264px below the hero, the link 72px more (24 gap +
+      // 48 button); 8px margin. Larger text: the link wraps to two lines in
+      // English at 1.3x, so the reserve grows faster than Continue's alone.
+      tallContentReserve: 344,
+      tallReserveGrowth: 155,
       leading: IconButton(
         tooltip: context.tr('a11y.back'),
         icon: const Icon(Icons.arrow_back),

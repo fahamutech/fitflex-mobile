@@ -88,8 +88,10 @@ class FFPhotoHeroPage extends StatefulWidget {
   /// [FFTokens.heroTallMinViewport] tall: the hero aims for
   /// [heroTallClearTarget] px of clear photo, but stays within the viewport
   /// height minus this reserve, the room below the hero up to the bottom of
-  /// the content's first must-see control (Sign in: Continue), plus a small
-  /// margin. Null: the hero keeps today's height. Not for [pinnedContent].
+  /// the content's first must-see control, plus a small margin. Sign in:
+  /// the "Create account" link under Continue (owner 2026-10-20); Create
+  /// account: Continue (it has no "Sign in" link); Choose role: the third
+  /// tile. Null: the hero keeps today's height. Not for [pinnedContent].
   final double? tallContentReserve;
 
   /// How much [tallContentReserve] grows per 1.0 of text scale above 1.0x
