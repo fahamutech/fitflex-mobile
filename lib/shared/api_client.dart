@@ -1955,6 +1955,34 @@ class ApiClient {
   Future<Map<String, dynamic>> trainerCancelBooking(String bookingId) async =>
       await _request('POST', '/trainer/bookings/$bookingId/cancel');
 
+  /// Trainer: all my bookings. With TRAINER_SESSION_OUTCOMES on, each one
+  /// carries `actions: { canComplete, canMarkNoShow }`; no `actions` means
+  /// the flag is off (fitflex-functions#231).
+  Future<List<Map<String, dynamic>>> trainerBookings() async {
+    final res = await _request('GET', '/trainer/bookings');
+    final list = res is Map ? res['bookings'] : res;
+    return [
+      for (final b in (list as List? ?? const []))
+        if (b is Map) b.cast<String, dynamic>(),
+    ];
+  }
+
+  /// Trainer: the session took place. Only once it has started
+  /// (409 `session_not_started` with `startsAt`).
+  Future<Map<String, dynamic>> trainerCompleteBooking(String bookingId) async =>
+      await _request(
+        'POST',
+        '/trainer/bookings/${Uri.encodeComponent(bookingId)}/complete',
+      );
+
+  /// Trainer: the client didn't come. The session is paid as booked and the
+  /// member is told. 404 `feature_disabled` while the flag is off.
+  Future<Map<String, dynamic>> trainerMarkNoShow(String bookingId) async =>
+      await _request(
+        'POST',
+        '/trainer/bookings/${Uri.encodeComponent(bookingId)}/no-show',
+      );
+
   Future<Map<String, dynamic>> myRefunds() async =>
       await _request('GET', '/me/refunds');
 

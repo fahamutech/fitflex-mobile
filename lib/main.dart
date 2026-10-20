@@ -176,10 +176,16 @@ class _FitFlexAppState extends State<FitFlexApp> with WidgetsBindingObserver {
     _inbox.load();
     final messenger = _messengerKey.currentState;
     if (messenger == null) return;
+    final text = localisedNoticeText(
+      lang: widget.locale.locale.languageCode,
+      data: data,
+      title: title ?? '',
+      body: body ?? '',
+    );
     showPushBanner(
       messenger,
-      title: title,
-      body: body,
+      title: text.title,
+      body: text.body,
       openLabel: widget.locale.t('push.open'),
       onOpen: () => _openFromPush(data),
     );
@@ -234,6 +240,7 @@ class _FitFlexAppState extends State<FitFlexApp> with WidgetsBindingObserver {
             gymId: data['gymId']?.toString(),
             trainerId: data['trainerId']?.toString(),
             planId: data['planId']?.toString(),
+            bookingId: data['bookingId']?.toString(),
           )
         : null;
     if (route != null) {

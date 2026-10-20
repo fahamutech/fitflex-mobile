@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:http/http.dart' as http;
 
 import 'api_client.dart';
+import 'formatters.dart';
 import 'i18n.dart';
 
 /// Any caught error → user-facing copy (UAT #48). Prefer this over
@@ -40,7 +41,10 @@ String apiErrorMessage(
   }
   final reason = _firstReason(exception.body);
   if (reason != null && reason.isNotEmpty) {
-    final translated = _knownReason(locale, reason) ?? _humanize(reason);
+    final translated =
+        _timedReason(locale, reason, exception.body) ??
+        _knownReason(locale, reason) ??
+        _humanize(reason);
     return locale
         .t('error.requestDeclined')
         .replaceFirst('{reason}', translated);
@@ -97,6 +101,25 @@ String? _firstReason(dynamic value) {
   return null;
 }
 
+/// Refusals that carry the time they are about (trainer session outcomes,
+/// fitflex-functions#231): the start of a session that hasn't begun, or
+/// when the window to record a missed session closed. Null when the body has
+/// no readable time, so the plain wording is used.
+String? _timedReason(FFLocale locale, String reason, dynamic body) {
+  if (body is! Map) return null;
+  final (String field, String key) = switch (reason.trim().toLowerCase()) {
+    'session_not_started' => ('startsAt', 'error.reason.sessionNotStartedAt'),
+    'no_show_window_passed' => (
+      'closedAt',
+      'error.reason.noShowWindowPassedAt',
+    ),
+    _ => ('', ''),
+  };
+  if (field.isEmpty || localDateTime(body[field]) == null) return null;
+  final time = formatDayTime(body[field], locale: locale.locale.languageCode);
+  return locale.t(key).replaceFirst('{time}', time);
+}
+
 String? _knownReason(FFLocale locale, String reason) {
   const keys = {
     'membership_expired': 'error.reason.membershipExpired',
@@ -134,6 +157,11 @@ String? _knownReason(FFLocale locale, String reason) {
     'order_already_delivered': 'error.reason.orderDispatched',
     'order_cancelled': 'error.reason.orderCancelled',
     'refund_already_requested': 'error.reason.refundAlreadyRequested',
+    // Trainer session outcomes (fitflex-functions#231).
+    'session_not_started': 'error.reason.sessionNotStarted',
+    'booking_not_confirmable': 'error.reason.bookingNotConfirmable',
+    'booking_not_confirmed': 'error.reason.bookingNotConfirmed',
+    'no_show_window_passed': 'error.reason.noShowWindowPassed',
     // Pass and gym-plan purchases.
     'payment_already_pending': 'error.reason.paymentAlreadyPending',
     'plan_not_offered': 'error.reason.planNotOffered',
