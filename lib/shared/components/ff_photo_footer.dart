@@ -64,10 +64,21 @@ FFHeroPhoto footerPhotoFor(String pageKey, {FFHeroPhoto? top}) {
   return footerPhotoPool[start];
 }
 
-/// The band's minimum height (spec §33.2): 160 on phones, 140 below 360
-/// wide or 640 tall, growing with text up to 200; 220 at 840 wide and up.
-/// Content that needs more (very large text) makes it taller still.
+/// The band's minimum height (spec §33.2, owner 2026-10-20 "full width"):
+/// 48% of the viewport height, clamped to 320..440. Larger text makes the
+/// lockup zone taller, so the band grows past this (the photo above keeps
+/// at least [FFTokens.footerClearMin]). Safe-area and FAB room come on top.
 double photoFooterHeight(BuildContext context) {
+  final h = MediaQuery.sizeOf(context).height * FFTokens.footerViewportShare;
+  return h.clamp(FFTokens.footerMinHeight, FFTokens.footerMaxHeight);
+}
+
+/// The short-page rule's footer size (spec §33.3): the band height before
+/// the full-width footer (160 on phones, 140 below 360 wide or 640 tall,
+/// growing with text up to 200; 220 at 840 wide and up). The taller band of
+/// 2026-10-20 does not change which pages show a footer: a page shows it
+/// when its content plus this much passes the viewport, as before.
+double photoFooterShortPageExtent(BuildContext context) {
   final size = MediaQuery.sizeOf(context);
   if (size.width >= 840) return 220;
   final base = size.width < 360 || size.height < 640 ? 140.0 : 160.0;
@@ -75,10 +86,12 @@ double photoFooterHeight(BuildContext context) {
   return (base * scale).clamp(base, 200.0);
 }
 
-/// The photo band that closes a long page (photo-hero spec §33): a photo
-/// under a uniform 80% scrim and the brand lockup (the FitFlex mark on a
-/// light plate, "FitFlex Africa" and "Fitness Without Limits"; owner
-/// 2026-10-20), plus "Back to top" on Gyms, Trainers and Shop.
+/// The photo band that closes a long page (photo-hero spec §33): edge to
+/// edge like the top hero (owner 2026-10-20), the photo clear at the top
+/// (after a short fade from the page ground) and a dark lockup zone at the
+/// bottom (at least [FFTokens.heroScrimText]) with the brand lockup (the
+/// FitFlex mark on a light plate, "FitFlex Africa" and "Fitness Without
+/// Limits"), plus "Back to top" on Gyms, Trainers and Shop.
 ///
 /// Use [FFPhotoFooter.sliver] as the last sliver of the page's scroll view
 /// (see [footerListView] for pages that were a ListView).
@@ -87,8 +100,9 @@ abstract final class FFPhotoFooter {
   /// page's top hero photo, if any. [enabled] is the page's "loaded and not
   /// empty" condition. [gap] is the space above the band (32 less any
   /// bottom padding the content already has). [headingFocus] is the top
-  /// hero heading's focus node, for Back to top. [hiddenExtent] is the space
-  /// left at the end while the footer is not shown.
+  /// hero heading's focus node, for Back to top. [extraBottom] is room kept
+  /// under the lockup inside the dark zone (the vendor FAB). [hiddenExtent]
+  /// is the space left at the end while the footer is not shown.
   static Widget sliver({
     Key? key,
     required String pageKey,
@@ -99,8 +113,6 @@ abstract final class FFPhotoFooter {
     double extraBottom = 0,
     bool enabled = true,
     double gap = FFTokens.spacingXl,
-    double inset = FFTokens.spacingLg,
-    double maxWidth = 960,
     double hiddenExtent = 0,
   }) => _FooterSliver(
     key: key,
@@ -112,8 +124,6 @@ abstract final class FFPhotoFooter {
     extraBottom: extraBottom,
     enabled: enabled,
     gap: gap,
-    inset: inset,
-    maxWidth: maxWidth,
     hiddenExtent: hiddenExtent,
   );
 }
@@ -160,8 +170,6 @@ class _FooterSliver extends StatefulWidget {
     required this.extraBottom,
     required this.enabled,
     required this.gap,
-    required this.inset,
-    required this.maxWidth,
     required this.hiddenExtent,
   });
 
@@ -173,8 +181,6 @@ class _FooterSliver extends StatefulWidget {
   final double extraBottom;
   final bool enabled;
   final double gap;
-  final double inset;
-  final double maxWidth;
 
   /// Space kept at the end of the page while the footer is not shown (the
   /// room a page had under its last item before the footer existed).
@@ -202,10 +208,10 @@ class _FooterSliverState extends State<_FooterSliver> {
     }
   }
 
+  /// Room under the lockup, inside the dark zone: the safe area and the
+  /// page's extra room (vendor FAB).
   double _bottom(BuildContext context) =>
-      FFTokens.spacingLg +
-      MediaQuery.paddingOf(context).bottom +
-      widget.extraBottom;
+      MediaQuery.paddingOf(context).bottom + widget.extraBottom;
 
   Future<void> _toTop(BuildContext context) async {
     final position =
@@ -238,7 +244,10 @@ class _FooterSliverState extends State<_FooterSliver> {
     return SliverLayoutBuilder(
       builder: (context, constraints) {
         final extent =
-            widget.gap + photoFooterHeight(context) + _bottom(context);
+            widget.gap +
+            photoFooterShortPageExtent(context) +
+            FFTokens.spacingLg +
+            _bottom(context);
         // The extent above does not depend on the footer, so this cannot
         // feed back on itself.
         if (!_shown &&
@@ -255,20 +264,11 @@ class _FooterSliverState extends State<_FooterSliver> {
           );
         }
         if (constraints.remainingCacheExtent > 0) _near = true;
+        // Edge to edge: no side inset, no corners, no width cap.
         return SliverToBoxAdapter(
           child: Padding(
-            padding: EdgeInsets.fromLTRB(
-              widget.inset,
-              widget.gap,
-              widget.inset,
-              _bottom(context),
-            ),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: widget.maxWidth),
-                child: _band(context),
-              ),
-            ),
+            padding: EdgeInsets.only(top: widget.gap),
+            child: _band(context),
           ),
         );
       },
@@ -277,54 +277,94 @@ class _FooterSliverState extends State<_FooterSliver> {
 
   Widget _band(BuildContext context) {
     final photo = footerPhotoFor(widget.pageKey, top: widget.top);
-    return ClipRRect(
+    final ground = Theme.of(context).scaffoldBackgroundColor;
+    return ClipRect(
       key: const Key('photo-footer'),
-      borderRadius: BorderRadius.circular(FFTokens.radiusXl),
       child: Stack(
         children: [
           Positioned.fill(
             child: _FooterPhotoLayer(photo: photo, load: _near),
           ),
-          // One uniform 80% layer: every pixel meets the text rule over any
-          // photo (§33.2, DD-9).
-          Positioned.fill(
-            child: ColoredBox(
-              key: const Key('photo-footer-scrim'),
-              color: FFTokens.heroScrim.withValues(
-                alpha: FFTokens.heroScrimText,
+          // The page ground fades into the photo at the top edge.
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            height: FFTokens.footerTopFade,
+            child: DecoratedBox(
+              key: const Key('photo-footer-top-fade'),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [ground, ground.withValues(alpha: 0)],
+                ),
               ),
             ),
           ),
           // The content sets the band's height (at least the minimum).
           ConstrainedBox(
+            key: const Key('photo-footer-body'),
             constraints: BoxConstraints(
-              minHeight: photoFooterHeight(context),
+              minHeight: photoFooterHeight(context) + _bottom(context),
               minWidth: double.infinity,
             ),
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(FFTokens.spacingLg),
-                child: Semantics(
-                  container: true,
-                  explicitChildNodes: true,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const _FooterLockup(),
-                      if (widget.backToTop) ...[
-                        const SizedBox(height: FFTokens.spacingSm + 4),
-                        FFButton(
-                          key: const Key('photo-footer-back-to-top'),
-                          label: context.tr('footer.backToTop'),
-                          icon: Icons.arrow_upward,
-                          variant: FFButtonVariant.onPhoto,
-                          size: FFButtonSize.sm,
-                          onPressed: () => _toTop(context),
-                        ),
-                      ],
-                    ],
+            child: IntrinsicHeight(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // The photo, clear, then the ramp into the lockup zone
+                  // (the top hero's rule, §5): at least the text value from
+                  // the mark down.
+                  Expanded(
+                    child: CustomPaint(
+                      key: const Key('photo-footer-fade-zone'),
+                      painter: FFScrimPainter(
+                        (size) => heroRampStops(size.height),
+                      ),
+                      child: const SizedBox(height: FFTokens.footerClearMin),
+                    ),
                   ),
-                ),
+                  CustomPaint(
+                    key: const Key('photo-footer-scrim'),
+                    painter: FFScrimPainter(
+                      (size) => heroTextZoneStops(
+                        size.height,
+                        bottom: FFTokens.footerScrimBottom,
+                      ),
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        FFTokens.spacingLg,
+                        FFTokens.spacingLg,
+                        FFTokens.spacingLg,
+                        FFTokens.spacingLg + _bottom(context),
+                      ),
+                      child: Semantics(
+                        container: true,
+                        explicitChildNodes: true,
+                        child: Column(
+                          key: const Key('photo-footer-content'),
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const _FooterLockup(),
+                            if (widget.backToTop) ...[
+                              const SizedBox(height: FFTokens.spacingSm + 4),
+                              FFButton(
+                                key: const Key('photo-footer-back-to-top'),
+                                label: context.tr('footer.backToTop'),
+                                icon: Icons.arrow_upward,
+                                variant: FFButtonVariant.onPhoto,
+                                size: FFButtonSize.sm,
+                                onPressed: () => _toTop(context),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

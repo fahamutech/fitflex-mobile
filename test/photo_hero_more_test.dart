@@ -25,6 +25,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'support/hero_scrim.dart';
 import 'support/recording_api.dart';
 
 // ── harness ─────────────────────────────────────────────────────────────
@@ -1131,33 +1132,11 @@ void main() {
   // ── Band variant and avatar: the scrim stop rule (AC-H20) ──────────────
 
   group('Scrim rule on the new variants', () {
-    Future<void> checkStop(WidgetTester tester) async {
-      final zone = find.byKey(const Key('ff-hero-text-zone'));
-      final box = tester.widget<ColoredBox>(zone);
-      expect(box.color.a, closeTo(FFTokens.heroScrimText, 0.01));
-      final stopY = tester.getTopLeft(zone).dy;
-      final texts = find.descendant(
-        of: find.byType(FFPhotoHero),
-        matching: find.byType(RichText),
-      );
-      expect(texts, findsWidgets);
-      for (final e in texts.evaluate()) {
-        final top = tester.getTopLeft(find.byWidget(e.widget)).dy;
-        expect(top - stopY, greaterThanOrEqualTo(24 - 0.01));
-        expect(
-          find.descendant(of: zone, matching: find.byWidget(e.widget)),
-          findsOneWidget,
-        );
-      }
-      final fade = find.byKey(const Key('ff-hero-fade-zone'));
-      expect(
-        find.descendant(of: fade, matching: find.byType(RichText)),
-        findsNothing,
-      );
-    }
+    Future<void> checkStop(WidgetTester tester) async =>
+        expectHeroScrimRule(tester);
 
     for (final scale in [1.0, 1.3, 2.0]) {
-      heroTest('band at ${scale}x: text >= 24px below the 0.80 stop', (
+      heroTest('band at ${scale}x: all text in the >= 0.86 zone', (
         tester,
         api,
       ) async {
@@ -1197,7 +1176,7 @@ void main() {
       });
     }
 
-    heroTest('band in dark theme keeps an 80% bottom edge (no melt)', (
+    heroTest('band in dark theme keeps a >= 0.86 bottom edge (no melt)', (
       tester,
       api,
     ) async {
@@ -1249,29 +1228,29 @@ void main() {
       );
     });
 
-    heroTest('Profile avatar sits in the text zone, >= 24px below the stop', (
-      tester,
-      api,
-    ) async {
-      await _host(
-        tester,
-        api,
-        _scoped(_member(subscription: _pass()), const MemberProfileTab()),
-        textScale: 1.3,
-        size: const Size(360, 800),
-      );
-      await checkStop(tester);
-      final zone = find.byKey(const Key('ff-hero-text-zone'));
-      final stopY = tester.getTopLeft(zone).dy;
-      expect(
-        tester.getTopLeft(_key('ff-hero-leading')).dy - stopY,
-        greaterThanOrEqualTo(24 - 0.01),
-      );
-      expect(
-        find.descendant(of: zone, matching: _key('ff-hero-leading')),
-        findsOneWidget,
-      );
-    });
+    heroTest(
+      'Profile avatar sits in the >= 0.86 zone, 24px below the ramp start',
+      (tester, api) async {
+        await _host(
+          tester,
+          api,
+          _scoped(_member(subscription: _pass()), const MemberProfileTab()),
+          textScale: 1.3,
+          size: const Size(360, 800),
+        );
+        await checkStop(tester);
+        final zone = find.byKey(const Key('ff-hero-text-zone'));
+        final stopY = tester.getTopLeft(zone).dy;
+        expect(
+          tester.getTopLeft(_key('ff-hero-leading')).dy - stopY,
+          greaterThanOrEqualTo(24 - 0.01),
+        );
+        expect(
+          find.descendant(of: zone, matching: _key('ff-hero-leading')),
+          findsOneWidget,
+        );
+      },
+    );
 
     test('avatar ring and band edge colours over pure white', () {
       double ratio(Color a, Color b) {
