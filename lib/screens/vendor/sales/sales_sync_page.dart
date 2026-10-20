@@ -13,6 +13,7 @@ import '../../../shared/formatters.dart';
 import '../../../shared/i18n.dart';
 import '../stock/adjust_stock_sheet.dart';
 import '../stock/stock_options.dart';
+import '../customers/customer_models.dart' show isCustomerConflict;
 import 'offline_sale_queue.dart';
 import 'receipt_data.dart';
 import 'sale_models.dart';
@@ -66,6 +67,9 @@ class _SalesSyncPageState extends State<SalesSyncPage> {
   String _reason(QueuedSale q) {
     final body = q.errorBody;
     final code = q.errorCode;
+    if (isCustomerConflict(code, body)) {
+      return context.tr('vendor.sync.conflictCustomer');
+    }
     final lines = (q.display['lines'] as List? ?? []).whereType<Map>().toList();
     final rows = (q.body['lines'] as List? ?? []).whereType<Map>().toList();
     String nameOf(Object? productId, Object? variant) {
@@ -318,6 +322,7 @@ class _SalesSyncPageState extends State<SalesSyncPage> {
   Widget _conflictCard(QueuedSale q, bool canCount, bool paused) {
     final theme = Theme.of(context);
     final stock = q.errorCode == 'insufficient_stock';
+    final customerGone = isCustomerConflict(q.errorCode, q.errorBody);
     // Older than the server keeps (7 days): record it with today's date.
     final tooOld =
         q.errorCode == 'sold_at_out_of_range' &&
@@ -385,6 +390,15 @@ class _SalesSyncPageState extends State<SalesSyncPage> {
                     variant: FFButtonVariant.secondary,
                     visualDensity: VisualDensity.standard,
                     onPressed: () => _recordToday(q),
+                  ),
+                if (customerGone && !paused)
+                  FFButton(
+                    key: Key('sync-no-customer-${q.clientRef}'),
+                    label: context.tr('vendor.sync.retryNoCustomer'),
+                    variant: FFButtonVariant.secondary,
+                    visualDensity: VisualDensity.standard,
+                    onPressed: () =>
+                        _session?.retryWithoutCustomer(q.clientRef),
                   ),
                 FFButton(
                   key: Key('sync-retry-${q.clientRef}'),

@@ -67,6 +67,14 @@ class ReceiptData {
     this.voidReason,
     this.lateRecorded = false,
     this.queued = false,
+    this.kind = 'cash',
+    this.customerId,
+    this.customerName,
+    this.customerForgotten = false,
+    this.dueDate,
+    this.balanceTzs = 0,
+    this.paidAtSaleTzs,
+    this.allocations = const [],
   });
 
   final String? id;
@@ -95,6 +103,35 @@ class ReceiptData {
 
   /// Still on this device: no receipt number yet.
   final bool queued;
+
+  /// S4: `cash` or `credit` (pay later).
+  final String kind;
+
+  /// S4: the customer (name only, never contact details). A queued sale
+  /// has the id only: its name shows after sync.
+  final String? customerId;
+  final String? customerName;
+
+  /// The customer is an app buyer who deleted their account.
+  final bool customerForgotten;
+
+  /// Pay later: due day (YYYY-MM-DD) and what is still owed now.
+  final String? dueDate;
+  final int balanceTzs;
+
+  /// Paid at the counter (later customer payments excluded).
+  final int? paidAtSaleTzs;
+
+  /// Customer payments towards this sale (people with `customers` only):
+  /// `{paymentId, number, amountTzs, receivedOn, voided}`.
+  final List<Map<String, dynamic>> allocations;
+
+  bool get credit => kind == 'credit';
+  bool get hasCustomer => customerId != null;
+
+  /// Live (not voided) customer payments allocated to this sale.
+  List<Map<String, dynamic>> get liveAllocations =>
+      allocations.where((a) => a['voided'] != true).toList();
 
   bool get voided => status == 'voided';
   int get discountsTzs => lineDiscountTzs + saleDiscountTzs;
@@ -154,6 +191,21 @@ class ReceiptData {
       voidedAt: _str(sale['voidedAt']),
       voidReason: _str(sale['voidReason']),
       lateRecorded: late,
+      kind: sale['kind']?.toString() == 'credit' ? 'credit' : 'cash',
+      customerId: _str(person(sale['customer'])?['id']),
+      customerName: _str(person(sale['customer'])?['name']),
+      customerForgotten:
+          person(sale['customer']) != null &&
+          _str(person(sale['customer'])?['name']) == null,
+      dueDate: _str(sale['dueDate']),
+      balanceTzs: _int(sale['balanceTzs']),
+      paidAtSaleTzs: sale['paidAtSaleTzs'] == null
+          ? null
+          : _int(sale['paidAtSaleTzs']),
+      allocations: [
+        for (final a in (sale['allocations'] as List? ?? []).whereType<Map>())
+          Map<String, dynamic>.from(a),
+      ],
     );
   }
 
@@ -215,6 +267,8 @@ class ReceiptData {
       changeTzs: paid > total ? paid - total : 0,
       note: _str(body['note']),
       queued: true,
+      // The queue keeps the customer's id only (A-02): no name until sync.
+      customerId: _str(body['customerId']),
     );
   }
 }
@@ -281,6 +335,21 @@ String receiptShareText(
   }
   final when = eatDateTime(r.soldAt, locale: lang);
   if (when.isNotEmpty) b.writeln(when);
+  if (r.hasCustomer) {
+    b.writeln(
+      r.customerName != null
+          ? fill('vendor.receipt.customer', {'name': r.customerName})
+          : r.queued
+          ? t('vendor.receipt.customerAfterSync')
+          : fill('vendor.receipt.customer', {
+              'name': t(
+                r.customerForgotten
+                    ? 'vendor.customers.deletedMember'
+                    : 'vendor.pos.customer.selected',
+              ),
+            }),
+    );
+  }
   b.writeln(rule);
   for (final l in r.lines) {
     final name = l.variant == null ? l.name : '${l.name} (${l.variant})';
@@ -324,7 +393,21 @@ String receiptShareText(
       ),
     );
   }
-  if (r.changeTzs > 0) {
+  if (r.credit) {
+    // Pay later: never "Change".
+    b.writeln(
+      _row(
+        t('vendor.pos.credit.paidNow'),
+        formatMoney(
+          r.paidAtSaleTzs ?? r.payments.fold(0, (s, p) => s + p.amountTzs),
+        ),
+      ),
+    );
+    b.writeln(_row(t('vendor.receipt.balanceDue'), formatMoney(r.balanceTzs)));
+    if (r.dueDate != null) {
+      b.writeln(_row(t('vendor.receipt.dueBy'), _dayText(r.dueDate!, lang)));
+    }
+  } else if (r.changeTzs > 0) {
     b.writeln(_row(t('vendor.pos.change'), formatMoney(r.changeTzs)));
   }
   b.writeln(rule);
@@ -332,8 +415,24 @@ String receiptShareText(
     b.writeln(fill('vendor.pos.servedBy', {'name': r.servedBy}));
   }
   if (r.business != null) {
-    b.writeln(fill('vendor.pos.receiptFooter', {'business': r.business}));
+    b.writeln(
+      fill(
+        r.credit ? 'vendor.receipt.closingCredit' : 'vendor.pos.receiptFooter',
+        {'business': r.business},
+      ),
+    );
   }
   b.write(t('vendor.pos.notFiscal'));
   return b.toString();
 }
+
+/// "27 Oct 2026" for an EAT day (YYYY-MM-DD).
+String _dayText(String day, String lang) {
+  final d = DateTime.tryParse(day);
+  if (d == null) return day;
+  return formatDate(DateTime(d.year, d.month, d.day), locale: lang);
+}
+
+/// Public for the receipt view.
+String receiptDay(String? day, String lang) =>
+    day == null ? '' : _dayText(day, lang);

@@ -2048,12 +2048,15 @@ class ApiClient {
     bool mine = false,
     int? limit,
     String? cursor,
+    String? kind,
   }) async {
     final query = <String, String>{
       'from': ?from,
       'to': ?to,
       if (status != null && status.isNotEmpty) 'status': status,
       if (mine) 'createdBy': 'me',
+      // S4: cash | credit (pay later); only sent when the filter is used.
+      if (kind != null && kind.isNotEmpty && kind != 'all') 'kind': kind,
       if (limit != null) 'limit': '$limit',
       if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
     };
@@ -2075,6 +2078,137 @@ class ApiClient {
     'POST',
     '/vendor/sales/${Uri.encodeComponent(saleId)}/void',
     body: {'reason': reason},
+  );
+
+  // ── Vendor customers, pay later, customer payments (S4) ────────────────
+
+  static String _seg(String id) => Uri.encodeComponent(id);
+
+  /// Customers of my business. Staff with `customers` get money figures;
+  /// staff with `sales` only get the POS picker shape (no money).
+  Future<Map<String, dynamic>> vendorCustomers({
+    String? q,
+    String? filter,
+    String? bucket,
+    String? sort,
+    int? limit,
+    String? cursor,
+  }) async => await _request(
+    'GET',
+    _withQuery('/vendor/customers', {
+      if (q != null && q.trim().isNotEmpty) 'q': q.trim(),
+      if (filter != null && filter.isNotEmpty && filter != 'all')
+        'filter': filter,
+      if (bucket != null && bucket.isNotEmpty) 'bucket': bucket,
+      if (sort != null && sort.isNotEmpty && sort != 'name') 'sort': sort,
+      if (limit != null) 'limit': '$limit',
+      if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+    }),
+  );
+
+  /// Adds a walk-in customer. 201 `{customer, phoneDuplicate}`; a retry
+  /// with the same `clientRef` answers 200 with the same customer.
+  Future<Map<String, dynamic>> vendorCreateCustomer(
+    Map<String, dynamic> body,
+  ) async => await _request('POST', '/vendor/customers', body: body);
+
+  /// One customer's profile (owed, aging, open pay-later sales, totals).
+  Future<Map<String, dynamic>> vendorCustomer(String id) async =>
+      await _request('GET', '/vendor/customers/${_seg(id)}');
+
+  /// Edit, archive or restore. Only the fields sent change.
+  Future<Map<String, dynamic>> vendorUpdateCustomer(
+    String id,
+    Map<String, dynamic> body,
+  ) async => await _request('PUT', '/vendor/customers/${_seg(id)}', body: body);
+
+  /// This customer's walk-in sales (the GET /vendor/sales shape).
+  Future<Map<String, dynamic>> vendorCustomerSales(
+    String id, {
+    String? kind,
+    int? limit,
+    String? cursor,
+  }) async => await _request(
+    'GET',
+    _withQuery('/vendor/customers/${_seg(id)}/sales', {
+      if (kind != null && kind.isNotEmpty && kind != 'all') 'kind': kind,
+      if (limit != null) 'limit': '$limit',
+      if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+    }),
+  );
+
+  /// This app customer's paid app orders with me (no contact details).
+  Future<Map<String, dynamic>> vendorCustomerOrders(
+    String id, {
+    int? limit,
+    String? cursor,
+  }) async => await _request(
+    'GET',
+    _withQuery('/vendor/customers/${_seg(id)}/orders', {
+      if (limit != null) 'limit': '$limit',
+      if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+    }),
+  );
+
+  /// This customer's payments, newest first (voided ones too). [from] is an
+  /// EAT day (receivedOn ≥ from).
+  Future<Map<String, dynamic>> vendorCustomerPayments(
+    String id, {
+    String? from,
+    int? limit,
+    String? cursor,
+  }) async => await _request(
+    'GET',
+    _withQuery('/vendor/customers/${_seg(id)}/payments', {
+      if (from != null && from.isNotEmpty) 'from': from,
+      if (limit != null) 'limit': '$limit',
+      if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+    }),
+  );
+
+  Future<Map<String, dynamic>> vendorCustomerPayment(
+    String id,
+    String paymentId,
+  ) async => await _request(
+    'GET',
+    '/vendor/customers/${_seg(id)}/payments/${_seg(paymentId)}',
+  );
+
+  /// Records money the customer paid the vendor directly. 201 / 200 replay
+  /// (same `clientRef`) answer `{payment, customer}`.
+  Future<Map<String, dynamic>> vendorRecordCustomerPayment(
+    String id,
+    Map<String, dynamic> body,
+  ) async => await _request(
+    'POST',
+    '/vendor/customers/${_seg(id)}/payments',
+    body: body,
+  );
+
+  Future<Map<String, dynamic>> vendorVoidCustomerPayment(
+    String id,
+    String paymentId,
+    String reason,
+  ) async => await _request(
+    'POST',
+    '/vendor/customers/${_seg(id)}/payments/${_seg(paymentId)}/void',
+    body: {'reason': reason},
+  );
+
+  /// "Owed to you": totals over every customer who owes, and a page of rows.
+  Future<Map<String, dynamic>> vendorReceivablesAging({
+    String? bucket,
+    String? sort,
+    int? limit,
+    String? cursor,
+  }) async => await _request(
+    'GET',
+    _withQuery('/vendor/receivables/aging', {
+      if (bucket != null && bucket.isNotEmpty) 'bucket': bucket,
+      if (sort != null && sort.isNotEmpty && sort != 'overdue') 'sort': sort,
+      if (limit != null) 'limit': '$limit',
+      if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+    }),
   );
 
   /// Products and variants at or below their reorder level.

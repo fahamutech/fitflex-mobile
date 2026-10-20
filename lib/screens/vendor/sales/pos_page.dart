@@ -15,6 +15,9 @@ import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
 import '../../../shared/formatters.dart';
 import '../../../shared/i18n.dart';
+import '../customers/customer_models.dart';
+import '../customers/customer_picker.dart';
+import '../customers/customers_widgets.dart';
 import '../stock/stock_options.dart';
 import 'offline_sale_queue.dart';
 import 'payment_sheet.dart';
@@ -55,6 +58,7 @@ class PosPage extends StatefulWidget {
 
 class _PosPageState extends State<PosPage> {
   SalesSession? _session;
+  VendorTools _tools = VendorTools.off;
   final _cart = PosCartController();
   final _search = TextEditingController();
   final _searchFocus = FocusNode();
@@ -103,6 +107,7 @@ class _PosPageState extends State<PosPage> {
   Future<void> _start() async {
     final tools = await enterSalesRoute(context);
     if (tools == null || !mounted) return;
+    _tools = tools;
     final session = SalesSession.of(context);
     if (session == null) return;
     _session = session..attach();
@@ -120,6 +125,15 @@ class _PosPageState extends State<PosPage> {
     if (draft != null && draft.replacesClientRef == null) {
       FFSnack.info(context, context.tr('vendor.pos.draftKept'));
     }
+    // S4: the draft keeps the customer's id only; its name is asked again.
+    final customerId = draft?.customerId;
+    if (customerId != null) {
+      if (!_customersOn) {
+        _cart.update((c) => c.setCustomer(null));
+      } else {
+        unawaited(_restoreCustomerName(customerId));
+      }
+    }
     final cached = await session.loadProducts();
     if (!mounted) return;
     if (cached != null && cached.products.isNotEmpty) {
@@ -131,6 +145,102 @@ class _PosPageState extends State<PosPage> {
     }
     unawaited(_loadProfile());
     await _loadProducts();
+  }
+
+  // ── customer (S4) ─────────────────────────────────────────────────────
+
+  /// Customers are on for this POS (attach a customer to a sale).
+  bool get _customersOn => _tools.customers;
+
+  /// Pay later: both tools and both permissions (spec §0.2).
+  bool get _payLaterOn => payLaterAllowed(
+    customersFlag: _tools.customers,
+    walkInSales: _tools.walkInSales,
+    canSales: canVendor(context, 'sales'),
+    canCustomers: canVendor(context, 'customers'),
+  );
+
+  Future<void> _restoreCustomerName(String id) async {
+    final name = await CustomerRepository.fetchName(context, id);
+    if (!mounted || name == null || _cart.cart.customerId != id) return;
+    setState(() => _cart.cart.customerName = name);
+  }
+
+  Future<void> _pickCustomer() async {
+    final picked = await pickCustomer(context);
+    if (picked == null || !mounted) return;
+    _cart.update(
+      (c) => c.setCustomer(
+        picked.id,
+        name: picked.name,
+        owedTzs: picked.owedTzs,
+        overdueTzs: picked.overdueTzs,
+      ),
+    );
+  }
+
+  void _removeCustomer() => _cart.update((c) => c.setCustomer(null));
+
+  PayLaterSetup? _payLaterSetup() {
+    if (!_payLaterOn) return null;
+    final cart = _cart.cart;
+    // An edited offline sale keeps its own day; otherwise today.
+    final saleDay = cart.keepSoldAt && cart.soldAt != null
+        ? eatTodayString(DateTime.tryParse(cart.soldAt!))
+        : eatTodayString();
+    return PayLaterSetup(
+      online: !_offline,
+      saleDay: saleDay,
+      customer: () => (
+        id: _cart.cart.customerId,
+        name: _cart.cart.customerName,
+        owedTzs: _cart.cart.customerOwedTzs,
+        overdueTzs: _cart.cart.customerOverdueTzs,
+      ),
+      pickCustomer: _pickCustomer,
+    );
+  }
+
+  Widget _customerChip() {
+    final cart = _cart.cart;
+    final id = cart.customerId;
+    if (id == null) {
+      return Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: FFPill(
+          key: const Key('pos-customer-add'),
+          label: context.tr('vendor.pos.customer.add'),
+          onTap: _blocked ? null : _pickCustomer,
+        ),
+      );
+    }
+    final name =
+        cart.customerName ?? context.tr('vendor.pos.customer.selected');
+    return Row(
+      children: [
+        const Icon(Icons.person_outline),
+        const SizedBox(width: FFTokens.spacingXs),
+        Expanded(
+          child: Text(
+            name,
+            key: const Key('pos-customer-name'),
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
+        ),
+        IconButton(
+          key: const Key('pos-customer-remove'),
+          style: IconButton.styleFrom(
+            minimumSize: const Size(48, 48),
+            visualDensity: VisualDensity.standard,
+          ),
+          tooltip: fillIn(context.tr('vendor.pos.customer.remove'), {
+            'name': name,
+          }),
+          icon: const Icon(Icons.close),
+          onPressed: _removeCustomer,
+        ),
+      ],
+    );
   }
 
   Future<void> _checkSuspended(SalesSession session) async {
@@ -418,6 +528,7 @@ class _PosPageState extends State<PosPage> {
       child: PaymentSheet(
         totalTzs: _cart.cart.totals.totalTzs,
         submit: _submit,
+        payLater: _payLaterSetup(),
         onAction: (action) {
           if (action == 'recordToday') _recordToday();
         },
@@ -443,31 +554,47 @@ class _PosPageState extends State<PosPage> {
   Future<PayAttempt> _submit(
     List<Map<String, dynamic>> payments, {
     bool queue = false,
+    String? creditDueDate,
   }) async {
     final session = _session;
     if (session == null) return const PayAttempt.close();
     final api = AppScope.of(context).api;
     final display = _display();
+    final credit = creditDueDate != null;
     // Online: no soldAt (the server's clock). Kept on the device: the same
     // clientRef with the time of the first Complete.
-    final body = _cart.cart.requestBody(payments);
+    final body = _cart.cart.requestBody(payments, creditDueDate: creditDueDate);
     final queuedBody = _cart.cart.requestBody(payments, queued: true);
     final sentOnline = !_cart.cart.keepSoldAt;
     // Persist the fixed key and time before sending: a retry after an app
     // kill reuses them.
     await session.saveDraft(_cart.cart);
-    if (queue) return _queue(queuedBody, display, sentOnline: sentOnline);
+    // S4 (Q-11): a pay-later sale is never kept on the device.
+    if (queue && !credit) {
+      return _queue(queuedBody, display, sentOnline: sentOnline);
+    }
 
     try {
       final res = await api.vendorRecordSale(body);
       final sale = res['sale'];
-      if (sale is! Map) return const PayAttempt.server();
+      if (sale is! Map) {
+        return credit
+            ? const PayAttempt.stay('vendor.pos.credit.failed')
+            : const PayAttempt.server();
+      }
       await _finished(Map<String, dynamic>.from(sale));
       return const PayAttempt.close();
     } on ApiException catch (e) {
       if (!mounted) return const PayAttempt.close();
+      if (credit && (e.status >= 500 || e.status == 429)) {
+        // Nothing recorded; the cart stays; Complete tries the same key.
+        return const PayAttempt.stay('vendor.pos.credit.failed');
+      }
       return _refused(e);
     } catch (_) {
+      // No answer. A pay-later sale is not queued (a debt must not exist
+      // only on one phone): the seller tries again or takes full payment.
+      if (credit) return const PayAttempt.stay('vendor.pos.credit.failed');
       return _queue(queuedBody, display, sentOnline: sentOnline, offline: true);
     }
   }
@@ -523,7 +650,14 @@ class _PosPageState extends State<PosPage> {
     if (!mounted) return;
     FFSnack.success(
       context,
-      fillIn(context.tr('vendor.pos.saleSaved'), {'number': sale['number']}),
+      fillIn(
+        context.tr(
+          sale['kind'] == 'credit'
+              ? 'vendor.pos.credit.saved'
+              : 'vendor.pos.saleSaved',
+        ),
+        {'number': sale['number']},
+      ),
     );
     _goAfterSheet(saleReceiptRoute(sale['id'].toString()), extra: sale);
   }
@@ -553,6 +687,23 @@ class _PosPageState extends State<PosPage> {
     // 5xx and 429 rate_limited: nothing recorded yet; Try again (same
     // clientRef) or keep it on the device.
     if (e.status >= 500 || e.status == 429) return const PayAttempt.server();
+    // S4: customer / pay-later refusals (some are 403 and 404: before the
+    // general handling of those).
+    final creditKey = creditErrorKey(code);
+    if (creditKey != null) {
+      if (code == 'customer_not_found' || code == 'customer_archived') {
+        // Nothing recorded: the chip is cleared and the picker offered.
+        _cart.update((c) => c.setCustomer(null));
+      }
+      return PayAttempt.stay(creditKey);
+    }
+    if (e.status == 404 &&
+        code == 'feature_disabled' &&
+        body['feature'] == 'customers') {
+      // Customers went off: the sale can still be recorded without one.
+      _cart.update((c) => c.setCustomer(null));
+      return const PayAttempt.stay('vendor.pos.customer.gone');
+    }
     if (e.status == 403) {
       final isStaff =
           AppScope.of(context).auth.user?['userType'] == 'vendor_staff';
@@ -1168,6 +1319,10 @@ class _PosPageState extends State<PosPage> {
           ),
         ),
         const Divider(),
+        if (_customersOn) ...[
+          _customerChip(),
+          const SizedBox(height: FFTokens.spacingXs),
+        ],
         MoneyRow(
           context.tr('vendor.pos.subtotal'),
           formatCurrency(totals.subtotalTzs),

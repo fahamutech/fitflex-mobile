@@ -9,6 +9,7 @@
 // Every S2 field is optional here so the card keeps working against an older
 // backend (no shortRef, buyer or pickupGym; deliveryAddress always present).
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../shared/components/components.dart';
@@ -17,6 +18,8 @@ import '../../../shared/formatters.dart';
 import '../../../shared/i18n.dart';
 import '../../../shared/payment_labels.dart';
 import '../../../shared/shop_checkout.dart';
+import '../customers/customers_widgets.dart'
+    show customerIdPattern, customerRoute;
 import '../stock/stock_options.dart';
 
 /// Opens the phone app; tests replace it.
@@ -111,6 +114,20 @@ class VendorOrderCard extends StatelessWidget {
                   .replaceAll('{name}', _buyerName(context, buyer)),
               key: Key('vendor-order-buyer-$_id'),
             ),
+          // S4: the buyer's customer page. Optional: a deleted buyer's old
+          // orders carry no customerId (backend #224), so no link then.
+          if (_customerLink(context, buyer) case final cid?)
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: FFButton(
+                key: Key('vendor-order-customer-$_id'),
+                label: context.tr('vendor.orders.openCustomer'),
+                icon: Icons.person_outline,
+                variant: FFButtonVariant.ghost,
+                visualDensity: VisualDensity.standard,
+                onPressed: () => context.push(customerRoute(cid)),
+              ),
+            ),
           if (pickup)
             Text(
               '${context.tr('vendor.pickupGym')}: '
@@ -180,6 +197,17 @@ class VendorOrderCard extends StatelessWidget {
           : '$line · ${context.tr('vendor.orders.variant').replaceAll('{name}', variant)}',
       style: Theme.of(context).textTheme.titleSmall,
     );
+  }
+
+  /// The customer id to link to, or null (tool off, no `customers`, or
+  /// no id on this order).
+  String? _customerLink(BuildContext context, Map<String, dynamic>? buyer) {
+    if (!tools.customers || !canVendor(context, 'customers')) return null;
+    final id = buyer?['customerId']?.toString();
+    if (id == null || id.isEmpty || !customerIdPattern.hasMatch(id)) {
+      return null;
+    }
+    return id;
   }
 
   String _buyerName(BuildContext context, Map<String, dynamic> buyer) {

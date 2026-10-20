@@ -14,6 +14,9 @@ import '../../../shared/api_client.dart';
 import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
 import '../../../shared/i18n.dart';
+import '../../../shared/formatters.dart';
+import '../customers/customers_widgets.dart';
+import '../customers/payment_sheets.dart';
 import '../stock/stock_options.dart';
 import 'offline_sale_queue.dart';
 import 'receipt_data.dart';
@@ -54,6 +57,7 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
   bool _failed = false;
   bool _suspended = false;
   String? _lang;
+  VendorTools _tools = VendorTools.off;
 
   @override
   void initState() {
@@ -64,6 +68,7 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
   Future<void> _start() async {
     final tools = await enterSalesRoute(context);
     if (tools == null || !mounted) return;
+    _tools = tools;
     final api = AppScope.of(context).api;
     final session = SalesSession.of(context);
     () async {
@@ -124,8 +129,12 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
   Future<void> _void(ReceiptData data) async {
     final out = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (_) =>
-          _VoidDialog(saleId: widget.saleId, number: data.number ?? ''),
+      builder: (_) => _VoidDialog(
+        saleId: widget.saleId,
+        number: data.number ?? '',
+        credit: data.credit,
+        customerId: data.customerId,
+      ),
     );
     if (!mounted || out == null) return;
     if (out['sale'] is Map) {
@@ -138,6 +147,27 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
       final key = out['message']?.toString();
       if (key != null) FFSnack.info(context, context.tr(key));
       await _load();
+    }
+  }
+
+  /// S4: customers screens are on and this person has `customers`.
+  bool get _seesCustomers =>
+      _tools.customers && canVendor(context, 'customers');
+
+  Future<void> _recordPayment(ReceiptData data) async {
+    final id = data.customerId;
+    if (id == null) return;
+    try {
+      final res = await AppScope.of(context).api.vendorCustomer(id);
+      final c = res['customer'];
+      if (c is! Map || !mounted) return;
+      final out = await recordCustomerPayment(
+        context,
+        customer: Map<String, dynamic>.from(c),
+      );
+      if (out != null && mounted) await _load();
+    } catch (_) {
+      if (mounted) FFSnack.error(context, context.tr('vendor.pay.offline'));
     }
   }
 
@@ -244,6 +274,41 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
                       t: (k) => locale.tIn(lang, k),
                       audit: true,
                     ),
+                    if (data.hasCustomer &&
+                        _seesCustomers &&
+                        customerIdPattern.hasMatch(data.customerId!)) ...[
+                      const SizedBox(height: FFTokens.spacingSm),
+                      Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: FFButton(
+                          key: const Key('sale-detail-customer'),
+                          label: data.customerName == null
+                              ? context.tr(
+                                  data.customerForgotten
+                                      ? 'vendor.customers.deletedMember'
+                                      : 'vendor.pos.customer.selected',
+                                )
+                              : data.customerName!,
+                          icon: Icons.person_outline,
+                          variant: FFButtonVariant.ghost,
+                          visualDensity: VisualDensity.standard,
+                          onPressed: () =>
+                              context.push(customerRoute(data.customerId!)),
+                        ),
+                      ),
+                    ],
+                    if (data.credit && data.liveAllocations.isNotEmpty) ...[
+                      const SizedBox(height: FFTokens.spacingSm),
+                      Text(
+                        context.tr('vendor.customers.payments'),
+                        style: Theme.of(context).textTheme.labelLarge,
+                      ),
+                      for (final a in data.liveAllocations)
+                        MoneyRow(
+                          a['number']?.toString() ?? '',
+                          formatCurrency((a['amountTzs'] as num?) ?? 0),
+                        ),
+                    ],
                     const SizedBox(height: FFTokens.spacingMd),
                     if (!data.voided)
                       ReceiptLanguageToggle(
@@ -263,6 +328,17 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
                             variant: FFButtonVariant.secondary,
                             visualDensity: VisualDensity.standard,
                             onPressed: () => _share(data, lang),
+                          ),
+                        if (data.credit &&
+                            !data.voided &&
+                            data.balanceTzs > 0 &&
+                            _seesCustomers)
+                          FFButton(
+                            key: const Key('sale-detail-record-payment'),
+                            label: context.tr('vendor.pay.record'),
+                            icon: Icons.payments_outlined,
+                            visualDensity: VisualDensity.standard,
+                            onPressed: () => _recordPayment(data),
                           ),
                         if (mayVoid)
                           FFButton(
@@ -284,9 +360,18 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
 }
 
 class _VoidDialog extends StatefulWidget {
-  const _VoidDialog({required this.saleId, required this.number});
+  const _VoidDialog({
+    required this.saleId,
+    required this.number,
+    this.credit = false,
+    this.customerId,
+  });
   final String saleId;
   final String number;
+
+  /// S4: a pay-later sale (its balance is cancelled with it).
+  final bool credit;
+  final String? customerId;
 
   @override
   State<_VoidDialog> createState() => _VoidDialogState();
@@ -297,6 +382,9 @@ class _VoidDialogState extends State<_VoidDialog> {
   bool _busy = false;
   String? _error;
   String? _fieldError;
+
+  /// S4 (Q-2): customer payments allocated to the sale: `{id, number}`.
+  List<Map> _payments = const [];
 
   @override
   void dispose() {
@@ -347,6 +435,16 @@ class _VoidDialogState extends State<_VoidDialog> {
           );
         case 'vendor_suspended':
           setState(() => _error = context.tr('vendor.sales.suspended'));
+        case 'sale_has_payments':
+          final pays = (body['payments'] as List? ?? [])
+              .whereType<Map>()
+              .toList();
+          setState(() {
+            _payments = pays;
+            _error = fillIn(context.tr('vendor.sales.voidHasPayments'), {
+              'numbers': pays.map((p) => p['number']).join(', '),
+            });
+          });
         default:
           setState(
             () => _error = context.tr(
@@ -386,6 +484,13 @@ class _VoidDialogState extends State<_VoidDialog> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(context.tr('vendor.sales.voidBody')),
+              if (widget.credit) ...[
+                const SizedBox(height: FFTokens.spacingSm),
+                Text(
+                  context.tr('vendor.sales.voidCreditBody'),
+                  key: const Key('sale-void-credit-body'),
+                ),
+              ],
               const SizedBox(height: FFTokens.spacingMd),
               FFTextField(
                 key: const Key('sale-void-reason'),
@@ -408,6 +513,39 @@ class _VoidDialogState extends State<_VoidDialog> {
                     tone: FFAlertTone.error,
                   ),
                 ),
+                // Links to each payment: void those first (§6.3).
+                if (widget.customerId != null &&
+                    canVendor(context, 'customers'))
+                  Wrap(
+                    spacing: FFTokens.spacingXs,
+                    children: [
+                      for (final p in _payments)
+                        if (customerIdPattern.hasMatch('${p['id']}'))
+                          FFButton(
+                            key: Key('sale-void-payment-${p['id']}'),
+                            label: p['number']?.toString() ?? '',
+                            variant: FFButtonVariant.ghost,
+                            visualDensity: VisualDensity.standard,
+                            onPressed: _busy
+                                ? null
+                                : () async {
+                                    final changed = await openPaymentById(
+                                      context,
+                                      customerId: widget.customerId!,
+                                      paymentId: p['id'].toString(),
+                                    );
+                                    if (changed && mounted) {
+                                      setState(() {
+                                        _payments = _payments
+                                            .where((x) => x['id'] != p['id'])
+                                            .toList();
+                                        if (_payments.isEmpty) _error = null;
+                                      });
+                                    }
+                                  },
+                          ),
+                    ],
+                  ),
               ],
             ],
           ),
