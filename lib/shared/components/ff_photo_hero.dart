@@ -1,15 +1,20 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
 import '../design_tokens.dart';
+import '../hero_images/hero_image_store.dart';
 import '../i18n.dart';
 import 'ff_skeleton.dart';
 
 /// Bundled hero photos (people-free licensed stock until FitFlex has its own
 /// shoot; see assets/photos/hero/LICENSES.md). Never fetched from a network.
+/// With `HERO_IMAGES_REMOTE` on, an admin-published photo for the same slot
+/// (hero_images/hero_slots.dart) may replace one once it is saved and
+/// decoded ([HeroImageStore]); the bundled file stays the fallback.
 /// No crop shows another gym's or brand's logo or signage (owner rule
 /// 2026-10-20): the treadmill photo with a "smart fit" gym logo is banned.
 enum FFHeroPhoto {
@@ -174,13 +179,35 @@ void precacheHeroPhotos(
 }) {
   final size = MediaQuery.sizeOf(context);
   final dpr = MediaQuery.devicePixelRatioOf(context);
+  final store = HeroImageStore.instance;
   for (final p in photos) {
+    final b = box ?? Size(size.width, size.height * 0.5);
+    final remote = store?.peekTop(p);
     precacheImage(
-      heroImageProvider(p, box ?? Size(size.width, size.height * 0.5), dpr),
+      remote != null
+          ? heroRemoteImageProvider(remote, b, dpr)
+          : heroImageProvider(p, b, dpr),
       context,
       onError: (_, _) {},
     );
   }
+}
+
+/// The decode size for a saved admin-published photo drawn with
+/// `BoxFit.cover` into [box] (as [heroImageProvider]). On the web the
+/// network image that decoded in this session is used as it is, so it comes
+/// from the image cache.
+ImageProvider heroRemoteImageProvider(
+  RemoteHeroImage image,
+  Size box,
+  double dpr,
+) {
+  if (kIsWeb) return image.provider;
+  final logical = box.width > box.height * image.aspect
+      ? box.width
+      : box.height * image.aspect;
+  final px = logical.isFinite ? ((logical * dpr) / 128).ceil() * 128 : 0;
+  return ResizeImage.resizeIfNeeded(px <= 0 ? null : px, null, image.provider);
 }
 
 /// A photo under a slate-950 scrim with light text: the "always-dark island"
@@ -1137,18 +1164,40 @@ class _RenderHeroTallBody extends RenderBox
 
 /// The photo, or the navy placeholder: before it decodes, if it fails, and
 /// always under high contrast. Never in the accessibility tree.
-class _HeroPhotoLayer extends StatelessWidget {
+///
+/// With admin-published photos on, each bundled [FFHeroPhoto] is looked up
+/// once, the first time this layer shows it, and the answer is kept: a photo
+/// saved while the screen is open shows only the next time the screen is
+/// built (never a swap mid-view). If a saved photo fails to load, the
+/// bundled one shows.
+class _HeroPhotoLayer extends StatefulWidget {
   const _HeroPhotoLayer({this.photo, this.networkImage});
 
   final FFHeroPhoto? photo;
   final FFHeroNetworkImage? networkImage;
 
   @override
+  State<_HeroPhotoLayer> createState() => _HeroPhotoLayerState();
+}
+
+class _HeroPhotoLayerState extends State<_HeroPhotoLayer> {
+  final Map<FFHeroPhoto, RemoteHeroImage?> _resolved = {};
+
+  RemoteHeroImage? _remoteFor(FFHeroPhoto photo) {
+    if (_resolved.containsKey(photo)) return _resolved[photo];
+    final r = HeroImageStore.instance?.resolveTop(photo);
+    _resolved[photo] = r;
+    return r;
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final photo = widget.photo;
+    final networkImage = widget.networkImage;
     // A network hero with no file to load shows the placeholder alone.
     final noPhoto =
         MediaQuery.highContrastOf(context) ||
-        (networkImage != null && networkImage!.url.isEmpty);
+        (networkImage != null && networkImage.url.isEmpty);
     final instant = MediaQuery.disableAnimationsOf(context);
     final dpr = MediaQuery.devicePixelRatioOf(context);
     return ExcludeSemantics(
@@ -1159,19 +1208,34 @@ class _HeroPhotoLayer extends StatelessWidget {
             ? const SizedBox.expand()
             : LayoutBuilder(
                 builder: (context, c) {
-                  final remote = networkImage;
-                  final image = Image(
+                  final saved = photo == null ? null : _remoteFor(photo);
+                  Widget bundled() => Image(
                     key: const Key('ff-hero-photo'),
-                    image: remote != null
-                        ? heroNetworkImageProvider(remote, c.biggest, dpr)
-                        : heroImageProvider(photo!, c.biggest, dpr),
+                    image: heroImageProvider(photo!, c.biggest, dpr),
                     fit: BoxFit.cover,
-                    alignment: remote?.focal ?? photo!.focal,
+                    alignment: photo.focal,
                     width: c.maxWidth,
                     height: c.maxHeight,
                     excludeFromSemantics: true,
                     gaplessPlayback: true,
                     errorBuilder: (_, _, _) => const SizedBox.expand(),
+                  );
+                  final image = Image(
+                    key: const Key('ff-hero-photo'),
+                    image: networkImage != null
+                        ? heroNetworkImageProvider(networkImage, c.biggest, dpr)
+                        : saved != null
+                        ? heroRemoteImageProvider(saved, c.biggest, dpr)
+                        : heroImageProvider(photo!, c.biggest, dpr),
+                    fit: BoxFit.cover,
+                    alignment:
+                        networkImage?.focal ?? saved?.focal ?? photo!.focal,
+                    width: c.maxWidth,
+                    height: c.maxHeight,
+                    excludeFromSemantics: true,
+                    gaplessPlayback: true,
+                    errorBuilder: (_, _, _) =>
+                        saved != null ? bundled() : const SizedBox.expand(),
                     frameBuilder: (context, child, frame, sync) {
                       if (sync) return child;
                       return AnimatedOpacity(
