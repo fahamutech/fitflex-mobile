@@ -3684,6 +3684,7 @@ class FFLocale extends ChangeNotifier {
       'benefits.confirmContact.bodyPhoneOnly':
           'Your benefits are added once you confirm the mobile number your organisation has for you.',
       'benefits.confirmContact.action': 'Confirm email or number',
+      'benefits.confirmContact.actionPhoneOnly': 'Confirm mobile number',
       'benefits.used': 'Used {used} of {limit} {period}',
       'benefits.remaining': '{n} left',
       'benefits.unlimited': 'No limit on how often you use it',
@@ -8772,6 +8773,7 @@ class FFLocale extends ChangeNotifier {
       'benefits.confirmContact.bodyPhoneOnly':
           'Manufaa yako yataongezwa baada ya kuthibitisha namba ya simu ambayo shirika lako linayo.',
       'benefits.confirmContact.action': 'Thibitisha barua pepe au namba',
+      'benefits.confirmContact.actionPhoneOnly': 'Thibitisha namba ya simu',
       'benefits.used': 'Umetumia {used} kati ya {limit} {period}',
       'benefits.remaining': 'Zimebaki {n}',
       'benefits.unlimited': 'Hakuna kikomo cha matumizi',

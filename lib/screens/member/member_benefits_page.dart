@@ -171,7 +171,11 @@ class _ConfirmContactHint extends StatelessWidget {
                 const SizedBox(height: FFTokens.spacingMd),
                 FFButton(
                   key: const Key('benefits-confirm-contact-action'),
-                  label: context.tr('benefits.confirmContact.action'),
+                  label: context.tr(
+                    auth.emailCodesAvailable
+                        ? 'benefits.confirmContact.action'
+                        : 'benefits.confirmContact.actionPhoneOnly',
+                  ),
                   onPressed: () => _open(context),
                   variant: FFButtonVariant.secondary,
                   fullWidth: true,

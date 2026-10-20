@@ -292,6 +292,8 @@ void main() {
         findsOneWidget,
       );
       expect(find.textContaining('the email or mobile'), findsNothing);
+      expect(find.text('Confirm mobile number'), findsOneWidget);
+      expect(find.text('Confirm email or number'), findsNothing);
     });
 
     testWidgets('is hidden while identifier verification is off', (
@@ -375,6 +377,7 @@ void main() {
         'benefits.confirmContact.body',
         'benefits.confirmContact.bodyPhoneOnly',
         'benefits.confirmContact.action',
+        'benefits.confirmContact.actionPhoneOnly',
       ];
       final en = FFLocale.keysOf('en');
       final sw = FFLocale.keysOf('sw');
