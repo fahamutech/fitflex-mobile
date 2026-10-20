@@ -156,6 +156,21 @@ class _VendorHomePageState extends State<VendorHomePage> {
 
   bool get _ledger => _tools.stockLedger && _can('products');
 
+  /// Shop home Phase 2 S1: the Promotions entry, only while the server
+  /// reports `merch.banners: true` and this person may work on products.
+  bool get _merch => _tools.banners && _can('products');
+
+  Widget _merchEntry() => Padding(
+    padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
+    child: FFActionTile(
+      key: const Key('vendor-merch-entry'),
+      icon: Icons.campaign_outlined,
+      title: context.tr('merch.entry.title'),
+      subtitle: context.tr('merch.entry.subtitle'),
+      onTap: () => context.push(AppRoutes.vendorMerch),
+    ),
+  );
+
   bool _can(String permission) {
     final user = AppScope.of(context).auth.user;
     if (user?['userType'] != 'vendor_staff') return true;
@@ -994,7 +1009,10 @@ class _VendorHomePageState extends State<VendorHomePage> {
   );
 
   Widget _productsTab() {
-    final lead = _heroOn(0) ? _productsLead() : const <Widget>[];
+    final lead = [
+      if (_heroOn(0)) ..._productsLead(),
+      if (_merch) _merchEntry(),
+    ];
     if (_products.isEmpty) {
       return ListView(
         padding: const EdgeInsets.all(FFTokens.spacingLg),

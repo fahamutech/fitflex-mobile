@@ -114,12 +114,30 @@ class RecordingApi {
   void clear() => requests.clear();
 
   Future<http.Response> _handle(http.Request req) async {
-    final raw = req.body;
+    // A multipart upload (a photo) is recorded by its size, not decoded.
+    final multipart = (req.headers['content-type'] ?? '').startsWith(
+      'multipart/',
+    );
+    final raw = multipart ? '' : req.body;
     final rec = RecordedRequest(
       req.method,
       req.url.path,
       req.url.query,
-      raw.isEmpty ? null : jsonDecode(raw),
+      multipart
+          ? {
+              'multipart': true,
+              'bytes': req.bodyBytes.length,
+              // The text parts (the file part has a filename and is left out).
+              'fields': {
+                for (final m in RegExp(
+                  r'form-data; name="([^"]+)"\r\n\r\n([^\r]*)\r\n',
+                ).allMatches(latin1.decode(req.bodyBytes)))
+                  m.group(1)!: m.group(2)!,
+              },
+            }
+          : raw.isEmpty
+          ? null
+          : jsonDecode(raw),
       req.headers.map((k, v) => MapEntry(k.toLowerCase(), v)),
     );
     requests.add(rec);

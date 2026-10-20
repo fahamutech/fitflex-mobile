@@ -103,6 +103,27 @@ enum FFHeroPhoto {
   String get asset => 'assets/photos/hero/$file.webp';
 }
 
+/// A photo fetched from the network for a hero (Shop home banners, Phase 2
+/// S1): the same scrim, focal alignment and navy placeholder as a bundled
+/// [FFHeroPhoto]. The placeholder shows while it loads, if it fails and
+/// under high contrast, so the text on it stays readable.
+@immutable
+class FFHeroNetworkImage {
+  const FFHeroNetworkImage(this.url, {this.focal = Alignment.center});
+
+  final String url;
+
+  /// Where `BoxFit.cover` keeps the subject.
+  final Alignment focal;
+
+  @override
+  bool operator ==(Object other) =>
+      other is FFHeroNetworkImage && other.url == url && other.focal == focal;
+
+  @override
+  int get hashCode => Object.hash(url, focal);
+}
+
 /// How the hero is laid out.
 /// [full] and [compact] stack the text over a vertical scrim (phones);
 /// [panel] puts it bottom-left over a horizontal scrim (desktop, wide
@@ -123,6 +144,22 @@ ImageProvider heroImageProvider(FFHeroPhoto photo, Size box, double dpr) {
     px <= 0 ? null : px,
     null,
     AssetImage(photo.asset),
+  );
+}
+
+/// The decode size for a network hero image drawn into [box]: its width at
+/// this pixel ratio, rounded up to a 128px step (the aspect is unknown until
+/// it loads, so only the width is capped).
+ImageProvider heroNetworkImageProvider(
+  FFHeroNetworkImage image,
+  Size box,
+  double dpr,
+) {
+  final px = box.width.isFinite ? ((box.width * dpr) / 128).ceil() * 128 : 0;
+  return ResizeImage.resizeIfNeeded(
+    px <= 0 ? null : px,
+    null,
+    NetworkImage(image.url),
   );
 }
 
@@ -162,7 +199,8 @@ void precacheHeroPhotos(
 class FFPhotoHero extends StatelessWidget {
   const FFPhotoHero({
     super.key,
-    required this.photo,
+    this.photo,
+    this.networkImage,
     this.variant = FFHeroVariant.full,
     this.minHeight = 0,
     this.topInset = 0,
@@ -182,9 +220,17 @@ class FFPhotoHero extends StatelessWidget {
     this.headingFocusNode,
     this.clearPhoto = 0,
     this.maxHeight = double.infinity,
-  });
+    this.excludeHeadingSemantics = false,
+  }) : assert(
+         (photo == null) != (networkImage == null),
+         'Give exactly one of photo or networkImage',
+       );
 
-  final FFHeroPhoto photo;
+  /// A bundled photo (never fetched from the network)...
+  final FFHeroPhoto? photo;
+
+  /// ...or one from the network (Shop home banners). Exactly one is set.
+  final FFHeroNetworkImage? networkImage;
   final FFHeroVariant variant;
 
   /// The hero never gets shorter than this; text at large scales grows it.
@@ -247,6 +293,11 @@ class FFPhotoHero extends StatelessWidget {
   /// Lets the page's footer "Back to top" move focus to the heading (spec
   /// §32.1): focusable on request, but no extra Tab stop. Null: as before.
   final FocusNode? headingFocusNode;
+
+  /// Leaves the heading out of the semantics tree, for a parent that reads
+  /// the hero as one node with its own label (a carousel slide: "Banner 1
+  /// of 3"). The actions stay separate buttons.
+  final bool excludeHeadingSemantics;
 
   /// The accent colour for the current theme: Volt on dark, brand-500 on
   /// light (large text only).
@@ -344,7 +395,9 @@ class FFPhotoHero extends StatelessWidget {
     );
     return Stack(
       children: [
-        Positioned.fill(child: _HeroPhotoLayer(photo: photo)),
+        Positioned.fill(
+          child: _HeroPhotoLayer(photo: photo, networkImage: networkImage),
+        ),
         // The status bar / app bar band, unless the page draws it.
         if (!hosted)
           Positioned.fill(
@@ -398,7 +451,9 @@ class FFPhotoHero extends StatelessWidget {
     return Stack(
       fit: StackFit.passthrough,
       children: [
-        Positioned.fill(child: _HeroPhotoLayer(photo: photo)),
+        Positioned.fill(
+          child: _HeroPhotoLayer(photo: photo, networkImage: networkImage),
+        ),
         // Left to right: the text column (and the logo above it) stays at
         // the text value or darker; past it the photo clears towards the
         // far edge.
@@ -630,6 +685,7 @@ class FFPhotoHero extends StatelessWidget {
         child: KeyedSubtree(key: ValueKey(_semanticsLabel), child: heading),
       );
     }
+    if (excludeHeadingSemantics) heading = ExcludeSemantics(child: heading);
     if (leading != null) {
       final lead = ExcludeSemantics(
         child: KeyedSubtree(key: const Key('ff-hero-leading'), child: leading!),
@@ -1082,13 +1138,17 @@ class _RenderHeroTallBody extends RenderBox
 /// The photo, or the navy placeholder: before it decodes, if it fails, and
 /// always under high contrast. Never in the accessibility tree.
 class _HeroPhotoLayer extends StatelessWidget {
-  const _HeroPhotoLayer({required this.photo});
+  const _HeroPhotoLayer({this.photo, this.networkImage});
 
-  final FFHeroPhoto photo;
+  final FFHeroPhoto? photo;
+  final FFHeroNetworkImage? networkImage;
 
   @override
   Widget build(BuildContext context) {
-    final noPhoto = MediaQuery.highContrastOf(context);
+    // A network hero with no file to load shows the placeholder alone.
+    final noPhoto =
+        MediaQuery.highContrastOf(context) ||
+        (networkImage != null && networkImage!.url.isEmpty);
     final instant = MediaQuery.disableAnimationsOf(context);
     final dpr = MediaQuery.devicePixelRatioOf(context);
     return ExcludeSemantics(
@@ -1099,11 +1159,14 @@ class _HeroPhotoLayer extends StatelessWidget {
             ? const SizedBox.expand()
             : LayoutBuilder(
                 builder: (context, c) {
+                  final remote = networkImage;
                   final image = Image(
                     key: const Key('ff-hero-photo'),
-                    image: heroImageProvider(photo, c.biggest, dpr),
+                    image: remote != null
+                        ? heroNetworkImageProvider(remote, c.biggest, dpr)
+                        : heroImageProvider(photo!, c.biggest, dpr),
                     fit: BoxFit.cover,
-                    alignment: photo.focal,
+                    alignment: remote?.focal ?? photo!.focal,
                     width: c.maxWidth,
                     height: c.maxHeight,
                     excludeFromSemantics: true,
@@ -1132,7 +1195,10 @@ class _HeroPhotoLayer extends StatelessWidget {
                       fit: StackFit.expand,
                       children: [...previous, ?current],
                     ),
-                    child: KeyedSubtree(key: ValueKey(photo), child: image),
+                    child: KeyedSubtree(
+                      key: ValueKey<Object?>(networkImage ?? photo),
+                      child: image,
+                    ),
                   );
                 },
               ),
