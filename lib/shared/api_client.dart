@@ -2137,6 +2137,16 @@ class ApiClient {
     }),
   );
 
+  /// One walk-in sale of this customer (read-only detail for people with
+  /// `customers`, whether or not they also have `sales`).
+  Future<Map<String, dynamic>> vendorCustomerSale(
+    String id,
+    String saleId,
+  ) async => await _request(
+    'GET',
+    '/vendor/customers/${_seg(id)}/sales/${_seg(saleId)}',
+  );
+
   /// This app customer's paid app orders with me (no contact details).
   Future<Map<String, dynamic>> vendorCustomerOrders(
     String id, {

@@ -462,4 +462,134 @@ void main() {
     expect(find.textContaining('Void them first: PMT-000001'), findsOneWidget);
     expect(find.byKey(const Key('sale-void-payment-pmt_1')), findsOneWidget);
   });
+
+  Map<String, dynamic> creditSaleJson() => {
+    ...serverSale(id: 'sal_a', number: 'R-000001'),
+    'kind': 'credit',
+    'changeTzs': 0,
+    'paidAtSaleTzs': 0,
+    'balanceTzs': 20000,
+    'dueDate': '2026-10-08',
+    'customer': {'id': 'cus_1', 'name': 'Juma Mussa'},
+    'allocations': [],
+  };
+
+  apiTest('profile: an open sale opens the customer-scoped sale page', (
+    tester,
+    api,
+  ) async {
+    seedProfile(api);
+    await pumpProfile(
+      tester,
+      api,
+      user: staffUser(['customers'], role: 'support'),
+    );
+    await tapVisible(tester, find.byKey(const Key('customer-open-sale-sal_a')));
+    expect(textContaining('ROUTE-CUSTOMER-SALE cus_1 sal_a'), findsOneWidget);
+  });
+
+  apiTest('customers-only staff: read-only sale, no Share / Void', (
+    tester,
+    api,
+  ) async {
+    api.on('GET /vendor/tools/options', customersOn);
+    api.on('GET /vendor/profile', {'businessName': 'Dar Gear'});
+    api.on('GET /vendor/customers/cus_1/sales/sal_a', {
+      'sale': creditSaleJson(),
+    });
+    await pumpPage(
+      tester,
+      api,
+      const SaleDetailPage(saleId: 'sal_a', customerId: 'cus_1'),
+      user: staffUser(['customers'], role: 'support'),
+      size: tall,
+      extraRoutes: customerRoutes,
+      keepRequests: true,
+    );
+    expect(find.byKey(const Key('sales-receipt')), findsOneWidget);
+    expect(find.byKey(const Key('sales-receipt-balance')), findsOneWidget);
+    expect(find.byKey(const Key('sale-detail-share')), findsNothing);
+    expect(find.byKey(const Key('sale-detail-void')), findsNothing);
+    // Record payment is a `customers` action: still offered.
+    expect(find.byKey(const Key('sale-detail-record-payment')), findsOneWidget);
+    // Never the sales-gated endpoint.
+    expect(api.sent('GET', '/vendor/sales/sal_a'), isFalse);
+    expect(api.sent('GET', '/vendor/customers/cus_1/sales/sal_a'), isTrue);
+    expect(textContaining('ROUTE-VENDOR-HOME'), findsNothing);
+  });
+
+  apiTest('customer-scoped sale with `sales` too: Share and Void shown', (
+    tester,
+    api,
+  ) async {
+    api.on('GET /vendor/tools/options', customersOn);
+    api.on('GET /vendor/profile', {'businessName': 'Dar Gear'});
+    api.on('GET /vendor/customers/cus_1/sales/sal_a', {
+      'sale': creditSaleJson(),
+    });
+    await pumpPage(
+      tester,
+      api,
+      const SaleDetailPage(saleId: 'sal_a', customerId: 'cus_1'),
+      size: tall,
+      extraRoutes: customerRoutes,
+    );
+    expect(find.byKey(const Key('sale-detail-share')), findsOneWidget);
+    expect(find.byKey(const Key('sale-detail-void')), findsOneWidget);
+  });
+
+  apiTest('customer-scoped sale for sales-only staff: no-access, home', (
+    tester,
+    api,
+  ) async {
+    api.on('GET /vendor/tools/options', customersOn);
+    final host = await pumpPage(
+      tester,
+      api,
+      const SaleDetailPage(saleId: 'sal_a', customerId: 'cus_1'),
+      user: staffUser(['sales']),
+      size: tall,
+      extraRoutes: customerRoutes,
+    );
+    expect(textContaining('ROUTE-VENDOR-HOME'), findsOneWidget);
+    expect(find.text(host.tr('vendor.customers.noAccess')), findsOneWidget);
+  });
+
+  apiTest('offline: Record payment greyed out, form never opens', (
+    tester,
+    api,
+  ) async {
+    seedProfile(api);
+    final host = await pumpProfile(tester, api);
+    expect(
+      isEnabled(tester, find.byKey(const Key('customer-record-payment'))),
+      isTrue,
+    );
+    // The connection drops: the fresh-balance check gets no answer.
+    api.onCall(
+      'GET /vendor/customers/cus_1',
+      (_) => throw http.ClientException('offline'),
+    );
+    await tapVisible(tester, find.byKey(const Key('customer-record-payment')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('pay-amount')), findsNothing);
+    expect(
+      isEnabled(tester, find.byKey(const Key('customer-record-payment'))),
+      isFalse,
+    );
+    expect(
+      find.byKey(const Key('customer-record-payment-offline')),
+      findsOneWidget,
+    );
+    expect(find.text(host.tr('vendor.pay.offline')), findsWidgets);
+    expect(api.sent('POST', '/vendor/customers/cus_1/payments'), isFalse);
+    // Any answer from the server brings it back.
+    seedProfile(api);
+    await tapVisible(tester, find.text('Payments').last);
+    await tester.pumpAndSettle();
+    expect(
+      isEnabled(tester, find.byKey(const Key('customer-record-payment'))),
+      isTrue,
+    );
+  });
 }

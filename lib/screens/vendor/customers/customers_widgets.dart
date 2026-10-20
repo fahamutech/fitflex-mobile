@@ -26,6 +26,11 @@ String customerRoute(String id) =>
 String editCustomerRoute(String id) => '${customerRoute(id)}/edit';
 String statementRoute(String id) => '${customerRoute(id)}/statement';
 
+/// A sale seen from its customer's profile: read-only for people with
+/// `customers` only (GET /vendor/customers/:id/sales/:saleId).
+String customerSaleRoute(String id, String saleId) =>
+    '${customerRoute(id)}/sales/${Uri.encodeComponent(saleId)}';
+
 /// Ids in customer addresses: the characters the server issues.
 final customerIdPattern = RegExp(r'^[A-Za-z0-9._:-]{1,100}$');
 

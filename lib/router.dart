@@ -214,7 +214,7 @@ final _vendorSalesPath = RegExp(
 
 /// Customer pages (S4). Pending vendors keep their own records too.
 final _vendorCustomersPath = RegExp(
-  r'^/vendor/customers/(new|[A-Za-z0-9._:-]{1,100}(/edit|/statement)?)$',
+  r'^/vendor/customers/(new|[A-Za-z0-9._:-]{1,100}(/edit|/statement|/sales/[A-Za-z0-9._:-]{1,100})?)$',
 );
 
 String routeForSignedInUser(AuthState auth) {
@@ -729,6 +729,21 @@ GoRouter buildRouter(AuthState auth) {
             path: 'edit',
             name: 'vendorCustomerEdit',
             builder: (context, state) => CustomerFormPage(
+              customerId: state.pathParameters['customerId'],
+            ),
+          ),
+          // A sale from the customer's profile: the customer gate, read
+          // through the customer-scoped endpoint; Share / Void only for
+          // people who also have `sales`.
+          GoRoute(
+            path: 'sales/:saleId',
+            name: 'vendorCustomerSale',
+            redirect: (context, state) =>
+                salesIdPattern.hasMatch(state.pathParameters['saleId'] ?? '')
+                ? null
+                : '${AppRoutes.vendorHome}?open=customers',
+            builder: (context, state) => SaleDetailPage(
+              saleId: state.pathParameters['saleId']!,
               customerId: state.pathParameters['customerId'],
             ),
           ),

@@ -54,7 +54,10 @@ class _Activity {
 }
 
 class _CustomerProfilePageState extends State<CustomerProfilePage> {
-  VendorTools _tools = VendorTools.off;
+  // No answer from the server on the last call: Record payment is greyed
+  // out (a payment is never queued). Any answer, from any screen, clears it.
+  bool _offline = false;
+  ApiClient? _api;
   Map<String, dynamic>? _customer;
   bool _loading = true;
   CustomerLoadProblem _problem = CustomerLoadProblem.none;
@@ -80,14 +83,26 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
 
   @override
   void dispose() {
+    _api?.removeSuccessListener(_onAnswer);
     _heading.dispose();
     super.dispose();
+  }
+
+  void _onAnswer(String method, String path) {
+    if (_offline && mounted) setState(() => _offline = false);
+  }
+
+  /// Whether [e] means "no answer at all" (no connection).
+  void _noteFailure(Object e) {
+    if (e is! ApiException && mounted && !_offline) {
+      setState(() => _offline = true);
+    }
   }
 
   Future<void> _start() async {
     final tools = await enterCustomersRoute(context);
     if (tools == null || !mounted) return;
-    _tools = tools;
+    _api = AppScope.of(context).api..addSuccessListener(_onAnswer);
     await _load();
     if (mounted) _heading.requestFocus();
   }
@@ -118,7 +133,14 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
       unawaited(_loadActivity(_tab));
       if (intOf(customer['owedTzs']) <= 0) unawaited(_checkCredit());
     } catch (e) {
-      if (mounted) {
+      _noteFailure(e);
+      if (mounted && _customer != null) {
+        // A refresh failed: keep what is shown (memory only).
+        setState(() => _loading = false);
+        if (e is! ApiException) {
+          FFSnack.error(context, context.tr('error.network'));
+        }
+      } else if (mounted) {
         setState(() {
           _loading = false;
           _problem = problemOf(e);
@@ -182,7 +204,8 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
         a.loading = false;
         a.loaded = true;
       });
-    } catch (_) {
+    } catch (e) {
+      _noteFailure(e);
       if (mounted) {
         setState(() {
           a.loading = false;
@@ -203,8 +226,32 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
   String get _name => customerDisplayName(_customer, context.tr);
 
   Future<void> _recordPayment() async {
-    final c = _customer;
-    if (c == null) return;
+    if (_customer == null || _offline) return;
+    // Fresh balances before the form opens; with no connection it never
+    // opens (nothing to fill in only to be refused).
+    final Map<String, dynamic> c;
+    try {
+      final res = await AppScope.of(context).api.vendorCustomer(_id);
+      final fresh = res['customer'];
+      if (fresh is! Map) throw ApiException(404, null);
+      c = Map<String, dynamic>.from(fresh);
+    } catch (e) {
+      _noteFailure(e);
+      if (mounted) {
+        FFSnack.error(
+          context,
+          context.tr(
+            e is ApiException
+                ? 'vendor.customers.failed'
+                : 'vendor.pay.offline',
+          ),
+        );
+      }
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _customer = c);
+    if (intOf(c['owedTzs']) <= 0) return;
     final out = await recordCustomerPayment(context, customer: c);
     if (out != null && mounted) {
       _activity['payments']!.loaded = false;
@@ -593,8 +640,19 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
             icon: Icons.payments_outlined,
             fullWidth: true,
             visualDensity: VisualDensity.standard,
-            onPressed: c['archived'] != true ? _recordPayment : null,
+            onPressed: c['archived'] != true && !_offline
+                ? _recordPayment
+                : null,
           ),
+          if (_offline)
+            Padding(
+              padding: const EdgeInsets.only(top: FFTokens.spacingXs),
+              child: Text(
+                context.tr('vendor.pay.offline'),
+                key: const Key('customer-record-payment-offline'),
+                style: theme.textTheme.bodySmall,
+              ),
+            ),
         ],
       ),
     );
@@ -654,8 +712,6 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
     );
   }
 
-  bool get _canOpenSale => _tools.walkInSales && canVendor(context, 'sales');
-
   Widget _openSales(Map<String, dynamic> c) {
     final open = openSalesOf(c);
     if (open.isEmpty) return const SizedBox.shrink();
@@ -680,9 +736,9 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
               padding: EdgeInsets.zero,
               child: InkWell(
                 key: Key('customer-open-sale-${s.id}'),
-                onTap: _canOpenSale && salesIdPattern.hasMatch(s.id)
+                onTap: salesIdPattern.hasMatch(s.id)
                     ? () async {
-                        await context.push(saleDetailRoute(s.id));
+                        await context.push(customerSaleRoute(_id, s.id));
                         if (mounted) unawaited(_load());
                       }
                     : null,
@@ -860,8 +916,8 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
     final voided = s['status'] == 'voided';
     return _rowCard(
       key: Key('customer-sale-$id'),
-      onTap: _canOpenSale && salesIdPattern.hasMatch(id)
-          ? () => context.push(saleDetailRoute(id))
+      onTap: salesIdPattern.hasMatch(id)
+          ? () => context.push(customerSaleRoute(_id, id))
           : null,
       children: [
         MoneyRow(

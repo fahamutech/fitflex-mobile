@@ -192,6 +192,14 @@ final customerRoutes = <RouteBase>[
         ),
       ),
       GoRoute(
+        path: 'sales/:saleId',
+        builder: (_, s) => Scaffold(
+          body: Text(
+            'ROUTE-CUSTOMER-SALE ${s.pathParameters['id']} ${s.pathParameters['saleId']}',
+          ),
+        ),
+      ),
+      GoRoute(
         path: 'statement',
         builder: (_, s) =>
             Scaffold(body: Text('ROUTE-STATEMENT ${s.pathParameters['id']}')),

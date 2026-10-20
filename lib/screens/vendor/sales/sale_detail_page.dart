@@ -42,8 +42,15 @@ bool canVoidSale(
 }
 
 class SaleDetailPage extends StatefulWidget {
-  const SaleDetailPage({super.key, required this.saleId});
+  const SaleDetailPage({super.key, required this.saleId, this.customerId});
   final String saleId;
+
+  /// S4: opened from this customer's profile. The page then checks the
+  /// customers gate (not the sales one) and reads the sale through
+  /// GET /vendor/customers/:id/sales/:saleId, so staff with `customers`
+  /// but not `sales` can see it. Share and Void stay for people who also
+  /// have `sales` (and walk-in sales on).
+  final String? customerId;
 
   @override
   State<SaleDetailPage> createState() => _SaleDetailPageState();
@@ -66,7 +73,9 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
   }
 
   Future<void> _start() async {
-    final tools = await enterSalesRoute(context);
+    final tools = widget.customerId == null
+        ? await enterSalesRoute(context)
+        : await enterCustomersRoute(context);
     if (tools == null || !mounted) return;
     _tools = tools;
     final api = AppScope.of(context).api;
@@ -91,7 +100,10 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
       _failed = false;
     });
     try {
-      final res = await AppScope.of(context).api.vendorSale(widget.saleId);
+      final api = AppScope.of(context).api;
+      final res = widget.customerId == null
+          ? await api.vendorSale(widget.saleId)
+          : await api.vendorCustomerSale(widget.customerId!, widget.saleId);
       if (!mounted) return;
       setState(() {
         _sale = res['sale'] is Map
@@ -122,9 +134,18 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
     if (context.canPop()) {
       context.pop();
     } else {
-      context.go(salesHomeRoute);
+      context.go(
+        widget.customerId == null
+            ? salesHomeRoute
+            : customerRoute(widget.customerId!),
+      );
     }
   }
+
+  /// Share and Void are sales actions: the sales tool on and `sales`.
+  bool get _salesActions =>
+      widget.customerId == null ||
+      (_tools.walkInSales && canVendor(context, 'sales'));
 
   Future<void> _void(ReceiptData data) async {
     final out = await showDialog<Map<String, dynamic>>(
@@ -157,18 +178,25 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
   Future<void> _recordPayment(ReceiptData data) async {
     final id = data.customerId;
     if (id == null) return;
+    // Fresh balances first; no connection → the form never opens.
+    final Map<String, dynamic> customer;
     try {
       final res = await AppScope.of(context).api.vendorCustomer(id);
       final c = res['customer'];
-      if (c is! Map || !mounted) return;
-      final out = await recordCustomerPayment(
-        context,
-        customer: Map<String, dynamic>.from(c),
-      );
-      if (out != null && mounted) await _load();
+      if (c is! Map) throw ApiException(404, null);
+      customer = Map<String, dynamic>.from(c);
+    } on ApiException {
+      if (mounted) {
+        FFSnack.error(context, context.tr('vendor.customers.failed'));
+      }
+      return;
     } catch (_) {
       if (mounted) FFSnack.error(context, context.tr('vendor.pay.offline'));
+      return;
     }
+    if (!mounted) return;
+    final out = await recordCustomerPayment(context, customer: customer);
+    if (out != null && mounted) await _load();
   }
 
   Future<void> _share(ReceiptData data, String lang) async {
@@ -192,7 +220,7 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
         ? null
         : ReceiptData.fromSale(sale, profile: _profile);
     final user = AppScope.of(context).auth.user;
-    final mayVoid = data != null && canVoidSale(user, data);
+    final mayVoid = data != null && _salesActions && canVoidSale(user, data);
     return Scaffold(
       appBar: AppBar(
         leading: BackButton(onPressed: _back),
@@ -274,7 +302,9 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
                       t: (k) => locale.tIn(lang, k),
                       audit: true,
                     ),
-                    if (data.hasCustomer &&
+                    // From the profile itself there is nothing to go back to.
+                    if (widget.customerId == null &&
+                        data.hasCustomer &&
                         _seesCustomers &&
                         customerIdPattern.hasMatch(data.customerId!)) ...[
                       const SizedBox(height: FFTokens.spacingSm),
@@ -320,7 +350,7 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
                       spacing: FFTokens.spacingSm,
                       runSpacing: FFTokens.spacingSm,
                       children: [
-                        if (!data.voided)
+                        if (!data.voided && _salesActions)
                           FFButton(
                             key: const Key('sale-detail-share'),
                             label: context.tr('vendor.pos.share'),
