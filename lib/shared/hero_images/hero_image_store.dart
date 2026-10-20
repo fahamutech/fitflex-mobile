@@ -37,8 +37,9 @@ class RemoteHeroImage {
   /// Width / height of the file.
   final double aspect;
 
-  /// The saved file (phones) or the network image that decoded in this
-  /// session (web). Not resized: callers size it to the box.
+  /// The saved file (phones) or the bytes that loaded and decoded in this
+  /// session (web, a [MemoryImage]). Not resized: callers size it to the box
+  /// (`heroRemoteImageProvider`).
   final ImageProvider provider;
 
   @override
@@ -70,8 +71,16 @@ class RemoteHeroImage {
 ///   it used, and only by heroes built after that (never mid-view).
 /// - Data Saver / Low Data Mode / Save-Data, or little free storage: no
 ///   downloads. Any error: the bundled photo.
-/// - Web: nothing on disk; a photo is used only after it has decoded in
-///   this session.
+/// - Redirects (the `/storage` address answers 307 to the file store): on
+///   phones none are followed automatically; at most [maxRedirects] hops,
+///   each on the API_BASE scheme and on the API host or a host listed in
+///   `HERO_IMAGES_ALLOWED_HOSTS` ([isAllowedHop]); anything else is refused.
+///   The list itself is never redirected.
+/// - Web: nothing on disk; the bytes are fetched like on a phone (same size
+///   cap and deadline) and used only after they decode in this session. The
+///   browser follows redirects itself and does not show the hops, so only
+///   the final address is checked against the same rule before the bytes
+///   are used (see [_fetch]).
 /// - No sign-in token is sent, to the list or to the files.
 class HeroImageStore {
   HeroImageStore({
@@ -81,23 +90,31 @@ class HeroImageStore {
     DeviceDataProbe? device,
     DateTime Function()? clock,
     Future<bool> Function(List<int> bytes)? decodeTest,
-    Future<bool> Function(ImageProvider provider)? precache,
     bool? web,
     bool Function()? footerOn,
+    Set<String>? allowedHosts,
   }) : _apiBase = apiBase.trim().replaceAll(RegExp(r'/+$'), ''),
        _client = client ?? http.Client(),
        _files = files ?? createHeroFileStore(),
        _device = device ?? const PlatformDeviceDataProbe(),
        _now = clock ?? DateTime.now,
        _decodeTest = decodeTest ?? heroDecodeTest,
-       _precache = precache ?? heroPrecache,
        _web = web ?? kIsWeb,
-       _footerOn = footerOn ?? (() => photoFooterUi);
+       _footerOn = footerOn ?? (() => photoFooterUi),
+       _allowedHosts =
+           allowedHosts ?? parseHeroAllowedHosts(kHeroImagesAllowedHosts);
 
   static const String manifestPath = '/app/hero-images';
   static const Duration checkInterval = Duration(hours: 6);
+
+  /// One deadline for the whole list request: sending and reading it all.
   static const Duration manifestTimeout = Duration(seconds: 5);
-  static const Duration fileTimeout = Duration(seconds: 20);
+
+  /// One deadline for a whole photo: every hop, sending and reading it all.
+  static const Duration fileTimeout = Duration(seconds: 30);
+
+  /// Redirect hops followed for one photo (the `/storage` 307 is one).
+  static const int maxRedirects = 2;
   static const int maxFileBytes = kHeroMaxFileBytes;
   static const int maxCacheBytes = 4 * 1024 * 1024;
   static const int dailyBudgetBytes = 1536 * 1024;
@@ -135,9 +152,9 @@ class HeroImageStore {
   final DeviceDataProbe _device;
   final DateTime Function() _now;
   final Future<bool> Function(List<int>) _decodeTest;
-  final Future<bool> Function(ImageProvider) _precache;
   final bool _web;
   final bool Function() _footerOn;
+  final Set<String> _allowedHosts;
 
   HeroManifest _manifest = HeroManifest.empty;
 
@@ -357,22 +374,26 @@ class HeroImageStore {
     if (uri == null) return;
     try {
       final etag = _manifest.etag;
-      final res = await _client
-          .get(
-            uri,
-            // No sign-in token. On the web the browser's own HTTP cache
-            // revalidates with the ETag; a custom header would need a CORS
-            // preflight.
-            headers: {if (!_web && etag != null) 'if-none-match': etag},
-          )
-          .timeout(manifestTimeout);
+      // Streamed with a 256 KB cut-off and one 5 s deadline for the whole
+      // request; never redirected.
+      final res = await _fetch(
+        uri,
+        limit: maxManifestBytes,
+        deadline: manifestTimeout,
+        redirects: 0,
+        // No sign-in token. On the web the browser's own HTTP cache
+        // revalidates with the ETag; a custom header would need a CORS
+        // preflight.
+        headers: {if (!_web && etag != null) 'if-none-match': etag},
+      );
       _lastCheck = _now();
       await _saveLastCheck();
-      if (res.statusCode == 304) return;
-      if (res.statusCode != 200) return; // keep what is saved
-      if (res.bodyBytes.length > maxManifestBytes) return;
+      // A redirect, an oversize body or not a 200: keep what is saved.
+      // (A timeout or no connection throws: caught below, checked again on
+      // the next resume.)
+      if (res == null || res.status == 304) return;
       final m = HeroManifest.tryParse(
-        jsonDecode(utf8.decode(res.bodyBytes)),
+        jsonDecode(utf8.decode(res.bytes)),
         _apiBase,
         etag: res.headers['etag'],
         knownSlots: kMobileHeroSlots,
@@ -459,19 +480,11 @@ class HeroImageStore {
   }
 
   /// Phones: download, save, decode-test. True when ready; false when this
-  /// file is refused (oversize, corrupt, HTTP error); null when saving
-  /// failed (stop).
+  /// file is refused (oversize, corrupt, HTTP error, a refused redirect,
+  /// the deadline); null when saving failed (stop).
   Future<bool?> _download(HeroManifestEntry e) async {
-    final remaining = dailyBudgetBytes - _budgetBytes;
-    final limit = remaining < maxFileBytes ? remaining : maxFileBytes;
-    final List<int> bytes;
-    try {
-      final got = await _fetchCapped(e.uri, limit);
-      if (got == null) return false;
-      bytes = got;
-    } catch (_) {
-      return false;
-    }
+    final bytes = await _fetchPhoto(e);
+    if (bytes == null) return false;
     await _makeRoom(bytes.length);
     final name = _fileName(e.id);
     if (!await _files.write(name, bytes)) return null;
@@ -485,47 +498,184 @@ class HeroImageStore {
     return true;
   }
 
-  /// The file's bytes, or null when it is not a 200 or passes [limit]
-  /// (declared length, or while reading: reading stops there). The bytes
-  /// read count towards the daily budget either way.
-  Future<List<int>?> _fetchCapped(Uri uri, int limit) async {
-    final req = http.Request('GET', uri)
-      ..followRedirects = true
-      ..maxRedirects = 3; // the /storage address redirects to the store
-    final res = await _client.send(req).timeout(fileTimeout);
-    final out = BytesBuilder(copy: false);
-    var tooBig = false;
+  /// Web: nothing on disk. The bytes are fetched as on a phone (same cap,
+  /// deadline and address rule), decode-tested (at most
+  /// [kHeroMaxDimension] on a side) and kept in memory for this session.
+  Future<bool> _loadWeb(HeroManifestEntry e) async {
+    final bytes = await _fetchPhoto(e);
+    if (bytes == null || !await _decodeTest(bytes)) return false;
+    _ready[e.id] = MemoryImage(bytes);
+    return true;
+  }
+
+  /// The photo's bytes, at most [maxFileBytes] and what is left of today's
+  /// budget; null when refused or on any error. The bytes actually read
+  /// count towards the daily budget either way.
+  Future<Uint8List?> _fetchPhoto(HeroManifestEntry e) async {
+    final remaining = dailyBudgetBytes - _budgetBytes;
+    final limit = remaining < maxFileBytes ? remaining : maxFileBytes;
     try {
-      if (res.statusCode != 200) return null;
-      final declared = res.contentLength;
-      if (declared != null && declared > limit) return null;
-      await for (final chunk in res.stream.timeout(fileTimeout)) {
-        _budgetBytes += chunk.length;
-        if (out.length + chunk.length > limit) {
-          tooBig = true;
-          break; // cancels the download
-        }
-        out.add(chunk);
-      }
+      final got = await _fetch(
+        e.uri,
+        limit: limit,
+        deadline: fileTimeout,
+        redirects: maxRedirects,
+        onBytes: (n) => _budgetBytes += n,
+      );
+      return got != null && got.status == 200 ? got.bytes : null;
+    } catch (_) {
+      return null;
     } finally {
       await _saveBudget();
     }
-    if (tooBig) return null;
-    return out.takeBytes();
   }
 
-  /// Web: no disk; the browser loads it and it must decode in this session.
-  Future<bool> _loadWeb(HeroManifestEntry e) async {
-    _budgetBytes += e.bytes;
-    final provider = NetworkImage(e.uri.toString());
-    bool ok;
-    try {
-      ok = await _precache(provider).timeout(fileTimeout);
-    } catch (_) {
-      ok = false;
+  /// True when [url] may be requested: the API_BASE scheme (https; http
+  /// only when API_BASE itself is http, as in local development), no user
+  /// info, and either the API host and port or a host listed in
+  /// `HERO_IMAGES_ALLOWED_HOSTS` (an entry without a port means the
+  /// scheme's default port).
+  @visibleForTesting
+  bool isAllowedHop(Uri url) {
+    final base = Uri.tryParse(_apiBase);
+    if (base == null ||
+        !(base.isScheme('https') || base.isScheme('http')) ||
+        base.host.isEmpty) {
+      return false;
     }
-    if (ok) _ready[e.id] = provider;
-    return ok;
+    if (url.scheme != base.scheme) return false;
+    if (url.userInfo.isNotEmpty || url.host.isEmpty) return false;
+    if (url.host == base.host && url.port == base.port) return true;
+    final host = url.host.toLowerCase();
+    return _allowedHosts.contains('$host:${url.port}') ||
+        (!url.hasPort && _allowedHosts.contains(host));
+  }
+
+  /// One GET under one overall [deadline] that covers every hop, the send
+  /// and the whole body (cancelled when it passes). Returns the 200 (or 304)
+  /// body, or null when refused: more than [redirects] redirect hops, a hop
+  /// [isAllowedHop] refuses, another status, or a body over [limit]
+  /// (declared, or while reading: reading stops there). Throws on the
+  /// deadline or a network error. Bodies that are not used are cancelled so
+  /// the connection is let go.
+  ///
+  /// Phones follow no redirect automatically: each Location is checked
+  /// before it is requested. Web: fetch() cannot hand redirects to the app,
+  /// so with [redirects] 0 a redirect is an error, and otherwise the browser
+  /// follows them itself and only the final address is checked before any
+  /// byte is used. The browser may therefore request an intermediate address
+  /// on another host (without credentials); nothing it returns is used
+  /// unless the final address passes.
+  Future<_Got?> _fetch(
+    Uri uri, {
+    required int limit,
+    required Duration deadline,
+    required int redirects,
+    Map<String, String> headers = const {},
+    void Function(int bytes)? onBytes,
+  }) async {
+    final abort = Completer<void>();
+    StreamSubscription<List<int>>? body;
+    Future<_Got?> run() async {
+      var url = uri;
+      for (var hop = 0; ; hop++) {
+        if (!isAllowedHop(url)) return null;
+        final browserFollows = _web && redirects > 0;
+        final req =
+            http.AbortableRequest('GET', url, abortTrigger: abort.future)
+              ..followRedirects = browserFollows
+              ..headers.addAll(headers);
+        final res = await _client.send(req);
+        if (browserFollows) {
+          final landed = switch (res) {
+            http.BaseResponseWithUrl(:final url) => url,
+            _ => null,
+          };
+          if (landed == null || !isAllowedHop(landed)) {
+            _discard(res);
+            return null;
+          }
+        }
+        if (_redirectStatus.contains(res.statusCode)) {
+          _discard(res);
+          final location = res.headers['location'];
+          if (hop >= redirects || location == null) return null;
+          final next = Uri.tryParse(location.trim());
+          if (next == null) return null;
+          url = url.resolveUri(next);
+          continue;
+        }
+        if (res.statusCode == 304) {
+          _discard(res);
+          return _Got(304, Uint8List(0), res.headers);
+        }
+        final declared = res.contentLength;
+        if (res.statusCode != 200 || (declared != null && declared > limit)) {
+          _discard(res);
+          return null;
+        }
+        final bytes = await _readCapped(
+          res.stream,
+          limit,
+          onBytes,
+          (s) => body = s,
+        );
+        return bytes == null ? null : _Got(200, bytes, res.headers);
+      }
+    }
+
+    try {
+      return await run().timeout(deadline);
+    } on TimeoutException {
+      // Stops the request (or the body being read) now; not awaited, as a
+      // stalled connection may take its time to close.
+      if (!abort.isCompleted) abort.complete();
+      unawaited(body?.cancel());
+      rethrow;
+    }
+  }
+
+  static const _redirectStatus = {301, 302, 303, 307, 308};
+
+  /// Reads [stream] up to [limit] bytes; null (and the stream cancelled)
+  /// once it passes.
+  static Future<Uint8List?> _readCapped(
+    Stream<List<int>> stream,
+    int limit,
+    void Function(int bytes)? onBytes,
+    void Function(StreamSubscription<List<int>> sub) started,
+  ) {
+    final out = BytesBuilder(copy: false);
+    final done = Completer<Uint8List?>();
+    late final StreamSubscription<List<int>> sub;
+    sub = stream.listen(
+      (chunk) {
+        if (done.isCompleted) return;
+        onBytes?.call(chunk.length);
+        if (out.length + chunk.length > limit) {
+          done.complete(null);
+          unawaited(sub.cancel()); // stops the download
+          return;
+        }
+        out.add(chunk);
+      },
+      onError: (Object e, StackTrace s) {
+        if (!done.isCompleted) done.completeError(e, s);
+      },
+      onDone: () {
+        if (!done.isCompleted) done.complete(out.takeBytes());
+      },
+      cancelOnError: true,
+    );
+    started(sub);
+    return done.future;
+  }
+
+  /// Lets go of a response whose body is not wanted.
+  static void _discard(http.StreamedResponse res) {
+    try {
+      unawaited(res.stream.listen(null, onError: (Object _) {}).cancel());
+    } catch (_) {}
   }
 
   /// Removes the least recently used photos until [incoming] fits.
@@ -624,54 +774,50 @@ class _Saved {
   int lastUsed;
 }
 
+/// A response body that was read in full.
+class _Got {
+  const _Got(this.status, this.bytes, this.headers);
+  final int status;
+  final Uint8List bytes;
+  final Map<String, String> headers;
+}
+
 /// The largest picture the app accepts, so a small file cannot unpack into
 /// a huge image (the server makes 1080-wide files).
 const int kHeroMaxDimension = 2400;
 
-/// True when [bytes] is a picture of a sane size that decodes. Reads the
-/// size from the header first, then decodes a small copy.
+/// True when [bytes] is a picture of a sane size (at most
+/// [kHeroMaxDimension] on each side) that decodes. Phones read the size from
+/// the header and decode only a small copy; the web engine has no header
+/// reader, so the browser decodes it once to learn the size. Either way a
+/// larger picture is refused and the bundled photo stays.
 Future<bool> heroDecodeTest(List<int> bytes) async {
-  ui.ImmutableBuffer? buffer;
-  ui.ImageDescriptor? descriptor;
+  ui.Codec? codec;
+  ui.Image? image;
   try {
-    buffer = await ui.ImmutableBuffer.fromUint8List(Uint8List.fromList(bytes));
-    descriptor = await ui.ImageDescriptor.encoded(buffer);
-    final w = descriptor.width;
-    final h = descriptor.height;
+    final buffer = await ui.ImmutableBuffer.fromUint8List(
+      Uint8List.fromList(bytes),
+    );
+    var w = 0;
+    var h = 0;
+    // Disposes the buffer.
+    codec = await ui.instantiateImageCodecWithSize(
+      buffer,
+      getTargetSize: (iw, ih) {
+        w = iw;
+        h = ih;
+        return const ui.TargetImageSize(width: 64);
+      },
+    );
     if (w <= 0 || h <= 0 || w > kHeroMaxDimension || h > kHeroMaxDimension) {
       return false;
     }
-    final codec = await descriptor.instantiateCodec(targetWidth: 64);
-    final frame = await codec.getNextFrame();
-    final ok = frame.image.width > 0;
-    frame.image.dispose();
-    codec.dispose();
-    return ok;
+    image = (await codec.getNextFrame()).image;
+    return image.width > 0;
   } catch (_) {
     return false;
   } finally {
-    descriptor?.dispose();
-    buffer?.dispose();
+    image?.dispose();
+    codec?.dispose();
   }
-}
-
-/// Resolves [provider] into the image cache, like `precacheImage`, without
-/// a widget: true once it decodes, false on error.
-Future<bool> heroPrecache(ImageProvider provider) {
-  final done = Completer<bool>();
-  final stream = provider.resolve(ImageConfiguration.empty);
-  late final ImageStreamListener listener;
-  listener = ImageStreamListener(
-    (image, _) {
-      if (!done.isCompleted) done.complete(true);
-      // The decoded image stays in the image cache for the hero.
-      scheduleMicrotask(() => stream.removeListener(listener));
-    },
-    onError: (_, _) {
-      if (!done.isCompleted) done.complete(false);
-      scheduleMicrotask(() => stream.removeListener(listener));
-    },
-  );
-  stream.addListener(listener);
-  return done.future;
 }

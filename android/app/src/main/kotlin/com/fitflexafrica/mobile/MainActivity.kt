@@ -31,12 +31,16 @@ class MainActivity : FlutterActivity() {
             }
     }
 
-    // Data Saver on and this app not exempted. Unknown counts as on.
+    // Data Saver on and this app not exempted. Unknown, or Android below 7.0
+    // (no Data Saver to ask), counts as on: no downloads (DeviceDataRules).
     private fun dataSaverOn(): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return false
-        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
-            ?: return true
-        return cm.restrictBackgroundStatus == ConnectivityManager.RESTRICT_BACKGROUND_STATUS_ENABLED
+        val status = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            (getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager)
+                ?.restrictBackgroundStatus
+        } else {
+            null
+        }
+        return DeviceDataRules.dataSaverOn(Build.VERSION.SDK_INT, status)
     }
 
     private fun freeBytes(): Long? = try {

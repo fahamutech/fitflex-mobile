@@ -5,12 +5,17 @@ import 'package:path_provider/path_provider.dart';
 
 import 'hero_image_files.dart';
 
-/// Phones: `<application support>/hero_images/`, private to the app and
-/// not backed up as user documents.
-HeroFileStore createHeroFileStore() => IoHeroFileStore(
-  () async =>
-      Directory('${(await getApplicationSupportDirectory()).path}/hero_images'),
-);
+/// Phones: `<app cache>/hero_images/` (Android `Context.getCacheDir()`,
+/// iOS `Library/Caches`), private to the app. Neither is included in
+/// Android Auto Backup or iCloud / device backups, and the system may clear
+/// it when storage is low; the app then downloads the photos again, or
+/// shows the bundled ones. (The application support folder would be backed
+/// up on both.)
+HeroFileStore createHeroFileStore() => IoHeroFileStore(heroCacheDirectory);
+
+/// The folder the saved photos live in.
+Future<Directory> heroCacheDirectory() async =>
+    Directory('${(await getApplicationCacheDirectory()).path}/hero_images');
 
 /// A saved-photo folder. Tests pass a temporary directory.
 class IoHeroFileStore implements HeroFileStore {

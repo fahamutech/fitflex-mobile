@@ -3,8 +3,10 @@
 // /app/hero-images (fitflex-functions functions/hero-images.mjs) and keeps
 // the photos on the phone.
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:fitflexmobile/shared/components/ff_photo_footer.dart';
@@ -18,6 +20,7 @@ import 'package:fitflexmobile/shared/hero_images/hero_slots.dart';
 import 'package:fitflexmobile/shared/photo_hero_flag.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'support/hero_images_fakes.dart';
@@ -313,6 +316,11 @@ void main() {
       await store.onFirstFrame();
       expect(store.readyIds, isEmpty);
       expect(server.files.names, isEmpty);
+      expect(
+        server.cancelled,
+        contains('$_base/storage/bafy/liar-2x.webp'),
+        reason: 'the body is let go, not left open',
+      );
     });
 
     test('a corrupt file is deleted and the bundled photo stays', () async {
@@ -558,31 +566,312 @@ void main() {
   });
 
   group('web', () {
-    test('no disk; used only after it decodes in this session', () async {
+    test('no disk; fetched with the same caps, used once it decodes', () async {
       final server = FakeServer(web: true)
         ..manifest = manifestJson(7, {
           'language': [entryJson('ok')],
           'signIn': [entryJson('broken')],
           'signUp': [entryJson('huge', bytes: 300 * 1024)],
-        });
-      server.precacheFails.add('broken');
+        })
+        ..fileBody['broken'] = utf8.encode('garbage');
       final store = server.store();
       await store.onFirstFrame();
       expect(store.readyIds, {'ok'});
-      expect(server.precached, hasLength(2), reason: 'oversize never loaded');
-      final r = store.resolveTop(FFHeroPhoto.language)!;
-      expect(r.provider, isA<NetworkImage>());
       expect(
-        (r.provider as NetworkImage).url,
-        '$_base/storage/bafy/ok-2x.webp',
+        server.fileRequests.map((r) => r.url.pathSegments.last),
+        unorderedEquals(['ok-2x.webp', 'broken-2x.webp']),
+        reason: 'oversize never loaded',
       );
-      expect(server.fileRequests, isEmpty, reason: 'the browser loads it');
+      expect(store.bytesToday, 4000 + 7, reason: 'actual bytes counted');
+      final r = store.resolveTop(FFHeroPhoto.language)!;
+      expect(r.provider, isA<MemoryImage>());
+      expect((r.provider as MemoryImage).bytes, okBytes(4000));
       expect(server.manifestRequests.single.headers['if-none-match'], isNull);
+      expect(
+        server.manifestRequests.single.followRedirects,
+        isFalse,
+        reason: 'the list is never redirected',
+      );
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.getKeys(), isEmpty, reason: 'nothing kept on the device');
       // A new session starts from nothing again.
       final next = server.store();
       expect(next.resolveTop(FFHeroPhoto.language), isNull);
+    });
+
+    test(
+      'the browser follows the 307; an allowed final host is used',
+      () async {
+        final server = FakeServer(web: true)
+          ..manifest = manifestJson(7, {
+            'language': [entryJson('l1')],
+          });
+        server.redirects['$_base/storage/bafy/l1-2x.webp'] =
+            'https://gw.test/storage/bafy/l1-2x.webp';
+        final store = server.store(allowedHosts: {'gw.test'});
+        await store.onFirstFrame();
+        expect(store.readyIds, {'l1'});
+        expect(server.fileRequests.first.followRedirects, isTrue);
+        expect(server.requests.last.url.host, 'gw.test');
+      },
+    );
+
+    test('a final host not allowed: the bytes are never used', () async {
+      final server = FakeServer(web: true)
+        ..manifest = manifestJson(7, {
+          'language': [entryJson('l1')],
+        });
+      server.redirects['$_base/storage/bafy/l1-2x.webp'] =
+          'https://evil.test/storage/bafy/l1-2x.webp';
+      final store = server.store(allowedHosts: {'gw.test'});
+      await store.onFirstFrame();
+      expect(store.readyIds, isEmpty);
+      expect(
+        server.cancelled,
+        contains('https://evil.test/storage/bafy/l1-2x.webp'),
+      );
+      expect(store.resolveTop(FFHeroPhoto.language), isNull);
+    });
+
+    test('the web photo is sized to its box like a phone one', () {
+      final memory = MemoryImage(Uint8List.fromList(okBytes(10)));
+      final p = heroRemoteImageProvider(
+        RemoteHeroImage(
+          entryId: 'w1',
+          sourceId: 'hero_w1',
+          focal: Alignment.center,
+          aspect: 1.5,
+          provider: memory,
+        ),
+        const Size(400, 300),
+        2,
+      );
+      expect(p, isA<ResizeImage>());
+      // 300 x 1.5 = 450 logical px wide at 2x = 900, up to the 128 step.
+      expect((p as ResizeImage).width, 1024);
+      expect(p.imageProvider, same(memory));
+    });
+  });
+
+  group('redirects (phones)', () {
+    const file = '$_base/storage/bafy/l1-2x.webp';
+    FakeServer serverFor() => FakeServer()
+      ..manifest = manifestJson(7, {
+        'language': [entryJson('l1')],
+      });
+
+    test('none followed automatically; an allowed gateway host is', () async {
+      final server = serverFor()
+        ..redirects[file] = 'https://gw.test/storage/bafy/l1-2x.webp';
+      final store = server.store(allowedHosts: {'gw.test'});
+      await store.onFirstFrame();
+      expect(store.readyIds, {'l1'});
+      expect(server.requests.every((r) => !r.followRedirects), isTrue);
+      expect(server.requests.last.url.host, 'gw.test');
+      expect(server.cancelled, contains(file), reason: '307 body let go');
+    });
+
+    test('another host (not listed) is refused, never requested', () async {
+      final server = serverFor()
+        ..redirects[file] = 'https://evil.test/storage/bafy/l1-2x.webp';
+      final store = server.store(allowedHosts: {'gw.test'});
+      await store.onFirstFrame();
+      expect(store.readyIds, isEmpty);
+      expect(
+        server.requests.map((r) => r.url.host),
+        isNot(contains('evil.test')),
+      );
+      expect(store.resolveTop(FFHeroPhoto.language), isNull);
+    });
+
+    test('with no list, only the API host itself', () async {
+      final server = serverFor()
+        ..redirects[file] = 'https://gw.test/storage/bafy/l1-2x.webp';
+      final store = server.store();
+      await store.onFirstFrame();
+      expect(store.readyIds, isEmpty);
+      expect(
+        server.requests.map((r) => r.url.host),
+        isNot(contains('gw.test')),
+      );
+
+      SharedPreferences.setMockInitialValues({}); // a fresh install
+      final same = serverFor()
+        ..redirects[file] = '/storage/bafy/l1-2x.webp?v=2';
+      final s2 = same.store();
+      await s2.onFirstFrame();
+      expect(s2.readyIds, {'l1'}, reason: 'a relative hop on the API host');
+    });
+
+    test('a hop to http is refused, even to a listed host', () async {
+      for (final to in [
+        'http://gw.test/storage/bafy/l1-2x.webp',
+        'http://api.fitflex.test/storage/bafy/l1-2x.webp',
+      ]) {
+        SharedPreferences.setMockInitialValues({}); // a fresh install
+        final server = serverFor()..redirects[file] = to;
+        final store = server.store(allowedHosts: {'gw.test'});
+        await store.onFirstFrame();
+        expect(store.readyIds, isEmpty, reason: to);
+        expect(server.fileRequests, hasLength(1), reason: 'only the first');
+        expect(server.requests.where((r) => r.url.isScheme('http')), isEmpty);
+      }
+    });
+
+    test('two hops are followed; a third is refused', () async {
+      final two = serverFor()
+        ..redirects[file] = 'https://gw.test/a/l1-2x.webp'
+        ..redirects['https://gw.test/a/l1-2x.webp'] =
+            'https://gw.test/b/l1-2x.webp';
+      final s2 = two.store(allowedHosts: {'gw.test'});
+      await s2.onFirstFrame();
+      expect(s2.readyIds, {'l1'});
+
+      SharedPreferences.setMockInitialValues({}); // a fresh install
+      final three = serverFor()
+        ..redirects[file] = 'https://gw.test/a/l1-2x.webp'
+        ..redirects['https://gw.test/a/l1-2x.webp'] =
+            'https://gw.test/b/l1-2x.webp'
+        ..redirects['https://gw.test/b/l1-2x.webp'] =
+            'https://gw.test/c/l1-2x.webp';
+      final s3 = three.store(allowedHosts: {'gw.test'});
+      await s3.onFirstFrame();
+      expect(s3.readyIds, isEmpty);
+      expect(
+        three.requests.map((r) => r.url.path),
+        isNot(contains('/c/l1-2x.webp')),
+      );
+    });
+
+    test('local development: an http API_BASE allows http hops only', () async {
+      const local = 'http://127.0.0.1:3000';
+      final server = FakeServer()
+        ..manifest = manifestJson(7, {
+          'language': [entryJson('l1'), entryJson('l2')],
+          'signIn': [entryJson('s1')],
+        })
+        ..redirects['$local/storage/bafy/l1-2x.webp'] =
+            'http://127.0.0.1:3000/zebra/l1-2x.webp'
+        ..redirects['$local/storage/bafy/l2-2x.webp'] =
+            'https://gw.test/storage/bafy/l2-2x.webp'
+        ..redirects['$local/storage/bafy/s1-2x.webp'] =
+            'http://gw.test/storage/bafy/s1-2x.webp';
+      final store = server.store(apiBase: local, allowedHosts: {'gw.test'});
+      await store.onFirstFrame();
+      expect(store.readyIds, {'l1', 's1'});
+    });
+
+    test('the list itself is never redirected', () async {
+      final server = FakeServer()
+        ..redirects['$_base/app/hero-images'] = '$_base/app/hero-images?x=1';
+      final store = server.store();
+      await store.onFirstFrame();
+      expect(server.manifestRequests, hasLength(1));
+      expect(store.manifest.isEmpty, isTrue);
+    });
+
+    test('address rule: ports, user info, the allow-list format', () {
+      final store = FakeServer().store(
+        allowedHosts: parseHeroAllowedHosts(
+          ' GW.test, https://x.test ,a.test:8443,, b.test/path,',
+        ),
+      );
+      expect(store.isAllowedHop(Uri.parse('https://gw.test/f')), isTrue);
+      expect(store.isAllowedHop(Uri.parse('https://gw.test:443/f')), isTrue);
+      expect(store.isAllowedHop(Uri.parse('https://gw.test:8443/f')), isFalse);
+      expect(store.isAllowedHop(Uri.parse('https://a.test:8443/f')), isTrue);
+      expect(store.isAllowedHop(Uri.parse('https://a.test/f')), isFalse);
+      expect(store.isAllowedHop(Uri.parse('https://x.test/f')), isFalse);
+      expect(store.isAllowedHop(Uri.parse('https://b.test/f')), isFalse);
+      expect(store.isAllowedHop(Uri.parse('https://u:p@gw.test/f')), isFalse);
+      expect(store.isAllowedHop(Uri.parse('$_base/f')), isTrue);
+      expect(
+        store.isAllowedHop(Uri.parse('https://api.fitflex.test:8443/f')),
+        isFalse,
+      );
+      expect(store.isAllowedHop(Uri.parse('ftp://gw.test/f')), isFalse);
+      expect(parseHeroAllowedHosts(''), isEmpty);
+    });
+
+    test('a refused status lets the body go', () async {
+      final server = serverFor()..statusFor[file] = 404;
+      final store = server.store();
+      await store.onFirstFrame();
+      expect(store.readyIds, isEmpty);
+      expect(server.cancelled, contains(file));
+    });
+  });
+
+  group('deadlines and cut-offs', () {
+    testWidgets('one 30 s deadline over the whole photo, then cancelled', (
+      tester,
+    ) async {
+      // 160 KB in 16 KB chunks, one every 5 s: each chunk is quick, the
+      // whole is 50 s.
+      final server = FakeServer()
+        ..manifest = manifestJson(7, {
+          'language': [entryJson('slow', bytes: 160 * 1024)],
+        })
+        ..drip = const Duration(seconds: 5);
+      final store = server.store();
+      var done = false;
+      unawaited(store.onFirstFrame().then((_) => done = true));
+      await tester.pump(const Duration(seconds: 29));
+      expect(done, isFalse);
+      expect(server.bytesStreamed['slow'], greaterThan(0));
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump();
+      expect(done, isTrue);
+      expect(store.readyIds, isEmpty);
+      expect(server.bytesStreamed['slow'], lessThan(160 * 1024));
+      expect(server.cancelled, contains('$_base/storage/bafy/slow-2x.webp'));
+      expect(server.files.names, isEmpty);
+      await tester.pump(const Duration(seconds: 10)); // the drip's last timer
+    });
+
+    test('a list over 256 KB: reading stops, nothing changes', () async {
+      final server = FakeServer()..manifestJunkChunks = 100; // 1.6 MB
+      final store = server.store();
+      await store.onFirstFrame();
+      expect(store.manifest.isEmpty, isTrue);
+      expect(server.manifestStreamed, lessThan(100 * 16 * 1024));
+      expect(
+        server.manifestStreamed,
+        lessThanOrEqualTo(HeroImageStore.maxManifestBytes + 2 * 16 * 1024),
+      );
+      expect(server.cancelled, contains('$_base/app/hero-images'));
+    });
+
+    testWidgets('one 5 s deadline over the whole list', (tester) async {
+      // 10 small chunks, one a second: under the size cap, over the time.
+      final server = FakeServer()
+        ..manifestJunkChunks = 10
+        ..drip = const Duration(seconds: 1);
+      final store = server.store();
+      var done = false;
+      unawaited(store.onFirstFrame().then((_) => done = true));
+      await tester.pump(const Duration(seconds: 4));
+      expect(done, isFalse);
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump();
+      expect(done, isTrue);
+      expect(server.manifestStreamed, lessThan(10 * 16 * 1024));
+      expect(server.cancelled, contains('$_base/app/hero-images'));
+      await tester.pump(const Duration(seconds: 5));
+    });
+  });
+
+  group('cache folder', () {
+    test('photos live in the app cache folder (not backed up)', () async {
+      final tmp = Directory.systemTemp.createTempSync('hero_cache_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final before = PathProviderPlatform.instance;
+      PathProviderPlatform.instance = _FakePaths(tmp.path);
+      addTearDown(() => PathProviderPlatform.instance = before);
+      expect(
+        (await heroCacheDirectory()).path,
+        '${tmp.path}/cache/hero_images',
+      );
     });
   });
 
@@ -609,4 +898,22 @@ Future<List<int>> pngBytes(int w, int h) async {
   final data = await img.toByteData(format: ui.ImageByteFormat.png);
   img.dispose();
   return data!.buffer.asUint8List();
+}
+
+class _FakePaths extends PathProviderPlatform {
+  _FakePaths(this.root);
+
+  final String root;
+
+  @override
+  Future<String?> getApplicationCachePath() async => '$root/cache';
+
+  @override
+  Future<String?> getApplicationSupportPath() async => '$root/support';
+
+  @override
+  Future<String?> getApplicationDocumentsPath() async => '$root/documents';
+
+  @override
+  Future<String?> getTemporaryPath() async => '$root/tmp';
 }

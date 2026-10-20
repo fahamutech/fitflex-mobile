@@ -63,6 +63,8 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  # Fakes the app folders in tests (already a path_provider dependency).
+  path_provider_platform_interface: ^2.1.2
   # End-to-end test tooling (integration_test/, patrol). Dev dependencies are
   # left out of release builds, so none of it ships to the Play Store.
   integration_test:

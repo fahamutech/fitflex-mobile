@@ -7,6 +7,11 @@ import UIKit
   // App photos (HERO_IMAGES_REMOTE): Low Data Mode and free storage, asked
   // before downloading.
   private let pathMonitor = NWPathMonitor()
+  // Starts as true (no downloads) until NWPathMonitor delivers its first
+  // path, a moment after launch. If the app's first check (right after the
+  // first frame) comes before that, it skips downloading this time and tries
+  // again later (sign-in, a resume after 6 hours, the next launch). A known,
+  // harmless race that errs on the side of saving data.
   private var lowDataMode = true
 
   override func application(

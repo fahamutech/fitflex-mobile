@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -193,16 +192,14 @@ void precacheHeroPhotos(
   }
 }
 
-/// The decode size for a saved admin-published photo drawn with
-/// `BoxFit.cover` into [box] (as [heroImageProvider]). On the web the
-/// network image that decoded in this session is used as it is, so it comes
-/// from the image cache.
+/// The decode size for an admin-published photo drawn with `BoxFit.cover`
+/// into [box] (as [heroImageProvider]), on phones (the saved file) and on
+/// the web (the bytes that decoded in this session) alike.
 ImageProvider heroRemoteImageProvider(
   RemoteHeroImage image,
   Size box,
   double dpr,
 ) {
-  if (kIsWeb) return image.provider;
   final logical = box.width > box.height * image.aspect
       ? box.width
       : box.height * image.aspect;
