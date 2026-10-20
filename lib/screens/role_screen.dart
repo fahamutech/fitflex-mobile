@@ -123,6 +123,12 @@ class _RoleScreenState extends State<RoleScreen>
     // The brand name is the accent: "Welcome to FitFlex" / "Karibu FitFlex".
     final hasBrand = title.contains('FitFlex');
     return FFPhotoHeroPage(
+      // Taller hero (spec §5.3): the photo gives way so the first three
+      // role tiles stay on screen (the subtitle and three tiles are 363px
+      // below the hero at 1.0x and grow fast with the text: 526px at 1.3x
+      // in Swahili).
+      tallContentReserve: 371,
+      tallReserveGrowth: 560,
       phoneFraction: 0,
       shortPhoneFraction: 0,
       phoneMinHeight: 200,
@@ -138,6 +144,8 @@ class _RoleScreenState extends State<RoleScreen>
         variant: f.variant,
         minHeight: f.minHeight,
         topInset: f.topInset,
+        clearPhoto: f.clearPhoto,
+        maxHeight: f.maxHeight,
         wideHeadline: f.wide,
         eyebrow: context.tr('auth.createAccount'),
         headlineLead: hasBrand

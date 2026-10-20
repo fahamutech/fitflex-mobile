@@ -111,3 +111,57 @@ void expectHeroScrimRule(WidgetTester tester, {Finder? hero}) {
     );
   }
 }
+
+/// Where the clear photo of the (single) hero starts and ends, globally:
+/// from the end of the bar band (the hero's own, or the page's fixed
+/// [FFPhotoBarScrim]) down to where the lead-in to the text ramp begins.
+/// The rows in between have no scrim at all.
+({double bandEnd, double rampStart, double clear}) heroClearPhoto(
+  WidgetTester tester, {
+  Finder? hero,
+}) {
+  final scope = hero ?? find.byType(FFPhotoHero);
+  final heroRect = tester.getRect(scope);
+  final own = find.descendant(
+    of: scope,
+    matching: find.byKey(const Key('ff-hero-top-band')),
+  );
+  double bandEnd;
+  if (own.evaluate().isNotEmpty) {
+    final stops = scrimStopsOf(tester, own);
+    final r = tester.getRect(own);
+    // The first stop after the hold where the band is gone.
+    var at = 1.0;
+    for (var i = 1; i < stops.length; i++) {
+      if (stops[i].$2 == 0) {
+        at = stops[i].$1;
+        break;
+      }
+    }
+    bandEnd = r.top + at * r.height;
+  } else {
+    final bar = find.descendant(
+      of: find.byKey(const Key('ff-photo-bar-scrim')),
+      matching: find.byType(CustomPaint),
+    );
+    final opacity = tester.widget<AnimatedOpacity>(
+      find.byKey(const Key('ff-photo-bar-scrim')),
+    );
+    bandEnd = bar.evaluate().isEmpty || opacity.opacity == 0
+        ? heroRect.top
+        : tester.getRect(bar.first).bottom;
+  }
+  final fade = find.descendant(
+    of: scope,
+    matching: find.byKey(const Key('ff-hero-fade-zone')),
+  );
+  final fr = tester.getRect(fade);
+  final stops = scrimStopsOf(tester, fade);
+  // Clear down to the stop where the lead-in starts (alpha still 0).
+  final rampStart = stops.first.$2 > 0
+      ? fr.top
+      : fr.top + stops[stops.length - 2].$1 * fr.height;
+  final top = bandEnd < heroRect.top ? heroRect.top : bandEnd;
+  final clear = rampStart - top;
+  return (bandEnd: top, rampStart: rampStart, clear: clear < 0 ? 0 : clear);
+}

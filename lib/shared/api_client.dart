@@ -1995,6 +1995,129 @@ class ApiClient {
   Future<Map<String, dynamic>> vendorToolsOptions() async =>
       await _request('GET', '/vendor/tools/options');
 
+  // ── Vendor shop banners (Shop home Phase 2 S1, SHOP_BANNERS) ──────────
+
+  /// The vendor's own banner proposals, newest first:
+  /// `{items: [banner], total, nextCursor, vendor: {canPropose, reason},
+  /// proposalExpiryDays}` (docs/shop-banners-api.md). 404
+  /// `feature_disabled` while SHOP_BANNERS is off.
+  /// One page: [limit] (the server allows up to 100) from [cursor] (the
+  /// previous page's `nextCursor`).
+  Future<Map<String, dynamic>> vendorShopBanners({
+    int limit = 100,
+    String? cursor,
+  }) async {
+    final out = await _request(
+      'GET',
+      _withQuery('/vendor/shop-banners', {
+        'limit': '$limit',
+        if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+      }),
+    );
+    if (out is List) return {'items': out};
+    return out is Map ? Map<String, dynamic>.from(out) : <String, dynamic>{};
+  }
+
+  /// Creates a banner (not yet sent for approval). Answers the banner.
+  Future<Map<String, dynamic>> vendorCreateShopBanner(
+    Map<String, dynamic> body,
+  ) async =>
+      _bannerOf(await _request('POST', '/vendor/shop-banners', body: body));
+
+  /// Changes a banner. 409 `not_editable` once it can no longer change.
+  Future<Map<String, dynamic>> vendorUpdateShopBanner(
+    String id,
+    Map<String, dynamic> body,
+  ) async => _bannerOf(
+    await _request('PATCH', '/vendor/shop-banners/${_seg(id)}', body: body),
+  );
+
+  /// Sends a banner to FitFlex for approval.
+  Future<Map<String, dynamic>> vendorSubmitShopBanner(String id) async =>
+      _bannerOf(
+        await _request(
+          'POST',
+          '/vendor/shop-banners/${_seg(id)}/submit',
+          body: const <String, dynamic>{},
+        ),
+      );
+
+  /// Ends a live banner now.
+  Future<Map<String, dynamic>> vendorEndShopBanner(String id) async =>
+      _bannerOf(
+        await _request(
+          'POST',
+          '/vendor/shop-banners/${_seg(id)}/end',
+          body: const <String, dynamic>{},
+        ),
+      );
+
+  /// Takes a banner back before it goes live.
+  Future<Map<String, dynamic>> vendorWithdrawShopBanner(String id) async =>
+      _bannerOf(
+        await _request(
+          'POST',
+          '/vendor/shop-banners/${_seg(id)}/withdraw',
+          body: const <String, dynamic>{},
+        ),
+      );
+
+  /// Uploads a banner's photo: `file`, `people` (`none` |
+  /// `product_models`), `rightsConfirmed` and, for models,
+  /// `peopleConfirmed`. Answers the banner.
+  Future<Map<String, dynamic>> vendorUploadShopBannerImage(
+    String id, {
+    required List<int> bytes,
+    required String filename,
+    required String people,
+    required bool rightsConfirmed,
+    bool peopleConfirmed = false,
+    String? confirmationVersion,
+    String? consentRef,
+    String? licenceRef,
+  }) async {
+    final uri = Uri.parse('$baseUrl/vendor/shop-banners/${_seg(id)}/image');
+    final request = http.MultipartRequest('POST', uri)
+      ..files.add(
+        http.MultipartFile.fromBytes('file', bytes, filename: filename),
+      )
+      ..fields['people'] = people;
+    if (rightsConfirmed) request.fields['rightsConfirmed'] = 'true';
+    if (peopleConfirmed) request.fields['peopleConfirmed'] = 'true';
+    if (confirmationVersion != null && confirmationVersion.isNotEmpty) {
+      request.fields['confirmationVersion'] = confirmationVersion;
+    }
+    if (consentRef != null && consentRef.isNotEmpty) {
+      request.fields['consentRef'] = consentRef;
+    }
+    if (licenceRef != null && licenceRef.isNotEmpty) {
+      request.fields['licenceRef'] = licenceRef;
+    }
+    request.headers['x-fitflex-client'] = kIdentityV2Client;
+    if (_token != null) request.headers['authorization'] = 'Bearer $_token';
+    _log.multipart('POST', uri, bytes.length);
+    final streamed = await request.send().timeout(const Duration(seconds: 90));
+    final res = await http.Response.fromStream(streamed);
+    _log.response('POST', uri, res.statusCode, res.body);
+    final ok = res.statusCode >= 200 && res.statusCode < 300;
+    final decoded = res.body.isEmpty
+        ? null
+        : ok
+        ? jsonDecode(res.body)
+        : _decodeErrorBody(res.body);
+    if (ok) return _bannerOf(decoded);
+    if (res.statusCode == 401 && onUnauthorized != null) onUnauthorized!();
+    throw ApiException(res.statusCode, decoded);
+  }
+
+  /// A banner answer: the banner itself or `{banner: {...}}`.
+  static Map<String, dynamic> _bannerOf(Object? out) {
+    if (out is Map && out['banner'] is Map) {
+      return Map<String, dynamic>.from(out['banner'] as Map);
+    }
+    return out is Map ? Map<String, dynamic>.from(out) : <String, dynamic>{};
+  }
+
   /// Records a stock change with a reason. Answers `{movement, product}`;
   /// a retried [body] (same `clientRef`) gets the first answer back.
   Future<Map<String, dynamic>> vendorAdjustStock(

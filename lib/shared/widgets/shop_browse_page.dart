@@ -293,6 +293,10 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
   bool _promotionsOnly = false;
   String _brand = '';
   String _vendorId = '';
+
+  /// The store's name when the list was opened from a banner's "Visit
+  /// store" (shown as the list's heading); empty otherwise.
+  String _vendorName = '';
   num? _minPrice;
   num? _maxPrice;
   num? _minRating;
@@ -411,6 +415,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
     if (_results && _sort != 'newest') 'sort': _sort,
     if (_results && _promotionsOnly) 'promotions': 'true',
     if (_results && _deliveryOnly) 'delivery': 'true',
+    if (_results && _vendorId.isNotEmpty) 'vendorId': _vendorId,
     'product': ?_openProductId,
   };
 
@@ -455,6 +460,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
           'sort': ?q['sort'],
           'promotions': ?q['promotions'],
           'delivery': ?q['delivery'],
+          'vendorId': ?q['vendorId'],
         },
       );
     } else if (_results) {
@@ -537,6 +543,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
       _category = category ?? _nonEmpty(query['category']);
       _brand = query['brand'] ?? '';
       _vendorId = query['vendorId'] ?? '';
+      if (_vendorId.isEmpty) _vendorName = '';
       _minPrice = num.tryParse(query['minPrice'] ?? '');
       _maxPrice = num.tryParse(query['maxPrice'] ?? '');
       _minRating = num.tryParse(query['minRating'] ?? '');
@@ -557,9 +564,29 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
   static String? _nonEmpty(String? value) =>
       value == null || value.isEmpty ? null : value;
 
+  /// A hero banner's button (Phase 2 S1): its product's details, the
+  /// seller's products, a category, or the product list.
+  void _openBanner(ShopBanner banner) {
+    final target = banner.target;
+    switch (target.type) {
+      case 'product':
+        unawaited(_openProductById(target.value));
+      case 'vendor_store':
+        _vendorName = banner.vendorName?.trim() ?? '';
+        _openResults(query: {'vendorId': target.value});
+      case 'category':
+        _openResults(category: target.value);
+      default:
+        if (target.query['vendorId'] == null) _vendorName = '';
+        _openResults(query: target.query);
+    }
+  }
+
   void _backToHome() {
     setState(() {
       _results = false;
+      _vendorId = '';
+      _vendorName = '';
       _search = '';
       _searchController.clear();
       _category = null;
@@ -932,6 +959,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
     _shopEvent('filter_applied');
     setState(() {
       _brand = values.brand;
+      if (values.vendorId != _vendorId) _vendorName = '';
       _vendorId = values.vendorId;
       _minPrice = values.minPrice;
       _maxPrice = values.maxPrice;
@@ -1114,6 +1142,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
                   onCategory: (key) => _openResults(category: key),
                   onViewAll: (query) => _openResults(query: query),
                   onBrowseAll: () => _openResults(),
+                  onBanner: _openBanner,
                   onCheckout: _checkout,
                   onUnavailable: () {
                     setState(() => _homeUnavailable = true);
@@ -1217,6 +1246,20 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
             variant: FFButtonVariant.ghost,
             size: FFButtonSize.sm,
             icon: Icons.arrow_back,
+          ),
+        ),
+      if (_vendorId.isNotEmpty && _vendorName.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
+          child: Semantics(
+            header: true,
+            child: Text(
+              _vendorName,
+              key: const Key('shop-results-vendor'),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+            ),
           ),
         ),
       FFTextField(

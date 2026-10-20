@@ -52,6 +52,7 @@ import 'shared/friend_invites.dart';
 import 'shared/inbox/inbox_pages.dart';
 import 'screens/vendor/vendor_home_page.dart';
 import 'screens/vendor/stock/stock_history_page.dart';
+import 'screens/vendor/merch/vendor_banners_page.dart';
 import 'screens/vendor/sales/pos_page.dart';
 import 'screens/vendor/sales/receipt_page.dart';
 import 'screens/vendor/sales/sale_detail_page.dart';
@@ -98,6 +99,9 @@ abstract class AppRoutes {
 
   // Vendor
   static const vendorHome = '/vendor/home';
+
+  /// Shop home Phase 2 S1: the vendor's Promotions (banner proposals).
+  static const vendorMerch = '/vendor/merch';
 
   /// Vendor tools · S1: one product's stock history.
   static String vendorStockHistory(String productId) =>
@@ -510,6 +514,8 @@ GoRouter buildRouter(AuthState auth) {
           // verification centre is the only other place they need.
           if (loc == AppRoutes.vendorHome ||
               loc == AppRoutes.verification ||
+              // Shows why proposing waits for approval.
+              loc == AppRoutes.vendorMerch ||
               _vendorStockPath.hasMatch(loc) ||
               _vendorSalesPath.hasMatch(loc) ||
               _vendorCustomersPath.hasMatch(loc)) {
@@ -700,6 +706,14 @@ GoRouter buildRouter(AuthState auth) {
           view: state.uri.queryParameters['view'],
         ),
       ),
+      // Shop home Phase 2 S1: the page checks the tool (merch.banners) and
+      // the `products` permission itself.
+      GoRoute(
+        path: AppRoutes.vendorMerch,
+        name: 'vendorMerch',
+        builder: (context, state) =>
+            VendorBannersPage(item: state.uri.queryParameters['item']),
+      ),
       // Vendor customers (S4). Each page checks the feature and the
       // `customers` permission itself; `new` comes before `:customerId`.
       GoRoute(
@@ -719,7 +733,9 @@ GoRouter buildRouter(AuthState auth) {
           final dup = extra is Map && extra['phoneDuplicate'] is Map
               ? Map<String, dynamic>.from(extra['phoneDuplicate'] as Map)
               : null;
+          // Keyed by id: another customer is a fresh page (UAT D1).
           return CustomerProfilePage(
+            key: ValueKey('customer-${state.pathParameters['customerId']}'),
             customerId: state.pathParameters['customerId']!,
             phoneDuplicate: dup,
           );

@@ -184,6 +184,17 @@ String partnerLinkFor({required String side, required String type}) =>
         // S4: the daily overdue digest, and a payment voided by staff.
         'vendor_customers_overdue' => 'owed',
         'vendor_customer_payment_voided' => 'customer',
+        // Shop home Phase 2 S1: a banner was approved, rejected, expired or
+        // ended by FitFlex (push `vendor_shop_banner_*`, inbox
+        // `shop_banner_*`).
+        'vendor_shop_banner_approved' ||
+        'vendor_shop_banner_rejected' ||
+        'vendor_shop_banner_expired' ||
+        'vendor_shop_banner_ended' ||
+        'shop_banner_approved' ||
+        'shop_banner_rejected' ||
+        'shop_banner_expired' ||
+        'shop_banner_ended' => 'merch',
         _ => '',
       },
       'gym' => switch (type) {
@@ -210,6 +221,7 @@ String? partnerRouteFor({
   String? variant,
   String? saleId,
   String? customerId,
+  String? bannerId,
 }) {
   bool ok(String? id) => id != null && _safeId.hasMatch(id);
   return switch (partnerLinkFor(side: side, type: type)) {
@@ -239,6 +251,9 @@ String? partnerRouteFor({
     'owed' => '/vendor/home?open=customers&view=owed',
     'customer' when ok(customerId) => '/vendor/customers/$customerId',
     'customer' => '/vendor/home?open=customers',
+    // The Promotions page checks the tool and the `products` permission.
+    'merch' when ok(bannerId) => '/vendor/merch?item=$bannerId',
+    'merch' => '/vendor/merch',
     'checkins' when ok(gymId) => '/owner/gyms/$gymId/checkins',
     'member' when ok(memberId) => '/owner/members/$memberId',
     'memberPayments' when ok(memberId) => '/owner/members/$memberId/payments',

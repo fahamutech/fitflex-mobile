@@ -29,6 +29,7 @@ class VendorTools {
     this.buyerContact = false,
     this.walkInSales = false,
     this.customers = false,
+    this.banners = false,
     this.fromCache = false,
   });
 
@@ -55,6 +56,10 @@ class VendorTools {
   /// also needs [walkInSales] (it lives in the POS).
   final bool customers;
 
+  /// Shop home Phase 2 S1: vendors propose hero banners (SHOP_BANNERS),
+  /// from `merch: {banners: true}`. Exactly `true`, else off.
+  final bool banners;
+
   /// The answer is the one kept on this device (the server could not be
   /// reached): ask again once the connection is back.
   final bool fromCache;
@@ -66,6 +71,9 @@ class VendorTools {
         buyerContact: options['buyerContact'] == true,
         walkInSales: options['walkInSales'] == true,
         customers: options['customers'] == true,
+        banners:
+            options['merch'] is Map &&
+            (options['merch'] as Map)['banners'] == true,
         fromCache: fromCache,
       );
 }

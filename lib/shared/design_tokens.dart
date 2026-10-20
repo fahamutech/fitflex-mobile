@@ -244,6 +244,17 @@ class FFTokens {
   /// Dark theme bottom edge: seamless into the page ground.
   static const double heroScrimGround = 1.00;
 
+  /// Taller heroes (owner 2026-10-20, spec §5.3): on phones at least
+  /// [heroTallMinViewport] tall, the clear photo between the bar band and
+  /// the ramp's lead-in aims for this share of the viewport height, clamped
+  /// to [heroTallClearMin] .. [heroTallClearMax] at 1.0x text (divided by
+  /// the text scale above it). A page may cap the hero so its first control
+  /// stays on screen; the clear photo then shrinks, never the text.
+  static const double heroTallClearShare = 0.19;
+  static const double heroTallClearMin = 120;
+  static const double heroTallClearMax = 200;
+  static const double heroTallMinViewport = 760;
+
   /// Horizontal (panel / wide banner) scrim: the text column's leading edge
   /// and the far edge. The text column itself stays at >= [heroScrimText].
   static const double heroScrimPanelLead = 0.92;

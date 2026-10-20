@@ -2,6 +2,7 @@
 // possibly with several methods, and the change to give back. The sheet
 // mirrors the server's rules; the POS sends the sale and tells the sheet
 // whether to close or to show a problem.
+import '../../../shared/network/browser_online.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -150,6 +151,7 @@ class _PaymentSheetState extends State<PaymentSheet> {
 
   @override
   void dispose() {
+    BrowserOnline.instance.removeListener(_onBrowserOnline);
     for (final r in _rows) {
       r.dispose();
     }
@@ -180,6 +182,21 @@ class _PaymentSheetState extends State<PaymentSheet> {
     _edited();
   }
 
+  /// Pay later needs a connection: the POS's own signal and (web) the
+  /// browser's online state.
+  bool _online(PayLaterSetup setup) =>
+      setup.online && BrowserOnline.instance.value;
+
+  @override
+  void initState() {
+    super.initState();
+    BrowserOnline.instance.addListener(_onBrowserOnline);
+  }
+
+  void _onBrowserOnline() {
+    if (mounted) setState(() {});
+  }
+
   CreditCheck get _creditCheck =>
       CreditCheck(widget.totalTzs, [for (final r in _rows) r.row]);
 
@@ -197,7 +214,7 @@ class _PaymentSheetState extends State<PaymentSheet> {
     return _creditCheck.canComplete(
       hasCustomer: c.id != null,
       hasDueDate: _dueDate != null,
-      online: setup.online,
+      online: setup.online && BrowserOnline.instance.value,
     );
   }
 
@@ -372,12 +389,17 @@ class _PaymentSheetState extends State<PaymentSheet> {
                     ],
                     if (status != null) ...[
                       const SizedBox(height: FFTokens.spacingSm),
-                      Semantics(liveRegion: true, child: status),
+                      Semantics(
+                        container: true,
+                        liveRegion: true,
+                        child: status,
+                      ),
                     ],
                     ..._payLaterEntry(context, check),
                     if (_problem != null) ...[
                       const SizedBox(height: FFTokens.spacingSm),
                       Semantics(
+                        container: true,
                         liveRegion: true,
                         child: FFAlert(
                           key: const Key('pos-pay-problem'),
@@ -472,7 +494,7 @@ class _PaymentSheetState extends State<PaymentSheet> {
         variant: FFButtonVariant.secondary,
         fullWidth: true,
         visualDensity: VisualDensity.standard,
-        onPressed: _saving || !setup.online
+        onPressed: _saving || !_online(setup)
             ? null
             : () {
                 setState(() => _credit = true);
@@ -480,11 +502,15 @@ class _PaymentSheetState extends State<PaymentSheet> {
                 if (setup.customer().id == null) _pickCustomer();
               },
       ),
-      if (!setup.online)
-        Text(
-          context.tr('vendor.pos.credit.needsConnection'),
-          key: const Key('pos-paylater-offline'),
-          style: Theme.of(context).textTheme.bodySmall,
+      if (!_online(setup))
+        Semantics(
+          container: true,
+          liveRegion: true,
+          child: Text(
+            context.tr('vendor.pos.credit.needsConnection'),
+            key: const Key('pos-paylater-offline'),
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
         ),
     ];
   }
@@ -525,8 +551,7 @@ class _PaymentSheetState extends State<PaymentSheet> {
               ? context.tr('vendor.pos.customer.pick')
               : fillIn(context.tr('vendor.receipt.customer'), {
                   'name':
-                      customer.name ??
-                      context.tr('vendor.customers.unnamed'),
+                      customer.name ?? context.tr('vendor.customers.unnamed'),
                 }),
           excludeSemantics: true,
           child: ListTile(
@@ -551,8 +576,7 @@ class _PaymentSheetState extends State<PaymentSheet> {
               message: [
                 fillIn(context.tr('vendor.pos.credit.alreadyOwes'), {
                   'name':
-                      customer.name ??
-                      context.tr('vendor.customers.unnamed'),
+                      customer.name ?? context.tr('vendor.customers.unnamed'),
                   'amount': formatCurrency(owed),
                 }),
                 if (overdue > 0)
@@ -635,6 +659,7 @@ class _PaymentSheetState extends State<PaymentSheet> {
             ),
           ),
         Semantics(
+          container: true,
           liveRegion: true,
           child: Text(
             fillIn(context.tr('vendor.pos.credit.balance'), {
@@ -649,6 +674,7 @@ class _PaymentSheetState extends State<PaymentSheet> {
         if (status != null) ...[
           const SizedBox(height: FFTokens.spacingSm),
           Semantics(
+            container: true,
             liveRegion: true,
             child: Text(
               status,
@@ -662,6 +688,7 @@ class _PaymentSheetState extends State<PaymentSheet> {
         if (_problem != null) ...[
           const SizedBox(height: FFTokens.spacingSm),
           Semantics(
+            container: true,
             liveRegion: true,
             child: FFAlert(
               key: const Key('pos-pay-problem'),
@@ -680,7 +707,7 @@ class _PaymentSheetState extends State<PaymentSheet> {
           key: const Key('pos-credit-notice'),
           message: context.tr('vendor.pos.credit.notice'),
         ),
-        if (!setup.online) ...[
+        if (!_online(setup)) ...[
           const SizedBox(height: FFTokens.spacingXs),
           Text(
             context.tr('vendor.pos.credit.needsConnection'),

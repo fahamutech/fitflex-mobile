@@ -16,6 +16,7 @@ import '../../../shared/formatters.dart';
 import '../../../shared/i18n.dart';
 import '../sales/sales_widgets.dart' show MoneyRow;
 import '../stock/stock_options.dart' show fillIn;
+import '../sales/sale_models.dart' show pluralKey;
 import 'customer_models.dart';
 import 'customers_widgets.dart';
 
@@ -745,7 +746,10 @@ class OwedViewState extends State<OwedView> {
                 'amount': formatCurrency(overdue),
               }),
             if (days > 0)
-              fillIn(context.tr('vendor.customers.daysOverdue'), {'n': days}),
+              fillIn(
+                context.tr(pluralKey('vendor.customers.daysOverdue', days)),
+                {'n': days},
+              ),
           ].join(', '),
           excludeSemantics: true,
           child: InkWell(
@@ -800,7 +804,9 @@ class OwedViewState extends State<OwedView> {
                           overdueBadge(
                             context,
                             label: fillIn(
-                              context.tr('vendor.customers.daysOverdue'),
+                              context.tr(
+                                pluralKey('vendor.customers.daysOverdue', days),
+                              ),
                               {'n': days},
                             ),
                           ),
