@@ -4030,6 +4030,10 @@ class FFLocale extends ChangeNotifier {
       'kyc.item.site_verification': 'Site visit',
       'kyc.item.vetting_score': 'Vetting score',
       'kyc.item.gym_tier': 'Gym tier',
+      // The latest FitFlex inspection, on the vetting score item (B7a).
+      'kyc.inspection.score': '{score} / {max}',
+      'kyc.inspection.tier': '{tier} tier',
+      'kyc.inspection.visitedOn': 'Visited {date}',
       'kyc.item.payout_account': 'Payout account',
       'kyc.item.certification': 'Certification',
       'kyc.item.specialisation': 'Specialisation',
@@ -8933,6 +8937,10 @@ class FFLocale extends ChangeNotifier {
       'kyc.item.site_verification': 'Ukaguzi wa eneo',
       'kyc.item.vetting_score': 'Alama za ukaguzi',
       'kyc.item.gym_tier': 'Daraja la gym',
+      // Swahili for native review (inspection score, B7a).
+      'kyc.inspection.score': '{score} kati ya {max}',
+      'kyc.inspection.tier': 'Daraja la {tier}',
+      'kyc.inspection.visitedOn': 'Ilitembelewa {date}',
       'kyc.item.payout_account': 'Akaunti ya malipo',
       'kyc.item.certification':
           'Cheti cha uTrainer', // TODO(sw-review): 2026-10-19 uTrainer ruling

@@ -9,7 +9,9 @@ import '../../../shared/api_client.dart';
 import '../../../shared/api_error_message.dart';
 import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
+import '../../../shared/formatters.dart';
 import '../../../shared/i18n.dart';
+import '../../member/widgets/gym_filters.dart' show tierKeyOf, tierLabel;
 import 'verification_forms.dart';
 import 'verification_models.dart';
 import 'verification_repository.dart';
@@ -242,6 +244,7 @@ class _VerificationCenterPageState extends State<VerificationCenterPage> {
                           for (final item in section.items)
                             _ItemTile(
                               item: item,
+                              inspection: data.inspectionFor(item),
                               onTap: _busy ? null : () => _open(item),
                             ),
                         ],
@@ -324,9 +327,40 @@ class _StatusCard extends StatelessWidget {
 }
 
 class _ItemTile extends StatelessWidget {
-  const _ItemTile({required this.item, required this.onTap});
+  const _ItemTile({required this.item, required this.onTap, this.inspection});
   final KycItem item;
   final VoidCallback? onTap;
+  final KycInspection? inspection;
+
+  static String _number(num n) =>
+      n == n.roundToDouble() ? '${n.round()}' : n.toStringAsFixed(1);
+
+  /// "42 / 50 · Premium tier · Visited 12 Oct 2026"; parts not sent are left
+  /// out, so a missing maximum never reads "0 / 0".
+  static String? inspectionLine(BuildContext context, KycInspection? i) {
+    if (i == null) return null;
+    final max = i.maxScore;
+    final date = i.visitedOn == null
+        ? ''
+        : context.localDate(i.visitedOn, fallback: '');
+    return [
+      max != null && max > 0
+          ? context
+                .tr('kyc.inspection.score')
+                .replaceFirst('{score}', _number(i.score))
+                .replaceFirst('{max}', _number(max))
+          : _number(i.score),
+      if (i.vettedTier != null)
+        context
+            .tr('kyc.inspection.tier')
+            .replaceFirst(
+              '{tier}',
+              tierLabel(context, tierKeyOf(i.vettedTier)),
+            ),
+      if (date.isNotEmpty)
+        context.tr('kyc.inspection.visitedOn').replaceFirst('{date}', date),
+    ].join(' · ');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -347,12 +381,27 @@ class _ItemTile extends StatelessWidget {
       if (item.byReviewer) context.tr('kyc.byFitflex'),
       if (item.note != null && item.note!.isNotEmpty) item.note!,
     ].join(' · ');
+    final inspected = inspectionLine(context, inspection);
+    final suffix = item.gymId == null ? '' : '-${item.gymId}';
     return ListTile(
-      key: Key(
-        'kyc-item-${item.key}${item.gymId == null ? '' : '-${item.gymId}'}',
-      ),
+      key: Key('kyc-item-${item.key}$suffix'),
       title: Text(label),
-      subtitle: subtitle.isEmpty ? null : Text(subtitle),
+      subtitle: subtitle.isEmpty && inspected == null
+          ? null
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (subtitle.isNotEmpty) Text(subtitle),
+                if (inspected != null)
+                  Text(
+                    inspected,
+                    key: Key('kyc-inspection$suffix'),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                  ),
+              ],
+            ),
       trailing: item.optional && !item.done
           ? FFBadge(
               label: context.tr('kyc.itemStatus.optional'),

@@ -269,6 +269,10 @@ class KycItem {
     this.requirementKey,
     this.missingFields = const [],
     this.note,
+    this.score,
+    this.maxScore,
+    this.visitedOn,
+    this.vettedTier,
   });
 
   final String key;
@@ -284,6 +288,14 @@ class KycItem {
   final List<String> missingFields;
   final String? note;
 
+  /// Site-visit facts FitFlex sends on reviewer items for a gym: [score] and
+  /// [maxScore] on operational.vetting_score, [visitedOn] (YYYY-MM-DD) on
+  /// operational.site_verification, [vettedTier] on operational.gym_tier.
+  final num? score;
+  final num? maxScore;
+  final String? visitedOn;
+  final String? vettedTier;
+
   factory KycItem.fromJson(Map<String, dynamic> j) => KycItem(
     key: j['key'] as String,
     status: j['status'] as String? ?? 'missing',
@@ -296,7 +308,15 @@ class KycItem {
         .map((e) => '$e')
         .toList(),
     note: j['note'] as String?,
+    score: _finite(j['score']),
+    maxScore: _finite(j['maxScore']),
+    visitedOn: _text(j['visitedOn']),
+    vettedTier: _text(j['vettedTier']),
   );
+
+  static num? _finite(Object? v) => v is num && v.isFinite ? v : null;
+  static String? _text(Object? v) =>
+      v is String && v.trim().isNotEmpty ? v.trim() : null;
 
   String get section => key.split('.').first;
   String get field => key.split('.').last;
@@ -396,6 +416,44 @@ class KycOverview {
   }
 
   int get itemsLeft => missing.length;
+
+  /// The latest inspection of the gym [item] belongs to, gathered from its
+  /// sibling reviewer items (same gymId). Null unless a score was recorded.
+  KycInspection? inspectionFor(KycItem item) {
+    if (item.key != 'operational.vetting_score' || item.score == null) {
+      return null;
+    }
+    KycItem? sibling(String key) {
+      for (final s in sections) {
+        for (final i in s.items) {
+          if (i.key == key && i.gymId == item.gymId) return i;
+        }
+      }
+      return null;
+    }
+
+    return KycInspection(
+      score: item.score!,
+      maxScore: item.maxScore,
+      vettedTier: sibling('operational.gym_tier')?.vettedTier,
+      visitedOn: sibling('operational.site_verification')?.visitedOn,
+    );
+  }
+}
+
+/// What a gym owner sees of FitFlex's inspection: total, tier and date.
+/// Inspector notes, identity and category subtotals are not part of it.
+class KycInspection {
+  const KycInspection({
+    required this.score,
+    this.maxScore,
+    this.vettedTier,
+    this.visitedOn,
+  });
+  final num score;
+  final num? maxScore;
+  final String? vettedTier;
+  final String? visitedOn;
 }
 
 // ── What each partner type fills in ─────────────────────────────────────────
