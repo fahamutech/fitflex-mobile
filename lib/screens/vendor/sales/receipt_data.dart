@@ -2,6 +2,7 @@
 // `sale`) or from a sale still queued on this device, and the plain-text
 // version shared through the system share sheet (spec §4.2).
 import '../../../shared/formatters.dart';
+import '../documents/document_models.dart' show DocVatRow, vatRowsOf;
 import 'sale_models.dart';
 
 int _int(Object? v) => v is num ? v.toInt() : int.tryParse('$v') ?? 0;
@@ -20,6 +21,7 @@ class ReceiptLine {
     required this.discountTzs,
     required this.lineTotalTzs,
     this.priceChangedBy,
+    this.vatCode,
   });
 
   final String name;
@@ -30,6 +32,9 @@ class ReceiptLine {
   final int discountTzs;
   final int lineTotalTzs;
   final String? priceChangedBy;
+
+  /// S5: the line's VAT code (A, C, E) when VAT applied to the sale.
+  final String? vatCode;
 
   bool get priceChanged => unitPriceTzs != listPriceTzs;
 }
@@ -75,6 +80,9 @@ class ReceiptData {
     this.balanceTzs = 0,
     this.paidAtSaleTzs,
     this.allocations = const [],
+    this.invoiceNumber,
+    this.vatIncludedTzs = 0,
+    this.vatSummary = const [],
   });
 
   final String? id;
@@ -122,7 +130,6 @@ class ReceiptData {
       ? 'vendor.customers.deletedMember'
       : 'vendor.orders.buyerUnnamed';
 
-
   /// Pay later: due day (YYYY-MM-DD) and what is still owed now.
   final String? dueDate;
   final int balanceTzs;
@@ -144,6 +151,17 @@ class ReceiptData {
   /// `{paymentId, number, amountTzs, receivedOn, voided}`.
   final List<Map<String, dynamic>> allocations;
 
+  /// S5: a pay-later sale's invoice number (INV-…); the R-number is then
+  /// its "Sale ref" (Q-7).
+  final String? invoiceNumber;
+
+  /// S5: VAT contained in the prices (0 when none applied) and the summary
+  /// per code. Prices include VAT: the total never changes.
+  final int vatIncludedTzs;
+  final List<DocVatRow> vatSummary;
+
+  bool get hasVat => vatIncludedTzs > 0 || vatSummary.isNotEmpty;
+
   bool get credit => kind == 'credit';
   bool get hasCustomer => customerId != null;
 
@@ -156,10 +174,16 @@ class ReceiptData {
   String? get tempRef => clientRef == null ? null : tempRefOf(clientRef!);
 
   /// A sale as the server sends it (POST /vendor/sales, GET /vendor/sales/:id).
+  ///
+  /// S5: [documents] shows a pay-later sale's INV number and [vat] the VAT
+  /// block, each only while the server reports that tool on (AC-1, AC-2).
   factory ReceiptData.fromSale(
     Map<String, dynamic> sale, {
     Map<String, dynamic> profile = const {},
+    bool documents = false,
+    bool vat = false,
   }) {
+    final vatTzs = vat ? _int(sale['vatIncludedTzs']) : 0;
     Map? person(Object? v) => v is Map ? v : null;
     final soldAt = _str(sale['soldAt']);
     final recordedAt = _str(sale['recordedAt']);
@@ -188,6 +212,7 @@ class ReceiptData {
             discountTzs: _int(l['discountTzs']),
             lineTotalTzs: _int(l['lineTotalTzs']),
             priceChangedBy: _str(person(l['priceChangedBy'])?['name']),
+            vatCode: vatTzs > 0 ? _str(l['vatCode']) : null,
           ),
       ],
       subtotalTzs: _int(sale['subtotalTzs']),
@@ -222,6 +247,9 @@ class ReceiptData {
         for (final a in (sale['allocations'] as List? ?? []).whereType<Map>())
           Map<String, dynamic>.from(a),
       ],
+      invoiceNumber: documents ? _str(sale['invoiceNumber']) : null,
+      vatIncludedTzs: vatTzs,
+      vatSummary: vatTzs > 0 ? vatRowsOf(sale['vatSummary']) : const [],
     );
   }
 
@@ -346,6 +374,10 @@ String receiptShareText(
   if (r.business != null) b.writeln(r.business);
   if (r.queued || r.number == null) {
     b.writeln(fill('vendor.pos.shareProvisional', {'ref': r.tempRef ?? ''}));
+  } else if (r.credit && r.invoiceNumber != null) {
+    // S5 (Q-7): a pay-later sale is an invoice; its R-number is the ref.
+    b.writeln('${t('vendor.doc.invoice')} ${r.invoiceNumber}');
+    b.writeln(fill('vendor.doc.saleRef', {'number': r.number}));
   } else {
     b.writeln(fill('vendor.pos.receiptNo', {'number': r.number}));
   }
@@ -357,9 +389,7 @@ String receiptShareText(
           ? fill('vendor.receipt.customer', {'name': r.customerName})
           : r.queued
           ? t('vendor.receipt.customerAfterSync')
-          : fill('vendor.receipt.customer', {
-              'name': t(r.unnamedCustomerKey),
-            }),
+          : fill('vendor.receipt.customer', {'name': t(r.unnamedCustomerKey)}),
     );
   }
   b.writeln(rule);
@@ -396,6 +426,14 @@ String receiptShareText(
     );
   }
   b.writeln(_row(t('vendor.pos.total'), formatCurrency(r.totalTzs)));
+  if (r.vatIncludedTzs > 0) {
+    // S5: VAT is inside the prices; the total is unchanged.
+    b.writeln(
+      fill('vendor.doc.includesVat', {
+        'amount': formatCurrency(r.vatIncludedTzs),
+      }),
+    );
+  }
   for (final p in r.payments) {
     final method = t(paymentMethodKey(p.method));
     b.writeln(

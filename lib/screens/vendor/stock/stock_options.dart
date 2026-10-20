@@ -30,6 +30,8 @@ class VendorTools {
     this.walkInSales = false,
     this.customers = false,
     this.banners = false,
+    this.documents = false,
+    this.vat = false,
     this.fromCache = false,
   });
 
@@ -60,6 +62,14 @@ class VendorTools {
   /// from `merch: {banners: true}`. Exactly `true`, else off.
   final bool banners;
 
+  /// S5: share links, PDFs, the share sheet and order invoices
+  /// (VENDOR_DOCUMENTS). Exactly `true`, else the S3/S4 text share.
+  final bool documents;
+
+  /// S5: tax details, product VAT codes and VAT blocks (VENDOR_VAT).
+  /// Exactly `true`, else none of them.
+  final bool vat;
+
   /// The answer is the one kept on this device (the server could not be
   /// reached): ask again once the connection is back.
   final bool fromCache;
@@ -74,6 +84,8 @@ class VendorTools {
         banners:
             options['merch'] is Map &&
             (options['merch'] as Map)['banners'] == true,
+        documents: options['documents'] == true,
+        vat: options['vat'] == true,
         fromCache: fromCache,
       );
 }

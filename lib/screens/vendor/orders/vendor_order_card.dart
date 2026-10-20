@@ -20,6 +20,8 @@ import '../../../shared/payment_labels.dart';
 import '../../../shared/shop_checkout.dart';
 import '../customers/customers_widgets.dart'
     show customerIdPattern, customerRoute;
+import '../documents/document_view.dart'
+    show documentIdPattern, vendorOrderInvoiceRoute;
 import '../stock/stock_options.dart';
 
 /// Opens the phone app; tests replace it.
@@ -182,6 +184,22 @@ class VendorOrderCard extends StatelessWidget {
               ),
           if (order['paymentStatus'] == 'pending')
             Text(context.tr('vendor.awaitingPayment'), style: muted),
+          // S5: my invoice, once my part of the order is paid (§4.4).
+          if (tools.documents &&
+              canVendor(context, 'orders') &&
+              order['paymentStatus']?.toString() == 'paid' &&
+              documentIdPattern.hasMatch(_id))
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: FFButton(
+                key: Key('vendor-order-invoice-$_id'),
+                label: context.tr('vendor.documents.invoice'),
+                icon: Icons.receipt_long_outlined,
+                variant: FFButtonVariant.ghost,
+                visualDensity: VisualDensity.standard,
+                onPressed: () => context.push(vendorOrderInvoiceRoute(_id)),
+              ),
+            ),
           ?actions,
         ],
       ),

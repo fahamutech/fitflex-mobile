@@ -184,6 +184,9 @@ String partnerLinkFor({required String side, required String type}) =>
         // S4: the daily overdue digest, and a payment voided by staff.
         'vendor_customers_overdue' => 'owed',
         'vendor_customer_payment_voided' => 'customer',
+        // S5: a KYC reviewer verified or did not accept the VAT details
+        // (push data.open = 'tax').
+        'vendor_vat_verified' || 'vendor_vat_rejected' => 'tax',
         // Shop home Phase 2 S1: a banner was approved, rejected, expired or
         // ended by FitFlex (push `vendor_shop_banner_*`, inbox
         // `shop_banner_*`).
@@ -251,6 +254,8 @@ String? partnerRouteFor({
     'owed' => '/vendor/home?open=customers&view=owed',
     'customer' when ok(customerId) => '/vendor/customers/$customerId',
     'customer' => '/vendor/home?open=customers',
+    // The page checks the `vat` tool and who may see it.
+    'tax' => '/vendor/settings/tax',
     // The Promotions page checks the tool and the `products` permission.
     'merch' when ok(bannerId) => '/vendor/merch?item=$bannerId',
     'merch' => '/vendor/merch',

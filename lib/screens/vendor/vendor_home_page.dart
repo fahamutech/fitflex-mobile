@@ -28,6 +28,9 @@ import '../pin_flows.dart';
 import '../../shared/shop_checkout.dart';
 import 'customers/customers_tab.dart';
 import 'customers/customers_widgets.dart';
+import 'documents/document_models.dart'
+    show TaxProfile, VatCodeOption, ratePctText, vatCodesOf;
+import 'settings/tax_details_page.dart' show vendorTaxRoute;
 import 'orders/vendor_order_card.dart';
 import 'stock/adjust_stock_sheet.dart';
 import 'stock/stock_history_page.dart';
@@ -171,6 +174,43 @@ class _VendorHomePageState extends State<VendorHomePage> {
     ),
   );
 
+  /// S5: Tax details (VAT), while the server reports `vat: true`. The
+  /// vendor edits; staff with `payments` see it read-only.
+  bool get _taxEntryShown => _tools.vat && (_isVendor || _can('payments'));
+
+  Widget _taxEntry() => Padding(
+    padding: const EdgeInsets.only(top: FFTokens.spacingMd),
+    child: FFActionTile(
+      key: const Key('vendor-tax-entry'),
+      icon: Icons.receipt_long_outlined,
+      title: context.tr('vendor.tax.tile'),
+      subtitle: context.tr('vendor.tax.tileSubtitle'),
+      onTap: () => context.push(vendorTaxRoute),
+    ),
+  );
+
+  /// S5: the VAT codes a product may use, or null to hide the field. Shown
+  /// only with `vat` on and the vendor VAT-verified at some point (§6.4);
+  /// anything unknown hides it (fail closed).
+  List<VatCodeOption>? _vatCodes;
+
+  Future<void> _loadVat(VendorTools tools) async {
+    List<VatCodeOption>? codes;
+    if (tools.vat && _can('products')) {
+      try {
+        final api = AppScope.of(context).api;
+        final profile = TaxProfile.fromJson(await api.vendorTaxProfile());
+        if (profile.everVerified) {
+          final list = vatCodesOf(await api.vendorTaxRates());
+          if (list.isNotEmpty) codes = list;
+        }
+      } catch (_) {
+        codes = null;
+      }
+    }
+    if (mounted) setState(() => _vatCodes = codes);
+  }
+
   bool _can(String permission) {
     final user = AppScope.of(context).auth.user;
     if (user?['userType'] != 'vendor_staff') return true;
@@ -194,7 +234,9 @@ class _VendorHomePageState extends State<VendorHomePage> {
 
   /// Reasons the vendor can act on are shown; anything else stays generic.
   String _saveFailedText(Object e) =>
-      e is ApiException && _friendlyCodes.contains(e.code)
+      e is ApiException && e.code == 'invalid_vat_code'
+      ? context.tr('vendor.product.vatInvalid')
+      : e is ApiException && _friendlyCodes.contains(e.code)
       ? apiErrorMessage(FFLocaleScope.of(context), e)
       : context.tr('vendor.saveFailed');
 
@@ -415,6 +457,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
       _pendingOpen = null;
       if (wanted != null && _sections.contains(wanted)) _tab = wanted;
     });
+    unawaited(_loadVat(toolsNow));
     if (toolsNow.walkInSales) {
       _sales?.featureOn();
     } else {
@@ -521,7 +564,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) => VendorProductForm(product: product),
+      builder: (_) => VendorProductForm(product: product, vatCodes: _vatCodes),
     );
     if (draft == null || !mounted) return;
     setState(() => _busy = true);
@@ -562,6 +605,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
         product: product,
         stockLedger: true,
         canSeeCost: _tools.canSeeCost,
+        vatCodes: _vatCodes,
         describeError: _saveFailedText,
         onSave: (body) => api.vendorSaveProduct(body, productId: productId),
         onAdjust: current == null
@@ -1320,6 +1364,10 @@ class _VendorHomePageState extends State<VendorHomePage> {
     return ListView(
       padding: const EdgeInsets.all(FFTokens.spacingLg),
       children: [
+        if (_taxEntryShown && !_isVendor && !_can('staff')) ...[
+          _taxEntry(),
+          const SizedBox(height: FFTokens.spacingSm),
+        ],
         for (final card in cards)
           Padding(
             padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
@@ -1512,6 +1560,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
                     child: _salesWaitingTile(),
                   ),
           ),
+        if (_taxEntryShown) _taxEntry(),
         const SizedBox(height: FFTokens.spacingLg),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1656,9 +1705,14 @@ class VendorProductForm extends StatefulWidget {
     this.onSave,
     this.onAdjust,
     this.describeError,
+    this.vatCodes,
   });
 
   final Map<String, dynamic>? product;
+
+  /// S5: the VAT codes offered (GET /vendor/tax-rates), or null to hide the
+  /// VAT code field. A private field: saving it never re-queues approval.
+  final List<VatCodeOption>? vatCodes;
 
   /// Vendor tools · S1 is on: per-variant rows, reorder level, cost price,
   /// stock changed only through "Adjust stock". Off: the form as before.
@@ -1714,6 +1768,7 @@ class _VendorProductFormState extends State<VendorProductForm> {
   String? _image;
   String? _secondImage;
   bool _visible = true;
+  String _vatCode = 'A';
 
   bool get _creating => widget.product == null;
 
@@ -1762,6 +1817,13 @@ class _VendorProductFormState extends State<VendorProductForm> {
     _image = images?.firstOrNull;
     _secondImage = images != null && images.length > 1 ? images[1] : null;
     _visible = product?['visibility'] != 'hidden';
+    final code = product?['vatCode']?.toString();
+    final codes = widget.vatCodes ?? const <VatCodeOption>[];
+    _vatCode = codes.any((c) => c.code == code)
+        ? code!
+        : codes.any((c) => c.code == 'A') || codes.isEmpty
+        ? 'A'
+        : codes.first.code;
   }
 
   @override
@@ -1798,6 +1860,7 @@ class _VendorProductFormState extends State<VendorProductForm> {
       'weightKg': num.tryParse(_weight.text.trim()),
       'visibility': _visible ? 'visible' : 'hidden',
       'images': [?_image, ?_secondImage],
+      if (widget.vatCodes != null) 'vatCode': _vatCode,
     };
   }
 
@@ -2152,7 +2215,47 @@ class _VendorProductFormState extends State<VendorProductForm> {
     ),
   ];
 
+  /// "A · Standard 18%", "C · Zero-rated 0%", "E · Exempt".
+  String _vatLabel(VatCodeOption c) => fillIn(
+    context.tr('vendor.vat.${c.code}'),
+    {'rate': ratePctText(c.ratePct) ?? ''},
+  );
+
+  Widget _vatField() {
+    final codes = widget.vatCodes!;
+    final name = _name.text.trim();
+    return Semantics(
+      label: fillIn(context.tr('vendor.product.vatA11y'), {'product': name}),
+      child: DropdownButtonFormField<String>(
+        key: const Key('vendor-product-vat-code'),
+        initialValue: _vatCode,
+        isExpanded: true,
+        decoration: InputDecoration(
+          labelText: context.tr('vendor.product.vatCode'),
+          helperText: context.tr('vendor.product.vatHint'),
+          helperMaxLines: 3,
+        ),
+        items: [
+          for (final c in codes)
+            DropdownMenuItem(
+              value: c.code,
+              child: Text(_vatLabel(c), overflow: TextOverflow.ellipsis),
+            ),
+        ],
+        onChanged: _saving
+            ? null
+            : (v) {
+                if (v != null) setState(() => _vatCode = v);
+              },
+      ),
+    );
+  }
+
   List<Widget> _bottomFields() => [
+    if (widget.vatCodes != null) ...[
+      _vatField(),
+      const SizedBox(height: FFTokens.spacingSm),
+    ],
     SwitchListTile(
       key: const Key('vendor-product-visibility'),
       contentPadding: EdgeInsets.zero,
