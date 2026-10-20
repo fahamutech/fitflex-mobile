@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 
 import '../design_tokens.dart';
+import '../hero_images/hero_image_store.dart';
 import '../i18n.dart';
 import 'ff_button.dart';
 import 'ff_photo_hero.dart';
@@ -51,7 +52,14 @@ int fnv1a32(String s) {
 /// the table a stable pick by hash. If that photo shares a scene with [top]
 /// (e.g. after an owner photo replaces a stand-in), the next pool photo in
 /// table order is used (spec §34.3).
-FFHeroPhoto footerPhotoFor(String pageKey, {FFHeroPhoto? top}) {
+///
+/// [avoidSourceId] is the scene the top hero actually shows when that is an
+/// admin-published photo (it is kept apart too).
+FFHeroPhoto footerPhotoFor(
+  String pageKey, {
+  FFHeroPhoto? top,
+  String? avoidSourceId,
+}) {
   final n = footerPhotoPool.length;
   final fixed = footerPagePhotos[pageKey];
   final start = fixed != null
@@ -59,9 +67,27 @@ FFHeroPhoto footerPhotoFor(String pageKey, {FFHeroPhoto? top}) {
       : fnv1a32(pageKey) % n;
   for (var i = 0; i < n; i++) {
     final p = footerPhotoPool[(start + i) % n];
-    if (p.sourceId != top?.sourceId) return p;
+    if (p.sourceId != top?.sourceId && p.sourceId != avoidSourceId) return p;
   }
   return footerPhotoPool[start];
+}
+
+/// The footer photo a page shows: an admin-published footer-pool photo when
+/// one is saved, decoded and from another scene than the top photo, else
+/// the bundled one.
+typedef FooterPhotoChoice = ({FFHeroPhoto bundled, RemoteHeroImage? remote});
+
+FooterPhotoChoice resolveFooterPhoto(String pageKey, {FFHeroPhoto? top}) {
+  final store = HeroImageStore.instance;
+  final remote = store?.resolveFooter(pageKey, top: top);
+  return (
+    bundled: footerPhotoFor(
+      pageKey,
+      top: top,
+      avoidSourceId: store?.topSourceIdFor(top),
+    ),
+    remote: remote,
+  );
 }
 
 /// The band's minimum height (spec §33.2, owner 2026-10-20 "full width"):
@@ -199,6 +225,11 @@ class _FooterSliverState extends State<_FooterSliver> {
   /// beyond the viewport (lazy, AC-M13).
   bool _near = false;
 
+  /// The photo, chosen once when the band first builds (so an
+  /// admin-published photo saved meanwhile shows on the next visit, never
+  /// mid-view), again only if the page or its top photo changes.
+  FooterPhotoChoice? _choice;
+
   @override
   void didUpdateWidget(_FooterSliver old) {
     super.didUpdateWidget(old);
@@ -206,6 +237,7 @@ class _FooterSliverState extends State<_FooterSliver> {
       _shown = false;
       _near = false;
     }
+    if (old.pageKey != widget.pageKey || old.top != widget.top) _choice = null;
   }
 
   /// Room under the lockup, inside the dark zone: the safe area and the
@@ -276,14 +308,21 @@ class _FooterSliverState extends State<_FooterSliver> {
   }
 
   Widget _band(BuildContext context) {
-    final photo = footerPhotoFor(widget.pageKey, top: widget.top);
+    final choice = _choice ??= resolveFooterPhoto(
+      widget.pageKey,
+      top: widget.top,
+    );
     final ground = Theme.of(context).scaffoldBackgroundColor;
     return ClipRect(
       key: const Key('photo-footer'),
       child: Stack(
         children: [
           Positioned.fill(
-            child: _FooterPhotoLayer(photo: photo, load: _near),
+            child: _FooterPhotoLayer(
+              photo: choice.bundled,
+              remote: choice.remote,
+              load: _near,
+            ),
           ),
           // The page ground fades into the photo at the top edge.
           Positioned(
@@ -466,9 +505,17 @@ class _FooterLockup extends StatelessWidget {
 /// footer nears the viewport, the navy ground only. Never in the
 /// accessibility tree.
 class _FooterPhotoLayer extends StatelessWidget {
-  const _FooterPhotoLayer({required this.photo, required this.load});
+  const _FooterPhotoLayer({
+    required this.photo,
+    required this.load,
+    this.remote,
+  });
 
   final FFHeroPhoto photo;
+
+  /// An admin-published photo shown instead of [photo]; [photo] shows if it
+  /// fails to load.
+  final RemoteHeroImage? remote;
   final bool load;
 
   @override
@@ -476,6 +523,7 @@ class _FooterPhotoLayer extends StatelessWidget {
     final noPhoto = MediaQuery.highContrastOf(context) || !load;
     final instant = MediaQuery.disableAnimationsOf(context);
     final dpr = MediaQuery.devicePixelRatioOf(context);
+    final saved = remote;
     return ExcludeSemantics(
       child: ColoredBox(
         key: const Key('photo-footer-ground'),
@@ -483,28 +531,44 @@ class _FooterPhotoLayer extends StatelessWidget {
         child: noPhoto
             ? const SizedBox.expand()
             : LayoutBuilder(
-                builder: (context, c) => Image(
-                  key: const Key('photo-footer-photo'),
-                  image: heroImageProvider(photo, c.biggest, dpr),
-                  fit: BoxFit.cover,
-                  alignment: photo.focal,
-                  width: c.maxWidth,
-                  height: c.maxHeight,
-                  excludeFromSemantics: true,
-                  gaplessPlayback: true,
-                  errorBuilder: (_, _, _) => const SizedBox.expand(),
-                  frameBuilder: (context, child, frame, sync) {
-                    if (sync) return child;
-                    return AnimatedOpacity(
-                      opacity: frame == null ? 0 : 1,
-                      duration: instant
-                          ? Duration.zero
-                          : const Duration(milliseconds: 250),
-                      curve: Curves.easeOut,
-                      child: child,
-                    );
-                  },
-                ),
+                builder: (context, c) {
+                  Widget bundled() => Image(
+                    key: const Key('photo-footer-photo'),
+                    image: heroImageProvider(photo, c.biggest, dpr),
+                    fit: BoxFit.cover,
+                    alignment: photo.focal,
+                    width: c.maxWidth,
+                    height: c.maxHeight,
+                    excludeFromSemantics: true,
+                    gaplessPlayback: true,
+                    errorBuilder: (_, _, _) => const SizedBox.expand(),
+                  );
+                  return Image(
+                    key: const Key('photo-footer-photo'),
+                    image: saved != null
+                        ? heroRemoteImageProvider(saved, c.biggest, dpr)
+                        : heroImageProvider(photo, c.biggest, dpr),
+                    fit: BoxFit.cover,
+                    alignment: saved?.focal ?? photo.focal,
+                    width: c.maxWidth,
+                    height: c.maxHeight,
+                    excludeFromSemantics: true,
+                    gaplessPlayback: true,
+                    errorBuilder: (_, _, _) =>
+                        saved != null ? bundled() : const SizedBox.expand(),
+                    frameBuilder: (context, child, frame, sync) {
+                      if (sync) return child;
+                      return AnimatedOpacity(
+                        opacity: frame == null ? 0 : 1,
+                        duration: instant
+                            ? Duration.zero
+                            : const Duration(milliseconds: 250),
+                        curve: Curves.easeOut,
+                        child: child,
+                      );
+                    },
+                  );
+                },
               ),
       ),
     );
