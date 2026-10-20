@@ -22,6 +22,57 @@ const bannerTextFields = [
   'ctaLabel',
 ];
 
+/// The fixed buttons a vendor picks from (`ctaKey`), and the app's words
+/// for each. A typed button text is refused (422 cta_label_not_allowed).
+const bannerCtaKeys = {
+  'view_product': 'shop.banner.cta.viewProduct',
+  'visit_store': 'shop.banner.cta.visitStore',
+  'shop_now': 'shop.banner.cta.shopNow',
+  'view_all': 'shop.banner.cta.viewAll',
+};
+
+/// The button for a target: vendors may only send this one (else
+/// 422 invalid_cta_key); shop_now / view_all are FitFlex's.
+String defaultCtaKey(String targetType) =>
+    targetType == 'vendor_store' ? 'visit_store' : 'view_product';
+
+/// Rejection codes staff choose from (the vendor sees the label + note).
+const bannerRejectCodes = {'image', 'people', 'text', 'claim', 'link', 'other'};
+
+/// The confirmation texts the uploader accepts (`confirmation` in the list
+/// answer): shown exactly as sent, in the user's language. [version] goes
+/// with the photo (`confirmationVersion`).
+class BannerConfirmation {
+  const BannerConfirmation({
+    required this.version,
+    this.draft = false,
+    this.rights,
+    this.models,
+  });
+
+  final String version;
+
+  /// `status: draft_pending_counsel`: wording not final.
+  final bool draft;
+  final ShopText? rights;
+  final ShopText? models;
+
+  static BannerConfirmation? fromJson(Object? json) {
+    if (json is! Map) return null;
+    final version = json['version']?.toString() ?? '';
+    if (version.isEmpty) return null;
+    return BannerConfirmation(
+      version: version,
+      draft: json['status']?.toString() == 'draft_pending_counsel',
+      rights: ShopText.fromJson(json['rights']),
+      models: ShopText.fromJson(json['models']),
+    );
+  }
+}
+
+/// Max length of the model release and licence references.
+const bannerRefMax = 200;
+
 /// Who a banner is shown to (`audienceRoles`); at least one.
 const bannerAudiences = ['member', 'trainer', 'owner'];
 
@@ -51,8 +102,9 @@ class VendorBanner {
     this.startsAt,
     this.endsAt,
     this.expiresAt,
-    this.reason,
     this.reasonCode,
+    this.reasonNote,
+    this.ctaKey,
     this.endedByFitflex = false,
     this.allowedActions,
   });
@@ -89,9 +141,19 @@ class VendorBanner {
   /// When a pending proposal lapses (only while pending).
   final DateTime? expiresAt;
 
-  /// `statusReason`: why it was rejected or ended (the vendor sees it).
-  final String? reason;
+  /// Why it was rejected, ended or expired: `statusReason` (a code: a
+  /// rejection code, ended_by_fitflex, window_passed, ...) and
+  /// `statusReasonNote` (staff's words, shown as written).
   final String? reasonCode;
+  final String? reasonNote;
+
+  /// The chosen button (`ctaKey`), when the server sends it.
+  final String? ctaKey;
+
+  /// The words for a rejection code, or null for another code.
+  String? get rejectLabelKey => bannerRejectCodes.contains(reasonCode)
+      ? 'merch.reject.$reasonCode'
+      : null;
   final bool endedByFitflex;
 
   /// What the vendor may do now (edit, image, submit, withdraw, end). Null
@@ -136,8 +198,17 @@ class VendorBanner {
       startsAt: _date(json['startsAt']),
       endsAt: _date(json['endsAt']),
       expiresAt: _date(json['expiresAt']),
-      reason: _str(json['statusReason']),
-      reasonCode: _str(json['statusReasonCode']),
+      // statusReason is the code; an older server sent the code in
+      // statusReasonCode and the words in statusReason.
+      reasonCode: _str(json['statusReasonCode']) ?? _str(json['statusReason']),
+      reasonNote:
+          _str(json['statusReasonNote']) ??
+          (json['statusReasonCode'] != null
+              ? _str(json['statusReason'])
+              : null),
+      ctaKey: bannerCtaKeys.containsKey(json['ctaKey'])
+          ? json['ctaKey'] as String
+          : null,
       endedByFitflex: json['endedByFitflex'] == true,
       allowedActions: actions is List
           ? [for (final a in actions) a.toString()]
@@ -198,44 +269,78 @@ String bannerStatusKey(String status) => switch (status) {
 };
 
 // The text rules, copied pattern for pattern from the server's
-// src/shared/shop-banner-rules.mjs (fitflex-functions feat/shop-banners) so
-// the form never refuses what the server accepts. The server decides: it is
-// being extended (NFKC, zero-width characters, more amount words and
-// domains), so anything this misses still comes back as
-// price_claim_in_text / contact_in_text {field} and is shown under that
-// field. Whitespace is collapsed first, as the server does.
+// src/shared/shop-banner-rules.mjs (functions#227 at 5ff99b1), so the form
+// refuses what the server refuses. The server decides: anything this
+// misses still comes back as price_claim_in_text / contact_in_text {field}
+// and is shown under that field.
+//
+// Normalisation: the server uses NFKC, then removes format characters
+// (\p{Cf}) and collapses whitespace. Dart has no NFKC; [normaliseBannerText]
+// maps the forms that matter here the same way (fullwidth ASCII U+FF01–FF5E
+// and the ideographic space), then does the same \p{Cf} and whitespace
+// steps. Arabic-Indic and other digits are matched by \p{Nd}, as on the
+// server.
+String normaliseBannerText(String v) {
+  final mapped = String.fromCharCodes(
+    v.runes.map(
+      (r) => r >= 0xFF01 && r <= 0xFF5E
+          ? r - 0xFEE0
+          : r == 0x3000
+          ? 0x20
+          : r,
+    ),
+  );
+  return mapped
+      .replaceAll(RegExp(r'\p{Cf}', unicode: true), '')
+      .replaceAll(RegExp(r'\s+', unicode: true), ' ')
+      .trim();
+}
+
+const _notLetterBefore = r'(?<![\p{L}])';
+const _notLetterAfter = r'(?![\p{L}])';
+
+RegExp _u(String source, {bool ci = false}) =>
+    RegExp(source, unicode: true, caseSensitive: !ci);
+
 final _pricePatterns = [
-  RegExp(r'\d\s*%'),
-  RegExp(r'%\s*\d'),
-  RegExp(r'%'),
-  RegExp(r'/='),
-  RegExp(r'\b(?:tsh|tshs|tzs|shs?|sh)\.?\s*\d', caseSensitive: false),
-  RegExp(
-    r'\d[\d,.\s]*\s*(?:tsh|tshs|tzs|shs?|shilingi|bob)\b',
-    caseSensitive: false,
+  _u(r'[%٪﹪]'),
+  _u(r'/='),
+  _u(r'\p{Nd}\s*/-'),
+  _u(
+    '$_notLetterBefore(?:tsh|tshs|tzs|ksh|kshs|shs?|sh)\\.?\\s*\\p{Nd}',
+    ci: true,
   ),
-  RegExp(r'\b(?:shilingi|asilimia)\s*\d', caseSensitive: false),
-  RegExp(r'\d+\s*(?:percent|per\s*cent|pct|asilimia)\b', caseSensitive: false),
-  RegExp(r'\b(?:percent|per\s*cent|asilimia)\b', caseSensitive: false),
-  RegExp(r'\b(?:bei|price)\s*:?\s*\d', caseSensitive: false),
-  RegExp(r'\b\d{1,3}(?:[,.]\d{3})+\b'),
+  _u(
+    '\\p{Nd}[\\p{Nd},.\\s]*\\s*(?:tsh|tshs|tzs|ksh|shs?|shilingi|bob)$_notLetterAfter',
+    ci: true,
+  ),
+  _u(
+    '$_notLetterBefore(?:shilingi|asilimia|percent|per\\s*cent|pct|elfu|laki|milioni|million|punguzo|bure|nusu\\s*bei|half\\s*price|discount)$_notLetterAfter',
+    ci: true,
+  ),
+  _u('$_notLetterBefore(?:bei|price)\\s*:?\\s*\\p{Nd}', ci: true),
+  _u(r'\p{Nd}{1,3}(?:[,.]\p{Nd}{3})+'),
+  _u(r'\p{Nd}{4,}'),
 ];
+
+const _tlds =
+    'com|net|org|info|biz|shop|store|app|io|me|co|tz|ke|ug|rw|bi|africa|online|site|website|xyz|link|ly|tv|club|fit|fitness';
+
 final _contactPatterns = [
-  RegExp(r'https?://', caseSensitive: false),
-  RegExp(r'\bwww\.', caseSensitive: false),
-  RegExp(
-    r'\b[a-z0-9-]+\.(?:com|co\.tz|tz|net|org|shop|store|app|io|me)\b',
-    caseSensitive: false,
-  ),
-  RegExp(r'\+?\s*255[\s-]?\d{2,3}[\s-]?\d{3}[\s-]?\d{3}'),
-  RegExp(r'\b0[67]\d{2}[\s-]?\d{3}[\s-]?\d{3}\b'),
-  RegExp(r'\d(?:[\s-]?\d){8,}'),
+  _u(r'https?://', ci: true),
+  _u(r'www\.', ci: true),
+  _u('[\\p{L}\\p{Nd}-]+\\.(?:$_tlds)(?![\\p{L}\\p{Nd}-])', ci: true),
+  _u('$_notLetterBefore(?:dot|nukta)\\s*(?:$_tlds)$_notLetterAfter', ci: true),
+  _u(r'(?:^|[^\p{L}\p{Nd}])@[\p{L}\p{Nd}_.]{2,}'),
+  _u(r'\+?\s*25[45][\s-]?\p{Nd}{2,3}[\s-]?\p{Nd}{3}[\s-]?\p{Nd}{3}'),
+  _u(r'(?<!\p{Nd})0[167]\p{Nd}{2}[\s-]?\p{Nd}{3}[\s-]?\p{Nd}{3}(?!\p{Nd})'),
+  _u(r'\p{Nd}(?:[\s-]?\p{Nd}){8,}'),
 ];
 
 /// What is wrong with a banner [text] under the server's text rules:
-/// `price`, `contact`, or null.
+/// `price` (checked first, as the server does), `contact`, or null.
 String? bannerTextProblem(String text) {
-  final t = text.replaceAll(RegExp(r'\s+'), ' ').trim();
+  final t = normaliseBannerText(text);
   if (t.isEmpty) return null;
   if (_pricePatterns.any((re) => re.hasMatch(t))) return 'price';
   if (_contactPatterns.any((re) => re.hasMatch(t))) return 'contact';

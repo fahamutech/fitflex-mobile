@@ -37,6 +37,7 @@ Map<String, dynamic> _banner(
   String id,
   String status, {
   String? statusReason,
+  String? statusReasonNote,
   bool endedByFitflex = false,
   List<String>? actions,
   String startsAt = '2026-10-25T06:00:00Z',
@@ -76,7 +77,10 @@ Map<String, dynamic> _banner(
   'startsAt': startsAt,
   'endsAt': endsAt,
   'expiresAt': status == 'pending_approval' ? '2026-10-25T06:00:00Z' : null,
+  // Revision 2: statusReason is the code, the words are in the note.
   'statusReason': statusReason,
+  'statusReasonNote': statusReasonNote,
+  'ctaKey': target['type'] == 'vendor_store' ? 'visit_store' : 'view_product',
   'endedByFitflex': endedByFitflex,
   'allowedActions':
       actions ??
@@ -99,6 +103,21 @@ Map<String, dynamic> _list(
   'nextCursor': null,
   'vendor': {'canPropose': canPropose, 'reason': reason},
   'proposalExpiryDays': 14,
+  'openProposals': {'open': items.length, 'max': 10},
+  'confirmation': _confirmation,
+};
+
+const _confirmation = {
+  'version': '2026-10-20.draft1',
+  'status': 'draft_pending_counsel',
+  'rights': {
+    'en': 'SERVER rights text',
+    'sw': 'Maandishi ya haki kutoka SERVER',
+  },
+  'models': {
+    'en': 'SERVER models text',
+    'sw': 'Maandishi ya wanamitindo kutoka SERVER',
+  },
 };
 
 final _products = [
@@ -298,7 +317,12 @@ void main() {
         api,
         banners: [
           _banner('b1', 'pending_approval'),
-          _banner('b2', 'rejected', statusReason: 'Photo is blurry'),
+          _banner(
+            'b2',
+            'rejected',
+            statusReason: 'image',
+            statusReasonNote: 'Photo is blurry',
+          ),
           _banner('b3', 'approved'),
           _banner(
             'b4',
@@ -334,7 +358,11 @@ void main() {
       expect(status('b3'), 'Scheduled');
       expect(status('b4'), 'Live');
       expect(status('b6'), 'Expired');
-      expect(find.text('Reason: Photo is blurry'), findsOneWidget);
+      // The code's label in the user's language, then FitFlex's note.
+      expect(
+        find.text('Reason: Image quality. Photo is blurry'),
+        findsOneWidget,
+      );
       // The server's expiresAt, in Tanzania time (06:00Z = 09:00 EAT).
       expect(
         _txt(tester, _key('merch-line-b1')),
@@ -466,7 +494,8 @@ void main() {
           _banner(
             'b7',
             'ended',
-            statusReason: 'Wrong product photo',
+            statusReason: 'ended_by_fitflex',
+            statusReasonNote: 'Wrong product photo',
             endedByFitflex: true,
           ),
         ],
@@ -528,7 +557,12 @@ void main() {
         api,
         banners: [
           _banner('b1', 'pending_approval'),
-          _banner('b2', 'rejected', statusReason: 'Picha haieleweki vizuri'),
+          _banner(
+            'b2',
+            'rejected',
+            statusReason: 'other',
+            statusReasonNote: 'Picha haieleweki vizuri',
+          ),
         ],
       );
       await _pumpPage(tester, api, lang: 'sw', scale: 1.3);
@@ -599,7 +633,7 @@ void main() {
       await _openNewForm(tester);
       await _type(tester, 'headlineLead', 'en', 'Only TSh 50,000');
       await _type(tester, 'headlineLead', 'sw', 'Punguzo 20%');
-      await _type(tester, 'headlineAccent', 'en', 'call 0712 345 678');
+      await _type(tester, 'headlineAccent', 'en', 'follow @dukalaasha');
       await _type(tester, 'headlineAccent', 'sw', 'www.duka.co.tz');
       await _send(tester);
       final noPrices = host.tr('merch.banner.noPrices');
@@ -642,7 +676,32 @@ void main() {
       ]) {
         expect(bannerTextProblem(bad), 'price', reason: bad);
       }
-      for (final bad in ['Call +255 712 345 678', 'duka.com', 'https://x.y']) {
+      // Revision 2 (functions#227 5ff99b1): any 4+ digit number (years
+      // too), discount words, any percent sign, fullwidth forms, format
+      // characters, any script's digits.
+      for (final bad in [
+        'Since 2019',
+        'Since ٢٠١٩',
+        'Nusu bei leo',
+        'Bure kabisa',
+        'Big discount',
+        'Elfu tano tu',
+        '２０％ off',
+        '2\u200B0 percent',
+        'Only 5000/-',
+        'Kshs 200',
+      ]) {
+        expect(bannerTextProblem(bad), 'price', reason: bad);
+      }
+      for (final bad in [
+        'Call +255 712 345 678',
+        'duka.com',
+        'https://x.y',
+        'Follow @dukalaasha',
+        'duka dot com',
+        'mazoezi.fit',
+        'duka.co.ke',
+      ]) {
         expect(bannerTextProblem(bad), 'contact', reason: bad);
       }
       for (final ok in [
@@ -650,7 +709,6 @@ void main() {
         'Recover faster',
         'Mazoezi 3 kwa wiki',
         'Buy 2, get 1',
-        'Since 2019',
       ]) {
         expect(bannerTextProblem(ok), isNull, reason: ok);
       }
@@ -776,7 +834,8 @@ void main() {
         'imageAlt': {'en': 'A blue foam roller', 'sw': 'Roli ya povu ya bluu'},
         'headlineLead': {'en': 'Recover', 'sw': 'Pona'},
         'headlineAccent': {'en': 'faster', 'sw': 'haraka'},
-        // The button text was not changed: the server's default is used.
+        // The button for the target (vendors may send no other).
+        'ctaKey': 'view_product',
         'target': {'type': 'product', 'value': 'p1'},
         'audienceRoles': ['member', 'trainer', 'owner'],
         // Tomorrow 11:00 Tanzania time, and a week later.
@@ -786,7 +845,12 @@ void main() {
       expect(api.only('POST', '/vendor/shop-banners/b9/image').body, {
         'multipart': true,
         'bytes': greaterThan(2000),
-        'fields': {'people': 'none', 'rightsConfirmed': 'true'},
+        'fields': {
+          'people': 'none',
+          'rightsConfirmed': 'true',
+          // The version of the texts shown (from the list answer).
+          'confirmationVersion': '2026-10-20.draft1',
+        },
       });
       api.only('POST', '/vendor/shop-banners/b9/submit');
       expect(
@@ -884,6 +948,8 @@ void main() {
         await tapVisible(tester, _key('merch-people-product_models'));
         await tapVisible(tester, _key('merch-check-rights'));
         await tapVisible(tester, _key('merch-check-models'));
+        await typeInto(tester, _key('merch-consent-ref'), 'MR-2026-014');
+        await typeInto(tester, _key('merch-licence-ref'), 'own shoot');
         api.on('PATCH /vendor/shop-banners/b1', {
           'banner': _banner('b1', 'pending_approval'),
         });
@@ -895,6 +961,9 @@ void main() {
             'people': 'product_models',
             'rightsConfirmed': 'true',
             'peopleConfirmed': 'true',
+            'confirmationVersion': '2026-10-20.draft1',
+            'consentRef': 'MR-2026-014',
+            'licenceRef': 'own shoot',
           },
         );
       },
@@ -930,7 +999,7 @@ void main() {
         'price_claim_in_text',
         422,
         'subline.sw',
-        'Banners can\'t show prices or discounts. Use a flash sale for a deal.',
+        'Banners can\'t show prices, discounts or numbers of 4 or more digits. Use a flash sale for a deal.',
       ),
       (
         'missing_translation',
@@ -942,7 +1011,7 @@ void main() {
         'contact_in_text',
         422,
         'headlineLead.en',
-        'Remove links and phone numbers.',
+        'Remove links, @handles and phone numbers.',
       ),
       (
         'headline_too_long',
@@ -1095,7 +1164,12 @@ void main() {
         api,
         banners: [
           for (var i = 0; i < 8; i++) _banner('p$i', 'pending_approval'),
-          _banner('b7', 'rejected', statusReason: 'Photo is blurry'),
+          _banner(
+            'b7',
+            'rejected',
+            statusReason: 'image',
+            statusReasonNote: 'Photo is blurry',
+          ),
         ],
       );
       await pumpPage(
@@ -1228,4 +1302,205 @@ void main() {
       });
     }
   });
+
+  group('contract revision 2 (functions#227 5ff99b1)', () {
+    apiTest('the button is the one for the target; not chosen, not typed', (
+      tester,
+      api,
+    ) async {
+      _seedPage(api);
+      await _pumpPage(tester, api);
+      await _openNewForm(tester);
+      expect(_txt(tester, _key('merch-button-label')), 'Button: View product');
+      expect(_key('merch-cta-shop_now'), findsNothing);
+      await tapVisible(tester, _key('merch-target-vendor_store'));
+      expect(_txt(tester, _key('merch-button-label')), 'Button: Visit store');
+    });
+
+    for (final code in ['invalid_cta_key', 'cta_label_not_allowed']) {
+      apiTest('422 $code → under the button', (tester, api) async {
+        _seedPage(api, banners: [_banner('b1', 'pending_approval')]);
+        final host = await _pumpPage(tester, api);
+        await tapVisible(tester, _key('merch-edit-b1'));
+        api.fail('PATCH /vendor/shop-banners/b1', 422, {
+          'error': code,
+          'field': 'ctaKey',
+          'allowed': ['view_product'],
+        });
+        await _send(tester);
+        expect(
+          _txt(tester, _key('merch-error-cta')),
+          host.tr('merch.banner.ctaNotAllowed'),
+        );
+      });
+    }
+
+    apiTest('the confirmation texts come from the server, marked draft', (
+      tester,
+      api,
+    ) async {
+      _seedPage(api);
+      final host = await _pumpPage(tester, api);
+      await _openNewForm(tester);
+      debugBannerImagePicker = () async => _image();
+      await tapVisible(tester, _key('merch-pick-image'));
+      await tapVisible(tester, _key('merch-people-product_models'));
+      expect(find.text('SERVER rights text'), findsOneWidget);
+      expect(find.text('SERVER models text'), findsOneWidget);
+      expect(
+        _txt(tester, _key('merch-confirm-draft')),
+        host.tr('merch.banner.confirmDraft'),
+      );
+      // Models need the release reference.
+      await _send(tester);
+      expect(
+        _errorText2(tester, 'merch-consent-ref'),
+        host.tr('merch.banner.consentRequired'),
+      );
+    });
+
+    apiTest('confirmation texts in Swahili', (tester, api) async {
+      _seedPage(api);
+      await _pumpPage(tester, api, lang: 'sw');
+      await _openNewForm(tester);
+      debugBannerImagePicker = () async => _image();
+      await tapVisible(tester, _key('merch-pick-image'));
+      expect(find.text('Maandishi ya haki kutoka SERVER'), findsOneWidget);
+    });
+
+    apiTest('400 confirmation_version_mismatch → new texts, tick again', (
+      tester,
+      api,
+    ) async {
+      _seedPage(api, banners: [_banner('b1', 'pending_approval')]);
+      final host = await _pumpPage(tester, api);
+      await tapVisible(tester, _key('merch-edit-b1'));
+      debugBannerImagePicker = () async => _image();
+      await tapVisible(tester, _key('merch-pick-image'));
+      await tapVisible(tester, _key('merch-people-none'));
+      await tapVisible(tester, _key('merch-check-rights'));
+      api.on('PATCH /vendor/shop-banners/b1', {
+        'banner': _banner('b1', 'pending_approval'),
+      });
+      api.fail('POST /vendor/shop-banners/b1/image', 400, {
+        'error': 'confirmation_version_mismatch',
+        'field': 'confirmationVersion',
+        'current': '2026-11-01.v2',
+      });
+      api.on('GET /vendor/shop-banners', {
+        ..._list(const []),
+        'confirmation': {
+          'version': '2026-11-01.v2',
+          'status': 'final',
+          'rights': {'en': 'NEW rights text', 'sw': 'Haki mpya'},
+        },
+      });
+      await _send(tester);
+      expect(find.text('NEW rights text'), findsOneWidget);
+      expect(_key('merch-confirm-draft'), findsNothing);
+      expect(
+        _txt(tester, _key('merch-error-rights')),
+        host.tr('merch.banner.confirmChanged'),
+      );
+      final check = tester.widget<CheckboxListTile>(_key('merch-check-rights'));
+      expect(check.value, isFalse);
+      // Ticked again: the new version goes with the photo.
+      api.heal('POST /vendor/shop-banners/b1/image');
+      api.on('POST /vendor/shop-banners/b1/image', {
+        'banner': _banner('b1', 'pending_approval'),
+      });
+      api.clear();
+      await tapVisible(tester, _key('merch-check-rights'));
+      await _send(tester);
+      expect(
+        ((api.only('POST', '/vendor/shop-banners/b1/image').body
+                as Map)['fields']
+            as Map)['confirmationVersion'],
+        '2026-11-01.v2',
+      );
+    });
+
+    apiTest('400 consent_reference_required → under the reference', (
+      tester,
+      api,
+    ) async {
+      _seedPage(api, banners: [_banner('b1', 'pending_approval')]);
+      final host = await _pumpPage(tester, api);
+      await tapVisible(tester, _key('merch-edit-b1'));
+      debugBannerImagePicker = () async => _image();
+      await tapVisible(tester, _key('merch-pick-image'));
+      await tapVisible(tester, _key('merch-people-product_models'));
+      await tapVisible(tester, _key('merch-check-rights'));
+      await tapVisible(tester, _key('merch-check-models'));
+      await typeInto(tester, _key('merch-consent-ref'), 'x');
+      api.on('PATCH /vendor/shop-banners/b1', {
+        'banner': _banner('b1', 'pending_approval'),
+      });
+      api.fail('POST /vendor/shop-banners/b1/image', 400, {
+        'error': 'consent_reference_required',
+        'field': 'consentRef',
+      });
+      await _send(tester);
+      expect(
+        _errorText2(tester, 'merch-consent-ref'),
+        host.tr('merch.banner.consentRequired'),
+      );
+    });
+
+    apiTest('openProposals: "x of y open"; Propose off at the limit', (
+      tester,
+      api,
+    ) async {
+      _seedPage(api);
+      api.on('GET /vendor/shop-banners', {
+        ..._list([_banner('b1', 'pending_approval')]),
+        'openProposals': {'open': 10, 'max': 10},
+      });
+      final host = await _pumpPage(tester, api);
+      expect(isEnabled(tester, _key('merch-propose')), isFalse);
+      expect(
+        _txt(tester, _key('merch-open-count')),
+        host
+            .tr('merch.openFull')
+            .replaceAll('{open}', '10')
+            .replaceAll('{max}', '10'),
+      );
+    });
+
+    apiTest('openProposals under the limit: count shown, Propose on', (
+      tester,
+      api,
+    ) async {
+      _seedPage(api, banners: [_banner('b1', 'pending_approval')]);
+      await _pumpPage(tester, api);
+      expect(isEnabled(tester, _key('merch-propose')), isTrue);
+      expect(_txt(tester, _key('merch-open-count')), '1 of 10 open proposals');
+    });
+
+    test('statusReason is the code; the note is separate', () {
+      final b = VendorBanner.fromJson(
+        _banner(
+          'b2',
+          'rejected',
+          statusReason: 'claim',
+          statusReasonNote: 'Says "best in Dar"',
+        ),
+      );
+      expect(b.reasonCode, 'claim');
+      expect(b.reasonNote, 'Says "best in Dar"');
+      expect(b.rejectLabelKey, 'merch.reject.claim');
+      expect(b.ctaKey, 'view_product');
+    });
+  });
 }
+
+/// The error under a text field found by its key.
+String? _errorText2(WidgetTester tester, String key) => tester
+    .widget<TextField>(
+      find.descendant(
+        of: find.byKey(Key(key)),
+        matching: find.byType(TextField),
+      ),
+    )
+    .decoration
+    ?.errorText;

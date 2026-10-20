@@ -64,6 +64,7 @@ class VendorBannerFormPage extends StatefulWidget {
     required this.products,
     required this.vendorId,
     required this.businessName,
+    this.confirmation,
     this.now,
   });
 
@@ -79,6 +80,10 @@ class VendorBannerFormPage extends StatefulWidget {
   /// The store a "My store" banner links to.
   final String vendorId;
   final String businessName;
+
+  /// The confirmation texts and version from the list answer. Null from
+  /// an older server: the app's own texts, and no version is sent.
+  final BannerConfirmation? confirmation;
 
   /// The clock (tests).
   final DateTime Function()? now;
@@ -113,6 +118,14 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
   String _existingPreview = '';
   bool _hasExistingImage = false;
   Set<String> _audience = {...bannerAudiences};
+
+  /// The model release and licence references for a newly picked photo.
+  final _consentRef = TextEditingController();
+  final _licenceRef = TextEditingController();
+  late BannerConfirmation? _confirmation = widget.confirmation;
+
+  /// The button is the one for the target (vendors may send no other).
+  String get _ctaKey => defaultCtaKey(_targetType);
   String? _people;
   bool _rights = false;
   bool _models = false;
@@ -182,6 +195,8 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
 
   @override
   void dispose() {
+    _consentRef.dispose();
+    _licenceRef.dispose();
     for (final m in _text.values) {
       for (final c in m.values) {
         c.dispose();
@@ -228,6 +243,19 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
       if (_people == 'product_models' && !_models) {
         out['models'] = context.tr('merch.confirmRequired');
       }
+      if (_people == 'product_models' && _consentRef.text.trim().isEmpty) {
+        out['consentRef'] = context.tr('merch.banner.consentRequired');
+      }
+      for (final (key, c) in [
+        ('consentRef', _consentRef),
+        ('licenceRef', _licenceRef),
+      ]) {
+        if (c.text.trim().length > bannerRefMax) {
+          out[key] = context
+              .tr('merch.field.tooLong')
+              .replaceAll('{n}', '$bannerRefMax');
+        }
+      }
     }
     for (final f in _formFields) {
       final optional = f == 'subline';
@@ -247,7 +275,7 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
           }
           continue;
         }
-        final problem = f == 'imageAlt' ? null : bannerTextProblem(value);
+        final problem = bannerTextProblem(value);
         if (problem == 'price') {
           out[key] = context.tr('merch.banner.noPrices');
           continue;
@@ -337,8 +365,8 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
       // An emptied subline is cleared on the server (null); a new banner
       // without one leaves it out.
       if (json('subline') != null || patch) 'subline': json('subline'),
-      // No button text: vendors cannot type one (spec DD-P2-1); the server
-      // uses the fixed button for the target (View product / Visit store).
+      // A button from the fixed list (spec DD-P2-1); never typed text.
+      'ctaKey': _ctaKey,
       'target': {
         'type': _targetType,
         'value': _targetType == 'vendor_store' ? widget.vendorId : _productId,
@@ -359,6 +387,8 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
       'people',
       'rights',
       'models',
+      'consentRef',
+      'licenceRef',
       'imageAlt.en',
       'imageAlt.sw',
       'headlineLead.en',
@@ -368,6 +398,7 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
       'subline.en',
       'subline.sw',
       'target',
+      'cta',
       'audience',
       'startsAt',
       'endsAt',
@@ -460,6 +491,15 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
         put('target', context.tr(targetIneligibleKey(body)));
       case 'target_not_owned' || 'target_type_not_allowed':
         put('target', context.tr('merch.banner.targetNotOwned'));
+      case 'cta_label_not_allowed' || 'invalid_cta_key':
+        put('cta', context.tr('merch.banner.ctaNotAllowed'));
+      case 'consent_reference_required':
+        put('consentRef', context.tr('merch.banner.consentRequired'));
+      case 'invalid_reference':
+        put(
+          name == 'licenceRef' ? 'licenceRef' : 'consentRef',
+          context.tr('merch.field.tooLong').replaceAll('{n}', '$bannerRefMax'),
+        );
       case 'audience_required':
         put('audience', context.tr('merch.banner.pickAudience'));
       case 'image_required':
@@ -561,6 +601,11 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
           people: _people ?? 'none',
           rightsConfirmed: _rights,
           peopleConfirmed: _people == 'product_models' && _models,
+          confirmationVersion: _confirmation?.version,
+          consentRef: _people == 'product_models'
+              ? _consentRef.text.trim()
+              : null,
+          licenceRef: _licenceRef.text.trim(),
         );
         _status = _statusOf(out) ?? _status;
         final view = VendorBanner.fromJson(out);
@@ -595,6 +640,18 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
         messenger.error(locale.t(account));
         return;
       }
+      if (e.code == 'confirmation_version_mismatch') {
+        // The wording changed: fetch it, untick, ask again.
+        await _reloadConfirmation();
+        if (!mounted) return;
+        setState(() {
+          _rights = false;
+          _models = false;
+          _serverErrors['rights'] = locale.t('merch.banner.confirmChanged');
+        });
+        _focusFirst(const ['rights']);
+        return;
+      }
       if (_serverFieldError(e)) {
         setState(() {});
         _focusFirst(_serverErrors.keys);
@@ -620,6 +677,17 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
       } else {
         messenger.error(locale.t('merch.saveFailed'));
       }
+    }
+  }
+
+  /// The current confirmation texts (one list item is enough).
+  Future<void> _reloadConfirmation() async {
+    try {
+      final out = await AppScope.of(context).api.vendorShopBanners(limit: 1);
+      final fresh = BannerConfirmation.fromJson(out['confirmation']);
+      if (fresh != null && mounted) setState(() => _confirmation = fresh);
+    } catch (_) {
+      // Kept as it was; the next send says so again.
     }
   }
 
@@ -886,13 +954,25 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
       const SizedBox(height: FFTokens.spacingSm),
     ],
     _error('people'),
+    if (_confirmation?.draft == true)
+      Padding(
+        padding: const EdgeInsets.only(top: FFTokens.spacingSm),
+        child: Text(
+          context.tr('merch.banner.confirmDraft'),
+          key: const Key('merch-confirm-draft'),
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ),
     KeyedSubtree(
       key: _anchor('rights'),
       child: _check(
         'rights',
-        context.tr('merch.banner.rights'),
+        _serverText(_confirmation?.rights, 'merch.banner.rights'),
         _rights,
-        (v) => setState(() => _rights = v),
+        (v) => setState(() {
+          _rights = v;
+          _serverErrors.remove('rights');
+        }),
       ),
     ),
     _error('rights'),
@@ -901,14 +981,54 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
         key: _anchor('models'),
         child: _check(
           'models',
-          context.tr('merch.banner.modelsConfirm'),
+          _serverText(_confirmation?.models, 'merch.banner.modelsConfirm'),
           _models,
           (v) => setState(() => _models = v),
         ),
       ),
       _error('models'),
+      KeyedSubtree(
+        key: _anchor('consentRef'),
+        child: FFTextField(
+          key: const Key('merch-consent-ref'),
+          controller: _consentRef,
+          focusNode: _node('consentRef'),
+          label: context.tr('merch.banner.consentRef'),
+          helperText: context.tr('merch.banner.consentRefHelp'),
+          errorText: _errorFor('consentRef'),
+          enabled: !_busy,
+          onChanged: (_) => setState(() {
+            _dirty = true;
+            _serverErrors.remove('consentRef');
+          }),
+        ),
+      ),
+      const SizedBox(height: FFTokens.spacingSm),
     ],
+    KeyedSubtree(
+      key: _anchor('licenceRef'),
+      child: FFTextField(
+        key: const Key('merch-licence-ref'),
+        controller: _licenceRef,
+        focusNode: _node('licenceRef'),
+        label: context.tr('merch.banner.licenceRef'),
+        helperText: context.tr('merch.banner.licenceRefHelp'),
+        errorText: _errorFor('licenceRef'),
+        enabled: !_busy,
+        onChanged: (_) => setState(() {
+          _dirty = true;
+          _serverErrors.remove('licenceRef');
+        }),
+      ),
+    ),
   ];
+
+  /// A text the server sent (in the user's language), else the app's own.
+  String _serverText(ShopText? text, String fallbackKey) {
+    final lang = FFLocaleScope.of(context).locale.languageCode;
+    final v = text?.of(lang).trim() ?? '';
+    return v.isEmpty ? context.tr(fallbackKey) : v;
+  }
 
   Widget _check(
     String key,
@@ -932,9 +1052,6 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
 
   Widget _targetField(BuildContext context) {
     final eligible = _eligible;
-    final buttonKey = _targetType == 'vendor_store'
-        ? 'shop.banner.cta.visitStore'
-        : 'shop.banner.cta.viewProduct';
     return KeyedSubtree(
       key: _anchor('target'),
       child: Column(
@@ -994,22 +1111,31 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
                       }),
                     ),
             ),
-          Padding(
-            padding: const EdgeInsets.only(top: FFTokens.spacingSm),
-            child: Text(
-              context
-                  .tr('merch.banner.button')
-                  .replaceAll('{label}', context.tr(buttonKey)),
-              key: const Key('merch-button-label'),
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ),
           if (_targetType == 'product' || _serverErrors.containsKey('target'))
             _error('target'),
         ],
       ),
     );
   }
+
+  /// The button, from the fixed list; the target's own is picked until the
+  /// vendor chooses another. Shows the chosen words.
+  Widget _ctaField(BuildContext context) => KeyedSubtree(
+    key: _anchor('cta'),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _label(context, context.tr('merch.banner.ctaTitle')),
+        Text(
+          context
+              .tr('merch.banner.button')
+              .replaceAll('{label}', context.tr(bannerCtaKeys[_ctaKey]!)),
+          key: const Key('merch-button-label'),
+        ),
+        _error('cta'),
+      ],
+    ),
+  );
 
   /// Who sees it: Members, Trainers, Gym owners (at least one).
   Widget _audienceField(BuildContext context) => KeyedSubtree(
@@ -1097,8 +1223,10 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
       headlineLead: lead ?? ShopText(' ', ' '),
       headlineAccent: one('headlineAccent'),
       subline: one('subline'),
-      // The fixed button for the target (the carousel's default).
-      ctaLabel: null,
+      ctaLabel: ShopText(
+        FFLocale().tIn(lang, bannerCtaKeys[_ctaKey]!),
+        FFLocale().tIn(lang, bannerCtaKeys[_ctaKey]!),
+      ),
       target: ShopBannerTarget(_targetType, ''),
       origin: 'vendor',
       vendorName: widget.businessName.isEmpty ? ' ' : widget.businessName,
@@ -1193,6 +1321,7 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
           ),
           _pair('subline', context.tr('merch.banner.subline')),
           _targetField(context),
+          _ctaField(context),
           _audienceField(context),
           _dateField(context, true),
           _dateField(context, false),

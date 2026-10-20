@@ -2072,6 +2072,9 @@ class ApiClient {
     required String people,
     required bool rightsConfirmed,
     bool peopleConfirmed = false,
+    String? confirmationVersion,
+    String? consentRef,
+    String? licenceRef,
   }) async {
     final uri = Uri.parse('$baseUrl/vendor/shop-banners/${_seg(id)}/image');
     final request = http.MultipartRequest('POST', uri)
@@ -2081,6 +2084,15 @@ class ApiClient {
       ..fields['people'] = people;
     if (rightsConfirmed) request.fields['rightsConfirmed'] = 'true';
     if (peopleConfirmed) request.fields['peopleConfirmed'] = 'true';
+    if (confirmationVersion != null && confirmationVersion.isNotEmpty) {
+      request.fields['confirmationVersion'] = confirmationVersion;
+    }
+    if (consentRef != null && consentRef.isNotEmpty) {
+      request.fields['consentRef'] = consentRef;
+    }
+    if (licenceRef != null && licenceRef.isNotEmpty) {
+      request.fields['licenceRef'] = licenceRef;
+    }
     request.headers['x-fitflex-client'] = kIdentityV2Client;
     if (_token != null) request.headers['authorization'] = 'Bearer $_token';
     _log.multipart('POST', uri, bytes.length);

@@ -56,6 +56,14 @@ class _VendorBannersPageState extends State<VendorBannersPage> {
   bool _canPropose = true;
   String? _cannotReason;
 
+  /// `openProposals {open, max}`: Propose is off at the limit.
+  int? _open;
+  int? _maxOpen;
+  bool get _atLimit => _open != null && _maxOpen != null && _open! >= _maxOpen!;
+
+  /// The confirmation texts and version the form shows and sends.
+  BannerConfirmation? _confirmation;
+
   DateTime get _now => (widget.now ?? DateTime.now)().toUtc();
 
   bool get _pendingVendor {
@@ -107,6 +115,12 @@ class _VendorBannersPageState extends State<VendorBannersPage> {
       final vendor = list['vendor'] is Map ? list['vendor'] as Map : const {};
       setState(() {
         _canPropose = vendor['canPropose'] != false;
+        final open = list['openProposals'] is Map
+            ? list['openProposals'] as Map
+            : const {};
+        _open = open['open'] is num ? (open['open'] as num).toInt() : null;
+        _maxOpen = open['max'] is num ? (open['max'] as num).toInt() : null;
+        _confirmation = BannerConfirmation.fromJson(list['confirmation']);
         _cannotReason = vendor['reason']?.toString();
         _banners = (list['items'] is List ? list['items'] as List : const [])
             .whereType<Map>()
@@ -188,6 +202,7 @@ class _VendorBannersPageState extends State<VendorBannersPage> {
           products: _products,
           vendorId: _vendorId,
           businessName: _businessName,
+          confirmation: _confirmation,
           now: widget.now,
         ),
       ),
@@ -381,12 +396,28 @@ class _VendorBannersPageState extends State<VendorBannersPage> {
       ]);
     }
     final Widget propose = _canPropose
-        ? FFButton(
-            key: const Key('merch-propose'),
-            label: context.tr('merch.banners.propose'),
-            icon: Icons.add,
-            fullWidth: true,
-            onPressed: () => _openForm(),
+        ? Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              FFButton(
+                key: const Key('merch-propose'),
+                label: context.tr('merch.banners.propose'),
+                icon: Icons.add,
+                fullWidth: true,
+                onPressed: _atLimit ? null : () => _openForm(),
+              ),
+              if (_open != null && _maxOpen != null) ...[
+                const SizedBox(height: FFTokens.spacingXs),
+                Text(
+                  context
+                      .tr(_atLimit ? 'merch.openFull' : 'merch.openCount')
+                      .replaceAll('{open}', '$_open')
+                      .replaceAll('{max}', '$_maxOpen'),
+                  key: const Key('merch-open-count'),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ],
           )
         : FFAlert(
             key: const Key('merch-cannot-propose'),
@@ -481,14 +512,26 @@ class _VendorBannersPageState extends State<VendorBannersPage> {
       case 'live':
         return fill('merch.line.ends', 'date', _when(b.endsAt));
       case 'ended':
-        if (b.endedByFitflex) {
-          return fill('merch.line.endedByFitflex', 'reason', b.reason ?? '-');
+        if (b.endedByFitflex || b.reasonCode == 'ended_by_fitflex') {
+          return fill(
+            'merch.line.endedByFitflex',
+            'reason',
+            b.reasonNote ?? '-',
+          );
         }
         return fill('merch.line.endedOn', 'date', _when(b.endsAt));
       case 'rejected':
-        return b.reason == null
+        // The reason's label in the user's language, then staff's note.
+        final label = b.rejectLabelKey == null
             ? null
-            : fill('merch.line.reason', 'reason', b.reason!);
+            : context.tr(b.rejectLabelKey!);
+        final reason = [
+          ?label,
+          ?b.reasonNote,
+        ].where((s) => s.trim().isNotEmpty).join('. ');
+        return reason.isEmpty
+            ? null
+            : fill('merch.line.reason', 'reason', reason);
       case 'expired':
         return context.tr('merch.line.notReviewed');
       case 'withdrawn':
