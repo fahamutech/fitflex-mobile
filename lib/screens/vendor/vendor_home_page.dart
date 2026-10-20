@@ -163,14 +163,39 @@ class _VendorHomePageState extends State<VendorHomePage> {
   /// reports `merch.banners: true` and this person may work on products.
   bool get _merch => _tools.banners && _can('products');
 
+  /// How many of this vendor's banners wait for approval (the entry's
+  /// subtitle); null until known or when it could not be read.
+  int? _merchWaiting;
+
+  Future<void> _loadMerchWaiting() async {
+    try {
+      final out = await AppScope.of(
+        context,
+      ).api.vendorShopBanners(limit: 1, status: 'pending_approval');
+      final total = out['total'];
+      if (mounted) {
+        setState(() => _merchWaiting = total is num ? total.toInt() : null);
+      }
+    } catch (_) {
+      // The plain subtitle stays.
+    }
+  }
+
   Widget _merchEntry() => Padding(
     padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
     child: FFActionTile(
       key: const Key('vendor-merch-entry'),
       icon: Icons.campaign_outlined,
       title: context.tr('merch.entry.title'),
-      subtitle: context.tr('merch.entry.subtitle'),
-      onTap: () => context.push(AppRoutes.vendorMerch),
+      subtitle: (_merchWaiting ?? 0) > 0
+          ? context
+                .tr('merch.entry.waiting')
+                .replaceAll('{n}', '$_merchWaiting')
+          : context.tr('merch.entry.subtitle'),
+      onTap: () async {
+        await context.push(AppRoutes.vendorMerch);
+        if (mounted && _merch) unawaited(_loadMerchWaiting());
+      },
     ),
   );
 
@@ -458,6 +483,8 @@ class _VendorHomePageState extends State<VendorHomePage> {
       if (wanted != null && _sections.contains(wanted)) _tab = wanted;
     });
     unawaited(_loadVat(toolsNow));
+    // Promotions: how many banners wait for approval (the entry subtitle).
+    if (_merch) unawaited(_loadMerchWaiting());
     if (toolsNow.walkInSales) {
       _sales?.featureOn();
     } else {

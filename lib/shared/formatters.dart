@@ -90,6 +90,10 @@ String formatDate(
   return '${d.day} ${months[d.month - 1]} ${d.year}';
 }
 
+/// "19 Oct" (sw "19 Okt"): a day and month, no year.
+String formatDayMonth(DateTime d, {String locale = 'en'}) =>
+    '${d.day} ${(locale == 'sw' ? _monthsSw : _monthsEn)[d.month - 1]}';
+
 /// The Swahili word for the part of the day [hour] (0–23) falls in. Same
 /// rule as `swahiliDayPeriod` in the Swahili structural work (mobile#62).
 String _swDayPeriod(int hour) {

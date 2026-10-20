@@ -127,4 +127,13 @@ void main() {
     );
     expect(find.text('19 Okt 2026, 1:30 usiku'), findsOneWidget);
   });
+
+  // Shop banners QA round 1, item 17: inbox dates in the app's language.
+  test('formatDayMonth: day and month, Swahili months', () {
+    final d = DateTime(2026, 10, 19, 9, 30);
+    expect(formatDayMonth(d), '19 Oct');
+    expect(formatDayMonth(d, locale: 'sw'), '19 Okt');
+    expect(formatDayMonth(DateTime(2026, 3, 2), locale: 'sw'), '2 Mac');
+    expect(formatDayMonth(DateTime(2026, 8, 2), locale: 'sw'), '2 Ago');
+  });
 }

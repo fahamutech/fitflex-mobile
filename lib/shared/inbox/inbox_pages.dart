@@ -10,6 +10,7 @@ import '../../app_scope.dart';
 import '../api_error_message.dart';
 import '../components/components.dart';
 import '../design_tokens.dart';
+import '../formatters.dart';
 import '../friend_invites.dart';
 import '../i18n.dart';
 import 'inbox_controller.dart';
@@ -38,14 +39,19 @@ class InboxBellButton extends StatelessWidget {
   }
 }
 
-String _when(DateTime? at) {
+/// Today: the time; other days: day and month, in the app's language
+/// ("19 Okt" in Swahili).
+String _when(BuildContext context, DateTime? at) {
   if (at == null) return '';
   final now = DateTime.now();
   final sameDay =
       at.year == now.year && at.month == now.month && at.day == now.day;
   return sameDay
       ? DateFormat('HH:mm').format(at)
-      : DateFormat('d MMM').format(at);
+      : formatDayMonth(
+          at,
+          locale: FFLocaleScope.of(context).locale.languageCode,
+        );
 }
 
 /// Where a message's button goes, for the signed-in role: members,
@@ -289,7 +295,7 @@ class _MessageTile extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        _when(m.createdAt),
+                        _when(context, m.createdAt),
                         style: theme.textTheme.labelSmall,
                       ),
                     ],

@@ -145,6 +145,24 @@ void main() {
   group('no banners: the home is unchanged', () {
     for (final (name, banners) in [
       ('banners absent (SHOP_BANNERS off)', null),
+    ]) {
+      apiTest(name, (tester, api) async {
+        _seed(api, _home(banners: banners));
+        await _pump(tester, api);
+        expect(_key('shop-home'), findsOneWidget);
+        expect(_key('shop-banners'), findsNothing);
+        expect(_key('shop-fallback-slide'), findsNothing);
+        expect(find.byType(FFPhotoHero), findsNothing);
+        // Categories come straight after the search row, as before.
+        final search = tester.getBottomLeft(_key('shop-home-search')).dy;
+        final categories = tester.getTopLeft(find.byType(ShopCategoryRow)).dy;
+        expect(categories - search, lessThan(40));
+      });
+    }
+  });
+
+  group('banners on, none live: the P1 fallback slide (S1-AC-15)', () {
+    for (final (name, banners) in [
       ('banners empty', <Object?>[]),
       (
         'only banners the app cannot use',
@@ -158,20 +176,31 @@ void main() {
         ],
       ),
     ]) {
-      apiTest(name, (tester, api) async {
+      apiTest('$name → the navy fallback slide, its button opens all', (
+        tester,
+        api,
+      ) async {
         _seed(api, _home(banners: banners));
-        await _pump(tester, api);
-        expect(_key('shop-home'), findsOneWidget);
+        final host = await _pump(tester, api);
         expect(_key('shop-banners'), findsNothing);
-        expect(find.byType(FFPhotoHero), findsNothing);
-        // Categories come straight after the search row, as before.
-        final search = tester.getBottomLeft(_key('shop-home-search')).dy;
-        final categories = tester.getTopLeft(find.byType(ShopCategoryRow)).dy;
-        expect(categories - search, lessThan(40));
+        expect(_key('shop-fallback-slide'), findsOneWidget);
+        expect(find.text(host.tr('shop.home.fallbackSub')), findsOneWidget);
+        // No photo, no prices.
+        final hero = tester.widget<FFPhotoHero>(find.byType(FFPhotoHero));
+        expect(hero.networkImage!.url, isEmpty);
+        expect(
+          find.descendant(
+            of: _key('shop-fallback-slide'),
+            matching: find.textContaining('TSh'),
+          ),
+          findsNothing,
+        );
+        await tapVisible(tester, _key('shop-fallback-cta'));
+        expect(_key('shop-home'), findsNothing);
       });
     }
 
-    apiTest('member band (PHOTO_HERO_UI) still shows when there are none', (
+    apiTest('member band (PHOTO_HERO_UI) shows instead; never both', (
       tester,
       api,
     ) async {
@@ -180,6 +209,7 @@ void main() {
       await _pump(tester, api, showHero: true);
       expect(_key('shop-hero'), findsOneWidget);
       expect(_key('shop-banners'), findsNothing);
+      expect(_key('shop-fallback-slide'), findsNothing);
     });
   });
 
@@ -664,6 +694,212 @@ void main() {
         ShopBannerTarget.fromJson({'type': 'flash_sale', 'value': 's'}),
         isNull,
       );
+    });
+  });
+
+  group('QA round 1 (design-QA + UAT)', () {
+    Rect rectOf(WidgetTester tester, String key) => tester.getRect(_key(key));
+
+    apiTest('#1 every slide fills the tallest height, text at the bottom '
+        '(mixed lengths, Swahili, 130%, 375)', (tester, api) async {
+      _seed(
+        api,
+        _home(
+          banners: [
+            _banner(
+              'short',
+              lead: 'Gear',
+              accent: 'up',
+              subline: null,
+              vendorName: 'Duka',
+            ),
+            _banner(
+              'long',
+              lead: 'Everything for your home gym and much more',
+              accent: 'this week only',
+              vendorName:
+                  'Kariakoo Wholesale Supplements & Fitness Gear Centre',
+            ),
+          ],
+        ),
+      );
+      await _pump(
+        tester,
+        api,
+        lang: 'sw',
+        scale: 1.3,
+        size: const Size(375, 900),
+      );
+      expect(tester.takeException(), isNull);
+      double slideBottomGap() {
+        final slide = rectOf(tester, 'shop-banner-slide-0').bottom;
+        final hero = tester.getRect(
+          find
+              .descendant(
+                of: find.byWidgetPredicate(
+                  (w) =>
+                      w is Semantics &&
+                      w.key is ValueKey &&
+                      '${(w.key as ValueKey).value}'.startsWith(
+                        'shop-banner-slide',
+                      ),
+                ),
+                matching: find.byKey(const Key('ff-hero-text-zone')),
+              )
+              .first,
+        );
+        return slide - hero.bottom;
+      }
+
+      final first = rectOf(tester, 'shop-banner-slide-0');
+      // The short slide's text zone ends at the slide's bottom edge.
+      expect(slideBottomGap(), lessThan(1));
+      await tester.tap(_key('shop-banner-next'));
+      await tester.pumpAndSettle();
+      final second = rectOf(tester, 'shop-banner-slide-1');
+      expect(second.height, closeTo(first.height, 0.5));
+      final textZone = tester.getRect(
+        find
+            .descendant(
+              of: _key('shop-banner-slide-1'),
+              matching: find.byKey(const Key('ff-hero-text-zone')),
+            )
+            .first,
+      );
+      expect(second.bottom - textZone.bottom, lessThan(1));
+    });
+
+    apiTest('#3 the banner button shows a focus ring on the photo', (
+      tester,
+      api,
+    ) async {
+      FocusManager.instance.highlightStrategy =
+          FocusHighlightStrategy.alwaysTraditional;
+      addTearDown(
+        () => FocusManager.instance.highlightStrategy =
+            FocusHighlightStrategy.automatic,
+      );
+      _seed(api, _home(banners: [_banner('b1'), _banner('b2')]));
+      await _pump(tester, api);
+      final button = tester.widget<FFButton>(_key('shop-banner-cta-b1'));
+      button.focusNode!.requestFocus();
+      await tester.pumpAndSettle();
+      expect(
+        find.ancestor(
+          of: _key('shop-banner-cta-b1'),
+          matching: find.byKey(const Key('shop-home-focus-ring')),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    apiTest('#13 dots on the photo (bottom right); wide: arrows inside the '
+        'photo edges', (tester, api) async {
+      _seed(api, _home(banners: [_banner('b1'), _banner('b2'), _banner('b3')]));
+      await _pump(tester, api);
+      final slide = rectOf(tester, 'shop-banner-slide-0');
+      final dots = rectOf(tester, 'shop-banner-dots');
+      expect(slide.contains(dots.center), isTrue);
+      expect(dots.right, greaterThan(slide.center.dx));
+      expect(dots.bottom, greaterThan(slide.center.dy));
+      // White on the scrim in the light theme (Volt only in dark).
+      final active = tester.widget<AnimatedContainer>(
+        find.descendant(
+          of: _key('shop-banner-dot-0'),
+          matching: find.byType(AnimatedContainer),
+        ),
+      );
+      expect((active.decoration! as BoxDecoration).color, Colors.white);
+      // Phones: Previous / Next under the photo.
+      expect(rectOf(tester, 'shop-banner-next').top, greaterThan(slide.bottom));
+
+      await _pump(tester, api, size: const Size(1280, 900));
+      final wide = rectOf(tester, 'shop-banner-slide-0');
+      for (final k in ['shop-banner-prev', 'shop-banner-next']) {
+        final r = rectOf(tester, k);
+        expect(wide.contains(r.center), isTrue, reason: k);
+        expect(r.width, greaterThanOrEqualTo(48));
+      }
+      expect(rectOf(tester, 'shop-banner-prev').left, lessThan(wide.left + 60));
+      expect(
+        rectOf(tester, 'shop-banner-next').right,
+        greaterThan(wide.right - 60),
+      );
+    });
+
+    apiTest('#14 the slide label has no doubled full stop', (
+      tester,
+      api,
+    ) async {
+      final handle = tester.ensureSemantics();
+      _seed(
+        api,
+        _home(banners: [_banner('b1', subline: 'New gear this week.')]),
+      );
+      await _pump(tester, api);
+      final label = tester.getSemantics(_key('shop-banner-slide-0')).label;
+      expect(label, contains('New gear this week. Banner 1 of 1'));
+      expect(label, isNot(contains('..')));
+      handle.dispose();
+    });
+
+    test('#14 sentences join once', () {
+      expect(
+        shopJoinSentences(['From Asha.', '', 'Big sale!', 'Banner 1 of 2']),
+        'From Asha. Big sale. Banner 1 of 2',
+      );
+    });
+
+    apiTest('#15 Back from a banner\'s target shows the same slide', (
+      tester,
+      api,
+    ) async {
+      _seed(
+        api,
+        _home(
+          banners: [
+            _banner('b1'),
+            _banner(
+              'b2',
+              vendorName: 'Mat House',
+              target: {'type': 'vendor_store', 'value': 'v2'},
+            ),
+            _banner('b3'),
+          ],
+        ),
+      );
+      await _pump(tester, api);
+      await tester.tap(_key('shop-banner-next'));
+      await tester.pumpAndSettle();
+      await tapVisible(tester, _key('shop-banner-cta-b2'));
+      expect(_key('shop-home'), findsNothing);
+      await tapVisible(tester, _key('shop-back-to-home'));
+      expect(_key('shop-banner-cta-b2'), findsOneWidget);
+    });
+
+    apiTest('#16 a refresh on a store list keeps the store-name heading', (
+      tester,
+      api,
+    ) async {
+      api.on('GET /shop/products', [
+        for (final p in _products)
+          {
+            ...p,
+            if (p['vendorId'] == 'v2') 'vendor': {'businessName': 'Mat House'},
+          },
+      ]);
+      api.on('GET /me/shop-orders', <dynamic>[]);
+      api.on('GET /shop/home', _home());
+      await pumpPage(
+        tester,
+        api,
+        const ShopBrowseBody(routePath: '/'),
+        user: _member,
+        size: const Size(420, 900),
+        initialLocation: '/?view=results&vendorId=v2',
+      );
+      expect(_key('shop-results-vendor'), findsOneWidget);
+      expect(find.text('Mat House'), findsOneWidget);
     });
   });
 }
