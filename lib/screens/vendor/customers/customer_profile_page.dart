@@ -4,6 +4,7 @@
 //
 // A-02: an app customer shows a name only — never phone, email or address,
 // even while one of their orders is inside its contact window.
+import '../../../shared/network/browser_online.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -20,6 +21,7 @@ import '../../../shared/shop_checkout.dart';
 import '../sales/receipt_data.dart' show eatDateTime;
 import '../sales/sales_widgets.dart';
 import '../stock/stock_options.dart';
+import '../sales/sale_models.dart' show pluralKey;
 import 'customer_models.dart';
 import 'customers_widgets.dart';
 import 'payment_sheets.dart';
@@ -56,7 +58,10 @@ class _Activity {
 class _CustomerProfilePageState extends State<CustomerProfilePage> {
   // No answer from the server on the last call: Record payment is greyed
   // out (a payment is never queued). Any answer, from any screen, clears it.
-  bool _offline = false;
+  bool _requestOffline = false;
+
+  /// Offline: a call got no answer, or (web) the browser says offline.
+  bool get _offline => _requestOffline || !BrowserOnline.instance.value;
   ApiClient? _api;
   Map<String, dynamic>? _customer;
   bool _loading = true;
@@ -78,24 +83,51 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
   @override
   void initState() {
     super.initState();
+    BrowserOnline.instance.addListener(_onBrowserOnline);
     WidgetsBinding.instance.addPostFrameCallback((_) => _start());
+  }
+
+  void _onBrowserOnline() {
+    if (mounted) setState(() {});
+  }
+
+  /// UAT D1: the same page shown for another customer (deep link or hash
+  /// change while a profile is open). Nothing of the old customer stays on
+  /// screen, and answers for the old one are dropped when they land.
+  @override
+  void didUpdateWidget(CustomerProfilePage old) {
+    super.didUpdateWidget(old);
+    if (old.customerId == widget.customerId) return;
+    setState(() {
+      _customer = null;
+      _loading = true;
+      _problem = CustomerLoadProblem.none;
+      _dup = widget.phoneDuplicate;
+      _tab = 'sales';
+      _hadCredit = false;
+      for (final k in _activity.keys.toList()) {
+        _activity[k] = _Activity();
+      }
+    });
+    if (_api != null) unawaited(_load());
   }
 
   @override
   void dispose() {
+    BrowserOnline.instance.removeListener(_onBrowserOnline);
     _api?.removeSuccessListener(_onAnswer);
     _heading.dispose();
     super.dispose();
   }
 
   void _onAnswer(String method, String path) {
-    if (_offline && mounted) setState(() => _offline = false);
+    if (_requestOffline && mounted) setState(() => _requestOffline = false);
   }
 
   /// Whether [e] means "no answer at all" (no connection).
   void _noteFailure(Object e) {
-    if (e is! ApiException && mounted && !_offline) {
-      setState(() => _offline = true);
+    if (e is! ApiException && mounted && !_requestOffline) {
+      setState(() => _requestOffline = true);
     }
   }
 
@@ -108,15 +140,16 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
   }
 
   Future<void> _load() async {
+    final id = _id;
     setState(() {
       _loading = true;
       _problem = CustomerLoadProblem.none;
     });
     try {
-      final res = await AppScope.of(context).api.vendorCustomer(_id);
+      final res = await AppScope.of(context).api.vendorCustomer(id);
       final c = res['customer'];
       if (c is! Map) throw ApiException(404, null);
-      if (!mounted) return;
+      if (!mounted || id != _id) return;
       final customer = Map<String, dynamic>.from(c);
       CustomerRepository.remember(
         context,
@@ -133,6 +166,7 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
       unawaited(_loadActivity(_tab));
       if (intOf(customer['owedTzs']) <= 0) unawaited(_checkCredit());
     } catch (e) {
+      if (!mounted || id != _id) return;
       _noteFailure(e);
       if (mounted && _customer != null) {
         // A refresh failed: keep what is shown (memory only).
@@ -150,18 +184,22 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
   }
 
   Future<void> _checkCredit() async {
+    final id = _id;
     try {
       final res = await AppScope.of(
         context,
-      ).api.vendorCustomerSales(_id, kind: 'credit', limit: 1);
+      ).api.vendorCustomerSales(id, kind: 'credit', limit: 1);
       final any = (res['sales'] as List? ?? []).isNotEmpty;
-      if (mounted && any != _hadCredit) setState(() => _hadCredit = any);
+      if (mounted && id == _id && any != _hadCredit) {
+        setState(() => _hadCredit = any);
+      }
     } catch (_) {
       // No "paid off" line; nothing else depends on it.
     }
   }
 
   Future<void> _loadActivity(String tab, {bool more = false}) async {
+    final id = _id;
     final a = _activity[tab]!;
     if (a.loading) return;
     setState(() {
@@ -173,17 +211,17 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
     try {
       final Map<String, dynamic> res = switch (tab) {
         'orders' => await api.vendorCustomerOrders(
-          _id,
+          id,
           limit: activityPageSize,
           cursor: cursor,
         ),
         'payments' => await api.vendorCustomerPayments(
-          _id,
+          id,
           limit: activityPageSize,
           cursor: cursor,
         ),
         _ => await api.vendorCustomerSales(
-          _id,
+          id,
           limit: activityPageSize,
           cursor: cursor,
         ),
@@ -197,7 +235,8 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
         for (final r in (res[key] as List? ?? []).whereType<Map>())
           Map<String, dynamic>.from(r),
       ];
-      if (!mounted) return;
+      // The page moved on to another customer: this list is stale.
+      if (!mounted || id != _id) return;
       setState(() {
         a.rows = more ? [...a.rows, ...rows] : rows;
         a.cursor = res['nextCursor']?.toString();
@@ -205,6 +244,7 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
         a.loaded = true;
       });
     } catch (e) {
+      if (!mounted || id != _id) return;
       _noteFailure(e);
       if (mounted) {
         setState(() {
@@ -768,7 +808,12 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
                               overdueBadge(
                                 context,
                                 label: fillIn(
-                                  context.tr('vendor.customers.daysOverdue'),
+                                  context.tr(
+                                    pluralKey(
+                                      'vendor.customers.daysOverdue',
+                                      s.daysOverdue,
+                                    ),
+                                  ),
                                   {'n': s.daysOverdue},
                                 ),
                               ),

@@ -15,6 +15,7 @@ import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
 import '../../../shared/i18n.dart';
 import '../../../shared/formatters.dart';
+import '../../../shared/network/browser_online.dart';
 import '../customers/customers_widgets.dart';
 import '../customers/payment_sheets.dart';
 import '../stock/stock_options.dart';
@@ -69,7 +70,18 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
   @override
   void initState() {
     super.initState();
+    BrowserOnline.instance.addListener(_onBrowserOnline);
     WidgetsBinding.instance.addPostFrameCallback((_) => _start());
+  }
+
+  void _onBrowserOnline() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    BrowserOnline.instance.removeListener(_onBrowserOnline);
+    super.dispose();
   }
 
   Future<void> _start() async {
@@ -374,7 +386,9 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
                             label: context.tr('vendor.pay.record'),
                             icon: Icons.payments_outlined,
                             visualDensity: VisualDensity.standard,
-                            onPressed: () => _recordPayment(data),
+                            onPressed: BrowserOnline.instance.value
+                                ? () => _recordPayment(data)
+                                : null,
                           ),
                         if (mayVoid)
                           FFButton(
@@ -387,6 +401,20 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
                           ),
                       ],
                     ),
+                    if (data.credit &&
+                        !data.voided &&
+                        data.balanceTzs > 0 &&
+                        _seesCustomers &&
+                        !BrowserOnline.instance.value)
+                      Semantics(
+                        container: true,
+                        liveRegion: true,
+                        child: Text(
+                          context.tr('vendor.pay.offline'),
+                          key: const Key('sale-detail-pay-offline'),
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
                   ],
                 ),
               ),

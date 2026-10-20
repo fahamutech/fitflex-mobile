@@ -219,6 +219,10 @@ class VendorOrderCard extends StatelessWidget {
   }
 
   String _buyerName(BuildContext context, Map<String, dynamic> buyer) {
+    // UAT D7: the buyer deleted their FitFlex account.
+    if (buyer['forgotten'] == true) {
+      return context.tr('vendor.customers.deletedMember');
+    }
     final name = buyer['displayName']?.toString().trim() ?? '';
     return name.isEmpty ? context.tr('vendor.orders.buyerUnnamed') : name;
   }

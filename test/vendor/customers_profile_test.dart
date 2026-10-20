@@ -13,6 +13,8 @@ import 'package:fitflexmobile/screens/vendor/customers/customer_profile_page.dar
 import 'package:fitflexmobile/screens/vendor/customers/payment_sheets.dart';
 import 'package:fitflexmobile/screens/vendor/sales/sale_detail_page.dart';
 
+import 'package:fitflexmobile/screens/vendor/customers/customers_widgets.dart';
+
 import '../support/recording_api.dart';
 import 'customers_support.dart';
 import 'walkin_support.dart';
@@ -76,7 +78,10 @@ void main() {
     expect(find.byKey(const Key('customer-owed')), findsOneWidget);
     expect(find.text('TSh 50,000'), findsWidgets);
     expect(find.text(host.tr('vendor.aging.current')), findsOneWidget);
-    expect(find.text(host.tr('vendor.aging.d90plus')), findsOneWidget);
+    expect(
+      find.text(agingTileLabel('d90plus', host.tr('vendor.aging.d90plus'))),
+      findsOneWidget,
+    );
     expect(verticalOrder(tester, ['R-000001', 'R-000002']), [
       'R-000001',
       'R-000002',
