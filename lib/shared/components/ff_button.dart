@@ -5,7 +5,7 @@ import 'ff_spinner.dart';
 
 /// Visual weight of an [FFButton].
 /// [onPhoto] is the secondary action on a photo hero's scrim: transparent,
-/// with a light border and label (10.6:1 on the 80% scrim), in both themes.
+/// with a light border and label (13.2:1 on the 86% text zone), in both themes.
 enum FFButtonVariant { primary, secondary, ghost, destructive, onPhoto }
 
 /// Height step of an [FFButton]. `sm` is 40dp tall but still has a 48dp hit
