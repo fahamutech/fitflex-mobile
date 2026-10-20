@@ -16,12 +16,16 @@ class ShopFocusRing extends StatefulWidget {
     required this.builder,
     this.shape = BoxShape.rectangle,
     this.radius = FFTokens.radiusMd,
+    this.color,
   });
 
   /// Builds the control with [node] as its focus node.
   final Widget Function(FocusNode node) builder;
   final BoxShape shape;
   final double radius;
+
+  /// The ring's colour instead of the theme's (white on a photo).
+  final Color? color;
 
   @override
   State<ShopFocusRing> createState() => _ShopFocusRingState();
@@ -68,7 +72,8 @@ class _ShopFocusRingState extends State<ShopFocusRing> {
                   ? BorderRadius.circular(widget.radius)
                   : null,
               border: Border.all(
-                color: dark ? ffFocusRingDark : ffFocusRingLight,
+                color:
+                    widget.color ?? (dark ? ffFocusRingDark : ffFocusRingLight),
                 width: 2,
                 strokeAlign: BorderSide.strokeAlignOutside,
               ),

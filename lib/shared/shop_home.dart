@@ -376,7 +376,12 @@ class ShopHomeData {
     this.serverNow,
     this.allProductsCount,
     this.banners = const [],
+    this.bannersOn = false,
   });
+
+  /// The server sent a `banners` key (SHOP_BANNERS on), even if empty.
+  /// Off: no key, and the home is laid out exactly as before.
+  final bool bannersOn;
 
   /// Hero banners (Phase 2 S1), in the server's order. Empty when the
   /// server's SHOP_BANNERS is off or sends none: the home is then laid out
@@ -399,6 +404,7 @@ class ShopHomeData {
     final rawProducts = json['products'];
     final serverNow = DateTime.tryParse(json['serverNow']?.toString() ?? '');
     return ShopHomeData(
+      bannersOn: json['banners'] is List,
       banners: (json['banners'] is List ? json['banners'] as List : const [])
           .map(ShopBanner.fromJson)
           .whereType<ShopBanner>()

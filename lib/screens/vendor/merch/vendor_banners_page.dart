@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -10,7 +12,6 @@ import '../../../shared/design_tokens.dart';
 import '../../../shared/formatters.dart';
 import '../../../shared/i18n.dart';
 import '../stock/stock_options.dart';
-import 'banner_form_page.dart';
 import 'banner_models.dart';
 
 /// The vendor's Promotions page (`/vendor/merch`, Shop home Phase 2 S1):
@@ -40,7 +41,6 @@ class _VendorBannersPageState extends State<VendorBannersPage> {
   Object? _error;
   List<VendorBanner> _banners = const [];
   List<Map<String, dynamic>> _products = const [];
-  String _businessName = '';
   final Set<String> _busy = {};
 
   /// The banner a notification pointed at, shown once the list is in.
@@ -61,8 +61,6 @@ class _VendorBannersPageState extends State<VendorBannersPage> {
   int? _maxOpen;
   bool get _atLimit => _open != null && _maxOpen != null && _open! >= _maxOpen!;
 
-  /// The confirmation texts and version the form shows and sends.
-  BannerConfirmation? _confirmation;
 
   DateTime get _now => (widget.now ?? DateTime.now)().toUtc();
 
@@ -71,11 +69,6 @@ class _VendorBannersPageState extends State<VendorBannersPage> {
     return auth.isPendingApproval && auth.user?['userType'] == 'vendor';
   }
 
-  String get _vendorId {
-    final user = AppScope.of(context).auth.user ?? const <String, dynamic>{};
-    final staff = user['userType'] == 'vendor_staff';
-    return (staff ? user['vendorId'] : user['id'])?.toString() ?? '';
-  }
 
   @override
   void initState() {
@@ -100,7 +93,7 @@ class _VendorBannersPageState extends State<VendorBannersPage> {
       });
       return;
     }
-    if (_pendingVendor || !canManageProducts(context)) {
+    if (!canManageProducts(context)) {
       setState(() => _loading = false);
       return;
     }
@@ -108,20 +101,22 @@ class _VendorBannersPageState extends State<VendorBannersPage> {
       final results = await Future.wait<Object?>([
         _allBanners(api),
         api.vendorProducts().catchError((Object _) => <dynamic>[]),
-        api.vendorProfile().catchError((Object _) => <String, dynamic>{}),
       ]);
       if (!mounted) return;
       final list = results[0] as Map<String, dynamic>;
       final vendor = list['vendor'] is Map ? list['vendor'] as Map : const {};
       setState(() {
-        _canPropose = vendor['canPropose'] != false;
+        // A vendor still waiting for approval cannot propose, whatever an
+        // older server says.
+        _canPropose = vendor['canPropose'] != false && !_pendingVendor;
+        _cannotReason = _pendingVendor
+            ? 'vendor_not_approved'
+            : vendor['reason']?.toString();
         final open = list['openProposals'] is Map
             ? list['openProposals'] as Map
             : const {};
         _open = open['open'] is num ? (open['open'] as num).toInt() : null;
         _maxOpen = open['max'] is num ? (open['max'] as num).toInt() : null;
-        _confirmation = BannerConfirmation.fromJson(list['confirmation']);
-        _cannotReason = vendor['reason']?.toString();
         _banners = (list['items'] is List ? list['items'] as List : const [])
             .whereType<Map>()
             .map((b) => VendorBanner.fromJson(Map<String, dynamic>.from(b)))
@@ -131,8 +126,6 @@ class _VendorBannersPageState extends State<VendorBannersPage> {
             .whereType<Map>()
             .map(Map<String, dynamic>.from)
             .toList();
-        final profile = results[2] as Map;
-        _businessName = profile['businessName']?.toString().trim() ?? '';
         _unavailable = false;
         _loading = false;
       });
@@ -193,20 +186,15 @@ class _VendorBannersPageState extends State<VendorBannersPage> {
     });
   }
 
+  /// The form has its own address (/vendor/merch/banner/new, /:id/edit),
+  /// so a refresh brings it back.
   Future<void> _openForm({VendorBanner? banner, VendorBanner? copy}) async {
-    final sent = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => VendorBannerFormPage(
-          banner: banner,
-          copyFrom: copy,
-          products: _products,
-          vendorId: _vendorId,
-          businessName: _businessName,
-          confirmation: _confirmation,
-          now: widget.now,
-        ),
-      ),
-    );
+    final path = banner != null
+        ? AppRoutes.vendorMerchEdit(banner.id)
+        : copy != null
+        ? '${AppRoutes.vendorMerchNew}?copy=${Uri.encodeQueryComponent(copy.id)}'
+        : AppRoutes.vendorMerchNew;
+    final sent = await context.push<bool>(path);
     if (sent == true && mounted) await _load();
   }
 
@@ -306,7 +294,19 @@ class _VendorBannersPageState extends State<VendorBannersPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(context.tr('merch.entry.title'))),
+      appBar: AppBar(
+        // Long Swahili at 130% wraps to a second line instead of "…".
+        toolbarHeight: math.max(
+          kToolbarHeight,
+          2 * MediaQuery.textScalerOf(context).scale(22) + 16,
+        ),
+        title: Text(
+          context.tr('merch.entry.title'),
+          key: const Key('merch-title'),
+          maxLines: 2,
+          softWrap: true,
+        ),
+      ),
       body: RefreshIndicator(
         onRefresh: () => _load(refresh: true),
         child: _body(context),
@@ -355,23 +355,6 @@ class _VendorBannersPageState extends State<VendorBannersPage> {
         ),
       ]);
     }
-    if (_pendingVendor) {
-      return _scroll([
-        FFEmptyState(
-          key: const Key('merch-pending'),
-          icon: Icons.hourglass_empty,
-          title: context.tr('merch.pendingTitle'),
-          body: context.tr('merch.pendingBody'),
-          action: FFButton(
-            key: const Key('merch-open-verification'),
-            label: context.tr('kyc.entry.title'),
-            variant: FFButtonVariant.secondary,
-            icon: Icons.verified_user_outlined,
-            onPressed: () => context.push(AppRoutes.verification),
-          ),
-        ),
-      ]);
-    }
     if (!canManageProducts(context)) {
       return _scroll([
         FFEmptyState(
@@ -404,6 +387,8 @@ class _VendorBannersPageState extends State<VendorBannersPage> {
                 label: context.tr('merch.banners.propose'),
                 icon: Icons.add,
                 fullWidth: true,
+                visualDensity: VisualDensity.standard,
+                maxLines: 2,
                 onPressed: _atLimit ? null : () => _openForm(),
               ),
               if (_open != null && _maxOpen != null) ...[
@@ -419,17 +404,30 @@ class _VendorBannersPageState extends State<VendorBannersPage> {
               ],
             ],
           )
-        : FFAlert(
+        : _cannotReason == 'vendor_suspended'
+        ? FFAlert(
             key: const Key('merch-cannot-propose'),
-            tone: _cannotReason == 'vendor_suspended'
-                ? FFAlertTone.error
-                : FFAlertTone.warning,
-            message: context.tr(
-              _cannotReason == 'vendor_suspended'
-                  ? 'merch.suspended'
-                  : 'merch.pendingBody',
+            tone: FFAlertTone.error,
+            message: context.tr('merch.suspended'),
+          )
+        // Waiting for business approval (spec §5.2.2): why, and where to
+        // finish it.
+        : FFEmptyState(
+            key: const Key('merch-pending'),
+            icon: Icons.hourglass_empty,
+            title: context.tr('merch.pendingTitle'),
+            body: context.tr('merch.pendingBody'),
+            action: FFButton(
+              key: const Key('merch-open-verification'),
+              label: context.tr('merch.openVerification'),
+              variant: FFButtonVariant.secondary,
+              icon: Icons.verified_user_outlined,
+              visualDensity: VisualDensity.standard,
+              maxLines: 2,
+              onPressed: () => context.push(AppRoutes.verification),
             ),
           );
+    if (_banners.isEmpty && !_canPropose) return _scroll([propose]);
     if (_banners.isEmpty) {
       return _scroll([
         FFEmptyState(
@@ -519,7 +517,7 @@ class _VendorBannersPageState extends State<VendorBannersPage> {
             b.reasonNote ?? '-',
           );
         }
-        return fill('merch.line.endedOn', 'date', _when(b.endsAt));
+        return fill('merch.line.endedOn', 'date', _when(b.endedAt ?? b.endsAt));
       case 'rejected':
         // The reason's label in the user's language, then staff's note.
         final label = b.rejectLabelKey == null
@@ -586,14 +584,14 @@ class _VendorBannersPageState extends State<VendorBannersPage> {
           ),
         );
     final actions = <Widget>[
-      if (b.canSubmit)
+      if (b.canSubmit && _canPropose)
         action(
           'submit',
           'merch.send',
           'merch.action.a11ySubmit',
           () => _submit(b),
         ),
-      if (b.canEdit)
+      if (b.canEdit && _canPropose)
         action(
           'edit',
           'merch.action.edit',
@@ -614,7 +612,7 @@ class _VendorBannersPageState extends State<VendorBannersPage> {
           'merch.action.a11yEnd',
           () => _end(b),
         ),
-      if (bannerGroup(status) == 'past')
+      if (bannerGroup(status) == 'past' && _canPropose)
         action(
           'copy',
           'merch.action.copy',
