@@ -54,6 +54,9 @@ class _VendorBannersPageState extends State<VendorBannersPage> {
   /// From the list's `vendor`: whether this business may propose now, and
   /// why not (`vendor_suspended`, `vendor_not_approved`).
   bool _canPropose = true;
+
+  /// The business is suspended (403 account_suspended).
+  bool _suspended = false;
   String? _cannotReason;
 
   /// `openProposals {open, max}`: Propose is off at the limit.
@@ -61,14 +64,12 @@ class _VendorBannersPageState extends State<VendorBannersPage> {
   int? _maxOpen;
   bool get _atLimit => _open != null && _maxOpen != null && _open! >= _maxOpen!;
 
-
   DateTime get _now => (widget.now ?? DateTime.now)().toUtc();
 
   bool get _pendingVendor {
     final auth = AppScope.of(context).auth;
     return auth.isPendingApproval && auth.user?['userType'] == 'vendor';
   }
-
 
   @override
   void initState() {
@@ -86,6 +87,16 @@ class _VendorBannersPageState extends State<VendorBannersPage> {
     final api = AppScope.of(context).api;
     final tools = await VendorToolsOptions.of(context, refresh: refresh);
     if (!mounted) return;
+    if (tools.suspended) {
+      // 403 account_suspended: the suspended alert, nothing to propose.
+      setState(() {
+        _suspended = true;
+        _canPropose = false;
+        _cannotReason = 'vendor_suspended';
+        _loading = false;
+      });
+      return;
+    }
     if (!tools.banners) {
       setState(() {
         _unavailable = true;
@@ -339,6 +350,15 @@ class _VendorBannersPageState extends State<VendorBannersPage> {
         ),
       ]);
     }
+    if (_suspended) {
+      return _scroll([
+        FFAlert(
+          key: const Key('merch-cannot-propose'),
+          tone: FFAlertTone.error,
+          message: context.tr('merch.suspended'),
+        ),
+      ]);
+    }
     if (_unavailable) {
       return _scroll([
         FFEmptyState(
@@ -511,11 +531,16 @@ class _VendorBannersPageState extends State<VendorBannersPage> {
         return fill('merch.line.ends', 'date', _when(b.endsAt));
       case 'ended':
         if (b.endedByFitflex || b.reasonCode == 'ended_by_fitflex') {
-          return fill(
-            'merch.line.endedByFitflex',
-            'reason',
-            b.reasonNote ?? '-',
-          );
+          // "Ended {date} by FitFlex: {reason}" (spec §4.2).
+          final note = b.reasonNote?.trim() ?? '';
+          return context
+              .tr(
+                note.isEmpty
+                    ? 'merch.line.endedByFitflexNoReason'
+                    : 'merch.line.endedByFitflex',
+              )
+              .replaceAll('{date}', _when(b.endedAt ?? b.endsAt))
+              .replaceAll('{reason}', note);
         }
         return fill('merch.line.endedOn', 'date', _when(b.endedAt ?? b.endsAt));
       case 'rejected':
