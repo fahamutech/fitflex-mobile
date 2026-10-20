@@ -112,8 +112,16 @@ class ReceiptData {
   final String? customerId;
   final String? customerName;
 
-  /// The customer is an app buyer who deleted their account.
+  /// The app buyer deleted their FitFlex account (the server's
+  /// `customer.forgotten`). A null name alone never means deleted.
   final bool customerForgotten;
+
+  /// The i18n key for a customer with no name: "Deleted member" when
+  /// forgotten, else "FitFlex member".
+  String get unnamedCustomerKey => customerForgotten
+      ? 'vendor.customers.deletedMember'
+      : 'vendor.orders.buyerUnnamed';
+
 
   /// Pay later: due day (YYYY-MM-DD) and what is still owed now.
   final String? dueDate;
@@ -121,6 +129,16 @@ class ReceiptData {
 
   /// Paid at the counter (later customer payments excluded).
   final int? paidAtSaleTzs;
+
+  /// Paid at the counter: the server's paidAtSaleTzs, else the payments.
+  int get paidNowTzs =>
+      paidAtSaleTzs ?? payments.fold(0, (s, p) => s + p.amountTzs);
+
+  /// What was left owing when the sale was made. A receipt is historical:
+  /// it shows this, never the balance after later payments ([balanceTzs],
+  /// shown on the sale detail and the profile only).
+  int get balanceAtSaleTzs =>
+      totalTzs - paidNowTzs < 0 ? 0 : totalTzs - paidNowTzs;
 
   /// Customer payments towards this sale (people with `customers` only):
   /// `{paymentId, number, amountTzs, receivedOn, voided}`.
@@ -194,9 +212,7 @@ class ReceiptData {
       kind: sale['kind']?.toString() == 'credit' ? 'credit' : 'cash',
       customerId: _str(person(sale['customer'])?['id']),
       customerName: _str(person(sale['customer'])?['name']),
-      customerForgotten:
-          person(sale['customer']) != null &&
-          _str(person(sale['customer'])?['name']) == null,
+      customerForgotten: person(sale['customer'])?['forgotten'] == true,
       dueDate: _str(sale['dueDate']),
       balanceTzs: _int(sale['balanceTzs']),
       paidAtSaleTzs: sale['paidAtSaleTzs'] == null
@@ -342,11 +358,7 @@ String receiptShareText(
           : r.queued
           ? t('vendor.receipt.customerAfterSync')
           : fill('vendor.receipt.customer', {
-              'name': t(
-                r.customerForgotten
-                    ? 'vendor.customers.deletedMember'
-                    : 'vendor.pos.customer.selected',
-              ),
+              'name': t(r.unnamedCustomerKey),
             }),
     );
   }
@@ -395,15 +407,10 @@ String receiptShareText(
   }
   if (r.credit) {
     // Pay later: never "Change".
+    b.writeln(_row(t('vendor.pos.credit.paidNow'), formatMoney(r.paidNowTzs)));
     b.writeln(
-      _row(
-        t('vendor.pos.credit.paidNow'),
-        formatMoney(
-          r.paidAtSaleTzs ?? r.payments.fold(0, (s, p) => s + p.amountTzs),
-        ),
-      ),
+      _row(t('vendor.receipt.balanceAtSale'), formatMoney(r.balanceAtSaleTzs)),
     );
-    b.writeln(_row(t('vendor.receipt.balanceDue'), formatMoney(r.balanceTzs)));
     if (r.dueDate != null) {
       b.writeln(_row(t('vendor.receipt.dueBy'), _dayText(r.dueDate!, lang)));
     }
@@ -417,7 +424,7 @@ String receiptShareText(
   if (r.business != null) {
     b.writeln(
       fill(
-        r.credit ? 'vendor.receipt.closingCredit' : 'vendor.pos.receiptFooter',
+        r.credit ? 'vendor.receipt.footerCredit' : 'vendor.pos.receiptFooter',
         {'business': r.business},
       ),
     );

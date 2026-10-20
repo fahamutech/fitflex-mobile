@@ -48,6 +48,20 @@ class FFSegmented extends StatelessWidget {
         painter.dispose();
         if (needed > share) return false;
       }
+      // The whole label must also fit in the two lines a segment allows;
+      // otherwise it would end in an ellipsis (e.g. a three-word Swahili
+      // label at 2x text). Then the row scrolls instead.
+      final inner = share - 2 * padding;
+      if (inner <= 0) return false;
+      final label = TextPainter(
+        text: TextSpan(text: opt.$2, style: style),
+        textDirection: Directionality.of(context),
+        textScaler: scaler,
+        maxLines: 2,
+      )..layout(maxWidth: inner);
+      final cut = label.didExceedMaxLines;
+      label.dispose();
+      if (cut) return false;
     }
     return true;
   }

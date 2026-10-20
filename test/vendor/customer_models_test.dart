@@ -284,6 +284,33 @@ void main() {
         'Deleted member',
       );
       expect(customerDisplayName({'name': 'Juma'}, en), 'Juma');
+      // Never inferred from a missing name (portal rule).
+      expect(
+        customerDisplayName({'name': null, 'source': 'marketplace'}, en),
+        'FitFlex member',
+      );
+      expect(customerDisplayName(null, en), 'Customer');
+    });
+
+    test('sale customer: forgotten from the server, not from a null name', () {
+      ReceiptData sale(Map customer) => ReceiptData.fromSale({
+        'id': 's',
+        'number': 'R-1',
+        'soldAt': '2026-10-20T08:00:00.000Z',
+        'lines': [],
+        'payments': [],
+        'customer': customer,
+      });
+      final gone = sale({'id': 'cus_1', 'name': null, 'forgotten': true});
+      expect(
+        receiptShareText(gone, en, 'en'),
+        contains('Customer: Deleted member'),
+      );
+      final nameless = sale({'id': 'cus_1', 'name': null});
+      expect(
+        receiptShareText(nameless, en, 'en'),
+        contains('Customer: FitFlex member'),
+      );
     });
 
     test('phone ending, never the full number', () {
@@ -353,7 +380,8 @@ void main() {
           'paidTzs': 20000,
           'changeTzs': 0,
           'paidAtSaleTzs': 20000,
-          'balanceTzs': 75000,
+          // Paid down later: the receipt still shows what was owed at the sale.
+          'balanceTzs': 25000,
           'dueDate': '2026-10-27',
           'customer': {'id': 'cus_1', 'name': 'Juma M.'},
           'lines': [],
@@ -366,7 +394,11 @@ void main() {
       final text = receiptShareText(r, en, 'en');
       expect(text, contains('Customer: Juma M.'));
       expect(text, contains('Paid now'));
-      expect(text, contains('Balance due'));
+      expect(text, contains('Balance due at sale'));
+      expect(text, contains('75,000'));
+      expect(text, isNot(contains('25,000')));
+      expect(r.balanceAtSaleTzs, 75000);
+      expect(r.balanceTzs, 25000);
       expect(text, contains('27 Oct 2026'));
       expect(text, contains('Dar Gear recorded the balance due.'));
       expect(text, isNot(contains('Change')));

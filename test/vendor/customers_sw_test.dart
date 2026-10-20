@@ -6,6 +6,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -45,7 +46,7 @@ void seedAll(RecordingApi api) {
 void main() {
   setUpAll(loadAppFonts);
 
-  for (final scale in [1.0, 1.3]) {
+  for (final scale in [1.0, 1.3, 2.0]) {
     apiTest('Kiswahili 375 @${scale}x: Customers list and Owed fit', (
       tester,
       api,
@@ -67,7 +68,7 @@ void main() {
         find.text(host.tr('vendor.customers.filter.archived')),
         findsOneWidget,
       );
-      await tester.tap(find.text('Madeni'));
+      await tester.tap(find.text('Unachodai'));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       expect(find.byKey(const Key('owed-summary')), findsOneWidget);
@@ -195,6 +196,49 @@ void main() {
     'buyer': {'customerId': customerId, 'displayName': 'Neema'},
   };
 
+  apiTest('order card: buyer.customerLinked decides; absent → paid only', (
+    tester,
+    api,
+  ) async {
+    const tools = VendorTools(customers: true, walkInSales: true);
+    Map<String, dynamic> withBuyer(
+      String id,
+      Map buyer, {
+      String pay = 'paid',
+    }) => {...order('cus_2'), 'id': id, 'paymentStatus': pay, 'buyer': buyer};
+    await pumpPage(
+      tester,
+      api,
+      ListView(
+        children: [
+          VendorOrderCard(
+            order: withBuyer('o_l', {
+              'customerId': 'cus_2',
+              'customerLinked': true,
+            }, pay: 'refunded'),
+            tools: tools,
+          ),
+          VendorOrderCard(
+            order: withBuyer('o_n', {
+              'customerId': 'cus_2',
+              'customerLinked': false,
+            }),
+            tools: tools,
+          ),
+          VendorOrderCard(
+            order: withBuyer('o_u', {'customerId': 'cus_2'}, pay: 'pending'),
+            tools: tools,
+          ),
+        ],
+      ),
+      size: const Size(400, 1400),
+      extraRoutes: customerRoutes,
+    );
+    expect(find.byKey(const Key('vendor-order-customer-o_l')), findsOneWidget);
+    expect(find.byKey(const Key('vendor-order-customer-o_n')), findsNothing);
+    expect(find.byKey(const Key('vendor-order-customer-o_u')), findsNothing);
+  });
+
   apiTest('order card: customer link only with a customerId', (
     tester,
     api,
@@ -227,5 +271,76 @@ void main() {
       find.byKey(const Key('vendor-order-customer-ord_1')),
     );
     expect(textContaining('ROUTE-CUSTOMER cus_2'), findsOneWidget);
+  });
+
+  /// Every label in the segmented control [key] is drawn whole: no
+  /// ellipsis, no line cut off.
+  void expectSegmentsWhole(WidgetTester tester, Key key) {
+    final labels = find.descendant(
+      of: find.byKey(key),
+      matching: find.byType(RichText),
+    );
+    expect(labels, findsWidgets);
+    for (final e in labels.evaluate()) {
+      final p = e.renderObject! as RenderParagraph;
+      expect(
+        p.didExceedMaxLines,
+        isFalse,
+        reason: 'segment label cut off: "${p.text.toPlainText()}"',
+      );
+    }
+  }
+
+  apiTest('Kiswahili 375 @2.0x: profile and tab segments are never cut', (
+    tester,
+    api,
+  ) async {
+    seedAll(api);
+    api.on('GET /vendor/customers/cus_1', profile(source: 'marketplace'));
+    api.on('GET /vendor/customers/cus_1/orders', {
+      'orders': [],
+      'nextCursor': null,
+    });
+    await pumpPage(
+      tester,
+      api,
+      const CustomerProfilePage(customerId: 'cus_1'),
+      lang: 'sw',
+      size: phone375,
+      textScale: 2.0,
+      extraRoutes: customerRoutes,
+    );
+    expect(tester.takeException(), isNull);
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('customer-activity-tabs')),
+      200,
+      scrollable: find.descendant(
+        of: find.byKey(const Key('customer-profile')),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    await tester.pumpAndSettle();
+    // Mauzo ya dukani | Oda za app | Malipo
+    expectSegmentsWhole(tester, const Key('customer-activity-tabs'));
+  });
+
+  apiTest('Kiswahili 375 @2.0x: Customers | Unachodai | Ujumbe never cut', (
+    tester,
+    api,
+  ) async {
+    seedAll(api);
+    await pumpPage(
+      tester,
+      api,
+      const VendorHomePage(open: 'customers'),
+      user: ownerUser,
+      lang: 'sw',
+      size: phone375,
+      textScale: 2.0,
+      extraRoutes: customerRoutes,
+    );
+    expect(tester.takeException(), isNull);
+    expect(find.text('Unachodai'), findsOneWidget);
+    expectSegmentsWhole(tester, const Key('customers-segments'));
   });
 }

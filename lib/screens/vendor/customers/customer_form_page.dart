@@ -123,10 +123,12 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
     final phone = _phone.text.trim();
     final email = _email.text.trim();
     setState(() {
-      _nameError =
-          !_app &&
-              (name.length < customerNameMin || name.length > customerNameMax)
+      _nameError = _app
+          ? null
+          : name.isEmpty
           ? context.tr('vendor.customers.nameRequired')
+          : name.length < customerNameMin || name.length > customerNameMax
+          ? context.tr('vendor.customers.nameLength')
           : null;
       _phoneError = !_app && phone.isNotEmpty && normaliseTzPhone(phone) == null
           ? context.tr('vendor.customers.phoneInvalid')
@@ -231,19 +233,27 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
               {'amount': formatCurrency(intOf(b['owedTzs']))},
             );
           case 'name_invalid':
-            _nameError = context.tr('vendor.customers.nameRequired');
+            _nameError = context.tr('vendor.customers.nameLength');
+          case 'address_too_long':
+            _alert = fillIn(context.tr('vendor.customers.addressTooLong'), {
+              'max': intOf(b['max']) > 0 ? intOf(b['max']) : customerAddressMax,
+            });
+          case 'note_too_long':
+            _alert = fillIn(context.tr('vendor.customers.noteTooLong'), {
+              'max': intOf(b['max']) > 0 ? intOf(b['max']) : customerNoteMax,
+            });
+          case 'field_not_editable':
+            _alert = context.tr('vendor.customers.fieldNotEditable');
           case 'phone_invalid':
             _phoneError = context.tr('vendor.customers.phoneInvalid');
           case 'email_invalid':
             _emailError = context.tr('vendor.customers.emailInvalid');
           default:
-            _alert = context.tr(
-              isRateLimited(e)
-                  ? 'vendor.customers.rateLimited'
-                  : e.status == 403
+            _alert = isRateLimited(e)
+                ? rateLimitedText(context, e)
+                : context.tr(e.status == 403
                   ? 'vendor.customers.noAccess'
-                  : 'vendor.saveFailed',
-            );
+                  : 'vendor.saveFailed');
         }
       });
     } catch (_) {

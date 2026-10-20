@@ -68,17 +68,13 @@ bool payLaterAllowed({
 
 /// A customer's name for display. An app buyer who deleted their FitFlex
 /// account (`forgotten`) has no name: [t] gives "Deleted member".
+///
+/// Same rule as the portal: `forgotten: true` → "Deleted member"; no name
+/// but not forgotten → "FitFlex member"; nothing known → "Customer".
 String customerDisplayName(Map? c, String Function(String key) t) {
-  if (c == null) return t('vendor.pos.customer.selected');
-  final name = _str(c['name']);
-  if (c['forgotten'] == true || name == null) {
-    return t(
-      c['forgotten'] == true || c['source'] == 'marketplace'
-          ? 'vendor.customers.deletedMember'
-          : 'vendor.pos.customer.selected',
-    );
-  }
-  return name;
+  if (c == null) return t('vendor.customers.unnamed');
+  if (c['forgotten'] == true) return t('vendor.customers.deletedMember');
+  return _str(c['name']) ?? t('vendor.orders.buyerUnnamed');
 }
 
 /// "•••• 234" from a full phone or `phoneLast3`. Null when there is none.

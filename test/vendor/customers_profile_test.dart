@@ -592,4 +592,83 @@ void main() {
       isTrue,
     );
   });
+
+  apiTest('429 says how many seconds to wait; name length message', (
+    tester,
+    api,
+  ) async {
+    api.on('GET /vendor/tools/options', customersOn);
+    api.fail('POST /vendor/customers', 429, {
+      'error': 'rate_limited',
+      'retryAfterSeconds': 17,
+    });
+    final host = await pumpPage(
+      tester,
+      api,
+      const CustomerFormPage(),
+      size: tall,
+      extraRoutes: customerRoutes,
+    );
+    await typeInto(tester, find.byKey(const Key('customer-name')), 'R');
+    await tapVisible(tester, find.byKey(const Key('customer-save')));
+    expect(find.text(host.tr('vendor.customers.nameLength')), findsOneWidget);
+    await typeInto(tester, find.byKey(const Key('customer-name')), 'Rehema');
+    await tapVisible(tester, find.byKey(const Key('customer-save')));
+    expect(find.text('Too many tries. Wait 17 seconds.'), findsOneWidget);
+  });
+
+  apiTest('server field errors are named, not generic', (tester, api) async {
+    api.on('GET /vendor/tools/options', customersOn);
+    api.fail('POST /vendor/customers', 400, {
+      'error': 'address_too_long',
+      'max': 200,
+    });
+    await pumpPage(
+      tester,
+      api,
+      const CustomerFormPage(),
+      size: tall,
+      extraRoutes: customerRoutes,
+    );
+    await typeInto(tester, find.byKey(const Key('customer-name')), 'Rehema');
+    await tapVisible(tester, find.byKey(const Key('customer-save')));
+    expect(find.text('Address can be at most 200 characters.'), findsOneWidget);
+  });
+
+  apiTest('sale detail: receipt shows balance at sale, detail shows now', (
+    tester,
+    api,
+  ) async {
+    api.on('GET /vendor/tools/options', customersOn);
+    api.on('GET /vendor/profile', {'businessName': 'Dar Gear'});
+    api.on('GET /vendor/sales/sal_p', {
+      'sale': {
+        ...serverSale(id: 'sal_p', number: 'R-000010'),
+        'kind': 'credit',
+        'totalTzs': 45000,
+        'changeTzs': 0,
+        'paidAtSaleTzs': 5000,
+        'balanceTzs': 10000,
+        'dueDate': '2026-10-27',
+        'customer': {'id': 'cus_1', 'name': 'Juma Mussa', 'forgotten': false},
+        'allocations': [],
+      },
+    });
+    await pumpPage(
+      tester,
+      api,
+      const SaleDetailPage(saleId: 'sal_p'),
+      size: tall,
+      extraRoutes: [...salesRoutes.skip(1), ...customerRoutes],
+    );
+    // MoneyRow merges label and amount into one semantics label.
+    expect(
+      find.bySemanticsLabel(RegExp(r'Balance due at sale, TSh 40,000')),
+      findsOneWidget,
+    );
+    expect(
+      find.bySemanticsLabel(RegExp(r'Still owed, TSh 10,000')),
+      findsOneWidget,
+    );
+  });
 }

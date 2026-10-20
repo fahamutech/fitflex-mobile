@@ -153,8 +153,17 @@ Widget customerErrorState(
   onRetry: problem == CustomerLoadProblem.notFound ? null : onRetry,
 );
 
-/// "Too many changes at once" for 429 rate_limited.
+/// 429 rate_limited.
 bool isRateLimited(Object e) => e is ApiException && e.status == 429;
+
+/// "Too many tries. Wait {n} seconds." from the server's retryAfterSeconds.
+String rateLimitedText(BuildContext context, Object e) {
+  final body = e is ApiException && e.body is Map ? e.body as Map : const {};
+  final n = intOf(body['retryAfterSeconds']);
+  return fillIn(context.tr('vendor.customers.rateLimited'), {
+    'n': n > 0 ? n : 60,
+  });
+}
 
 /// Five aging tiles (Not due yet … Over 90 days): 3 + 2 on a phone, five
 /// in a row from 900 wide, two per row at large text. Zero tiles stay,

@@ -199,10 +199,18 @@ class VendorOrderCard extends StatelessWidget {
     );
   }
 
-  /// The customer id to link to, or null (tool off, no `customers`, or
-  /// no id on this order).
+  /// The customer id to link to, or null (tool off, no `customers`, no
+  /// id, or the order is not linked to a customer record). The server says
+  /// so in `buyer.customerLinked`; an older answer without it links paid
+  /// orders only (a customer record is made when an order is paid).
   String? _customerLink(BuildContext context, Map<String, dynamic>? buyer) {
     if (!tools.customers || !canVendor(context, 'customers')) return null;
+    final linked = buyer?['customerLinked'];
+    if (linked is bool) {
+      if (!linked) return null;
+    } else if (order['paymentStatus']?.toString() != 'paid') {
+      return null;
+    }
     final id = buyer?['customerId']?.toString();
     if (id == null || id.isEmpty || !customerIdPattern.hasMatch(id)) {
       return null;

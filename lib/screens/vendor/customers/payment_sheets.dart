@@ -253,6 +253,12 @@ class _RecordPaymentSheetState extends State<RecordPaymentSheet> {
           _problem = context.tr('vendor.pay.archived');
         case 'client_ref_reused':
           _problem = context.tr('vendor.pay.refReused');
+        case 'invalid_allocation':
+          _problem = context.tr('vendor.pay.invalidAllocation');
+        case 'note_too_long':
+          _problem = fillIn(context.tr('vendor.customers.noteTooLong'), {
+            'max': customerPaymentNoteMax,
+          });
         case 'vendor_suspended':
           _problem = context.tr('vendor.sales.suspended');
         default:
@@ -261,13 +267,11 @@ class _RecordPaymentSheetState extends State<RecordPaymentSheet> {
             FFSnack.error(context, context.tr('vendor.customers.noAccess'));
             return;
           }
-          _problem = context.tr(
-            isRateLimited(e)
-                ? 'vendor.customers.rateLimited'
-                : e.status >= 500
+          _problem = isRateLimited(e)
+                ? rateLimitedText(context, e)
+                : context.tr(e.status >= 500
                 ? 'vendor.pay.failed'
-                : 'vendor.saveFailed',
-          );
+                : 'vendor.saveFailed');
       }
     } catch (_) {
       // No answer: nothing recorded yet (or unknown). Try again resends the
@@ -637,7 +641,7 @@ Future<bool> openPaymentById(
     return showPaymentReceipt(
       context,
       customerId: customerId,
-      customerName: name ?? context.tr('vendor.pos.customer.selected'),
+      customerName: name ?? context.tr('vendor.customers.unnamed'),
       payment: Map<String, dynamic>.from(p),
     );
   } catch (_) {
@@ -990,13 +994,11 @@ class _VoidPaymentDialogState extends State<VoidPaymentDialog> {
         case 'reason_required' || 'reason_too_long':
           _error = context.tr('vendor.sales.voidReasonMissing');
         default:
-          _error = context.tr(
-            isRateLimited(e)
-                ? 'vendor.customers.rateLimited'
-                : e.status == 403
+          _error = isRateLimited(e)
+                ? rateLimitedText(context, e)
+                : context.tr(e.status == 403
                 ? 'vendor.customers.noAccess'
-                : 'vendor.saveFailed',
-          );
+                : 'vendor.saveFailed');
       }
     } catch (_) {
       if (mounted) _error = context.tr('vendor.pay.voidOffline');

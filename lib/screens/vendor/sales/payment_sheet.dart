@@ -526,7 +526,7 @@ class _PaymentSheetState extends State<PaymentSheet> {
               : fillIn(context.tr('vendor.receipt.customer'), {
                   'name':
                       customer.name ??
-                      context.tr('vendor.pos.customer.selected'),
+                      context.tr('vendor.customers.unnamed'),
                 }),
           excludeSemantics: true,
           child: ListTile(
@@ -537,7 +537,7 @@ class _PaymentSheetState extends State<PaymentSheet> {
             title: Text(
               customer.id == null
                   ? context.tr('vendor.pos.customer.pick')
-                  : customer.name ?? context.tr('vendor.pos.customer.selected'),
+                  : customer.name ?? context.tr('vendor.customers.unnamed'),
             ),
             trailing: const Icon(Icons.chevron_right),
             onTap: _saving ? null : _pickCustomer,
@@ -552,7 +552,7 @@ class _PaymentSheetState extends State<PaymentSheet> {
                 fillIn(context.tr('vendor.pos.credit.alreadyOwes'), {
                   'name':
                       customer.name ??
-                      context.tr('vendor.pos.customer.selected'),
+                      context.tr('vendor.customers.unnamed'),
                   'amount': formatCurrency(owed),
                 }),
                 if (overdue > 0)

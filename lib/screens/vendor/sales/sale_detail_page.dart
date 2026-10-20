@@ -313,11 +313,7 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
                         child: FFButton(
                           key: const Key('sale-detail-customer'),
                           label: data.customerName == null
-                              ? context.tr(
-                                  data.customerForgotten
-                                      ? 'vendor.customers.deletedMember'
-                                      : 'vendor.pos.customer.selected',
-                                )
+                              ? context.tr(data.unnamedCustomerKey)
                               : data.customerName!,
                           icon: Icons.person_outline,
                           variant: FFButtonVariant.ghost,
@@ -325,6 +321,16 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
                           onPressed: () =>
                               context.push(customerRoute(data.customerId!)),
                         ),
+                      ),
+                    ],
+                    // The receipt above is historical; what is owed now:
+                    if (data.credit && !data.voided) ...[
+                      const SizedBox(height: FFTokens.spacingSm),
+                      MoneyRow(
+                        context.tr('vendor.pay.stillOwed'),
+                        formatCurrency(data.balanceTzs),
+                        strong: true,
+                        key: const Key('sale-detail-balance-now'),
                       ),
                     ],
                     if (data.credit && data.liveAllocations.isNotEmpty) ...[

@@ -300,11 +300,7 @@ class ReceiptView extends StatelessWidget {
                   : data.queued
                   ? t('vendor.receipt.customerAfterSync')
                   : _fill('vendor.receipt.customer', {
-                      'name': t(
-                        data.customerForgotten
-                            ? 'vendor.customers.deletedMember'
-                            : 'vendor.pos.customer.selected',
-                      ),
+                      'name': t(data.unnamedCustomerKey),
                     }),
               key: const Key('sales-receipt-customer'),
             ),
@@ -357,15 +353,12 @@ class ReceiptView extends StatelessWidget {
             const SizedBox(height: FFTokens.spacingSm),
             MoneyRow(
               t('vendor.pos.credit.paidNow'),
-              formatMoney(
-                data.paidAtSaleTzs ??
-                    data.payments.fold<int>(0, (s, p) => s + p.amountTzs),
-              ),
+              formatMoney(data.paidNowTzs),
               key: const Key('sales-receipt-paid-now'),
             ),
             MoneyRow(
-              t('vendor.receipt.balanceDue'),
-              formatCurrency(data.balanceTzs),
+              t('vendor.receipt.balanceAtSale'),
+              formatCurrency(data.balanceAtSaleTzs),
               strong: true,
               key: const Key('sales-receipt-balance'),
             ),
@@ -386,7 +379,7 @@ class ReceiptView extends StatelessWidget {
             Text(
               _fill(
                 data.credit
-                    ? 'vendor.receipt.closingCredit'
+                    ? 'vendor.receipt.footerCredit'
                     : 'vendor.pos.receiptFooter',
                 {'business': data.business},
               ),

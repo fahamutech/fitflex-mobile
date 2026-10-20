@@ -130,8 +130,10 @@ class _CustomerPickerState extends State<CustomerPicker> {
     final phone = _phone.text.trim();
     String? nameError;
     String? phoneError;
-    if (name.length < customerNameMin || name.length > customerNameMax) {
+    if (name.isEmpty) {
       nameError = context.tr('vendor.customers.nameRequired');
+    } else if (name.length < customerNameMin || name.length > customerNameMax) {
+      nameError = context.tr('vendor.customers.nameLength');
     }
     if (phone.isNotEmpty && normaliseTzPhone(phone) == null) {
       phoneError = context.tr('vendor.customers.phoneInvalid');
@@ -169,17 +171,15 @@ class _CustomerPickerState extends State<CustomerPicker> {
       setState(() {
         switch (e.code) {
           case 'name_invalid':
-            _nameError = context.tr('vendor.customers.nameRequired');
+            _nameError = context.tr('vendor.customers.nameLength');
           case 'phone_invalid':
             _phoneError = context.tr('vendor.customers.phoneInvalid');
           default:
-            _addProblem = context.tr(
-              isRateLimited(e)
-                  ? 'vendor.customers.rateLimited'
-                  : e.status == 403
+            _addProblem = isRateLimited(e)
+                ? rateLimitedText(context, e)
+                : context.tr(e.status == 403
                   ? 'vendor.customers.noAccess'
-                  : 'vendor.saveFailed',
-            );
+                  : 'vendor.saveFailed');
         }
       });
     } catch (_) {
@@ -256,7 +256,7 @@ class _CustomerPickerState extends State<CustomerPicker> {
     required IconData icon,
     required String title,
     String? subtitle,
-    Widget? trailing,
+    Widget? extra,
     required VoidCallback onTap,
     String? semantics,
   }) => Semantics(
@@ -268,8 +268,15 @@ class _CustomerPickerState extends State<CustomerPicker> {
       minTileHeight: 56,
       leading: Icon(icon),
       title: Text(title),
-      subtitle: subtitle == null ? null : Text(subtitle),
-      trailing: trailing,
+      // Money and badges go under the name (they wrap at large text),
+      // never in a fixed-height trailing slot.
+      subtitle: subtitle == null && extra == null
+          ? null
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [?(subtitle == null ? null : Text(subtitle)), ?extra],
+            ),
       onTap: onTap,
     ),
   );
@@ -300,19 +307,25 @@ class _CustomerPickerState extends State<CustomerPicker> {
           }),
         if (overdue) context.tr('vendor.customers.overdueBadge'),
       ].join(', '),
-      trailing: owed > 0
-          ? Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  formatCurrency(owed),
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontFeatures: const [FontFeature.tabularFigures()],
+      extra: owed > 0
+          ? Padding(
+              padding: const EdgeInsets.only(top: FFTokens.spacingXs),
+              child: Wrap(
+                spacing: FFTokens.spacingXs,
+                runSpacing: FFTokens.spacingXs,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text(
+                    fillIn(context.tr('vendor.sales.owesBadge'), {
+                      'amount': formatCurrency(owed),
+                    }),
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
                   ),
-                ),
-                if (overdue) overdueBadge(context),
-              ],
+                  if (overdue) overdueBadge(context),
+                ],
+              ),
             )
           : null,
       onTap: () => _choose(c),
