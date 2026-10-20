@@ -28,6 +28,7 @@ class VendorTools {
     this.canSeeCost = false,
     this.buyerContact = false,
     this.walkInSales = false,
+    this.customers = false,
     this.fromCache = false,
   });
 
@@ -49,6 +50,11 @@ class VendorTools {
   /// (VENDOR_WALKIN_SALES). Exactly `true` from the server, else off.
   final bool walkInSales;
 
+  /// S4: vendor customers, pay later, customer payments and "Owed to you"
+  /// (VENDOR_CUSTOMERS). Exactly `true` from the server, else off. Pay later
+  /// also needs [walkInSales] (it lives in the POS).
+  final bool customers;
+
   /// The answer is the one kept on this device (the server could not be
   /// reached): ask again once the connection is back.
   final bool fromCache;
@@ -59,6 +65,7 @@ class VendorTools {
         canSeeCost: options['canSeeCost'] == true,
         buyerContact: options['buyerContact'] == true,
         walkInSales: options['walkInSales'] == true,
+        customers: options['customers'] == true,
         fromCache: fromCache,
       );
 }

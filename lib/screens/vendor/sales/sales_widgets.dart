@@ -291,6 +291,28 @@ class ReceiptView extends StatelessWidget {
             Text(t('vendor.pos.waitingSyncBody'), style: muted),
           ],
           Text(eatDateTime(data.soldAt, locale: lang), style: muted),
+          if (data.hasCustomer)
+            Text(
+              data.customerName != null
+                  ? _fill('vendor.receipt.customer', {
+                      'name': data.customerName,
+                    })
+                  : data.queued
+                  ? t('vendor.receipt.customerAfterSync')
+                  : _fill('vendor.receipt.customer', {
+                      'name': t(data.unnamedCustomerKey),
+                    }),
+              key: const Key('sales-receipt-customer'),
+            ),
+          if (data.credit)
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: FFBadge(
+                key: const Key('sales-receipt-paylater'),
+                label: t('vendor.sales.payLaterBadge'),
+                tone: FFBadgeTone.brand,
+              ),
+            ),
           if (data.servedBy != null)
             Text(
               _fill('vendor.pos.servedBy', {'name': data.servedBy}),
@@ -327,7 +349,26 @@ class ReceiptView extends StatelessWidget {
                   : '${methodLabel(t, p.method)} (${p.reference})',
               formatMoney(p.amountTzs),
             ),
-          if (data.changeTzs > 0)
+          if (data.credit) ...[
+            const SizedBox(height: FFTokens.spacingSm),
+            MoneyRow(
+              t('vendor.pos.credit.paidNow'),
+              formatMoney(data.paidNowTzs),
+              key: const Key('sales-receipt-paid-now'),
+            ),
+            MoneyRow(
+              t('vendor.receipt.balanceAtSale'),
+              formatCurrency(data.balanceAtSaleTzs),
+              strong: true,
+              key: const Key('sales-receipt-balance'),
+            ),
+            if (data.dueDate != null)
+              MoneyRow(
+                t('vendor.receipt.dueBy'),
+                receiptDay(data.dueDate, lang),
+                key: const Key('sales-receipt-due'),
+              ),
+          ] else if (data.changeTzs > 0)
             MoneyRow(t('vendor.pos.change'), formatMoney(data.changeTzs)),
           if (audit && data.note != null) ...[
             const SizedBox(height: FFTokens.spacingSm),
@@ -336,7 +377,12 @@ class ReceiptView extends StatelessWidget {
           const Divider(height: FFTokens.spacingLg),
           if (data.business != null)
             Text(
-              _fill('vendor.pos.receiptFooter', {'business': data.business}),
+              _fill(
+                data.credit
+                    ? 'vendor.receipt.closingCredit'
+                    : 'vendor.pos.receiptFooter',
+                {'business': data.business},
+              ),
             ),
           Text(t('vendor.pos.notFiscal'), style: muted),
         ],
