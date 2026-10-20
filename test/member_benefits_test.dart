@@ -3,22 +3,49 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:fitflexmobile/app_scope.dart';
 import 'package:fitflexmobile/screens/member/member_benefits_page.dart';
 import 'package:fitflexmobile/shared/api_client.dart';
 import 'package:fitflexmobile/shared/auth_state.dart';
 import 'package:fitflexmobile/shared/i18n.dart';
+import 'package:fitflexmobile/shared/widgets/verify_identifier.dart';
 
 class _FakeApi extends ApiClient {
   _FakeApi(this.benefits) : super(baseUrl: 'http://localhost:0');
 
-  final List<Map<String, dynamic>> benefits;
+  List<Map<String, dynamic>> benefits;
   bool fail = false;
   final unlocked = <String>[];
+  int loads = 0;
+
+  // Identifier verification (Identity V2) and /auth/options.
+  bool identifiersOn = true;
+  bool emailCodes = true;
+  List<Map<String, dynamic>> verified = [];
+
+  @override
+  Future<Map<String, dynamic>> signInOptions() async => {
+    'pinLogin': true,
+    'pinReset': false,
+    'smsCodes': true,
+    'emailCodes': emailCodes,
+  };
+
+  @override
+  Future<Map<String, dynamic>> myIdentifiers() async {
+    if (!identifiersOn) throw ApiException(404, {'error': 'not_found'});
+    return {'identifiers': verified, 'unverified': const []};
+  }
+
+  @override
+  Future<Map<String, dynamic>> myInvitations() async =>
+      throw ApiException(404, {'error': 'not_found'});
 
   @override
   Future<Map<String, dynamic>> myWellnessBenefits() async {
+    loads += 1;
     if (fail) throw ApiException(500, 'server_error');
     return {'benefits': benefits, 'asOf': '2026-10-05'};
   }
@@ -82,7 +109,34 @@ Widget _app(_FakeApi api) => AppScope(
   ),
 );
 
+/// A signed-in member whose identifier verification state comes from [api].
+Future<AuthState> _signedIn(_FakeApi api) async {
+  final auth = AuthState(api);
+  await auth.loadSignInOptions();
+  await auth.signIn('jwt-member', {
+    'id': 'usr_member',
+    'userType': 'member',
+    'approvalStatus': 'approved',
+  });
+  await auth.refreshIdentifiers();
+  return auth;
+}
+
+Widget _signedInApp(AuthState auth, {String lang = 'en'}) => AppScope(
+  api: auth.api,
+  auth: auth,
+  child: FFLocaleScope(
+    notifier: FFLocale()..set(Locale(lang)),
+    child: const MaterialApp(home: MemberBenefitsPage()),
+  ),
+);
+
+const _hint = Key('benefits-confirm-contact');
+const _hintAction = Key('benefits-confirm-contact-action');
+
 void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
   testWidgets('shows allowance used and left, who pays and validity', (
     tester,
   ) async {
@@ -197,5 +251,142 @@ void main() {
       find.text('Your pass is running until the end of the month'),
       findsOneWidget,
     );
+  });
+
+  group('confirm-contact hint on the empty state', () {
+    testWidgets('shows when identifier verification is on', (tester) async {
+      final api = _FakeApi([]);
+      final auth = await _signedIn(api);
+      await tester.pumpWidget(_signedInApp(auth));
+      await tester.pumpAndSettle();
+
+      expect(find.text('No wellness benefits yet'), findsOneWidget);
+      expect(find.byKey(_hint), findsOneWidget);
+      expect(
+        find.text('Expecting benefits from your employer?'),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
+          'Your benefits are added once you confirm the email or mobile number your organisation has for you.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Confirm email or number'), findsOneWidget);
+      // It never claims an invite exists.
+      expect(find.textContaining('invit'), findsNothing);
+    });
+
+    testWidgets('says mobile number only while email codes are off', (
+      tester,
+    ) async {
+      final api = _FakeApi([])..emailCodes = false;
+      final auth = await _signedIn(api);
+      await tester.pumpWidget(_signedInApp(auth));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          'Your benefits are added once you confirm the mobile number your organisation has for you.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('the email or mobile'), findsNothing);
+    });
+
+    testWidgets('is hidden while identifier verification is off', (
+      tester,
+    ) async {
+      final api = _FakeApi([])..identifiersOn = false;
+      final auth = await _signedIn(api);
+      await tester.pumpWidget(_signedInApp(auth));
+      await tester.pumpAndSettle();
+
+      expect(find.text('No wellness benefits yet'), findsOneWidget);
+      expect(find.byKey(_hint), findsNothing);
+    });
+
+    testWidgets('is not shown when the member already has benefits', (
+      tester,
+    ) async {
+      final api = _FakeApi([_benefit()]);
+      final auth = await _signedIn(api);
+      await tester.pumpWidget(_signedInApp(auth));
+      await tester.pumpAndSettle();
+      expect(find.byKey(_hint), findsNothing);
+    });
+
+    testWidgets('opens Contact details; a new verification reloads benefits', (
+      tester,
+    ) async {
+      final api = _FakeApi([]);
+      final auth = await _signedIn(api);
+      await tester.pumpWidget(_signedInApp(auth));
+      await tester.pumpAndSettle();
+      expect(api.loads, 1);
+
+      await tester.tap(find.byKey(_hintAction));
+      await tester.pumpAndSettle();
+      expect(find.byType(ContactDetailsScreen), findsOneWidget);
+
+      // Coming back without verifying anything does not reload.
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(api.loads, 1);
+
+      await tester.tap(find.byKey(_hintAction));
+      await tester.pumpAndSettle();
+      // The member verifies the number their employer listed; the backend
+      // then attaches the sponsored benefit.
+      api.verified = [
+        {'type': 'phone', 'value': '+255712345678'},
+      ];
+      api.benefits = [_benefit()];
+      await auth.refreshIdentifiers();
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+
+      expect(api.loads, 2);
+      expect(find.text('8 gym visits a month'), findsOneWidget);
+      expect(find.byKey(_hint), findsNothing);
+    });
+
+    testWidgets('Swahili fits a small phone without overflow', (tester) async {
+      tester.view.physicalSize = const Size(320, 568);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final api = _FakeApi([]);
+      final auth = await _signedIn(api);
+      await tester.pumpWidget(_signedInApp(auth, lang: 'sw'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Unatarajia manufaa kutoka kwa mwajiri wako?'),
+        findsOneWidget,
+      );
+      await tester.scrollUntilVisible(find.byKey(_hintAction), 100);
+      expect(find.text('Thibitisha barua pepe au namba'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    test('every confirm-contact string exists in English and Swahili', () {
+      const keys = [
+        'benefits.confirmContact.title',
+        'benefits.confirmContact.body',
+        'benefits.confirmContact.bodyPhoneOnly',
+        'benefits.confirmContact.action',
+      ];
+      final en = FFLocale.keysOf('en');
+      final sw = FFLocale.keysOf('sw');
+      for (final k in keys) {
+        expect(en, contains(k), reason: 'en: $k');
+        expect(sw, contains(k), reason: 'sw: $k');
+        expect(
+          FFLocale.textOf('sw', k),
+          isNot(FFLocale.textOf('en', k)),
+          reason: 'sw copies English: $k',
+        );
+      }
+    });
   });
 }

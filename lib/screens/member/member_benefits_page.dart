@@ -11,6 +11,7 @@ import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
+import '../../shared/widgets/verify_identifier.dart';
 
 class MemberBenefitsPage extends StatefulWidget {
   const MemberBenefitsPage({super.key});
@@ -83,9 +84,15 @@ class _MemberBenefitsPageState extends State<MemberBenefitsPage> {
                     ),
                   ))
           : rows.isEmpty
-          ? FFEmptyState(
-              title: context.tr('benefits.empty.title'),
-              body: context.tr('benefits.empty.body'),
+          ? ListView(
+              padding: const EdgeInsets.all(FFTokens.spacingLg),
+              children: [
+                FFEmptyState(
+                  title: context.tr('benefits.empty.title'),
+                  body: context.tr('benefits.empty.body'),
+                ),
+                _ConfirmContactHint(onVerified: _load),
+              ],
             )
           : ListView(
               padding: const EdgeInsets.all(FFTokens.spacingLg),
@@ -106,6 +113,75 @@ class _MemberBenefitsPageState extends State<MemberBenefitsPage> {
                 const _SponsorVisibilityNote(),
               ],
             ),
+    );
+  }
+}
+
+/// Sponsored benefits attach only once the member has verified the email or
+/// mobile number their organisation listed. This hint points to Contact
+/// details. It never says whether an invite exists, and it is hidden while
+/// the backend has identifier verification off.
+class _ConfirmContactHint extends StatelessWidget {
+  const _ConfirmContactHint({required this.onVerified});
+
+  /// Called after Contact details closes with a new verified email or number.
+  final Future<void> Function() onVerified;
+
+  Set<String> _verifiedValues(List<Map<String, dynamic>> items) =>
+      items.map((i) => '${i['type']}:${i['value']}').toSet();
+
+  Future<void> _open(BuildContext context) async {
+    final auth = AppScope.of(context).auth;
+    final before = _verifiedValues(auth.verifiedIdentifiers);
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const ContactDetailsScreen()),
+    );
+    final after = _verifiedValues(auth.verifiedIdentifiers);
+    if (after.difference(before).isNotEmpty) await onVerified();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = AppScope.of(context).auth;
+    return ListenableBuilder(
+      listenable: auth,
+      builder: (context, _) {
+        if (!auth.identifiersEnabled) return const SizedBox.shrink();
+        final theme = Theme.of(context);
+        return Padding(
+          padding: const EdgeInsets.only(top: FFTokens.spacingMd),
+          child: FFCard(
+            key: const Key('benefits-confirm-contact'),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.tr('benefits.confirmContact.title'),
+                  style: theme.textTheme.titleSmall,
+                ),
+                const SizedBox(height: FFTokens.spacingSm),
+                Text(
+                  context.tr(
+                    auth.emailCodesAvailable
+                        ? 'benefits.confirmContact.body'
+                        : 'benefits.confirmContact.bodyPhoneOnly',
+                  ),
+                  style: theme.textTheme.bodyMedium,
+                ),
+                const SizedBox(height: FFTokens.spacingMd),
+                FFButton(
+                  key: const Key('benefits-confirm-contact-action'),
+                  label: context.tr('benefits.confirmContact.action'),
+                  onPressed: () => _open(context),
+                  variant: FFButtonVariant.secondary,
+                  fullWidth: true,
+                  maxLines: 2,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

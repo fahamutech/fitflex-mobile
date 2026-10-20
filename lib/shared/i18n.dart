@@ -3678,6 +3678,12 @@ class FFLocale extends ChangeNotifier {
       'benefits.empty.title': 'No wellness benefits yet',
       'benefits.empty.body':
           'When your employer, insurer or club gives you a benefit through FitFlex, it shows here.',
+      'benefits.confirmContact.title': 'Expecting benefits from your employer?',
+      'benefits.confirmContact.body':
+          'Your benefits are added once you confirm the email or mobile number your organisation has for you.',
+      'benefits.confirmContact.bodyPhoneOnly':
+          'Your benefits are added once you confirm the mobile number your organisation has for you.',
+      'benefits.confirmContact.action': 'Confirm email or number',
       'benefits.used': 'Used {used} of {limit} {period}',
       'benefits.remaining': '{n} left',
       'benefits.unlimited': 'No limit on how often you use it',
@@ -8758,6 +8764,14 @@ class FFLocale extends ChangeNotifier {
       'benefits.empty.title': 'Bado huna benefits za afya',
       'benefits.empty.body':
           'Mwajiri, bima au klabu yako ikikupa benefit kupitia FitFlex, itaonekana hapa.',
+      // Swahili for native review (verified-contact matching S1).
+      'benefits.confirmContact.title':
+          'Unatarajia manufaa kutoka kwa mwajiri wako?',
+      'benefits.confirmContact.body':
+          'Manufaa yako yataongezwa baada ya kuthibitisha barua pepe au namba ya simu ambayo shirika lako linayo.',
+      'benefits.confirmContact.bodyPhoneOnly':
+          'Manufaa yako yataongezwa baada ya kuthibitisha namba ya simu ambayo shirika lako linayo.',
+      'benefits.confirmContact.action': 'Thibitisha barua pepe au namba',
       'benefits.used': 'Umetumia {used} kati ya {limit} {period}',
       'benefits.remaining': 'Zimebaki {n}',
       'benefits.unlimited': 'Hakuna kikomo cha matumizi',
