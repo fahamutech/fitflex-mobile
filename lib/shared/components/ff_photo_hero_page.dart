@@ -276,7 +276,14 @@ class _FFPhotoHeroPageState extends State<FFPhotoHeroPage> {
           bar(Row(mainAxisSize: MainAxisSize.min, children: widget.actions)),
         ],
       ),
-      body: body,
+      // The bar's band stays at the top of the screen while the hero
+      // scrolls (§5): the heroes below leave theirs out.
+      body: Stack(
+        children: [
+          Positioned.fill(child: FFPhotoBarHost(child: body)),
+          FFPhotoBarScrim(barBottom: topInset, visible: onPhoto),
+        ],
+      ),
     );
   }
 }

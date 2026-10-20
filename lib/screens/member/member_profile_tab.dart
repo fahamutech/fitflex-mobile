@@ -412,7 +412,7 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
       padding: const EdgeInsets.all(2),
       decoration: const BoxDecoration(
         shape: BoxShape.circle,
-        // 10.6:1 on the 80% scrim, so the edge shows on any photo.
+        // 13.2:1 on the 86% text zone, so the edge shows on any photo.
         border: Border.fromBorderSide(
           BorderSide(color: FFTokens.heroText, width: 2),
         ),

@@ -1074,8 +1074,6 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
                     headingFocus: _heroFocus,
                     enabled: _homeHasContent,
                     gap: FFTokens.spacingXl - FFTokens.spacingLg,
-                    inset: side + gutter,
-                    maxWidth: 1200,
                   )
                 : null,
             children: [
