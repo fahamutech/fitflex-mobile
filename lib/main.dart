@@ -14,6 +14,7 @@ import 'screens/account_recovery.dart';
 import 'shared/api_client.dart';
 import 'shared/auth_state.dart';
 import 'shared/friend_invites.dart';
+import 'shared/hero_images/hero_image_store.dart';
 import 'shared/inbox/inbox_controller.dart';
 import 'shared/pending_org_invite.dart';
 import 'shared/push_service.dart';
@@ -150,7 +151,24 @@ class _FitFlexAppState extends State<FitFlexApp> with WidgetsBindingObserver {
     widget.auth.addListener(_onAuth);
     widget.locale.addListener(_syncLocale);
     _syncLocale();
+    // Admin-published photos (HERO_IMAGES_REMOTE): null with the flag off,
+    // so no request is ever made. Bundled photos paint the first frame; the
+    // list is read after it.
+    _heroImages = HeroImageStore.startIfEnabled(apiBase: widget.api.baseUrl);
+    if (_heroImages != null) {
+      _syncHeroSession();
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _heroImages?.onFirstFrame(),
+      );
+    }
   }
+
+  HeroImageStore? _heroImages;
+
+  void _syncHeroSession() => _heroImages?.setSession(
+    signedIn: widget.auth.isSignedIn,
+    role: widget.auth.user?['userType']?.toString() ?? widget.auth.role,
+  );
 
   /// Gym messages go out in each member's app language, so the server keeps
   /// a copy of it. Sent on sign-in and whenever the language changes.
@@ -244,6 +262,7 @@ class _FitFlexAppState extends State<FitFlexApp> with WidgetsBindingObserver {
   }
 
   void _onAuth() {
+    _syncHeroSession();
     final token = widget.auth.token;
     // Signed out: this phone's steps aren't the next person's.
     if (_lastToken != null && token == null) {
@@ -294,7 +313,11 @@ class _FitFlexAppState extends State<FitFlexApp> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Auto theme: the clock may have crossed dusk or dawn while suspended.
-    if (state == AppLifecycleState.resumed) widget.themeNotifier.refresh();
+    if (state == AppLifecycleState.resumed) {
+      widget.themeNotifier.refresh();
+      // App photos: checked again only if the last check is 6 h old.
+      _heroImages?.onResume();
+    }
   }
 
   @override

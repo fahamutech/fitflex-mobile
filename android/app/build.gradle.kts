@@ -85,4 +85,6 @@ dependencies {
     debugImplementation(project(":integration_test"))
     debugImplementation(project(":patrol"))
     androidTestUtil("androidx.test:orchestrator:1.5.1")
+    // JVM unit tests (src/test): never in the app.
+    testImplementation("junit:junit:4.13.2")
 }
