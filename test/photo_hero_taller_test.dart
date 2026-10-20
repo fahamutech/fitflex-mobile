@@ -3,6 +3,8 @@
 // and the ramp on Sign in, Create account, Choose role and Profile, while
 // Continue and the first three role tiles stay on screen, the PIN keypad
 // and Activity keep their heights, and the scrim rule holds at every scale.
+// Sign in's first must-see control is the "Create account" link under
+// Continue (owner 2026-10-20): the photo is trimmed so it fits on screen.
 //
 // Real Inter fonts are loaded so text heights match a phone.
 
@@ -145,6 +147,13 @@ Future<void> _unmount(WidgetTester tester) async {
 
 String _tr(String lang, String key) => FFLocale.textOf(lang, key)!;
 
+/// The "Don't have an account? Create account" link on Sign in.
+final _link = find.byKey(const Key('login-create-account-link'));
+
+/// Clear photo on Sign in at 390x844 with an iPhone's insets, at 1.0x, now
+/// that the Create account link must be on screen (reported in the PR).
+const _signInClear390 = 125.0;
+
 /// Continue on Sign in / Create account (an upper-case label).
 Finder _continue(String lang) => find.ancestor(
   of: find.text(_tr(lang, 'lang.continue').toUpperCase()),
@@ -241,9 +250,8 @@ void main() {
       for (final dark in [false, true]) {
         final tag = '$phone $lang ${dark ? 'dark' : 'light'}';
 
-        testWidgets('Sign in $tag: >= 150px clear photo, Continue on screen', (
-          tester,
-        ) async {
+        testWidgets('Sign in $tag: clear photo, Continue and the Create '
+            'account link on screen', (tester) async {
           await _pump(
             tester,
             const AuthScreen(enableFirebaseRecovery: false),
@@ -251,9 +259,18 @@ void main() {
             lang: lang,
             dark: dark,
           );
-          expect(_clear(tester), greaterThanOrEqualTo(150));
+          // With an iPhone's insets the photo gives way to the link; with
+          // none there is room for the full target.
+          expect(
+            _clear(tester),
+            greaterThanOrEqualTo(phone.top > 0 ? _signInClear390 - 0.01 : 160),
+          );
           expect(
             tester.getRect(_continue(lang)).bottom,
+            lessThanOrEqualTo(phone.size.height),
+          );
+          expect(
+            tester.getRect(_link).bottom,
             lessThanOrEqualTo(phone.size.height),
           );
           expectHeroScrimRule(tester);
@@ -343,7 +360,7 @@ void main() {
     }
 
     testWidgets('2.0x: Sign in keeps today\'s height (no growth without '
-        'clear photo)', (tester) async {
+        'clear photo; the Create account link scrolls)', (tester) async {
       await _pump(
         tester,
         const AuthScreen(enableFirebaseRecovery: false),
@@ -355,6 +372,95 @@ void main() {
       const topInset = 47 + kToolbarHeight;
       final today = 844 * 0.38 - text.height;
       expect(fade.height, closeTo(today > topInset ? today : topInset, 0.01));
+      // No photo left to give: the link is reached by scrolling.
+      expect(tester.getRect(_link).top, greaterThan(844));
+    });
+  });
+
+  // ── Sign in: the Create account link stays on screen ───────────────────
+
+  group('Sign in: Create account link on screen (owner 2026-10-20)', () {
+    const tall = _Phone(Size(430, 932), top: 59, bottom: 34);
+
+    for (final lang in ['en', 'sw']) {
+      for (final dark in [false, true]) {
+        final tag = '$lang ${dark ? 'dark' : 'light'}';
+
+        testWidgets('390x844 1.0x $tag: link fully visible, Continue '
+            'visible, >= ${_signInClear390.toInt()}px clear', (tester) async {
+          await _pump(
+            tester,
+            const AuthScreen(enableFirebaseRecovery: false),
+            lang: lang,
+            dark: dark,
+          );
+          final link = tester.getRect(_link);
+          expect(link.top, greaterThanOrEqualTo(0));
+          expect(link.bottom, lessThanOrEqualTo(844));
+          expect(tester.getRect(_continue(lang)).bottom, lessThan(link.top));
+          final c = _clear(tester);
+          expect(c, greaterThanOrEqualTo(_signInClear390 - 0.01));
+          // Trimmed only as much as needed: never below the owner's 120.
+          expect(c, greaterThanOrEqualTo(120));
+          expectHeroScrimRule(tester);
+        });
+
+        testWidgets('430x932 1.0x $tag: link visible, full clear target', (
+          tester,
+        ) async {
+          await _pump(
+            tester,
+            const AuthScreen(enableFirebaseRecovery: false),
+            phone: tall,
+            lang: lang,
+            dark: dark,
+          );
+          expect(tester.getRect(_link).bottom, lessThanOrEqualTo(932));
+          expect(
+            tester.getRect(_continue(lang)).bottom,
+            lessThanOrEqualTo(932),
+          );
+          // The link already fits: no trim on this phone.
+          expect(_clear(tester), closeTo(heroTallClearTarget(932, 1), 0.01));
+        });
+      }
+
+      for (final phone in [_iphone, tall]) {
+        testWidgets('$phone 1.3x $lang: photo left, so the link is on '
+            'screen', (tester) async {
+          await _pump(
+            tester,
+            const AuthScreen(enableFirebaseRecovery: false),
+            phone: phone,
+            lang: lang,
+            textScale: 1.3,
+          );
+          // The link may only scroll off when no photo is left (then the
+          // hero keeps today's height: see the 2.0x test above). At 1.3x
+          // both phones still have photo, so the link must be on screen.
+          expect(_clear(tester), greaterThan(0));
+          expect(
+            tester.getRect(_link).bottom,
+            lessThanOrEqualTo(phone.size.height),
+          );
+          expect(
+            tester.getRect(_continue(lang)).bottom,
+            lessThanOrEqualTo(phone.size.height),
+          );
+          expectHeroScrimRule(tester);
+        });
+      }
+    }
+
+    testWidgets('Create account has no "Sign in" link: Continue stays its '
+        'must-see control', (tester) async {
+      for (final lang in ['en', 'sw']) {
+        await _pump(tester, const SignUpScreen(), lang: lang);
+        expect(find.text(_tr(lang, 'auth.haveAccount')), findsNothing);
+        expect(_clear(tester), greaterThanOrEqualTo(150));
+        expect(tester.getRect(_continue(lang)).bottom, lessThanOrEqualTo(844));
+        await tester.pumpWidget(const SizedBox());
+      }
     });
   });
 
@@ -393,6 +499,7 @@ void main() {
       );
       expect(_clear(tester), greaterThanOrEqualTo(170));
       expect(tester.getRect(_continue('en')).bottom, lessThanOrEqualTo(932));
+      expect(tester.getRect(_link).bottom, lessThanOrEqualTo(932));
     });
 
     testWidgets('PIN entry: the keypad sets the height (no taller hero)', (
@@ -488,6 +595,25 @@ void main() {
         expect(find.byType(FFPhotoHero), findsNothing);
         expect(find.byType(FFPhotoHeroPage), findsNothing);
         expect(find.byKey(const Key('ff-photo-bar-scrim')), findsNothing);
+        await tester.pumpWidget(const SizedBox());
+      }
+    });
+
+    testWidgets('Sign in: Continue and the link where they were', (
+      tester,
+    ) async {
+      for (final lang in ['en', 'sw']) {
+        await _pump(
+          tester,
+          const AuthScreen(enableFirebaseRecovery: false),
+          lang: lang,
+        );
+        // Measured on release-candidate before this change.
+        expect(tester.getRect(_link), const Rect.fromLTRB(24, 500, 366, 548));
+        expect(
+          tester.getRect(find.byKey(const Key('login-continue'))),
+          const Rect.fromLTRB(24, 424, 366, 476),
+        );
         await tester.pumpWidget(const SizedBox());
       }
     });
