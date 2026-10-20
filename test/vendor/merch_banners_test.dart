@@ -17,6 +17,7 @@ import 'package:fitflexmobile/screens/vendor/merch/banner_form_page.dart';
 import 'package:fitflexmobile/screens/vendor/merch/banner_models.dart';
 import 'package:fitflexmobile/screens/vendor/merch/vendor_banners_page.dart';
 import 'package:fitflexmobile/screens/vendor/vendor_home_page.dart';
+import 'package:fitflexmobile/shared/inbox/inbox_controller.dart';
 
 import '../support/recording_api.dart';
 import 'stock_support.dart';
@@ -362,7 +363,7 @@ void main() {
     apiTest('Swahili labels', (tester, api) async {
       _seedPage(api, banners: [_banner('b1', 'pending_approval')]);
       await _pumpPage(tester, api, lang: 'sw');
-      expect(find.text('Promosheni'), findsOneWidget);
+      expect(find.text('Mabango na ofa za muda mfupi'), findsOneWidget);
       expect(find.text('Inasubiri idhini'), findsOneWidget);
       expect(find.text('Pendekeza bango'), findsOneWidget);
     });
@@ -551,11 +552,11 @@ void main() {
       );
       for (final f in ['imageAlt', 'headlineLead', 'headlineAccent']) {
         expect(_errorText(tester, f, 'en'), 'Write this in English.');
-        expect(_errorText(tester, f, 'sw'), 'Write this in Swahili.');
+        expect(_errorText(tester, f, 'sw'), 'Write this in Kiswahili.');
       }
-      // The button text starts filled in for the target, in both languages.
-      expect(_errorText(tester, 'ctaLabel', 'en'), isNull);
-      expect(_errorText(tester, 'ctaLabel', 'sw'), isNull);
+      // No button text to write (spec DD-P2-1: fixed by the target).
+      expect(_key('merch-field-ctaLabel-en'), findsNothing);
+      expect(_key('merch-field-ctaLabel-sw'), findsNothing);
       // Subline is optional.
       expect(_errorText(tester, 'subline', 'en'), isNull);
       expect(
@@ -577,18 +578,6 @@ void main() {
       await _pumpPage(tester, api);
       await _openNewForm(tester);
       expect(_txt(tester, _key('merch-button-label')), 'Button: View product');
-      expect(
-        tester
-            .widget<TextField>(
-              find.descendant(
-                of: _key('merch-field-ctaLabel-sw'),
-                matching: find.byType(TextField),
-              ),
-            )
-            .controller!
-            .text,
-        'Tazama bidhaa',
-      );
       await tapVisible(tester, _key('merch-target-vendor_store'));
       expect(_txt(tester, _key('merch-button-label')), 'Button: Visit store');
       // Only own active, approved products in stock can be picked.
@@ -636,7 +625,10 @@ void main() {
         _errorText(tester, 'headlineLead', 'en'),
         host.tr('merch.banner.tooLong').replaceAll('{n}', '32'),
       );
-      expect(_errorText(tester, 'subline', 'sw'), 'Add the Swahili text too.');
+      expect(
+        _errorText(tester, 'subline', 'sw'),
+        'Add the Kiswahili text too.',
+      );
     });
 
     test('text rule', () {
@@ -646,7 +638,6 @@ void main() {
         'TSh 45000',
         'tzs 10',
         'Asilimia 10',
-        '10 off today',
         'bei 5000',
       ]) {
         expect(bannerTextProblem(bad), 'price', reason: bad);
@@ -658,6 +649,8 @@ void main() {
         'Join our 5K run',
         'Recover faster',
         'Mazoezi 3 kwa wiki',
+        'Buy 2, get 1',
+        'Since 2019',
       ]) {
         expect(bannerTextProblem(ok), isNull, reason: ok);
       }
@@ -943,7 +936,7 @@ void main() {
         'missing_translation',
         422,
         'headlineAccent.sw',
-        'Add the Swahili text too.',
+        'Add the Kiswahili text too.',
       ),
       (
         'contact_in_text',
@@ -954,7 +947,7 @@ void main() {
       (
         'headline_too_long',
         422,
-        'headlineLead.sw',
+        'headlineAccent.sw',
         'Keep the headline to 42 characters.',
       ),
     ]) {
@@ -1061,5 +1054,178 @@ void main() {
       await _send(tester);
       expect(tester.takeException(), isNull);
     });
+  });
+
+  group('review round 1', () {
+    test('banner notifications open /vendor/merch?item=<id>', () {
+      for (final type in [
+        'vendor_shop_banner_approved',
+        'vendor_shop_banner_rejected',
+        'vendor_shop_banner_expired',
+        'vendor_shop_banner_ended',
+        'shop_banner_approved',
+        'shop_banner_rejected',
+        'shop_banner_expired',
+        'shop_banner_ended',
+      ]) {
+        expect(
+          partnerRouteFor(side: 'vendor', type: type, bannerId: 'sbn_1a2b'),
+          '/vendor/merch?item=sbn_1a2b',
+          reason: type,
+        );
+        expect(partnerLinkFor(side: 'vendor', type: type), 'merch');
+      }
+      // A bad id still opens the list; other sides never get it.
+      expect(
+        partnerRouteFor(
+          side: 'vendor',
+          type: 'vendor_shop_banner_approved',
+          bannerId: '../x',
+        ),
+        '/vendor/merch',
+      );
+      expect(
+        partnerRouteFor(side: 'trainer', type: 'vendor_shop_banner_approved'),
+        isNull,
+      );
+    });
+
+    apiTest('?item= scrolls to and outlines that banner', (tester, api) async {
+      _seedPage(
+        api,
+        banners: [
+          for (var i = 0; i < 8; i++) _banner('p$i', 'pending_approval'),
+          _banner('b7', 'rejected', statusReason: 'Photo is blurry'),
+        ],
+      );
+      await pumpPage(
+        tester,
+        api,
+        VendorBannersPage(now: _clock, item: 'b7'),
+        user: vendorUser,
+        size: const Size(400, 900),
+      );
+      expect(_key('merch-highlight-b7'), findsOneWidget);
+      final rect = tester.getRect(_key('merch-highlight-b7'));
+      expect(rect.top, greaterThanOrEqualTo(0));
+      expect(rect.top, lessThan(900));
+      expect(_key('merch-highlight-p0'), findsNothing);
+    });
+
+    apiTest('?item= of a banner that is not mine → "isn\'t available"', (
+      tester,
+      api,
+    ) async {
+      _seedPage(api, banners: [_banner('b1', 'pending_approval')]);
+      final host = await pumpPage(
+        tester,
+        api,
+        VendorBannersPage(now: _clock, item: 'zz'),
+        user: vendorUser,
+        size: const Size(400, 900),
+      );
+      expect(host.snack(host.tr('merch.notYours')), findsOneWidget);
+    });
+
+    apiTest('the router passes ?item= to the page', (tester, api) async {
+      _seedPage(api, banners: [_banner('b1', 'pending_approval')]);
+      await pumpPage(
+        tester,
+        api,
+        const SizedBox(),
+        initialLocation: '/vendor/merch?item=b1',
+        size: const Size(400, 900),
+        extraRoutes: [
+          GoRoute(
+            path: AppRoutes.vendorMerch,
+            builder: (_, state) => VendorBannersPage(
+              now: _clock,
+              item: state.uri.queryParameters['item'],
+            ),
+          ),
+        ],
+      );
+      expect(_key('merch-highlight-b1'), findsOneWidget);
+    });
+
+    apiTest('the list asks 100 at a time and follows nextCursor', (
+      tester,
+      api,
+    ) async {
+      _seedPage(api);
+      api.onCall('GET /vendor/shop-banners', (r) {
+        final q = Uri.splitQueryString(r.query);
+        expect(q['limit'], '100');
+        return q['cursor'] == 'c2'
+            ? {
+                ..._list([_banner('b2', 'draft')]),
+                'nextCursor': null,
+              }
+            : {
+                ..._list([_banner('b1', 'pending_approval')]),
+                'nextCursor': 'c2',
+              };
+      });
+      await _pumpPage(tester, api);
+      expect(_key('merch-banner-b1'), findsOneWidget);
+      expect(_key('merch-banner-b2'), findsOneWidget);
+    });
+
+    for (final (status, code, key) in [
+      (429, 'rate_limited', 'merch.rateLimited'),
+      (409, 'too_many_open_proposals', 'merch.tooManyOpen'),
+    ]) {
+      apiTest('$status $code on send → says so, form kept', (
+        tester,
+        api,
+      ) async {
+        _seedPage(api, banners: [_banner('b5', 'draft')]);
+        final host = await _pumpPage(tester, api);
+        await tapVisible(tester, _key('merch-edit-b5'));
+        api.on('PATCH /vendor/shop-banners/b5', {
+          'banner': _banner('b5', 'draft'),
+        });
+        api.fail('POST /vendor/shop-banners/b5/submit', status, {
+          'error': code,
+          'retryAfterSeconds': 30,
+        });
+        await _send(tester);
+        expect(host.snack(host.tr(key)), findsOneWidget);
+        expect(_key('merch-banner-form'), findsOneWidget);
+      });
+    }
+
+    apiTest('429 rate_limited on a list action → says so', (tester, api) async {
+      _seedPage(api, banners: [_banner('b5', 'draft')]);
+      final host = await _pumpPage(tester, api);
+      api.fail('POST /vendor/shop-banners/b5/submit', 429, {
+        'error': 'rate_limited',
+      });
+      await tapVisible(tester, _key('merch-submit-b5'));
+      expect(host.snack(host.tr('merch.rateLimited')), findsOneWidget);
+    });
+
+    for (final (reason, key) in [
+      ('product_not_listed', 'merch.ineligible.productNotListed'),
+      ('vendor_suspended', 'merch.suspended'),
+      ('vendor_not_approved', 'merch.pendingBody'),
+      ('something_new', 'merch.ineligible.generic'),
+    ]) {
+      apiTest('target_not_eligible {reason: $reason} → worded by reason', (
+        tester,
+        api,
+      ) async {
+        _seedPage(api, banners: [_banner('b1', 'pending_approval')]);
+        final host = await _pumpPage(tester, api);
+        await tapVisible(tester, _key('merch-edit-b1'));
+        api.fail('PATCH /vendor/shop-banners/b1', 422, {
+          'error': 'target_not_eligible',
+          'field': 'target',
+          'reason': reason,
+        });
+        await _send(tester);
+        expect(_txt(tester, _key('merch-error-target')), host.tr(key));
+      });
+    }
   });
 }

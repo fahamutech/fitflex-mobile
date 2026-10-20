@@ -711,7 +711,8 @@ GoRouter buildRouter(AuthState auth) {
       GoRoute(
         path: AppRoutes.vendorMerch,
         name: 'vendorMerch',
-        builder: (context, state) => const VendorBannersPage(),
+        builder: (context, state) =>
+            VendorBannersPage(item: state.uri.queryParameters['item']),
       ),
       // Vendor customers (S4). Each page checks the feature and the
       // `customers` permission itself; `new` comes before `:customerId`.

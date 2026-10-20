@@ -22,10 +22,13 @@ import 'banner_models.dart';
 /// waiting for business approval sees why they cannot propose yet; staff
 /// need the `products` permission.
 class VendorBannersPage extends StatefulWidget {
-  const VendorBannersPage({super.key, this.now});
+  const VendorBannersPage({super.key, this.now, this.item});
 
   /// The clock (tests).
   final DateTime Function()? now;
+
+  /// A banner to scroll to and highlight (`?item=`, from a notification).
+  final String? item;
 
   @override
   State<VendorBannersPage> createState() => _VendorBannersPageState();
@@ -39,6 +42,14 @@ class _VendorBannersPageState extends State<VendorBannersPage> {
   List<Map<String, dynamic>> _products = const [];
   String _businessName = '';
   final Set<String> _busy = {};
+
+  /// The banner a notification pointed at, shown once the list is in.
+  String? _highlight;
+  bool _itemHandled = false;
+  final _itemKey = GlobalKey(debugLabel: 'merch-item');
+
+  /// Pages read at most (100 each): a vendor never has this many.
+  static const _maxPages = 20;
 
   /// From the list's `vendor`: whether this business may propose now, and
   /// why not (`vendor_suspended`, `vendor_not_approved`).
@@ -87,7 +98,7 @@ class _VendorBannersPageState extends State<VendorBannersPage> {
     }
     try {
       final results = await Future.wait<Object?>([
-        api.vendorShopBanners(),
+        _allBanners(api),
         api.vendorProducts().catchError((Object _) => <dynamic>[]),
         api.vendorProfile().catchError((Object _) => <String, dynamic>{}),
       ]);
@@ -111,6 +122,7 @@ class _VendorBannersPageState extends State<VendorBannersPage> {
         _unavailable = false;
         _loading = false;
       });
+      _showItem();
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -125,6 +137,46 @@ class _VendorBannersPageState extends State<VendorBannersPage> {
         _loading = false;
       });
     }
+  }
+
+  /// Every page of the vendor's banners (limit 100, following nextCursor).
+  /// The first page's `vendor` block is kept.
+  static Future<Map<String, dynamic>> _allBanners(ApiClient api) async {
+    final first = await api.vendorShopBanners();
+    final items = [...?(first['items'] as List?)];
+    var cursor = first['nextCursor']?.toString();
+    for (var page = 1; page < _maxPages && (cursor ?? '').isNotEmpty; page++) {
+      final next = await api.vendorShopBanners(cursor: cursor);
+      items.addAll((next['items'] as List?) ?? const []);
+      final more = next['nextCursor']?.toString();
+      if (more == cursor) break;
+      cursor = more;
+    }
+    return {...first, 'items': items};
+  }
+
+  /// After the first load: scroll to the notified banner and highlight it,
+  /// or say it is not available.
+  void _showItem() {
+    final id = widget.item;
+    if (_itemHandled || id == null || id.isEmpty) return;
+    _itemHandled = true;
+    if (!_banners.any((b) => b.id == id)) {
+      FFSnack.info(context, context.tr('merch.notYours'));
+      return;
+    }
+    setState(() => _highlight = id);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final target = _itemKey.currentContext;
+      if (target == null || !target.mounted) return;
+      Scrollable.ensureVisible(
+        target,
+        alignment: 0.1,
+        duration: MediaQuery.disableAnimationsOf(target)
+            ? Duration.zero
+            : FFTokens.motionMedium,
+      );
+    });
   }
 
   Future<void> _openForm({VendorBanner? banner, VendorBanner? copy}) async {
@@ -226,11 +278,13 @@ class _VendorBannersPageState extends State<VendorBannersPage> {
     'contact_in_text' => 'merch.banner.noLinks',
     'target_not_owned' ||
     'target_type_not_allowed' => 'merch.banner.targetNotOwned',
-    'target_not_eligible' ||
+    'target_not_eligible' => targetIneligibleKey(e.body),
     'target_required' => 'merch.banner.productRequired',
     'start_too_soon' => 'merch.dates.startSoon',
     'image_required' => 'merch.banner.imageRequired',
     'image_people_unconfirmed' => 'merch.banner.reconfirm',
+    'rate_limited' => 'merch.rateLimited',
+    'too_many_open_proposals' => 'merch.tooManyOpen',
     _ => 'merch.saveFailed',
   };
 
@@ -525,95 +579,115 @@ class _VendorBannersPageState extends State<VendorBannersPage> {
           () => _openForm(copy: b),
         ),
     ];
-    return Padding(
-      key: Key('merch-banner-${b.id}'),
-      padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
-      child: FFCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ExcludeSemantics(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(FFTokens.radiusMd),
-                    child: SizedBox(
-                      width: 96,
-                      height: 60,
-                      child: ColoredBox(
-                        color: FFTokens.heroPlaceholder,
-                        child: thumb.isEmpty
-                            ? const SizedBox.expand()
-                            : FFRemoteImage(
-                                src: thumb,
-                                headers: public == null && token != null
-                                    ? {'authorization': 'Bearer $token'}
-                                    : null,
-                                width: 96,
-                                height: 60,
-                                fit: BoxFit.cover,
-                                fallback: const SizedBox.expand(),
-                              ),
-                      ),
+    final highlighted = _highlight == b.id;
+    final card = FFCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ExcludeSemantics(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(FFTokens.radiusMd),
+                  child: SizedBox(
+                    width: 96,
+                    height: 60,
+                    child: ColoredBox(
+                      color: FFTokens.heroPlaceholder,
+                      child: thumb.isEmpty
+                          ? const SizedBox.expand()
+                          : FFRemoteImage(
+                              src: thumb,
+                              headers: public == null && token != null
+                                  ? {'authorization': 'Bearer $token'}
+                                  : null,
+                              width: 96,
+                              height: 60,
+                              fit: BoxFit.cover,
+                              fallback: const SizedBox.expand(),
+                            ),
                     ),
                   ),
                 ),
-                const SizedBox(width: FFTokens.spacingMd),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        headline.isEmpty ? '-' : headline,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: FFTokens.spacingXs),
-                      FFBadge(
-                        key: Key('merch-status-${b.id}'),
-                        label: context.tr(bannerStatusKey(status)),
-                        tone: _tone(status),
-                        wrap: true,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: FFTokens.spacingSm),
-            if (extra != null)
-              Text(
-                extra,
-                key: Key('merch-line-${b.id}'),
-                style: theme.textTheme.bodyMedium,
               ),
-            Text(
-              '${_when(b.startsAt)} – ${_when(b.endsAt)} '
-              '(${context.tr('merch.dates.tzNote')})',
-              style: theme.textTheme.bodySmall,
-            ),
-            Text(target, style: theme.textTheme.bodySmall),
-            Text(
-              context
-                  .tr('merch.line.shownTo')
-                  .replaceAll(
-                    '{audiences}',
-                    b.audienceRoles
-                        .map((a) => context.tr('merch.audience.$a'))
-                        .join(', '),
-                  ),
-              style: theme.textTheme.bodySmall,
-            ),
-            if (actions.isNotEmpty) ...[
-              const SizedBox(height: FFTokens.spacingXs),
-              Wrap(spacing: FFTokens.spacingXs, children: actions),
+              const SizedBox(width: FFTokens.spacingMd),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      headline.isEmpty ? '-' : headline,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: FFTokens.spacingXs),
+                    FFBadge(
+                      key: Key('merch-status-${b.id}'),
+                      label: context.tr(bannerStatusKey(status)),
+                      tone: _tone(status),
+                      wrap: true,
+                    ),
+                  ],
+                ),
+              ),
             ],
+          ),
+          const SizedBox(height: FFTokens.spacingSm),
+          if (extra != null)
+            Text(
+              extra,
+              key: Key('merch-line-${b.id}'),
+              style: theme.textTheme.bodyMedium,
+            ),
+          Text(
+            '${_when(b.startsAt)} – ${_when(b.endsAt)} '
+            '(${context.tr('merch.dates.tzNote')})',
+            style: theme.textTheme.bodySmall,
+          ),
+          Text(target, style: theme.textTheme.bodySmall),
+          Text(
+            context
+                .tr('merch.line.shownTo')
+                .replaceAll(
+                  '{audiences}',
+                  b.audienceRoles
+                      .map((a) => context.tr('merch.audience.$a'))
+                      .join(', '),
+                ),
+            style: theme.textTheme.bodySmall,
+          ),
+          if (actions.isNotEmpty) ...[
+            const SizedBox(height: FFTokens.spacingXs),
+            Wrap(spacing: FFTokens.spacingXs, children: actions),
           ],
-        ),
+        ],
+      ),
+    );
+    return Padding(
+      key: Key('merch-banner-${b.id}'),
+      padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
+      child: KeyedSubtree(
+        key: highlighted ? _itemKey : null,
+        // The banner a notification is about: a brand outline, and it is
+        // the one scrolled to (not colour alone).
+        child: highlighted
+            ? DecoratedBox(
+                key: Key('merch-highlight-${b.id}'),
+                position: DecorationPosition.foreground,
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.primary,
+                    width: 2,
+                  ),
+                  borderRadius: BorderRadius.circular(FFTokens.radiusLg),
+                ),
+                child: card,
+              )
+            : card,
       ),
     );
   }

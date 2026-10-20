@@ -106,6 +106,9 @@ class _ShopBannerCarouselState extends State<ShopBannerCarousel> {
           key: active ? Key('shop-banner-from-${banner.id}') : null,
           label: _fromLabel(context, banner),
           tone: FFBadgeTone.onPhoto,
+          // Two lines at most (a long store name at 130% on a 375 phone); the
+          // slide label still reads the whole name.
+          maxLines: 2,
           wrap: true,
         ),
       );

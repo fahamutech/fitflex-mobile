@@ -90,6 +90,14 @@ class VendorBannerFormPage extends StatefulWidget {
 class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
   static const _langs = ['en', 'sw'];
 
+  /// The texts the vendor writes (the button is fixed by the target).
+  static const _formFields = [
+    'imageAlt',
+    'headlineLead',
+    'headlineAccent',
+    'subline',
+  ];
+
   final Map<String, Map<String, TextEditingController>> _text = {
     for (final f in bannerTextFields)
       f: {for (final l in _langs) l: TextEditingController()},
@@ -114,7 +122,6 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
   DateTime? _endsAt;
   String? _bannerId;
   String _status = 'draft';
-  bool _ctaEdited = false;
   bool _submitted = false;
   bool _busy = false;
   bool _dirty = false;
@@ -146,7 +153,6 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
       _productId = _targetType == 'product' && source.targetValue.isNotEmpty
           ? source.targetValue
           : null;
-      _ctaEdited = source.ctaLabelCustom;
       _audience = {...source.audienceRoles};
     }
     if (widget.banner != null) {
@@ -159,7 +165,6 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
       _startsAt = b.startsAt;
       _endsAt = b.endsAt;
     }
-    if (!_ctaEdited) _defaultCta();
     _filling = false;
     for (final f in bannerTextFields) {
       for (final l in _langs) {
@@ -190,26 +195,11 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
 
   void _changed(String field, String lang) {
     if (_filling || !mounted) return;
-    if (field == 'ctaLabel') _ctaEdited = true;
     setState(() {
       _dirty = true;
       _serverErrors.remove('$field.$lang');
       _serverErrors.remove(field);
     });
-  }
-
-  /// The button's words follow the target until the vendor writes their own.
-  void _defaultCta() {
-    // Both languages, whatever the app is shown in (no context needed).
-    final locale = FFLocale();
-    final key = _targetType == 'vendor_store'
-        ? 'shop.banner.cta.visitStore'
-        : 'shop.banner.cta.viewProduct';
-    final was = _filling;
-    _filling = true;
-    _text['ctaLabel']!['en']!.text = locale.tIn('en', key);
-    _text['ctaLabel']!['sw']!.text = locale.tIn('sw', key);
-    _filling = was;
   }
 
   String _v(String field, String lang) => _text[field]![lang]!.text.trim();
@@ -239,7 +229,7 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
         out['models'] = context.tr('merch.confirmRequired');
       }
     }
-    for (final f in bannerTextFields) {
+    for (final f in _formFields) {
       final optional = f == 'subline';
       final anyFilled = _langs.any((l) => _v(f, l).isNotEmpty);
       for (final l in _langs) {
@@ -347,9 +337,8 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
       // An emptied subline is cleared on the server (null); a new banner
       // without one leaves it out.
       if (json('subline') != null || patch) 'subline': json('subline'),
-      // Not written by the vendor: the server's default for the target
-      // (the same words the form shows).
-      if (_ctaEdited) 'ctaLabel': json('ctaLabel'),
+      // No button text: vendors cannot type one (spec DD-P2-1); the server
+      // uses the fixed button for the target (View product / Visit store).
       'target': {
         'type': _targetType,
         'value': _targetType == 'vendor_store' ? widget.vendorId : _productId,
@@ -379,8 +368,6 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
       'subline.en',
       'subline.sw',
       'target',
-      'ctaLabel.en',
-      'ctaLabel.sw',
       'audience',
       'startsAt',
       'endsAt',
@@ -446,8 +433,9 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
         );
       case 'headline_too_long':
         final l = lang ?? 'en';
+        // Under the field the server names (headlineAccent), else the lead.
         put(
-          'headlineLead.$l',
+          isText ? '$name.$l' : 'headlineLead.$l',
           context
               .tr('merch.banner.tooLong')
               .replaceAll('{n}', max(bannerHeadlineMax[l]!)),
@@ -466,8 +454,10 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
         put('endsAt', context.tr('merch.dates.endAfter'));
       case 'end_required':
         put('endsAt', context.tr('merch.dates.required'));
-      case 'target_required' || 'target_not_eligible':
+      case 'target_required':
         put('target', context.tr('merch.banner.productRequired'));
+      case 'target_not_eligible':
+        put('target', context.tr(targetIneligibleKey(body)));
       case 'target_not_owned' || 'target_type_not_allowed':
         put('target', context.tr('merch.banner.targetNotOwned'));
       case 'audience_required':
@@ -516,6 +506,8 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
   static String? _accountError(ApiException e) => switch (e.code) {
     'vendor_suspended' => 'merch.suspended',
     'vendor_not_approved' => 'merch.pendingBody',
+    'rate_limited' => 'merch.rateLimited',
+    'too_many_open_proposals' => 'merch.tooManyOpen',
     _ => null,
   };
 
@@ -964,7 +956,6 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
                   _targetType = id;
                   _dirty = true;
                   _serverErrors.remove('target');
-                  if (!_ctaEdited) _defaultCta();
                 });
               },
             ),
@@ -1003,17 +994,16 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
                       }),
                     ),
             ),
-          if (!_ctaEdited)
-            Padding(
-              padding: const EdgeInsets.only(top: FFTokens.spacingSm),
-              child: Text(
-                context
-                    .tr('merch.banner.button')
-                    .replaceAll('{label}', context.tr(buttonKey)),
-                key: const Key('merch-button-label'),
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
+          Padding(
+            padding: const EdgeInsets.only(top: FFTokens.spacingSm),
+            child: Text(
+              context
+                  .tr('merch.banner.button')
+                  .replaceAll('{label}', context.tr(buttonKey)),
+              key: const Key('merch-button-label'),
+              style: Theme.of(context).textTheme.bodySmall,
             ),
+          ),
           if (_targetType == 'product' || _serverErrors.containsKey('target'))
             _error('target'),
         ],
@@ -1107,7 +1097,8 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
       headlineLead: lead ?? ShopText(' ', ' '),
       headlineAccent: one('headlineAccent'),
       subline: one('subline'),
-      ctaLabel: one('ctaLabel'),
+      // The fixed button for the target (the carousel's default).
+      ctaLabel: null,
       target: ShopBannerTarget(_targetType, ''),
       origin: 'vendor',
       vendorName: widget.businessName.isEmpty ? ' ' : widget.businessName,
@@ -1202,11 +1193,6 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
           ),
           _pair('subline', context.tr('merch.banner.subline')),
           _targetField(context),
-          _pair(
-            'ctaLabel',
-            context.tr('merch.banner.cta'),
-            help: context.tr('merch.banner.ctaHelp'),
-          ),
           _audienceField(context),
           _dateField(context, true),
           _dateField(context, false),

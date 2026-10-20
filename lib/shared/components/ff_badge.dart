@@ -26,6 +26,7 @@ class FFBadge extends StatelessWidget {
     this.tone = FFBadgeTone.defaultTone,
     this.dot = false,
     this.wrap = false,
+    this.maxLines,
   });
 
   final String label;
@@ -35,6 +36,10 @@ class FFBadge extends StatelessWidget {
   /// Let the label wrap onto more lines instead of being cut off (labels that
   /// must be read in full, such as a paid-placement disclosure).
   final bool wrap;
+
+  /// With [wrap]: at most this many lines, then an ellipsis (a chip on a
+  /// photo that must not grow over the headline). Null: no limit.
+  final int? maxLines;
 
   @override
   Widget build(BuildContext context) {
@@ -88,8 +93,8 @@ class FFBadge extends StatelessWidget {
           Flexible(
             child: Text(
               label,
-              maxLines: wrap ? null : 1,
-              overflow: wrap ? null : TextOverflow.ellipsis,
+              maxLines: wrap ? maxLines : 1,
+              overflow: wrap && maxLines == null ? null : TextOverflow.ellipsis,
               softWrap: wrap,
               style: Theme.of(
                 context,

@@ -239,13 +239,13 @@ void main() {
       handle.dispose();
     });
 
-    apiTest('Swahili: "Kutoka kwa", "Bango 1 kati ya 2"', (tester, api) async {
+    apiTest('Swahili: "Kutoka", "Bango 1 kati ya 2"', (tester, api) async {
       final handle = tester.ensureSemantics();
       _seed(api, _home(banners: [_banner('b1'), _banner('b2')]));
       await _pump(tester, api, lang: 'sw');
-      expect(find.text('Kutoka kwa Duka la Asha'), findsWidgets);
+      expect(find.text('Kutoka Duka la Asha'), findsWidgets);
       expect(_slideLabel(tester, 0), endsWith('Bango 1 kati ya 2'));
-      expect(_slideLabel(tester, 0), startsWith('Kutoka kwa Duka la Asha.'));
+      expect(_slideLabel(tester, 0), startsWith('Kutoka Duka la Asha.'));
       expect(find.text('Tazama bidhaa'), findsWidgets);
       expect(
         tester.getSemantics(_key('shop-banner-next')).tooltip,
@@ -405,6 +405,15 @@ void main() {
         size: const Size(375, 812),
       );
       expect(tester.takeException(), isNull);
+      // At most two lines, then an ellipsis.
+      final chipText = tester.widget<Text>(
+        find.descendant(
+          of: _key('shop-banner-from-b1'),
+          matching: find.byType(Text),
+        ),
+      );
+      expect(chipText.maxLines, 2);
+      expect(chipText.overflow, TextOverflow.ellipsis);
       // The chip sits above the headline, never on it.
       final chip = tester.getRect(_key('shop-banner-from-b1'));
       final headline = tester.getRect(_key('ff-hero-headline').last);

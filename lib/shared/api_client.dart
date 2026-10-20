@@ -2001,8 +2001,19 @@ class ApiClient {
   /// `{items: [banner], total, nextCursor, vendor: {canPropose, reason},
   /// proposalExpiryDays}` (docs/shop-banners-api.md). 404
   /// `feature_disabled` while SHOP_BANNERS is off.
-  Future<Map<String, dynamic>> vendorShopBanners() async {
-    final out = await _request('GET', '/vendor/shop-banners');
+  /// One page: [limit] (the server allows up to 100) from [cursor] (the
+  /// previous page's `nextCursor`).
+  Future<Map<String, dynamic>> vendorShopBanners({
+    int limit = 100,
+    String? cursor,
+  }) async {
+    final out = await _request(
+      'GET',
+      _withQuery('/vendor/shop-banners', {
+        'limit': '$limit',
+        if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+      }),
+    );
     if (out is List) return {'items': out};
     return out is Map ? Map<String, dynamic>.from(out) : <String, dynamic>{};
   }

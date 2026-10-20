@@ -197,40 +197,61 @@ String bannerStatusKey(String status) => switch (status) {
   _ => 'merch.status.draft',
 };
 
-// Prices, discounts and amounts (DD-P2-2): a percent sign, "/=", a currency
-// word or sign, an amount with thousands separators ("50,000"), "20 off",
-// the words for percent. ("5K run" is allowed: it is a distance.)
-final _priceRule = RegExp(
-  r'%|/=|\$|€|£'
-  r'|\b(tsh|tshs|tzs|ksh|kshs|usd|shs?|shilingi|sh\.)\b'
-  r'|\b(percent|per\s?cent|asilimia)\b'
-  r'|\b\d{1,3}([,.]\d{3})+\b'
-  r'|\b\d+\s?(off|punguzo)\b'
-  r'|\b(bei|price)\s*[:=]?\s*\d',
-  caseSensitive: false,
-);
+// The text rules, copied pattern for pattern from the server's
+// src/shared/shop-banner-rules.mjs (fitflex-functions feat/shop-banners) so
+// the form never refuses what the server accepts. The server decides: it is
+// being extended (NFKC, zero-width characters, more amount words and
+// domains), so anything this misses still comes back as
+// price_claim_in_text / contact_in_text {field} and is shown under that
+// field. Whitespace is collapsed first, as the server does.
+final _pricePatterns = [
+  RegExp(r'\d\s*%'),
+  RegExp(r'%\s*\d'),
+  RegExp(r'%'),
+  RegExp(r'/='),
+  RegExp(r'\b(?:tsh|tshs|tzs|shs?|sh)\.?\s*\d', caseSensitive: false),
+  RegExp(
+    r'\d[\d,.\s]*\s*(?:tsh|tshs|tzs|shs?|shilingi|bob)\b',
+    caseSensitive: false,
+  ),
+  RegExp(r'\b(?:shilingi|asilimia)\s*\d', caseSensitive: false),
+  RegExp(r'\d+\s*(?:percent|per\s*cent|pct|asilimia)\b', caseSensitive: false),
+  RegExp(r'\b(?:percent|per\s*cent|asilimia)\b', caseSensitive: false),
+  RegExp(r'\b(?:bei|price)\s*:?\s*\d', caseSensitive: false),
+  RegExp(r'\b\d{1,3}(?:[,.]\d{3})+\b'),
+];
+final _contactPatterns = [
+  RegExp(r'https?://', caseSensitive: false),
+  RegExp(r'\bwww\.', caseSensitive: false),
+  RegExp(
+    r'\b[a-z0-9-]+\.(?:com|co\.tz|tz|net|org|shop|store|app|io|me)\b',
+    caseSensitive: false,
+  ),
+  RegExp(r'\+?\s*255[\s-]?\d{2,3}[\s-]?\d{3}[\s-]?\d{3}'),
+  RegExp(r'\b0[67]\d{2}[\s-]?\d{3}[\s-]?\d{3}\b'),
+  RegExp(r'\d(?:[\s-]?\d){8,}'),
+];
 
-// Links (a scheme, www., or a web address) and phone numbers (9+ digits).
-final _linkRule = RegExp(
-  r'(https?://|www\.)|\b[a-z0-9-]+\.(com|co\.tz|tz|net|org|shop|store)\b',
-  caseSensitive: false,
-);
-final _phoneRule = RegExp(r'\+?\d[\d\s().-]{7,}\d');
-
-/// What is wrong with a banner [text] under the text rule: `price`,
-/// `contact`, or null when it is fine. The server checks it again
-/// (`price_claim_in_text`).
+/// What is wrong with a banner [text] under the server's text rules:
+/// `price`, `contact`, or null.
 String? bannerTextProblem(String text) {
-  final t = text.trim();
+  final t = text.replaceAll(RegExp(r'\s+'), ' ').trim();
   if (t.isEmpty) return null;
-  if (_priceRule.hasMatch(t)) return 'price';
-  if (_linkRule.hasMatch(t)) return 'contact';
-  for (final m in _phoneRule.allMatches(t)) {
-    if (m.group(0)!.replaceAll(RegExp(r'\D'), '').length >= 9) {
-      return 'contact';
-    }
-  }
+  if (_pricePatterns.any((re) => re.hasMatch(t))) return 'price';
+  if (_contactPatterns.any((re) => re.hasMatch(t))) return 'contact';
   return null;
+}
+
+/// The message for `422 target_not_eligible {reason}`.
+String targetIneligibleKey(Object? body) {
+  final reason = body is Map ? body['reason']?.toString() : null;
+  return switch (reason) {
+    'product_not_listed' => 'merch.ineligible.productNotListed',
+    'vendor_suspended' => 'merch.suspended',
+    'vendor_not_approved' => 'merch.pendingBody',
+    'vendor_not_found' => 'merch.notYours',
+    _ => 'merch.ineligible.generic',
+  };
 }
 
 /// A photo picked for a banner, with its size when it could be decoded.
