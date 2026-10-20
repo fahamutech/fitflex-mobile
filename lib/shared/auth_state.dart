@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'api_client.dart';
 import 'firebase_auth_service.dart';
 import 'held_nav_extras.dart';
+import 'pending_friend_invite.dart';
 import 'pending_org_invite.dart';
 import 'push_service.dart';
 
@@ -53,6 +54,13 @@ class AuthState extends ChangeNotifier {
   Map<String, dynamic>? get user => _user;
   String get role => _role;
   bool get isSignedIn => _token != null;
+
+  /// Signed in, but /me could not be reached at start-up (offline, timeout,
+  /// server error), so the account's state is only what this device kept.
+  /// The router never treats that as "not onboarded" (H6): it shows a
+  /// connection page with Retry instead of the setup flow.
+  bool get profileUnconfirmed => _profileUnconfirmed;
+  bool _profileUnconfirmed = false;
   bool get isPendingApproval =>
       _user?['approvalStatus']?.toString() == 'pending_approval';
 
@@ -189,6 +197,7 @@ class AuthState extends ChangeNotifier {
         await refreshPersonas();
         await refreshInvitations();
         await refreshIdentifiers();
+        _profileUnconfirmed = false;
       } on ApiException catch (e) {
         // Token invalid or user deleted — clear session
         if (e.status == 401 || e.status == 404) {
@@ -197,10 +206,14 @@ class AuthState extends ChangeNotifier {
           api.setToken(null);
           await prefs.remove('token');
           await prefs.remove('user');
+        } else {
+          // Server error: keep cached data, but it is unconfirmed.
+          _profileUnconfirmed = true;
         }
-        // For other errors (network etc.), keep cached data
       } catch (_) {
-        // Network failure — keep cached data, router will use what we have
+        // Network failure — keep cached data, but it is unconfirmed: the
+        // router must not send this person to onboarding on its strength.
+        _profileUnconfirmed = true;
       }
     }
 
@@ -214,6 +227,41 @@ class AuthState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Tries /me again after a failed start-up. True once the profile is
+  /// loaded (the router then moves on); false while it still cannot be
+  /// reached. A session the server refuses is signed out.
+  Future<bool> retryProfile() async {
+    if (_token == null) return false;
+    try {
+      final meRes = await api.me();
+      final freshUser = Map<String, dynamic>.from(meRes['user'] as Map);
+      _user = freshUser;
+      _partnerVerified = meRes['partnerVerified'] as bool?;
+      final userType = freshUser['userType']?.toString();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user', jsonEncode(freshUser));
+      if (userType != null && userType != _role) {
+        _role = userType;
+        await prefs.setString('role', userType);
+      }
+      _profileUnconfirmed = false;
+      unawaited(push?.register());
+      await refreshPersonas();
+      await refreshInvitations();
+      await refreshIdentifiers();
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      if (e.status == 401 || e.status == 404) {
+        _profileUnconfirmed = false;
+        await signOut();
+      }
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<void> setRole(String role) async {
     _role = role;
     final prefs = await SharedPreferences.getInstance();
@@ -223,6 +271,8 @@ class AuthState extends ChangeNotifier {
 
   Future<void> signIn(String token, Map<String, dynamic> user) async {
     _token = token;
+    // A session the server just handed over is confirmed.
+    _profileUnconfirmed = false;
     _user = user;
     // The backend owns role assignment. Persist the role returned with every
     // session so a later app launch (or a logout followed by login) cannot
@@ -282,9 +332,10 @@ class AuthState extends ChangeNotifier {
   Future<void> switchPersona(String personaId) async {
     final res = await api.switchPersona(personaId);
     final user = Map<String, dynamic>.from(res['user'] as Map);
-    // A kept organisation invitation link belongs to the session it was
-    // opened in, not to the persona switched to.
+    // A kept invitation link belongs to the session it was opened in, not
+    // to the persona switched to.
     await PendingOrgInvite.clear();
+    await PendingFriendInvite.clear();
     // Push belongs to the persona: drop it for the old one, the new session
     // registers again in signIn().
     await push?.unregister();
@@ -428,13 +479,17 @@ class AuthState extends ChangeNotifier {
     // cannot press Back into this user's email/phone screen. A screen still
     // mounted (a 401 during sign-in lands here too) keeps its own.
     HeldNavExtras.clear();
-    // Ending a real session: a kept organisation invitation link is not the
-    // next person's. Sign-in error paths (no session yet) keep it.
-    if (_token != null) await PendingOrgInvite.clear();
+    // Ending a real session: a kept invitation link is not the next
+    // person's. Sign-in error paths (no session yet) keep it.
+    if (_token != null) {
+      await PendingOrgInvite.clear();
+      await PendingFriendInvite.clear();
+    }
     // While the session token is still set, so the backend accepts the call.
     await push?.unregister();
     _token = null;
     _user = null;
+    _profileUnconfirmed = false;
     _personas = const [];
     _addablePersonaTypes = const [];
     _personaChoiceRequired = false;

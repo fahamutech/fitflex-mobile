@@ -264,6 +264,7 @@ class _AuthScreenState extends State<AuthScreen>
     if (!_precachedHome) {
       _precachedHome = true;
       precacheHeroPhotos(context, const [
+        FFHeroPhoto.pin,
         FFHeroPhoto.homeStart,
         FFHeroPhoto.homePass,
       ]);

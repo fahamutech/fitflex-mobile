@@ -13,6 +13,11 @@ on:
         type: boolean
         required: false
         default: false
+      photo_footer:
+        description: 'Tester build with the photo footer band on (PHOTO_FOOTER_UI). Takes effect only with photo_hero ticked too. Manual runs only; pushes to main always build with it off.'
+        type: boolean
+        required: false
+        default: false
 
 concurrency:
   group: android-distribution
@@ -39,6 +44,9 @@ jobs:
       # Photo hero (PHOTO_HERO_UI). Only a manual run with photo_hero ticked turns it on,
       # for testers; pushes to main always build it off.
       PHOTO_HERO_UI: ${{ github.event_name == 'workflow_dispatch' && inputs.photo_hero && 'true' || 'false' }}
+      # Photo footer (PHOTO_FOOTER_UI): the same rule; the app ignores it unless
+      # PHOTO_HERO_UI is on as well.
+      PHOTO_FOOTER_UI: ${{ github.event_name == 'workflow_dispatch' && inputs.photo_footer && 'true' || 'false' }}
       # Comma-separated App Distribution group aliases (Firebase console →
       # App Distribution → Testers & Groups).
       TESTER_GROUPS: ${{ vars.FIREBASE_TESTER_GROUPS || 'testers' }}
@@ -99,7 +107,7 @@ jobs:
           flutter pub get
           flutter build apk --release \
             --build-number=$((100 + ${{ github.run_number }})) \
-            --dart-define=API_BASE="$API_BASE" --dart-define=SHOP_HOME_V2="$SHOP_HOME_V2" --dart-define=PHOTO_HERO_UI="$PHOTO_HERO_UI"
+            --dart-define=API_BASE="$API_BASE" --dart-define=SHOP_HOME_V2="$SHOP_HOME_V2" --dart-define=PHOTO_HERO_UI="$PHOTO_HERO_UI" --dart-define=PHOTO_FOOTER_UI="$PHOTO_FOOTER_UI"
 
       # Testers first: nothing after this may stop a build reaching them.
       - name: Distribute to testers

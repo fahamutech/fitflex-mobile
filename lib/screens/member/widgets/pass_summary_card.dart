@@ -79,7 +79,9 @@ class PassSummaryCard extends StatelessWidget {
       title =
           _pendingName(context, pending) ??
           context.tr('pass.state.pendingPurchaseAny');
-      status = context.tr('pass.pending');
+      // The sentence under the title already says the payment is being
+      // confirmed (owner: say a fact once), so no badge repeats it.
+      status = null;
     } else {
       title = context.tr('pass.state.noPassYet');
       status = null;
@@ -89,52 +91,46 @@ class PassSummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          LayoutBuilder(
-            builder: (context, box) {
-              final rowWidth = box.maxWidth;
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          context.tr('member.yourPass'),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          title,
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
+          // "Your pass" and the badge share the top line; the title gets the
+          // full width below them, so neither is squeezed into broken words
+          // at 360px. A long badge wraps inside the space it has.
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                context.tr('member.yourPass'),
+                maxLines: 1,
+                softWrap: false,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              if (status != null) ...[
+                const SizedBox(width: FFTokens.spacingSm),
+                Expanded(
+                  child: Align(
+                    alignment: AlignmentDirectional.topEnd,
+                    child: FFBadge(
+                      key: const Key('pass-status-badge'),
+                      label: status,
+                      tone: photoHeroUi && _actSoon(state)
+                          ? FFBadgeTone.fuel
+                          : state.badgeTone,
+                      dot: true,
+                      wrap: true,
                     ),
                   ),
-                  if (status != null) ...[
-                    const SizedBox(width: FFTokens.spacingSm),
-                    // At most 60% of the row, so a longer label ("Inaisha
-                    // karibuni" at large text) ends in an ellipsis instead of
-                    // overflowing; short labels are unaffected.
-                    ConstrainedBox(
-                      constraints: BoxConstraints(maxWidth: rowWidth * 0.6),
-                      child: FFBadge(
-                        key: const Key('pass-status-badge'),
-                        label: status,
-                        tone: photoHeroUi && _actSoon(state)
-                            ? FFBadgeTone.fuel
-                            : state.badgeTone,
-                        dot: true,
-                      ),
-                    ),
-                  ],
-                ],
-              );
-            },
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(
+            title,
+            key: const Key('pass-title'),
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
           ),
           if (pendingAside != null) ...[
             const SizedBox(height: FFTokens.spacingSm),
@@ -164,12 +160,12 @@ class PassSummaryCard extends StatelessWidget {
             _DirectDateRow(
               key: const Key('direct-membership-start'),
               label: context.tr('member.membershipStart'),
-              value: passDate(sub.startedAt),
+              value: passDate(context, sub.startedAt),
             ),
             _DirectDateRow(
               key: const Key('direct-membership-expiry'),
               label: context.tr('member.membershipExpiry'),
-              value: passDate(sub.expiresAt),
+              value: passDate(context, sub.expiresAt),
             ),
             if (directDaysLeft != null) ...[
               _DirectDateRow(
@@ -239,7 +235,7 @@ class PassSummaryCard extends StatelessWidget {
     final sub = data.subscription;
     final left = visitsLeft(data);
     final cap = data.me?.visitCap;
-    final ends = passDate(sub?.expiresAt);
+    final ends = passDate(context, sub?.expiresAt);
 
     var message = passStateMessage(context, data, state);
 
@@ -285,7 +281,6 @@ class PassSummaryCard extends StatelessWidget {
             total: cap,
             color: ringColor,
             leftLabel: context.tr('pass.state.left'),
-            ofLabel: usedOf!,
           )
         else
           Icon(Icons.all_inclusive, size: 40, color: ringColor),
@@ -412,21 +407,23 @@ class _VisitsRing extends StatelessWidget {
     required this.total,
     required this.color,
     required this.leftLabel,
-    required this.ofLabel,
   });
 
   final int left;
   final int total;
   final Color color;
   final String leftLabel;
-  final String ofLabel;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final fraction = total <= 0 ? 0.0 : (left / total).clamp(0.0, 1.0);
+    // One label for the whole ring ("11 left"); the number and "left" inside
+    // it are not read again on their own. "1 of 12 used" is the text beside
+    // the ring and is read there, so the ring does not say it too.
     return Semantics(
-      label: '$left $leftLabel $ofLabel',
+      label: '$left $leftLabel',
+      excludeSemantics: true,
       child: SizedBox(
         width: 96,
         height: 96,

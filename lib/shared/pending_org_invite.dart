@@ -3,98 +3,47 @@
 // bar or browser history. The invitations screen takes it once.
 
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import 'kept_link_token.dart';
 
 export 'invite_page_url.dart';
 
 /// The invitation token kept through sign-in / registration, for at most a
 /// day. Mirrored in memory so routing can ask [hasPending] synchronously.
 class PendingOrgInvite {
-  static const _tokenKey = 'pending_org_invite_token';
-  static const _savedAtKey = 'pending_org_invite_saved_at';
+  static final _kept = KeptLinkToken(
+    tokenKey: 'pending_org_invite_token',
+    savedAtKey: 'pending_org_invite_saved_at',
+  );
 
   /// How long a kept token is honoured.
-  static const maxAge = Duration(hours: 24);
+  static const maxAge = KeptLinkToken.maxAge;
 
   /// Replaceable in tests.
   @visibleForTesting
-  static DateTime Function() clock = DateTime.now;
-
-  static String? _token;
-  static DateTime? _savedAt;
-
-  static bool _fresh(DateTime? savedAt) =>
-      savedAt != null && clock().difference(savedAt) < maxAge;
+  static DateTime Function() get clock => _kept.clock;
+  @visibleForTesting
+  static set clock(DateTime Function() value) => _kept.clock = value;
 
   /// A kept, unexpired token is waiting (as far as this run knows).
-  static bool get hasPending =>
-      _token != null && _token!.isNotEmpty && _fresh(_savedAt);
+  static bool get hasPending => _kept.hasPending;
 
   /// Reads a token kept by an earlier run into memory. Call once at startup.
-  static Future<void> load() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString(_tokenKey);
-      final ms = prefs.getInt(_savedAtKey);
-      final savedAt = ms == null
-          ? null
-          : DateTime.fromMillisecondsSinceEpoch(ms);
-      if (token == null || token.isEmpty || !_fresh(savedAt)) {
-        if (token != null || ms != null) await _removeStored(prefs);
-        // A token saved during this run stays.
-        return;
-      }
-      _token = token;
-      _savedAt = savedAt;
-    } catch (_) {}
-  }
+  static Future<void> load() => _kept.load();
 
-  static Future<void> save(String token) async {
-    if (token.isEmpty) return;
-    final now = clock();
-    _token = token;
-    _savedAt = now;
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_tokenKey, token);
-      await prefs.setInt(_savedAtKey, now.millisecondsSinceEpoch);
-    } catch (_) {}
-  }
+  static Future<void> save(String token) => _kept.save(token);
 
   /// The kept token, without clearing it; null when none or expired.
-  static Future<String?> peek() async {
-    await load();
-    return hasPending ? _token : null;
-  }
+  static Future<String?> peek() => _kept.peek();
 
   /// Returns and clears the kept token; null when none or expired.
-  static Future<String?> take() async {
-    await load();
-    final token = hasPending ? _token : null;
-    await clear();
-    return token;
-  }
+  static Future<String?> take() => _kept.take();
 
   /// Forgets any kept token (for example once the invitation was answered
   /// another way).
-  static Future<void> clear() async {
-    _token = null;
-    _savedAt = null;
-    try {
-      await _removeStored(await SharedPreferences.getInstance());
-    } catch (_) {}
-  }
-
-  static Future<void> _removeStored(SharedPreferences prefs) async {
-    await prefs.remove(_tokenKey);
-    await prefs.remove(_savedAtKey);
-  }
+  static Future<void> clear() => _kept.clear();
 
   /// Clears the in-memory copy only (tests start from stored values).
   @visibleForTesting
-  static void resetMemory() {
-    _token = null;
-    _savedAt = null;
-    clock = DateTime.now;
-  }
+  static void resetMemory() => _kept.resetMemory();
 }

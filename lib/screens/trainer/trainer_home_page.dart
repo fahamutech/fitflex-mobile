@@ -11,6 +11,8 @@ import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
 import '../../shared/inbox/inbox_pages.dart';
 import '../../shared/models.dart';
+import '../../shared/photo_footer_flag.dart';
+import '../../shared/photo_hero_flag.dart';
 import '../../shared/root_back_navigation.dart';
 import '../../shared/widgets/partner_not_verified.dart';
 import '../../router.dart';
@@ -65,6 +67,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
     super.didChangeDependencies();
     if (_started) return;
     _started = true;
+    if (photoHeroUi) precacheHeroPhotos(context, const [FFHeroPhoto.trainer]);
     _refreshAll();
     _show(widget.open);
   }
@@ -388,168 +391,222 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
     final trainer = _myProfile;
     final socials = SocialLinks.fromJson(trainer?['socialLinks']);
     final gyms = (trainer?['gyms'] as List?)?.whereType<Map>().toList() ?? [];
-    return _tabScroll([
-      const PartnerNotVerifiedNotice(),
-      // Quick gym access: show the check-in QR, or scan the gym's QR.
-      FFCard(
-        key: const Key('trainer-checkin-card'),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.door_front_door_outlined, size: 20),
-                const SizedBox(width: 8),
-                Text(
-                  context.tr('checkin.title'),
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              context.tr('checkin.body'),
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: FilledButton.icon(
-                    key: const Key('trainer-checkin-qr'),
-                    onPressed: _showMyQr,
-                    icon: const Icon(Icons.qr_code_2, size: 18),
-                    label: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(context.tr('checkin.showQr')),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    key: const Key('trainer-checkin-scan'),
-                    onPressed: _scanGymQr,
-                    icon: const Icon(Icons.qr_code_scanner, size: 18),
-                    label: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(context.tr('checkin.scan')),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-      const SizedBox(height: 14),
-      Text(
-        context.tr('trainer.dashboardBody'),
-        style: TextStyle(
-          color: Theme.of(context).textTheme.bodySmall?.color,
-          height: 1.35,
-        ),
-      ),
-      const SizedBox(height: 14),
-      FFCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              context.tr('trainer.profile'),
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 8),
-            Text(
+    return footerListView(
+      padding: const EdgeInsets.all(FFTokens.spacingLg),
+      // PHOTO_FOOTER_UI (spec §33.6): Home tab only; the dashboard needs no
+      // list, so always enabled.
+      footer: photoFooterUi
+          ? FFPhotoFooter.sliver(
+              key: const Key('trainer-home-footer'),
+              pageKey: 'trainer.home',
+              top: FFHeroPhoto.trainer,
+              gap: FFTokens.spacingXl - FFTokens.spacingLg,
+            )
+          : null,
+      children: [
+        if (photoHeroUi) ...[
+          // PHOTO_HERO_UI (spec §25.1): the hero carries the gym check-in; the
+          // QR itself opens in its own solid sheet, never on the photo.
+          FFHeroBand(
+            key: const Key('trainer-hero'),
+            photo: FFHeroPhoto.trainer,
+            eyebrow: heroGreeting(
+              context,
+              DateTime.now(),
               trainer?['displayName']?.toString() ?? _displayName,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
             ),
-            const SizedBox(height: 4),
-            Text(
-              (trainer?['specialties'] as List? ?? []).join(' / '),
-              style: TextStyle(
-                color: Theme.of(context).textTheme.bodySmall?.color,
+            headlineLead: context.tr('hero.trainer.lead'),
+            headlineAccent: context.tr('hero.trainer.accent'),
+            subline: context.tr('checkin.body'),
+            actions: [
+              FFButton(
+                key: const Key('trainer-checkin-scan'),
+                label: context.tr('checkin.scan'),
+                icon: Icons.qr_code_scanner,
+                onPressed: _scanGymQr,
               ),
-            ),
-            const SizedBox(height: 12),
-            Row(
+              FFButton(
+                key: const Key('trainer-checkin-qr'),
+                label: context.tr('checkin.showQr'),
+                icon: Icons.qr_code_2,
+                variant: FFButtonVariant.onPhoto,
+                onPressed: _showMyQr,
+              ),
+            ],
+          ),
+          const SizedBox(height: FFTokens.spacingMd),
+        ],
+        const PartnerNotVerifiedNotice(),
+        // Quick gym access: show the check-in QR, or scan the gym's QR.
+        if (!photoHeroUi)
+          FFCard(
+            key: const Key('trainer-checkin-card'),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                FFPill(
-                  key: const Key('trainer-rate-per-session'),
-                  label:
-                      '${formatCurrency(trainer?['hourlyRateTzs'] as num? ?? 0, currency: trainer?['sessionRateCurrency'] as String? ?? 'TZS')}${context.tr('trainerReg.perSession')}',
+                Row(
+                  children: [
+                    const Icon(Icons.door_front_door_outlined, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      context.tr('checkin.title'),
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ],
                 ),
-                const Spacer(),
-                SocialLinksRow(links: socials, compact: true),
+                const SizedBox(height: 4),
+                Text(
+                  context.tr('checkin.body'),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton.icon(
+                        key: const Key('trainer-checkin-qr'),
+                        onPressed: _showMyQr,
+                        icon: const Icon(Icons.qr_code_2, size: 18),
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(context.tr('checkin.showQr')),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        key: const Key('trainer-checkin-scan'),
+                        onPressed: _scanGymQr,
+                        icon: const Icon(Icons.qr_code_scanner, size: 18),
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(context.tr('checkin.scan')),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
-            if (trainer != null && socials.isEmpty)
-              FFButton(
-                key: const Key('trainer-add-socials'),
-                label: context.tr('social.addPrompt'),
-                onPressed: _editProfessionalProfile,
-                variant: FFButtonVariant.ghost,
-                size: FFButtonSize.sm,
-                icon: Icons.add_link,
+          ),
+        const SizedBox(height: 14),
+        Text(
+          context.tr('trainer.dashboardBody'),
+          style: TextStyle(
+            color: Theme.of(context).textTheme.bodySmall?.color,
+            height: 1.35,
+          ),
+        ),
+        const SizedBox(height: 14),
+        FFCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                context.tr('trainer.profile'),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-          ],
+              const SizedBox(height: 8),
+              Text(
+                trainer?['displayName']?.toString() ?? _displayName,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                (trainer?['specialties'] as List? ?? []).join(' / '),
+                style: TextStyle(
+                  color: Theme.of(context).textTheme.bodySmall?.color,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  FFPill(
+                    key: const Key('trainer-rate-per-session'),
+                    label:
+                        '${formatCurrency(trainer?['hourlyRateTzs'] as num? ?? 0, currency: trainer?['sessionRateCurrency'] as String? ?? 'TZS')}${context.tr('trainerReg.perSession')}',
+                  ),
+                  const Spacer(),
+                  SocialLinksRow(links: socials, compact: true),
+                ],
+              ),
+              if (trainer != null && socials.isEmpty)
+                FFButton(
+                  key: const Key('trainer-add-socials'),
+                  label: context.tr('social.addPrompt'),
+                  onPressed: _editProfessionalProfile,
+                  variant: FFButtonVariant.ghost,
+                  size: FFButtonSize.sm,
+                  icon: Icons.add_link,
+                ),
+            ],
+          ),
         ),
-      ),
-      ClientsDigest(onOpenClients: () => setState(() => _tabIndex = 1)),
-      const SizedBox(height: 12),
-      FFMetricCard(
-        value: '${gyms.length}',
-        label: context.tr('trainer.linkedGymsCount'),
-      ),
-      _section(context.tr('trainer.sessions')),
-      FFActionTile(
-        key: const Key('trainer-tile-sessions'),
-        icon: Icons.event_available,
-        title: context.tr('trainer.todaySessions'),
-        onTap: () => showTrainerSessionsSheet(context),
-      ),
-      FFActionTile(
-        key: const Key('trainer-tile-earnings'),
-        icon: Icons.payments_outlined,
-        title: context.tr('trainer.earnings'),
-        onTap: () => showTrainerEarningsSheet(context),
-      ),
-      FFActionTile(
-        key: const Key('trainer-tile-payouts'),
-        icon: Icons.account_balance_wallet_outlined,
-        title: context.tr('payouts.title'),
-        subtitle: context.tr('payouts.tile'),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const TrainerPayoutsPage()),
+        ClientsDigest(onOpenClients: () => setState(() => _tabIndex = 1)),
+        const SizedBox(height: 12),
+        FFMetricCard(
+          value: '${gyms.length}',
+          label: context.tr('trainer.linkedGymsCount'),
         ),
-      ),
-      FFActionTile(
-        key: const Key('trainer-engagement-inbox'),
-        icon: Icons.mark_email_unread_outlined,
-        title: context.tr('trainer.enquiries'),
-        subtitle: _unreadEnquiries > 0
-            ? context
-                  .tr('enquiry.unreadCount')
-                  .replaceAll('{n}', '$_unreadEnquiries')
-            : null,
-        trailing: _unreadEnquiries > 0
-            ? Badge(
-                key: const Key('trainer-enquiries-badge'),
-                label: Text('$_unreadEnquiries'),
-              )
-            : null,
-        onTap: _openEnquiries,
-      ),
-      FFActionTile(
-        key: const Key('trainer-tile-schedule'),
-        icon: Icons.calendar_month_outlined,
-        title: context.tr('cal.mySchedule'),
-        subtitle: context.tr('trainer.scheduleTileHint'),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const TrainerSessionsPage()),
+        _section(context.tr('trainer.sessions')),
+        FFActionTile(
+          key: const Key('trainer-tile-sessions'),
+          icon: Icons.event_available,
+          title: context.tr('trainer.todaySessions'),
+          onTap: () => showTrainerSessionsSheet(context),
         ),
-      ),
-    ]);
+        FFActionTile(
+          key: const Key('trainer-tile-earnings'),
+          icon: Icons.payments_outlined,
+          title: context.tr('trainer.earnings'),
+          onTap: () => showTrainerEarningsSheet(context),
+        ),
+        FFActionTile(
+          key: const Key('trainer-tile-payouts'),
+          icon: Icons.account_balance_wallet_outlined,
+          title: context.tr('payouts.title'),
+          subtitle: context.tr('payouts.tile'),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const TrainerPayoutsPage()),
+          ),
+        ),
+        FFActionTile(
+          key: const Key('trainer-engagement-inbox'),
+          icon: Icons.mark_email_unread_outlined,
+          title: context.tr('trainer.enquiries'),
+          subtitle: _unreadEnquiries > 0
+              ? context
+                    .tr('enquiry.unreadCount')
+                    .replaceAll('{n}', '$_unreadEnquiries')
+              : null,
+          trailing: _unreadEnquiries > 0
+              ? Badge(
+                  key: const Key('trainer-enquiries-badge'),
+                  label: Text('$_unreadEnquiries'),
+                )
+              : null,
+          onTap: _openEnquiries,
+        ),
+        FFActionTile(
+          key: const Key('trainer-tile-schedule'),
+          icon: Icons.calendar_month_outlined,
+          title: context.tr('cal.mySchedule'),
+          subtitle: context.tr('trainer.scheduleTileHint'),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => const TrainerSessionsPage(),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _profileTab() => _tabScroll([

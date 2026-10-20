@@ -11,6 +11,7 @@ class FFStatTile extends StatelessWidget {
     required this.value,
     required this.label,
     this.accent,
+    this.fitValue = false,
   });
 
   final IconData icon;
@@ -19,6 +20,9 @@ class FFStatTile extends StatelessWidget {
 
   /// Optional accent for the icon chip; defaults to the brand color.
   final Color? accent;
+
+  /// Shrink a long value (e.g. money) to fit instead of cutting it off.
+  final bool fitValue;
 
   @override
   Widget build(BuildContext context) {
@@ -45,15 +49,29 @@ class FFStatTile extends StatelessWidget {
             child: Icon(icon, size: FFTokens.iconMd, color: accentColor),
           ),
           const SizedBox(height: FFTokens.spacingSm),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.5,
+          if (fitValue)
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: AlignmentDirectional.centerStart,
+              child: Text(
+                value,
+                maxLines: 1,
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                ),
+              ),
+            )
+          else
+            Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.5,
+              ),
             ),
-          ),
           const SizedBox(height: FFTokens.spacing2xs),
           Text(
             label,

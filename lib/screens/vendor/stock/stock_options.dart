@@ -5,7 +5,16 @@
 // app shows the stock ledger only when `stockLedger` is exactly `true`; a
 // failed call, a missing field or anything else keeps the old screens. A
 // failure is not remembered, so the next refresh asks again.
+//
+// S3 UAT (decision 2026-10-20): the last successful answer is kept on the
+// device per vendor + person. When the call fails WITHOUT an answer (no
+// connection), the kept answer is used if it is under 7 days old, so walk-in
+// sales keep working after an offline restart. A refusal from the server
+// (403, 404, 5xx) still means everything off, as does no kept answer.
+import 'dart:convert';
+
 import 'package:flutter/widgets.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../app_scope.dart';
 import '../../../shared/api_client.dart';
@@ -18,6 +27,8 @@ class VendorTools {
     this.stockLedger = false,
     this.canSeeCost = false,
     this.buyerContact = false,
+    this.walkInSales = false,
+    this.fromCache = false,
   });
 
   /// Everything off: the old screens.
@@ -33,6 +44,23 @@ class VendorTools {
   /// (VENDOR_ORDER_BUYER_CONTACT). The server enforces it; the app only uses
   /// it to explain why the phone and address are gone.
   final bool buyerContact;
+
+  /// S3: walk-in (counter) sales — POS, sales history, void
+  /// (VENDOR_WALKIN_SALES). Exactly `true` from the server, else off.
+  final bool walkInSales;
+
+  /// The answer is the one kept on this device (the server could not be
+  /// reached): ask again once the connection is back.
+  final bool fromCache;
+
+  static VendorTools fromOptions(Map options, {bool fromCache = false}) =>
+      VendorTools(
+        stockLedger: options['stockLedger'] == true,
+        canSeeCost: options['canSeeCost'] == true,
+        buyerContact: options['buyerContact'] == true,
+        walkInSales: options['walkInSales'] == true,
+        fromCache: fromCache,
+      );
 }
 
 class _Cached {
@@ -55,28 +83,89 @@ class VendorToolsOptions {
     ApiClient api,
     String? token, {
     bool refresh = false,
+    Map<String, dynamic>? user,
+    DateTime Function()? now,
   }) async {
     final hit = _cache[api];
     if (!refresh && hit != null && hit.token == token) return hit.tools;
+    final key = keptKey(user);
     try {
       final options = await api.vendorToolsOptions();
-      final tools = VendorTools(
-        stockLedger: options['stockLedger'] == true,
-        canSeeCost: options['canSeeCost'] == true,
-        buyerContact: options['buyerContact'] == true,
-      );
+      final tools = VendorTools.fromOptions(options);
       _cache[api] = _Cached(token, tools);
+      if (key != null) {
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString(
+            key,
+            jsonEncode({
+              'at': (now ?? DateTime.now)().toUtc().toIso8601String(),
+              'options': options,
+            }),
+          );
+        } catch (_) {
+          // Not kept; the live answer still applies.
+        }
+      }
       return tools;
-    } catch (_) {
+    } on ApiException {
+      // The server answered and refused: off (fail closed).
       _cache[api] = null;
       return VendorTools.off;
+    } catch (_) {
+      // No answer: the last one kept on this device, if recent enough. Not
+      // remembered in memory, so the next load asks the server again.
+      _cache[api] = null;
+      return await _kept(key, now) ?? VendorTools.off;
+    }
+  }
+
+  static const keptFor = Duration(days: 7);
+
+  /// Where the last answer for this vendor + person is kept.
+  static String? keptKey(Map<String, dynamic>? user) {
+    final type = user?['userType']?.toString();
+    final id = user?['id']?.toString() ?? '';
+    if (id.isEmpty) return null;
+    final vendor = type == 'vendor_staff'
+        ? (user?['vendorId']?.toString() ?? '')
+        : type == 'vendor'
+        ? id
+        : '';
+    if (vendor.isEmpty) return null;
+    return 'vendor_tools_options.$vendor.$id';
+  }
+
+  static Future<VendorTools?> _kept(
+    String? key,
+    DateTime Function()? now,
+  ) async {
+    if (key == null) return null;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(key);
+      if (raw == null) return null;
+      final data = jsonDecode(raw);
+      if (data is! Map || data['options'] is! Map) return null;
+      final at = DateTime.tryParse(data['at']?.toString() ?? '');
+      if (at == null) return null;
+      final age = (now ?? DateTime.now)().toUtc().difference(at);
+      if (age.isNegative || age > keptFor) return null;
+      return VendorTools.fromOptions(data['options'] as Map, fromCache: true);
+    } catch (_) {
+      return null;
     }
   }
 
   /// Same as [load], for a widget's context.
   static Future<VendorTools> of(BuildContext context, {bool refresh = false}) {
     final scope = AppScope.of(context);
-    return load(scope.api, scope.auth.token, refresh: refresh);
+    return load(
+      scope.api,
+      scope.auth.token,
+      refresh: refresh,
+      user: scope.auth.user,
+    );
   }
 }
 
@@ -123,7 +212,13 @@ const adjustReasons = [
 const inReasons = {'restock', 'returned', 'found'};
 const outReasons = {'damaged', 'expired', 'lost'};
 
-const _labelledReasons = {...adjustReasons, 'reserve', 'release'};
+const _labelledReasons = {
+  ...adjustReasons,
+  'reserve',
+  'release',
+  'sale',
+  'sale_void',
+};
 
 /// The words for a ledger row's reason; never the raw code.
 String stockReasonLabel(BuildContext context, String? reason) => context.tr(

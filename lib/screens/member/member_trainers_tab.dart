@@ -7,8 +7,11 @@ import '../../shared/discovery_loader.dart';
 import '../../shared/promotion_events.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
+import '../../shared/photo_footer_flag.dart';
+import '../../shared/photo_hero_flag.dart';
 import '../../shared/promotion.dart';
 import 'member_shell.dart';
+import 'widgets/directory_states.dart';
 import 'widgets/trainer_card.dart';
 
 class MemberTrainersTab extends StatefulWidget {
@@ -20,6 +23,9 @@ class MemberTrainersTab extends StatefulWidget {
 
 class _MemberTrainersTabState extends State<MemberTrainersTab> {
   final TextEditingController _searchCtrl = TextEditingController();
+
+  /// The band's heading: the footer's Back to top moves focus here.
+  final FocusNode _heroFocus = FocusNode(debugLabel: 'trainers-hero-heading');
   String _search = '';
   String _filter = 'all';
 
@@ -62,6 +68,16 @@ class _MemberTrainersTabState extends State<MemberTrainersTab> {
     'Boxing',
   ];
 
+  /// What each specialty chip says (the filter value itself is the data
+  /// value and stays English).
+  static const _specialtyLabelKeys = {
+    'all': 'member.all',
+    'Weights': 'member.specialtyWeights',
+    'Cardio': 'trainerReg.specialty_cardio',
+    'Yoga': 'trainerReg.specialty_yoga',
+    'Boxing': 'trainerReg.specialty_boxing',
+  };
+
   @override
   void initState() {
     super.initState();
@@ -79,6 +95,7 @@ class _MemberTrainersTabState extends State<MemberTrainersTab> {
   void dispose() {
     _loader.dispose();
     _searchCtrl.dispose();
+    _heroFocus.dispose();
     super.dispose();
   }
 
@@ -120,11 +137,14 @@ class _MemberTrainersTabState extends State<MemberTrainersTab> {
     return result;
   }
 
-  /// Returns the responsive column count based on available width.
-  int _crossAxisCount(double width) {
-    if (width >= 900) return 4;
-    if (width >= 600) return 3;
-    return 2;
+  /// "Clear search and filters": back to the full list.
+  void _clearSearchAndFilters() {
+    _searchCtrl.clear();
+    setState(() {
+      _search = '';
+      _filter = 'all';
+    });
+    _requestDiscovery(immediate: true);
   }
 
   @override
@@ -137,7 +157,7 @@ class _MemberTrainersTabState extends State<MemberTrainersTab> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final cols = _crossAxisCount(constraints.maxWidth);
+        final cols = ffCardGridColumns(context, constraints.maxWidth);
 
         return CustomScrollView(
           key: const Key('trainer-page-scroll'),
@@ -154,82 +174,90 @@ class _MemberTrainersTabState extends State<MemberTrainersTab> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    FFPageHeader(title: context.tr('member.findTrainerTitle')),
-                    TextField(
-                      key: const Key('trainer-search'),
-                      controller: _searchCtrl,
-                      decoration: InputDecoration(
-                        hintText: context.tr('member.searchTrainers'),
-                        prefixIcon: const Icon(Icons.search, size: 20),
-                        suffixIcon: _search.isEmpty
-                            ? null
-                            : IconButton(
-                                tooltip: context.tr('common.close'),
-                                icon: const Icon(Icons.close, size: 18),
-                                onPressed: () {
-                                  _searchCtrl.clear();
-                                  setState(() => _search = '');
-                                  _requestDiscovery(immediate: true);
-                                },
-                              ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(
-                            FFTokens.radiusLg,
+                    if (photoHeroUi) ...[
+                      // PHOTO_HERO_UI (increment plan, slice 1): a band in
+                      // place of the page title.
+                      FFHeroBand(
+                        key: const Key('trainers-hero'),
+                        photo: FFHeroPhoto.trainers,
+                        headingFocusNode: _heroFocus,
+                        minHeight: 160,
+                        wideHeight: 200,
+                        eyebrow: context.tr('member.trainers'),
+                        headlineLead: context.tr('hero.trainers.lead'),
+                        headlineAccent: context.tr('hero.trainers.accent'),
+                      ),
+                      const SizedBox(height: FFTokens.spacingMd),
+                    ] else
+                      FFPageHeader(
+                        title: context.tr('member.findTrainerTitle'),
+                      ),
+                    FFSearchFocusScroll(
+                      enabled: photoHeroUi,
+                      builder: (context, focusNode) => TextField(
+                        key: const Key('trainer-search'),
+                        focusNode: focusNode,
+                        controller: _searchCtrl,
+                        decoration: InputDecoration(
+                          hintText: context.tr('member.searchTrainers'),
+                          prefixIcon: const Icon(Icons.search, size: 20),
+                          suffixIcon: _search.isEmpty
+                              ? null
+                              : IconButton(
+                                  tooltip: context.tr('common.close'),
+                                  icon: const Icon(Icons.close, size: 18),
+                                  onPressed: () {
+                                    _searchCtrl.clear();
+                                    setState(() => _search = '');
+                                    _requestDiscovery(immediate: true);
+                                  },
+                                ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(
+                              FFTokens.radiusLg,
+                            ),
                           ),
                         ),
+                        onChanged: (v) {
+                          setState(() => _search = v);
+                          _requestDiscovery();
+                        },
                       ),
-                      onChanged: (v) {
-                        setState(() => _search = v);
-                        _requestDiscovery();
-                      },
                     ),
                     if (_discoveryLoading)
                       const LinearProgressIndicator(minHeight: 2),
-                    const SizedBox(height: 12),
-                    // ── Specialty filter chips ─────────────────────────
-                    SizedBox(
-                      height: 38,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: _specialtyFilters.length,
-                        separatorBuilder: (context, index) =>
-                            const SizedBox(width: 8),
-                        itemBuilder: (_, i) {
-                          final selected = _filter == _specialtyFilters[i];
-                          final label = _specialtyFilters[i] == 'all'
-                              ? context.tr('member.all')
-                              : _specialtyFilters[i];
-                          return GestureDetector(
-                            onTap: () {
-                              setState(() => _filter = _specialtyFilters[i]);
-                              _requestDiscovery(immediate: true);
-                            },
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 100),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 6,
+                    // The chips' 48px hit area brings its own space above.
+                    const SizedBox(height: 4),
+                    // ── Specialty filter chips (F-11: 48px, keyboard) ──
+                    // A plain row (not a lazy list) so Tab reaches every
+                    // chip; 2px side padding keeps the focus ring visible.
+                    SingleChildScrollView(
+                      key: const Key('trainer-filter-scroll'),
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      child: Row(
+                        children: [
+                          for (
+                            var i = 0;
+                            i < _specialtyFilters.length;
+                            i++
+                          ) ...[
+                            if (i > 0) const SizedBox(width: 8),
+                            FFFilterChip(
+                              key: Key(
+                                'trainer-filter-${_specialtyFilters[i]}',
                               ),
-                              decoration: BoxDecoration(
-                                color: selected ? cs.primary : cs.surface,
-                                border: Border.all(
-                                  color: selected ? cs.primary : cs.outline,
-                                ),
-                                borderRadius: BorderRadius.circular(
-                                  FFTokens.radiusXl,
-                                ),
+                              label: context.tr(
+                                _specialtyLabelKeys[_specialtyFilters[i]]!,
                               ),
-                              child: Text(
-                                label,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                  color: selected ? cs.onPrimary : cs.onSurface,
-                                ),
-                              ),
+                              selected: _filter == _specialtyFilters[i],
+                              onSelected: () {
+                                setState(() => _filter = _specialtyFilters[i]);
+                                _requestDiscovery(immediate: true);
+                              },
                             ),
-                          );
-                        },
+                          ],
+                        ],
                       ),
                     ),
                   ],
@@ -242,7 +270,9 @@ class _MemberTrainersTabState extends State<MemberTrainersTab> {
               child: FFFeaturedStrip(
                 title: context.tr('member.featuredTrainers'),
                 count: featured.length,
-                height: 270,
+                // As tall as the tallest card: a two-line name or a large
+                // text size is never cut (same as Gyms).
+                fitContent: true,
                 itemBuilder: (context, i) => TrainerGridCard(
                   key: Key('trainer-featured-${featured[i].id}'),
                   trainer: featured[i],
@@ -280,33 +310,78 @@ class _MemberTrainersTabState extends State<MemberTrainersTab> {
             ),
 
             // ── Grid ──────────────────────────────────────────────────────
-            if (trainers.isEmpty && featured.isEmpty)
+            // F-12: loading and failure have their own states (flag on and
+            // off); "Nothing to show yet." only once loaded and empty.
+            if (data.trainers.isEmpty && !data.trainersLoaded)
+              DirectorySkeletonGrid(
+                key: const Key('trainer-grid-loading'),
+                columns: cols,
+                childAspectRatio: 0.68,
+              )
+            else if (data.trainers.isEmpty && data.trainersLoadFailed)
               SliverFillRemaining(
                 hasScrollBody: false,
                 child: Padding(
                   padding: const EdgeInsets.all(FFTokens.spacingLg),
-                  child: FFEmptyState(title: context.tr('member.noData')),
+                  child: FFErrorState(
+                    key: const Key('trainer-load-error'),
+                    title: context.tr('member.trainersLoadError'),
+                    retryLabel: context.tr('common.retry'),
+                    onRetry: () => context
+                        .findAncestorStateOfType<MemberShellState>()
+                        ?.refreshTrainers(),
+                  ),
+                ),
+              )
+            else if (trainers.isEmpty && featured.isEmpty)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: Padding(
+                  padding: const EdgeInsets.all(FFTokens.spacingLg),
+                  child:
+                      data.trainers.isNotEmpty &&
+                          (_search.isNotEmpty || _filter != 'all')
+                      ? FFEmptyState(
+                          key: const Key('trainer-no-match'),
+                          title: context.tr('member.trainersNoMatch'),
+                          action: FFButton(
+                            key: const Key('trainer-clear-search'),
+                            label: context.tr('member.clearSearchFilters'),
+                            variant: FFButtonVariant.ghost,
+                            onPressed: _clearSearchAndFilters,
+                          ),
+                        )
+                      : FFEmptyState(title: context.tr('member.noData')),
                 ),
               )
             else if (trainers.isNotEmpty)
               SliverPadding(
                 padding: const EdgeInsets.all(FFTokens.spacingLg),
-                sliver: SliverGrid(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, i) => TrainerGridCard(
-                      key: Key('trainer-card-${trainers[i].id}'),
-                      trainer: trainers[i],
-                      placement: _discovery?.placement,
-                    ),
-                    childCount: trainers.length,
-                  ),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: cols,
-                    crossAxisSpacing: FFTokens.spacingMd,
-                    mainAxisSpacing: FFTokens.spacingMd,
-                    childAspectRatio: 0.68,
+                // Rows as tall as their tallest card, not a fixed aspect
+                // ratio: a long name or a large text size makes the row
+                // taller instead of overflowing it.
+                sliver: SliverFFRowGrid(
+                  columns: cols,
+                  itemCount: trainers.length,
+                  itemBuilder: (context, i) => TrainerGridCard(
+                    key: Key('trainer-card-${trainers[i].id}'),
+                    trainer: trainers[i],
+                    placement: _discovery?.placement,
+                    imageAspectRatio: cols == 1 ? 4 / 3 : 1,
                   ),
                 ),
+              ),
+            // PHOTO_FOOTER_UI (spec §33.6): once loaded, with results.
+            if (photoFooterUi)
+              FFPhotoFooter.sliver(
+                key: const Key('trainers-footer'),
+                pageKey: 'member.trainers',
+                top: FFHeroPhoto.trainers,
+                backToTop: true,
+                headingFocus: _heroFocus,
+                enabled: data.trainersLoaded && trainers.isNotEmpty,
+                // The grid already ends with 24px of padding.
+                gap: FFTokens.spacingXl - FFTokens.spacingLg,
               ),
           ],
         );

@@ -103,6 +103,10 @@ class _GymPlansSheetState extends State<GymPlansSheet> {
       reference = ready.reference;
       payerPhone = ready.payerPhone;
     }
+    // Let go of the focused field before it is disabled for the request:
+    // disabling a focused field throws "Null check operator used on a null
+    // value" on the web, even when the request then fails (L4).
+    FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       _busy = true;
       _error = null;
@@ -125,7 +129,10 @@ class _GymPlansSheetState extends State<GymPlansSheet> {
           amountTzs: (req['amountTzs'] as num?) ?? 0,
         );
       }
-      if (mounted) Navigator.pop(context, true);
+      if (!mounted) return;
+      // A focused field must not outlive the sheet it is in (L4).
+      FocusManager.instance.primaryFocus?.unfocus();
+      Navigator.pop(context, true);
     } on ApiException catch (e) {
       if (!mounted) return;
       final onField = manual != null && _manualInput.takeServerError(e);
@@ -135,11 +142,14 @@ class _GymPlansSheetState extends State<GymPlansSheet> {
           _error = apiErrorMessage(FFLocaleScope.of(context), e);
         }
       });
-    } catch (_) {
+    } catch (e) {
+      // Offline or timed out: say so, rather than a generic failure.
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _error = context.tr('member.subscribeFailed');
+        _error = isNetworkError(e)
+            ? context.tr('error.network')
+            : context.tr('member.subscribeFailed');
       });
     }
   }
@@ -218,7 +228,17 @@ class _GymPlansSheetState extends State<GymPlansSheet> {
                 FFAlert(message: _error!, tone: FFAlertTone.error),
               ],
               const SizedBox(height: 10),
-              if (plans.isNotEmpty)
+              // Nothing to submit until a plan is picked: say so instead of
+              // a button that does nothing (L3).
+              if (plans.isNotEmpty && _selectedPlan == null)
+                Text(
+                  context.tr('member.chooseFirst'),
+                  key: const Key('gym-plan-choose-first'),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                )
+              else if (plans.isNotEmpty)
                 SizedBox(
                   width: double.infinity,
                   child: FFButton(
@@ -228,9 +248,7 @@ class _GymPlansSheetState extends State<GymPlansSheet> {
                           ? 'manualPay.submit'
                           : 'member.subscribe',
                     ),
-                    onPressed: _selectedPlan == null || _busy
-                        ? null
-                        : _subscribe,
+                    onPressed: _busy ? null : _subscribe,
                     loading: _busy,
                   ),
                 ),
@@ -285,9 +303,11 @@ class _PlanTile extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    context
-                        .tr('member.planDuration')
-                        .replaceFirst('{days}', '${plan.days}'),
+                    plan.days == 1
+                        ? context.tr('member.planDurationOne')
+                        : context
+                              .tr('member.planDuration')
+                              .replaceFirst('{days}', '${plan.days}'),
                     style: Theme.of(context).textTheme.labelSmall,
                   ),
                 ],

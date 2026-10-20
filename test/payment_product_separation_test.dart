@@ -120,13 +120,13 @@ void main() {
         );
         expect(find.byKey(const Key('gym-plan-daily')), findsNothing);
         expect(find.text('Monthly Only'), findsOneWidget);
-        final button = tester.widget<FilledButton>(
-          find.descendant(
-            of: find.byKey(const Key('gym-plan-subscribe')),
-            matching: find.byType(FilledButton),
-          ),
+        // No stale selection: nothing to submit, and the sheet says why.
+        expect(find.byKey(const Key('gym-plan-subscribe')), findsNothing);
+        expect(
+          find.byKey(const Key('gym-plan-choose-first')),
+          findsOneWidget,
+          reason: 'no stale selection',
         );
-        expect(button.onPressed, isNull, reason: 'no stale selection');
       },
     );
 

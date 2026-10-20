@@ -1075,19 +1075,26 @@ void main() {
       _seed(api, orders: [_order('o1')]);
       final host = await _pump(tester, api);
       await _openMyOrders(tester, host);
-      expect(find.text('${host.tr('shop.order')} o1'), findsOneWidget);
-      // Statuses are worded, never raw codes (backend order-lifecycle.mjs).
+      // The short ref (server rule: last 6, capitals), never the raw id.
+      expect(find.text('Order O1'), findsOneWidget);
+      expect(find.text(formatCurrency(170000)), findsOneWidget);
+      // Statuses are worded, never raw codes (backend order-lifecycle.mjs),
+      // and said once: as one progress line, not chips (M3, M7).
+      final progress =
+          '${host.tr('shop.orderStatus.unknown')} → '
+          '${host.tr('shop.orderStatus.accepted')}';
+      expect(find.text(progress), findsOneWidget);
+      expect(find.byType(Chip), findsNothing);
+      final text = tester.widget<Text>(find.byKey(const Key('order-status-o1')));
       expect(
-        find.text(
-          '${formatCurrency(170000)} · ${host.tr('shop.orderStatus.accepted')}',
-        ),
-        findsOneWidget,
+        text.semanticsLabel,
+        '${host.tr('shop.orderProgress')}: '
+        '${host.tr('shop.orderStatus.unknown')}, '
+        '${host.tr('shop.orderStatus.accepted')}',
       );
       expect(find.text('accepted'), findsNothing);
       // "placed" is not a status the server sends: a neutral word, not the code.
-      expect(find.text('placed'), findsNothing);
-      expect(find.text(host.tr('shop.orderStatus.unknown')), findsOneWidget);
-      expect(find.text(host.tr('shop.orderStatus.accepted')), findsOneWidget);
+      expect(find.textContaining('placed'), findsNothing);
     });
 
     apiTest('an unpaid order says it is awaiting payment', (tester, api) async {
@@ -1328,18 +1335,13 @@ void main() {
       );
       final host = await _pump(tester, api);
       await _openMyOrders(tester, host);
-      expect(
-        find.text('${formatCurrency(170000)} · $accepted'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('→ $accepted'), findsOneWidget);
       api.on('GET /me/shop-orders', [_order('o1', status: 'dispatched')]);
       await tester.pump(const Duration(seconds: 11));
       await tester.pump();
       await tester.pump();
       expect(
-        find.text(
-          '${formatCurrency(170000)} · ${host.tr('shop.orderStatus.dispatched')}',
-        ),
+        find.textContaining('→ ${host.tr('shop.orderStatus.dispatched')}'),
         findsOneWidget,
       );
       expect(host.snack(host.tr('shop.trackingUpdated')), findsOneWidget);

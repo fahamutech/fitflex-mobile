@@ -12,6 +12,7 @@ import '../design_tokens.dart';
 import '../formatters.dart';
 import '../discovery_loader.dart';
 import '../i18n.dart';
+import '../photo_footer_flag.dart';
 import '../payment_labels.dart';
 import '../product_categories.dart';
 import '../promotion.dart';
@@ -242,6 +243,7 @@ class ShopBrowseBody extends StatefulWidget {
     this.mode = ShopHomeMode.member,
     this.routePath,
     this.routeQuery = const {},
+    this.showHero = false,
   });
 
   /// The role this shop is opened as. Only used by the Shop home (V2 flag):
@@ -258,6 +260,10 @@ class ShopBrowseBody extends StatefulWidget {
   /// `open=shop`, which selects its Shop tab). Kept in every URL the shop
   /// writes and ignored when reading.
   final Map<String, String> routeQuery;
+
+  /// Show the Shop home's photo band (PHOTO_HERO_UI). The member Shop tab
+  /// only; never the trainer or owner shop or the pushed ShopBrowsePage.
+  final bool showHero;
 
   @override
   State<ShopBrowseBody> createState() => _ShopBrowseBodyState();
@@ -306,6 +312,12 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
   final _homeKey = GlobalKey<ShopHomeViewState>();
 
   bool get _showHome => shopHomeV2Enabled && !_homeUnavailable && !_results;
+
+  /// PHOTO_FOOTER_UI (member shop home only, spec §33.6): whether the home
+  /// shows rails or the All products grid, and the band heading's focus
+  /// node for the footer's Back to top.
+  bool _homeHasContent = false;
+  final FocusNode _heroFocus = FocusNode(debugLabel: 'shop-hero-heading');
 
   // With the home on, today's product list (and discovery) is fetched only
   // when something needs it: the list, the fallback, a reorder, the grid.
@@ -357,6 +369,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
 
   @override
   void dispose() {
+    _heroFocus.dispose();
     removeRootBackHandler(_onRootBack);
     // "Added to cart" belongs to the shop: it does not follow to other tabs.
     // After this frame, and only if the app (and its messenger) is still
@@ -1044,13 +1057,27 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
               await _homeKey.currentState?.reload();
             }
           },
-          child: ListView(
+          child: footerListView(
             padding: home
                 ? EdgeInsets.symmetric(
                     vertical: FFTokens.spacingLg,
                     horizontal: side,
                   )
                 : const EdgeInsets.all(FFTokens.spacingLg),
+            // After "Browse all products", once the home has content.
+            footer: home && widget.showHero && photoFooterUi
+                ? FFPhotoFooter.sliver(
+                    key: const Key('shop-footer'),
+                    pageKey: 'member.shop',
+                    top: FFHeroPhoto.shop,
+                    backToTop: true,
+                    headingFocus: _heroFocus,
+                    enabled: _homeHasContent,
+                    gap: FFTokens.spacingXl - FFTokens.spacingLg,
+                    inset: side + gutter,
+                    maxWidth: 1200,
+                  )
+                : null,
             children: [
               if (home)
                 Padding(
@@ -1064,6 +1091,13 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
                 ShopHomeView(
                   key: _homeKey,
                   mode: widget.mode,
+                  showHero: widget.showHero,
+                  heroFocusNode: _heroFocus,
+                  onHasContent: (has) {
+                    if (mounted && has != _homeHasContent) {
+                      setState(() => _homeHasContent = has);
+                    }
+                  },
                   cart: _cart,
                   gutter: gutter,
                   initialData: _homeCache,
@@ -1380,7 +1414,15 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
     }
     return _orders.map((order) {
       final status = order['status']?.toString() ?? 'pending';
-      final timeline = (order['timeline'] as List? ?? []).whereType<Map>();
+      // The status is said once: as the last step of the order's progress
+      // ("Pending → Accepted"), not again beside the amount.
+      final steps = <String>[];
+      for (final entry in (order['timeline'] as List? ?? []).whereType<Map>()) {
+        final label = shopOrderStatusLabel(context, entry['status']);
+        if (steps.isEmpty || steps.last != label) steps.add(label);
+      }
+      final current = shopOrderStatusLabel(context, status);
+      if (steps.isEmpty || steps.last != current) steps.add(current);
       return Padding(
         padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
         child: FFCard(
@@ -1388,13 +1430,22 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '${context.tr('shop.order')} ${order['id']}',
+                context
+                    .tr('shop.orderRef')
+                    .replaceAll('{ref}', shopOrderRef(order)),
+                key: Key('order-ref-${order['id']}'),
                 style: Theme.of(context).textTheme.titleSmall,
               ),
+              Text(formatCurrency(order['totalTzs'] as num? ?? 0)),
+              // Plain text, not chips: nothing here can be ticked or tapped.
               Text(
-                '${formatCurrency(order['totalTzs'] as num? ?? 0)} · '
-                '${shopOrderStatusLabel(context, status)}',
+                steps.join(' → '),
                 key: Key('order-status-${order['id']}'),
+                semanticsLabel:
+                    '${context.tr('shop.orderProgress')}: ${steps.join(', ')}',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
               ),
               if (shopOrderPaymentKey(order) case final paymentKey?)
                 Text(
@@ -1412,18 +1463,6 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
                   size: FFButtonSize.sm,
                 ),
               const SizedBox(height: 6),
-              Wrap(
-                spacing: 4,
-                children: timeline
-                    .map(
-                      (entry) => Chip(
-                        label: Text(
-                          shopOrderStatusLabel(context, entry['status']),
-                        ),
-                      ),
-                    )
-                    .toList(),
-              ),
               Wrap(
                 children: [
                   if (order['canCancel'] == true)

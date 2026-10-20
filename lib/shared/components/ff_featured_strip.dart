@@ -13,6 +13,7 @@ class FFFeaturedStrip extends StatelessWidget {
     required this.itemBuilder,
     this.itemWidth = 168,
     this.height = 250,
+    this.fitContent = false,
   });
 
   final String title;
@@ -20,6 +21,11 @@ class FFFeaturedStrip extends StatelessWidget {
   final Widget Function(BuildContext context, int index) itemBuilder;
   final double itemWidth;
   final double height;
+
+  /// Size the row to its tallest card instead of [height], so a two-line
+  /// name or a wrapped label at a large text size is never clipped. Builds
+  /// every card at once: for the short Featured lists only.
+  final bool fitContent;
 
   @override
   Widget build(BuildContext context) {
@@ -41,18 +47,37 @@ class FFFeaturedStrip extends StatelessWidget {
             style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w700),
           ),
         ),
-        SizedBox(
-          height: height,
-          child: ListView.separated(
+        if (fitContent)
+          SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: FFTokens.spacingLg),
-            itemCount: count,
-            separatorBuilder: (_, _) =>
-                const SizedBox(width: FFTokens.spacingMd),
-            itemBuilder: (context, i) =>
-                SizedBox(width: itemWidth, child: itemBuilder(context, i)),
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (var i = 0; i < count; i++) ...[
+                    if (i > 0) const SizedBox(width: FFTokens.spacingMd),
+                    SizedBox(width: itemWidth, child: itemBuilder(context, i)),
+                  ],
+                ],
+              ),
+            ),
+          )
+        else
+          SizedBox(
+            height: height,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(
+                horizontal: FFTokens.spacingLg,
+              ),
+              itemCount: count,
+              separatorBuilder: (_, _) =>
+                  const SizedBox(width: FFTokens.spacingMd),
+              itemBuilder: (context, i) =>
+                  SizedBox(width: itemWidth, child: itemBuilder(context, i)),
+            ),
           ),
-        ),
       ],
     );
   }

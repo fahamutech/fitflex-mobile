@@ -158,6 +158,37 @@ void main() {
       expect(find.byKey(const Key('pass-upgrade-action')), findsOneWidget);
     });
 
+    for (final lang in ['en', 'sw']) {
+      testWidgets('[$lang] at 360 the card says each fact once (M5)', (
+        tester,
+      ) async {
+        tester.view.physicalSize = const Size(360, 740);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        final handle = tester.ensureSemantics();
+        await _pumpCard(
+          tester,
+          _data(subscription: _pass(), used: 7),
+          lang: lang,
+        );
+        String tr(String k) => FFLocale.textOf(lang, k)!;
+        final used = tr(
+          'pass.state.usedOf',
+        ).replaceAll('{used}', '7').replaceAll('{total}', '18');
+        // The ring is "11 left" only; the used count is the line beside it.
+        expect(
+          tester.getSemantics(find.byKey(const Key('pass-visits-ring'))).label,
+          '11 ${tr('pass.state.left')}',
+        );
+        // Across the whole card the used count is announced once.
+        expect(
+          find.bySemanticsLabel(RegExp(RegExp.escape(used))),
+          findsOneWidget,
+        );
+        handle.dispose();
+      });
+    }
+
     testWidgets('low visits says how many are left', (tester) async {
       await _pumpCard(tester, _data(subscription: _pass(), used: 15));
       expect(find.text('3'), findsOneWidget);
@@ -242,7 +273,14 @@ void main() {
         _data(pending: {'id': 'p1', 'status': 'pending', 'tier': 'pro'}),
       );
       expect(find.text('Pro'), findsOneWidget);
-      expect(find.text('Payment pending admin approval'), findsOneWidget);
+      // Said once, by the sentence (owner: say a fact once).
+      expect(find.text('Payment pending admin approval'), findsNothing);
+      expect(
+        find.text(
+          "We're confirming your payment. Your QR unlocks as soon as it's confirmed.",
+        ),
+        findsOneWidget,
+      );
       expect(find.textContaining('Platform Pass'), findsNothing);
     });
 
@@ -281,17 +319,15 @@ void main() {
       },
     );
 
-    testWidgets('pending purchase alone: no separate line, one badge', (
-      tester,
-    ) async {
+    testWidgets('pending purchase alone: no separate line, no badge '
+        '(the sentence says it once)', (tester) async {
       await _pumpCard(
         tester,
         _data(pending: {'id': 'p1', 'status': 'pending', 'tier': 'pro'}),
       );
       expect(find.byKey(const Key('pass-pending-purchase')), findsNothing);
-      final badge = tester.widget<FFBadge>(find.byType(FFBadge));
-      expect(badge.label, 'Payment pending admin approval');
-      expect(badge.tone, FFBadgeTone.warning);
+      expect(find.byType(FFBadge), findsNothing);
+      expect(find.byKey(const Key('pass-state-message')), findsOneWidget);
     });
 
     testWidgets('ended pass + new purchase: titled by what is being paid', (
@@ -306,7 +342,7 @@ void main() {
       );
       expect(find.text('Premium'), findsOneWidget);
       expect(find.text('Pro'), findsNothing);
-      expect(find.text('Payment pending admin approval'), findsOneWidget);
+      expect(find.byKey(const Key('pass-state-message')), findsOneWidget);
       expect(find.byKey(const Key('pass-pending-purchase')), findsNothing);
       expect(find.text('View payment'), findsOneWidget);
     });

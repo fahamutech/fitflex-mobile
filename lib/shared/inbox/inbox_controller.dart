@@ -179,6 +179,8 @@ String partnerLinkFor({required String side, required String type}) =>
         'vendor_product_approved' || 'vendor_product_rejected' => 'products',
         'vendor_payout_paid' => 'payments',
         'vendor_low_stock' => 'lowStock',
+        // S3: a walk-in sale was voided (sent to the vendor account).
+        'vendor_sale_voided' => 'sale',
         _ => '',
       },
       'gym' => switch (type) {
@@ -203,6 +205,7 @@ String? partnerRouteFor({
   String? memberId,
   String? productId,
   String? variant,
+  String? saleId,
 }) {
   bool ok(String? id) => id != null && _safeId.hasMatch(id);
   return switch (partnerLinkFor(side: side, type: type)) {
@@ -225,6 +228,9 @@ String? partnerRouteFor({
       },
     ).toString(),
     'lowStock' => '/vendor/home?open=products&filter=low',
+    // The sale detail checks the feature and the `sales` permission.
+    'sale' when ok(saleId) => '/vendor/sales/$saleId',
+    'sale' => '/vendor/home?open=sales',
     'checkins' when ok(gymId) => '/owner/gyms/$gymId/checkins',
     'member' when ok(memberId) => '/owner/members/$memberId',
     'memberPayments' when ok(memberId) => '/owner/members/$memberId/payments',

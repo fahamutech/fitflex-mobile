@@ -114,18 +114,22 @@ class FFSegmented extends StatelessWidget {
       ),
     );
     if (!scroll) return Flexible(child: tile);
-    // Keep the chosen segment in view when the row scrolls.
+    // Keep the chosen segment in view when the row scrolls. Only this row
+    // scrolls: Scrollable.ensureVisible would also scroll every scrollable
+    // around it, so choosing a segment made the page jump (Activity).
     return Builder(
       builder: (ctx) {
         if (selected) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (ctx.mounted) {
-              Scrollable.ensureVisible(
-                ctx,
-                alignment: 0.5,
-                duration: FFTokens.motionFast,
-              );
-            }
+            if (!ctx.mounted) return;
+            final row = Scrollable.maybeOf(ctx, axis: Axis.horizontal);
+            final box = ctx.findRenderObject();
+            if (row == null || box == null || !box.attached) return;
+            row.position.ensureVisible(
+              box,
+              alignment: 0.5,
+              duration: FFTokens.motionFast,
+            );
           });
         }
         return tile;

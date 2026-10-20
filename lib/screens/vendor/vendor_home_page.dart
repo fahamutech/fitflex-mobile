@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../shared/inbox/inbox_pages.dart';
@@ -12,6 +14,8 @@ import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
+import '../../shared/photo_footer_flag.dart';
+import '../../shared/photo_hero_flag.dart';
 import '../../shared/product_categories.dart';
 import '../../shared/tone_theme.dart';
 import '../../shared/widgets/product_category_picker.dart';
@@ -27,12 +31,19 @@ import 'stock/adjust_stock_sheet.dart';
 import 'stock/stock_history_page.dart';
 import 'stock/stock_options.dart';
 import 'stock/variant_rows_editor.dart';
+import 'sales/offline_sale_queue.dart';
+import 'sales/sale_models.dart' show pluralKey;
+import 'sales/sales_history_tab.dart';
+import 'sales/sales_widgets.dart';
+
+/// Bottom padding for vendor lists: the extended FAB (56) plus margins.
+const vendorFabClearance = 96.0;
 
 class VendorHomePage extends StatefulWidget {
   const VendorHomePage({super.key, this.open, this.filter});
 
   /// The section to show first — where a notification leads: `orders`,
-  /// `enquiries`, `products` or `payments`.
+  /// `enquiries`, `products`, `payments` or `sales`.
   final String? open;
 
   /// `low`: start the product list on the low-stock filter (stock ledger).
@@ -57,6 +68,81 @@ class _VendorHomePageState extends State<VendorHomePage> {
   VendorTools _tools = VendorTools.off;
   LowStockIndex _low = LowStockIndex.empty();
   late bool _lowOnly = widget.filter == 'low';
+  // Vendor tools · S3: walk-in sales kept on this device (synced from here).
+  SalesSession? _sales;
+
+  // PHOTO_HERO_UI (spec §25.2): a band hero on Products only.
+  final _heroKey = GlobalKey();
+  bool _heroVisible = true;
+  int? _heroTab;
+  bool _precached = false;
+
+  bool _heroOn(int tab) => photoHeroUi && tab == 0 && !_staffDisabled;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (photoHeroUi && !_precached) {
+      _precached = true;
+      precacheHeroPhotos(context, const [FFHeroPhoto.vendor]);
+    }
+  }
+
+  /// The FAB comes back once at least half of the hero has scrolled away;
+  /// until then the hero's Add product is the one on screen.
+  bool _onProductsScroll(ScrollNotification n) {
+    if (n.depth != 0) return false;
+    final h = _heroKey.currentContext?.size?.height ?? 0;
+    final visible = h == 0 || n.metrics.pixels < h / 2;
+    if (visible != _heroVisible) setState(() => _heroVisible = visible);
+    return false;
+  }
+
+  Widget _hero({bool loading = false}) {
+    final name = _profile['businessName']?.toString().trim() ?? '';
+    final pending = _pendingApproval;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
+      child: KeyedSubtree(
+        key: _heroKey,
+        child: FFHeroBand(
+          key: const Key('vendor-hero'),
+          photo: FFHeroPhoto.vendor,
+          eyebrow: name.isEmpty ? context.tr('vendor.title') : name,
+          headlineLoading: loading,
+          headlineLead: loading
+              ? null
+              : context.tr(
+                  pending ? 'hero.vendor.pending.lead' : 'hero.vendor.lead',
+                ),
+          headlineAccent: loading
+              ? null
+              : context.tr(
+                  pending ? 'hero.vendor.pending.accent' : 'hero.vendor.accent',
+                ),
+          actions: [
+            if (!loading)
+              FFButton(
+                key: const Key('vendor-add-product'),
+                label: context.tr('vendor.addProduct'),
+                icon: Icons.add,
+                onPressed: _busy ? null : () => _editProduct(),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// What leads the Products list under the flag: the hero, then the
+  /// pending banner (unchanged) directly under it.
+  List<Widget> _productsLead() => [
+    _hero(),
+    if (_pendingApproval) ...[
+      _pendingBannerCard(),
+      const SizedBox(height: FFTokens.spacingMd),
+    ],
+  ];
 
   bool get _ledger => _tools.stockLedger && _can('products');
 
@@ -92,14 +178,34 @@ class _VendorHomePageState extends State<VendorHomePage> {
     'orders': 1,
     'payments': 2,
     'enquiries': 3,
+    'sales': _salesSection,
   };
+
+  /// S3: the Sales tab (after Orders in the bar).
+  static const _salesSection = 6;
 
   /// Shows the section a notification is about, if this person may see it.
   void _show(String? part) {
     final section = _sectionOf[part];
-    if (section == null || !_sections.contains(section)) return;
+    if (section == null) return;
+    // Which tabs exist is known only once the tools (walk-in sales) and the
+    // profile have loaded: keep the request until then, so the profile's
+    // "finish your profile" redirect or a missing Sales tab cannot win.
+    if (_loading) {
+      _pendingOpen = part;
+      return;
+    }
+    if (!_sections.contains(section)) return;
     setState(() => _tab = section);
   }
+
+  /// A requested section (`open=`) waiting for the tab list to be known.
+  String? _pendingOpen;
+
+  /// The unfinished-profile redirect to Business has happened.
+  bool _profileNudged = false;
+
+  bool get _walkInSales => _tools.walkInSales && _can('sales');
 
   @override
   void didUpdateWidget(VendorHomePage old) {
@@ -114,6 +220,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
     final sections = <int>[
       if (_can('products')) 0,
       if (_can('orders')) 1,
+      if (_walkInSales) _salesSection,
       if (_can('payments') || _can('reports')) 2,
       if (_can('customers')) 3,
       if (_can('staff') ||
@@ -127,8 +234,12 @@ class _VendorHomePageState extends State<VendorHomePage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final sales = SalesSession.of(context)?..attach();
+      setState(() => _sales = sales);
+      _sales?.signedIn();
+      _pendingOpen = widget.open;
       _refresh();
-      if (mounted) _show(widget.open);
       // Vendors have no sign-up form of their own, so the vendor terms are
       // asked here the first time (and again if a new version is published).
       askToAgreeTerms(context, quiet: true);
@@ -166,6 +277,8 @@ class _VendorHomePageState extends State<VendorHomePage> {
     // refused to a staff member) must not hide the others. A part that
     // fails keeps what it showed before.
     var failed = false;
+    // No answer at all (not a refusal): the device is offline.
+    var offline = false;
     // S2: the business owner turned this staff member's access off.
     var staffDisabled = false;
     Future<T?> part<T>(
@@ -186,6 +299,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
         return null;
       } catch (_) {
         if (!quiet) failed = true;
+        offline = true;
         return null;
       }
     }
@@ -208,6 +322,9 @@ class _VendorHomePageState extends State<VendorHomePage> {
     );
     final enquiries = part(_can('customers'), api.vendorEnquiries, <dynamic>[]);
     final staff = part(_can('staff'), api.vendorStaff, <dynamic>[]);
+    // Known before the sections are drawn, so a sales-only staff member
+    // opens on Sales without a "no access" flash.
+    final toolsNow = await tools;
     final loaded = (
       products: maps(await products),
       orders: maps(await orders),
@@ -216,15 +333,28 @@ class _VendorHomePageState extends State<VendorHomePage> {
       enquiries: maps(await enquiries),
       staff: maps(await staff),
     );
+    // Offline with nothing shown yet: the copy the POS keeps on the device
+    // (S3), rather than "no products yet". A fresh list refreshes that copy.
+    var products0 = loaded.products;
+    if (products0 != null) {
+      unawaited(_sales?.saveProducts(products0));
+    } else if (offline && _products.isEmpty && _can('products')) {
+      final kept = await _sales?.loadProducts();
+      if (kept != null && kept.products.isNotEmpty) products0 = kept.products;
+    }
     if (!mounted) return;
     setState(() {
-      _products = loaded.products ?? _products;
+      _products = products0 ?? _products;
       _orders = loaded.orders ?? _orders;
       if (loaded.profile != null) {
         _profile = loaded.profile!;
+        // An unfinished profile opens on Business once (the first load), not
+        // on every refresh: pulling to refresh on Sales stays on Sales.
         if (_profile['status'] != 'published' &&
             !_pendingApproval &&
-            !isStaff) {
+            !isStaff &&
+            !_profileNudged) {
+          _profileNudged = true;
           _tab = 4;
         }
       }
@@ -232,14 +362,94 @@ class _VendorHomePageState extends State<VendorHomePage> {
       _enquiries = loaded.enquiries ?? _enquiries;
       _staff = loaded.staff ?? _staff;
       _staffDisabled = staffDisabled;
+      _tools = toolsNow;
       _loading = false;
+      // Now the tabs are known: honour `open=` (Done after a sale, a
+      // notification, a deep link).
+      final wanted = _sectionOf[_pendingOpen];
+      _pendingOpen = null;
+      if (wanted != null && _sections.contains(wanted)) _tab = wanted;
     });
+    if (toolsNow.walkInSales) {
+      _sales?.featureOn();
+    } else {
+      _sales?.featureOff();
+    }
     if (staffDisabled) {
       FFSnack.error(context, context.tr('error.reason.vendorStaffInactive'));
+    } else if (failed && offline) {
+      // Offline: say what still works (selling, on the Sales tab).
+      final onSales = _sections.contains(_tab) && _tab == _salesSection;
+      FFSnack.info(
+        context,
+        context.tr(
+          onSales ? 'vendor.sales.offlineToast' : 'vendor.offlineKept',
+        ),
+      );
     } else if (failed) {
       FFSnack.error(context, context.tr('vendor.loadFailed'));
     }
-    await _loadStockTools(await tools);
+    _watchTools(toolsNow);
+    await _loadStockTools(toolsNow);
+  }
+
+  // Options read from the device copy (offline start): ask the server
+  // again once it answers anything, or every minute, and update the tabs in
+  // place (the Sales tab appears or goes without a reload).
+  Timer? _toolsRetry;
+  ApiClient? _watchedApi;
+  bool _toolsAsking = false;
+
+  void _watchTools(VendorTools tools) {
+    if (tools.fromCache) {
+      if (_watchedApi == null) {
+        _watchedApi = AppScope.of(context).api..addSuccessListener(_onOnline);
+        _toolsRetry = Timer.periodic(
+          const Duration(seconds: 60),
+          (_) => _askToolsAgain(),
+        );
+      }
+    } else {
+      _stopWatchingTools();
+    }
+  }
+
+  void _stopWatchingTools() {
+    _watchedApi?.removeSuccessListener(_onOnline);
+    _watchedApi = null;
+    _toolsRetry?.cancel();
+    _toolsRetry = null;
+  }
+
+  void _onOnline(String method, String path) {
+    if (path == '/vendor/tools/options') return;
+    scheduleMicrotask(_askToolsAgain);
+  }
+
+  Future<void> _askToolsAgain() async {
+    if (_toolsAsking || !mounted) return;
+    _toolsAsking = true;
+    try {
+      final tools = await VendorToolsOptions.of(context, refresh: true);
+      if (!mounted) return;
+      setState(() => _tools = tools);
+      if (tools.walkInSales) {
+        _sales?.featureOn();
+      } else {
+        _sales?.featureOff();
+      }
+      _watchTools(tools);
+      if (!tools.fromCache) await _loadStockTools(tools);
+    } finally {
+      _toolsAsking = false;
+    }
+  }
+
+  @override
+  void dispose() {
+    _stopWatchingTools();
+    _sales?.detach();
+    super.dispose();
   }
 
   /// The stock ledger's extras: on/off, and which products are low. The
@@ -445,6 +655,8 @@ class _VendorHomePageState extends State<VendorHomePage> {
   }
 
   Future<void> _signOut() async {
+    if (!await confirmLeaveWithQueuedSales(context)) return;
+    if (!mounted) return;
     await AppScope.of(context).auth.signOut();
     if (mounted) context.go(AppRoutes.language);
   }
@@ -455,13 +667,24 @@ class _VendorHomePageState extends State<VendorHomePage> {
     // The tab starts at Products; show the first section this user may use
     // when Products is not one of them.
     final tab = sections.contains(_tab) ? _tab : sections.first;
+    // A tab opens at its top, so the Products hero is in view again.
+    if (tab != _heroTab) {
+      _heroTab = tab;
+      _heroVisible = true;
+    }
     return Scaffold(
       appBar: AppBar(
         title: Text(context.tr('vendor.title')),
         actions: [
           // Orders, questions and decisions arrive here as well as by push.
           const InboxBellButton(),
-          const PersonaSwitchButton(),
+          PersonaSwitchButton(
+            confirmLeave: (c) =>
+                confirmLeaveWithQueuedSales(c, switching: true),
+          ),
+          // English <-> Swahili in place, the same shared switch members and
+          // owners use; the choice is remembered (owner, 2026-10-19).
+          const LanguageToggleButton(key: Key('vendor-language')),
           // The vendor and their staff change their own PIN here.
           const ChangePinButton(),
           IconButton(
@@ -476,9 +699,28 @@ class _VendorHomePageState extends State<VendorHomePage> {
         children: [
           ListenableBuilder(
             listenable: AppScope.of(context).auth,
-            builder: (context, _) =>
-                _pendingApproval ? _pendingBanner() : const SizedBox.shrink(),
+            // Under the flag the Products hero carries it, just below.
+            builder: (context, _) => _pendingApproval && !_heroOn(tab)
+                ? _pendingBanner()
+                : const SizedBox.shrink(),
           ),
+          // Sales still on this device with the Sales tab gone (feature
+          // off) and no Business tab to show them on: reachable here.
+          if (_sales != null && !sections.contains(4))
+            ListenableBuilder(
+              listenable: _sales!,
+              builder: (context, _) => _sales!.isEmpty || _walkInSales
+                  ? const SizedBox.shrink()
+                  : Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        FFTokens.spacingLg,
+                        FFTokens.spacingSm,
+                        FFTokens.spacingLg,
+                        0,
+                      ),
+                      child: _salesWaitingTile(),
+                    ),
+            ),
           if (_staffDisabled)
             Padding(
               padding: const EdgeInsets.fromLTRB(
@@ -494,28 +736,68 @@ class _VendorHomePageState extends State<VendorHomePage> {
               ),
             ),
           Expanded(
-            child: _loading
+            child: _loading && _heroOn(tab)
+                ? ListView(
+                    padding: const EdgeInsets.all(FFTokens.spacingLg),
+                    children: [
+                      _hero(loading: true),
+                      const Center(child: FFSpinner()),
+                    ],
+                  )
+                : _loading
                 ? const Center(child: FFSpinner())
                 : RefreshIndicator(
                     onRefresh: () => _refresh(askTools: true),
                     child: switch (tab) {
+                      0 when _heroOn(tab) =>
+                        NotificationListener<ScrollNotification>(
+                          onNotification: _onProductsScroll,
+                          child: _productsTab(),
+                        ),
                       0 => _productsTab(),
                       1 => _ordersTab(),
                       2 => _paymentsTab(),
                       3 => _enquiriesTab(),
                       4 => _businessTab(),
+                      _salesSection => const VendorSalesTab(
+                        key: Key('vendor-sales-tab'),
+                      ),
                       _ => _restrictedTab(),
                     },
                   ),
           ),
         ],
       ),
-      floatingActionButton: tab == 0
+      // Exactly one "vendor-add-product" at a time: the hero's while the
+      // hero shows, this one otherwise.
+      floatingActionButton:
+          tab == 0 && !(_heroOn(tab) && (_loading || _heroVisible))
           ? FloatingActionButton.extended(
               key: const Key('vendor-add-product'),
               onPressed: _busy ? null : () => _editProduct(),
               icon: const Icon(Icons.add),
               label: Text(context.tr('vendor.addProduct')),
+            )
+          : tab == _salesSection && !_loading && _sales != null
+          ? ListenableBuilder(
+              listenable: _sales!,
+              builder: (context, _) {
+                final n = _sales!.draftCount;
+                return FloatingActionButton.extended(
+                  key: const Key('vendor-pos-new'),
+                  onPressed: _staffDisabled
+                      ? null
+                      : () => context.push(posRoute),
+                  icon: const Icon(Icons.add_shopping_cart),
+                  label: Text(
+                    n > 0
+                        ? fillIn(context.tr('vendor.pos.continueSale'), {
+                            'n': n,
+                          })
+                        : context.tr('vendor.pos.newSale'),
+                  ),
+                );
+              },
             )
           : null,
       // A navigation bar needs two or more destinations; with one section
@@ -540,6 +822,13 @@ class _VendorHomePageState extends State<VendorHomePage> {
                     icon: const Icon(Icons.receipt_long_outlined),
                     selectedIcon: const Icon(Icons.receipt_long),
                     label: context.tr('vendor.orders'),
+                  ),
+                if (sections.contains(_salesSection))
+                  NavigationDestination(
+                    key: const Key('vendor-nav-sales'),
+                    icon: const Icon(Icons.point_of_sale_outlined),
+                    selectedIcon: const Icon(Icons.point_of_sale),
+                    label: context.tr('vendor.sales.tab'),
                   ),
                 if (sections.contains(2))
                   NavigationDestination(
@@ -601,44 +890,50 @@ class _VendorHomePageState extends State<VendorHomePage> {
       FFTokens.spacingLg,
       0,
     ),
-    child: FFCard(
-      key: const Key('vendor-pending-banner'),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(
-                Icons.hourglass_top_outlined,
-                size: 20,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              const SizedBox(width: FFTokens.spacingSm),
-              Expanded(child: Text(context.tr('vendor.pendingBanner'))),
-            ],
-          ),
-          const SizedBox(height: FFTokens.spacingSm),
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: FFButton(
-              key: const Key('vendor-pending-verification'),
-              label: context.tr('kyc.entry.title'),
-              onPressed: () => context.push(AppRoutes.verification),
-              variant: FFButtonVariant.secondary,
-              icon: Icons.verified_user_outlined,
+    child: _pendingBannerCard(),
+  );
+
+  Widget _pendingBannerCard() => FFCard(
+    key: const Key('vendor-pending-banner'),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              Icons.hourglass_top_outlined,
+              size: 20,
+              color: Theme.of(context).colorScheme.primary,
             ),
+            const SizedBox(width: FFTokens.spacingSm),
+            Expanded(child: Text(context.tr('vendor.pendingBanner'))),
+          ],
+        ),
+        const SizedBox(height: FFTokens.spacingSm),
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: FFButton(
+            key: const Key('vendor-pending-verification'),
+            label: context.tr('kyc.entry.title'),
+            onPressed: () => context.push(AppRoutes.verification),
+            variant: FFButtonVariant.secondary,
+            icon: Icons.verified_user_outlined,
           ),
-        ],
-      ),
+        ),
+      ],
     ),
   );
 
   Widget _productsTab() {
+    final lead = _heroOn(0) ? _productsLead() : const <Widget>[];
     if (_products.isEmpty) {
       return ListView(
         padding: const EdgeInsets.all(FFTokens.spacingLg),
-        children: [FFEmptyState(title: context.tr('vendor.noProducts'))],
+        children: [
+          ...lead,
+          FFEmptyState(title: context.tr('vendor.noProducts')),
+        ],
       );
     }
     final ledger = _ledger;
@@ -647,140 +942,174 @@ class _VendorHomePageState extends State<VendorHomePage> {
     final products = lowOnly
         ? _products.where((p) => _low.isLow(p['id']?.toString())).toList()
         : _products;
-    return ListView.builder(
-      padding: const EdgeInsets.all(FFTokens.spacingLg),
-      itemCount:
-          products.length +
-          (showFilter ? 1 : 0) +
-          (lowOnly && products.isEmpty ? 1 : 0),
-      itemBuilder: (context, index) {
-        if (showFilter) {
-          if (index == 0) return _stockFilter();
-          index -= 1;
-        }
-        if (index >= products.length) {
-          return FFEmptyState(
-            key: const Key('vendor-low-empty'),
-            title: context.tr('vendor.stock.lowEmpty'),
-            action: FFButton(
-              label: context.tr('vendor.stock.all'),
-              variant: FFButtonVariant.secondary,
-              onPressed: () => setState(() => _lowOnly = false),
-            ),
-          );
-        }
-        final product = products[index];
-        final paused = product['status'] == 'paused';
-        final id = product['id']?.toString();
-        final name = product['name']?.toString() ?? '';
-        final lowVariants = ledger ? _low.lowVariants(id) : const <String>[];
-        final low = ledger && _low.isLow(id);
-        final subtitle = Text(
-          '${formatCurrency(product['priceTzs'] as num? ?? 0)} · ${product['stock'] ?? 0} ${context.tr('vendor.inStock')}',
+    final itemCount =
+        lead.length +
+        products.length +
+        (showFilter ? 1 : 0) +
+        (lowOnly && products.isEmpty ? 1 : 0);
+    Widget item(BuildContext context, int index) {
+      if (index < lead.length) return lead[index];
+      index -= lead.length;
+      if (showFilter) {
+        if (index == 0) return _stockFilter();
+        index -= 1;
+      }
+      if (index >= products.length) {
+        return FFEmptyState(
+          key: const Key('vendor-low-empty'),
+          title: context.tr('vendor.stock.lowEmpty'),
+          action: FFButton(
+            label: context.tr('vendor.stock.all'),
+            variant: FFButtonVariant.secondary,
+            onPressed: () => setState(() => _lowOnly = false),
+          ),
         );
-        return Padding(
-          padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
-          child: FFCard(
-            child: ListTile(
-              key: Key('vendor-product-${product['id']}'),
-              contentPadding: EdgeInsets.zero,
-              onTap: ledger ? () => _openHistory(product) : null,
-              leading: const CircleAvatar(
-                child: Icon(Icons.shopping_bag_outlined),
-              ),
-              title: Text(name),
-              subtitle: !low
-                  ? subtitle
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        subtitle,
-                        const SizedBox(height: FFTokens.spacingXs),
-                        // Badges wrap and are never cut off; both are read.
-                        Wrap(
-                          spacing: FFTokens.spacingXs,
-                          runSpacing: FFTokens.spacingXs,
-                          children: [
+      }
+      final product = products[index];
+      final paused = product['status'] == 'paused';
+      final id = product['id']?.toString();
+      final name = product['name']?.toString() ?? '';
+      final lowVariants = ledger ? _low.lowVariants(id) : const <String>[];
+      final low = ledger && _low.isLow(id);
+      final subtitle = Text(
+        '${formatCurrency(product['priceTzs'] as num? ?? 0)} · ${product['stock'] ?? 0} ${context.tr('vendor.inStock')}',
+      );
+      return Padding(
+        padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
+        child: FFCard(
+          child: ListTile(
+            key: Key('vendor-product-${product['id']}'),
+            contentPadding: EdgeInsets.zero,
+            onTap: ledger ? () => _openHistory(product) : null,
+            leading: const CircleAvatar(
+              child: Icon(Icons.shopping_bag_outlined),
+            ),
+            title: Text(name),
+            subtitle: !low
+                ? subtitle
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      subtitle,
+                      const SizedBox(height: FFTokens.spacingXs),
+                      // Badges wrap and are never cut off; both are read.
+                      Wrap(
+                        spacing: FFTokens.spacingXs,
+                        runSpacing: FFTokens.spacingXs,
+                        children: [
+                          FFBadge(
+                            key: Key('vendor-low-badge-$id'),
+                            label: context.tr('vendor.stock.lowBadge'),
+                            tone: FFBadgeTone.warning,
+                            wrap: true,
+                          ),
+                          if (lowVariants.isNotEmpty)
                             FFBadge(
-                              key: Key('vendor-low-badge-$id'),
-                              label: context.tr('vendor.stock.lowBadge'),
+                              key: Key('vendor-low-variants-$id'),
+                              label: fillIn(
+                                context.tr(
+                                  lowVariants.length == 1
+                                      ? 'vendor.stock.lowVariantsOne'
+                                      : 'vendor.stock.lowVariants',
+                                ),
+                                {'n': lowVariants.length},
+                              ),
                               tone: FFBadgeTone.warning,
                               wrap: true,
                             ),
-                            if (lowVariants.isNotEmpty)
-                              FFBadge(
-                                key: Key('vendor-low-variants-$id'),
-                                label: fillIn(
-                                  context.tr(
-                                    lowVariants.length == 1
-                                        ? 'vendor.stock.lowVariantsOne'
-                                        : 'vendor.stock.lowVariants',
-                                  ),
-                                  {'n': lowVariants.length},
-                                ),
-                                tone: FFBadgeTone.warning,
-                                wrap: true,
-                              ),
-                          ],
-                        ),
-                      ],
-                    ),
-              trailing: PopupMenuButton<String>(
-                // 48dp even where the density is compact (web).
-                style: IconButton.styleFrom(
-                  minimumSize: const Size(48, 48),
-                  tapTargetSize: MaterialTapTargetSize.padded,
+                        ],
+                      ),
+                    ],
+                  ),
+            trailing: PopupMenuButton<String>(
+              // 48dp even where the density is compact (web).
+              style: IconButton.styleFrom(
+                minimumSize: const Size(48, 48),
+                tapTargetSize: MaterialTapTargetSize.padded,
+              ),
+              tooltip: ledger
+                  ? fillIn(context.tr('vendor.productActions'), {'name': name})
+                  : null,
+              onSelected: (value) {
+                if (value == 'edit') _editProduct(product);
+                if (value == 'adjust') _adjustStock(product);
+                if (value == 'history') _openHistory(product);
+                if (value == 'archive') _archiveProduct(product);
+                if (value == 'duplicate') _duplicateProduct(product);
+                if (value == 'delete') _deleteProduct(product);
+              },
+              itemBuilder: (_) => [
+                PopupMenuItem(
+                  value: 'edit',
+                  child: Text(context.tr('vendor.edit')),
                 ),
-                tooltip: ledger
-                    ? fillIn(context.tr('vendor.productActions'), {
-                        'name': name,
-                      })
-                    : null,
-                onSelected: (value) {
-                  if (value == 'edit') _editProduct(product);
-                  if (value == 'adjust') _adjustStock(product);
-                  if (value == 'history') _openHistory(product);
-                  if (value == 'archive') _archiveProduct(product);
-                  if (value == 'duplicate') _duplicateProduct(product);
-                  if (value == 'delete') _deleteProduct(product);
-                },
-                itemBuilder: (_) => [
+                if (ledger) ...[
                   PopupMenuItem(
-                    value: 'edit',
-                    child: Text(context.tr('vendor.edit')),
-                  ),
-                  if (ledger) ...[
-                    PopupMenuItem(
-                      value: 'adjust',
-                      child: Text(context.tr('vendor.stock.adjust')),
-                    ),
-                    PopupMenuItem(
-                      value: 'history',
-                      child: Text(context.tr('vendor.stock.history')),
-                    ),
-                  ],
-                  PopupMenuItem(
-                    value: 'archive',
-                    child: Text(
-                      paused
-                          ? context.tr('vendor.restore')
-                          : context.tr('vendor.pause'),
-                    ),
+                    value: 'adjust',
+                    child: Text(context.tr('vendor.stock.adjust')),
                   ),
                   PopupMenuItem(
-                    value: 'duplicate',
-                    child: Text(context.tr('vendor.duplicate')),
-                  ),
-                  PopupMenuItem(
-                    value: 'delete',
-                    child: Text(context.tr('vendor.delete')),
+                    value: 'history',
+                    child: Text(context.tr('vendor.stock.history')),
                   ),
                 ],
-              ),
+                PopupMenuItem(
+                  value: 'archive',
+                  child: Text(
+                    paused
+                        ? context.tr('vendor.restore')
+                        : context.tr('vendor.pause'),
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'duplicate',
+                  child: Text(context.tr('vendor.duplicate')),
+                ),
+                PopupMenuItem(
+                  value: 'delete',
+                  child: Text(context.tr('vendor.delete')),
+                ),
+              ],
             ),
           ),
-        );
-      },
+        ),
+      );
+    }
+
+    // PHOTO_FOOTER_UI (spec §33.6): only on Products while the hero rules
+    // show a hero, with at least one product. The FAB overlays the list once
+    // the hero has scrolled away, so the footer keeps 88px clear above it.
+    if (photoFooterUi && _heroOn(0)) {
+      return CustomScrollView(
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.all(FFTokens.spacingLg),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(item, childCount: itemCount),
+            ),
+          ),
+          FFPhotoFooter.sliver(
+            key: const Key('vendor-footer'),
+            pageKey: 'vendor.products',
+            top: FFHeroPhoto.vendor,
+            extraBottom: 88,
+            gap: FFTokens.spacingXl - FFTokens.spacingLg,
+            // A short list keeps today's room for the FAB.
+            hiddenExtent: vendorFabClearance - FFTokens.spacingLg,
+          ),
+        ],
+      );
+    }
+    return ListView.builder(
+      // Room under the last card for the floating "Add product" button.
+      padding: const EdgeInsets.fromLTRB(
+        FFTokens.spacingLg,
+        FFTokens.spacingLg,
+        FFTokens.spacingLg,
+        vendorFabClearance,
+      ),
+      itemCount: itemCount,
+      itemBuilder: item,
     );
   }
 
@@ -816,7 +1145,13 @@ class _VendorHomePageState extends State<VendorHomePage> {
       );
     }
     return ListView.builder(
-      padding: const EdgeInsets.all(FFTokens.spacingLg),
+      // Room under the last order, so no floating button can cover it.
+      padding: const EdgeInsets.fromLTRB(
+        FFTokens.spacingLg,
+        FFTokens.spacingLg,
+        FFTokens.spacingLg,
+        vendorFabClearance,
+      ),
       itemCount: _orders.length,
       itemBuilder: (context, index) {
         final order = _orders[index];
@@ -849,15 +1184,19 @@ class _VendorHomePageState extends State<VendorHomePage> {
                                   ),
                             size: FFButtonSize.sm,
                           ),
+                        // Cancelling cannot be undone: it reads as a
+                        // destructive action, not as one more safe link.
                         FFButton(
+                          key: Key('vendor-cancel-${order['id']}'),
                           label: context.tr('vendor.cancel'),
+                          icon: Icons.cancel_outlined,
                           onPressed: _busy
                               ? null
                               : () => _updateOrder(
                                   order['id'].toString(),
                                   'cancelled',
                                 ),
-                          variant: FFButtonVariant.ghost,
+                          variant: FFButtonVariant.destructive,
                           size: FFButtonSize.sm,
                         ),
                       ],
@@ -1075,6 +1414,18 @@ class _VendorHomePageState extends State<VendorHomePage> {
             ],
           ),
         ),
+        // S3: sales still on this device while the Sales tab is gone
+        // (feature switched off). They are never deleted for that.
+        if (_sales != null)
+          ListenableBuilder(
+            listenable: _sales!,
+            builder: (context, _) => _sales!.isEmpty || _walkInSales
+                ? const SizedBox.shrink()
+                : Padding(
+                    padding: const EdgeInsets.only(top: FFTokens.spacingMd),
+                    child: _salesWaitingTile(),
+                  ),
+          ),
         const SizedBox(height: FFTokens.spacingLg),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1136,6 +1487,20 @@ class _VendorHomePageState extends State<VendorHomePage> {
     );
   }
 
+  /// "Sales waiting to sync (n)" → the sync screen (S3).
+  Widget _salesWaitingTile() => FFCard(
+    child: ListTile(
+      key: const Key('vendor-sales-waiting-tile'),
+      contentPadding: EdgeInsets.zero,
+      leading: const Icon(Icons.cloud_upload_outlined),
+      title: Text(
+        fillIn(context.tr('vendor.sync.tile'), {'n': _sales!.all.length}),
+      ),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => context.push(salesSyncRoute),
+    ),
+  );
+
   Widget _restrictedTab() {
     return ListView(
       padding: const EdgeInsets.all(FFTokens.spacingLg),
@@ -1176,6 +1541,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
         gymId: _vendorId,
         role: 'staff',
         orgType: 'vendor',
+        vendorSales: _tools.walkInSales,
       );
       if (mounted) await _refresh();
       return;
@@ -1184,7 +1550,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) => const VendorStaffForm(),
+      builder: (_) => VendorStaffForm(walkInSales: _tools.walkInSales),
     );
     if (result == null || !mounted) return;
     await AppScope.of(context).api.vendorCreateStaff(result);
@@ -2063,7 +2429,10 @@ class _VendorProfileFormState extends State<VendorProfileForm> {
 }
 
 class VendorStaffForm extends StatefulWidget {
-  const VendorStaffForm({super.key});
+  const VendorStaffForm({super.key, this.walkInSales = false});
+
+  /// S3: offer the `sales` permission (only while walk-in sales are on).
+  final bool walkInSales;
 
   @override
   State<VendorStaffForm> createState() => _VendorStaffFormState();
@@ -2107,9 +2476,10 @@ class _VendorStaffFormState extends State<VendorStaffForm> {
 
   @override
   Widget build(BuildContext context) {
-    const permissions = [
+    final permissions = [
       'products',
       'orders',
+      if (widget.walkInSales) 'sales',
       'customers',
       'reports',
       'payments',
@@ -2178,7 +2548,13 @@ class _VendorStaffFormState extends State<VendorStaffForm> {
                     child: Text(context.tr('vendor.roleCare')),
                   ),
                 ],
-                onChanged: (value) => setState(() => _role = value ?? _role),
+                onChanged: (value) => setState(() {
+                  _role = value ?? _role;
+                  // Q-15: the Sales role starts with the sales permission.
+                  if (_role == 'sales' && widget.walkInSales) {
+                    _permissions.add('sales');
+                  }
+                }),
               ),
               for (final permission in permissions)
                 CheckboxListTile(
@@ -2207,4 +2583,58 @@ class _VendorStaffFormState extends State<VendorStaffForm> {
       ),
     );
   }
+}
+
+/// S3: before signing out or switching persona with sales still on this
+/// device, say they stay here and offer Sync now. True to carry on.
+Future<bool> confirmLeaveWithQueuedSales(
+  BuildContext context, {
+  bool switching = false,
+}) async {
+  final session = SalesSession.of(context);
+  if (session == null) return true;
+  await session.load();
+  if (!context.mounted) return false;
+  final n = session.all.length;
+  if (n == 0) return true;
+  final choice = await showDialog<String>(
+    context: context,
+    builder: (dialog) => AlertDialog(
+      key: const Key('vendor-sales-leave-dialog'),
+      content: Text(
+        fillIn(context.tr(pluralKey('vendor.sync.signOutWarn', n)), {'n': n}),
+      ),
+      actions: [
+        FFButton(
+          label: context.tr('common.cancel'),
+          variant: FFButtonVariant.ghost,
+          visualDensity: VisualDensity.standard,
+          onPressed: () => Navigator.of(dialog).pop(),
+        ),
+        FFButton(
+          key: const Key('vendor-sales-leave-sync'),
+          label: context.tr('vendor.sync.now'),
+          variant: FFButtonVariant.secondary,
+          visualDensity: VisualDensity.standard,
+          onPressed: () => Navigator.of(dialog).pop('sync'),
+        ),
+        FFButton(
+          key: const Key('vendor-sales-leave-anyway'),
+          label: context.tr(
+            switching
+                ? 'vendor.sync.switchAnyway'
+                : 'vendor.sync.signOutAnyway',
+          ),
+          variant: FFButtonVariant.destructive,
+          visualDensity: VisualDensity.standard,
+          onPressed: () => Navigator.of(dialog).pop('leave'),
+        ),
+      ],
+    ),
+  );
+  if (choice == 'sync') {
+    await session.sync(manual: true);
+    return false;
+  }
+  return choice == 'leave';
 }

@@ -8,6 +8,7 @@ import '../../api_error_message.dart';
 import '../../components/components.dart';
 import '../../design_tokens.dart';
 import '../../i18n.dart';
+import '../../photo_hero_flag.dart';
 import '../../product_categories.dart';
 import '../../promotion_events.dart' show discoverSessionId;
 import '../../shop_home.dart';
@@ -50,6 +51,9 @@ class ShopHomeView extends StatefulWidget {
     this.catalogueFailed = false,
     this.onNeedCatalogue,
     this.onOfflineChanged,
+    this.showHero = false,
+    this.heroFocusNode,
+    this.onHasContent,
   });
 
   final ShopHomeMode mode;
@@ -81,6 +85,18 @@ class ShopHomeView extends StatefulWidget {
 
   /// Whether the last request failed for lack of a connection.
   final ValueChanged<bool>? onOfflineChanged;
+
+  /// The static brand band under the search row (PHOTO_HERO_UI, increment
+  /// plan slice 1). Only the member shop asks for it; the trainer and owner
+  /// shops and the pushed ShopBrowsePage do not.
+  final bool showHero;
+
+  /// The band heading's focus node (the page footer's Back to top).
+  final FocusNode? heroFocusNode;
+
+  /// Whether the home shows rails or the All products grid (the page's
+  /// footer shows only then). Called after the frame, when it changes.
+  final ValueChanged<bool>? onHasContent;
 
   @override
   State<ShopHomeView> createState() => ShopHomeViewState();
@@ -153,7 +169,8 @@ class ShopHomeViewState extends State<ShopHomeView> {
       if (e.status >= 500 && _data == null) return _degraded();
       _failed(e);
     } on FormatException {
-      // Not JSON (a backend without /shop/home answers with an HTML page).
+      // A success answer that is not JSON. (An HTML error page arrives as an
+      // ApiException with its status: 404 → unavailable, 5xx → fallback.)
       if (mounted && id == _load) _unavailable();
     } on TimeoutException catch (e) {
       // Too slow is treated as a server failure, not as being offline.
@@ -347,14 +364,46 @@ class ShopHomeViewState extends State<ShopHomeView> {
     child: child,
   );
 
+  bool? _reportedContent;
+
+  void _reportContent(bool has) {
+    if (widget.onHasContent == null || _reportedContent == has) return;
+    _reportedContent = has;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.onHasContent?.call(has);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final data = _data;
     final children = <Widget>[_padded(_searchRow(context))];
+    // The static brand band (spec §32.5): slot 3, after the search row and
+    // after the offline alert (the alert is about the content and must not
+    // sit under a photo).
+    final band = widget.showHero && photoHeroUi
+        ? _padded(
+            Padding(
+              padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
+              child: FFHeroBand(
+                key: const Key('shop-hero'),
+                photo: FFHeroPhoto.shop,
+                headingFocusNode: widget.heroFocusNode,
+                minHeight: 160,
+                wideHeight: 200,
+                eyebrow: context.tr('member.shopTitle'),
+                headlineLead: context.tr('hero.shop.lead'),
+                headlineAccent: context.tr('hero.shop.accent'),
+              ),
+            ),
+          )
+        : null;
     if (data == null && _loading) {
-      children.add(_padded(const _ShopHomeSkeleton()));
+      _reportContent(false);
+      children.addAll([?band, _padded(const _ShopHomeSkeleton())]);
     } else if (data == null) {
-      children.add(_padded(_errorState(context)));
+      _reportContent(false);
+      children.addAll([?band, _padded(_errorState(context))]);
     } else {
       if (_error != null) {
         children.add(
@@ -373,7 +422,7 @@ class ShopHomeViewState extends State<ShopHomeView> {
           ),
         );
       }
-      children.addAll(_content(context, data));
+      children.addAll([?band, ..._content(context, data)]);
     }
     return Column(
       key: const Key('shop-home'),
@@ -508,7 +557,10 @@ class ShopHomeViewState extends State<ShopHomeView> {
     List<ShopProduct>? grid;
     if (sections.isEmpty) {
       // The server's count says the shop is empty: no list to fetch.
-      if (data.allProductsCount == 0) return [_gettingReady(context)];
+      if (data.allProductsCount == 0) {
+        _reportContent(false);
+        return [_gettingReady(context)];
+      }
       grid = products.isNotEmpty ? products.values.toList() : widget.catalogue;
       if (grid == null && !widget.catalogueFailed && !_askedCatalogue) {
         _askedCatalogue = true;
@@ -516,8 +568,13 @@ class ShopHomeViewState extends State<ShopHomeView> {
           (_) => widget.onNeedCatalogue?.call(),
         );
       }
-      if (grid != null && grid.isEmpty) return [_gettingReady(context)];
+      if (grid != null && grid.isEmpty) {
+        _reportContent(false);
+        return [_gettingReady(context)];
+      }
     }
+    // Rails, or the All products grid once its list is in.
+    _reportContent(sections.isNotEmpty || grid != null);
 
     final categories = data.categories.isNotEmpty
         ? data.categories

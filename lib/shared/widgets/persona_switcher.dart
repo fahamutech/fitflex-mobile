@@ -214,7 +214,11 @@ class PersonaSwitcherTile extends StatelessWidget {
 
 /// App-bar variant for screens without a profile list (vendor).
 class PersonaSwitchButton extends StatelessWidget {
-  const PersonaSwitchButton({super.key});
+  const PersonaSwitchButton({super.key, this.confirmLeave});
+
+  /// Asked before the switcher opens (vendor: sales still on this device).
+  /// False keeps the person where they are.
+  final Future<bool> Function(BuildContext context)? confirmLeave;
 
   @override
   Widget build(BuildContext context) {
@@ -230,7 +234,11 @@ class PersonaSwitchButton extends StatelessWidget {
           key: const Key('persona-switch-button'),
           tooltip: context.tr('persona.switch'),
           icon: const Icon(Icons.swap_horiz),
-          onPressed: () => showPersonaSwitcher(context),
+          onPressed: () async {
+            final ask = confirmLeave;
+            if (ask != null && !await ask(context)) return;
+            if (context.mounted) await showPersonaSwitcher(context);
+          },
         );
       },
     );

@@ -12,9 +12,17 @@ import '../../../shared/widgets/partner_not_verified.dart';
 /// Portrait card used inside a responsive grid.
 /// Uses a surface-shade background instead of elevation for separation.
 class TrainerGridCard extends StatelessWidget {
-  const TrainerGridCard({super.key, required this.trainer, this.placement});
+  const TrainerGridCard({
+    super.key,
+    required this.trainer,
+    this.placement,
+    this.imageAspectRatio = 1,
+  });
 
   final TrainerProfile trainer;
+
+  /// Photo shape; a one-column grid uses a wider one so the card stays short.
+  final double imageAspectRatio;
 
   /// The discovery placement this card was shown in (promotion analytics).
   final String? placement;
@@ -51,6 +59,7 @@ class TrainerGridCard extends StatelessWidget {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
           children: [
             // ── Avatar / photo ─────────────────────────────────────────
             ClipRRect(
@@ -58,7 +67,7 @@ class TrainerGridCard extends StatelessWidget {
                 top: Radius.circular(FFTokens.radiusLg),
               ),
               child: AspectRatio(
-                aspectRatio: 1,
+                aspectRatio: imageAspectRatio,
                 child: trainer.photoUrl != null && trainer.photoUrl!.isNotEmpty
                     ? FFRemoteImage(
                         src: trainer.photoUrl!,
@@ -76,31 +85,40 @@ class TrainerGridCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          trainer.displayName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: tt.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
+                  // Up to two lines for the name with the verified tick
+                  // right after it (same as the gym card), so a long name
+                  // is read in full instead of being cut on one line.
+                  Text.rich(
+                    TextSpan(
+                      text: trainer.displayName,
+                      children: [
+                        if (trainer.isVerified) ...[
+                          const TextSpan(text: ' '),
+                          const WidgetSpan(
+                            alignment: PlaceholderAlignment.middle,
+                            child: Icon(
+                              Icons.verified,
+                              size: 13,
+                              color: FFTokens.success600,
+                            ),
                           ),
-                        ),
-                      ),
-                      if (trainer.isVerified) ...[
-                        const SizedBox(width: 4),
-                        const Icon(
-                          Icons.verified,
-                          size: 13,
-                          color: FFTokens.success600,
-                        ),
-                      ] else ...[
-                        const SizedBox(width: 6),
-                        const NotVerifiedLabel(),
+                        ],
                       ],
-                    ],
+                    ),
+                    key: Key('trainer-grid-name-${trainer.id}'),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: tt.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
                   ),
+                  // "Not verified" is a trust signal: a line of its own that
+                  // may wrap, never cut.
+                  if (!trainer.isVerified) ...[
+                    const SizedBox(height: 3),
+                    NotVerifiedLabel(
+                      key: Key('trainer-grid-unverified-${trainer.id}'),
+                      maxLines: 2,
+                    ),
+                  ],
                   if (specialties.isNotEmpty) ...[
                     const SizedBox(height: 3),
                     Text(
@@ -207,31 +225,38 @@ class TrainerCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          trainer.displayName,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                            color: Theme.of(context).colorScheme.onSurface,
+                  // Name up to two lines with the tick after it; "Not
+                  // verified" gets its own line (as on the grid card).
+                  Text.rich(
+                    TextSpan(
+                      text: trainer.displayName,
+                      children: [
+                        if (trainer.isVerified) ...[
+                          const TextSpan(text: ' '),
+                          const WidgetSpan(
+                            alignment: PlaceholderAlignment.middle,
+                            child: Icon(
+                              Icons.verified,
+                              size: 14,
+                              color: FFTokens.success600,
+                            ),
                           ),
-                        ),
-                      ),
-                      if (trainer.isVerified) ...[
-                        const SizedBox(width: 4),
-                        const Icon(
-                          Icons.verified,
-                          size: 14,
-                          color: FFTokens.success600,
-                        ),
-                      ] else ...[
-                        const SizedBox(width: 6),
-                        const NotVerifiedLabel(),
+                        ],
                       ],
-                    ],
+                    ),
+                    key: Key('trainer-list-name-${trainer.id}'),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
                   ),
+                  if (!trainer.isVerified) ...[
+                    const SizedBox(height: 2),
+                    const NotVerifiedLabel(maxLines: 2),
+                  ],
                   if (specialties.isNotEmpty) ...[
                     const SizedBox(height: 4),
                     Text(

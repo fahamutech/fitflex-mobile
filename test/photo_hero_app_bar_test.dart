@@ -42,7 +42,11 @@ class _ActivePassApi extends ApiClient {
 
 const _barKey = Key('member-home-hero-app-bar');
 
-Future<void> _pumpShellHome(WidgetTester tester, {required bool dark}) async {
+Future<void> _pumpShellHome(
+  WidgetTester tester, {
+  required bool dark,
+  String location = '/member',
+}) async {
   SharedPreferences.setMockInitialValues({});
   tester.view.physicalSize = const Size(390 * 2, 640 * 2);
   tester.view.devicePixelRatio = 2;
@@ -51,7 +55,7 @@ Future<void> _pumpShellHome(WidgetTester tester, {required bool dark}) async {
   final auth = AuthState(api);
   await auth.setRole('member');
   final router = GoRouter(
-    initialLocation: '/member',
+    initialLocation: location,
     routes: [
       ShellRoute(
         builder: (context, state, child) =>
@@ -60,6 +64,14 @@ Future<void> _pumpShellHome(WidgetTester tester, {required bool dark}) async {
           GoRoute(
             path: '/member',
             builder: (_, _) => MemberHomeTab(now: DateTime(2026, 10, 19, 19)),
+          ),
+          GoRoute(
+            path: '/member/activity',
+            builder: (_, _) => const MemberActivityTab(),
+          ),
+          GoRoute(
+            path: '/member/profile',
+            builder: (_, _) => const MemberProfileTab(),
           ),
         ],
       ),
@@ -201,5 +213,29 @@ void main() {
     await tester.pump(); // the notification sets state
     await tester.pump(); // one frame, no animation time
     expect(_barMaterial(tester).color, surface);
+  });
+
+  // Spec C-7: Activity and Profile share Home's floating bar.
+  for (final (location, scroll) in [
+    ('/member/activity', 'activity-scroll'),
+    ('/member/profile', 'profile-scroll'),
+  ]) {
+    testWidgets('C-7 $location: transparent over the hero, solid scrolled', (
+      tester,
+    ) async {
+      await _pumpShellHome(tester, dark: false, location: location);
+      expect(find.byKey(_barKey), findsOneWidget);
+      expect(_barMaterial(tester).color?.a, 0);
+      expect(_titleColor(tester), FFTokens.heroText);
+      await tester.drag(find.byKey(Key(scroll)), const Offset(0, -900));
+      await tester.pumpAndSettle();
+      expect(_barMaterial(tester).color?.a, 1.0);
+    });
+  }
+
+  testWidgets('flag off: Profile keeps the plain bar', (tester) async {
+    debugPhotoHeroUiOverride = false;
+    await _pumpShellHome(tester, dark: false, location: '/member/profile');
+    expect(find.byKey(_barKey), findsNothing);
   });
 }

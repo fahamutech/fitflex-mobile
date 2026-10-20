@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../app_scope.dart';
@@ -15,6 +14,8 @@ import '../../shared/i18n.dart';
 import '../../shared/manual_payment.dart';
 import '../../shared/models.dart';
 import '../../shared/pass_gyms.dart';
+import '../../shared/photo_footer_flag.dart';
+import '../../shared/photo_hero_flag.dart';
 import '../../shared/payment_labels.dart';
 import 'widgets/mobile_money_pay.dart';
 import 'widgets/pass_gyms_sheet.dart';
@@ -83,9 +84,125 @@ class MemberPassesPage extends StatelessWidget {
     ),
   ];
 
+  /// PHOTO_HERO_UI (spec §23): the band hero for buy mode and the states
+  /// the page decides itself. Upgrade mode draws its own (_UpgradeGate).
+  static Widget buyHero(
+    BuildContext context, {
+    bool headline = true,
+    bool subline = true,
+    bool pending = false,
+    String? eyebrowKey,
+  }) => Padding(
+    padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
+    child: FFHeroBand(
+      key: const Key('passes-hero'),
+      photo: FFHeroPhoto.upgrade,
+      minHeight: 180,
+      wideHeight: 200,
+      eyebrow: context.tr(eyebrowKey ?? 'pay.product.fitflexPass'),
+      headlineLead: !headline
+          ? null
+          : context.tr(
+              pending ? 'home.hero.pending.lead' : 'hero.signUp.member.lead',
+            ),
+      headlineAccent: !headline
+          ? null
+          : context.tr(
+              pending
+                  ? 'home.hero.pending.accent'
+                  : 'hero.signUp.member.accent',
+            ),
+      subline: headline && subline && !pending
+          ? context.tr('member.planBody')
+          : null,
+    ),
+  );
+
+  Widget _buildPhotoHero(BuildContext context, MemberData data) {
+    final listed =
+        data.pendingPass == null && data.passesLoaded && data.passes.isNotEmpty;
+    return _PassesScroll(
+      // Footer (spec §33.6): once the pass list is shown; never while the
+      // pending-payment card is on screen. In upgrade mode the gate decides
+      // (options shown, no manual-payment fields).
+      gated: listed && data.hasActivePass,
+      footerEnabled: listed,
+      appBar: AppBar(
+        leading: IconButton(
+          tooltip: context.tr('a11y.back'),
+          onPressed: () => context.go(AppRoutes.memberHome),
+          icon: const Icon(Icons.arrow_back),
+        ),
+        title: Text(context.tr('pay.product.fitflexPass')),
+      ),
+      children: (onGateReady) => _photoHeroBody(context, data, onGateReady),
+    );
+  }
+
+  List<Widget> _photoHeroBody(
+    BuildContext context,
+    MemberData data,
+    ValueChanged<bool> onGateReady,
+  ) {
+    final List<Widget> body;
+    if (data.pendingPass != null) {
+      body = [
+        buyHero(context, pending: true),
+        _PendingBlockCard(pending: data.pendingPass!),
+      ];
+    } else if (!data.passesLoaded) {
+      // Eyebrow only while loading; no headline to take back.
+      body = [
+        buyHero(
+          context,
+          headline: false,
+          eyebrowKey: data.hasActivePass ? 'member.upgradePlan' : null,
+        ),
+        const Center(child: FFSpinner(size: 32)),
+      ];
+    } else if (data.passes.isEmpty) {
+      body = [buyHero(context, headline: false), _loadError(context, data)];
+    } else if (data.hasActivePass) {
+      body = [
+        _UpgradeGate(
+          withHero: true,
+          onFooterReady: onGateReady,
+          fallback: Column(
+            children: [buyHero(context), ...normalList(context, data)],
+          ),
+        ),
+      ];
+    } else {
+      body = [buyHero(context), ...normalList(context, data)];
+    }
+    return body;
+  }
+
+  Widget _loadError(BuildContext context, MemberData data) => Center(
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 24),
+      child: Column(
+        children: [
+          Text(
+            context.tr('home.passesLoadError'),
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 12),
+          FFButton(
+            label: context.tr('home.retry'),
+            onPressed: () => _retry(context, data),
+            variant: FFButtonVariant.secondary,
+          ),
+        ],
+      ),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     final data = MemberDataScope.of(context);
+    if (photoHeroUi) return _buildPhotoHero(context, data);
 
     return Scaffold(
       appBar: AppBar(
@@ -156,9 +273,20 @@ class MemberPassesPage extends StatelessWidget {
 /// sees the higher plans and what each costs them (the difference); anyone
 /// else, or a member with nothing to upgrade from, gets [fallback].
 class _UpgradeGate extends StatefulWidget {
-  const _UpgradeGate({required this.fallback});
+  const _UpgradeGate({
+    required this.fallback,
+    this.withHero = false,
+    this.onFooterReady,
+  });
 
   final Widget fallback;
+
+  /// PHOTO_FOOTER_UI: whether the page footer may show (the options or the
+  /// buy list are on screen, and no manual-payment fields).
+  final ValueChanged<bool>? onFooterReady;
+
+  /// PHOTO_HERO_UI: lead with the Upgrade plan band hero.
+  final bool withHero;
 
   @override
   State<_UpgradeGate> createState() => _UpgradeGateState();
@@ -216,17 +344,27 @@ class _UpgradeGateState extends State<_UpgradeGate> {
       reference = ready.reference;
       payerPhone = ready.payerPhone;
     }
+    // Let go of the focused field before it is disabled for the request:
+    // disabling a focused field throws "Null check operator used on a null
+    // value" on the web, even when the request then fails (L4).
+    FocusManager.instance.primaryFocus?.unfocus();
     setState(() => _sending = true);
     try {
       final created = await AppScope.of(
         context,
       ).api.upgradePass(tier, reference: reference, payerPhone: payerPhone);
       if (!mounted) return;
+      // A focused field must not outlive the page it is on (L4).
+      FocusManager.instance.primaryFocus?.unfocus();
+      // An upgrade applies to the pass the member already has once it is
+      // approved; it does not start a new plan.
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             context.tr(
-              manual != null ? 'manualPay.submitted' : 'upgrade.submitted',
+              manual != null
+                  ? 'manualPay.submittedUpgrade'
+                  : 'upgrade.submitted',
             ),
           ),
         ),
@@ -261,13 +399,74 @@ class _UpgradeGateState extends State<_UpgradeGate> {
     }
   }
 
+  bool? _reportedReady;
+
+  void _footerReady(bool ready) {
+    if (widget.onFooterReady == null || _reportedReady == ready) return;
+    _reportedReady = ready;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.onFooterReady?.call(ready);
+    });
+  }
+
+  /// The Upgrade plan hero: eyebrow only while loading or on an error; the
+  /// headline says whether there is a higher plan. No price, date or count.
+  Widget _hero(BuildContext context, {String? key}) => Padding(
+    padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
+    child: FFHeroBand(
+      key: const Key('passes-hero'),
+      photo: FFHeroPhoto.upgrade,
+      minHeight: 180,
+      wideHeight: 200,
+      eyebrow: context.tr('member.upgradePlan'),
+      headlineLead: key == null ? null : context.tr('$key.lead'),
+      headlineAccent: key == null ? null : context.tr('$key.accent'),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
+    if (!widget.withHero) return _build(context);
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _future,
+      builder: (context, snap) {
+        final error = snap.error;
+        final done = snap.connectionState == ConnectionState.done;
+        // Buy mode draws its own hero (the fallback).
+        if (done && error is ApiException) {
+          _footerReady(true);
+          return _build(context);
+        }
+        final options = snap.data?['options'] as List?;
+        final key = !done || error != null || !snap.hasData
+            ? null
+            : (options == null || options.isEmpty)
+            ? 'hero.upgrade.top'
+            : 'hero.upgrade';
+        // The manual-payment fields are a payment step: no footer (§33.6).
+        _footerReady(
+          key != null && !(_modes.manual != null && _selected != null),
+        );
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _hero(context, key: key),
+            _build(context),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _build(BuildContext context) {
     return FutureBuilder<Map<String, dynamic>>(
       future: _future,
       builder: (context, snap) {
         if (snap.connectionState != ConnectionState.done) {
-          return const Center(child: CircularProgressIndicator());
+          // F-10 under the flag: the design-system spinner.
+          return widget.withHero
+              ? const Center(child: FFSpinner(size: 32))
+              : const Center(child: CircularProgressIndicator());
         }
         final error = snap.error;
         // The server answered "nothing to upgrade from": buy a pass as usual.
@@ -308,9 +507,7 @@ class _UpgradeGateState extends State<_UpgradeGate> {
         final endsAt = DateTime.tryParse(
           '${current['expiresAt'] ?? ''}',
         )?.toLocal();
-        final endsLabel = endsAt == null
-            ? ''
-            : DateFormat('dd MMM yyyy').format(endsAt);
+        final endsLabel = endsAt == null ? '' : context.localDate(endsAt);
         final daysLeft = endsAt?.difference(DateTime.now()).inDays;
         Map? chosen;
         for (final o in options) {
@@ -346,11 +543,14 @@ class _UpgradeGateState extends State<_UpgradeGate> {
           return Column(
             children: [
               currentCard,
-              const SizedBox(height: 12),
-              FFAlert(
-                message: context.tr('upgrade.highest'),
-                tone: FFAlertTone.info,
-              ),
+              // Under the flag the hero says it (one owner per message).
+              if (!widget.withHero) ...[
+                const SizedBox(height: 12),
+                FFAlert(
+                  message: context.tr('upgrade.highest'),
+                  tone: FFAlertTone.info,
+                ),
+              ],
             ],
           );
         }
@@ -416,9 +616,10 @@ class _UpgradeGateState extends State<_UpgradeGate> {
                                 TextButton.icon(
                                   style: TextButton.styleFrom(
                                     padding: EdgeInsets.zero,
-                                    minimumSize: const Size(0, 36),
-                                    tapTargetSize:
-                                        MaterialTapTargetSize.shrinkWrap,
+                                    // 48dp, also on the web.
+                                    minimumSize: const Size(48, 48),
+                                    tapTargetSize: MaterialTapTargetSize.padded,
+                                    visualDensity: VisualDensity.standard,
                                     alignment: Alignment.centerLeft,
                                   ),
                                   onPressed: () => showPassGymsSheet(
@@ -478,29 +679,39 @@ class _UpgradeGateState extends State<_UpgradeGate> {
                 ),
                 input: _manualInput,
                 enabled: !_sending,
+                upgrade: true,
                 onChanged: (_) {
                   if (_manualInput.clearErrors()) setState(() {});
                 },
               ),
             ],
             const SizedBox(height: 16),
-            FFButton(
-              key: const Key('upgrade-submit'),
-              label: chosen == null
-                  ? context.tr('upgrade.request')
-                  : _modes.manual != null
-                  ? context.tr('manualPay.submit')
-                  : context
-                        .tr('upgrade.pay')
-                        .replaceFirst(
-                          '{amount}',
-                          formatCurrency(
-                            ((chosen['differenceTzs'] as num?) ?? 0).toInt(),
+            // Nothing to submit until a plan is picked: say so instead of
+            // showing a button that does nothing (L3).
+            if (chosen == null)
+              Text(
+                context.tr('member.chooseFirst'),
+                key: const Key('upgrade-choose-first'),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              )
+            else
+              FFButton(
+                key: const Key('upgrade-submit'),
+                label: _modes.manual != null
+                    ? context.tr('manualPay.submit')
+                    : context
+                          .tr('upgrade.pay')
+                          .replaceFirst(
+                            '{amount}',
+                            formatCurrency(
+                              ((chosen['differenceTzs'] as num?) ?? 0).toInt(),
+                            ),
                           ),
-                        ),
-              onPressed: chosen == null || _sending ? null : _submit,
-              loading: _sending,
-            ),
+                onPressed: _sending ? null : _submit,
+                loading: _sending,
+              ),
           ],
         );
       },
@@ -549,15 +760,11 @@ class _PendingBlockCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // The title says it is waiting; the badge and status row
+                    // that repeated it are gone (owner: say a fact once).
                     Text(
                       context.tr('member.paymentPendingTitle'),
                       style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 2),
-                    FFBadge(
-                      label: context.tr('member.waitingApproval'),
-                      tone: FFBadgeTone.warning,
-                      dot: true,
                     ),
                   ],
                 ),
@@ -579,10 +786,6 @@ class _PendingBlockCard extends StatelessWidget {
           _DetailRow(
             label: context.tr('member.paymentPendingAmount'),
             value: formatCurrency(pending.amountTzs),
-          ),
-          _DetailRow(
-            label: context.tr('member.paymentPendingStatus'),
-            value: context.tr('member.paymentPendingStatusValue'),
           ),
           if (pending.memberReference case final ref?)
             _DetailRow(
@@ -699,13 +902,16 @@ class _SelectablePass extends StatelessWidget {
                     if (pass.gymAccess != null && pass.gymAccess!.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(top: 2),
+                        // Wraps: at 360 wide Premium's "Standard + Mid-tier
+                        // + Premium gyms" is the point of the card, so it is
+                        // never cut.
                         child: Text(
-                          pass.gymAccessLabel,
+                          passGymAccessLabel(context, pass.gymAccess),
+                          key: Key('pass-gym-access-${pass.id}'),
                           style: Theme.of(context).textTheme.labelSmall
                               ?.copyWith(
                                 color: Theme.of(context).colorScheme.primary,
                               ),
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     if (gymCount > 0)
@@ -720,8 +926,10 @@ class _SelectablePass extends StatelessWidget {
                       TextButton.icon(
                         style: TextButton.styleFrom(
                           padding: EdgeInsets.zero,
-                          minimumSize: const Size(0, 36),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          // 48dp, also on the web.
+                          minimumSize: const Size(48, 48),
+                          tapTargetSize: MaterialTapTargetSize.padded,
+                          visualDensity: VisualDensity.standard,
                           alignment: Alignment.centerLeft,
                         ),
                         onPressed: () => showPassGymsSheet(
@@ -752,6 +960,55 @@ class _SelectablePass extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// The Upgrade plan page under PHOTO_HERO_UI: the page, its scroll view and,
+/// with PHOTO_FOOTER_UI, the photo footer: shown when [footerEnabled], or in
+/// upgrade mode ([gated]) once the upgrade gate says it may.
+class _PassesScroll extends StatefulWidget {
+  const _PassesScroll({
+    required this.appBar,
+    required this.children,
+    required this.footerEnabled,
+    required this.gated,
+  });
+
+  final PreferredSizeWidget appBar;
+  final List<Widget> Function(ValueChanged<bool> onGateReady) children;
+  final bool footerEnabled;
+  final bool gated;
+
+  @override
+  State<_PassesScroll> createState() => _PassesScrollState();
+}
+
+class _PassesScrollState extends State<_PassesScroll> {
+  bool _gateReady = false;
+
+  void _onGateReady(bool ready) {
+    if (mounted && ready != _gateReady) setState(() => _gateReady = ready);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: widget.appBar,
+      body: footerListView(
+        key: const Key('passes-scroll'),
+        padding: const EdgeInsets.all(FFTokens.spacingLg),
+        footer: photoFooterUi
+            ? FFPhotoFooter.sliver(
+                key: const Key('passes-footer'),
+                pageKey: 'member.passes',
+                top: FFHeroPhoto.upgrade,
+                enabled: widget.gated ? _gateReady : widget.footerEnabled,
+                gap: FFTokens.spacingXl - FFTokens.spacingLg,
+              )
+            : null,
+        children: widget.children(_onGateReady),
       ),
     );
   }

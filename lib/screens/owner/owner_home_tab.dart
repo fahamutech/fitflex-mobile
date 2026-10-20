@@ -5,6 +5,8 @@ import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/tone_theme.dart';
 import '../../shared/i18n.dart';
+import '../../shared/photo_footer_flag.dart';
+import '../../shared/photo_hero_flag.dart';
 import 'owner_shell.dart';
 import '../../shared/widgets/challenge_manager_page.dart';
 import '../../shared/widgets/partner_not_verified.dart';
@@ -96,6 +98,32 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
     }
   }
 
+  /// "Good evening, Rehema": the time of day and the first name (today's
+  /// rule: the part before any "@", first word).
+  String _greetingLine(BuildContext context, String rawName) {
+    final cleanName = rawName.split('@').first.split(' ').first;
+    final hour = (widget.now ?? DateTime.now()).hour;
+    final greeting = context.tr(
+      hour < 12
+          ? 'member.goodMorning'
+          : hour < 17
+          ? 'member.goodAfternoon'
+          : 'member.goodEvening',
+    );
+    return '$greeting, $cleanName';
+  }
+
+  bool _precached = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (photoHeroUi && !_precached) {
+      _precached = true;
+      precacheHeroPhotos(context, const [FFHeroPhoto.owner]);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final data = OwnerDataScope.of(context);
@@ -103,9 +131,25 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
     final ownerGymList = data.ownerGyms;
 
     if (ownerGymList.isEmpty) {
+      final title = context.tr('role.welcomeTitle');
+      final hasBrand = title.contains('FitFlex');
       return ListView(
         padding: const EdgeInsets.all(FFTokens.spacingLg),
         children: [
+          // PHOTO_HERO_UI (spec §25.3): no approved gym yet, so a welcome
+          // and no action; the unapproved card below says what is next.
+          if (photoHeroUi) ...[
+            FFHeroBand(
+              key: const Key('owner-hero'),
+              photo: FFHeroPhoto.owner,
+              eyebrow: _greetingLine(context, data.displayName),
+              headlineLead: hasBrand
+                  ? title.replaceFirst('FitFlex', '').trim()
+                  : title,
+              headlineAccent: hasBrand ? 'FitFlex' : null,
+            ),
+            const SizedBox(height: FFTokens.spacingMd),
+          ],
           FFGymUnapprovedCard(
             checking: data.loading,
             onRefresh: () async {
@@ -162,16 +206,8 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
       context,
     );
 
-    final rawName = data.displayName;
-    final cleanName = rawName.split('@').first.split(' ').first;
-    final hour = (widget.now ?? DateTime.now()).hour;
-    final greeting = context.tr(
-      hour < 12
-          ? 'member.goodMorning'
-          : hour < 17
-          ? 'member.goodAfternoon'
-          : 'member.goodEvening',
-    );
+    final greetingLine = _greetingLine(context, data.displayName);
+    final hero = photoHeroUi;
     final gymName = data.ownerGyms
         .where((g) => g['id']?.toString() == data.activeGymId)
         .map((g) => g['name']?.toString())
@@ -179,27 +215,62 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
 
     final bool showChart = directCount > 0 || fitflexCount > 0;
 
-    return ListView(
+    return footerListView(
       padding: const EdgeInsets.symmetric(
         horizontal: FFTokens.spacingLg,
         vertical: FFTokens.spacingMd,
       ),
+      // PHOTO_FOOTER_UI (spec §33.6): once the dashboard has loaded.
+      footer: photoFooterUi
+          ? FFPhotoFooter.sliver(
+              key: const Key('owner-home-footer'),
+              pageKey: 'owner.home',
+              top: FFHeroPhoto.owner,
+              enabled: dashboard != null,
+              gap: FFTokens.spacingXl - FFTokens.spacingMd,
+            )
+          : null,
       children: [
+        if (hero) ...[
+          // PHOTO_HERO_UI (spec §25.3): the greeting and the daily job on a
+          // band hero; numbers, chart and lists stay on solid ground.
+          FFHeroBand(
+            key: const Key('owner-hero'),
+            photo: FFHeroPhoto.owner,
+            eyebrow: greetingLine,
+            headlineLead: context.tr('hero.owner.lead'),
+            headlineAccent: context.tr('hero.owner.accent'),
+            actions: [
+              FFButton(
+                key: const Key('owner-checkin-primary'),
+                icon: Icons.qr_code_scanner,
+                label: context.tr('owner.checkin'),
+                onPressed: () => context.push('/owner/scan'),
+              ),
+            ],
+          ),
+          const SizedBox(height: FFTokens.spacingMd),
+        ],
         const PartnerNotVerifiedNotice(),
         // Greeting follows the time of day; the date filter is the one
         // control that scopes everything below it.
-        Text(
-          '$greeting, $cleanName',
-          style: Theme.of(
-            context,
-          ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: FFTokens.spacing2xs),
+        if (!hero) ...[
+          Text(
+            greetingLine,
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: FFTokens.spacing2xs),
+        ],
         Row(
           children: [
             Expanded(
               child: Text(
-                gymName ?? context.tr('owner.gymSnapshot'),
+                // Under the flag the gym name stays in the app bar only.
+                hero
+                    ? context.tr('owner.gymSnapshot')
+                    : gymName ?? context.tr('owner.gymSnapshot'),
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -244,15 +315,17 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
         const SizedBox(height: FFTokens.spacingMd),
 
         // The daily job first; the rest are one tap away below it.
-        FFButton(
-          key: const Key('owner-checkin-primary'),
-          fullWidth: true,
-          size: FFButtonSize.lg,
-          icon: Icons.qr_code_scanner,
-          label: context.tr('owner.checkin'),
-          onPressed: () => context.push('/owner/scan'),
-        ),
-        const SizedBox(height: FFTokens.spacingSm),
+        if (!hero) ...[
+          FFButton(
+            key: const Key('owner-checkin-primary'),
+            fullWidth: true,
+            size: FFButtonSize.lg,
+            icon: Icons.qr_code_scanner,
+            label: context.tr('owner.checkin'),
+            onPressed: () => context.push('/owner/scan'),
+          ),
+          const SizedBox(height: FFTokens.spacingSm),
+        ],
         FFCard(
           padding: const EdgeInsets.symmetric(vertical: 12),
           child: IntrinsicHeight(

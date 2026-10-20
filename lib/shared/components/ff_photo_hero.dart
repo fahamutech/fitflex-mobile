@@ -8,23 +8,89 @@ import 'ff_skeleton.dart';
 /// Bundled hero photos (people-free licensed stock until FitFlex has its own
 /// shoot; see assets/photos/hero/LICENSES.md). Never fetched from a network.
 enum FFHeroPhoto {
-  language('hero_language', 4 / 5),
-  signIn('hero_sign_in', 4 / 5),
-  signUp('hero_sign_up', 4 / 5),
-  role('hero_role', 16 / 9),
+  language('hero_language', 4 / 5, 'pexels-12250460'),
+  signIn('hero_sign_in', 4 / 5, 'scene-tubarones-9545'),
+  signUp('hero_sign_up', 4 / 5, 'pexels-3916766'),
+  role('hero_role', 16 / 9, 'pexels-29526371'),
 
   /// Home with no QR: no pass, payment pending, ended.
-  homeStart('hero_home_start', 4 / 5),
+  homeStart('hero_home_start', 4 / 5, 'pexels-29526371'),
 
   /// Home with a working pass (QR states).
-  homePass('hero_home_pass', 3 / 2);
+  homePass('hero_home_pass', 3 / 2, 'pexels-5312212'),
 
-  const FFHeroPhoto(this.file, this.aspect);
+  // Addendum 2026-10-19 (spec §26). Focal points keep the subject in frame
+  // from a 360px phone (about 1.2:1) to a 3:1 desktop banner.
+  profile('hero_profile', 3 / 2, 'pexels-4716814', Alignment(0.3, 0)),
+  pin('hero_pin', 1005 / 670, 'pexels-7432872', Alignment(0.3, -0.2)),
+  upgrade('hero_upgrade', 3 / 2, 'scene-ketut-4720', Alignment(-0.3, -0.4)),
+  activityToday(
+    'hero_activity_today',
+    3 / 2,
+    'pexels-12250460',
+    Alignment(-0.2, -0.3),
+  ),
+  activityTraining(
+    'hero_activity_training',
+    800 / 533,
+    'scene-tubarones-9545',
+    Alignment(-0.4, 0),
+  ),
+  activityChallenges(
+    'hero_activity_challenges',
+    900 / 580,
+    'scene-ketut-4720',
+    Alignment(0, 0.1),
+  ),
+  activityProgress(
+    'hero_activity_progress',
+    3 / 2,
+    'pexels-3916766',
+    Alignment(-0.1, -0.3),
+  ),
+  trainer('hero_trainer', 840 / 530, 'scene-tima-6388', Alignment(0.7, 0)),
+  vendor('hero_vendor', 880 / 587, 'scene-tubarones-9545', Alignment(0, -0.3)),
+  owner('hero_owner', 3 / 2, 'pexels-29526371', Alignment(-0.3, -0.3)),
+
+  // Section bands (photo-hero spec §32, §34.1): member Gyms, Trainers and
+  // Shop home.
+  gyms('hero_gyms', 1080 / 609, 'pexels-33832204', Alignment(-0.3, -0.2)),
+  trainers(
+    'hero_trainers',
+    1000 / 350,
+    'scene-carbell-sarfo-3651',
+    Alignment(0.15, 0),
+  ),
+  shop('hero_shop', 1080 / 691, 'pexels-5592605', Alignment(-0.1, 0.2)),
+
+  // Footer pool (spec §33, §34.1; sharp people-free set, owner 2026-10-20):
+  // 16:7 strips, 1080x472 at 2x from source crops at least as large (never
+  // upscaled), under a uniform 80% scrim.
+  footerStudio('footer_studio', 1080 / 472, 'pexels-4716814'),
+  footerGymFloor('footer_gym_floor', 1080 / 472, 'pexels-29526371'),
+  footerRack('footer_rack', 1080 / 472, 'pexels-3916766'),
+  footerShelves('footer_shelves', 1080 / 472, 'scene-tubarones-9545');
+
+  const FFHeroPhoto(
+    this.file,
+    this.aspect,
+    this.sourceId, [
+    this.focal = Alignment.center,
+  ]);
 
   final String file;
 
   /// Width / height of the bundled file.
   final double aspect;
+
+  /// The scene this file shows (spec §34.1): the original photo's name in
+  /// the parent repo's social/brand/photos/, or a `scene-…` id when several
+  /// originals come from one shoot. Crops of one scene share it, so a page
+  /// can keep its footer photo apart from its top hero.
+  final String sourceId;
+
+  /// Where `BoxFit.cover` keeps the subject (the image alignment).
+  final Alignment focal;
 
   String get asset => 'assets/photos/hero/$file.webp';
 }
@@ -32,8 +98,10 @@ enum FFHeroPhoto {
 /// How the hero is laid out.
 /// [full] and [compact] stack the text over a vertical scrim (phones);
 /// [panel] puts it bottom-left over a horizontal scrim (desktop, wide
-/// banners).
-enum FFHeroVariant { full, compact, panel }
+/// banners). [band] is an inset card inside the page padding, under a solid
+/// app bar: the same vertical scrim, 24px corners, no sheet overlap and no
+/// melt into the ground (it is a card with a visible edge, spec C-1).
+enum FFHeroVariant { full, compact, panel, band }
 
 /// The decode size for [photo] drawn with `BoxFit.cover` into [box], rounded
 /// up to a 128px step so the pre-cache and the hero share one cache entry
@@ -52,12 +120,18 @@ ImageProvider heroImageProvider(FFHeroPhoto photo, Size box, double dpr) {
 
 /// Decodes hero photos ahead of time so they appear without a placeholder.
 /// Sized for a phone-width hero; errors are ignored (the placeholder shows).
-void precacheHeroPhotos(BuildContext context, Iterable<FFHeroPhoto> photos) {
+/// Pass [box] when the hero's size is known, so the pre-cache and the hero
+/// share one cache entry (Activity's section switch, §24).
+void precacheHeroPhotos(
+  BuildContext context,
+  Iterable<FFHeroPhoto> photos, {
+  Size? box,
+}) {
   final size = MediaQuery.sizeOf(context);
   final dpr = MediaQuery.devicePixelRatioOf(context);
   for (final p in photos) {
     precacheImage(
-      heroImageProvider(p, Size(size.width, size.height * 0.5), dpr),
+      heroImageProvider(p, box ?? Size(size.width, size.height * 0.5), dpr),
       context,
       onError: (_, _) {},
     );
@@ -84,13 +158,15 @@ class FFPhotoHero extends StatelessWidget {
     this.headlineLead,
     this.headlineAccent,
     this.headlineLoading = false,
-    this.secondLead,
-    this.secondAccent,
+    this.headlineMaxLines,
+    this.headlineReserve = const [],
+    this.leading,
     this.subline,
     this.actions = const [],
     this.logo,
     this.rounded = false,
     this.wideHeadline = false,
+    this.headingFocusNode,
   });
 
   final FFHeroPhoto photo;
@@ -115,9 +191,18 @@ class FFPhotoHero extends StatelessWidget {
   /// Two placeholder lines instead of the headline while data loads.
   final bool headlineLoading;
 
-  /// A second, smaller headline (the Swahili tagline on the language screen).
-  final String? secondLead;
-  final String? secondAccent;
+  /// Caps the headline (a member's name on Profile: 2 lines, 3 at large
+  /// text), with an ellipsis. Null: no cap.
+  final int? headlineMaxLines;
+
+  /// Other headlines (lead, accent) this hero may show in its place: the
+  /// headline keeps room for the tallest, so switching between them never
+  /// changes the hero's height (Activity's sections, spec §24).
+  final List<(String?, String?)> headlineReserve;
+
+  /// Drawn above the eyebrow, inside the text zone, and left out of the
+  /// heading's semantics (Profile's avatar, spec C-3).
+  final Widget? leading;
   final String? subline;
 
   /// Buttons under the text, already built (FFButton primary / onPhoto).
@@ -133,6 +218,10 @@ class FFPhotoHero extends StatelessWidget {
   /// Canon h1 (48/52) for the desktop pre-sign-in panel.
   final bool wideHeadline;
 
+  /// Lets the page's footer "Back to top" move focus to the heading (spec
+  /// §32.1): focusable on request, but no extra Tab stop. Null: as before.
+  final FocusNode? headingFocusNode;
+
   /// The accent colour for the current theme: Volt on dark, brand-500 on
   /// light (large text only).
   static Color accentFor(BuildContext context) =>
@@ -144,20 +233,28 @@ class FFPhotoHero extends StatelessWidget {
     ?eyebrow,
     if (headlineLead != null || headlineAccent != null)
       [?headlineLead, ?headlineAccent].join(' '),
-    if (secondLead != null || secondAccent != null)
-      [?secondLead, ?secondAccent].join(' '),
     ?subline,
     ?chip,
   ].join('\n');
 
   @override
   Widget build(BuildContext context) {
+    final instant = MediaQuery.disableAnimationsOf(context);
+    // Only large text scales change the height (C-4); under reduced motion
+    // the new height applies at once.
     final hero = variant == FFHeroVariant.panel
         ? _panel(context)
-        : _vertical(context);
+        : instant
+        ? _vertical(context)
+        : AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+            alignment: Alignment.topCenter,
+            child: _vertical(context),
+          );
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
-      child: rounded
+      child: rounded || variant == FFHeroVariant.band
           ? ClipRRect(
               borderRadius: BorderRadius.circular(FFTokens.radiusXl),
               child: hero,
@@ -167,16 +264,19 @@ class FFPhotoHero extends StatelessWidget {
   }
 
   Widget _vertical(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
+    final band = variant == FFHeroVariant.band;
+    // A band is a card: its bottom edge stays at 80%, no melt.
+    final dark = !band && Theme.of(context).brightness == Brightness.dark;
     final scrim = FFTokens.heroScrim;
     // Light theme: the sheet below overlaps the hero, so keep that strip
-    // free of text and buttons.
+    // free of text and buttons. A band has no sheet over it.
     final bottomPad =
-        FFTokens.spacingLg + (dark ? 0 : FFTokens.heroSheetOverlap);
+        FFTokens.spacingLg + (dark || band ? 0 : FFTokens.heroSheetOverlap);
     return Stack(
       children: [
         Positioned.fill(child: _HeroPhotoLayer(photo: photo)),
         ConstrainedBox(
+          key: const Key('ff-hero-body'),
           constraints: BoxConstraints(minHeight: minHeight),
           child: IntrinsicHeight(
             child: Column(
@@ -343,6 +443,23 @@ class FFPhotoHero extends StatelessWidget {
       color: FFTokens.heroText,
     );
 
+    Widget headline(String? lead, String? acc, Key? key) => Text.rich(
+      key: key,
+      maxLines: headlineMaxLines,
+      overflow: headlineMaxLines == null ? null : TextOverflow.ellipsis,
+      TextSpan(
+        children: [
+          if (lead != null) TextSpan(text: acc == null ? lead : '$lead '),
+          if (acc != null)
+            TextSpan(
+              text: acc,
+              style: TextStyle(color: accent),
+            ),
+        ],
+      ),
+      style: headlineStyle,
+    );
+
     final text = <Widget>[
       if (eyebrow != null)
         Text(
@@ -381,49 +498,28 @@ class FFPhotoHero extends StatelessWidget {
         _SkeletonOnPhoto(height: size * 0.8, widthFactor: 0.45),
       ] else if (headlineLead != null || headlineAccent != null) ...[
         const SizedBox(height: FFTokens.spacingSm),
-        Text.rich(
-          key: const Key('ff-hero-headline'),
-          TextSpan(
+        if (headlineReserve.isEmpty)
+          headline(headlineLead, headlineAccent, const Key('ff-hero-headline'))
+        else
+          Stack(
             children: [
-              if (headlineLead != null)
-                TextSpan(
-                  text: headlineAccent == null
-                      ? headlineLead
-                      : '$headlineLead ',
+              // Invisible, same style: the tallest alternative sets the
+              // height.
+              for (final (l, a) in headlineReserve)
+                Visibility(
+                  visible: false,
+                  maintainSize: true,
+                  maintainAnimation: true,
+                  maintainState: true,
+                  child: headline(l, a, null),
                 ),
-              if (headlineAccent != null)
-                TextSpan(
-                  text: headlineAccent,
-                  style: TextStyle(color: accent),
-                ),
+              headline(
+                headlineLead,
+                headlineAccent,
+                const Key('ff-hero-headline'),
+              ),
             ],
           ),
-          style: headlineStyle,
-        ),
-      ],
-      if (secondLead != null || secondAccent != null) ...[
-        const SizedBox(height: FFTokens.spacingSm),
-        Text.rich(
-          key: const Key('ff-hero-second'),
-          TextSpan(
-            children: [
-              if (secondLead != null) TextSpan(text: '$secondLead '),
-              if (secondAccent != null)
-                TextSpan(
-                  text: secondAccent,
-                  style: TextStyle(color: accent),
-                ),
-            ],
-          ),
-          // >= 24px / w800 so the light-theme accent stays "large text".
-          style: const TextStyle(
-            fontFamily: FFTokens.fontSans,
-            fontSize: 24,
-            height: 30 / 24,
-            fontWeight: FontWeight.w800,
-            color: FFTokens.heroTextBody,
-          ),
-        ),
       ],
       if (subline != null) ...[
         const SizedBox(height: FFTokens.spacingSm + 4),
@@ -441,23 +537,100 @@ class FFPhotoHero extends StatelessWidget {
       ],
     ];
 
+    final instant = MediaQuery.disableAnimationsOf(context);
+    final textColumn = Column(
+      key: const Key('ff-hero-text'),
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: text,
+    );
+    // Eyebrow, headline, subline and chip are read as one heading.
+    final focus = headingFocusNode;
+    Widget heading = focus == null
+        ? Semantics(
+            container: true,
+            header: true,
+            label: _semanticsLabel,
+            excludeSemantics: true,
+            child: textColumn,
+          )
+        : Focus(
+            focusNode: focus,
+            skipTraversal: true,
+            includeSemantics: false,
+            child: ListenableBuilder(
+              listenable: focus,
+              builder: (context, _) => Semantics(
+                container: true,
+                header: true,
+                label: _semanticsLabel,
+                excludeSemantics: true,
+                focusable: true,
+                focused: focus.hasFocus,
+                // A visible ring while it holds focus.
+                child: Container(
+                  key: const Key('ff-hero-heading-focus'),
+                  foregroundDecoration: focus.hasFocus
+                      ? BoxDecoration(
+                          border: Border.all(
+                            color: FFTokens.heroText,
+                            width: 2,
+                          ),
+                          borderRadius: BorderRadius.circular(
+                            FFTokens.radiusSm,
+                          ),
+                        )
+                      : null,
+                  child: textColumn,
+                ),
+              ),
+            ),
+          );
+    if (!instant) {
+      // A new headline (Activity's sections) fades in over 200ms (C-4).
+      heading = AnimatedSwitcher(
+        duration: const Duration(milliseconds: 200),
+        switchInCurve: Curves.easeOut,
+        layoutBuilder: (current, previous) => Stack(
+          alignment: Alignment.topLeft,
+          children: [
+            // The old text keeps its own height; the stack clips it.
+            for (final p in previous)
+              Positioned(left: 0, right: 0, top: 0, child: p),
+            ?current,
+          ],
+        ),
+        child: KeyedSubtree(key: ValueKey(_semanticsLabel), child: heading),
+      );
+    }
+    if (leading != null) {
+      final lead = ExcludeSemantics(
+        child: KeyedSubtree(key: const Key('ff-hero-leading'), child: leading!),
+      );
+      heading = variant == FFHeroVariant.panel
+          ? Row(
+              children: [
+                lead,
+                const SizedBox(width: FFTokens.spacingMd),
+                Expanded(child: heading),
+              ],
+            )
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                lead,
+                const SizedBox(height: FFTokens.spacingSm + 4),
+                heading,
+              ],
+            );
+    }
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Eyebrow, headline, subline and chip are read as one heading.
-        Semantics(
-          container: true,
-          header: true,
-          label: _semanticsLabel,
-          excludeSemantics: true,
-          child: Column(
-            key: const Key('ff-hero-text'),
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: text,
-          ),
-        ),
+        heading,
         if (actions.isNotEmpty) ...[
           const SizedBox(height: FFTokens.spacingMd + 4),
           Wrap(
@@ -496,27 +669,43 @@ class _HeroPhotoLayer extends StatelessWidget {
         child: noPhoto
             ? const SizedBox.expand()
             : LayoutBuilder(
-                builder: (context, c) => Image(
-                  key: const Key('ff-hero-photo'),
-                  image: heroImageProvider(photo, c.biggest, dpr),
-                  fit: BoxFit.cover,
-                  width: c.maxWidth,
-                  height: c.maxHeight,
-                  excludeFromSemantics: true,
-                  gaplessPlayback: true,
-                  errorBuilder: (_, _, _) => const SizedBox.expand(),
-                  frameBuilder: (context, child, frame, sync) {
-                    if (sync) return child;
-                    return AnimatedOpacity(
-                      opacity: frame == null ? 0 : 1,
-                      duration: instant
-                          ? Duration.zero
-                          : const Duration(milliseconds: 250),
-                      curve: Curves.easeOut,
-                      child: child,
-                    );
-                  },
-                ),
+                builder: (context, c) {
+                  final image = Image(
+                    key: const Key('ff-hero-photo'),
+                    image: heroImageProvider(photo, c.biggest, dpr),
+                    fit: BoxFit.cover,
+                    alignment: photo.focal,
+                    width: c.maxWidth,
+                    height: c.maxHeight,
+                    excludeFromSemantics: true,
+                    gaplessPlayback: true,
+                    errorBuilder: (_, _, _) => const SizedBox.expand(),
+                    frameBuilder: (context, child, frame, sync) {
+                      if (sync) return child;
+                      return AnimatedOpacity(
+                        opacity: frame == null ? 0 : 1,
+                        duration: instant
+                            ? Duration.zero
+                            : const Duration(milliseconds: 250),
+                        curve: Curves.easeOut,
+                        child: child,
+                      );
+                    },
+                  );
+                  // Under reduced motion the new photo replaces the old one in
+                  // the same frame; otherwise they cross-fade (C-4).
+                  if (instant) return image;
+                  return AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 250),
+                    switchInCurve: Curves.easeOut,
+                    switchOutCurve: Curves.easeOut,
+                    layoutBuilder: (current, previous) => Stack(
+                      fit: StackFit.expand,
+                      children: [...previous, ?current],
+                    ),
+                    child: KeyedSubtree(key: ValueKey(photo), child: image),
+                  );
+                },
               ),
       ),
     );
@@ -666,4 +855,74 @@ class FFHeroSheet extends StatelessWidget {
       ),
     );
   }
+}
+
+/// An inset hero card for pages that keep a solid app bar (Upgrade plan,
+/// partner homes, spec C-1): [FFHeroVariant.band] on phones, a rounded
+/// [FFHeroVariant.panel] banner at 840 wide and up.
+class FFHeroBand extends StatelessWidget {
+  const FFHeroBand({
+    super.key,
+    required this.photo,
+    this.minHeight = 200,
+    this.wideHeight = 220,
+    this.eyebrow,
+    this.headlineLead,
+    this.headlineAccent,
+    this.headlineLoading = false,
+    this.subline,
+    this.actions = const [],
+    this.headingFocusNode,
+  });
+
+  final FFHeroPhoto photo;
+
+  /// Phone height (grows with text).
+  final double minHeight;
+
+  /// Banner height at 840 wide and up.
+  final double wideHeight;
+  final String? eyebrow;
+  final String? headlineLead;
+  final String? headlineAccent;
+  final bool headlineLoading;
+  final String? subline;
+  final List<Widget> actions;
+  final FocusNode? headingFocusNode;
+
+  @override
+  Widget build(BuildContext context) {
+    final wide = MediaQuery.sizeOf(context).width >= 840;
+    return FFPhotoHero(
+      photo: photo,
+      variant: wide ? FFHeroVariant.panel : FFHeroVariant.band,
+      rounded: wide,
+      minHeight: wide ? wideHeight : minHeight,
+      eyebrow: eyebrow,
+      headlineLead: headlineLead,
+      headlineAccent: headlineAccent,
+      headlineLoading: headlineLoading,
+      subline: subline,
+      actions: actions,
+      headingFocusNode: headingFocusNode,
+    );
+  }
+}
+
+/// "Good morning, Amina": the greeting for [now] and the first word of
+/// [name] (no email address or phone number), or the greeting alone.
+String heroGreeting(BuildContext context, DateTime now, String? name) {
+  final greeting = context.tr(
+    now.hour < 12
+        ? 'member.goodMorning'
+        : now.hour < 17
+        ? 'member.goodAfternoon'
+        : 'member.goodEvening',
+  );
+  final first = (name ?? '').trim().split(RegExp(r'\s+')).first;
+  final usable =
+      first.isNotEmpty &&
+      !first.contains('@') &&
+      !RegExp(r'^[+\d]').hasMatch(first);
+  return usable ? '$greeting, $first' : greeting;
 }

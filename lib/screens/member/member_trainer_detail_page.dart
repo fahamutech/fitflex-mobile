@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../app_scope.dart';
 import '../../router.dart';
 import '../../shared/components/components.dart';
+import '../../shared/photo_footer_flag.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
@@ -280,8 +281,17 @@ class _MemberTrainerDetailPageState extends State<MemberTrainerDetailPage> {
           ),
         ),
       ),
-      body: ListView(
+      body: footerListView(
         padding: const EdgeInsets.all(FFTokens.spacingLg),
+        // PHOTO_FOOTER_UI: footer only, no stock top hero (the partner's
+        // own photos lead the page, decision D-1).
+        footer: photoFooterUi
+            ? FFPhotoFooter.sliver(
+                key: const Key('trainer-detail-footer'),
+                pageKey: 'member.trainerDetail',
+                gap: FFTokens.spacingXl - FFTokens.spacingLg,
+              )
+            : null,
         children: [
           // The trainer's photos, swipeable and full screen on tap — the same
           // gallery as a gym's.

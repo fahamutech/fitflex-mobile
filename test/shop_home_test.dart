@@ -532,7 +532,8 @@ void main() {
       final host = await _pump(tester, api);
       await tester.tap(find.text(host.tr('shop.myOrders')));
       await tester.pumpAndSettle();
-      expect(find.text('${host.tr('shop.order')} o1'), findsOneWidget);
+      // The short ref the server's rule gives (last 6, capitals).
+      expect(find.text('Order O1'), findsOneWidget);
       expect(_key('order-cancel-o1'), findsOneWidget);
       expect(_key('shop-reorder-o1'), findsOneWidget);
     });
@@ -950,6 +951,27 @@ void main() {
       await _pump(tester, api);
       expect(_key('shop-home'), findsNothing);
       expect(_key('shop-product-p1'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    apiTest('an HTML 502 from /shop/home: the fallback layout, no HTML', (
+      tester,
+      api,
+    ) async {
+      _seed(api);
+      api.onCall(
+        'GET /shop/home',
+        (_) => const RawResponse(
+          502,
+          '<!DOCTYPE html><html><body>Bad Gateway</body></html>',
+        ),
+      );
+      await _pump(tester, api);
+      expect(_key('shop-home'), findsOneWidget);
+      expect(_key('shop-home-error'), findsNothing);
+      expect(_key('shop-home-grid'), findsOneWidget);
+      expect(find.textContaining('DOCTYPE'), findsNothing);
+      expect(find.textContaining('Bad Gateway'), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
@@ -2283,7 +2305,8 @@ void qaRound2() {
       await tester.tap(find.text(host.tr('shop.myOrders')));
       await tester.pumpAndSettle();
       expect(find.textContaining('Iko tayari kuchukuliwa'), findsWidgets);
-      expect(find.text('Inasubiri'), findsOneWidget);
+      // One progress line: "Inasubiri → Iko tayari kuchukuliwa".
+      expect(find.textContaining('Inasubiri →'), findsOneWidget);
       expect(find.textContaining('ready_for_pickup'), findsNothing);
       expect(find.textContaining('pending'), findsNothing);
     });

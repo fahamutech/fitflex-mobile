@@ -70,7 +70,7 @@ class _LanguageScreenState extends State<LanguageScreen>
     }
   }
 
-  /// PHOTO_HERO_UI: the photo hero with both taglines, then the picker.
+  /// PHOTO_HERO_UI: the photo hero with the English tagline, then the picker.
   Widget _buildPhotoHero(BuildContext context) {
     final l = FFLocaleScope.of(context);
     final continueLabel = switch (_selected) {
@@ -92,11 +92,11 @@ class _LanguageScreenState extends State<LanguageScreen>
         wideHeadline: f.wide,
         logo: f.wide ? const FFWordmark() : null,
         eyebrow: context.tr('hero.eyebrow.brand'),
-        // No language is chosen yet, so the hero speaks both.
+        // The English tagline only (owner 2026-10-19, spec §19): the
+        // Swahili speaker is addressed by the bilingual prompt and the
+        // Kiswahili tile below. Nothing replaces the old second line.
         headlineLead: l.tIn('en', 'hero.tagline.lead'),
         headlineAccent: l.tIn('en', 'hero.tagline.accent'),
-        secondLead: l.tIn('sw', 'hero.tagline.lead'),
-        secondAccent: l.tIn('sw', 'hero.tagline.accent'),
       ),
       content: FadeTransition(
         opacity: _fadeAnim,

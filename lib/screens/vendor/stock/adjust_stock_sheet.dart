@@ -56,6 +56,7 @@ Future<AdjustResult?> openAdjustStock(
   String? variant,
   String Function()? makeClientRef,
   AdjustNotify? notify,
+  String? initialReason,
 }) async {
   final out = await showFFSheet<Object>(
     context,
@@ -64,6 +65,7 @@ Future<AdjustResult?> openAdjustStock(
       product: product,
       variant: variant,
       makeClientRef: makeClientRef,
+      initialReason: initialReason,
     ),
   );
   if (!context.mounted) return null;
@@ -108,11 +110,16 @@ class AdjustStockSheet extends StatefulWidget {
     required this.product,
     this.variant,
     this.makeClientRef,
+    this.initialReason,
   });
 
   final Map<String, dynamic> product;
   final String? variant;
   final String Function()? makeClientRef;
+
+  /// A reason chosen up front (S3: "Count stock" from a sale conflict opens
+  /// with Counted).
+  final String? initialReason;
 
   @override
   State<AdjustStockSheet> createState() => _AdjustStockSheetState();
@@ -150,6 +157,9 @@ class _AdjustStockSheetState extends State<AdjustStockSheet> {
     final pre = widget.variant;
     if (pre != null && trackedVariants(_product).any((v) => v.name == pre)) {
       _variant = pre;
+    }
+    if (adjustReasons.contains(widget.initialReason)) {
+      _reason = widget.initialReason;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) => _refresh());
   }

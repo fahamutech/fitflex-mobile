@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'shared/auth_state.dart';
 import 'shared/held_nav_extras.dart';
 import 'screens/splash_screen.dart';
+import 'screens/route_status_pages.dart';
 import 'screens/language_screen.dart';
 import 'screens/role_screen.dart';
 import 'screens/auth_screen.dart';
@@ -51,6 +52,11 @@ import 'shared/friend_invites.dart';
 import 'shared/inbox/inbox_pages.dart';
 import 'screens/vendor/vendor_home_page.dart';
 import 'screens/vendor/stock/stock_history_page.dart';
+import 'screens/vendor/sales/pos_page.dart';
+import 'screens/vendor/sales/receipt_page.dart';
+import 'screens/vendor/sales/sale_detail_page.dart';
+import 'screens/vendor/sales/sales_sync_page.dart';
+import 'screens/vendor/sales/sales_widgets.dart' show salesIdPattern;
 import 'screens/partner/verification/verification_center_page.dart';
 import 'shared/widgets/invitations.dart';
 import 'shared/pending_org_invite.dart';
@@ -58,6 +64,9 @@ import 'shared/pending_org_invite.dart';
 /// Route path constants.
 abstract class AppRoutes {
   static const splash = '/';
+
+  /// Signed in but the account could not be loaded (see [StartupOfflinePage]).
+  static const startupOffline = '/offline';
   static const language = '/language';
   static const role = '/role';
   static const auth = '/auth';
@@ -100,7 +109,14 @@ abstract class AppRoutes {
   static const ownerMemberCheckins = '/owner/members/:memberId/checkins';
   static const ownerMemberPayments = '/owner/members/:memberId/payments';
   static const inbox = '/inbox';
-  static const friendInvite = '/friend-invite/:token';
+
+  /// The friend-invitation page; the token is kept on the device, never in
+  /// the location.
+  static const friendInvite = '/friend-invite';
+
+  /// Links sent before the token moved to the fragment. Matched only to be
+  /// redirected to [friendInvite] once the token is kept.
+  static const friendInviteLegacy = '/friend-invite/:token';
   static const inboxMessage = '/inbox/:messageId';
   static const memberMessageSettings = '/member/message-settings';
   static const memberBenefits = '/member/benefits';
@@ -187,6 +203,11 @@ final _vendorStockPath = RegExp(
   r'^/vendor/products/[A-Za-z0-9_-]{1,64}/stock$',
 );
 
+/// Walk-in sales pages (S3). Pending vendors may sell too (Q-4).
+final _vendorSalesPath = RegExp(
+  r'^/vendor/sales/(new|sync|receipt/queued/[A-Za-z0-9._:-]{1,100}|receipt/[A-Za-z0-9._:-]{1,100}|[A-Za-z0-9._:-]{1,100})$',
+);
+
 String routeForSignedInUser(AuthState auth) {
   final route = _landingFor(auth);
   // An organisation invitation link opened before signing in comes first,
@@ -207,7 +228,20 @@ const _homeRoutes = {
   AppRoutes.home,
 };
 
+/// The account could not be loaded and what this device kept would send the
+/// person to setup or registration (or is missing): wait for the server
+/// instead of guessing (H6). With a kept account that is already set up the
+/// app opens as usual and its own offline banner takes over.
+bool _waitForProfile(AuthState auth) {
+  if (!auth.isSignedIn || !auth.profileUnconfirmed) return false;
+  if (auth.user == null) return true;
+  final role = auth.user?['userType']?.toString() ?? auth.role;
+  return const {'member', 'trainer', 'gym_operator'}.contains(role) &&
+      !_isOnboarded(auth, role);
+}
+
 String _landingFor(AuthState auth) {
+  if (_waitForProfile(auth)) return AppRoutes.startupOffline;
   final role = auth.user?['userType']?.toString() ?? auth.role;
   final onboarded = _isOnboarded(auth, role);
   if (auth.isPendingApproval) {
@@ -395,8 +429,26 @@ GoRouter buildRouter(AuthState auth) {
         AppRoutes.googleWebCallback,
       ];
 
-      // An invitation link opens for anyone; it is kept through sign-in.
-      if (loc.startsWith('/friend-invite/')) return null;
+      // A friend-invitation link (`/friend-invite/#tok`, a full
+      // `https://…/friend-invite/#tok` from an Android App Link, or a legacy
+      // `/friend-invite/tok`): keep the token on the device and open the
+      // page without it, so it stays out of the location and history. A
+      // malformed token drops any earlier kept one, so the page says the
+      // link is not valid.
+      final friendLink = friendInviteLinkFrom(state.uri);
+      if (friendLink != null) {
+        showFriendInviteWithoutToken();
+        final token = friendLink.token;
+        return (token == null
+                ? PendingFriendInvite.clear()
+                : PendingFriendInvite.save(token))
+            .then((_) => AppRoutes.friendInvite);
+      }
+      // The invitation page opens for anyone; the token is kept through
+      // sign-in.
+      if (loc == AppRoutes.friendInvite || loc.startsWith('/friend-invite/')) {
+        return null;
+      }
 
       // An organisation invitation link: keep its token on the device and
       // drop it from the address (and history), then route as usual.
@@ -413,6 +465,14 @@ GoRouter buildRouter(AuthState auth) {
       if (!loggedIn && !publicRoutes.contains(loc)) {
         return AppRoutes.language;
       }
+
+      // Never onboarding on the strength of a failed /me (H6).
+      if (_waitForProfile(auth)) {
+        return loc == AppRoutes.startupOffline
+            ? null
+            : AppRoutes.startupOffline;
+      }
+      if (loc == AppRoutes.startupOffline) return routeForSignedInUser(auth);
 
       // Identity V2: several personas and none used last — ask first.
       if (loggedIn && auth.personaChoiceRequired) {
@@ -441,7 +501,8 @@ GoRouter buildRouter(AuthState auth) {
           // verification centre is the only other place they need.
           if (loc == AppRoutes.vendorHome ||
               loc == AppRoutes.verification ||
-              _vendorStockPath.hasMatch(loc)) {
+              _vendorStockPath.hasMatch(loc) ||
+              _vendorSalesPath.hasMatch(loc)) {
             return null;
           }
           return AppRoutes.vendorHome;
@@ -483,7 +544,15 @@ GoRouter buildRouter(AuthState auth) {
 
       return null;
     },
+    // An address that matches no page gets a translated page with a way
+    // home, not go_router's raw "GoException" text (D7).
+    errorBuilder: (context, state) => const NotFoundPage(),
     routes: [
+      GoRoute(
+        path: AppRoutes.startupOffline,
+        name: 'startupOffline',
+        builder: (context, state) => const StartupOfflinePage(),
+      ),
       GoRoute(
         path: AppRoutes.splash,
         name: 'splash',
@@ -635,6 +704,52 @@ GoRouter buildRouter(AuthState auth) {
           );
         },
       ),
+      // Vendor walk-in sales (S3). Each page checks the feature and the
+      // `sales` permission itself; `new` and `sync` come before `:saleId`.
+      GoRoute(
+        path: '/vendor/sales/new',
+        name: 'vendorPos',
+        builder: (context, state) => const PosPage(),
+      ),
+      GoRoute(
+        path: '/vendor/sales/sync',
+        name: 'vendorSalesSync',
+        builder: (context, state) => const SalesSyncPage(),
+      ),
+      GoRoute(
+        path: '/vendor/sales/receipt/queued/:clientRef',
+        name: 'vendorQueuedReceipt',
+        redirect: (context, state) =>
+            salesIdPattern.hasMatch(state.pathParameters['clientRef'] ?? '')
+            ? null
+            : '${AppRoutes.vendorHome}?open=sales',
+        builder: (context, state) =>
+            SaleReceiptPage(clientRef: state.pathParameters['clientRef']),
+      ),
+      GoRoute(
+        path: '/vendor/sales/receipt/:saleId',
+        name: 'vendorSaleReceipt',
+        redirect: (context, state) =>
+            salesIdPattern.hasMatch(state.pathParameters['saleId'] ?? '')
+            ? null
+            : '${AppRoutes.vendorHome}?open=sales',
+        builder: (context, state) => SaleReceiptPage(
+          saleId: state.pathParameters['saleId'],
+          sale: state.extra is Map<String, dynamic>
+              ? state.extra as Map<String, dynamic>
+              : null,
+        ),
+      ),
+      GoRoute(
+        path: '/vendor/sales/:saleId',
+        name: 'vendorSaleDetail',
+        redirect: (context, state) =>
+            salesIdPattern.hasMatch(state.pathParameters['saleId'] ?? '')
+            ? null
+            : '${AppRoutes.vendorHome}?open=sales',
+        builder: (context, state) =>
+            SaleDetailPage(saleId: state.pathParameters['saleId']!),
+      ),
       // Owner routes
       GoRoute(
         path: AppRoutes.ownerRegistration,
@@ -702,8 +817,12 @@ GoRouter buildRouter(AuthState auth) {
       // Inbox — every signed-in role's messages.
       GoRoute(
         path: AppRoutes.friendInvite,
-        builder: (context, state) =>
-            FriendInvitePage(token: state.pathParameters['token'] ?? ''),
+        builder: (context, state) => const FriendInvitePage(),
+      ),
+      // Never shown: the redirect keeps the token and moves on.
+      GoRoute(
+        path: AppRoutes.friendInviteLegacy,
+        builder: (context, state) => const FriendInvitePage(),
       ),
       GoRoute(
         path: AppRoutes.inbox,

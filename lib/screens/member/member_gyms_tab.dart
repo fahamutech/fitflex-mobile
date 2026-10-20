@@ -12,9 +12,12 @@ import '../../shared/discovery_loader.dart';
 import '../../shared/promotion_events.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
+import '../../shared/photo_footer_flag.dart';
+import '../../shared/photo_hero_flag.dart';
 import '../../shared/promotion.dart';
 import 'member_shell.dart';
 import 'widgets/gym_card.dart';
+import 'widgets/directory_states.dart';
 import 'widgets/gym_filters.dart';
 
 class MemberGymsTab extends StatefulWidget {
@@ -26,6 +29,9 @@ class MemberGymsTab extends StatefulWidget {
 
 class _MemberGymsTabState extends State<MemberGymsTab> {
   final TextEditingController _searchCtrl = TextEditingController();
+
+  /// The band's heading: the footer's Back to top moves focus here.
+  final FocusNode _heroFocus = FocusNode(debugLabel: 'gyms-hero-heading');
   String _search = '';
   String _filter = 'all';
   String _priceFilter = 'any';
@@ -86,6 +92,7 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
   void dispose() {
     _loader.dispose();
     _searchCtrl.dispose();
+    _heroFocus.dispose();
     super.dispose();
   }
 
@@ -203,13 +210,28 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
     return result;
   }
 
-  /// Returns the responsive column count based on available width.
-  int _crossAxisCount(double width) {
-    if (width >= 900) return 4;
-    if (width >= 600) return 3;
-    return 2;
+  /// Whether the search or any filter is narrowing the list.
+  bool get _filtersActive =>
+      _search.isNotEmpty ||
+      _filter != 'all' ||
+      _priceFilter != 'any' ||
+      _amenityFilter.isNotEmpty ||
+      _verifiedOnly;
+
+  /// "Clear search and filters": back to the full list.
+  void _clearSearchAndFilters() {
+    _searchCtrl.clear();
+    setState(() {
+      _search = '';
+      _filter = 'all';
+      _priceFilter = 'any';
+      _amenityFilter.clear();
+      _verifiedOnly = false;
+    });
+    _requestDiscovery(immediate: true);
   }
 
+  /// Returns the responsive column count based on available width.
   @override
   Widget build(BuildContext context) {
     final data = MemberDataScope.of(context);
@@ -229,7 +251,7 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final cols = _crossAxisCount(constraints.maxWidth);
+        final cols = ffCardGridColumns(context, constraints.maxWidth);
 
         return CustomScrollView(
           key: const Key('gym-page-scroll'),
@@ -246,144 +268,118 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    FFPageHeader(
-                      title: context.tr('member.discoverGyms'),
-                      // Trainer discovery moved here from the bottom nav
-                      // when Activity took that slot.
-                      actions: FFButton(
-                        key: const Key('member-find-trainer'),
-                        label: context.tr('member.trainers'),
-                        onPressed: () => context.go(AppRoutes.memberTrainers),
-                        variant: FFButtonVariant.ghost,
-                        size: FFButtonSize.sm,
-                        icon: Icons.sports_gymnastics_outlined,
-                      ),
-                    ),
-                    TextField(
-                      key: const Key('gym-search'),
-                      controller: _searchCtrl,
-                      decoration: InputDecoration(
-                        hintText: context.tr('member.searchGyms'),
-                        prefixIcon: const Icon(Icons.search, size: 20),
-                        suffixIcon: _search.isEmpty
-                            ? null
-                            : IconButton(
-                                tooltip: context.tr('common.close'),
-                                icon: const Icon(Icons.close, size: 18),
-                                onPressed: () {
-                                  _searchCtrl.clear();
-                                  setState(() => _search = '');
-                                  _requestDiscovery(immediate: true);
-                                },
-                              ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(
-                            FFTokens.radiusLg,
+                    if (photoHeroUi) ...[
+                      // PHOTO_HERO_UI (increment plan, slice 1): a band
+                      // replaces the page title and carries the Trainers
+                      // button; search and filters stay right below it.
+                      FFHeroBand(
+                        key: const Key('gyms-hero'),
+                        photo: FFHeroPhoto.gyms,
+                        headingFocusNode: _heroFocus,
+                        minHeight: 160,
+                        wideHeight: 200,
+                        // Not "Discover gyms": the section strip below
+                        // already says it (spec §32.2).
+                        eyebrow: context.tr('member.gyms'),
+                        headlineLead: context.tr('hero.gyms.lead'),
+                        headlineAccent: context.tr('hero.gyms.accent'),
+                        actions: [
+                          FFButton(
+                            key: const Key('member-find-trainer'),
+                            label: context.tr('member.trainers'),
+                            onPressed: () =>
+                                context.go(AppRoutes.memberTrainers),
+                            variant: FFButtonVariant.onPhoto,
+                            size: FFButtonSize.sm,
+                            icon: Icons.sports_gymnastics_outlined,
                           ),
+                        ],
+                      ),
+                      const SizedBox(height: FFTokens.spacingMd),
+                    ] else
+                      FFPageHeader(
+                        title: context.tr('member.discoverGyms'),
+                        // Trainer discovery moved here from the bottom nav
+                        // when Activity took that slot.
+                        actions: FFButton(
+                          key: const Key('member-find-trainer'),
+                          label: context.tr('member.trainers'),
+                          onPressed: () => context.go(AppRoutes.memberTrainers),
+                          variant: FFButtonVariant.ghost,
+                          size: FFButtonSize.sm,
+                          icon: Icons.sports_gymnastics_outlined,
                         ),
                       ),
-                      onChanged: (v) {
-                        setState(() => _search = v);
-                        _requestDiscovery();
-                      },
+                    FFSearchFocusScroll(
+                      enabled: photoHeroUi,
+                      builder: (context, focusNode) => TextField(
+                        key: const Key('gym-search'),
+                        focusNode: focusNode,
+                        controller: _searchCtrl,
+                        decoration: InputDecoration(
+                          hintText: context.tr('member.searchGyms'),
+                          prefixIcon: const Icon(Icons.search, size: 20),
+                          suffixIcon: _search.isEmpty
+                              ? null
+                              : IconButton(
+                                  tooltip: context.tr('common.close'),
+                                  icon: const Icon(Icons.close, size: 18),
+                                  onPressed: () {
+                                    _searchCtrl.clear();
+                                    setState(() => _search = '');
+                                    _requestDiscovery(immediate: true);
+                                  },
+                                ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(
+                              FFTokens.radiusLg,
+                            ),
+                          ),
+                        ),
+                        onChanged: (v) {
+                          setState(() => _search = v);
+                          _requestDiscovery();
+                        },
+                      ),
                     ),
                     if (_discoveryLoading)
                       const LinearProgressIndicator(minHeight: 2),
-                    const SizedBox(height: 12),
-                    // ── Tier filter chips ──────────────────────────────
-                    SizedBox(
-                      height: 38,
-                      child: ListView.separated(
-                        key: const Key('gym-filter-scroll'),
-                        scrollDirection: Axis.horizontal,
-                        itemCount: _filters.length + 1,
-                        separatorBuilder: (context, index) =>
-                            const SizedBox(width: 8),
-                        itemBuilder: (_, i) {
-                          if (i == _filters.length) {
-                            return GestureDetector(
-                              key: const Key('gym-filter-more'),
-                              onTap: () =>
-                                  setState(() => _showFilters = !_showFilters),
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 100),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: _showFilters ? cs.primary : cs.surface,
-                                  border: Border.all(
-                                    color: _showFilters
-                                        ? cs.primary
-                                        : cs.outline,
-                                  ),
-                                  borderRadius: BorderRadius.circular(
-                                    FFTokens.radiusXl,
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.tune,
-                                      size: 14,
-                                      color: _showFilters
-                                          ? cs.onPrimary
-                                          : cs.onSurface,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      context.tr('member.otherFilters'),
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w500,
-                                        color: _showFilters
-                                            ? cs.onPrimary
-                                            : cs.onSurface,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          }
-                          final selected = _filter == _filters[i];
-                          return GestureDetector(
-                            key: Key('gym-filter-${_filters[i]}'),
-                            onTap: () {
-                              setState(() => _filter = _filters[i]);
-                              if (_filters[i] == 'nearest') {
-                                _fetchLocation();
-                              }
-                              _requestDiscovery(immediate: true);
-                            },
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 100),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: selected ? cs.primary : cs.surface,
-                                border: Border.all(
-                                  color: selected ? cs.primary : cs.outline,
-                                ),
-                                borderRadius: BorderRadius.circular(
-                                  FFTokens.radiusXl,
-                                ),
-                              ),
-                              child: Text(
-                                filterLabels[i],
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                  color: selected ? cs.onPrimary : cs.onSurface,
-                                ),
-                              ),
+                    // The chips' 48px hit area brings its own space above.
+                    const SizedBox(height: 4),
+                    // ── Tier filter chips (F-11: 48px targets, keyboard) ─
+                    // A plain row (not a lazy list) so Tab reaches every
+                    // chip; 2px side padding keeps the focus ring visible.
+                    SingleChildScrollView(
+                      key: const Key('gym-filter-scroll'),
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      child: Row(
+                        children: [
+                          for (var i = 0; i < _filters.length; i++) ...[
+                            if (i > 0) const SizedBox(width: 8),
+                            FFFilterChip(
+                              key: Key('gym-filter-${_filters[i]}'),
+                              label: filterLabels[i],
+                              selected: _filter == _filters[i],
+                              onSelected: () {
+                                setState(() => _filter = _filters[i]);
+                                if (_filters[i] == 'nearest') {
+                                  _fetchLocation();
+                                }
+                                _requestDiscovery(immediate: true);
+                              },
                             ),
-                          );
-                        },
+                          ],
+                          const SizedBox(width: 8),
+                          FFFilterChip(
+                            key: const Key('gym-filter-more'),
+                            label: context.tr('member.otherFilters'),
+                            icon: Icons.tune,
+                            selected: _showFilters,
+                            onSelected: () =>
+                                setState(() => _showFilters = !_showFilters),
+                          ),
+                        ],
                       ),
                     ),
                     // ── Filters panel (A9): price + amenities + verified ──
@@ -400,42 +396,19 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
                               ),
                             ),
                             const SizedBox(height: 8),
+                            // The 48px hit areas already space the rows.
                             Wrap(
                               spacing: 6,
-                              runSpacing: 6,
                               children: _priceFilters.map((p) {
-                                final sel = _priceFilter == p;
-                                return GestureDetector(
-                                  onTap: () => setState(() => _priceFilter = p),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 5,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: sel
-                                          ? cs.primary.withValues(alpha: 0.1)
-                                          : cs.surface,
-                                      border: Border.all(
-                                        color: sel ? cs.primary : cs.outline,
-                                      ),
-                                      borderRadius: BorderRadius.circular(
-                                        FFTokens.radiusMd,
-                                      ),
-                                    ),
-                                    child: Text(
-                                      p == 'any'
-                                          ? context.tr('member.anyPrice')
-                                          : p,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: sel
-                                            ? FontWeight.w600
-                                            : FontWeight.w400,
-                                        color: sel ? cs.primary : cs.onSurface,
-                                      ),
-                                    ),
-                                  ),
+                                return FFFilterChip(
+                                  key: Key('gym-price-filter-$p'),
+                                  label: p == 'any'
+                                      ? context.tr('member.anyPrice')
+                                      : p,
+                                  tone: FFFilterChipTone.tint,
+                                  selected: _priceFilter == p,
+                                  onSelected: () =>
+                                      setState(() => _priceFilter = p),
                                 );
                               }).toList(),
                             ),
@@ -509,6 +482,9 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
               child: FFFeaturedStrip(
                 title: context.tr('member.featuredGyms'),
                 count: featured.length,
+                // As tall as the tallest card: a two-line name or a
+                // wrapped "Not verified" is never clipped (H3).
+                fitContent: true,
                 itemBuilder: (context, i) => GymGridCard(
                   key: Key('gym-featured-${featured[i].id}'),
                   gym: featured[i],
@@ -552,39 +528,81 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
             ),
 
             // ── Grid ────────────────────────────────────────────────────
-            if (gyms.isEmpty && featured.isEmpty)
+            // F-12: loading and failure have their own states (flag on and
+            // off); "Nothing to show yet." only once loaded and empty.
+            if (data.gyms.isEmpty && !data.gymsLoaded)
+              DirectorySkeletonGrid(
+                key: const Key('gym-grid-loading'),
+                columns: cols,
+                childAspectRatio: 0.72,
+              )
+            else if (data.gyms.isEmpty && data.gymsLoadFailed)
               SliverFillRemaining(
                 hasScrollBody: false,
                 child: Padding(
                   padding: const EdgeInsets.all(FFTokens.spacingLg),
-                  child: FFEmptyState(title: context.tr('member.noData')),
+                  child: FFErrorState(
+                    key: const Key('gym-load-error'),
+                    title: context.tr('member.gymsLoadError'),
+                    retryLabel: context.tr('common.retry'),
+                    onRetry: () => context
+                        .findAncestorStateOfType<MemberShellState>()
+                        ?.refreshGyms(),
+                  ),
+                ),
+              )
+            else if (gyms.isEmpty && featured.isEmpty)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: Padding(
+                  padding: const EdgeInsets.all(FFTokens.spacingLg),
+                  child: data.gyms.isNotEmpty && _filtersActive
+                      ? FFEmptyState(
+                          key: const Key('gym-no-match'),
+                          title: context.tr('member.gymsNoMatch'),
+                          action: FFButton(
+                            key: const Key('gym-clear-search'),
+                            label: context.tr('member.clearSearchFilters'),
+                            variant: FFButtonVariant.ghost,
+                            onPressed: _clearSearchAndFilters,
+                          ),
+                        )
+                      : FFEmptyState(title: context.tr('member.noData')),
                 ),
               )
             else if (gyms.isNotEmpty)
               SliverPadding(
                 padding: const EdgeInsets.all(FFTokens.spacingLg),
-                sliver: SliverGrid(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, i) => GymGridCard(
-                      key: Key('gym-card-${gyms[i].id}'),
-                      gym: gyms[i],
-                      placement: _discovery?.placement,
-                      distanceKm: gymDisplayDistanceKm(
-                        gyms[i],
-                        userLat: _userLat,
-                        userLng: _userLng,
-                        activeFilter: _filter,
-                      ),
+                // Rows as tall as their tallest card: a two-line name or
+                // a wrapped "Not verified" is never clipped (H3).
+                sliver: SliverFFRowGrid(
+                  columns: cols,
+                  itemCount: gyms.length,
+                  itemBuilder: (context, i) => GymGridCard(
+                    key: Key('gym-card-${gyms[i].id}'),
+                    gym: gyms[i],
+                    placement: _discovery?.placement,
+                    imageAspectRatio: cols == 1 ? 16 / 9 : 4 / 3,
+                    distanceKm: gymDisplayDistanceKm(
+                      gyms[i],
+                      userLat: _userLat,
+                      userLng: _userLng,
+                      activeFilter: _filter,
                     ),
-                    childCount: gyms.length,
-                  ),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: cols,
-                    crossAxisSpacing: FFTokens.spacingMd,
-                    mainAxisSpacing: FFTokens.spacingMd,
-                    childAspectRatio: 0.72,
                   ),
                 ),
+              ),
+            // PHOTO_FOOTER_UI (spec §33.6): once loaded, with results.
+            if (photoFooterUi)
+              FFPhotoFooter.sliver(
+                key: const Key('gyms-footer'),
+                pageKey: 'member.gyms',
+                top: FFHeroPhoto.gyms,
+                backToTop: true,
+                headingFocus: _heroFocus,
+                enabled: data.gymsLoaded && gyms.isNotEmpty,
+                // The grid already ends with 24px of padding.
+                gap: FFTokens.spacingXl - FFTokens.spacingLg,
               ),
           ],
         );
