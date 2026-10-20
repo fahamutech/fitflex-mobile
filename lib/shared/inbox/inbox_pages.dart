@@ -401,7 +401,11 @@ class _InboxMessagePageState extends State<InboxMessagePage> {
         Text(_text(context, m).title, style: theme.textTheme.titleLarge),
         if (m.createdAt != null)
           Text(
-            DateFormat('d MMM yyyy, HH:mm').format(m.createdAt!),
+            // Month names in the app's language ("19 Okt 2026" in Swahili).
+            formatDateTime(
+              m.createdAt,
+              locale: FFLocaleScope.of(context).locale.languageCode,
+            ),
             style: theme.textTheme.bodySmall,
           ),
         const SizedBox(height: FFTokens.spacingMd),

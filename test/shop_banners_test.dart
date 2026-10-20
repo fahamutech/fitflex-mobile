@@ -902,4 +902,76 @@ void main() {
       expect(find.text('Mat House'), findsOneWidget);
     });
   });
+
+  group('QA round 2', () {
+    apiTest('#2 wide: Tab goes CTA → Previous → Next, each with a visible '
+        'ring on the photo', (tester, api) async {
+      FocusManager.instance.highlightStrategy =
+          FocusHighlightStrategy.alwaysTraditional;
+      addTearDown(
+        () => FocusManager.instance.highlightStrategy =
+            FocusHighlightStrategy.automatic,
+      );
+      _seed(api, _home(banners: [_banner('b1'), _banner('b2')]));
+      await _pump(tester, api, size: const Size(1280, 900));
+      final cta = tester.widget<FFButton>(_key('shop-banner-cta-b1'));
+      cta.focusNode!.requestFocus();
+      await tester.pumpAndSettle();
+      Finder ringAround(String key) => find.ancestor(
+        of: _key(key),
+        matching: find.byKey(const Key('shop-home-focus-ring')),
+      );
+      expect(ringAround('shop-banner-cta-b1'), findsOneWidget);
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pumpAndSettle();
+      final prev = tester.widget<IconButton>(_key('shop-banner-prev'));
+      expect(prev.focusNode!.hasPrimaryFocus, isTrue);
+      expect(ringAround('shop-banner-prev'), findsOneWidget);
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pumpAndSettle();
+      final next = tester.widget<IconButton>(_key('shop-banner-next'));
+      expect(next.focusNode!.hasPrimaryFocus, isTrue);
+      expect(ringAround('shop-banner-next'), findsOneWidget);
+      // Two-tone (white inside, dark outside) so it shows on any photo.
+      final ring = tester.widget<DecoratedBox>(
+        ringAround('shop-banner-next').first,
+      );
+      final border = (ring.decoration as BoxDecoration).border! as Border;
+      expect(border.top.color, FFTokens.heroScrim);
+      expect(
+        find.descendant(
+          of: ringAround('shop-banner-next').first,
+          matching: find.byWidgetPredicate(
+            (w) =>
+                w is DecoratedBox &&
+                w.decoration is BoxDecoration &&
+                ((w.decoration as BoxDecoration).border as Border?)
+                        ?.top
+                        .color ==
+                    FFTokens.heroText,
+          ),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    apiTest('#3 a refreshed store list takes its heading from the product '
+        'rows\' vendorName', (tester, api) async {
+      api.on('GET /shop/products', [
+        for (final p in _products)
+          {...p, if (p['vendorId'] == 'v2') 'vendorName': 'Mat House Dar'},
+      ]);
+      api.on('GET /me/shop-orders', <dynamic>[]);
+      api.on('GET /shop/home', _home());
+      await pumpPage(
+        tester,
+        api,
+        const ShopBrowseBody(routePath: '/'),
+        user: _member,
+        size: const Size(420, 900),
+        initialLocation: '/?view=results&vendorId=v2',
+      );
+      expect(find.text('Mat House Dar'), findsOneWidget);
+    });
+  });
 }

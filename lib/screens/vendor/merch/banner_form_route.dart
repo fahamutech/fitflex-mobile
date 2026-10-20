@@ -69,7 +69,9 @@ class _VendorBannerFormRouteState extends State<VendorBannerFormRoute> {
     final tools = await VendorToolsOptions.of(context);
     if (!mounted) return;
     String? blocked;
-    if (!tools.banners) {
+    if (tools.suspended) {
+      blocked = 'merch.suspended';
+    } else if (!tools.banners) {
       blocked = 'merch.unavailable';
     } else if (!canManageProducts(context)) {
       blocked = 'vendor.noAccess';
