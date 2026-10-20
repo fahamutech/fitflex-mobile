@@ -30,8 +30,16 @@ class VendorTools {
     this.walkInSales = false,
     this.customers = false,
     this.banners = false,
+    this.suspended = false,
     this.fromCache = false,
   });
+
+  /// The server refused with 403 `account_suspended`: the business is
+  /// suspended. Every tool is off, and screens say why (not "isn't
+  /// available yet").
+  final bool suspended;
+
+  static const accountSuspended = VendorTools(suspended: true);
 
   /// Everything off: the old screens.
   static const off = VendorTools();
@@ -123,10 +131,13 @@ class VendorToolsOptions {
         }
       }
       return tools;
-    } on ApiException {
-      // The server answered and refused: off (fail closed).
+    } on ApiException catch (e) {
+      // The server answered and refused: off (fail closed). A suspended
+      // business is told so.
       _cache[api] = null;
-      return VendorTools.off;
+      return e.status == 403 && e.code == 'account_suspended'
+          ? VendorTools.accountSuspended
+          : VendorTools.off;
     } catch (_) {
       // No answer: the last one kept on this device, if recent enough. Not
       // remembered in memory, so the next load asks the server again.

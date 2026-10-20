@@ -19,6 +19,8 @@ import 'package:fitflexmobile/screens/vendor/merch/banner_form_route.dart';
 import 'package:fitflexmobile/screens/vendor/merch/banner_models.dart';
 import 'package:fitflexmobile/screens/vendor/merch/vendor_banners_page.dart';
 import 'package:fitflexmobile/screens/vendor/vendor_home_page.dart';
+import 'package:fitflexmobile/screens/vendor/stock/stock_options.dart';
+import 'package:fitflexmobile/shared/i18n.dart';
 import 'package:fitflexmobile/shared/inbox/inbox_controller.dart';
 
 import '../support/recording_api.dart';
@@ -527,8 +529,11 @@ void main() {
         ],
       );
       await _pumpPage(tester, api);
+      // QA round 2 #6: "Ended {date} by FitFlex: {reason}".
       expect(
-        find.text('Ended by FitFlex: Wrong product photo'),
+        find.textContaining(
+          RegExp(r'^Ended .+ by FitFlex: Wrong product photo$'),
+        ),
         findsOneWidget,
       );
     });
@@ -1831,6 +1836,111 @@ void main() {
       });
       await _send(tester);
       expect(find.byType(VendorBannersPage), findsOneWidget);
+    });
+  });
+
+  group('QA round 2', () {
+    const suspended = {'error': 'account_suspended'};
+
+    apiTest('#1 suspended owner: Promotions shows the suspended alert, '
+        'not "isn\'t available"; no Propose', (tester, api) async {
+      _seedPage(api, banners: [_banner('b1', 'pending_approval')]);
+      api.fail('GET /vendor/tools/options', 403, suspended);
+      final host = await _pumpPage(tester, api);
+      expect(find.text(host.tr('merch.suspended')), findsOneWidget);
+      expect(_key('merch-unavailable'), findsNothing);
+      expect(_key('merch-propose'), findsNothing);
+      expect(_key('merch-edit-b1'), findsNothing);
+    });
+
+    apiTest('#1 suspended owner: the form address says suspended', (
+      tester,
+      api,
+    ) async {
+      _seedPage(api, banners: [_banner('b1', 'pending_approval')]);
+      api.fail('GET /vendor/tools/options', 403, suspended);
+      final host = await pumpPage(
+        tester,
+        api,
+        const SizedBox(),
+        user: vendorUser,
+        size: const Size(400, 900),
+        initialLocation: AppRoutes.vendorMerchNew,
+        extraRoutes: merchRoutes,
+      );
+      expect(_key('merch-form-blocked'), findsOneWidget);
+      expect(find.text(host.tr('merch.suspended')), findsOneWidget);
+    });
+
+    apiTest('#1 suspended owner: vendor home shows the suspended alert, '
+        'not "No products yet"', (tester, api) async {
+      seedVendorHome(api, products: const [], tools: _merchOn);
+      api.fail('GET /vendor/tools/options', 403, suspended);
+      api.fail('GET /vendor/products', 403, suspended);
+      final host = await pumpVendorHome(tester, api);
+      expect(_key('vendor-account-suspended'), findsOneWidget);
+      expect(find.text(host.tr('vendor.accountSuspended')), findsOneWidget);
+      expect(find.text(host.tr('vendor.noProducts')), findsNothing);
+      expect(_key('vendor-merch-entry'), findsNothing);
+    });
+
+    test('#1 VendorTools: 403 account_suspended is "suspended", other '
+        'refusals stay "off"', () {
+      expect(VendorTools.accountSuspended.suspended, isTrue);
+      expect(VendorTools.accountSuspended.banners, isFalse);
+      expect(VendorTools.off.suspended, isFalse);
+    });
+
+    apiTest('#5 pending body names banners and flash sales (EN + SW)', (
+      tester,
+      api,
+    ) async {
+      final en = FFLocale()..set(const Locale('en'));
+      final sw = FFLocale()..set(const Locale('sw'));
+      expect(en.t('merch.pendingBody'), contains('banners and flash sales'));
+      expect(
+        sw.t('merch.pendingBody'),
+        contains('mabango na ofa za muda mfupi'),
+      );
+    });
+
+    apiTest('#6 ended by FitFlex: "Ended {date} by FitFlex: {reason}"', (
+      tester,
+      api,
+    ) async {
+      _seedPage(
+        api,
+        banners: [
+          {
+            ..._banner(
+              'b7',
+              'ended',
+              statusReason: 'ended_by_fitflex',
+              statusReasonNote: 'Wrong product photo',
+              endedByFitflex: true,
+            ),
+            'endedAt': '2026-10-27T09:00:00Z',
+          },
+          {
+            ..._banner(
+              'b8',
+              'ended',
+              statusReason: 'ended_by_fitflex',
+              endedByFitflex: true,
+            ),
+            'endedAt': '2026-10-28T09:00:00Z',
+          },
+        ],
+      );
+      await _pumpPage(tester, api);
+      expect(
+        _txt(tester, _key('merch-line-b7')),
+        'Ended 27 Oct 2026, 12:00 by FitFlex: Wrong product photo',
+      );
+      expect(
+        _txt(tester, _key('merch-line-b8')),
+        'Ended 28 Oct 2026, 12:00 by FitFlex',
+      );
     });
   });
 }

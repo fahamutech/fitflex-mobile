@@ -208,16 +208,20 @@ class _ShopBannerCarouselState extends State<ShopBannerCarousel> {
     final lead = _text(banner.headlineLead, lang);
     final accent = _text(banner.headlineAccent, lang);
     final subline = _text(banner.subline, lang);
-    final cta = ShopFocusRing(
-      color: FFTokens.heroText,
-      builder: (node) => FFButton(
-        key: active ? Key('shop-banner-cta-${banner.id}') : null,
-        focusNode: active ? node : null,
-        label: _ctaLabel(context, banner, lang),
-        trailingIcon: Icons.arrow_forward,
-        visualDensity: VisualDensity.standard,
-        maxLines: 2,
-        onPressed: active ? () => widget.onOpen(banner) : null,
+    // Tab order on the slide: the button, then Previous, then Next (§11.3).
+    final cta = FocusTraversalOrder(
+      order: const NumericFocusOrder(1),
+      child: ShopFocusRing(
+        onPhoto: true,
+        builder: (node) => FFButton(
+          key: active ? Key('shop-banner-cta-${banner.id}') : null,
+          focusNode: active ? node : null,
+          label: _ctaLabel(context, banner, lang),
+          trailingIcon: Icons.arrow_forward,
+          visualDensity: VisualDensity.standard,
+          maxLines: 2,
+          onPressed: active ? () => widget.onOpen(banner) : null,
+        ),
       ),
     );
     // The button bottom-left, the dots bottom-right on the same line when
@@ -289,23 +293,29 @@ class _ShopBannerCarouselState extends State<ShopBannerCarousel> {
     String label,
     VoidCallback onTap, {
     bool onPhoto = false,
-  }) => ShopFocusRing(
-    shape: BoxShape.circle,
-    color: onPhoto ? FFTokens.heroText : null,
-    builder: (node) => IconButton(
-      key: Key(key),
-      focusNode: node,
-      style: onPhoto
-          ? shopIconButtonStyle().copyWith(
-              backgroundColor: WidgetStatePropertyAll(
-                Colors.white.withValues(alpha: 0.9),
-              ),
-              foregroundColor: const WidgetStatePropertyAll(Color(0xFF0F172A)),
-            )
-          : shopIconButtonStyle(),
-      tooltip: context.tr(label),
-      onPressed: onTap,
-      icon: Icon(icon),
+    double order = 0,
+  }) => FocusTraversalOrder(
+    order: NumericFocusOrder(order),
+    child: ShopFocusRing(
+      shape: BoxShape.circle,
+      onPhoto: onPhoto,
+      builder: (node) => IconButton(
+        key: Key(key),
+        focusNode: node,
+        style: onPhoto
+            ? shopIconButtonStyle().copyWith(
+                backgroundColor: WidgetStatePropertyAll(
+                  Colors.white.withValues(alpha: 0.9),
+                ),
+                foregroundColor: const WidgetStatePropertyAll(
+                  Color(0xFF0F172A),
+                ),
+              )
+            : shopIconButtonStyle(),
+        tooltip: context.tr(label),
+        onPressed: onTap,
+        icon: Icon(icon),
+      ),
     ),
   );
 
@@ -370,6 +380,7 @@ class _ShopBannerCarouselState extends State<ShopBannerCarousel> {
                     'shop.home.prevBanner',
                     _previous,
                     onPhoto: true,
+                    order: 2,
                   ),
                 ),
               ),
@@ -384,11 +395,17 @@ class _ShopBannerCarouselState extends State<ShopBannerCarousel> {
                     'shop.home.nextBanner',
                     _next,
                     onPhoto: true,
+                    order: 3,
                   ),
                 ),
               ),
             ],
           ],
+        );
+        // CTA → Previous → Next, whatever their place on screen.
+        slides = FocusTraversalGroup(
+          policy: OrderedTraversalPolicy(),
+          child: slides,
         );
         if (_count > 1) {
           slides = GestureDetector(
@@ -472,7 +489,7 @@ class ShopFallbackSlide extends StatelessWidget {
           subline: context.tr('shop.home.fallbackSub'),
           actions: [
             ShopFocusRing(
-              color: FFTokens.heroText,
+              onPhoto: true,
               builder: (node) => FFButton(
                 key: const Key('shop-fallback-cta'),
                 focusNode: node,

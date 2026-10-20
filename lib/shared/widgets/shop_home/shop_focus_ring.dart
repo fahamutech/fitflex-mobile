@@ -17,7 +17,12 @@ class ShopFocusRing extends StatefulWidget {
     this.shape = BoxShape.rectangle,
     this.radius = FFTokens.radiusMd,
     this.color,
+    this.onPhoto = false,
   });
+
+  /// On a photo (banner button and arrows): a white ring with a dark ring
+  /// around it, so it shows over light and dark parts of any photo.
+  final bool onPhoto;
 
   /// Builds the control with [node] as its focus node.
   final Widget Function(FocusNode node) builder;
@@ -62,6 +67,30 @@ class _ShopFocusRingState extends State<ShopFocusRing> {
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
+    if (widget.onPhoto) {
+      BoxDecoration ring(Color c, double align) => BoxDecoration(
+        shape: widget.shape,
+        borderRadius: widget.shape == BoxShape.rectangle
+            ? BorderRadius.circular(widget.radius)
+            : null,
+        border: Border.all(color: c, width: 2, strokeAlign: align),
+      );
+      return DecoratedBox(
+        key: _visible ? const Key('shop-home-focus-ring') : null,
+        position: DecorationPosition.foreground,
+        // Outside the white ring (2-4 px out): slate-950.
+        decoration: _visible
+            ? ring(FFTokens.heroScrim, 3)
+            : const BoxDecoration(),
+        child: DecoratedBox(
+          position: DecorationPosition.foreground,
+          decoration: _visible
+              ? ring(FFTokens.heroText, BorderSide.strokeAlignOutside)
+              : const BoxDecoration(),
+          child: widget.builder(_node),
+        ),
+      );
+    }
     return DecoratedBox(
       key: _visible ? const Key('shop-home-focus-ring') : null,
       position: DecorationPosition.foreground,

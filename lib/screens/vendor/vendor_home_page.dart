@@ -69,6 +69,10 @@ class _VendorHomePageState extends State<VendorHomePage> {
   bool _loading = true;
   bool _busy = false;
   bool _staffDisabled = false;
+
+  /// The business is suspended (403 account_suspended): an alert instead
+  /// of "No products yet".
+  bool _accountSuspended = false;
   int _tab = 0;
   // Vendor tools · S1: off (old screens) unless the server says otherwise.
   VendorTools _tools = VendorTools.off;
@@ -351,6 +355,9 @@ class _VendorHomePageState extends State<VendorHomePage> {
     var offline = false;
     // S2: the business owner turned this staff member's access off.
     var staffDisabled = false;
+    // The business itself is suspended (403 account_suspended to the
+    // vendor account).
+    var accountSuspended = false;
     Future<T?> part<T>(
       bool allowed,
       Future<T> Function() load,
@@ -363,6 +370,10 @@ class _VendorHomePageState extends State<VendorHomePage> {
       } on ApiException catch (e) {
         if (isVendorStaffDisabled(e, vendorStaff: isStaff)) {
           staffDisabled = true;
+        } else if (!isStaff &&
+            e.status == 403 &&
+            e.code == 'account_suspended') {
+          accountSuspended = true;
         } else if (!quiet) {
           failed = true;
         }
@@ -432,6 +443,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
       _enquiries = loaded.enquiries ?? _enquiries;
       _staff = loaded.staff ?? _staff;
       _staffDisabled = staffDisabled;
+      _accountSuspended = accountSuspended || toolsNow.suspended;
       _tools = toolsNow;
       _loading = false;
       // Now the tabs are known: honour `open=` (Done after a sale, a
@@ -795,6 +807,20 @@ class _VendorHomePageState extends State<VendorHomePage> {
                       child: _salesWaitingTile(),
                     ),
             ),
+          if (_accountSuspended && !_staffDisabled)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                FFTokens.spacingLg,
+                FFTokens.spacingSm,
+                FFTokens.spacingLg,
+                0,
+              ),
+              child: FFAlert(
+                key: const Key('vendor-account-suspended'),
+                message: context.tr('vendor.accountSuspended'),
+                tone: FFAlertTone.error,
+              ),
+            ),
           if (_staffDisabled)
             Padding(
               padding: const EdgeInsets.fromLTRB(
@@ -1045,7 +1071,9 @@ class _VendorHomePageState extends State<VendorHomePage> {
         padding: const EdgeInsets.all(FFTokens.spacingLg),
         children: [
           ...lead,
-          FFEmptyState(title: context.tr('vendor.noProducts')),
+          // Suspended: the alert above says why the list is empty.
+          if (!_accountSuspended)
+            FFEmptyState(title: context.tr('vendor.noProducts')),
         ],
       );
     }

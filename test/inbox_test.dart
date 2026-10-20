@@ -246,6 +246,7 @@ void main() {
       required _FakeApi api,
       required InboxController inbox,
       String initial = '/inbox',
+      String lang = 'en',
     }) {
       final router = GoRouter(
         initialLocation: initial,
@@ -280,7 +281,7 @@ void main() {
         auth: AuthState(api),
         inbox: inbox,
         child: FFLocaleScope(
-          notifier: FFLocale(),
+          notifier: FFLocale()..set(Locale(lang)),
           child: MaterialApp.router(routerConfig: router),
         ),
       );
@@ -321,6 +322,34 @@ void main() {
       await tester.pumpAndSettle();
       expect(api.calls, contains('click:ntf_offer:inbox'));
       expect(find.text('GYM gym_1'), findsOneWidget);
+    });
+
+    // Shop banners QA round 2, item 4: the message page's date uses the
+    // app's language for the month.
+    testWidgets('message date: Swahili month on the message page', (
+      tester,
+    ) async {
+      final api = _FakeApi();
+      final inbox = InboxController(api);
+      await tester.pumpWidget(
+        app(api: api, inbox: inbox, initial: '/inbox/ntf_old', lang: 'sw'),
+      );
+      await tester.pumpAndSettle();
+      expect(find.textContaining('1 Sep 2026'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      final rows = api.rows;
+      api.rows = [
+        for (final r in rows)
+          r['id'] == 'ntf_old'
+              ? {...r, 'createdAt': DateTime(2026, 10, 19, 9).toIso8601String()}
+              : r,
+      ];
+      final again = InboxController(api);
+      await tester.pumpWidget(
+        app(api: api, inbox: again, initial: '/inbox/ntf_old', lang: 'sw'),
+      );
+      await tester.pumpAndSettle();
+      expect(find.textContaining('19 Okt 2026'), findsOneWidget);
     });
 
     testWidgets('a message that links nowhere has no button', (tester) async {

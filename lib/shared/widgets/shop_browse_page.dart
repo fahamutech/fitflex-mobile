@@ -40,6 +40,7 @@ class ShopProduct {
     required this.id,
     required this.vendorId,
     required this.name,
+    this.vendorName,
     this.description,
     this.category,
     this.brand,
@@ -62,6 +63,10 @@ class ShopProduct {
   final String id;
   final String vendorId;
   final String name;
+
+  /// The seller's business name on the product row (functions
+  /// fix/shop-banners-qa2), for a store list's heading after a refresh.
+  final String? vendorName;
   final String? description;
   final String? category;
   final String? brand;
@@ -89,6 +94,9 @@ class ShopProduct {
     id: json['id'] as String? ?? '',
     vendorId: json['vendorId'] as String? ?? '',
     name: json['name'] as String? ?? '',
+    vendorName: json['vendorName'] is String
+        ? (json['vendorName'] as String).trim()
+        : null,
     description: json['description'] as String?,
     category: json['category'] as String?,
     brand: json['brand'] as String?,
@@ -307,7 +315,9 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
     if (_vendorName.isNotEmpty) return _vendorName;
     for (final p in _products) {
       if (p.vendorId != _vendorId) continue;
-      final name = p.vendor['businessName']?.toString().trim() ?? '';
+      final name = (p.vendorName ?? '').isNotEmpty
+          ? p.vendorName!
+          : p.vendor['businessName']?.toString().trim() ?? '';
       if (name.isNotEmpty) return name;
     }
     return '';
