@@ -124,10 +124,12 @@ class _InboxPageState extends State<InboxPage> {
   @override
   Widget build(BuildContext context) {
     final inbox = AppScope.of(context).inbox;
-    final isMember =
-        (AppScope.of(context).auth.user?['userType'] ??
-            AppScope.of(context).auth.role) ==
-        'member';
+    final role =
+        AppScope.of(context).auth.user?['userType']?.toString() ??
+        AppScope.of(context).auth.role;
+    // Members, and vendors and their staff (some staff have no Business
+    // tab, where vendors also find it), choose their offers from here.
+    final showSettings = role == 'member' || partnerSide(role) == 'vendor';
     return Scaffold(
       appBar: AppBar(
         title: Text(context.tr('inbox.title')),
@@ -143,7 +145,7 @@ class _InboxPageState extends State<InboxPage> {
                 size: FFButtonSize.sm,
               ),
             ),
-          if (isMember)
+          if (showSettings)
             IconButton(
               key: const Key('inbox-settings'),
               tooltip: context.tr('msgPrefs.title'),
