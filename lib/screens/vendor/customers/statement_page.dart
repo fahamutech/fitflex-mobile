@@ -12,6 +12,8 @@ import '../../../shared/design_tokens.dart';
 import '../../../shared/i18n.dart';
 import '../sales/receipt_page.dart' show shareReceipt;
 import '../sales/sales_widgets.dart' show ReceiptLanguageToggle;
+import '../documents/document_models.dart';
+import '../documents/document_share_sheet.dart';
 import '../stock/stock_options.dart';
 import 'customer_models.dart';
 import 'customers_widgets.dart';
@@ -34,6 +36,7 @@ class _StatementPageState extends State<StatementPage> {
   bool _loading = true;
   CustomerLoadProblem _problem = CustomerLoadProblem.none;
   String? _lang;
+  VendorTools _tools = VendorTools.off;
 
   @override
   void initState() {
@@ -44,6 +47,7 @@ class _StatementPageState extends State<StatementPage> {
   Future<void> _start() async {
     final tools = await enterCustomersRoute(context);
     if (tools == null || !mounted) return;
+    setState(() => _tools = tools);
     await _load();
   }
 
@@ -93,6 +97,29 @@ class _StatementPageState extends State<StatementPage> {
       business: _business,
       t: (k) => locale.tIn(lang, k),
       lang: lang,
+    );
+  }
+
+  String _subject(String lang) {
+    final locale = FFLocaleScope.of(context);
+    return fillIn(locale.tIn(lang, 'vendor.statement.title'), {
+      'name': customerDisplayName(_customer, (k) => locale.tIn(lang, k)),
+    });
+  }
+
+  Future<void> _share(String lang) async {
+    if (!_tools.documents) {
+      await shareReceipt(_text(lang), _subject(lang));
+      return;
+    }
+    // S5: the link shows the statement as of now (a frozen snapshot, Q-9).
+    await showDocumentShareSheet(
+      context,
+      doc: DocumentRef.statement(customerId: widget.customerId),
+      lang: lang,
+      customerPhone: walkInPhoneDigits(_customer),
+      shareText: _text,
+      shareSubject: _subject,
     );
   }
 
@@ -178,15 +205,7 @@ class _StatementPageState extends State<StatementPage> {
                       icon: Icons.share,
                       fullWidth: true,
                       visualDensity: VisualDensity.standard,
-                      onPressed: () => shareReceipt(
-                        _text(lang),
-                        fillIn(locale.tIn(lang, 'vendor.statement.title'), {
-                          'name': customerDisplayName(
-                            c,
-                            (k) => locale.tIn(lang, k),
-                          ),
-                        }),
-                      ),
+                      onPressed: () => _share(lang),
                     ),
                   ],
                 ),

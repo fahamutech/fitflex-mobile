@@ -20,12 +20,18 @@ import '../../../shared/payment_labels.dart';
 import '../../../shared/shop_checkout.dart';
 import '../customers/customers_widgets.dart'
     show customerIdPattern, customerRoute;
+import '../documents/document_view.dart'
+    show documentIdPattern, vendorOrderInvoiceRoute;
 import '../stock/stock_options.dart';
 
 /// Opens the phone app; tests replace it.
 @visibleForTesting
 Future<bool> Function(Uri uri) vendorOrderDialer = (uri) =>
     launchUrl(uri, mode: LaunchMode.externalApplication);
+
+/// S5: an order has my invoice once my part was paid, also after a refund
+/// was asked for or made (the invoice then reads as the server says).
+const invoicePaymentStatuses = {'paid', 'refund_pending', 'refunded'};
 
 /// The order number shown to the vendor; see [shopOrderRef].
 String vendorOrderRef(Map<String, dynamic> order) => shopOrderRef(order);
@@ -182,6 +188,24 @@ class VendorOrderCard extends StatelessWidget {
               ),
           if (order['paymentStatus'] == 'pending')
             Text(context.tr('vendor.awaitingPayment'), style: muted),
+          // S5: my invoice, once my part of the order is paid (§4.4).
+          if (tools.documents &&
+              canVendor(context, 'orders') &&
+              invoicePaymentStatuses.contains(
+                order['paymentStatus']?.toString(),
+              ) &&
+              documentIdPattern.hasMatch(_id))
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: FFButton(
+                key: Key('vendor-order-invoice-$_id'),
+                label: context.tr('vendor.documents.invoice'),
+                icon: Icons.receipt_long_outlined,
+                variant: FFButtonVariant.ghost,
+                visualDensity: VisualDensity.standard,
+                onPressed: () => context.push(vendorOrderInvoiceRoute(_id)),
+              ),
+            ),
           ?actions,
         ],
       ),

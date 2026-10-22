@@ -20,6 +20,8 @@ import '../promotion_events.dart';
 import '../root_back_navigation.dart';
 import '../shop_checkout.dart';
 import '../shop_home.dart';
+import '../../screens/vendor/documents/document_view.dart'
+    show buyerInvoiceRoute, documentIdPattern;
 import 'shop_home/shop_home_page.dart';
 import 'shop_home/shop_product_card.dart'
     show ShopOutOfStockBadge, shopOnSale, shopDiscountPercent;
@@ -1019,6 +1021,40 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
     if (mounted) setState(() => _section = 0);
   }
 
+  /// S5: whether the server has seller invoices on (null = not asked yet).
+  /// A 404 feature_disabled keeps the plain-text invoice for this session.
+  bool? _sellerInvoices;
+
+  /// Invoice: a paid order opens the sellers' invoices (one per seller,
+  /// O-11) while the server has them on; otherwise the plain text as before.
+  Future<void> _openInvoice(Map<String, dynamic> order) async {
+    final id = order['id']?.toString() ?? '';
+    if (_sellerInvoices != false &&
+        shopOrderPayment(order) == ShopOrderPayment.paid &&
+        documentIdPattern.hasMatch(id)) {
+      try {
+        final res = await AppScope.of(context).api.myShopOrderInvoices(
+          id,
+          lang: FFLocaleScope.of(context).locale.languageCode,
+        );
+        _sellerInvoices = true;
+        final list = (res['invoices'] as List? ?? []).whereType<Map>().toList();
+        if (list.isNotEmpty && mounted) {
+          final vendor = list.length == 1 ? list.single['vendorId'] : null;
+          await context.push(
+            buyerInvoiceRoute(id, vendorId: vendor?.toString()),
+          );
+          return;
+        }
+      } on ApiException catch (e) {
+        if (e.code == 'feature_disabled') _sellerInvoices = false;
+      } catch (_) {
+        // No answer: the plain-text invoice below.
+      }
+    }
+    if (mounted) _showInvoice(order);
+  }
+
   void _showInvoice(Map<String, dynamic> order) {
     final items = (order['items'] as List? ?? []).whereType<Map>();
     final invoice = <String>[
@@ -1542,8 +1578,9 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
                       size: FFButtonSize.sm,
                     ),
                   FFButton(
+                    key: Key('shop-invoice-${order['id']}'),
                     label: context.tr('shop.invoice'),
-                    onPressed: () => _showInvoice(order),
+                    onPressed: () => _openInvoice(order),
                     variant: FFButtonVariant.ghost,
                     size: FFButtonSize.sm,
                   ),

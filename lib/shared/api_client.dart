@@ -2385,6 +2385,154 @@ class ApiClient {
     }),
   );
 
+  // ── Vendor documents and VAT (S5) ──────────────────────────────────────
+
+  /// Makes a share link for one document (fitflex-functions #229). [kind] is
+  /// `sale`, `order`, `payment` (needs [customerId]) or `statement` ([id] is
+  /// the customer id). 201 `{linkId, url, lang, docType, docId, number,
+  /// texts: {en: {whatsapp, sms}, sw: {…}}, whatsappText, smsText}`. The
+  /// URL is shown once: only its hash is kept on the server. 503
+  /// `public_url_not_configured` while the server has no public address.
+  Future<Map<String, dynamic>> vendorShareDocument({
+    required String kind,
+    required String id,
+    String? customerId,
+    String? lang,
+  }) async {
+    final path = switch (kind) {
+      'sale' => '/vendor/sales/${_seg(id)}/share',
+      'order' => '/vendor/orders/${_seg(id)}/share',
+      'payment' =>
+        '/vendor/customers/${_seg(customerId ?? '')}/payments/${_seg(id)}/share',
+      'statement' => '/vendor/customers/${_seg(id)}/statement/share',
+      _ => throw ArgumentError.value(kind, 'kind'),
+    };
+    return await _request('POST', path, body: {'lang': ?lang});
+  }
+
+  /// The links made for one document (never their URLs):
+  /// `{links: [{id, n, docType, docId, lang, createdAt, createdBy {id,
+  /// firstName}, lastOpenedAt, revokedAt, active}], activeCount}`.
+  Future<Map<String, dynamic>> vendorDocumentLinks({
+    required String docType,
+    required String docId,
+  }) async => await _request(
+    'GET',
+    _withQuery('/vendor/document-links', {'docType': docType, 'docId': docId}),
+  );
+
+  /// Turns one link off (permanent). `{link}`.
+  Future<Map<String, dynamic>> vendorRevokeDocumentLink(String linkId) async =>
+      await _request('POST', '/vendor/documents/${_seg(linkId)}/revoke');
+
+  /// Turns every active link of one document off. `{links, revokedCount}`.
+  Future<Map<String, dynamic>> vendorRevokeDocumentLinks({
+    required String docType,
+    required String docId,
+  }) async => await _request(
+    'POST',
+    '/vendor/document-links/revoke',
+    body: {'docType': docType, 'docId': docId},
+  );
+
+  /// One document as JSON `{doc}` (no link is made). [docType] is `sale`,
+  /// `payment`, `statement` (id = customer id, live) or `order`.
+  Future<Map<String, dynamic>> vendorDocument(
+    String docType,
+    String docId, {
+    String? lang,
+  }) async => await _request(
+    'GET',
+    _withQuery('/vendor/documents/${_seg(docType)}/${_seg(docId)}', {
+      'format': 'json',
+      'lang': ?lang,
+    }),
+  );
+
+  /// The same document as a PDF (`paper` a4 or 80mm). Answers the bytes and
+  /// the server's file name.
+  Future<({Uint8List bytes, String? fileName})> vendorDocumentPdf(
+    String docType,
+    String docId, {
+    String? lang,
+    String paper = 'a4',
+  }) => _binary(
+    _withQuery('/vendor/documents/${_seg(docType)}/${_seg(docId)}', {
+      'format': 'pdf',
+      'lang': ?lang,
+      'paper': paper,
+    }),
+  );
+
+  /// My tax (VAT) details: `{taxProfile}`. Vendor, or staff with `payments`.
+  Future<Map<String, dynamic>> vendorTaxProfile() async =>
+      await _request('GET', '/vendor/tax-profile');
+
+  /// Saves my tax details (vendor account only; staff get 403 owner_only).
+  Future<Map<String, dynamic>> vendorSaveTaxProfile(
+    Map<String, dynamic> body,
+  ) async => await _request('PUT', '/vendor/tax-profile', body: body);
+
+  /// The VAT codes a product may use: `{asOf, codes: [{code, nameEn,
+  /// nameSw, exempt, ratePct}]}`.
+  Future<Map<String, dynamic>> vendorTaxRates() async =>
+      await _request('GET', '/vendor/tax-rates');
+
+  /// A binary answer (a PDF) with its file name from Content-Disposition.
+  Future<({Uint8List bytes, String? fileName})> _binary(String path) async {
+    final uri = Uri.parse('$baseUrl$path');
+    _log.request('GET', uri, const {}, null);
+    final res = await http
+        .get(
+          uri,
+          headers: {
+            'x-fitflex-client': kIdentityV2Client,
+            if (_token != null) 'authorization': 'Bearer $_token',
+          },
+        )
+        .timeout(const Duration(seconds: 30));
+    _log.response(
+      'GET',
+      uri,
+      res.statusCode,
+      '<${res.bodyBytes.length} bytes>',
+    );
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final disposition = res.headers['content-disposition'] ?? '';
+      final name = RegExp(r'filename="?([^";]+)"?').firstMatch(disposition);
+      return (bytes: res.bodyBytes, fileName: name?.group(1));
+    }
+    if (res.statusCode == 401 && onUnauthorized != null) onUnauthorized!();
+    throw ApiException(res.statusCode, _decodeErrorBody(res.body));
+  }
+
+  /// My invoices for a paid shop order, one per seller (S5):
+  /// `{invoices: [doc + vendorId]}`. 404 `feature_disabled` while documents
+  /// are off; 404 `invoice_not_ready` until the order is paid.
+  Future<Map<String, dynamic>> myShopOrderInvoices(
+    String orderId, {
+    String? lang,
+  }) async => await _request(
+    'GET',
+    _withQuery('/me/shop-orders/${_seg(orderId)}/invoice', {
+      'format': 'json',
+      'lang': ?lang,
+    }),
+  );
+
+  /// One seller's invoice for my order as a PDF.
+  Future<({Uint8List bytes, String? fileName})> myShopOrderInvoicePdf(
+    String orderId, {
+    required String vendorId,
+    String? lang,
+  }) => _binary(
+    _withQuery('/me/shop-orders/${_seg(orderId)}/invoice', {
+      'format': 'pdf',
+      'vendorId': vendorId,
+      'lang': ?lang,
+    }),
+  );
+
   /// Products and variants at or below their reorder level.
   Future<List<dynamic>> vendorLowStock() async =>
       await _request('GET', '/vendor/stock/low');

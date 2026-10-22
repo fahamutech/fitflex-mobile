@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app_scope.dart';
 import '../../router.dart';
+import '../partner/verification/partner_progress_actions.dart';
 import '../../shared/api_client.dart';
 import '../../shared/api_error_message.dart';
 import '../../shared/components/components.dart';
@@ -29,6 +30,9 @@ import '../pin_flows.dart';
 import '../../shared/shop_checkout.dart';
 import 'customers/customers_tab.dart';
 import 'customers/customers_widgets.dart';
+import 'documents/document_models.dart'
+    show TaxProfile, VatCodeOption, ratePctText, vatCodesOf;
+import 'settings/tax_details_page.dart' show vendorTaxRoute;
 import 'orders/vendor_order_card.dart';
 import 'stock/adjust_stock_sheet.dart';
 import 'stock/stock_history_page.dart';
@@ -153,10 +157,17 @@ class _VendorHomePageState extends State<VendorHomePage> {
   /// pending banner (unchanged) directly under it.
   List<Widget> _productsLead() => [
     _hero(),
-    if (_pendingApproval) ...[
-      _pendingBannerCard(),
-      const SizedBox(height: FFTokens.spacingMd),
-    ],
+    if (_isVendorAccount)
+      PartnerProgressBanner(
+        key: const Key('vendor-progress-banner'),
+        padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
+        fallback: _pendingApproval
+            ? Padding(
+                padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
+                child: _pendingBannerCard(),
+              )
+            : null,
+      ),
   ];
 
   bool get _ledger => _tools.stockLedger && _can('products');
@@ -201,6 +212,47 @@ class _VendorHomePageState extends State<VendorHomePage> {
     ),
   );
 
+  /// S5: Tax details (VAT), while the server reports `vat: true`. The
+  /// vendor edits; staff with `payments` see it read-only.
+  bool get _taxEntryShown => _tools.vat && (_isVendor || _can('payments'));
+
+  Widget _taxEntry() => Padding(
+    padding: const EdgeInsets.only(top: FFTokens.spacingMd),
+    child: FFActionTile(
+      key: const Key('vendor-tax-entry'),
+      icon: Icons.receipt_long_outlined,
+      title: context.tr('vendor.tax.tile'),
+      subtitle: context.tr('vendor.tax.tileSubtitle'),
+      onTap: () => context.push(vendorTaxRoute),
+    ),
+  );
+
+  /// S5: the VAT codes a product may use, or null to hide the field. Shown
+  /// only with `vat` on and the vendor's VAT in force (§6.4). The options
+  /// answer says so in `vatInForce` (any staff with `products` can read
+  /// it); without that field, the tax profile is asked (vendor and
+  /// `payments` staff only). Anything unknown hides it (fail closed).
+  List<VatCodeOption>? _vatCodes;
+
+  Future<void> _loadVat(VendorTools tools) async {
+    List<VatCodeOption>? codes;
+    if (tools.vat && _can('products')) {
+      try {
+        final api = AppScope.of(context).api;
+        final inForce =
+            tools.vatInForce ??
+            TaxProfile.fromJson(await api.vendorTaxProfile()).everVerified;
+        if (inForce) {
+          final list = vatCodesOf(await api.vendorTaxRates());
+          if (list.isNotEmpty) codes = list;
+        }
+      } catch (_) {
+        codes = null;
+      }
+    }
+    if (mounted) setState(() => _vatCodes = codes);
+  }
+
   bool _can(String permission) {
     final user = AppScope.of(context).auth.user;
     if (user?['userType'] != 'vendor_staff') return true;
@@ -224,7 +276,9 @@ class _VendorHomePageState extends State<VendorHomePage> {
 
   /// Reasons the vendor can act on are shown; anything else stays generic.
   String _saveFailedText(Object e) =>
-      e is ApiException && _friendlyCodes.contains(e.code)
+      e is ApiException && e.code == 'invalid_vat_code'
+      ? context.tr('vendor.product.vatInvalid')
+      : e is ApiException && _friendlyCodes.contains(e.code)
       ? apiErrorMessage(FFLocaleScope.of(context), e)
       : context.tr('vendor.saveFailed');
 
@@ -453,6 +507,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
       _pendingOpen = null;
       if (wanted != null && _sections.contains(wanted)) _tab = wanted;
     });
+    unawaited(_loadVat(toolsNow));
     // Promotions: how many banners wait for approval (the entry subtitle).
     if (_merch) unawaited(_loadMerchWaiting());
     if (toolsNow.walkInSales) {
@@ -561,8 +616,11 @@ class _VendorHomePageState extends State<VendorHomePage> {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) =>
-          VendorProductForm(product: product, showTargets: _showTargets),
+      builder: (_) => VendorProductForm(
+        product: product,
+        showTargets: _showTargets,
+        vatCodes: _vatCodes,
+      ),
     );
     if (draft == null || !mounted) return;
     setState(() => _busy = true);
@@ -609,6 +667,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
         showTargets: _showTargets,
         stockLedger: true,
         canSeeCost: _tools.canSeeCost,
+        vatCodes: _vatCodes,
         describeError: _saveFailedText,
         onSave: (body) => api.vendorSaveProduct(body, productId: productId),
         onAdjust: current == null
@@ -794,8 +853,14 @@ class _VendorHomePageState extends State<VendorHomePage> {
           ListenableBuilder(
             listenable: AppScope.of(context).auth,
             // Under the flag the Products hero carries it, just below.
-            builder: (context, _) => _pendingApproval && !_heroOn(tab)
-                ? _pendingBanner()
+            // Partner progress (B4b): the compact tracker while the vendor
+            // isn't finished; the old pending banner without it.
+            builder: (context, _) => _isVendorAccount && !_heroOn(tab)
+                ? PartnerProgressBanner(
+                    key: const Key('vendor-progress-banner'),
+                    padding: partnerBannerPadding,
+                    fallback: _pendingApproval ? _pendingBanner() : null,
+                  )
                 : const SizedBox.shrink(),
           ),
           // Sales still on this device with the Sales tab gone (feature
@@ -1026,6 +1091,14 @@ class _VendorHomePageState extends State<VendorHomePage> {
       ),
     );
   }
+
+  /// The vendor's own account (not staff, not switched off): the one whose
+  /// verification and payouts the progress tracker follows. A suspended
+  /// business already has its own alert, said once.
+  bool get _isVendorAccount =>
+      !_staffDisabled &&
+      !_accountSuspended &&
+      AppScope.of(context).auth.user?['userType'] == 'vendor';
 
   Widget _pendingBanner() => Padding(
     padding: const EdgeInsets.fromLTRB(
@@ -1383,6 +1456,10 @@ class _VendorHomePageState extends State<VendorHomePage> {
     return ListView(
       padding: const EdgeInsets.all(FFTokens.spacingLg),
       children: [
+        if (_taxEntryShown && !_isVendor && !_can('staff')) ...[
+          _taxEntry(),
+          const SizedBox(height: FFTokens.spacingSm),
+        ],
         for (final card in cards)
           Padding(
             padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
@@ -1575,6 +1652,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
                     child: _salesWaitingTile(),
                   ),
           ),
+        if (_taxEntryShown) _taxEntry(),
         const SizedBox(height: FFTokens.spacingLg),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1720,6 +1798,7 @@ class VendorProductForm extends StatefulWidget {
     this.onSave,
     this.onAdjust,
     this.describeError,
+    this.vatCodes,
   });
 
   final Map<String, dynamic>? product;
@@ -1727,6 +1806,10 @@ class VendorProductForm extends StatefulWidget {
   /// Shop Phase 2 S2: the optional "Made for" and "Age group" pickers, sent
   /// as `targetGender` and `targetAgeBands`. Off: neither is shown or sent.
   final bool showTargets;
+
+  /// S5: the VAT codes offered (GET /vendor/tax-rates), or null to hide the
+  /// VAT code field. A private field: saving it never re-queues approval.
+  final List<VatCodeOption>? vatCodes;
 
   /// Vendor tools · S1 is on: per-variant rows, reorder level, cost price,
   /// stock changed only through "Adjust stock". Off: the form as before.
@@ -1782,6 +1865,7 @@ class _VendorProductFormState extends State<VendorProductForm> {
   String? _image;
   String? _secondImage;
   bool _visible = true;
+  String _vatCode = 'A';
 
   /// "Made for": null (everyone), `women` or `men`.
   String? _targetGender;
@@ -1841,6 +1925,13 @@ class _VendorProductFormState extends State<VendorProductForm> {
     for (final b in (product?['targetAgeBands'] as List? ?? const [])) {
       if (kTargetAgeBands.contains(b)) _ageBands.add(b.toString());
     }
+    final code = product?['vatCode']?.toString();
+    final codes = widget.vatCodes ?? const <VatCodeOption>[];
+    _vatCode = codes.any((c) => c.code == code)
+        ? code!
+        : codes.any((c) => c.code == 'A') || codes.isEmpty
+        ? 'A'
+        : codes.first.code;
   }
 
   @override
@@ -1884,6 +1975,7 @@ class _VendorProductFormState extends State<VendorProductForm> {
             if (_ageBands.contains(b)) b,
         ],
       },
+      if (widget.vatCodes != null) 'vatCode': _vatCode,
     };
   }
 
@@ -2351,7 +2443,47 @@ class _VendorProductFormState extends State<VendorProductForm> {
     ),
   ];
 
+  /// "A · Standard 18%", "C · Zero-rated 0%", "E · Exempt".
+  String _vatLabel(VatCodeOption c) => fillIn(
+    context.tr('vendor.vat.${c.code}'),
+    {'rate': ratePctText(c.ratePct) ?? ''},
+  );
+
+  Widget _vatField() {
+    final codes = widget.vatCodes!;
+    final name = _name.text.trim();
+    return Semantics(
+      label: fillIn(context.tr('vendor.product.vatA11y'), {'product': name}),
+      child: DropdownButtonFormField<String>(
+        key: const Key('vendor-product-vat-code'),
+        initialValue: _vatCode,
+        isExpanded: true,
+        decoration: InputDecoration(
+          labelText: context.tr('vendor.product.vatCode'),
+          helperText: context.tr('vendor.product.vatHint'),
+          helperMaxLines: 3,
+        ),
+        items: [
+          for (final c in codes)
+            DropdownMenuItem(
+              value: c.code,
+              child: Text(_vatLabel(c), overflow: TextOverflow.ellipsis),
+            ),
+        ],
+        onChanged: _saving
+            ? null
+            : (v) {
+                if (v != null) setState(() => _vatCode = v);
+              },
+      ),
+    );
+  }
+
   List<Widget> _bottomFields() => [
+    if (widget.vatCodes != null) ...[
+      _vatField(),
+      const SizedBox(height: FFTokens.spacingSm),
+    ],
     SwitchListTile(
       key: const Key('vendor-product-visibility'),
       contentPadding: EdgeInsets.zero,

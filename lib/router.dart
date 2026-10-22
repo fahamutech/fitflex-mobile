@@ -63,6 +63,8 @@ import 'screens/vendor/customers/customer_form_page.dart';
 import 'screens/vendor/customers/customer_profile_page.dart';
 import 'screens/vendor/customers/statement_page.dart';
 import 'screens/vendor/customers/customers_widgets.dart' show customerIdPattern;
+import 'screens/vendor/documents/document_view.dart';
+import 'screens/vendor/settings/tax_details_page.dart';
 import 'screens/partner/verification/verification_center_page.dart';
 import 'shared/widgets/invitations.dart';
 import 'shared/pending_org_invite.dart';
@@ -219,6 +221,12 @@ final _vendorStockPath = RegExp(
 /// Walk-in sales pages (S3). Pending vendors may sell too (Q-4).
 final _vendorSalesPath = RegExp(
   r'^/vendor/sales/(new|sync|receipt/queued/[A-Za-z0-9._:-]{1,100}|receipt/[A-Za-z0-9._:-]{1,100}|[A-Za-z0-9._:-]{1,100})$',
+);
+
+/// Document pages (S5): tax details and my order invoice. Pending vendors
+/// keep their own records too (§2.4).
+final _vendorDocumentsPath = RegExp(
+  r'^/vendor/(settings/tax|orders/[A-Za-z0-9._:-]{1,100}/invoice)$',
 );
 
 /// Promotions and the banner form (Phase 2 S1). Pending vendors see why
@@ -529,7 +537,8 @@ GoRouter buildRouter(AuthState auth) {
               _vendorMerchPath.hasMatch(loc) ||
               _vendorStockPath.hasMatch(loc) ||
               _vendorSalesPath.hasMatch(loc) ||
-              _vendorCustomersPath.hasMatch(loc)) {
+              _vendorCustomersPath.hasMatch(loc) ||
+              _vendorDocumentsPath.hasMatch(loc)) {
             return null;
           }
           return AppRoutes.vendorHome;
@@ -812,6 +821,41 @@ GoRouter buildRouter(AuthState auth) {
             productId: state.pathParameters['productId']!,
             variant: variant == null || variant.isEmpty ? null : variant,
             fromPush: state.uri.queryParameters['from'] == 'push',
+          );
+        },
+      ),
+      // Vendor documents and VAT (S5). Each page checks its feature
+      // (`documents` / `vat`) and permission itself.
+      GoRoute(
+        path: vendorTaxRoute,
+        name: 'vendorTaxDetails',
+        builder: (context, state) => const TaxDetailsPage(),
+      ),
+      GoRoute(
+        path: '/vendor/orders/:orderId/invoice',
+        name: 'vendorOrderInvoice',
+        redirect: (context, state) =>
+            documentIdPattern.hasMatch(state.pathParameters['orderId'] ?? '')
+            ? null
+            : '${AppRoutes.vendorHome}?open=orders',
+        builder: (context, state) =>
+            VendorOrderInvoicePage(orderId: state.pathParameters['orderId']!),
+      ),
+      GoRoute(
+        path: '/shop/orders/:orderId/invoice',
+        name: 'shopOrderInvoice',
+        redirect: (context, state) =>
+            documentIdPattern.hasMatch(state.pathParameters['orderId'] ?? '')
+            ? null
+            : AppRoutes.memberShop,
+        builder: (context, state) {
+          final vendor = state.uri.queryParameters['vendor'];
+          return BuyerInvoicePage(
+            key: ValueKey('buyer-invoice-${state.uri}'),
+            orderId: state.pathParameters['orderId']!,
+            vendorId: vendor != null && documentIdPattern.hasMatch(vendor)
+                ? vendor
+                : null,
           );
         },
       ),

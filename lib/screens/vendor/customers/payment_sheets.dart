@@ -17,6 +17,9 @@ import '../sales/receipt_data.dart' show eatDateTime;
 import '../sales/receipt_page.dart' show shareReceipt;
 import '../sales/sale_models.dart';
 import '../sales/sales_widgets.dart';
+import '../documents/document_entry.dart' show walkInPhoneFor;
+import '../documents/document_models.dart' show DocumentRef;
+import '../documents/document_share_sheet.dart';
 import '../stock/stock_history_page.dart' show stockRangePickerTheme;
 import '../stock/stock_options.dart';
 import 'customer_models.dart';
@@ -717,6 +720,7 @@ class _PaymentReceiptState extends State<PaymentReceipt> {
   String? _lang;
   bool _changed = false;
   final _heading = FocusNode();
+  VendorTools _tools = VendorTools.off;
 
   @override
   void initState() {
@@ -724,10 +728,19 @@ class _PaymentReceiptState extends State<PaymentReceipt> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       _heading.requestFocus();
+      final tools = VendorToolsOptions.of(context);
       final b = await loadBusinessName(context);
       if (mounted) setState(() => _business = b);
+      final t = await tools;
+      if (mounted) setState(() => _tools = t);
     });
   }
+
+  DocumentRef get _ref => DocumentRef.payment(
+    customerId: widget.customerId,
+    paymentId: _payment['id'].toString(),
+    number: _payment['number']?.toString(),
+  );
 
   @override
   void dispose() {
@@ -737,7 +750,43 @@ class _PaymentReceiptState extends State<PaymentReceipt> {
 
   bool get _voided => _payment['status'] == 'voided';
 
+  String _text(String lang) {
+    final locale = FFLocaleScope.of(context);
+    String t(String key) => locale.tIn(lang, key);
+    return paymentShareText(
+      _payment,
+      customerName: widget.customerName,
+      stillOwedTzs: _owed ?? 0,
+      business: _business,
+      t: t,
+      lang: lang,
+    );
+  }
+
+  String _subject(String lang) {
+    final locale = FFLocaleScope.of(context);
+    return [
+      ?_business,
+      fillIn(locale.tIn(lang, 'vendor.pay.receiptTitle'), {
+        'number': _payment['number'],
+      }),
+    ].join(' ');
+  }
+
   Future<void> _share(String lang) async {
+    if (_tools.documents) {
+      final phone = await walkInPhoneFor(context, widget.customerId, _tools);
+      if (!mounted) return;
+      await showDocumentShareSheet(
+        context,
+        doc: _ref,
+        lang: lang,
+        customerPhone: phone,
+        shareText: _text,
+        shareSubject: _subject,
+      );
+      return;
+    }
     final locale = FFLocaleScope.of(context);
     String t(String key) => locale.tIn(lang, key);
     await shareReceipt(
@@ -939,6 +988,16 @@ class _PaymentReceiptState extends State<PaymentReceipt> {
                   variant: FFButtonVariant.secondary,
                   visualDensity: VisualDensity.standard,
                   onPressed: () => _share(lang),
+                ),
+              // S5: a voided payment's links can still be turned off.
+              if (_voided && _tools.documents)
+                FFButton(
+                  key: const Key('payment-links'),
+                  label: context.tr('vendor.documents.linksTitle'),
+                  icon: Icons.manage_history,
+                  variant: FFButtonVariant.ghost,
+                  visualDensity: VisualDensity.standard,
+                  onPressed: () => showDocumentLinksSheet(context, _ref),
                 ),
               if (mayVoid)
                 FFButton(

@@ -3,6 +3,8 @@
 // source of truth for what is missing; these specs only decide which fields
 // and documents each form shows, mirroring src/shared/partner-kyc-requirements.mjs.
 
+import '../../../shared/partner_progress.dart';
+
 enum KycStatus {
   none,
   draft,
@@ -340,7 +342,12 @@ class KycOverview {
     this.missing = const [],
     this.readyToSubmit = false,
     this.complete = false,
+    this.progress,
   });
+
+  /// One partner progress tracker (B4b); null while the server flag
+  /// PARTNER_PROGRESS is off, and then the screens are as before.
+  final PartnerProgress? progress;
 
   final String partnerType; // gym_owner | trainer | vendor
   final KycCaseInfo? kycCase;
@@ -383,6 +390,7 @@ class KycOverview {
           .toList(),
       readyToSubmit: checklist['readyToSubmit'] == true,
       complete: checklist['complete'] == true,
+      progress: PartnerProgress.tryParse(j['progress']),
     );
   }
 
@@ -482,6 +490,8 @@ const documentSpecs = <String, DocumentSpec>{
     ['documentNumber'],
   ),
   'tin_certificate': DocumentSpec(['tin_certificate'], ['documentNumber']),
+  // S5: optional for vendors; the VRN itself is entered on Tax details.
+  'vat_certificate': DocumentSpec(['vat_certificate'], []),
   'business_licence': DocumentSpec(
     ['business_licence'],
     ['documentNumber', 'issuer', 'expiresOn'],
