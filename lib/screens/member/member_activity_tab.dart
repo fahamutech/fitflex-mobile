@@ -15,6 +15,7 @@ import '../../shared/i18n.dart';
 import '../../shared/photo_footer_flag.dart';
 import '../../shared/photo_hero_flag.dart';
 import 'member_shell.dart';
+import 'events/events_discovery_view.dart';
 import 'widgets/home_hero.dart';
 import 'widgets/phone_steps_card.dart';
 import 'widgets/run_widgets.dart';
@@ -86,7 +87,8 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
   }
 
   Widget _hero(BuildContext context, MemberData data, {bool panel = false}) {
-    final (photo, key) = activityHeroSections[_section]!;
+    final (photo, key) =
+        activityHeroSections[_section] ?? activityHeroSections['overview']!;
     Widget logButton(Key? k) => FFButton(
       key: k,
       label: context.tr('logActivity.open'),
@@ -139,12 +141,12 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
               child: ActivitySampleBadge(),
             ),
           ),
-        _sections(context),
+        _sections(context, data),
         const SizedBox(height: FFTokens.spacingMd),
         ..._sectionContent(context, data, today),
       ];
 
-  Widget _sections(BuildContext context) => SizedBox(
+  Widget _sections(BuildContext context, MemberData data) => SizedBox(
     width: double.infinity,
     child: FFSegmented(
       key: const Key('activity-sections'),
@@ -154,6 +156,9 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
         ('workouts', context.tr('activity.workouts')),
         ('challenges', context.tr('activity.challenges')),
         ('progress', context.tr('activity.progress')),
+        // Events S2 (spec §11.1): only with the build flag and the server
+        // probe on. The hero keeps the Activity photo set.
+        if (data.eventsDiscovery) ('events', context.tr('activity.events')),
       ],
       onChanged: (v) => setState(() => _section = v),
     ),
@@ -164,7 +169,10 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
     MemberData data,
     DateTime today,
   ) => [
-    if (!data.activityLoaded)
+    // Events have their own loading states and do not wait for activity.
+    if (_section == 'events' && data.eventsDiscovery)
+      const EventsDiscoveryView(key: Key('activity-events'), inline: true)
+    else if (!data.activityLoaded)
       const Padding(
         padding: EdgeInsets.all(FFTokens.spacingXl),
         child: Center(child: FFSpinner(size: 32)),
@@ -191,7 +199,9 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
         ? FFPhotoFooter.sliver(
             key: const Key('activity-footer'),
             pageKey: 'member.activity',
-            top: activityHeroSections[_section]!.$1,
+            top: (activityHeroSections[_section] ??
+                    activityHeroSections['overview']!)
+                .$1,
             enabled: data.activityLoaded,
             gap: padded
                 ? FFTokens.spacingXl - FFTokens.spacingLg
@@ -275,33 +285,9 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
               child: ActivitySampleBadge(),
             ),
           ),
-        SizedBox(
-          width: double.infinity,
-          child: FFSegmented(
-            key: const Key('activity-sections'),
-            value: _section,
-            options: [
-              ('overview', context.tr('activity.overview')),
-              ('workouts', context.tr('activity.workouts')),
-              ('challenges', context.tr('activity.challenges')),
-              ('progress', context.tr('activity.progress')),
-            ],
-            onChanged: (v) => setState(() => _section = v),
-          ),
-        ),
+        _sections(context, data),
         const SizedBox(height: FFTokens.spacingMd),
-        if (!data.activityLoaded)
-          const Padding(
-            padding: EdgeInsets.all(FFTokens.spacingXl),
-            child: Center(child: FFSpinner(size: 32)),
-          )
-        else
-          ...switch (_section) {
-            'workouts' => _workouts(context, data, today),
-            'challenges' => buildChallengesSection(context, data, today),
-            'progress' => buildProgressSection(context, data, today),
-            _ => _overview(context, data.activities, data.goals, today),
-          },
+        ..._sectionContent(context, data, today),
       ],
     );
   }

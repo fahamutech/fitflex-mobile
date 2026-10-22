@@ -327,14 +327,16 @@ class FFPhotoHero extends StatelessWidget {
     this.fillHeight = false,
     this.panelSidePad,
   }) : assert(
-         (photo == null) != (networkImage == null),
-         'Give exactly one of photo or networkImage',
+         photo != null || networkImage != null,
+         'Give a photo, a networkImage, or both (photo = fallback)',
        );
 
   /// A bundled photo (never fetched from the network)...
   final FFHeroPhoto? photo;
 
-  /// ...or one from the network (Shop home banners). Exactly one is set.
+  /// ...or one from the network (Shop home banners, an event's own cover).
+  /// At least one is set. With both, the network image leads and [photo] is
+  /// drawn instead when it fails to load (events S2 spec §11.5).
   final FFHeroNetworkImage? networkImage;
   final FFHeroVariant variant;
 
@@ -1325,8 +1327,12 @@ class _HeroPhotoLayerState extends State<_HeroPhotoLayer> {
                     height: c.maxHeight,
                     excludeFromSemantics: true,
                     gaplessPlayback: true,
+                    // A network image that fails (or a saved remote one)
+                    // falls back to the bundled photo when there is one.
                     errorBuilder: (_, _, _) =>
-                        saved != null ? bundled() : const SizedBox.expand(),
+                        (networkImage != null && photo != null) || saved != null
+                        ? bundled()
+                        : const SizedBox.expand(),
                     frameBuilder: (context, child, frame, sync) {
                       if (sync) return child;
                       return AnimatedOpacity(
@@ -1523,9 +1529,15 @@ class FFHeroBand extends StatelessWidget {
     this.subline,
     this.actions = const [],
     this.headingFocusNode,
+    this.networkImage,
   });
 
+  /// The bundled photo; with [networkImage] set it is only the fallback.
   final FFHeroPhoto photo;
+
+  /// The subject's own photo from the network (an event cover, spec
+  /// §11.5). Same scrim and typography; [photo] shows if it fails to load.
+  final FFHeroNetworkImage? networkImage;
 
   /// Phone height (grows with text).
   final double minHeight;
@@ -1545,6 +1557,7 @@ class FFHeroBand extends StatelessWidget {
     final wide = MediaQuery.sizeOf(context).width >= 840;
     return FFPhotoHero(
       photo: photo,
+      networkImage: networkImage,
       variant: wide ? FFHeroVariant.panel : FFHeroVariant.band,
       rounded: wide,
       minHeight: wide ? wideHeight : minHeight,

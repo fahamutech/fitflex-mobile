@@ -81,6 +81,7 @@ String? routeForMessage(BuildContext context, InboxMessage m) {
     trainerId: m.data['trainerId']?.toString(),
     planId: m.data['planId']?.toString(),
     bookingId: m.data['bookingId']?.toString(),
+    eventId: m.data['eventId']?.toString(),
   );
 }
 

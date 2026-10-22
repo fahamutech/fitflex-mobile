@@ -29,6 +29,9 @@ import 'screens/member/member_person_page.dart';
 import 'screens/member/member_shared_activity_page.dart';
 import 'screens/member/member_record_run_page.dart';
 import 'screens/member/member_run_detail_page.dart';
+import 'screens/member/events/member_event_detail_page.dart';
+import 'screens/member/events/member_events_page.dart';
+import 'shared/events_flag.dart';
 import 'screens/trainer/trainer_registration_page.dart';
 import 'screens/trainer/trainer_home_page.dart';
 import 'screens/owner/owner_registration_page.dart';
@@ -176,6 +179,11 @@ abstract class AppRoutes {
   static const memberChallenge = '/member/activity/challenges/:challengeId';
   static const memberGyms = '/member/gyms';
   static const memberGymDetail = '/member/gyms/:gymId';
+
+  /// Running events (events S2 spec §11.1). Only registered with the
+  /// `EVENTS_DISCOVERY` build flag on; off, they fall through to Not found.
+  static const memberEvents = '/member/events';
+  static const memberEventDetail = '/member/events/:eventId';
   static const memberTrainers = '/member/trainers';
   static const memberTrainerDetail = '/member/trainers/:trainerId';
   static const memberQr = '/member/qr';
@@ -214,6 +222,9 @@ bool _isOnboarded(AuthState auth, String role) {
 }
 
 /// A stock history path with a safe product id.
+/// An event id or slug as a path segment (events S2).
+final _safeEventId = RegExp(r'^[A-Za-z0-9_-]{1,64}$');
+
 final _vendorStockPath = RegExp(
   r'^/vendor/products/[A-Za-z0-9_-]{1,64}/stock$',
 );
@@ -1193,6 +1204,30 @@ GoRouter buildRouter(AuthState auth) {
               ),
             ],
           ),
+          // Events S2 (spec §11.1): a section of Activity with its own
+          // full-page list and detail, inside the shell so the bottom nav
+          // stays. With the build flag off the routes do not exist.
+          if (eventsDiscoveryEnabled)
+            GoRoute(
+              path: AppRoutes.memberEvents,
+              name: 'memberEvents',
+              builder: (context, state) => const MemberEventsPage(),
+              routes: [
+                GoRoute(
+                  path: ':eventId',
+                  name: 'memberEventDetail',
+                  redirect: (context, state) =>
+                      _safeEventId.hasMatch(
+                        state.pathParameters['eventId'] ?? '',
+                      )
+                      ? null
+                      : AppRoutes.memberEvents,
+                  builder: (context, state) => MemberEventDetailPage(
+                    eventId: state.pathParameters['eventId']!,
+                  ),
+                ),
+              ],
+            ),
           GoRoute(
             path: AppRoutes.memberGyms,
             name: 'memberGyms',
