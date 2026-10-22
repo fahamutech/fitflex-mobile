@@ -1460,6 +1460,42 @@ class FFLocale extends ChangeNotifier {
           'Cancel this session? The member is told, and anything they paid is refunded in full.',
       'trainer.sessionCancelled':
           'Session cancelled. The member has been told.',
+      // Trainer session outcomes (Phase B · B1b, fitflex-functions#231).
+      'trainer.completeSession': 'Mark completed',
+      'trainer.completeSessionConfirm':
+          'Mark this session as completed? It is added to your payouts. Only FitFlex can change it afterwards.',
+      'trainer.markNoShow': "Client didn't come",
+      'trainer.markNoShowConfirm':
+          'The session is paid as booked; the client is told. Only FitFlex can change it afterwards.',
+      'trainer.sessionCompleted': 'Session marked completed.',
+      'trainer.noShowRecorded': "Recorded: the client didn't come.",
+      'trainer.outcomesUnavailable':
+          "Recording session outcomes isn't available yet.",
+      'booking.status.no_show': "Didn't attend",
+      'sessions.reviewTrainer': 'Review trainer',
+      'inbox.open.session': 'View session',
+      'error.reason.sessionNotStarted': "this session hasn't started yet",
+      'error.reason.sessionNotStartedAt':
+          "this session starts {time}, so it can't be recorded yet",
+      'error.reason.bookingNotConfirmable':
+          'only a confirmed session can be marked completed',
+      'error.reason.bookingNotConfirmed':
+          'only a confirmed session can be recorded as missed',
+      'error.reason.noShowWindowPassed':
+          'a missed session can only be recorded within 48 hours of its start',
+      'error.reason.noShowWindowPassedAt':
+          'the time to record a missed session ended {time}',
+      'error.reason.bookingCancelled':
+          'this session was cancelled and can no longer be changed',
+      'error.reason.bookingChanged':
+          'this session was just changed by someone else; reload and try again',
+      'error.reason.bookingOnTrainerStatement':
+          'this session is on a payout statement already, so only FitFlex can change it',
+      'error.reason.invalidBookingTime':
+          'this session has no readable date or time; contact FitFlex',
+      'error.reason.cannotBookOwnSessions': "you can't book your own sessions",
+      'member.cannotBookOwnSessions':
+          "You can't book your own sessions. Choose another trainer.",
       'error.reason.cancelWindowPassed':
           'less than 24 hours to go, so this session can no longer be cancelled',
       'error.reason.paymentAlreadyPending':
@@ -6739,6 +6775,43 @@ class FFLocale extends ChangeNotifier {
           'Ghairi kipindi hiki? Mwanachama atajulishwa, na atarejeshewa chote alicholipa.',
       'trainer.sessionCancelled':
           'Kipindi kimeghairiwa. Mwanachama amejulishwa.',
+      // Matokeo ya kipindi (Phase B · B1b). Swahili for native review.
+      'trainer.completeSession': 'Kamilisha kipindi',
+      'trainer.completeSessionConfirm':
+          'Weka kipindi hiki kuwa kimekamilika? Kitaongezwa kwenye malipo yako. Ni FitFlex pekee inayoweza kukibadilisha baadaye.',
+      'trainer.markNoShow': 'Mteja hakuja',
+      'trainer.markNoShowConfirm':
+          'Kipindi kinalipwa kama kilivyowekwa; mteja atajulishwa. Ni FitFlex pekee inayoweza kukibadilisha baadaye.',
+      'trainer.sessionCompleted': 'Kipindi kimewekwa kuwa kimekamilika.',
+      'trainer.noShowRecorded': 'Imerekodiwa: mteja hakuja.',
+      'trainer.outcomesUnavailable':
+          'Kurekodi matokeo ya vipindi bado hakupatikani.',
+      'booking.status.no_show': 'Hakuhudhuria',
+      'sessions.reviewTrainer': 'Toa maoni kuhusu trainer',
+      'inbox.open.session': 'Angalia kipindi',
+      'error.reason.sessionNotStarted': 'kipindi hiki bado hakijaanza',
+      'error.reason.sessionNotStartedAt':
+          'kipindi hiki kinaanza {time}, hivyo hakiwezi kurekodiwa bado',
+      'error.reason.bookingNotConfirmable':
+          'kipindi kilichothibitishwa pekee ndicho kinachoweza kuwekwa kuwa kimekamilika',
+      'error.reason.bookingNotConfirmed':
+          'kipindi kilichothibitishwa pekee ndicho kinachoweza kurekodiwa kuwa mteja hakuja',
+      'error.reason.noShowWindowPassed':
+          'kutohudhuria kunaweza kurekodiwa ndani ya saa 48 tangu kipindi kuanza pekee',
+      'error.reason.noShowWindowPassedAt':
+          'muda wa kurekodi kutohudhuria uliisha {time}',
+      'error.reason.bookingCancelled':
+          'kipindi hiki kimeghairiwa na hakiwezi kubadilishwa tena',
+      'error.reason.bookingChanged':
+          'kipindi hiki kimebadilishwa na mtu mwingine sasa hivi; pakia upya kisha ujaribu tena',
+      'error.reason.bookingOnTrainerStatement':
+          'kipindi hiki kiko tayari kwenye taarifa ya malipo, hivyo ni FitFlex pekee inayoweza kukibadilisha',
+      'error.reason.invalidBookingTime':
+          'tarehe au saa ya kipindi hiki haisomeki; wasiliana na FitFlex',
+      'error.reason.cannotBookOwnSessions':
+          'huwezi kuweka vipindi vyako mwenyewe',
+      'member.cannotBookOwnSessions':
+          'Huwezi kuweka vipindi vyako mwenyewe. Chagua trainer mwingine.',
       'error.reason.cancelWindowPassed':
           'zimebaki chini ya saa 24, hivyo kipindi hiki hakiwezi kughairiwa tena',
       'error.reason.paymentAlreadyPending':

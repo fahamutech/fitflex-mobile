@@ -1003,7 +1003,9 @@ GoRouter buildRouter(AuthState auth) {
       GoRoute(
         path: AppRoutes.memberSessions,
         name: 'memberSessions',
-        builder: (context, state) => const MemberSessionsPage(),
+        builder: (context, state) => MemberSessionsPage(
+          focusBookingId: state.uri.queryParameters['booking'],
+        ),
       ),
       // Message templates. "new" comes before ":templateId" so it wins.
       GoRoute(
