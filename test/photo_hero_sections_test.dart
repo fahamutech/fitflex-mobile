@@ -659,28 +659,18 @@ void main() {
     const added = [FFHeroPhoto.gyms, FFHeroPhoto.trainers, FFHeroPhoto.shop];
 
     test('every photo names its scene (spec §34.1)', () {
-      final pattern = RegExp(r'^(pexels-\d+|scene-[a-z0-9-]+)$');
+      // FitFlex Africa's generated scenes and the owner's photos
+      // (2026-10-22): each file is its own scene.
+      final pattern = RegExp(r'^(fitflex-gen|owner)-\d{2}-[a-z0-9-]+$');
       for (final p in FFHeroPhoto.values) {
         expect(p.sourceId, matches(pattern), reason: p.name);
       }
-      // Crops of one scene share it.
-      expect(
-        {
-          FFHeroPhoto.signIn.sourceId,
-          FFHeroPhoto.activityTraining.sourceId,
-          FFHeroPhoto.vendor.sourceId,
-        },
-        {'scene-tubarones-9545'},
-      );
-      expect(FFHeroPhoto.upgrade.sourceId, 'scene-ketut-4720');
-      expect(FFHeroPhoto.activityChallenges.sourceId, 'scene-ketut-4720');
-      expect(FFHeroPhoto.language.sourceId, 'pexels-4716814');
-      expect(FFHeroPhoto.activityToday.sourceId, 'pexels-4173217');
-      expect(FFHeroPhoto.role.sourceId, FFHeroPhoto.owner.sourceId);
-      expect(FFHeroPhoto.trainer.sourceId, 'scene-tima-6388');
-      expect(FFHeroPhoto.gyms.sourceId, 'pexels-33832204');
-      expect(FFHeroPhoto.trainers.sourceId, 'scene-carbell-sarfo-3651');
-      expect(FFHeroPhoto.shop.sourceId, 'pexels-5592605');
+      expect({
+        for (final p in FFHeroPhoto.values) p.sourceId,
+      }, hasLength(FFHeroPhoto.values.length));
+      expect(FFHeroPhoto.gyms.sourceId, 'owner-15-empty-gym-windows');
+      expect(FFHeroPhoto.trainers.sourceId, 'owner-01-lat-pulldown-back');
+      expect(FFHeroPhoto.shop.sourceId, 'fitflex-gen-02-shop');
     });
 
     test('the section bands use originals no other hero uses', () {
@@ -718,7 +708,7 @@ void main() {
       }
     });
 
-    test('every bundled photo has a licence row and all fit 1.6 MB', () {
+    test('every bundled photo has a licence row and all fit 2.0 MB', () {
       final licences = File(
         'assets/photos/hero/LICENSES.md',
       ).readAsStringSync();
@@ -731,7 +721,8 @@ void main() {
       for (final p in FFHeroPhoto.values) {
         expect(licences, contains('`${p.file}.webp`'), reason: p.name);
       }
-      expect(total, lessThanOrEqualTo(1600 * 1000));
+      // Budget raised to 2.0 MB for the FitFlex Africa set (2026-10-22).
+      expect(total, lessThanOrEqualTo(2000 * 1000));
       for (final f in ['hero_trainers', 'hero_shop']) {
         final row = licences
             .split('\n')
