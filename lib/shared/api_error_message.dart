@@ -256,6 +256,26 @@ String? _knownReason(FFLocale locale, String reason) {
     'rating_must_be_integer_1_to_5': 'error.reason.invalidRating',
     'text_too_short': 'error.reason.reviewTextTooShort',
     'text_too_long': 'error.reason.reviewTextTooLong',
+    // Events (Marathon & Running Events S2, spec §14.6).
+    'event_not_found': 'error.reason.eventNotFound',
+    'feature_disabled': 'error.reason.featureDisabled',
+    'rate_limited': 'error.reason.rateLimited',
+    'not_your_organizer': 'error.reason.notYourOrganizer',
+    'organizer_not_active': 'error.reason.organizerNotActive',
+    'organizer_suspended': 'error.reason.organizerSuspended',
+    'forbidden_role': 'error.reason.noPermission',
+    'invalid_transition': 'error.reason.invalidTransition',
+    'version_conflict': 'error.reason.versionConflict',
+    'event_invalid': 'error.reason.eventInvalid',
+    'change_note_required': 'error.reason.changeNoteRequired',
+    'has_registrations': 'error.reason.hasRegistrations',
+    'organizer_exists': 'error.reason.organizerExists',
+    'persona_not_allowed': 'error.reason.personaNotAllowed',
+    'already_staff': 'error.reason.alreadyStaff',
+    'invalid_contact': 'error.reason.invalidContact',
+    'cannot_invite_self': 'error.reason.cannotInviteSelf',
+    'cannot_remove_owner': 'error.reason.cannotRemoveOwner',
+    'kyc_incomplete': 'error.reason.kycIncomplete',
   };
   final key = keys[reason.trim().toLowerCase()];
   return key == null ? null : locale.t(key);

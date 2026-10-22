@@ -6,6 +6,7 @@ import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
 import 'member_shell.dart';
+import 'events/home_events_card.dart';
 import 'home_feed.dart';
 import 'widgets/phone_steps_card.dart';
 import 'widgets/challenge_widgets.dart';
@@ -301,6 +302,13 @@ class _MemberHomeTabState extends State<MemberHomeTab> {
                   activeFilter: 'home',
                 ),
         );
+      case HomeCardKind.events:
+        return Column(
+          children: [
+            gap,
+            HomeEventsCard(events: data.upcomingEvents),
+          ],
+        );
     }
   }
 }
@@ -311,6 +319,8 @@ List<HomeCardPick> _presentationOrder(List<HomeCardPick> picks) {
   int slot(HomeCardPick p) => switch (p.kind) {
     HomeCardKind.passport => 0,
     HomeCardKind.recommendation => 2,
+    // Events sit after the recommendation (events S2 spec §11.1).
+    HomeCardKind.events => 3,
     _ => 1,
   };
   final indexed = picks.indexed.toList()
