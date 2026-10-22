@@ -57,6 +57,8 @@ String _when(BuildContext context, DateTime? at) {
 /// Where a message's button goes, for the signed-in role: members,
 /// trainers, vendors and gyms each get their own screens.
 String? routeForMessage(BuildContext context, InboxMessage m) {
+  // An organisation's request is answered on its own screen, on any side.
+  if (isB2BMemberRequest(m.type, m.data)) return b2bMemberRequestsRoute;
   final role =
       AppScope.of(context).auth.user?['userType']?.toString() ??
       AppScope.of(context).auth.role;
@@ -90,7 +92,9 @@ String inboxButtonLabel(BuildContext context, InboxMessage m) {
       AppScope.of(context).auth.user?['userType']?.toString() ??
       AppScope.of(context).auth.role;
   final side = partnerSide(role);
-  final link = side == null
+  final link = isB2BMemberRequest(m.type, m.data)
+      ? 'memberRequests'
+      : side == null
       ? memberLinkFor(deepLink: m.deepLink, type: m.type)
       : partnerLinkFor(side: side, type: m.type);
   final key = 'inbox.open.${link.isEmpty ? 'message' : link}';

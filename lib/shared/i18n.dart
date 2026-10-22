@@ -5370,6 +5370,92 @@ class FFLocale extends ChangeNotifier {
       'shop.invoice.download': 'Download PDF',
       'shop.invoice.failed': 'Couldn\'t load the invoice.',
       'inbox.open.tax': 'Open tax details',
+      // Organisation requests to add the member by account id
+      // (fitflex-functions#241, privacy ruling A-02).
+      'memberRequests.title': 'Requests from organisations',
+      'memberRequests.intro':
+          'These organisations asked to add you on FitFlex. Nothing is shared and nothing changes until you accept.',
+      'memberRequests.empty.title': 'No requests waiting',
+      'memberRequests.empty.body':
+          'When an organisation asks to add you, it shows here for you to accept or decline.',
+      'memberRequests.loadFailed': 'Couldn\'t load requests',
+      'memberRequests.ask.beneficiary':
+          'Wants to add you to its wellness programme',
+      'memberRequests.ask.org_user':
+          'Wants to give you the {role} role in its FitFlex portal',
+      'memberRequests.ask.employee_link':
+          'Wants to link your FitFlex account to your staff record',
+      'memberRequests.group': 'Group: {group}',
+      'memberRequests.sees': 'What {org} will see',
+      'memberRequests.seesUnknown':
+          'We couldn\'t load what {org} will see. Check with them before you accept.',
+      'memberRequests.willSee': 'Will see: {items}',
+      'memberRequests.wontSee': 'Won\'t see: {items}',
+      'memberRequests.item.name': 'your name',
+      'memberRequests.item.email': 'your email',
+      'memberRequests.item.role': 'your role',
+      'memberRequests.item.activity': 'your activity',
+      'memberRequests.item.gym_visits': 'gym visits',
+      'memberRequests.item.trainer_sessions': 'trainer sessions',
+      'memberRequests.item.workouts': 'workouts',
+      'memberRequests.item.steps': 'steps',
+      'memberRequests.item.active_minutes': 'active minutes',
+      'memberRequests.item.challenge_progress': 'challenge progress',
+      'memberRequests.item.sponsored_benefit_use':
+          'how you use the benefits it pays for',
+      'memberRequests.item.weight': 'weight',
+      'memberRequests.item.height': 'height',
+      'memberRequests.item.calories': 'calories',
+      'memberRequests.item.notes': 'notes',
+      'memberRequests.item.routes': 'routes',
+      'memberRequests.item.other_sponsors': 'what other sponsors give you',
+      'memberRequests.gets': 'What you would get',
+      'memberRequests.noBenefits':
+          'No benefits to show yet. Some are added after you join.',
+      'memberRequests.upTo': 'Up to {limit} {period}',
+      'memberRequests.sponsorTier': '{tier} pass',
+      'memberRequests.funding.full': 'Your sponsor pays in full',
+      'memberRequests.funding.sponsor_fixed':
+          'Your sponsor pays up to a set amount; you pay the rest',
+      'memberRequests.funding.sponsor_percentage':
+          'Your sponsor pays a share; you pay the rest',
+      'memberRequests.funding.beneficiary_fixed':
+          'You pay a set amount; your sponsor pays the rest',
+      'memberRequests.funding.none': 'Nothing to pay',
+      'memberRequests.subsidy.fully_funded': 'Your employer pays in full',
+      'memberRequests.subsidy.copay_50_50':
+          'Your employer pays 50%, you pay 50%',
+      'memberRequests.subsidy.copay_70_30':
+          'Your employer pays 70%, you pay 30%',
+      'memberRequests.subsidy.employee_paid': 'You pay for the pass yourself',
+      'memberRequests.role.owner': 'owner',
+      'memberRequests.role.admin': 'admin',
+      'memberRequests.role.manager': 'manager',
+      'memberRequests.role.finance': 'finance',
+      'memberRequests.role.hr': 'HR',
+      'memberRequests.role.analyst': 'analyst',
+      'memberRequests.role.viewer': 'viewer',
+      'memberRequests.expires': 'Answer by {date}',
+      'memberRequests.accept': 'Accept',
+      'memberRequests.decline': 'Decline',
+      'memberRequests.confirm.title': 'Accept and share with {org}?',
+      'memberRequests.confirm.action': 'Accept and share',
+      'memberRequests.accepted': 'Done. You are now linked to {org}.',
+      'memberRequests.declined': 'Declined. Nothing was shared with {org}.',
+      'memberRequests.error.expired':
+          'This request has expired. Ask the organisation to send a new one.',
+      'memberRequests.error.notPending': 'This request was already answered.',
+      'memberRequests.error.gone': 'This request is no longer available.',
+      'memberRequests.error.noLongerValid':
+          'This request is no longer valid. Ask the organisation to send a new one.',
+      'memberRequests.error.alreadyLinked':
+          'You are already linked to this organisation.',
+      'memberRequests.card.one': 'An organisation wants to add you',
+      'memberRequests.card.many': '{n} organisations want to add you',
+      'memberRequests.card.body': 'Nothing is shared until you accept.',
+      'memberRequests.card.action': 'Review requests',
+      'memberRequests.backToBenefits': 'View my benefits',
+      'inbox.open.memberRequests': 'Review request',
     },
     'sw': {
       'app.title': 'FitFlex',
@@ -10742,6 +10828,96 @@ class FFLocale extends ChangeNotifier {
       'shop.invoice.download': 'Pakua PDF',
       'shop.invoice.failed': 'Imeshindikana kupakia ankara.',
       'inbox.open.tax': 'Fungua taarifa za kodi',
+      // Maombi ya mashirika kukuongeza kwa namba ya akaunti
+      // (fitflex-functions#241). Swahili drafts for native review.
+      'memberRequests.title': 'Maombi kutoka kwa mashirika',
+      'memberRequests.intro':
+          'Mashirika haya yameomba kukuongeza kwenye FitFlex. Hakuna kinachoshirikiwa wala kubadilika hadi ukubali.',
+      'memberRequests.empty.title': 'Hakuna maombi yanayosubiri',
+      'memberRequests.empty.body':
+          'Shirika likiomba kukuongeza, ombi litaonekana hapa ili ukubali au ukatae.',
+      'memberRequests.loadFailed': 'Imeshindikana kupakia maombi',
+      'memberRequests.ask.beneficiary':
+          'Linataka kukuongeza kwenye mpango wake wa afya',
+      'memberRequests.ask.org_user':
+          'Linataka kukupa nafasi ya {role} kwenye portal yake ya FitFlex',
+      'memberRequests.ask.employee_link':
+          'Linataka kuunganisha akaunti yako ya FitFlex na taarifa zako za mfanyakazi',
+      'memberRequests.group': 'Kundi: {group}',
+      'memberRequests.sees': '{org} litaona nini',
+      'memberRequests.seesUnknown':
+          'Hatukuweza kupakia kile {org} litaona. Wasiliana nao kabla ya kukubali.',
+      'memberRequests.willSee': 'Litaona: {items}',
+      'memberRequests.wontSee': 'Halitaona: {items}',
+      'memberRequests.item.name': 'jina lako',
+      'memberRequests.item.email': 'barua pepe yako',
+      'memberRequests.item.role': 'nafasi yako',
+      'memberRequests.item.activity': 'shughuli zako',
+      'memberRequests.item.gym_visits': 'kuingia gym',
+      'memberRequests.item.trainer_sessions': 'vipindi vya trainer',
+      'memberRequests.item.workouts': 'mazoezi',
+      'memberRequests.item.steps': 'hatua',
+      'memberRequests.item.active_minutes': 'dakika za mazoezi',
+      'memberRequests.item.challenge_progress': 'maendeleo kwenye challenge',
+      'memberRequests.item.sponsored_benefit_use':
+          'jinsi unavyotumia benefits linazolipia',
+      'memberRequests.item.weight': 'uzito',
+      'memberRequests.item.height': 'urefu',
+      'memberRequests.item.calories': 'kalori',
+      'memberRequests.item.notes': 'maelezo',
+      'memberRequests.item.routes': 'njia zako',
+      'memberRequests.item.other_sponsors':
+          'unachopewa na wadhamini wengine',
+      'memberRequests.gets': 'Utakachopata',
+      'memberRequests.noBenefits':
+          'Bado hakuna benefits za kuonyesha. Baadhi huongezwa baada ya kujiunga.',
+      'memberRequests.upTo': 'Hadi {limit} {period}',
+      'memberRequests.sponsorTier': 'Pasi ya {tier}',
+      'memberRequests.funding.full': 'Mdhamini wako analipa yote',
+      'memberRequests.funding.sponsor_fixed':
+          'Mdhamini wako analipa hadi kiasi fulani; wewe unalipa kilichobaki',
+      'memberRequests.funding.sponsor_percentage':
+          'Mdhamini wako analipa sehemu; wewe unalipa kilichobaki',
+      'memberRequests.funding.beneficiary_fixed':
+          'Unalipa kiasi fulani; mdhamini wako analipa kilichobaki',
+      'memberRequests.funding.none': 'Hakuna cha kulipa',
+      'memberRequests.subsidy.fully_funded': 'Mwajiri wako analipa yote',
+      'memberRequests.subsidy.copay_50_50':
+          'Mwajiri wako analipa 50%, wewe unalipa 50%',
+      'memberRequests.subsidy.copay_70_30':
+          'Mwajiri wako analipa 70%, wewe unalipa 30%',
+      'memberRequests.subsidy.employee_paid':
+          'Unalipia pasi mwenyewe',
+      'memberRequests.role.owner': 'mmiliki',
+      'memberRequests.role.admin': 'msimamizi',
+      'memberRequests.role.manager': 'meneja',
+      'memberRequests.role.finance': 'fedha',
+      'memberRequests.role.hr': 'rasilimali watu',
+      'memberRequests.role.analyst': 'mchambuzi',
+      'memberRequests.role.viewer': 'mtazamaji',
+      'memberRequests.expires': 'Jibu kabla ya {date}',
+      'memberRequests.accept': 'Kubali',
+      'memberRequests.decline': 'Kataa',
+      'memberRequests.confirm.title': 'Ukubali na kushiriki na {org}?',
+      'memberRequests.confirm.action': 'Kubali na shiriki',
+      'memberRequests.accepted': 'Tayari. Sasa umeunganishwa na {org}.',
+      'memberRequests.declined':
+          'Umekataa. Hakuna kilichoshirikiwa na {org}.',
+      'memberRequests.error.expired':
+          'Muda wa ombi hili umeisha. Omba shirika likutumie jipya.',
+      'memberRequests.error.notPending': 'Ombi hili tayari limejibiwa.',
+      'memberRequests.error.gone': 'Ombi hili halipatikani tena.',
+      'memberRequests.error.noLongerValid':
+          'Ombi hili halitumiki tena. Omba shirika likutumie jipya.',
+      'memberRequests.error.alreadyLinked':
+          'Tayari umeunganishwa na shirika hili.',
+      'memberRequests.card.one': 'Shirika linataka kukuongeza',
+      'memberRequests.card.many': 'Mashirika {n} yanataka kukuongeza',
+      'memberRequests.card.body':
+          'Hakuna kinachoshirikiwa hadi ukubali.',
+      'memberRequests.card.action': 'Angalia maombi',
+      'memberRequests.backToBenefits': 'Angalia benefits zangu',
+      'inbox.open.memberRequests': 'Angalia ombi',
     },
   };
 }
