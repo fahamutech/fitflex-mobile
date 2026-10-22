@@ -10,6 +10,7 @@ import '../../shared/i18n.dart';
 import '../../shared/models.dart';
 import '../member/member_gym_detail_page.dart';
 import '../member/member_gyms_tab.dart';
+import '../member/widgets/mobile_money_pay.dart';
 import '../member/widgets/gym_card.dart';
 import '../member/widgets/gym_filters.dart';
 import 'trainer_passes_page.dart';
@@ -746,17 +747,23 @@ class _TrainerGymSheetState extends State<TrainerGymSheet> {
     _period = _options.firstOrNull?['period']?.toString();
   }
 
+  /// The pass just bought was paid by mobile money straight away.
+  bool _paidNow = false;
+
   Future<void> _run(Future<void> Function() action, String doneKey) async {
     setState(() {
       _busy = true;
       _error = null;
+      _paidNow = false;
     });
     try {
       await action();
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(context.tr(doneKey))));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.tr(_paidNow ? 'trainerPass.paidNow' : doneKey)),
+        ),
+      );
       if (widget.onChanged != null) {
         widget.onChanged!();
       } else {
@@ -793,12 +800,25 @@ class _TrainerGymSheetState extends State<TrainerGymSheet> {
     if (ok != true || !mounted) return;
     final api = AppScope.of(context).api;
     final gymId = gym['id'].toString();
-    await _run(
-      () => isPass
-          ? api.trainerBuyPass(gymId, period: _period)
-          : api.trainerBuyMemberPlan(gymId, _period!),
-      'trainer.passRequested',
-    );
+    await _run(() async {
+      if (!isPass) {
+        await api.trainerBuyMemberPlan(gymId, _period!);
+        return;
+      }
+      final created = await api.trainerBuyPass(gymId, period: _period);
+      // With mobile money on for trainer passes, pay straight away
+      // (fitflex-functions#240). Otherwise it waits for approval as before.
+      final req = created['paymentRequest'];
+      if (req is Map && mounted) {
+        _paidNow = await offerMobileMoney(
+          context,
+          paymentRequestId: req['id'] as String?,
+          amountTzs: (req['amountTzs'] as num?) ?? 0,
+          productType: MomoProduct.trainerGymPass,
+          role: 'trainer',
+        );
+      }
+    }, 'trainer.passRequested');
   }
 
   Future<void> _cancelPending(String subscriptionId) => _run(

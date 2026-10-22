@@ -166,18 +166,23 @@ class _MemberTrainerDetailPageState extends State<MemberTrainerDetailPage> {
     if (trainer == null) return;
     final slots = _picked.values.toList()
       ..sort((a, b) => '${a.date} ${a.slot}'.compareTo('${b.date} ${b.slot}'));
+    var paid = false;
     final booked = await showTrainerBookingSheet(
       context,
       trainer,
       slots: slots,
       gymId: _pickedGymId,
+      onPaid: () => paid = true,
     );
     if (booked == true && mounted) {
       setState(() {
         _picked.clear();
         _pickedGymId = null;
       });
-      FFSnack.info(context, context.tr('member.bookingRequested'));
+      FFSnack.info(
+        context,
+        context.tr(paid ? 'member.bookingPaid' : 'member.bookingRequested'),
+      );
       _loadSchedule();
     }
   }

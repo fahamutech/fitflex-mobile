@@ -377,6 +377,7 @@ class _UpgradeGateState extends State<_UpgradeGate> {
           context,
           paymentRequestId: req['id'] as String?,
           amountTzs: (req['amountTzs'] as num?) ?? 0,
+          productType: MomoProduct.fitflexPass,
         );
         if (!mounted) return;
       }
