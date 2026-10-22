@@ -4500,6 +4500,76 @@ class FFLocale extends ChangeNotifier {
       'vendor.target.band.60_plus': '60+',
       'vendor.target.a11yBand': '{from} to {to}',
       'vendor.target.a11yBandPlus': '{from} and over',
+      // Shop Phase 2 S3: near you (spec shop-home-phase2 §7, §10.5, §10.7).
+      'shop.near.inviteTitle': "See what's popular near you",
+      'shop.near.inviteBody':
+          "Find products from sellers who deliver to your area.",
+      'shop.near.use': "Use my location",
+      'shop.near.notNow': "Not now",
+      'shop.near.offline': "Needs internet",
+      'shop.near.sheetTitle': "Use your location in the shop?",
+      'shop.near.point1':
+          "Your phone works out your approximate area, such as your city or district.",
+      'shop.near.point2':
+          "Only the area is sent to FitFlex, and it isn't stored. Your exact location never leaves your phone.",
+      'shop.near.point3':
+          "You can turn this off any time with \"Personalised shop\", in the shop or in Privacy & data.",
+      'shop.near.alreadyAllowed':
+          "Your phone already lets FitFlex see your location for gyms. We're asking again because the shop is a different use.",
+      'shop.near.noArea': "No sellers are listed for your area yet.",
+      'shop.near.failed': "Couldn't find your area. Try again later.",
+      'shop.near.denied': "Location is off, so Popular near you is hidden.",
+      'shop.near.openSettings': "Open settings",
+      'shop.near.browserBlocked':
+          "Allow location for this site in your browser settings.",
+      'shop.near.servicesOff':
+          "Turn on location on your phone to see Popular near you.",
+      'shop.near.badge': "Delivers to your area",
+      'shop.near.finding': "Finding your area",
+      'shop.near.changeArea': "Change area",
+      'shop.near.pickArea': "Choose your area",
+      'shop.why.nearOn': "Popular near you: On · {area}",
+      'shop.why.nearOff': "Popular near you: Off",
+      'shop.why.nearNoArea': "No sellers listed for your area yet",
+      'shop.why.turnOn': "Turn on",
+      'shop.why.turnOff': "Turn off",
+      'shop.why.popularInArea': "Popular with shoppers in {areaName}.",
+      'shop.why.sellerInArea': "From sellers based in {areaName}.",
+      'shop.why.switchHintMemberArea':
+          "Use my purchases, my profile's gender and age, and my current area to order the shop for me.",
+      'shop.why.switchHintPartnerArea':
+          "Use my purchases and my current area to order the shop for me.",
+      'privacy.shop.usesLocation':
+          "Your approximate area, only if you allow location",
+      'vendor.areas.title': "Where you sell",
+      'vendor.areas.basedIn': "Based in",
+      'vendor.areas.basedInRow': "Based in: {area}",
+      'vendor.areas.basedInMissing': "Pick where your business is based.",
+      'vendor.areas.deliversTo': "Delivers to",
+      'vendor.areas.deliversRow': "Delivers to: {areas}",
+      'vendor.areas.deliversMore': "(+{n})",
+      'vendor.areas.deliversEmpty':
+          "Leave empty if you don't deliver. Buyers can still order and arrange collection.",
+      'vendor.areas.included': "Included in {parent}",
+      'vendor.areas.nationwide': "Nationwide (all of {area})",
+      'vendor.areas.search': "Search areas",
+      'vendor.areas.selected': "Selected: {areas}",
+      'vendor.areas.noneSelected': "none",
+      'vendor.areas.done': "Done",
+      'vendor.areas.a11yRow': "{area}, {level} in {parent}",
+      'vendor.areas.a11yRowTop': "{area}, {level}",
+      'vendor.areas.level.country': "country",
+      'vendor.areas.level.region': "region",
+      'vendor.areas.level.city': "city",
+      'vendor.areas.level.district': "district",
+      'vendor.areas.none': "Areas aren't set up yet.",
+      'vendor.areas.failed': "Couldn't load areas. Try again.",
+      'vendor.areas.nudge':
+          "Add where you're based and where you deliver, so buyers nearby find you.",
+      'vendor.areas.nudgeAction': "Add now",
+      'vendor.areas.nudgeCheck':
+          "We filled in where you sell from your address. Check it is right.",
+      'vendor.areas.nudgeCheckAction': "Check now",
       'vendor.target.a11yOption': '{group}, {option}',
       'shop.a11y.price': 'Price {price}',
       'shop.a11y.salePrice': 'Sale price {sale}, was {old}, {pct} percent off',
@@ -9970,6 +10040,79 @@ class FFLocale extends ChangeNotifier {
       'vendor.target.band.60_plus': '60+',
       'vendor.target.a11yBand': '{from} hadi {to}',
       'vendor.target.a11yBandPlus': '{from} na zaidi',
+      // Shop Phase 2 S3: near you (spec shop-home-phase2 §7, §10.5, §10.7). Swahili needs native review.
+      'shop.near.inviteTitle': "Ona kinachopendwa karibu nawe",
+      'shop.near.inviteBody':
+          "Pata bidhaa kutoka kwa wauzaji wenye delivery kwenye eneo lako.",
+      'shop.near.use': "Tumia mahali nilipo",
+      'shop.near.notNow': "Si sasa",
+      'shop.near.offline': "Inahitaji intaneti",
+      'shop.near.sheetTitle': "Tumia mahali ulipo dukani?",
+      'shop.near.point1':
+          "Simu yako inatambua eneo lako la takriban, kama jiji au wilaya yako.",
+      'shop.near.point2':
+          "FitFlex inapokea eneo tu, na halihifadhiwi. Mahali hasa ulipo hapatoki kwenye simu yako.",
+      'shop.near.point3':
+          "Unaweza kuzima hili wakati wowote kwa \"Duka kwa ajili yako\", dukani au kwenye Faragha na data.",
+      'shop.near.alreadyAllowed':
+          "Simu yako tayari inairuhusu FitFlex kuona mahali ulipo kwa ajili ya gym. Tunauliza tena kwa sababu duka ni matumizi tofauti.",
+      'shop.near.noArea':
+          "Bado hakuna wauzaji walioorodheshwa kwenye eneo lako.",
+      'shop.near.failed':
+          "Imeshindikana kupata eneo lako. Jaribu tena baadaye.",
+      'shop.near.denied':
+          "Mahali ulipo pamezimwa, kwa hiyo \"Maarufu karibu nawe\" imefichwa.",
+      'shop.near.openSettings': "Fungua mipangilio",
+      'shop.near.browserBlocked':
+          "Ruhusu mahali ulipo kwa tovuti hii kwenye mipangilio ya kivinjari.",
+      'shop.near.servicesOff':
+          "Washa mahali ulipo kwenye simu yako uone \"Maarufu karibu nawe\".",
+      'shop.near.badge': "Ina delivery eneo lako",
+      'shop.near.finding': "Tunatafuta eneo lako",
+      'shop.near.changeArea': "Badilisha eneo",
+      'shop.near.pickArea': "Chagua eneo lako",
+      'shop.why.nearOn': "Maarufu karibu nawe: Imewashwa · {area}",
+      'shop.why.nearOff': "Maarufu karibu nawe: Imezimwa",
+      'shop.why.nearNoArea': "Bado hakuna wauzaji kwenye eneo lako",
+      'shop.why.turnOn': "Washa",
+      'shop.why.turnOff': "Zima",
+      'shop.why.popularInArea': "Maarufu kwa wanunuzi wa {areaName}.",
+      'shop.why.sellerInArea': "Kutoka kwa wauzaji walioko {areaName}.",
+      'shop.why.switchHintMemberArea':
+          "Tumia manunuzi yangu, jinsia na umri kwenye wasifu wangu, na eneo nililopo sasa kupanga duka kwa ajili yangu.",
+      'shop.why.switchHintPartnerArea':
+          "Tumia manunuzi yangu na eneo nililopo sasa kupanga duka kwa ajili yangu.",
+      'privacy.shop.usesLocation':
+          "Eneo ulipo sasa, ikiwa tu umeruhusu mahali ulipo",
+      'vendor.areas.title': "Unapouzia",
+      'vendor.areas.basedIn': "Ipo",
+      'vendor.areas.basedInRow': "Ipo: {area}",
+      'vendor.areas.basedInMissing': "Chagua mahali biashara yako ilipo.",
+      'vendor.areas.deliversTo': "Ina delivery hadi",
+      'vendor.areas.deliversRow': "Ina delivery hadi: {areas}",
+      'vendor.areas.deliversMore': "(+{n})",
+      'vendor.areas.deliversEmpty':
+          "Acha wazi kama huna delivery. Wanunuzi bado wanaweza kuagiza na kupanga kuchukua.",
+      'vendor.areas.included': "Imo ndani ya {parent}",
+      'vendor.areas.nationwide': "Nchi nzima ({area} yote)",
+      'vendor.areas.search': "Tafuta maeneo",
+      'vendor.areas.selected': "Uliyochagua: {areas}",
+      'vendor.areas.noneSelected': "hakuna",
+      'vendor.areas.done': "Maliza",
+      'vendor.areas.a11yRow': "{area}, {level} ndani ya {parent}",
+      'vendor.areas.a11yRowTop': "{area}, {level}",
+      'vendor.areas.level.country': "nchi",
+      'vendor.areas.level.region': "mkoa",
+      'vendor.areas.level.city': "jiji",
+      'vendor.areas.level.district': "wilaya",
+      'vendor.areas.none': "Maeneo bado hayajawekwa.",
+      'vendor.areas.failed': "Imeshindikana kupakia maeneo. Jaribu tena.",
+      'vendor.areas.nudge':
+          "Ongeza mahali ulipo na unapopeleka delivery, ili wanunuzi walio karibu wakupate.",
+      'vendor.areas.nudgeAction': "Ongeza sasa",
+      'vendor.areas.nudgeCheck':
+          "Tumejaza unapouzia kutokana na anwani yako. Hakiki kama ni sahihi.",
+      'vendor.areas.nudgeCheckAction': "Hakiki sasa",
       'vendor.target.a11yOption': '{group}, {option}',
       'shop.a11y.price': 'Bei {price}',
       'shop.a11y.salePrice':

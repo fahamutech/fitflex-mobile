@@ -915,9 +915,11 @@ void main() {
             if (find.byKey(Key('privacy-shop-use-$i')).evaluate().isNotEmpty)
               tester.widget<Text>(_key('privacy-shop-use-$i')).data,
         ];
+        // Slice 3: `location` is listed (between age and goal).
         expect(texts, [
           host.tr('privacy.shop.usesHistory').replaceAll('{months}', '6'),
           host.tr('privacy.shop.usesGender'),
+          host.tr('privacy.shop.usesLocation'),
           host.tr('privacy.shop.usesGoal'),
         ]);
         if (lang == 'sw') {

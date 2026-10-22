@@ -14,11 +14,13 @@ import '../../product_categories.dart';
 import '../../../router.dart' show AppRoutes;
 import '../../promotion_events.dart' show discoverSessionId;
 import '../../shop_home.dart';
+import '../../shop_near_you.dart';
 import '../shop_browse_page.dart' show ShopCart, ShopProduct;
 import 'shop_banner_carousel.dart';
 import 'shop_category_row.dart';
 import 'shop_product_card.dart';
 import 'shop_focus_ring.dart';
+import 'shop_near_you_ui.dart';
 import 'shop_personalisation.dart';
 import 'shop_product_rail.dart';
 
@@ -125,13 +127,28 @@ class ShopHomeViewState extends State<ShopHomeView> {
   int _load = 0;
   bool _askedCatalogue = false;
 
+  /// This account's near-you choice on this device (Phase 2 S3), read
+  /// before every home request. Never holds a position.
+  ShopNearYouState _near = ShopNearYouState.empty;
+
+  /// The area is being worked out (after "Use my location").
+  bool _locating = false;
+
   @override
   void initState() {
     super.initState();
     _data = widget.initialData;
+    ShopNearYouStore.changes.addListener(_nearChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) reload();
     });
+  }
+
+
+  /// The choice or the area changed (here, in the Why sheet or on the
+  /// Privacy page): ask again with the new area, or without one.
+  void _nearChanged() {
+    if (mounted) reload();
   }
 
   /// The role the last answer was for (the server's default after a
@@ -143,19 +160,24 @@ class ShopHomeViewState extends State<ShopHomeView> {
 
   /// Fetches the home again. Content already shown stays while it loads.
   ///
-  /// Region and city are not sent in Phase 1 (personalisation is Phase 2).
+  /// The only location-derived value sent is the `areaId` the phone worked
+  /// out (Phase 2 S3), and only while this account has near-you on.
   Future<void> reload() async {
     final scope = AppScope.of(context);
     final id = ++_load;
     setState(() => _loading = true);
-    final recent = await RecentlyViewedProducts.load(
-      scope.auth.user?['id']?.toString(),
-    );
+    final uid = scope.auth.user?['id']?.toString();
+    final recent = await RecentlyViewedProducts.load(uid);
+    final near = await ShopNearYouStore.load(uid);
+    if (!mounted) return;
+    _near = near;
+    final areaId = near.choice == ShopNearYouChoice.on ? near.areaId : null;
     Future<Map<String, dynamic>> fetch(String? mode) => scope.api.shopHome(
       mode: mode,
       // Lets the server sign promotion tokens for Featured cards.
       session: discoverSessionId(),
       recent: recent,
+      areaId: areaId,
     );
     try {
       Map<String, dynamic> json;
@@ -178,6 +200,15 @@ class ShopHomeViewState extends State<ShopHomeView> {
       widget.onOfflineChanged?.call(false);
       ShopEvents.newLoad();
       ShopEvents.send(scope.api, 'shop_home_viewed', mode: _mode(data));
+      // Near-you on for this account: work the area out again once a
+      // session (never prompting). Not when the server says near-you is
+      // not available (flag off, personalisation off or not allowed).
+      if (data.nearYou?.available == true &&
+          near.choice == ShopNearYouChoice.on) {
+        final lang = FFLocaleScope.of(context).locale.languageCode;
+        // A change is saved, which reloads the home through the listener.
+        unawaited(ShopNearYouFlow.refresh(context, lang));
+      }
     } on ApiException catch (e) {
       if (!mounted || id != _load) return;
       if (e.status == 404 || e.status == 403) return _unavailable();
@@ -301,6 +332,16 @@ class ShopHomeViewState extends State<ShopHomeView> {
       'profile_gender' => context.tr('shop.why.gender'),
       'profile_age' => context.tr('shop.why.age'),
       'delivers_to_area' => context.tr('shop.why.deliversToArea'),
+      'popular_in_area' => with_(
+        'shop.why.popularInArea',
+        'areaName',
+        reason.params['areaName'] ?? _data?.nearYou?.areaName?.of(lang),
+      ),
+      'seller_in_area' => with_(
+        'shop.why.sellerInArea',
+        'areaName',
+        reason.params['areaName'] ?? _data?.nearYou?.areaName?.of(lang),
+      ),
       'featured_disclosure' => context.tr('shop.why.featured'),
       // Two different discounts: a time-limited flash sale (later phase)
       // and a seller's ordinary lower price (the Deals section).
@@ -322,6 +363,7 @@ class ShopHomeViewState extends State<ShopHomeView> {
 
   @override
   void dispose() {
+    ShopNearYouStore.changes.removeListener(_nearChanged);
     _live.dispose();
     super.dispose();
   }
@@ -382,6 +424,7 @@ class ShopHomeViewState extends State<ShopHomeView> {
     final first = _data?.personalisation;
     final mode = _mode(_data);
     final showSwitch = first?.available == true;
+    final lang = FFLocaleScope.of(context).locale.languageCode;
     // The switch's value as the customer just set it (null: as loaded).
     bool? on;
     await showShopSheet<void>(
@@ -455,12 +498,25 @@ class ShopHomeViewState extends State<ShopHomeView> {
                     initial: first!.enabled,
                     // Gender and age are used in member mode only.
                     partnerHint: mode != ShopHomeMode.member,
+                    // Phase 2 S3: near-you can be used, so the hint names
+                    // the current area too.
+                    areaHint: data?.nearYou?.available == true,
                     onChanged: (prefs) {
                       setSheet(() => on = prefs.personalised);
                       // The home reloads behind the sheet (§8.2).
                       if (mounted) reload();
                     },
                   ),
+                  // Phase 2 S3: the location line, while near-you can be
+                  // used and the switch is on.
+                  if (data?.nearYou?.available == true && enabled) ...[
+                    const SizedBox(height: FFTokens.spacingSm),
+                    ShopNearYouLine(
+                      key: ValueKey('near-${data?.nearYou?.areaId}'),
+                      inHome: true,
+                      serverArea: _serverArea(lang),
+                    ),
+                  ],
                   if (mode == ShopHomeMode.member)
                     Padding(
                       padding: const EdgeInsets.only(top: FFTokens.spacingXs),
@@ -490,6 +546,14 @@ class ShopHomeViewState extends State<ShopHomeView> {
         ),
       ),
     );
+  }
+
+  /// The area the last answer was built for, with its name in [lang].
+  ({String id, String name})? _serverArea(String lang) {
+    final near = _data?.nearYou;
+    final id = near?.areaId;
+    final name = near?.areaName?.of(lang) ?? '';
+    return id == null || name.isEmpty ? null : (id: id, name: name);
   }
 
   /// The server's title; without one, the app's own `shop.section.<key>`,
@@ -761,16 +825,7 @@ class ShopHomeViewState extends State<ShopHomeView> {
               ShopHomeCategory(key: c.key, label: ShopText(c.en, c.sw)),
           ];
     final width = shopRailCardWidth(context);
-    return [
-      ShopCategoryRow(
-        categories: categories,
-        inset: widget.gutter,
-        onSelected: (key) {
-          _event('filter_applied');
-          widget.onCategory(key);
-        },
-      ),
-      const SizedBox(height: FFTokens.spacingMd),
+    final rails = <Widget>[
       for (final (section, items) in sections)
         ShopProductRail(
           key: Key('shop-home-section-${section.key}'),
@@ -795,6 +850,31 @@ class ShopHomeViewState extends State<ShopHomeView> {
               _card(items[i], section.key, i, width),
           ],
         ),
+    ];
+    // Phase 2 S3: the near-you slot (after Recommended, before Essentials).
+    final slot = _nearYouSlot(context, data, width);
+    if (slot != null && sections.isNotEmpty) {
+      final keys = [for (final (s, _) in sections) s.key];
+      final essentials = keys.indexOf('essentials');
+      final recommended = keys.indexOf('recommended');
+      final at = essentials >= 0
+          ? essentials
+          : recommended >= 0
+          ? recommended + 1
+          : rails.length;
+      rails.insert(at, slot);
+    }
+    return [
+      ShopCategoryRow(
+        categories: categories,
+        inset: widget.gutter,
+        onSelected: (key) {
+          _event('filter_applied');
+          widget.onCategory(key);
+        },
+      ),
+      const SizedBox(height: FFTokens.spacingMd),
+      ...rails,
       if (sections.isEmpty) _padded(_allProducts(context, grid)),
       _padded(
         Align(
@@ -808,6 +888,41 @@ class ShopHomeViewState extends State<ShopHomeView> {
         ),
       ),
     ];
+  }
+
+  /// What sits in the near-you slot: the invite card before the person has
+  /// answered, card shapes while the area is worked out, else nothing (the
+  /// rail itself is a server section). Only while the server says near-you
+  /// can be used for this person.
+  Widget? _nearYouSlot(BuildContext context, ShopHomeData data, double width) {
+    if (data.nearYou?.available != true) return null;
+    if (data.sections.any((s) => s.key == 'popular_near_you')) return null;
+    if (_locating) return _padded(ShopNearYouSkeleton(cardWidth: width));
+    if (_near.choice != ShopNearYouChoice.notAsked) return null;
+    return _padded(
+      ShopNearYouInviteCard(
+        offline: _error != null && isNetworkError(_error!),
+        onUse: _useLocation,
+        onNotNow: () => ShopNearYouFlow.notNow(context),
+      ),
+    );
+  }
+
+  /// "Use my location" on the invite card: the rationale sheet first, then
+  /// (only if needed) the OS prompt. The new area reloads the home through
+  /// the store's listener.
+  Future<void> _useLocation() async {
+    final state = await ShopNearYouFlow.turnOn(
+      context,
+      onLocating: () {
+        if (mounted) setState(() => _locating = true);
+      },
+    );
+    if (!mounted) return;
+    setState(() {
+      _locating = false;
+      if (state != null) _near = state;
+    });
   }
 
   /// "All products": a 2–4 column grid of the same cards.

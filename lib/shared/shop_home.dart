@@ -12,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'api_client.dart';
 import 'product_categories.dart';
+import 'shop_near_you.dart';
 
 /// `--dart-define=SHOP_HOME_V2=true` turns the new shop home on. Off (the
 /// default) leaves today's shop screen exactly as it was.
@@ -393,7 +394,13 @@ class ShopHomeData {
     this.banners = const [],
     this.bannersOn = false,
     this.personalisation,
+    this.nearYou,
   });
+
+  /// Phase 2 S3 (SHOP_NEAR_YOU): whether "Popular near you" may be used for
+  /// this person now, and the area the answer was built for. Null from a
+  /// backend without the flag: no invite, no rail, no location read.
+  final ShopNearYou? nearYou;
 
   /// Phase 2 S2 (SHOP_PERSONALISATION): whether the "Personalised shop"
   /// switch is offered and on. Null from a backend without the flag: no
@@ -426,6 +433,7 @@ class ShopHomeData {
     final serverNow = DateTime.tryParse(json['serverNow']?.toString() ?? '');
     return ShopHomeData(
       personalisation: ShopPersonalisation.fromJson(json['personalisation']),
+      nearYou: ShopNearYou.fromJson(json['nearYou']),
       bannersOn: json['banners'] is List,
       banners: (json['banners'] is List ? json['banners'] as List : const [])
           .map(ShopBanner.fromJson)
@@ -551,11 +559,15 @@ class ShopPreferences {
 }
 
 /// A signal the shop uses, as listed in `uses` (functions#239), in the
-/// server's order. Anything else (e.g. location before slice 3) is ignored.
+/// server's order. Anything else is ignored.
 enum ShopSignal {
   purchaseHistory('purchase_history'),
   gender('profile_gender'),
   age('profile_age'),
+
+  /// Phase 2 S3: "your current area is used if you allow location on this
+  /// device" (the server cannot know the device's choice).
+  location('location'),
   goal('goal'),
   specialty('specialty');
 
@@ -584,6 +596,8 @@ const kPersonalReasonCodes = {
   'profile_gender',
   'profile_age',
   'delivers_to_area',
+  'popular_in_area',
+  'seller_in_area',
 };
 
 /// The app's own name for a category key (the compiled-in list), or the key

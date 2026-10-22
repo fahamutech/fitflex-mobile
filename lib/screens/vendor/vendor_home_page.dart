@@ -38,6 +38,7 @@ import 'stock/adjust_stock_sheet.dart';
 import 'stock/stock_history_page.dart';
 import 'stock/stock_options.dart';
 import 'stock/variant_rows_editor.dart';
+import 'vendor_areas_section.dart';
 import 'sales/offline_sale_queue.dart';
 import 'sales/sale_models.dart' show pluralKey;
 import 'sales/sales_history_tab.dart';
@@ -1600,6 +1601,17 @@ class _VendorHomePageState extends State<VendorHomePage> {
     controller.dispose();
   }
 
+  /// The "Where you sell" nudge's text key, or null. Only for the account
+  /// holder of a published profile while `merch.shopAreas` is on.
+  String? get _areasNudge {
+    if (!_tools.shopAreas || !_isVendor) return null;
+    if (_profile['status'] != 'published') return null;
+    final city = _profile['cityId']?.toString() ?? '';
+    if (city.isEmpty) return 'vendor.areas.nudge';
+    if (_profile['areasSource'] == 'backfill') return 'vendor.areas.nudgeCheck';
+    return null;
+  }
+
   Widget _businessTab() {
     return ListView(
       padding: const EdgeInsets.all(FFTokens.spacingLg),
@@ -1641,6 +1653,33 @@ class _VendorHomePageState extends State<VendorHomePage> {
             ],
           ),
         ),
+        // Shop S3: no "Based in" yet (or guessed by the server): say why it
+        // matters. Their products still sell; they just miss near-you.
+        if (_areasNudge != null)
+          Padding(
+            padding: const EdgeInsets.only(top: FFTokens.spacingMd),
+            child: FFCard(
+              key: const Key('vendor-areas-nudge'),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  FFAlert(message: context.tr(_areasNudge!)),
+                  const SizedBox(height: FFTokens.spacingSm),
+                  FFButton(
+                    key: const Key('vendor-areas-nudge-action'),
+                    label: context.tr(
+                      _areasNudge == 'vendor.areas.nudge'
+                          ? 'vendor.areas.nudgeAction'
+                          : 'vendor.areas.nudgeCheckAction',
+                    ),
+                    variant: FFButtonVariant.secondary,
+                    size: FFButtonSize.sm,
+                    onPressed: _editProfile,
+                  ),
+                ],
+              ),
+            ),
+          ),
         // S3: sales still on this device while the Sales tab is gone
         // (feature switched off). They are never deleted for that.
         if (_sales != null)
@@ -1741,7 +1780,8 @@ class _VendorHomePageState extends State<VendorHomePage> {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) => VendorProfileForm(profile: _profile),
+      builder: (_) =>
+          VendorProfileForm(profile: _profile, shopAreas: _tools.shopAreas),
     );
     if (result == null || !mounted) return;
     try {
@@ -2679,9 +2719,16 @@ class _VendorProductFormState extends State<VendorProductForm> {
 }
 
 class VendorProfileForm extends StatefulWidget {
-  const VendorProfileForm({super.key, required this.profile});
+  const VendorProfileForm({
+    super.key,
+    required this.profile,
+    this.shopAreas = false,
+  });
 
   final Map<String, dynamic> profile;
+
+  /// Shop Phase 2 S3 (`merch.shopAreas`): the "Where you sell" pickers.
+  final bool shopAreas;
 
   @override
   State<VendorProfileForm> createState() => _VendorProfileFormState();
@@ -2695,6 +2742,9 @@ class _VendorProfileFormState extends State<VendorProfileForm> {
   late final String _legacyCategory;
   String? _logo;
   String? _banner;
+  late final VendorAreasController _areas = VendorAreasController(
+    widget.profile,
+  );
 
   @override
   void initState() {
@@ -2733,10 +2783,16 @@ class _VendorProfileFormState extends State<VendorProfileForm> {
     for (final controller in _fields.values) {
       controller.dispose();
     }
+    _areas.dispose();
     super.dispose();
   }
 
   void _submit() {
+    // "Based in" is needed once the pickers are shown (spec §7.4).
+    if (widget.shopAreas && _areas.missingBasedIn) {
+      _areas.flagMissing();
+      return;
+    }
     if (_logo == null || _banner == null) return;
     // The email is optional; everything else is needed to publish.
     if (_fields.entries.any(
@@ -2773,6 +2829,7 @@ class _VendorProfileFormState extends State<VendorProfileForm> {
         'account': _fields['settlementAccount']!.text.trim(),
       },
       if (_categories.isNotEmpty) 'productCategories': _categories,
+      if (widget.shopAreas) ..._areas.body(),
       'publish': true,
     });
   }
@@ -2830,12 +2887,16 @@ class _VendorProfileFormState extends State<VendorProfileForm> {
                   ),
                 ],
               ),
-              for (final entry in _fields.entries)
+              for (final entry in _fields.entries) ...[
                 FFTextField(
                   key: Key('vendor-profile-${entry.key}'),
                   controller: entry.value,
                   label: labels[entry.key],
                 ),
+                // S3: "Where you sell" right after "Address".
+                if (entry.key == 'address' && widget.shopAreas)
+                  VendorAreasSection(controller: _areas),
+              ],
               const SizedBox(height: FFTokens.spacingSm),
               ProductCategoryMultiSelect(
                 keyPrefix: 'vendor-profile-category',
