@@ -498,22 +498,70 @@ class ShopPersonalisation {
 /// 404 / non-JSON answer) means personalisation does not exist here: every
 /// personalisation control is hidden.
 class ShopPreferences {
-  const ShopPreferences({required this.personalised, required this.available});
+  const ShopPreferences({
+    required this.personalised,
+    required this.available,
+    this.historyDays,
+    this.uses,
+  });
   final bool personalised;
   final bool available;
+
+  /// How far back purchase history is read (server `SHOP_HISTORY_DAYS`).
+  /// Null from a backend that does not say.
+  final int? historyDays;
+
+  /// The signals actually in use for this account right now, as
+  /// [ShopSignal] names. Null from a backend that does not send `uses`.
+  final Set<ShopSignal>? uses;
 
   /// Where a change was made, sent with every PUT.
   static const sourcePrivacyPage = 'privacy_page';
   static const sourceWhySheet = 'why_sheet';
 
+  /// [historyDays] as whole months (365 → 12), at least 1. Null when unknown.
+  int? get historyMonths {
+    final days = historyDays;
+    if (days == null || days <= 0) return null;
+    final months = (days / 30.4).round();
+    return months < 1 ? 1 : months;
+  }
+
   static ShopPreferences fromJson(Object? json) {
     final m = json is Map ? json : const {};
+    final rawUses = m['uses'];
     return ShopPreferences(
       // Default on (O-6): only an explicit false is off.
       personalised: m['personalised'] != false,
       available: m['available'] == true,
+      historyDays: m['historyDays'] is num
+          ? (m['historyDays'] as num).toInt()
+          : null,
+      uses: rawUses is List
+          ? {for (final u in rawUses) ?ShopSignal.fromWire(u?.toString())}
+          : null,
     );
   }
+}
+
+/// A personal signal the shop may use, as listed in `uses`. Names the
+/// server may send either way (`profile_gender` or `gender`) are accepted;
+/// anything else (e.g. location before slice 3) is ignored.
+enum ShopSignal {
+  purchaseHistory,
+  gender,
+  age,
+  goal,
+  specialty;
+
+  static ShopSignal? fromWire(String? wire) => switch (wire) {
+    'purchase_history' || 'history' || 'purchases' => purchaseHistory,
+    'profile_gender' || 'gender' => gender,
+    'profile_age' || 'age' => age,
+    'profile_goal' || 'goal' => goal,
+    'trainer_specialty' || 'specialty' => specialty,
+    _ => null,
+  };
 }
 
 /// Product "Made for" values on the wire (null = everyone), Phase 2 S2.

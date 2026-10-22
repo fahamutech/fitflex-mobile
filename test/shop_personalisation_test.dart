@@ -215,6 +215,53 @@ void main() {
       expect(find.text(host.tr('shop.why.saveFailed')), findsWidgets);
     });
 
+    apiTest('a save answering 404 feature_disabled hides the switch', (
+      tester,
+      api,
+    ) async {
+      _seedShop(
+        api,
+        _home(personalisation: {'available': true, 'enabled': true}),
+      );
+      api.fail('PUT /shop/preferences', 404, {'error': 'feature_disabled'});
+      final host = await _pumpShop(tester, api);
+      await _openWhy(tester);
+      await tester.tap(_key('shop-why-personalised'));
+      await tester.pumpAndSettle();
+      expect(_key('shop-why-personalised'), findsNothing);
+      expect(_key('shop-why-personalised-error'), findsNothing);
+      expect(host.snack(host.tr('shop.why.saveFailed')), findsNothing);
+    });
+
+    apiTest('bought_category names the category from the server list first', (
+      tester,
+      api,
+    ) async {
+      final home = _home(
+        personalisation: {'available': true, 'enabled': true},
+        codes: ['bought_category'],
+        params: {'category': 'equipment'},
+      );
+      home['categories'] = [
+        {
+          'key': 'equipment',
+          'en': 'Home gym kit',
+          'sw': 'Vifaa vya gym nyumbani',
+        },
+      ];
+      _seedShop(api, home);
+      final host = await _pumpShop(tester, api);
+      await _openWhy(tester);
+      expect(
+        _whyTexts(tester),
+        contains(
+          host
+              .tr('shop.why.boughtCategory')
+              .replaceAll('{category}', 'Home gym kit'),
+        ),
+      );
+    });
+
     apiTest('not available (under 18 / no member persona): no switch and '
         'nothing personal', (tester, api) async {
       _seedShop(
@@ -412,9 +459,17 @@ void main() {
         'privacy.shop.offline',
         'privacy.shop.loading',
         'privacy.shop.usesTitle',
-        'privacy.shop.uses1',
-        'privacy.shop.uses2',
-        'privacy.shop.uses3',
+        'privacy.shop.usesHistory',
+        'privacy.shop.usesHistoryOne',
+        'privacy.shop.usesGenderAge',
+        'privacy.shop.usesGender',
+        'privacy.shop.usesAge',
+        'privacy.shop.usesGoal',
+        'privacy.shop.usesSpecialty',
+        'privacy.shop.usesNone',
+        'member.dobPick',
+        'member.dobClear',
+        'member.dobInvalid',
         'privacy.shop.orderOnly',
         'privacy.shop.never',
         'privacy.shop.draft',
@@ -435,6 +490,17 @@ void main() {
         expect(sw.t(key), isNot(key), reason: 'sw $key');
       }
       expect(sw.t('shop.why.switch'), 'Duka kwa ajili yako');
+      expect(sw.t('vendor.target.madeFor'), 'Walengwa');
+      expect(sw.t('shop.why.loadFailed'), contains('chaguo lako'));
+      expect(
+        sw.t('privacy.shop.usesHistory').replaceAll('{months}', '12'),
+        contains('katika miezi 12 iliyopita'),
+      );
+      expect(
+        sw.t('privacy.shop.usesGenderAge'),
+        contains('(havitumiki kwa walio chini ya miaka 18)'),
+      );
+      expect(en.t('vendor.target.hint'), contains('members it suits'));
       expect(
         en.t('shop.why.deliversToArea'),
         'It delivers to your current area.',
@@ -474,10 +540,14 @@ void main() {
       api.on('GET /shop/preferences', {
         'personalised': true,
         'available': true,
+        'historyDays': 365,
+        'uses': ['purchase_history', 'profile_gender', 'profile_age'],
       });
       api.on('PUT /shop/preferences', {
         'personalised': false,
         'available': true,
+        'historyDays': 365,
+        'uses': <String>[],
       });
       final host = await pumpTile(tester, api);
       expect(_key('privacy-shop'), findsOneWidget);
@@ -485,19 +555,28 @@ void main() {
       expect(find.text(host.tr('privacy.shop.on')), findsOneWidget);
       await tapVisible(tester, _key('privacy-shop'));
       expect(_key('privacy-shop-sheet'), findsOneWidget);
+      expect(
+        find.text(
+          host.tr('privacy.shop.usesHistory').replaceAll('{months}', '12'),
+        ),
+        findsOneWidget,
+      );
       for (final k in [
-        'privacy.shop.uses1',
-        'privacy.shop.uses2',
-        'privacy.shop.uses3',
+        'privacy.shop.usesGenderAge',
         'privacy.shop.orderOnly',
         'privacy.shop.never',
         'privacy.shop.draft',
       ]) {
         expect(find.text(host.tr(k)), findsOneWidget, reason: k);
       }
+      // No location line until slice 3.
+      expect(find.textContaining('area'), findsNothing);
       expect(_switchValue(tester), isTrue);
       await tester.tap(_key('shop-why-personalised'));
       await tester.pumpAndSettle();
+      // Off: the server says nothing is used now; the list follows it.
+      expect(_key('privacy-shop-uses-none'), findsOneWidget);
+      expect(_key('privacy-shop-order-only'), findsNothing);
       expect(api.only('PUT', '/shop/preferences').body, {
         'personalised': false,
         'source': 'privacy_page',
@@ -537,6 +616,54 @@ void main() {
         'available': false,
       });
       await pumpTile(tester, api);
+      expect(_key('privacy-shop'), findsNothing);
+    });
+
+    for (final lang in ['en', 'sw']) {
+      apiTest('lists only what `uses` holds ($lang)', (tester, api) async {
+        api.on('GET /shop/preferences', {
+          'personalised': true,
+          'available': true,
+          'historyDays': 180,
+          'uses': ['history', 'gender', 'goal', 'location'],
+        });
+        final host = await pumpTile(tester, api, lang: lang);
+        await tapVisible(tester, _key('privacy-shop'));
+        final texts = [
+          for (var i = 0; i < 5; i++)
+            if (find.byKey(Key('privacy-shop-use-$i')).evaluate().isNotEmpty)
+              tester.widget<Text>(_key('privacy-shop-use-$i')).data,
+        ];
+        expect(texts, [
+          host.tr('privacy.shop.usesHistory').replaceAll('{months}', '6'),
+          host.tr('privacy.shop.usesGender'),
+          host.tr('privacy.shop.usesGoal'),
+        ]);
+        if (lang == 'sw') {
+          expect(texts.first, contains('katika miezi 6 iliyopita'));
+        }
+        expect(find.text(host.tr('privacy.shop.usesAge')), findsNothing);
+        expect(find.text(host.tr('privacy.shop.usesGenderAge')), findsNothing);
+      });
+    }
+
+    apiTest('a save answering 404 hides the switch and the tile', (
+      tester,
+      api,
+    ) async {
+      api.on('GET /shop/preferences', {
+        'personalised': true,
+        'available': true,
+        'uses': ['purchase_history'],
+      });
+      api.fail('PUT /shop/preferences', 404, {'error': 'feature_disabled'});
+      final host = await pumpTile(tester, api);
+      await tapVisible(tester, _key('privacy-shop'));
+      await tester.tap(_key('shop-why-personalised'));
+      await tester.pumpAndSettle();
+      expect(_key('shop-why-personalised'), findsNothing);
+      expect(find.text(host.tr('shop.why.saveFailed')), findsNothing);
+      await tapVisible(tester, _key('ff-sheet-close'));
       expect(_key('privacy-shop'), findsNothing);
     });
 
@@ -725,6 +852,26 @@ void main() {
       final body = api.only('POST', '/vendor/products').body as Map;
       expect(body.containsKey('targetGender'), isFalse);
       expect(body.containsKey('targetAgeBands'), isFalse);
+    });
+
+    apiTest('Swahili chip labels use "Walengwa"', (tester, api) async {
+      final handle = tester.ensureSemantics();
+      seedVendor(api);
+      await pumpVendor(tester, api, lang: 'sw');
+      await tester.tap(_key('vendor-add-product'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(_key('vendor-target-gender-women'));
+      await tester.pumpAndSettle();
+      expect(find.text('Walengwa'), findsOneWidget);
+      expect(
+        tester.getSemantics(_key('vendor-target-gender-women')).label,
+        'Walengwa, Wanawake',
+      );
+      expect(
+        tester.getSemantics(_key('vendor-target-age-30_44')).label,
+        'Kundi la umri, 30 hadi 44',
+      );
+      handle.dispose();
     });
 
     apiTest('chips are 48dp and announce their group', (tester, api) async {

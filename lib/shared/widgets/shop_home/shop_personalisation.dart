@@ -36,6 +36,7 @@ class ShopPersonalisedSwitch extends StatefulWidget {
     this.initial,
     this.partnerHint = false,
     this.onChanged,
+    this.onUnavailable,
   });
 
   /// `privacy_page` or `why_sheet` (sent with the PUT).
@@ -45,8 +46,12 @@ class ShopPersonalisedSwitch extends StatefulWidget {
   /// Trainer and owner modes never use gender or age: their own hint.
   final bool partnerHint;
 
-  /// Called with the saved value after a successful save.
-  final ValueChanged<bool>? onChanged;
+  /// Called with the server's answer after a successful save.
+  final ValueChanged<ShopPreferences>? onChanged;
+
+  /// The save answered 404 (SHOP_PERSONALISATION was switched off): the
+  /// switch hides itself and says so here.
+  final VoidCallback? onUnavailable;
 
   @override
   State<ShopPersonalisedSwitch> createState() => _ShopPersonalisedSwitchState();
@@ -120,9 +125,18 @@ class _ShopPersonalisedSwitchState extends State<ShopPersonalisedSwitch> {
         _value = prefs.personalised;
       });
       snack.success(locale.t('shop.why.saved'));
-      widget.onChanged?.call(prefs.personalised);
-    } catch (_) {
+      widget.onChanged?.call(prefs);
+    } catch (e) {
       if (!mounted) return;
+      if (shopPersonalisationMissing(e)) {
+        // Personalisation is gone (404 feature_disabled): nothing to save.
+        setState(() {
+          _saving = false;
+          _hidden = true;
+        });
+        widget.onUnavailable?.call();
+        return;
+      }
       setState(() {
         _saving = false;
         _value = before;
@@ -238,7 +252,11 @@ enum _TileState { loading, ready, failed, offline, hidden }
 
 class _ShopPrivacyTileState extends State<ShopPrivacyTile> {
   _TileState _state = _TileState.loading;
-  bool _on = true;
+  ShopPreferences _prefs = const ShopPreferences(
+    personalised: true,
+    available: false,
+  );
+  bool get _on => _prefs.personalised;
 
   @override
   void initState() {
@@ -256,7 +274,7 @@ class _ShopPrivacyTileState extends State<ShopPrivacyTile> {
       );
       if (!mounted) return;
       setState(() {
-        _on = prefs.personalised;
+        _prefs = prefs;
         _state = prefs.available ? _TileState.ready : _TileState.hidden;
       });
     } catch (e) {
@@ -276,9 +294,12 @@ class _ShopPrivacyTileState extends State<ShopPrivacyTile> {
       context,
       title: context.tr('privacy.shop.title'),
       child: ShopPrivacySheet(
-        initial: _on,
-        onChanged: (on) {
-          if (mounted) setState(() => _on = on);
+        initial: _prefs,
+        onChanged: (prefs) {
+          if (mounted) setState(() => _prefs = prefs);
+        },
+        onUnavailable: () {
+          if (mounted) setState(() => _state = _TileState.hidden);
         },
       ),
     );
@@ -309,18 +330,71 @@ class _ShopPrivacyTileState extends State<ShopPrivacyTile> {
   }
 }
 
-/// The Privacy page sheet: the same switch, then what is used and what is
-/// never used, and the draft note.
-class ShopPrivacySheet extends StatelessWidget {
-  const ShopPrivacySheet({super.key, required this.initial, this.onChanged});
+/// The Privacy page sheet: the same switch, then only what is actually used
+/// (the server's `uses`), what is never used, and the draft note.
+class ShopPrivacySheet extends StatefulWidget {
+  const ShopPrivacySheet({
+    super.key,
+    required this.initial,
+    this.onChanged,
+    this.onUnavailable,
+  });
 
-  final bool initial;
-  final ValueChanged<bool>? onChanged;
+  final ShopPreferences initial;
+  final ValueChanged<ShopPreferences>? onChanged;
+  final VoidCallback? onUnavailable;
+
+  @override
+  State<ShopPrivacySheet> createState() => _ShopPrivacySheetState();
+}
+
+class _ShopPrivacySheetState extends State<ShopPrivacySheet> {
+  late ShopPreferences _prefs = widget.initial;
+  bool _gone = false;
+
+  /// The "What we use" lines, in order. A backend without `uses` gets the
+  /// lines for what the contract always applies when on (history, gender,
+  /// age). Location is not listed until slice 3 ships it.
+  List<String> _lines(BuildContext context) {
+    final uses =
+        _prefs.uses ??
+        (_prefs.personalised
+            ? const {
+                ShopSignal.purchaseHistory,
+                ShopSignal.gender,
+                ShopSignal.age,
+              }
+            : const <ShopSignal>{});
+    final months = _prefs.historyMonths ?? 12;
+    return [
+      if (uses.contains(ShopSignal.purchaseHistory))
+        months == 1
+            ? context.tr('privacy.shop.usesHistoryOne')
+            : context
+                  .tr('privacy.shop.usesHistory')
+                  .replaceAll('{months}', '$months'),
+      if (uses.contains(ShopSignal.gender) && uses.contains(ShopSignal.age))
+        context.tr('privacy.shop.usesGenderAge')
+      else if (uses.contains(ShopSignal.gender))
+        context.tr('privacy.shop.usesGender')
+      else if (uses.contains(ShopSignal.age))
+        context.tr('privacy.shop.usesAge'),
+      if (uses.contains(ShopSignal.goal)) context.tr('privacy.shop.usesGoal'),
+      if (uses.contains(ShopSignal.specialty))
+        context.tr('privacy.shop.usesSpecialty'),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    Widget bullet(String key) => Padding(
+    if (_gone) return const SizedBox.shrink();
+    final lines = _lines(context);
+    final genderOrAge =
+        (_prefs.uses == null && _prefs.personalised) ||
+        (_prefs.uses?.contains(ShopSignal.gender) ?? false) ||
+        (_prefs.uses?.contains(ShopSignal.age) ?? false);
+    Widget bullet(String text, int i) => Padding(
       padding: const EdgeInsets.only(bottom: FFTokens.spacingXs),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -330,8 +404,8 @@ class ShopPrivacySheet extends StatelessWidget {
           ),
           Expanded(
             child: Text(
-              context.tr(key),
-              key: Key('privacy-shop-$key'),
+              text,
+              key: Key('privacy-shop-use-$i'),
               style: theme.textTheme.bodyMedium,
             ),
           ),
@@ -345,8 +419,15 @@ class ShopPrivacySheet extends StatelessWidget {
       children: [
         ShopPersonalisedSwitch(
           source: ShopPreferences.sourcePrivacyPage,
-          initial: initial,
-          onChanged: onChanged,
+          initial: _prefs.personalised,
+          onChanged: (prefs) {
+            setState(() => _prefs = prefs);
+            widget.onChanged?.call(prefs);
+          },
+          onUnavailable: () {
+            setState(() => _gone = true);
+            widget.onUnavailable?.call();
+          },
         ),
         const SizedBox(height: FFTokens.spacingMd),
         Semantics(
@@ -357,14 +438,22 @@ class ShopPrivacySheet extends StatelessWidget {
           ),
         ),
         const SizedBox(height: FFTokens.spacingXs),
-        bullet('privacy.shop.uses1'),
-        bullet('privacy.shop.uses2'),
-        bullet('privacy.shop.uses3'),
-        const SizedBox(height: FFTokens.spacingXs),
-        Text(
-          context.tr('privacy.shop.orderOnly'),
-          style: theme.textTheme.bodyMedium,
-        ),
+        if (lines.isEmpty)
+          Text(
+            context.tr('privacy.shop.usesNone'),
+            key: const Key('privacy-shop-uses-none'),
+            style: theme.textTheme.bodyMedium,
+          )
+        else
+          for (var i = 0; i < lines.length; i++) bullet(lines[i], i),
+        if (genderOrAge) ...[
+          const SizedBox(height: FFTokens.spacingXs),
+          Text(
+            context.tr('privacy.shop.orderOnly'),
+            key: const Key('privacy-shop-order-only'),
+            style: theme.textTheme.bodyMedium,
+          ),
+        ],
         const SizedBox(height: FFTokens.spacingSm),
         Text(
           context.tr('privacy.shop.never'),

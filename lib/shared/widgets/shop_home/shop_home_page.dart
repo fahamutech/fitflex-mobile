@@ -270,6 +270,15 @@ class ShopHomeViewState extends State<ShopHomeView> {
     ShopHomeMode.vendorPersonal => 'shop.why.roleVendor',
   };
 
+  /// A category's name: the server's own list in this answer first, then
+  /// the app's compiled-in list.
+  String _categoryName(String key, String lang) {
+    for (final c in _data?.categories ?? const <ShopHomeCategory>[]) {
+      if (c.key == key) return c.label.of(lang);
+    }
+    return shopCategoryText(key).of(lang);
+  }
+
   /// One translated bullet for a reason code, or null for a code the app
   /// does not know (spec §8.3; the role line is shown separately).
   String? _reasonLine(BuildContext context, ShopReasonCode reason) {
@@ -281,7 +290,7 @@ class ShopHomeViewState extends State<ShopHomeView> {
       'bought_category' => with_(
         'shop.why.boughtCategory',
         'category',
-        shopCategoryText(reason.params['category'] ?? '').of(lang),
+        _categoryName(reason.params['category'] ?? '', lang),
       ),
       'bought_product' => with_(
         'shop.why.boughtProduct',

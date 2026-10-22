@@ -85,6 +85,9 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
   bool _busy = false;
   String? _error;
 
+  /// The server refused the date of birth (400 invalid_field dateOfBirth).
+  String? _dobError;
+
   MemberSummary get _user => widget.me.user;
   MemberProfile? get _profile => _user.memberProfile;
 
@@ -105,7 +108,9 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
     _username = TextEditingController(text: _currentUsername);
     _height = TextEditingController(text: _profile?.heightCm?.toString() ?? '');
     _weight = TextEditingController(text: _profile?.weightKg?.toString() ?? '');
-    _dateOfBirth = TextEditingController(text: _profile?.dateOfBirth ?? '');
+    _dateOfBirth = TextEditingController(
+      text: normaliseDateOfBirth(_profile?.dateOfBirth ?? ''),
+    );
     _gender = _profile?.gender ?? '';
     _level = _profile?.fitnessLevel;
     _goals = {
@@ -193,6 +198,87 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
     return _check != _Check.available;
   }
 
+  // ── Date of birth ──
+
+  static final DateTime _firstDob = DateTime(1900);
+
+  /// A real calendar day (YYYY-MM-DD), not in the future, from 1900 on.
+  /// Null for an empty field.
+  String? _dobProblem(String? value) {
+    final text = value?.trim() ?? '';
+    if (text.isEmpty) return null;
+    final date = parseDateOfBirth(text);
+    if (date == null) return context.tr('member.dobInvalid');
+    final today = DateUtils.dateOnly(DateTime.now());
+    if (date.isAfter(today) || date.isBefore(_firstDob)) {
+      return context.tr('member.dobInvalid');
+    }
+    return null;
+  }
+
+  Future<void> _pickDateOfBirth() async {
+    final today = DateUtils.dateOnly(DateTime.now());
+    final current = parseDateOfBirth(_dateOfBirth.text.trim());
+    final initial =
+        current != null &&
+            !current.isAfter(today) &&
+            !current.isBefore(_firstDob)
+        ? current
+        : DateTime(today.year - 25, today.month);
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: _firstDob,
+      lastDate: today,
+      initialEntryMode: DatePickerEntryMode.calendar,
+      helpText: context.tr('member.dateOfBirth'),
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _dateOfBirth.text = formatDateOfBirth(picked);
+      _dobError = null;
+    });
+  }
+
+  Widget _dateOfBirthField(BuildContext context) {
+    final hasValue = _dateOfBirth.text.trim().isNotEmpty;
+    return FFTextField(
+      key: const Key('edit-profile-dob'),
+      controller: _dateOfBirth,
+      readOnly: true,
+      label: context.tr('member.dateOfBirth'),
+      hint: 'YYYY-MM-DD',
+      errorText: _dobError,
+      validator: _dobProblem,
+      onTap: _busy ? null : _pickDateOfBirth,
+      suffixIcon: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (hasValue)
+            IconButton(
+              key: const Key('edit-profile-dob-clear'),
+              tooltip: context.tr('member.dobClear'),
+              style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
+              icon: const Icon(Icons.clear),
+              onPressed: _busy
+                  ? null
+                  : () => setState(() {
+                      _dateOfBirth.clear();
+                      _dobError = null;
+                    }),
+            ),
+          IconButton(
+            key: const Key('edit-profile-dob-pick'),
+            tooltip: context.tr('member.dobPick'),
+            style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
+            icon: const Icon(Icons.calendar_today_outlined),
+            onPressed: _busy ? null : _pickDateOfBirth,
+          ),
+        ],
+      ),
+    );
+  }
+
   // ── Save ──
 
   Future<void> _save() async {
@@ -209,6 +295,7 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
       _busy = true;
       _error = null;
       _usernameError = null;
+      _dobError = null;
     });
     final api = AppScope.of(context).api;
     var savedAnything = false;
@@ -244,9 +331,14 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
       Navigator.of(context).pop(true);
     } on ApiException catch (e) {
       if (!mounted) return;
+      final body = e.body is Map ? e.body as Map : const {};
       setState(() {
         _busy = false;
-        if (savedAnything) {
+        if (!savedAnything &&
+            e.code == 'invalid_field' &&
+            body['field'] == 'dateOfBirth') {
+          _dobError = context.tr('member.dobInvalid');
+        } else if (savedAnything) {
           // Profile went through; only the username was refused.
           _usernameError = _usernameApiError(e);
         } else {
@@ -337,12 +429,7 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
                 onChanged: (value) => setState(() => _gender = value ?? ''),
               ),
               const SizedBox(height: FFTokens.spacingSm),
-              FFTextField(
-                controller: _dateOfBirth,
-                keyboardType: TextInputType.datetime,
-                label: context.tr('member.dateOfBirth'),
-                hint: 'YYYY-MM-DD',
-              ),
+              _dateOfBirthField(context),
               const SizedBox(height: FFTokens.spacingSm),
               Row(
                 children: [
@@ -566,4 +653,31 @@ class _ContactField extends StatelessWidget {
       },
     );
   }
+}
+
+/// YYYY-MM-DD as a real calendar day, else null ("2026-02-30" is null).
+DateTime? parseDateOfBirth(String text) {
+  final m = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$').firstMatch(text);
+  if (m == null) return null;
+  final y = int.parse(m.group(1)!);
+  final mo = int.parse(m.group(2)!);
+  final d = int.parse(m.group(3)!);
+  final date = DateTime(y, mo, d);
+  if (date.year != y || date.month != mo || date.day != d) return null;
+  return date;
+}
+
+String formatDateOfBirth(DateTime d) =>
+    '${d.year.toString().padLeft(4, '0')}-'
+    '${d.month.toString().padLeft(2, '0')}-'
+    '${d.day.toString().padLeft(2, '0')}';
+
+/// A stored date of birth as YYYY-MM-DD: a full timestamp keeps its day;
+/// anything else is left as it is (the field then says it is not valid).
+String normaliseDateOfBirth(String stored) {
+  final text = stored.trim();
+  if (text.length > 10 && parseDateOfBirth(text.substring(0, 10)) != null) {
+    return text.substring(0, 10);
+  }
+  return text;
 }
