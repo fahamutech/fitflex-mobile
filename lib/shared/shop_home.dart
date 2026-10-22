@@ -94,15 +94,35 @@ class ShopReasonCode {
     final params = json['params'];
     return ShopReasonCode(
       code,
-      params is Map
-          ? {
-              for (final e in params.entries)
-                if (e.value != null) e.key.toString(): e.value.toString(),
-            }
-          : const {},
+      params is Map ? shopReasonParams(params) : const {},
     );
   }
 }
+
+/// Reason values as strings. A value sent in both languages (`areaName:
+/// {en, sw}`, slice 3) becomes `areaName` (English) and `areaName.sw`; read
+/// it with [shopReasonParam].
+Map<String, String> shopReasonParams(Map raw) {
+  final out = <String, String>{};
+  for (final e in raw.entries) {
+    final key = e.key.toString();
+    final v = e.value;
+    if (v == null) continue;
+    if (v is Map) {
+      final text = ShopText.fromJson(v);
+      if (text == null) continue;
+      out[key] = text.of('en');
+      out['$key.sw'] = text.of('sw');
+    } else {
+      out[key] = v.toString();
+    }
+  }
+  return out;
+}
+
+/// The value of [key] in [lang] from [shopReasonParams] output.
+String? shopReasonParam(Map<String, String> params, String key, String lang) =>
+    (lang == 'sw' ? params['$key.sw'] : null) ?? params[key];
 
 class ShopHomeSection {
   const ShopHomeSection({
@@ -150,10 +170,7 @@ class ShopHomeSection {
     // their own params take the section's.
     final rawParams = json['reasonParams'];
     final sectionParams = rawParams is Map
-        ? {
-            for (final e in rawParams.entries)
-              if (e.value != null) e.key.toString(): e.value.toString(),
-          }
+        ? shopReasonParams(rawParams)
         : const <String, String>{};
     return ShopHomeSection(
       key: json['key']?.toString() ?? '',

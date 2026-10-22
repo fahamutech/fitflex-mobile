@@ -160,7 +160,10 @@ Map<String, dynamic> _home({
         'key': 'popular_near_you',
         'title': {'en': 'Popular near you', 'sw': 'Maarufu karibu nawe'},
         'reasonCodes': ['popular_in_area', 'delivers_to_area'],
-        'reasonParams': {'areaName': 'Dar es Salaam'},
+        // functions#248: {en, sw} (was a string).
+        'reasonParams': {
+          'areaName': {'en': 'Dar es Salaam', 'sw': 'Dar es Salaam'},
+        },
         'viewAll': {'path': '/shop/products', 'query': <String, String>{}},
         'hasMore': false,
         'productIds': ['p1', 'p2'],
@@ -1718,6 +1721,127 @@ void main() {
       expect(
         sw.t('shop.why.deliversToArea'),
         'Wauzaji hawa wana delivery hadi eneo ulipo sasa.',
+      );
+    });
+  });
+
+  group('final contract (functions#248)', () {
+    test('only locatable areas stand for "where you are"', () {
+      final list = ShopArea.listFromJson({
+        'areas': [
+          {
+            'id': 'big-city',
+            'level': 'city',
+            'name': 'Big',
+            'locatable': true,
+            'lat': 0,
+            'lng': 0,
+            'radiusKm': 30,
+          },
+          // Too small (server says not locatable), even with a circle.
+          {
+            'id': 'tiny-district',
+            'level': 'district',
+            'name': 'Tiny',
+            'parentId': 'big-city',
+            'locatable': false,
+            'lat': 0,
+            'lng': 0,
+            'radiusKm': 1,
+          },
+          {
+            'id': 'no-circle',
+            'level': 'district',
+            'name': 'Nowhere',
+            'parentId': 'big-city',
+            'locatable': false,
+            'lat': null,
+            'lng': null,
+            'radiusKm': null,
+          },
+        ],
+      });
+      expect(list.map((a) => a.locatable), [true, false, false]);
+      expect(areaFor(0, 0, list)?.id, 'big-city');
+    });
+
+    test('names.sw is shown in Swahili; English falls back to name', () {
+      final a = ShopArea.fromJson({
+        'id': 'tz-znz-city',
+        'level': 'city',
+        'name': 'Zanzibar City',
+        'names': {'en': 'Zanzibar City', 'sw': 'Mji wa Zanzibar'},
+      })!;
+      expect(a.nameIn('sw'), 'Mji wa Zanzibar');
+      expect(a.nameIn('en'), 'Zanzibar City');
+    });
+
+    test('reasonParams.areaName {en, sw} is read in the shown language', () {
+      final section = ShopHomeSection.fromJson({
+        'key': 'popular_near_you',
+        'reasonCodes': ['popular_in_area'],
+        'reasonParams': {
+          'areaName': {'en': 'Zanzibar City', 'sw': 'Mji wa Zanzibar'},
+        },
+        'productIds': ['p1'],
+      });
+      final params = section.reasonCodes.single.params;
+      expect(shopReasonParam(params, 'areaName', 'en'), 'Zanzibar City');
+      expect(shopReasonParam(params, 'areaName', 'sw'), 'Mji wa Zanzibar');
+      // An older string value still works.
+      final old = shopReasonParams({'areaName': 'Arusha'});
+      expect(shopReasonParam(old, 'areaName', 'sw'), 'Arusha');
+    });
+
+    apiTest('Why sheet names the area in Swahili from reasonParams', (
+      tester,
+      api,
+    ) async {
+      debugShopLocatorOverride = FakeLocator(
+        access: ShopLocationAccess.granted,
+        fix: _darCity,
+      );
+      await ShopNearYouStore.save(
+        'm1',
+        const ShopNearYouState(
+          choice: ShopNearYouChoice.on,
+          areaId: 'tz-dar-city',
+        ),
+      );
+      _seedAreaAware(api);
+      api.onCall('GET /shop/home', (r) {
+        final home = _home(
+          nearYou: r.headers['x-ff-area'] == null
+              ? _on
+              : {
+                  'available': true,
+                  'areaId': r.headers['x-ff-area'],
+                  'areaName': {'en': 'Dar es Salaam', 'sw': 'Mji wa Dar'},
+                },
+          areaSection: r.headers['x-ff-area'] != null,
+        );
+        for (final sec in home['sections'] as List) {
+          if ((sec as Map)['key'] == 'popular_near_you') {
+            sec['reasonParams'] = {
+              'areaName': {'en': 'Dar es Salaam', 'sw': 'Mji wa Dar'},
+            };
+          }
+        }
+        return home;
+      });
+      final host = await _pumpShop(tester, api, lang: 'sw');
+      await tapVisible(tester, _key('shop-home-why-popular_near_you'));
+      expect(
+        find.text(
+          host
+              .tr('shop.why.popularInArea')
+              .replaceAll('{areaName}', 'Mji wa Dar'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        tester.widget<Text>(_key('shop-near-you-status')).data,
+        host.tr('shop.why.nearOn').replaceAll('{area}', 'Mji wa Dar'),
       );
     });
   });

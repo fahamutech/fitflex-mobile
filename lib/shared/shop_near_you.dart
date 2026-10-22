@@ -33,7 +33,14 @@ class ShopArea {
     this.lng,
     this.radiusKm,
     this.names,
+    this.locatable,
   });
+
+  /// `locatable` from the server (M1): only `true` areas may stand for
+  /// "where you are" (big enough circle; never the country). False rows
+  /// are still offered in the vendor pickers. Null from a backend that
+  /// does not send it: then only an area with a circle can match.
+  final bool? locatable;
 
   final String id;
 
@@ -85,6 +92,7 @@ class ShopArea {
       lng: _num(json['lng']),
       radiusKm: _num(json['radiusKm']),
       names: ShopText.fromJson(json['names']),
+      locatable: json['locatable'] is bool ? json['locatable'] as bool : null,
     );
   }
 
@@ -110,9 +118,10 @@ double haversineKm(double lat1, double lng1, double lat2, double lng2) {
   return 2 * 6371 * math.asin(math.sqrt(h.toDouble()));
 }
 
-/// The area a point is in: the most specific area (district, then city, then
-/// region) whose circle (centre + `radiusKm`) contains it. Areas without a
-/// centre or a positive radius (the country) never match. Ties go to the
+/// The area a point is in: among areas the server marks `locatable`, the
+/// most specific (district, then city, then region) whose circle (centre +
+/// `radiusKm`) contains it. Non-locatable areas, areas without a centre or
+/// a positive radius, and the country never match. Ties go to the
 /// smaller circle, then the nearer centre. Null when none contains it.
 ///
 /// Pure: runs on the phone, and nothing about the point leaves it.
@@ -122,6 +131,7 @@ ShopArea? areaFor(double lat, double lng, List<ShopArea> areas) {
   double bestDistance = double.infinity;
   for (final a in areas) {
     final aLat = a.lat, aLng = a.lng, r = a.radiusKm;
+    if (a.locatable == false) continue;
     if (aLat == null || aLng == null || r == null || r <= 0) continue;
     if (a.depth < 1) continue;
     final d = haversineKm(lat, lng, aLat, aLng);

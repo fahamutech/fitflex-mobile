@@ -349,12 +349,14 @@ class ShopHomeViewState extends State<ShopHomeView> {
       'popular_in_area' => with_(
         'shop.why.popularInArea',
         'areaName',
-        reason.params['areaName'] ?? _data?.nearYou?.areaName?.of(lang),
+        shopReasonParam(reason.params, 'areaName', lang) ??
+            _data?.nearYou?.areaName?.of(lang),
       ),
       'seller_in_area' => with_(
         'shop.why.sellerInArea',
         'areaName',
-        reason.params['areaName'] ?? _data?.nearYou?.areaName?.of(lang),
+        shopReasonParam(reason.params, 'areaName', lang) ??
+            _data?.nearYou?.areaName?.of(lang),
       ),
       'featured_disclosure' => context.tr('shop.why.featured'),
       // Two different discounts: a time-limited flash sale (later phase)
