@@ -324,6 +324,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
     }
     return '';
   }
+
   num? _minPrice;
   num? _maxPrice;
   num? _minRating;
@@ -1030,7 +1031,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
   Future<void> _openInvoice(Map<String, dynamic> order) async {
     final id = order['id']?.toString() ?? '';
     if (_sellerInvoices != false &&
-        shopOrderPayment(order) == ShopOrderPayment.paid &&
+        shopOrderPayment(order) != ShopOrderPayment.awaitingConfirmation &&
         documentIdPattern.hasMatch(id)) {
       try {
         final res = await AppScope.of(context).api.myShopOrderInvoices(
@@ -1577,13 +1578,20 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
                       variant: FFButtonVariant.ghost,
                       size: FFButtonSize.sm,
                     ),
-                  FFButton(
-                    key: Key('shop-invoice-${order['id']}'),
-                    label: context.tr('shop.invoice'),
-                    onPressed: () => _openInvoice(order),
-                    variant: FFButtonVariant.ghost,
-                    size: FFButtonSize.sm,
-                  ),
+                  // UAT D2 (AC-28): only once the order is paid (also
+                  // after a refund was asked for or made).
+                  if (const {
+                    ShopOrderPayment.paid,
+                    ShopOrderPayment.refundPending,
+                    ShopOrderPayment.refunded,
+                  }.contains(shopOrderPayment(order)))
+                    FFButton(
+                      key: Key('shop-invoice-${order['id']}'),
+                      label: context.tr('shop.invoice'),
+                      onPressed: () => _openInvoice(order),
+                      variant: FFButtonVariant.ghost,
+                      size: FFButtonSize.sm,
+                    ),
                   FFButton(
                     key: Key('shop-reorder-${order['id']}'),
                     label: context.tr('shop.reorder'),

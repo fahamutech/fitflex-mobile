@@ -439,22 +439,30 @@ class _TaxDetailsPageState extends State<TaxDetailsPage> {
                       ),
                       if (_registered) ...[
                         const SizedBox(height: FFTokens.spacingSm),
-                        FFTextField(
-                          key: const Key('tax-tin'),
-                          controller: _tin,
-                          label: context.tr('vendor.tax.tin'),
+                        // UAT D5: a TIN taken from KYC is said to be
+                        // read-only, not only shown that way.
+                        Semantics(
                           readOnly: p.tinFromKyc || !editable,
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.allow(
-                              RegExp(r'[\d\s-]'),
-                            ),
-                          ],
-                          helperText: p.tinFromKyc
-                              ? context.tr('vendor.tax.tinFromKyc')
-                              : context.tr('vendor.tax.tinHint'),
-                          errorText: _tinError,
-                          onChanged: (_) => _changed(),
+                          label: p.tinFromKyc || !editable
+                              ? context.tr('vendor.tax.tinReadOnlyA11y')
+                              : null,
+                          child: FFTextField(
+                            key: const Key('tax-tin'),
+                            controller: _tin,
+                            label: context.tr('vendor.tax.tin'),
+                            readOnly: p.tinFromKyc || !editable,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(
+                                RegExp(r'[\d\s-]'),
+                              ),
+                            ],
+                            helperText: p.tinFromKyc
+                                ? context.tr('vendor.tax.tinFromKyc')
+                                : context.tr('vendor.tax.tinHint'),
+                            errorText: _tinError,
+                            onChanged: (_) => _changed(),
+                          ),
                         ),
                         const SizedBox(height: FFTokens.spacingSm),
                         FFTextField(
