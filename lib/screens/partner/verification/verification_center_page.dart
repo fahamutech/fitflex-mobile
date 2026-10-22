@@ -3,21 +3,35 @@
 // submitting for review. Reachable while a partner is still pending approval.
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../app_scope.dart';
+import '../../../router.dart';
 import '../../../shared/api_client.dart';
 import '../../../shared/api_error_message.dart';
 import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
 import '../../../shared/formatters.dart';
 import '../../../shared/i18n.dart';
+import '../../../shared/partner_progress.dart';
+import '../../../shared/widgets/partner_progress_tracker.dart';
 import '../../member/widgets/gym_filters.dart' show tierKeyOf, tierLabel;
 import 'verification_forms.dart';
+import 'partner_progress_actions.dart' show openPartnerSupport;
 import 'verification_models.dart';
 import 'verification_repository.dart';
 
 class VerificationCenterPage extends StatefulWidget {
-  const VerificationCenterPage({super.key, this.repository, this.pickDocument});
+  const VerificationCenterPage({
+    super.key,
+    this.repository,
+    this.pickDocument,
+    this.openItem,
+  });
+
+  /// A checklist item to open once the centre has loaded (a next action on
+  /// the partner progress tracker that names it).
+  final PartnerItemRef? openItem;
 
   /// Injectable for tests; defaults to the app's API.
   final VerificationRepository? repository;
@@ -34,6 +48,7 @@ class _VerificationCenterPageState extends State<VerificationCenterPage> {
   KycOverview? _data;
   Object? _error;
   bool _busy = false;
+  bool _openedItem = false;
 
   @override
   void didChangeDependencies() {
@@ -53,9 +68,78 @@ class _VerificationCenterPageState extends State<VerificationCenterPage> {
           _data = data;
           _error = null;
         });
+        _openRequestedItem(data);
       }
     } catch (e) {
       if (mounted) setState(() => _error = e);
+    }
+  }
+
+  /// Opens [VerificationCenterPage.openItem] once, after the first load.
+  void _openRequestedItem(KycOverview data) {
+    final ref = widget.openItem;
+    if (ref == null || _openedItem) return;
+    _openedItem = true;
+    final item = _itemFor(data, ref);
+    if (item == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _open(item);
+    });
+  }
+
+  KycItem? _itemFor(KycOverview data, PartnerItemRef ref) {
+    for (final section in data.sections) {
+      for (final item in section.items) {
+        if (item.key == ref.key &&
+            (ref.gymId == null || item.gymId == ref.gymId)) {
+          return item;
+        }
+      }
+    }
+    return null;
+  }
+
+  KycItem? _payoutItem(KycOverview data) {
+    for (final section in data.sections) {
+      for (final item in section.items) {
+        if (item.key == 'settlement.payout_account' ||
+            item.key == 'marketplace.settlement') {
+          return item;
+        }
+      }
+    }
+    return null;
+  }
+
+  /// A next action on the tracker, followed inside the centre.
+  Future<void> _progressAction(PartnerNextAction action) async {
+    final data = _data;
+    if (data == null) return;
+    switch (action.code) {
+      case 'complete_kyc_items' || 'kyc_changes_requested':
+        final item = action.missing.isEmpty
+            ? null
+            : _itemFor(data, action.missing.first);
+        if (item != null) await _open(item);
+      case 'submit_kyc':
+        if (data.readyToSubmit) await _confirmSubmit();
+      case 'add_payout_account':
+        final item = _payoutItem(data);
+        if (item != null) {
+          await _open(item);
+        } else {
+          await Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) =>
+                  PayoutAccountsPage(repository: _repo!, overview: data),
+            ),
+          );
+          await _load();
+        }
+      case 'add_gym':
+        context.go(AppRoutes.ownerGyms);
+      case 'contact_support' || 'payout_not_ready':
+        await openPartnerSupport();
     }
   }
 
@@ -225,8 +309,18 @@ class _VerificationCenterPageState extends State<VerificationCenterPage> {
                 key: const Key('kyc-center'),
                 padding: const EdgeInsets.all(FFTokens.spacingLg),
                 children: [
-                  _StatusCard(data: data),
-                  const SizedBox(height: FFTokens.spacingLg),
+                  if (data.progress != null) ...[
+                    PartnerProgressTracker(
+                      progress: data.progress!,
+                      busy: _busy,
+                      onAction: _progressAction,
+                    ),
+                    const SizedBox(height: FFTokens.spacingMd),
+                  ],
+                  if (_StatusCard.shows(data)) ...[
+                    _StatusCard(data: data),
+                    const SizedBox(height: FFTokens.spacingLg),
+                  ],
                   for (final section in data.sections) ...[
                     FFSectionTitle(
                       context.tr(
@@ -300,6 +394,14 @@ class _StatusCard extends StatelessWidget {
   const _StatusCard({required this.data});
   final KycOverview data;
 
+  /// With the progress tracker on top, the status sentence is said there;
+  /// only the reviewer's note and the renewal hint are left to show.
+  static bool shows(KycOverview data) {
+    if (data.progress == null) return true;
+    final note = data.kycCase?.reasonNote;
+    return (note != null && note.isNotEmpty) || data.status.renewable;
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = data.kycCase;
@@ -318,7 +420,7 @@ class _StatusCard extends StatelessWidget {
     };
     final note = c?.reasonNote;
     final message = [
-      context.tr(key),
+      if (data.progress == null) context.tr(key),
       if (note != null && note.isNotEmpty) note,
       if (data.status.renewable) context.tr('kyc.renewHint'),
     ].join('\n\n');

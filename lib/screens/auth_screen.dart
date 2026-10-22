@@ -13,7 +13,12 @@ import '../shared/photo_hero_flag.dart';
 import '../shared/design_tokens.dart';
 import '../shared/firebase_auth_service.dart';
 import '../shared/i18n.dart';
+import '../shared/partner_progress.dart';
+import '../shared/widgets/partner_progress_tracker.dart';
 import '../shared/widgets/persona_switcher.dart';
+import 'partner/verification/partner_progress_actions.dart';
+import 'partner/verification/verification_models.dart';
+import 'partner/verification/verification_repository.dart';
 import 'email_auth_screen.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -375,10 +380,41 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
   int _pollInterval = 5;
   bool _polling = true;
 
+  /// GET /me/kyc for a partner. Its `progress` (server flag PARTNER_PROGRESS)
+  /// replaces the separate approval wording with one tracker; without it the
+  /// screen is as before.
+  KycOverview? _kyc;
+  VerificationRepository? _repo;
+
   @override
   void initState() {
     super.initState();
     _startPolling();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_repo == null) {
+      _repo = VerificationRepository(AppScope.of(context).api);
+      if (_isPartner) _loadProgress();
+    }
+  }
+
+  Future<void> _loadProgress() async {
+    try {
+      final data = await _repo!.overview();
+      if (mounted) setState(() => _kyc = data);
+    } catch (_) {
+      // Keep what is shown (the old wording until progress is known).
+    }
+  }
+
+  Future<void> _progressAction(PartnerNextAction action) async {
+    final kyc = _kyc;
+    if (kyc == null) return;
+    await runPartnerAction(context, action, repository: _repo!, overview: kyc);
+    if (mounted) await _loadProgress();
   }
 
   @override
@@ -409,6 +445,8 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
       if (!mounted) return;
       final user = Map<String, dynamic>.from(meRes['user'] as Map);
       final status = user['approvalStatus']?.toString();
+      if (status == 'pending_approval' && _isPartner) await _loadProgress();
+      if (!mounted) return;
       if (status != 'pending_approval') {
         await scope.auth.signIn(scope.auth.token!, user);
         if (!mounted) return;
@@ -441,6 +479,8 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
           ),
         )
       : const Icon(Icons.refresh);
+
+  PartnerProgress? get _progress => _isPartner ? _kyc?.progress : null;
 
   /// Gym owners, trainers and vendors complete KYC before approval.
   bool get _isPartner {
@@ -478,28 +518,37 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Icon(
-                      Icons.pending_actions,
-                      size: 72,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    const SizedBox(height: 18),
-                    Text(
-                      context.tr('auth.pendingTitle'),
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: FFTokens.spacingSm),
-                    Text(
-                      context.tr('auth.pendingBody'),
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        height: 1.4,
+                    if (_progress != null) ...[
+                      PartnerProgressTracker(
+                        progress: _progress!,
+                        busy: _checking,
+                        onAction: _progressAction,
                       ),
-                    ),
-                    const SizedBox(height: 24),
-                    if (_isPartner) ...[
+                      const SizedBox(height: FFTokens.spacingMd),
+                    ] else ...[
+                      Icon(
+                        Icons.pending_actions,
+                        size: 72,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(height: 18),
+                      Text(
+                        context.tr('auth.pendingTitle'),
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: FFTokens.spacingSm),
+                      Text(
+                        context.tr('auth.pendingBody'),
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                    if (_isPartner && _progress == null) ...[
                       FFButton(
                         key: const Key('pending-verification'),
                         label: context.tr('kyc.pending.cta'),

@@ -4247,6 +4247,76 @@ class FFLocale extends ChangeNotifier {
       'kyc.pending.cta': 'Complete verification',
       'kyc.pending.hint':
           'FitFlex approves partners once their verification is complete.',
+      // Partner progress tracker (B4b, journey audit Phase B).
+      'progress.title': 'Your progress',
+      'progress.step.registered': 'Registered',
+      'progress.step.approved': 'Approved',
+      'progress.step.verified': 'Verified',
+      'progress.step.payoutReady': 'Ready to be paid',
+      'progress.state.done': 'Done',
+      'progress.state.current': 'Current',
+      'progress.state.todo': 'To do',
+      'progress.state.blocked': 'Blocked',
+      'progress.a11y.state.done': 'done',
+      'progress.a11y.state.current': 'current',
+      'progress.a11y.state.todo': 'to do',
+      'progress.a11y.state.blocked': 'blocked',
+      'progress.a11y.step': 'Step {n} of {total}, {label}, {state}',
+      'progress.summary': 'Step {n} of {total}: {label}',
+      'progress.itemAtGym': '{item} ({gym})',
+      'progress.more': '{n} more',
+      'progress.gymUnnamed': 'Your gym',
+      'progress.next.wait_for_approval':
+          'FitFlex is reviewing your partner profile. We’ll let you know once it’s approved.',
+      'progress.next.complete_kyc_items': 'Still needed: {items}',
+      'progress.next.complete_kyc_items.none':
+          'Finish your verification details.',
+      'progress.next.submit_kyc':
+          'Everything is in. Send your details to FitFlex for review.',
+      'progress.next.kyc_changes_requested':
+          'FitFlex asked for changes to your details.',
+      'progress.next.kyc_changes_requested.reason':
+          'FitFlex asked for changes: {reason}.',
+      'progress.next.add_payout_account':
+          'Add a payout account so FitFlex can pay you.',
+      'progress.next.add_payout_account.rejected':
+          'Your payout account was not accepted. Add another one.',
+      'progress.next.payout_account_under_review':
+          'FitFlex is checking your payout account.',
+      'progress.next.payout_account_cooling_off':
+          'Your new payout account can be paid from {date}.',
+      'progress.next.payout_account_cooling_off.soon':
+          'Your new payout account can be paid soon.',
+      'progress.next.payout_not_ready':
+          'Payouts aren’t ready yet. Contact FitFlex support.',
+      'progress.next.add_gym': 'Add your first gym.',
+      'progress.next.none': 'You’re all set. FitFlex can pay you.',
+      'progress.next.unknown': 'FitFlex is working on your next step.',
+      'progress.changeReason.document_unreadable': 'a document can’t be read',
+      'progress.changeReason.document_expired': 'a document has expired',
+      'progress.changeReason.document_mismatch':
+          'a document doesn’t match your details',
+      'progress.changeReason.identity_unverified':
+          'your identity couldn’t be confirmed',
+      'progress.changeReason.business_unverified':
+          'your business couldn’t be confirmed',
+      'progress.changeReason.tax_unverified':
+          'your tax details couldn’t be confirmed',
+      'progress.changeReason.site_visit_failed':
+          'the site visit was not passed',
+      'progress.changeReason.settlement_unverified':
+          'your payout account couldn’t be confirmed',
+      'progress.changeReason.suspected_fraud': 'some details need checking',
+      'progress.changeReason.duplicate_partner':
+          'this business is already registered',
+      'progress.changeReason.incomplete_submission': 'some details are missing',
+      'progress.blocked.account_suspended': 'Your account is suspended.',
+      'progress.blocked.role_rejected':
+          'Your partner application was not approved.',
+      'progress.blocked.other': 'This step is on hold.',
+      'progress.cta.changes': 'Make changes',
+      'progress.cta.payout': 'Add payout account',
+      'progress.cta.addGym': 'Add gym',
       'reviews.title': 'Reviews',
       'reviews.none': 'No reviews yet',
       'reviews.countOne': '1 review',
@@ -9564,6 +9634,75 @@ class FFLocale extends ChangeNotifier {
       'kyc.pending.cta': 'Kamilisha uthibitisho',
       'kyc.pending.hint':
           'FitFlex huidhinisha washirika mara uthibitisho wao unapokamilika.',
+      // Partner progress tracker (B4b): Swahili for native review.
+      'progress.title': 'Hatua zako',
+      'progress.step.registered': 'Umesajiliwa',
+      'progress.step.approved': 'Umeidhinishwa',
+      'progress.step.verified': 'Umethibitishwa',
+      'progress.step.payoutReady': 'Tayari kulipwa',
+      'progress.state.done': 'Tayari',
+      'progress.state.current': 'Sasa',
+      'progress.state.todo': 'Bado',
+      'progress.state.blocked': 'Imezuiwa',
+      'progress.a11y.state.done': 'tayari',
+      'progress.a11y.state.current': 'sasa',
+      'progress.a11y.state.todo': 'bado',
+      'progress.a11y.state.blocked': 'imezuiwa',
+      'progress.a11y.step': 'Hatua {n} kati ya {total}, {label}, {state}',
+      'progress.summary': 'Hatua {n} kati ya {total}: {label}',
+      'progress.itemAtGym': '{item} ({gym})',
+      'progress.more': '{n} zaidi',
+      'progress.gymUnnamed': 'Gym yako',
+      'progress.next.wait_for_approval':
+          'FitFlex inakagua wasifu wako wa ushirika. Tutakujulisha ukiidhinishwa.',
+      'progress.next.complete_kyc_items': 'Bado vinahitajika: {items}',
+      'progress.next.complete_kyc_items.none':
+          'Kamilisha taarifa zako za uthibitisho.',
+      'progress.next.submit_kyc':
+          'Kila kitu kimekamilika. Tuma taarifa zako kwa FitFlex zikaguliwe.',
+      'progress.next.kyc_changes_requested':
+          'FitFlex imeomba mabadiliko kwenye taarifa zako.',
+      'progress.next.kyc_changes_requested.reason':
+          'FitFlex imeomba mabadiliko: {reason}.',
+      'progress.next.add_payout_account':
+          'Ongeza akaunti ya malipo ili FitFlex ikulipe.',
+      'progress.next.add_payout_account.rejected':
+          'Akaunti yako ya malipo haikukubaliwa. Ongeza nyingine.',
+      'progress.next.payout_account_under_review':
+          'FitFlex inakagua akaunti yako ya malipo.',
+      'progress.next.payout_account_cooling_off':
+          'Akaunti yako mpya ya malipo itaweza kulipwa kuanzia {date}.',
+      'progress.next.payout_account_cooling_off.soon':
+          'Akaunti yako mpya ya malipo itaweza kulipwa hivi karibuni.',
+      'progress.next.payout_not_ready':
+          'Malipo bado hayajawa tayari. Wasiliana na msaada wa FitFlex.',
+      'progress.next.add_gym': 'Ongeza gym yako ya kwanza.',
+      'progress.next.none': 'Uko tayari. FitFlex inaweza kukulipa.',
+      'progress.next.unknown': 'FitFlex inashughulikia hatua yako inayofuata.',
+      'progress.changeReason.document_unreadable': 'hati haisomeki',
+      'progress.changeReason.document_expired': 'muda wa hati umeisha',
+      'progress.changeReason.document_mismatch':
+          'hati hailingani na taarifa zako',
+      'progress.changeReason.identity_unverified':
+          'utambulisho wako haukuweza kuthibitishwa',
+      'progress.changeReason.business_unverified':
+          'biashara yako haikuweza kuthibitishwa',
+      'progress.changeReason.tax_unverified':
+          'taarifa zako za kodi hazikuweza kuthibitishwa',
+      'progress.changeReason.site_visit_failed': 'ukaguzi wa eneo haukufaulu',
+      'progress.changeReason.settlement_unverified':
+          'akaunti yako ya malipo haikuweza kuthibitishwa',
+      'progress.changeReason.suspected_fraud':
+          'baadhi ya taarifa zinahitaji kukaguliwa',
+      'progress.changeReason.duplicate_partner':
+          'biashara hii tayari imesajiliwa',
+      'progress.changeReason.incomplete_submission': 'baadhi ya taarifa hazipo',
+      'progress.blocked.account_suspended': 'Akaunti yako imesimamishwa.',
+      'progress.blocked.role_rejected': 'Ombi lako la ushirika halikukubaliwa.',
+      'progress.blocked.other': 'Hatua hii imesitishwa kwa sasa.',
+      'progress.cta.changes': 'Fanya mabadiliko',
+      'progress.cta.payout': 'Ongeza akaunti ya malipo',
+      'progress.cta.addGym': 'Ongeza gym',
       'reviews.title': 'Maoni',
       'reviews.none': 'Bado hakuna maoni',
       'reviews.countOne': 'Maoni 1',

@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app_scope.dart';
 import '../../router.dart';
+import '../partner/verification/partner_progress_actions.dart';
 import '../../shared/api_client.dart';
 import '../../shared/api_error_message.dart';
 import '../../shared/components/components.dart';
@@ -155,10 +156,17 @@ class _VendorHomePageState extends State<VendorHomePage> {
   /// pending banner (unchanged) directly under it.
   List<Widget> _productsLead() => [
     _hero(),
-    if (_pendingApproval) ...[
-      _pendingBannerCard(),
-      const SizedBox(height: FFTokens.spacingMd),
-    ],
+    if (_isVendorAccount)
+      PartnerProgressBanner(
+        key: const Key('vendor-progress-banner'),
+        padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
+        fallback: _pendingApproval
+            ? Padding(
+                padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
+                child: _pendingBannerCard(),
+              )
+            : null,
+      ),
   ];
 
   bool get _ledger => _tools.stockLedger && _can('products');
@@ -834,8 +842,14 @@ class _VendorHomePageState extends State<VendorHomePage> {
           ListenableBuilder(
             listenable: AppScope.of(context).auth,
             // Under the flag the Products hero carries it, just below.
-            builder: (context, _) => _pendingApproval && !_heroOn(tab)
-                ? _pendingBanner()
+            // Partner progress (B4b): the compact tracker while the vendor
+            // isn't finished; the old pending banner without it.
+            builder: (context, _) => _isVendorAccount && !_heroOn(tab)
+                ? PartnerProgressBanner(
+                    key: const Key('vendor-progress-banner'),
+                    padding: partnerBannerPadding,
+                    fallback: _pendingApproval ? _pendingBanner() : null,
+                  )
                 : const SizedBox.shrink(),
           ),
           // Sales still on this device with the Sales tab gone (feature
@@ -1066,6 +1080,14 @@ class _VendorHomePageState extends State<VendorHomePage> {
       ),
     );
   }
+
+  /// The vendor's own account (not staff, not switched off): the one whose
+  /// verification and payouts the progress tracker follows. A suspended
+  /// business already has its own alert, said once.
+  bool get _isVendorAccount =>
+      !_staffDisabled &&
+      !_accountSuspended &&
+      AppScope.of(context).auth.user?['userType'] == 'vendor';
 
   Widget _pendingBanner() => Padding(
     padding: const EdgeInsets.fromLTRB(
