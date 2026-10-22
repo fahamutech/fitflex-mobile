@@ -19,6 +19,17 @@ String errorMessage(FFLocale locale, Object error, {bool vendorStaff = false}) {
   return locale.t('error.requestFailed');
 }
 
+/// A refused trainer-booking cancel (member or trainer side). While a
+/// mobile-money prompt is out for the booking the server answers
+/// 409 payment_in_progress (fitflex-functions#240): say so plainly.
+String bookingCancelErrorMessage(FFLocale locale, Object error) {
+  if (error is ApiException &&
+      _firstReason(error.body)?.trim().toLowerCase() == 'payment_in_progress') {
+    return locale.t('error.reason.bookingPaymentInProgress');
+  }
+  return errorMessage(locale, error);
+}
+
 /// The request never reached the server (offline, DNS, timeout), as
 /// opposed to the server answering with an error.
 bool isNetworkError(Object error) {
@@ -43,6 +54,7 @@ String apiErrorMessage(
   if (reason != null && reason.isNotEmpty) {
     final translated =
         _timedReason(locale, reason, exception.body) ??
+        _detailedReason(locale, reason, exception.body) ??
         _knownReason(locale, reason) ??
         _humanize(reason);
     return locale
@@ -120,6 +132,32 @@ String? _timedReason(FFLocale locale, String reason, dynamic body) {
   return locale.t(key).replaceFirst('{time}', time);
 }
 
+/// Refusals whose details change the wording (mobile money for trainer
+/// products, fitflex-functions#240): which account pays for a product, and
+/// which pass tier is off sale. Null falls back to the plain wording.
+String? _detailedReason(FFLocale locale, String reason, dynamic body) {
+  if (body is! Map) return null;
+  switch (reason.trim().toLowerCase()) {
+    case 'not_payable_by_role':
+      final product = body['product']?.toString();
+      if (product == null) return null;
+      return locale.t(
+        product == 'TRAINER_GYM_PASS'
+            ? 'error.reason.notPayableByRoleTrainer'
+            : 'error.reason.notPayableByRoleMember',
+      );
+    case 'tier_not_available':
+      final tier = body['tier']?.toString().trim() ?? '';
+      if (tier.isEmpty) return null;
+      // Tier names stay English (owner, Swahili review 2026-10-04).
+      final name = '${tier[0].toUpperCase()}${tier.substring(1)}';
+      return locale
+          .t('error.reason.tierNotAvailableNamed')
+          .replaceFirst('{tier}', name);
+  }
+  return null;
+}
+
 String? _knownReason(FFLocale locale, String reason) {
   const keys = {
     'membership_expired': 'error.reason.membershipExpired',
@@ -188,6 +226,9 @@ String? _knownReason(FFLocale locale, String reason) {
     'provider_rejected': 'error.reason.providerRejected',
     'payment_not_pending': 'error.reason.paymentNotPending',
     'not_payable_this_way': 'error.reason.notPayableThisWay',
+    'not_payable_by_role': 'error.reason.notPayableByRole',
+    'group_slot_rebooked': 'error.reason.groupSlotRebooked',
+    'unsupported_currency': 'error.reason.unsupportedCurrency',
     'sponsored_pass': 'error.reason.sponsoredPass',
     // Accounts.
     'email_already_used': 'error.reason.emailAlreadyUsed',

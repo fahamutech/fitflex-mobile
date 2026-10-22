@@ -746,6 +746,34 @@ class FFLocale extends ChangeNotifier {
           'This payment is no longer waiting to be paid.',
       'error.reason.notPayableThisWay':
           'This payment cannot be paid with mobile money yet.',
+      // Mobile money for trainer products (fitflex-functions#240).
+      'error.reason.notPayableByRole':
+          'This payment has to be made from the account that asked for it.',
+      'error.reason.notPayableByRoleTrainer':
+          'Pay for a trainer gym pass from your trainer account.',
+      'error.reason.notPayableByRoleMember':
+          'Pay for this from your member account.',
+      'error.reason.groupSlotRebooked':
+          'Someone else has booked one of these session times, so no payment request was sent. Refresh your sessions and book a new time.',
+      'error.reason.unsupportedCurrency':
+          'This payment is not in Tanzanian shillings, so it cannot be paid with mobile money.',
+      'error.reason.tierNotAvailableNamed':
+          'the {tier} pass is not on sale right now',
+      'momo.successBody.session': 'Thank you. Your sessions are confirmed.',
+      'momo.successBody.trainerPass':
+          'Thank you. Your trainer pass is now active.',
+      'momo.held.groupSlotRebooked':
+          'Someone else booked one of these session times while you were paying. Your money is safe: our team will contact you about a new time or a refund. You do not need to pay again.',
+      'momo.held.referenceAlreadyUsed':
+          'This transaction was already used for another payment, so our team will check it. You do not need to pay again.',
+      'momo.held.amountMismatch':
+          'The amount received does not match this payment, so our team will check it. You do not need to pay again.',
+      'member.bookingPaid': 'Paid. Your sessions are confirmed.',
+      'trainerPass.paidNow': 'Paid. Your trainer pass is active.',
+      'momo.held.transactionMismatch':
+          'The transaction details from mobile money do not match this payment, so our team will check it. You do not need to pay again.',
+      'error.reason.bookingPaymentInProgress':
+          'A mobile money payment is in progress for this booking. Wait for the phone prompt to finish, then try again.',
       'upgrade.currentPlan': 'Your current plan',
       'upgrade.choose': 'Choose a higher plan',
       'upgrade.pay': 'Pay {amount} more',
@@ -6177,12 +6205,40 @@ class FFLocale extends ChangeNotifier {
       'error.reason.paymentInProgress':
           'Malipo yanasubiri kwenye simu yako. Yamalize au subiri kabla ya kughairi.',
       'error.reason.providerUnavailable':
-          'Pesa ya simu haipatikani kwa sasa. Tafadhali jaribu tena baada ya muda mfupi.',
+          'Mtandao wa simu haupatikani kwa sasa. Tafadhali jaribu tena baada ya muda mfupi.',
       'error.reason.providerRejected':
           'Ombi la malipo halikukubaliwa. Hakikisha namba kisha ujaribu tena.',
       'error.reason.paymentNotPending': 'Malipo haya hayasubiri kulipwa tena.',
       'error.reason.notPayableThisWay':
           'Malipo haya bado hayawezi kulipwa kwa mtandao wa simu.',
+      // Mtandao wa simu kwa huduma za trainer (fitflex-functions#240).
+      // Swahili for native review.
+      'error.reason.notPayableByRole':
+          'Malipo haya yanapaswa kufanywa kutoka akaunti iliyoyaomba.',
+      'error.reason.notPayableByRoleTrainer':
+          'Lipia pasi ya trainer ya gym kutoka akaunti yako ya trainer.',
+      'error.reason.notPayableByRoleMember':
+          'Lipia hii kutoka akaunti yako ya mwanachama.',
+      'error.reason.groupSlotRebooked':
+          'Mtu mwingine amechukua mojawapo ya muda wa vipindi hivi, kwa hiyo ombi la malipo halikutumwa. Onyesha upya vipindi vyako na uchague muda mwingine.',
+      'error.reason.unsupportedCurrency':
+          'Malipo haya si kwa shilingi za Tanzania, kwa hiyo hayawezi kulipwa kwa mtandao wa simu.',
+      'error.reason.tierNotAvailableNamed': 'pasi ya {tier} haiuzwi kwa sasa',
+      'momo.successBody.session': 'Asante. Vipindi vyako vimethibitishwa.',
+      'momo.successBody.trainerPass':
+          'Asante. Pasi yako ya trainer sasa inafanya kazi.',
+      'momo.held.groupSlotRebooked':
+          'Mtu mwingine amechukua mojawapo ya muda wa vipindi hivi ulipokuwa ukilipa. Pesa yako iko salama: timu yetu itawasiliana nawe kuhusu muda mpya au kurejeshewa pesa. Huhitaji kulipa tena.',
+      'momo.held.referenceAlreadyUsed':
+          'Muamala huu ulishatumika kwa malipo mengine, kwa hiyo timu yetu itaukagua. Huhitaji kulipa tena.',
+      'momo.held.amountMismatch':
+          'Kiasi kilichopokelewa hakilingani na malipo haya, kwa hiyo timu yetu itakagua. Huhitaji kulipa tena.',
+      'member.bookingPaid': 'Imelipwa. Vipindi vyako vimethibitishwa.',
+      'trainerPass.paidNow': 'Imelipwa. Pasi yako ya trainer inafanya kazi.',
+      'momo.held.transactionMismatch':
+          'Taarifa za muamala kutoka mtandao wa simu hazilingani na malipo haya, kwa hiyo timu yetu itakagua. Huhitaji kulipa tena.',
+      'error.reason.bookingPaymentInProgress':
+          'Malipo kwa mtandao wa simu yanaendelea kwa kipindi hiki. Subiri ombi kwenye simu likamilike, kisha ujaribu tena.',
       'upgrade.currentPlan': 'Mpango wako wa sasa',
       'upgrade.choose': 'Chagua mpango wa juu zaidi',
       'upgrade.pay': 'Lipa {amount} zaidi',

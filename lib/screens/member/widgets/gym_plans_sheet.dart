@@ -127,6 +127,7 @@ class _GymPlansSheetState extends State<GymPlansSheet> {
           context,
           paymentRequestId: req['id'] as String?,
           amountTzs: (req['amountTzs'] as num?) ?? 0,
+          productType: MomoProduct.gymPlan,
         );
       }
       if (!mounted) return;

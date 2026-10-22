@@ -16,6 +16,7 @@ import '../../shared/i18n.dart';
 import '../../shared/models.dart';
 import '../../shared/payment_labels.dart';
 import '../../shared/widgets/reviews_section.dart';
+import 'widgets/mobile_money_pay.dart';
 
 class MemberSessionsPage extends StatefulWidget {
   const MemberSessionsPage({super.key, this.focusBookingId});
@@ -36,12 +37,43 @@ class _MemberSessionsPageState extends State<MemberSessionsPage> {
   final _focusKey = GlobalKey();
   bool _focused = false;
 
+  /// `GET /payments/options`, asked once for every "Pay now" on the page.
+  Future<Map<String, dynamic>>? _payOptions;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_started) return;
     _started = true;
+    // Unreachable or refused: no "Pay now", nothing else changes.
+    _payOptions = AppScope.of(
+      context,
+    ).api.paymentOptions().catchError((_) => <String, dynamic>{});
     _load();
+  }
+
+  /// One payment request covers every session booked together: "Pay now"
+  /// sits on the first card of each group still awaiting payment, for the
+  /// group's total (fitflex-functions#240).
+  static Map<String, PaymentRequest> _pendingPayments(
+    List<Map<String, dynamic>> bookings,
+  ) {
+    final totals = <String, num>{};
+    final firstBooking = <String, String>{};
+    for (final b in bookings) {
+      final pid = b['paymentRequestId']?.toString() ?? '';
+      if (b['status'] != 'payment_pending' || pid.isEmpty) continue;
+      totals[pid] = (totals[pid] ?? 0) + ((b['amountTzs'] as num?) ?? 0);
+      firstBooking.putIfAbsent(pid, () => b['id']?.toString() ?? '');
+    }
+    return {
+      for (final e in firstBooking.entries)
+        e.value: PaymentRequest.fromJson({
+          'id': e.key,
+          'productType': MomoProduct.trainerSession,
+          'amountTzs': totals[e.key],
+        }),
+    };
   }
 
   static List<Map<String, dynamic>> _maps(dynamic list) => [
@@ -145,7 +177,7 @@ class _MemberSessionsPageState extends State<MemberSessionsPage> {
       await _load();
       messenger.success(done);
     } catch (e) {
-      messenger.error(errorMessage(locale, e));
+      messenger.error(bookingCancelErrorMessage(locale, e));
       await _load();
     } finally {
       if (mounted) setState(() => _busyId = null);
@@ -168,6 +200,9 @@ class _MemberSessionsPageState extends State<MemberSessionsPage> {
   @override
   Widget build(BuildContext context) {
     final bookings = _bookings;
+    final toPay = bookings == null
+        ? const <String, PaymentRequest>{}
+        : _pendingPayments(bookings);
     return Scaffold(
       appBar: AppBar(title: Text(context.tr('sessions.title'))),
       body: bookings == null
@@ -211,6 +246,15 @@ class _MemberSessionsPageState extends State<MemberSessionsPage> {
                         onReview: _trainerId(b) == null
                             ? null
                             : () => _review(b),
+                        payNow: switch (toPay[b['id']?.toString()]) {
+                          final request? => PayNowButton(
+                            key: ValueKey('pay-${request.id}'),
+                            request: request,
+                            options: _payOptions,
+                            onPaid: _load,
+                          ),
+                          null => null,
+                        },
                       ),
                       const SizedBox(height: FFTokens.spacingSm),
                     ],
@@ -254,12 +298,16 @@ class _SessionCard extends StatelessWidget {
     required this.busy,
     required this.onCancel,
     this.onReview,
+    this.payNow,
   });
 
   final Map<String, dynamic> booking;
   final bool busy;
   final VoidCallback onCancel;
   final VoidCallback? onReview;
+
+  /// "Pay now" by mobile money, on the first session of an unpaid booking.
+  final Widget? payNow;
 
   @override
   Widget build(BuildContext context) {
@@ -306,6 +354,11 @@ class _SessionCard extends StatelessWidget {
               formatCurrency(booking['amountTzs'] as num? ?? 0),
             ].join(' · '),
           ),
+          if (payNow != null)
+            Padding(
+              padding: const EdgeInsets.only(top: FFTokens.spacingSm),
+              child: payNow,
+            ),
           if (tooLate)
             Padding(
               padding: const EdgeInsets.only(top: 6),
