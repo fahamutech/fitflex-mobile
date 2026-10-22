@@ -27,9 +27,13 @@ class FFFilterChip extends StatefulWidget {
     this.icon,
     this.tone = FFFilterChipTone.solid,
     this.focusNode,
+    this.semanticLabel,
   });
 
   final String label;
+
+  /// Read out instead of [label] (e.g. "Age group, 30 to 44").
+  final String? semanticLabel;
   final bool selected;
   final VoidCallback onSelected;
 
@@ -132,7 +136,7 @@ class _FFFilterChipState extends State<FFFilterChip> {
       container: true,
       button: true,
       selected: sel,
-      label: widget.label,
+      label: widget.semanticLabel ?? widget.label,
       onTap: widget.onSelected,
       child: FocusableActionDetector(
         focusNode: widget.focusNode,

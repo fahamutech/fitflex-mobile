@@ -1842,6 +1842,27 @@ class ApiClient {
     return Map<String, dynamic>.from(out as Map);
   }
 
+  /// Shop personalisation (Phase 2 S2): `{personalised, available}`. 404
+  /// `feature_disabled` when SHOP_PERSONALISATION is off.
+  Future<Map<String, dynamic>> shopPreferences() async {
+    final out = await _request('GET', '/shop/preferences');
+    return Map<String, dynamic>.from(out as Map);
+  }
+
+  /// Turns "Personalised shop" on or off. [source] is `privacy_page` or
+  /// `why_sheet`. Answers like [shopPreferences].
+  Future<Map<String, dynamic>> updateShopPreferences({
+    required bool personalised,
+    required String source,
+  }) async {
+    final out = await _request(
+      'PUT',
+      '/shop/preferences',
+      body: {'personalised': personalised, 'source': source},
+    );
+    return Map<String, dynamic>.from(out as Map);
+  }
+
   /// One shop analytics event (see `ShopEvents`, which decides the fields).
   Future<void> postShopEvent(Map<String, dynamic> event) async =>
       await _request('POST', '/shop/events', body: event);

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../app_scope.dart';
 import '../../api_client.dart';
@@ -10,6 +11,7 @@ import '../../design_tokens.dart';
 import '../../i18n.dart';
 import '../../photo_hero_flag.dart';
 import '../../product_categories.dart';
+import '../../../router.dart' show AppRoutes;
 import '../../promotion_events.dart' show discoverSessionId;
 import '../../shop_home.dart';
 import '../shop_browse_page.dart' show ShopCart, ShopProduct;
@@ -17,6 +19,7 @@ import 'shop_banner_carousel.dart';
 import 'shop_category_row.dart';
 import 'shop_product_card.dart';
 import 'shop_focus_ring.dart';
+import 'shop_personalisation.dart';
 import 'shop_product_rail.dart';
 
 /// The server's placement for the marketplace: promotion events from the
@@ -267,6 +270,15 @@ class ShopHomeViewState extends State<ShopHomeView> {
     ShopHomeMode.vendorPersonal => 'shop.why.roleVendor',
   };
 
+  /// A category's name: the server's own list in this answer first, then
+  /// the app's compiled-in list.
+  String _categoryName(String key, String lang) {
+    for (final c in _data?.categories ?? const <ShopHomeCategory>[]) {
+      if (c.key == key) return c.label.of(lang);
+    }
+    return shopCategoryText(key).of(lang);
+  }
+
   /// One translated bullet for a reason code, or null for a code the app
   /// does not know (spec §8.3; the role line is shown separately).
   String? _reasonLine(BuildContext context, ShopReasonCode reason) {
@@ -278,7 +290,7 @@ class ShopHomeViewState extends State<ShopHomeView> {
       'bought_category' => with_(
         'shop.why.boughtCategory',
         'category',
-        shopCategoryText(reason.params['category'] ?? '').of(lang),
+        _categoryName(reason.params['category'] ?? '', lang),
       ),
       'bought_product' => with_(
         'shop.why.boughtProduct',
@@ -286,6 +298,7 @@ class ShopHomeViewState extends State<ShopHomeView> {
         reason.params['productName'] ?? reason.params['product'],
       ),
       'profile_gender' => context.tr('shop.why.gender'),
+      'profile_age' => context.tr('shop.why.age'),
       'delivers_to_area' => context.tr('shop.why.deliversToArea'),
       'featured_disclosure' => context.tr('shop.why.featured'),
       // Two different discounts: a time-limited flash sale (later phase)
@@ -308,8 +321,17 @@ class ShopHomeViewState extends State<ShopHomeView> {
   Future<void> _showWhy(ShopHomeSection section) async {
     final lang = FFLocaleScope.of(context).locale.languageCode;
     final lines = <String>[];
-    var unknown = section.reasonCodes.isEmpty;
-    for (final code in section.reasonCodes) {
+    // Phase 2 S2: with personalisation off or not available (under 18),
+    // nothing about the customer's own data is said, whatever was sent.
+    // A backend without it (null) keeps Phase 1 behaviour.
+    final personalisation = _data?.personalisation;
+    final personal = personalisation == null || personalisation.active;
+    final codes = [
+      for (final c in section.reasonCodes)
+        if (personal || !kPersonalReasonCodes.contains(c.code)) c,
+    ];
+    var unknown = codes.isEmpty;
+    for (final code in codes) {
       if (code.code == 'role_context') continue;
       final line = _reasonLine(context, code);
       if (line == null) {
@@ -324,6 +346,8 @@ class ShopHomeViewState extends State<ShopHomeView> {
     final server = section.reason?.of(lang);
     if (unknown && server != null && server.isNotEmpty) lines.add(server);
     final role = context.tr(_roleLine());
+    final mode = _mode(_data);
+    final showSwitch = personalisation?.available == true;
     await showFFSheet<void>(
       context,
       title: context.tr('shop.why.title'),
@@ -355,6 +379,33 @@ class ShopHomeViewState extends State<ShopHomeView> {
                 key: const Key('shop-why-role'),
                 style: theme.textTheme.bodyMedium,
               ),
+              if (showSwitch) ...[
+                const SizedBox(height: FFTokens.spacingMd),
+                ShopPersonalisedSwitch(
+                  source: ShopPreferences.sourceWhySheet,
+                  initial: personalisation!.enabled,
+                  // Gender and age are used in member mode only.
+                  partnerHint: mode != ShopHomeMode.member,
+                  // The home reloads behind the sheet (§8.2).
+                  onChanged: (_) {
+                    if (mounted) reload();
+                  },
+                ),
+                if (mode == ShopHomeMode.member)
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: FFButton(
+                      key: const Key('shop-why-privacy'),
+                      label: sheet.tr('shop.why.privacyLink'),
+                      variant: FFButtonVariant.ghost,
+                      visualDensity: VisualDensity.standard,
+                      onPressed: () {
+                        Navigator.of(sheet).pop();
+                        if (mounted) context.go(AppRoutes.memberPrivacy);
+                      },
+                    ),
+                  ),
+              ],
             ],
           );
         },
