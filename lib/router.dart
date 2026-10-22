@@ -251,6 +251,10 @@ final _vendorCustomersPath = RegExp(
   r'^/vendor/customers/(new|[A-Za-z0-9._:-]{1,100}(/edit|/statement|/sales/[A-Za-z0-9._:-]{1,100})?)$',
 );
 
+/// The inbox and one message (a tapped bell or push). Pending vendors get
+/// FitFlex's messages too, and can choose which offers they get.
+final _inboxPath = RegExp(r'^/inbox(/[A-Za-z0-9._:-]{1,100})?$');
+
 String routeForSignedInUser(AuthState auth) {
   final route = _landingFor(auth);
   // An organisation invitation link opened before signing in comes first,
@@ -549,7 +553,9 @@ GoRouter buildRouter(AuthState auth) {
               _vendorStockPath.hasMatch(loc) ||
               _vendorSalesPath.hasMatch(loc) ||
               _vendorCustomersPath.hasMatch(loc) ||
-              _vendorDocumentsPath.hasMatch(loc)) {
+              _vendorDocumentsPath.hasMatch(loc) ||
+              _inboxPath.hasMatch(loc) ||
+              loc == AppRoutes.memberMessageSettings) {
             return null;
           }
           return AppRoutes.vendorHome;
