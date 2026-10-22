@@ -11008,10 +11008,10 @@ class FFLocale extends ChangeNotifier {
       'activity.events': 'Matukio',
       'home.events.title': 'Matukio yajayo',
       'home.events.seeAll': 'Ona yote',
-      'home.events.semantics': 'Matukio yajayo, vipengele {n}',
+      'home.events.semantics': 'Matukio yajayo, {n}',
       'events.title': 'Matukio',
       'events.search.hint': 'Tafuta matukio, maeneo, waandaaji',
-      'events.chip.open': 'Yaliyofunguliwa',
+      'events.chip.open': 'Yaliyofunguliwa', // TODO(sw-review): noun class
       'events.chip.thisMonth': 'Mwezi huu',
       'events.chip.filters': 'Vichujio',
       'events.chip.filtersCount': 'Vichujio · {n}',
@@ -11043,24 +11043,24 @@ class FFLocale extends ChangeNotifier {
       'events.sort.soonest': 'Yanayokaribia kwanza',
       'events.sort.priceLow': 'Bei ya chini',
       'events.sort.newest': 'Yaliyoongezwa karibuni',
-      'events.type.road': 'Barabara',
-      'events.type.trail': 'Njia ya porini',
-      'events.type.fun': 'Mbio za burudani',
-      'events.type.charity': 'Hisani',
-      'events.type.virtual': 'Mtandaoni',
+      'events.type.road': 'Barabara', // TODO(sw-review)
+      'events.type.trail': 'Njia ya porini', // TODO(sw-review)
+      'events.type.fun': 'Mbio za burudani', // TODO(sw-review)
+      'events.type.charity': 'Hisani', // TODO(sw-review)
+      'events.type.virtual': 'Mtandaoni', // TODO(sw-review)
       'events.card.from': 'kuanzia {amount}',
       'events.card.free': 'Bure',
       'events.card.verifiedOrganizer': 'Mwandaaji aliyethibitishwa',
-      'events.availability.open': 'Wazi',
-      'events.availability.closing_soon': 'Inafungwa karibuni',
-      'events.availability.sold_out': 'Zimeisha',
-      'events.availability.closed': 'Umefungwa',
-      'events.availability.not_yet_open': 'Hufunguliwa {date}',
-      'events.availability.cancelled': 'Limeghairiwa',
-      'events.availability.in_progress': 'Inaendelea',
-      'events.availability.completed': 'Limemalizika',
+      'events.availability.open': 'Wazi', // TODO(sw-review): noun class
+      'events.availability.closing_soon': 'Inafungwa karibuni', // TODO(sw-review): noun class
+      'events.availability.sold_out': 'Zimeisha', // TODO(sw-review): noun class
+      'events.availability.closed': 'Umefungwa', // TODO(sw-review): noun class
+      'events.availability.not_yet_open': 'Hufunguliwa {date}', // TODO(sw-review): noun class
+      'events.availability.cancelled': 'Limeghairiwa', // TODO(sw-review): noun class
+      'events.availability.in_progress': 'Inaendelea', // TODO(sw-review): noun class
+      'events.availability.completed': 'Limemalizika', // TODO(sw-review): noun class
       'events.loadMore': 'Pakia zaidi',
-      'events.loadMoreFailed': 'Imeshindwa kupakia zaidi',
+      'events.loadMoreFailed': 'Imeshindikana kupakia zaidi.',
       'events.loadingMore': 'Inapakia zaidi',
       'events.empty.title': 'Hakuna matukio bado',
       'events.empty.body': 'Matukio yajayo ya kukimbia yataonekana hapa.',
@@ -11094,9 +11094,9 @@ class FFLocale extends ChangeNotifier {
       'events.detail.left': 'zimebaki {n}',
       'events.detail.inclusions': 'Vilivyomo',
       'events.detail.eligibility': 'Masharti ya kustahiki',
-      'events.detail.minAge': 'Umri wa chini {n}',
+      'events.detail.minAge': 'Umri wa chini: miaka {n}',
       'events.detail.accessibility': 'Ufikivu',
-      'events.detail.kit': 'Uchukuaji wa kiti',
+      'events.detail.kit': 'Kuchukua vifaa vya mbio', // TODO(sw-review): kit term
       'events.detail.schedule': 'Ratiba',
       'events.detail.sponsors': 'Wadhamini',
       'events.detail.contact': 'Mawasiliano',
@@ -11110,10 +11110,10 @@ class FFLocale extends ChangeNotifier {
       'events.detail.gone.title': 'Tukio hili halipatikani',
       'events.detail.gone.body': 'Huenda limeondolewa au bado halijachapishwa.',
       'events.detail.back': 'Rudi kwenye matukio',
-      'events.detail.cancelledBanner': 'Tukio hili liliahirishwa.',
+      'events.detail.cancelledBanner': 'Tukio hili limeghairiwa.',
       'events.cta.register': 'Jisajili',
       'events.cta.registerFrom': 'Jisajili · kuanzia {amount}',
-      'events.cta.soon': 'Usajili utafunguliwa hivi karibuni kwenye programu',
+      'events.cta.soon': 'Usajili utafunguliwa hivi karibuni kwenye app',
       'events.cta.closes': 'Hufungwa {date}',
       'events.cta.closingSoon': 'Inafungwa karibuni · zimebaki siku {n}',
       'events.cta.soldOut': 'Zimeisha',

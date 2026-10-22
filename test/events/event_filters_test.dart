@@ -154,13 +154,13 @@ void main() {
     });
 
     test('Swahili weekday abbreviations and glossary clock', () {
-      expect(eventDayChip(starts, 180, locale: 'sw'), 'Jpl 14 Mac');
+      expect(eventDayChip(starts, 180, locale: 'sw'), 'Jumapili 14 Mac');
       expect(
         eventDateTime(starts, 180, 'EAT', locale: 'sw'),
-        'Jpl 14 Mac 2027, 6:30 asubuhi EAT',
+        'Jumapili 14 Mac 2027, 6:30 asubuhi EAT',
       );
       final sat = DateTime.utc(2027, 3, 13, 12);
-      expect(eventWeekdayShort(eventClock(sat, 180), locale: 'sw'), 'Jmsi');
+      expect(eventWeekdayShort(eventClock(sat, 180), locale: 'sw'), 'Jumamosi');
     });
 
     test('a different device zone yields the "where you are" line', () {

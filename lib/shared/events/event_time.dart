@@ -22,16 +22,18 @@ DateTime eventClock(DateTime utc, int offsetMinutes) {
 
 const _weekdaysEn = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-/// Jumatatu … Jumapili, shortened as in the spec (§12).
-// TODO(sw-review): weekday abbreviations Jtt, Jnn, Jtn, Alh, Iju, Jmsi, Jpl
-// are a draft awaiting native review.
-const _weekdaysSw = ['Jtt', 'Jnn', 'Jtn', 'Alh', 'Iju', 'Jmsi', 'Jpl'];
+// CLDR sw has no shorter weekday names than the full ones (the same rule
+// as formatters.dart), so Swahili uses them in full.
+const _weekdaysSw = [
+  'Jumatatu', 'Jumanne', 'Jumatano', 'Alhamisi', //
+  'Ijumaa', 'Jumamosi', 'Jumapili',
+];
 
-/// "Sat" / "Jmsi" for [d]'s weekday.
+/// "Sat" / "Jumamosi" for [d]'s weekday.
 String eventWeekdayShort(DateTime d, {String locale = 'en'}) =>
     (locale == 'sw' ? _weekdaysSw : _weekdaysEn)[d.weekday - 1];
 
-/// "Sat 14 Mar" (sw "Jmsi 14 Mac"): the card's date chip.
+/// "Sat 14 Mar" (sw "Jumamosi 14 Mac"): the card's date chip.
 String eventDayChip(DateTime utc, int offsetMinutes, {String locale = 'en'}) {
   final d = eventClock(utc, offsetMinutes);
   return '${eventWeekdayShort(d, locale: locale)} '

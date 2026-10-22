@@ -103,7 +103,7 @@ void main() {
     });
     expect(errors.where((e) => e.contains('overflowed')), isEmpty);
     expect(find.text('Inafungwa karibuni'), findsOneWidget);
-    expect(find.text('Jpl 14 Mac'), findsOneWidget);
+    expect(find.text('Jumapili 14 Mac'), findsOneWidget);
     expect(find.text('kuanzia TSh 25,000'), findsOneWidget);
   });
 

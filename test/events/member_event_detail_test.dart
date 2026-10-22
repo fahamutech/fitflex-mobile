@@ -381,7 +381,7 @@ void main() {
     });
     expect(errors.where((e) => e.contains('overflowed')), isEmpty);
     expect(
-      find.text('Usajili utafunguliwa hivi karibuni kwenye programu'),
+      find.text('Usajili utafunguliwa hivi karibuni kwenye app'),
       findsOneWidget,
     );
     expect(find.text('Jisajili'), findsOneWidget);
