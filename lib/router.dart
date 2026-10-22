@@ -10,6 +10,7 @@ import 'screens/route_status_pages.dart';
 import 'screens/language_screen.dart';
 import 'screens/role_screen.dart';
 import 'screens/auth_screen.dart';
+import 'screens/pin_flows.dart' show StaffPinChangeScreen;
 import 'screens/sign_up_screen.dart';
 import 'screens/email_auth_screen.dart';
 import 'screens/verify_email_screen.dart';
@@ -94,6 +95,10 @@ abstract class AppRoutes {
       : '$verifyEmail?role=${Uri.encodeQueryComponent(requestedRole)}';
   static const googleWebCallback = '/auth/google-web-callback';
   static const pending = '/pending';
+
+  /// Gym staff choose their own PIN before anything else (the owner chose
+  /// the one they signed in with; fitflex-functions#260).
+  static const staffPinChange = '/staff/choose-pin';
 
   /// Partner KYC / KYB — open to partners while they wait for approval.
   static const verification = '/verification';
@@ -288,6 +293,8 @@ bool _waitForProfile(AuthState auth) {
 }
 
 String _landingFor(AuthState auth) {
+  // Held to the PIN change: nothing else until it is done.
+  if (auth.pinChangeRequired) return AppRoutes.staffPinChange;
   if (_waitForProfile(auth)) return AppRoutes.startupOffline;
   final role = auth.user?['userType']?.toString() ?? auth.role;
   final onboarded = _isOnboarded(auth, role);
@@ -491,6 +498,18 @@ GoRouter buildRouter(AuthState auth) {
                 : PendingFriendInvite.save(token))
             .then((_) => AppRoutes.friendInvite);
       }
+      // Gym staff held to choosing their own PIN (fitflex-functions#260):
+      // that screen only — no scanner, check-ins or anything else — until
+      // the PIN is changed or they sign out.
+      if (loggedIn && auth.pinChangeRequired) {
+        return loc == AppRoutes.staffPinChange
+            ? null
+            : AppRoutes.staffPinChange;
+      }
+      if (loc == AppRoutes.staffPinChange) {
+        return loggedIn ? routeForSignedInUser(auth) : AppRoutes.language;
+      }
+
       // The invitation page opens for anyone; the token is kept through
       // sign-in.
       if (loc == AppRoutes.friendInvite || loc.startsWith('/friend-invite/')) {
@@ -706,6 +725,11 @@ GoRouter buildRouter(AuthState auth) {
         path: AppRoutes.googleWebCallback,
         name: 'googleWebCallback',
         builder: (context, state) => const GoogleWebCallbackScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.staffPinChange,
+        name: 'staffPinChange',
+        builder: (context, state) => const StaffPinChangeScreen(),
       ),
       GoRoute(
         path: AppRoutes.pending,

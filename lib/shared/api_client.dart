@@ -68,6 +68,11 @@ class ApiClient {
   String? _token;
   void Function()? onUnauthorized;
 
+  /// Called when the server holds this session until a start PIN is replaced
+  /// (gym staff whose owner chose their PIN, fitflex-functions#260): any
+  /// route answers `403 { error: 'password_change_required' }`.
+  void Function()? onPasswordChangeRequired;
+
   void setToken(String? token) => _token = token;
 
   final List<void Function(String method, String path)> _successListeners = [];
@@ -101,6 +106,11 @@ class ApiClient {
     required int attempt,
   }) async {
     final uri = Uri.parse('$baseUrl$path');
+    // The session this request is sent with. An answer about an older one
+    // (a request still in flight when the token was replaced, e.g. right
+    // after a PIN change that ended earlier sessions) says nothing about the
+    // current session.
+    final sentToken = _token;
     final headers = <String, String>{
       ...?extraHeaders,
       'content-type': 'application/json',
@@ -181,10 +191,18 @@ class ApiClient {
     // A 401 always means this bearer session can no longer be used.  Do not
     // rely on a particular backend error shape: gateways and proxies often
     // return their own 401 payloads.
-    if (res.statusCode == 401 && onUnauthorized != null) {
+    final currentSession = sentToken == _token;
+    if (res.statusCode == 401 && onUnauthorized != null && currentSession) {
       onUnauthorized!();
     }
-    throw ApiException(res.statusCode, decoded);
+    final exception = ApiException(res.statusCode, decoded);
+    if (res.statusCode == 403 &&
+        exception.code == 'password_change_required' &&
+        onPasswordChangeRequired != null &&
+        currentSession) {
+      onPasswordChangeRequired!();
+    }
+    throw exception;
   }
 
   /// The JSON error body, or null when it is not JSON (an HTML page or a
@@ -423,6 +441,14 @@ class ApiClient {
       '/me/pin',
       body: {'currentPin': currentPin, 'newPin': newPin},
     );
+  }
+
+  /// Gym staff replace the start PIN their owner chose
+  /// (fitflex-functions#260). The one route a held session may use. The
+  /// answer is a new session `{ token, user, partnerVerified }`; every older
+  /// token is over. 404 `feature_disabled` while the server flag is off.
+  Future<Map<String, dynamic>> staffChangeStartPin(String newPin) async {
+    return await _request('POST', '/auth/pin/change', body: {'newPin': newPin});
   }
 
   /// Identity V2 · I6a: this Person's verified mobile numbers and emails
@@ -2917,6 +2943,18 @@ class ApiClient {
 
   Future<void> ownerRemoveStaff(String id) async =>
       await _request('POST', '/owner/staff/$id/remove');
+
+  /// Owner: give a staff member a new start PIN (fitflex-functions#260).
+  /// Returns the staff row with `passwordChangeRequired: true`; the staff
+  /// member is signed out and must choose their own PIN at next sign-in.
+  Future<Map<String, dynamic>> ownerResetStaffPin(
+    String id,
+    String pin,
+  ) async => await _request(
+    'POST',
+    '/owner/staff/${Uri.encodeComponent(id)}/pin',
+    body: {'pin': pin},
+  );
 
   // ── Owner communications (messages to the gym's direct members) ─────────
 

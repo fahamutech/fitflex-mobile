@@ -245,6 +245,26 @@ class FFLocale extends ChangeNotifier {
           'FitFlex now keeps your PIN. Confirm it is you, then keep a 4-digit PIN.',
       'pin.signInInstead': 'Sign in instead',
       'pin.changed': 'Your PIN was changed. Other devices were signed out.',
+      // Gym staff replace the start PIN their owner chose
+      // (fitflex-functions#260).
+      'staffPin.title': 'Choose your own PIN',
+      'staffPin.why':
+          'Your gym owner set a starting PIN. Choose your own to continue.',
+      'staffPin.done': 'Your PIN is set. Use it every time you sign in.',
+      'staffPin.errUnchanged':
+          'Choose a PIN different from the one your gym owner set.',
+      'staffPin.errNotRequired':
+          'You no longer need to change your PIN. Sign in again if the app does not continue.',
+      'staffPin.errInProgress':
+          'Your PIN is already being changed. Wait a moment, then try again.',
+      'staffPin.errNotSaved':
+          'We could not change your PIN. Nothing was changed. Try again.',
+      'staffPin.errCheckUnavailable':
+          'We couldn\'t check your new PIN right now. Nothing was changed — try again later.',
+      'staffPin.errSignInAgain':
+          'Your PIN was changed. Sign in again with your new PIN.',
+      'staffPin.signInAgainTitle': 'PIN changed',
+      'staffPin.signInAgainAction': 'Sign in again',
       'pin.errInvalid': 'That mobile number, email or PIN is not right.',
       'pin.errTooMany': 'Too many wrong tries. Try again in {n} minutes.',
       'pin.errResetRequired':
@@ -3254,6 +3274,25 @@ class FFLocale extends ChangeNotifier {
           'Add receptionists or other staff and choose exactly what they can access.',
       'staff.noPermissions': 'No permissions assigned',
       'staff.suspended': 'Suspended',
+      // Owner resets a staff PIN (fitflex-functions#260).
+      'staff.mustChangePin': 'Must change PIN',
+      'staff.resetPin': 'Reset PIN',
+      'staff.resetPinBody':
+          '{name} will be signed out on every device. Give them this starting PIN in person. When they sign in with it, they must choose their own PIN before they can do anything else.',
+      'staff.newStartPin': 'New starting PIN (4 digits)',
+      'staff.resetPinDone':
+          'PIN reset. {name} must choose their own PIN at the next sign-in.',
+      'staff.errIdentityShared':
+          'This staff member signs in with their own FitFlex account, so you cannot set their PIN. They can use "Forgot PIN" on the sign-in screen.',
+      'staff.errCredentialsNotAccepted':
+          'Staff now join by invitation and choose their own PIN. They can use "Forgot PIN" on the sign-in screen.',
+      'staff.errResetOff': 'Resetting staff PINs is not available yet.',
+      'staff.errNotYourStaff':
+          'This staff member also works at a gym you don\'t own, so only FitFlex can reset their PIN.',
+      'staff.errStaffNotFound':
+          'We could not find this staff member. Pull down to refresh the list.',
+      'staff.errResetNotSaved':
+          'The new PIN could not be saved. The staff member was signed out; their old PIN still works and they must still choose their own. Try again.',
       'staff.name': 'Full name',
       'staff.email': 'Email',
       'staff.pin': 'Create a login PIN',
@@ -5879,6 +5918,27 @@ class FFLocale extends ChangeNotifier {
           'Sasa FitFlex inahifadhi PIN yako. Thibitisha kuwa ni wewe, kisha weka PIN ya tarakimu 4.',
       'pin.signInInstead': 'Ingia kwa akaunti yako',
       'pin.changed': 'PIN yako imebadilishwa. Umetolewa kwenye vifaa vingine.',
+      // Wafanyakazi wa gym wanabadilisha PIN ya kuanzia
+      // (fitflex-functions#260). Swahili for native review.
+      'staffPin.title': 'Chagua PIN yako mwenyewe', // TODO(sw-review)
+      'staffPin.why':
+          'Mmiliki wa gym yako aliweka PIN ya kuanzia. Chagua PIN yako mwenyewe ili kuendelea.', // TODO(sw-review)
+      'staffPin.done':
+          'PIN yako imewekwa. Itumie kila unapoingia.', // TODO(sw-review)
+      'staffPin.errUnchanged':
+          'Chagua PIN tofauti na ile aliyoweka mmiliki wa gym yako.', // TODO(sw-review)
+      'staffPin.errNotRequired':
+          'Huhitaji tena kubadilisha PIN yako. Ingia tena ikiwa app haiendelei.', // TODO(sw-review)
+      'staffPin.errInProgress':
+          'PIN yako tayari inabadilishwa. Subiri kidogo, kisha ujaribu tena.', // TODO(sw-review)
+      'staffPin.errNotSaved':
+          'Hatukuweza kubadilisha PIN yako. Hakuna kilichobadilika. Jaribu tena.', // TODO(sw-review)
+      'staffPin.errCheckUnavailable':
+          'Hatukuweza kuhakiki PIN yako mpya kwa sasa. Hakuna kilichobadilika — jaribu tena baadaye.', // TODO(sw-review)
+      'staffPin.errSignInAgain':
+          'PIN yako imebadilishwa. Ingia tena ukitumia PIN yako mpya.', // TODO(sw-review)
+      'staffPin.signInAgainTitle': 'PIN imebadilishwa', // TODO(sw-review)
+      'staffPin.signInAgainAction': 'Ingia tena', // TODO(sw-review)
       'pin.errInvalid': 'Namba ya simu, barua pepe au PIN si sahihi.',
       'pin.errTooMany':
           'Umekosea mara nyingi mno. Jaribu tena baada ya dakika {n}.',
@@ -8921,6 +8981,28 @@ class FFLocale extends ChangeNotifier {
           'Ongeza wahudumu wa mapokezi au wafanyakazi wengine, kisha chagua wanachoweza kutumia.',
       'staff.noPermissions': 'Hakuna ruhusa zilizowekwa',
       'staff.suspended': 'Amesimamishwa',
+      // Mmiliki anaweka upya PIN ya mfanyakazi (fitflex-functions#260).
+      // Swahili for native review.
+      'staff.mustChangePin': 'Lazima abadilishe PIN', // TODO(sw-review)
+      'staff.resetPin': 'Weka PIN upya', // TODO(sw-review)
+      'staff.resetPinBody':
+          '{name} atatolewa kwenye vifaa vyote. Mpe PIN hii ya kuanzia ana kwa ana. Akiingia nayo, lazima achague PIN yake mwenyewe kabla ya kufanya jambo lingine lolote.', // TODO(sw-review)
+      'staff.newStartPin':
+          'PIN mpya ya kuanzia (tarakimu 4)', // TODO(sw-review)
+      'staff.resetPinDone':
+          'PIN imewekwa upya. {name} lazima achague PIN yake mwenyewe atakapoingia tena.', // TODO(sw-review)
+      'staff.errIdentityShared':
+          'Mfanyakazi huyu huingia kwa akaunti yake mwenyewe ya FitFlex, kwa hiyo huwezi kuweka PIN yake. Anaweza kutumia "Umesahau PIN" kwenye skrini ya kuingia.', // TODO(sw-review)
+      'staff.errCredentialsNotAccepted':
+          'Sasa wafanyakazi hujiunga kwa mwaliko na kuchagua PIN yao wenyewe. Wanaweza kutumia "Umesahau PIN" kwenye skrini ya kuingia.', // TODO(sw-review)
+      'staff.errResetOff':
+          'Kuweka upya PIN za wafanyakazi bado hakupatikani.', // TODO(sw-review)
+      'staff.errNotYourStaff':
+          'Mfanyakazi huyu pia anafanya kazi kwenye gym ambayo si yako, kwa hiyo FitFlex pekee ndiyo inaweza kuweka upya PIN yake.', // TODO(sw-review)
+      'staff.errStaffNotFound':
+          'Hatukumpata mfanyakazi huyu. Vuta chini ili kuonyesha orodha upya.', // TODO(sw-review)
+      'staff.errResetNotSaved':
+          'PIN mpya haikuweza kuhifadhiwa. Mfanyakazi ametolewa; PIN yake ya zamani bado inafanya kazi na bado lazima achague PIN yake mwenyewe. Jaribu tena.', // TODO(sw-review)
       'staff.name': 'Jina kamili',
       'staff.email': 'Barua pepe',
       'staff.pin': 'Weka PIN ya kuingia',
