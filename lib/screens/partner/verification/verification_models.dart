@@ -482,6 +482,8 @@ const documentSpecs = <String, DocumentSpec>{
     ['documentNumber'],
   ),
   'tin_certificate': DocumentSpec(['tin_certificate'], ['documentNumber']),
+  // S5: optional for vendors; the VRN itself is entered on Tax details.
+  'vat_certificate': DocumentSpec(['vat_certificate'], []),
   'business_licence': DocumentSpec(
     ['business_licence'],
     ['documentNumber', 'issuer', 'expiresOn'],
