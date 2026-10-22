@@ -1844,8 +1844,16 @@ class ApiClient {
 
   /// Shop personalisation (Phase 2 S2): `{personalised, available}`. 404
   /// `feature_disabled` when SHOP_PERSONALISATION is off.
-  Future<Map<String, dynamic>> shopPreferences() async {
-    final out = await _request('GET', '/shop/preferences');
+  ///
+  /// [mode] (the role being shopped as, as on /shop/home) lets the server
+  /// say what is used in that mode; an older server ignores it.
+  Future<Map<String, dynamic>> shopPreferences({String? mode}) async {
+    final out = await _request(
+      'GET',
+      _withQuery('/shop/preferences', {
+        if (mode != null && mode.isNotEmpty) 'mode': mode,
+      }),
+    );
     return Map<String, dynamic>.from(out as Map);
   }
 
@@ -1854,10 +1862,13 @@ class ApiClient {
   Future<Map<String, dynamic>> updateShopPreferences({
     required bool personalised,
     required String source,
+    String? mode,
   }) async {
     final out = await _request(
       'PUT',
-      '/shop/preferences',
+      _withQuery('/shop/preferences', {
+        if (mode != null && mode.isNotEmpty) 'mode': mode,
+      }),
       body: {'personalised': personalised, 'source': source},
     );
     return Map<String, dynamic>.from(out as Map);

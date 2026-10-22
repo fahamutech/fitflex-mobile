@@ -19,11 +19,16 @@ class FFPhotoPickerField extends StatefulWidget {
     this.value,
     required this.onChanged,
     this.size = 96.0,
+    this.semanticLabel,
   });
+
+  /// Read out for the button (e.g. "Change profile photo"). Null keeps the
+  /// field as before (no label of its own).
 
   final String? value;
   final ValueChanged<String> onChanged;
   final double size;
+  final String? semanticLabel;
 
   @override
   State<FFPhotoPickerField> createState() => _FFPhotoPickerFieldState();
@@ -130,43 +135,64 @@ class _FFPhotoPickerFieldState extends State<FFPhotoPickerField> {
 
   @override
   Widget build(BuildContext context) {
+    final label = widget.semanticLabel;
+    if (label != null) {
+      // A labelled, focusable button (keyboard and screen readers).
+      return Semantics(
+        button: true,
+        label: label,
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            key: const Key('ff-photo-picker-button'),
+            customBorder: const CircleBorder(),
+            onTap: _loading ? null : _showOptions,
+            child: ExcludeSemantics(child: _picture(context)),
+          ),
+        ),
+      );
+    }
     return GestureDetector(
       onTap: _loading ? null : _showOptions,
-      child: Stack(
-        alignment: Alignment.bottomRight,
-        children: [
-          Container(
-            width: widget.size,
-            height: widget.size,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Theme.of(context).colorScheme.surface,
-              border: Border.all(color: Theme.of(context).colorScheme.outline),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: _loading
-                ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
-                : ClipOval(child: _buildPreview()),
+      child: _picture(context),
+    );
+  }
+
+  Widget _picture(BuildContext context) {
+    return Stack(
+      alignment: Alignment.bottomRight,
+      children: [
+        Container(
+          width: widget.size,
+          height: widget.size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Theme.of(context).colorScheme.surface,
+            border: Border.all(color: Theme.of(context).colorScheme.outline),
           ),
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Theme.of(context).colorScheme.primary,
-              border: Border.all(
-                color: Theme.of(context).colorScheme.onPrimary,
-                width: 2,
-              ),
-            ),
-            child: Icon(
-              Icons.camera_alt,
-              size: 14,
+          clipBehavior: Clip.antiAlias,
+          child: _loading
+              ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
+              : ClipOval(child: _buildPreview()),
+        ),
+        Container(
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Theme.of(context).colorScheme.primary,
+            border: Border.all(
               color: Theme.of(context).colorScheme.onPrimary,
+              width: 2,
             ),
           ),
-        ],
-      ),
+          child: Icon(
+            Icons.camera_alt,
+            size: 14,
+            color: Theme.of(context).colorScheme.onPrimary,
+          ),
+        ),
+      ],
     );
   }
 }

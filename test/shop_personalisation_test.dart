@@ -7,16 +7,20 @@
 // `reasonParams`, vendor `targetGender` / `targetAgeBands`,
 // /vendor/tools/options `merch.productTargets`). Mocked at the HTTP level
 // with test/support/recording_api.dart.
-import 'dart:ui' show Tristate;
+import 'dart:ui' show CheckedState, SemanticsFlags, Tristate;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:fitflexmobile/screens/member/member_privacy_page.dart';
 import 'package:fitflexmobile/screens/member/member_shell.dart';
 import 'package:fitflexmobile/screens/vendor/vendor_home_page.dart';
 import 'package:fitflexmobile/shared/components/components.dart';
+import 'package:fitflexmobile/router.dart' show AppRoutes;
 import 'package:fitflexmobile/shared/i18n.dart';
+import 'package:fitflexmobile/shared/network/browser_online.dart';
 import 'package:fitflexmobile/shared/shop_home.dart';
 import 'package:fitflexmobile/shared/widgets/shop_browse_page.dart';
 import 'package:fitflexmobile/shared/widgets/shop_home/shop_personalisation.dart';
@@ -87,6 +91,8 @@ Future<PageHost> _pumpShop(
   ShopHomeMode mode = ShopHomeMode.member,
   String lang = 'en',
   double scale = 1,
+  Size size = const Size(420, 900),
+  List<RouteBase> extraRoutes = const [],
 }) => pumpPage(
   tester,
   api,
@@ -94,9 +100,33 @@ Future<PageHost> _pumpShop(
   user: _member,
   lang: lang,
   textScale: scale,
-  size: const Size(420, 900),
+  size: size,
   keepRequests: true,
+  extraRoutes: extraRoutes,
 );
+
+/// Whether keyboard focus is on (or inside) the widget with [key].
+bool _focusIn(String key) {
+  final ctx = FocusManager.instance.primaryFocus?.context;
+  if (ctx == null) return false;
+  if (ctx.widget.key == Key(key)) return true;
+  var hit = false;
+  ctx.visitAncestorElements((e) {
+    if (e.widget.key == Key(key)) {
+      hit = true;
+      return false;
+    }
+    return true;
+  });
+  return hit;
+}
+
+Future<void> _tab(WidgetTester tester, {bool shift = false}) async {
+  if (shift) await tester.sendKeyDownEvent(LogicalKeyboardKey.shift);
+  await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+  if (shift) await tester.sendKeyUpEvent(LogicalKeyboardKey.shift);
+  await tester.pumpAndSettle();
+}
 
 Finder _key(String k) => find.byKey(Key(k));
 
@@ -167,7 +197,9 @@ void main() {
         'source': 'why_sheet',
       });
       expect(_switchValue(tester), isFalse);
-      expect(host.snack(host.tr('shop.why.saved')), findsOneWidget);
+      // Said under the switch, not in a snackbar over the sheet's link.
+      expect(_key('shop-why-personalised-saved'), findsOneWidget);
+      expect(host.snack(host.tr('shop.why.saved')), findsNothing);
       // The home reloaded behind the sheet, which stays open.
       expect(api.where('GET', '/shop/home').length, homeLoads + 1);
       expect(_key('shop-why-recommended'), findsOneWidget);
@@ -371,6 +403,228 @@ void main() {
         greaterThanOrEqualTo(48),
       );
       handle.dispose();
+    });
+  });
+
+  group('QA round 1', () {
+    apiTest('1: switching off drops personal reasons at once and says '
+        'suggestions are off', (tester, api) async {
+      _seedShop(
+        api,
+        _home(
+          personalisation: {'available': true, 'enabled': true},
+          personalised: true,
+          codes: ['bought_category', 'profile_gender', 'role_context'],
+        ),
+      );
+      api.on('PUT /shop/preferences', {
+        'personalised': false,
+        'available': true,
+        'uses': <String>[],
+      });
+      final host = await _pumpShop(tester, api);
+      await _openWhy(tester);
+      final bought = host
+          .tr('shop.why.boughtCategory')
+          .replaceAll('{category}', 'Sportswear & footwear');
+      expect(_whyTexts(tester), contains(bought));
+      expect(_key('shop-why-off'), findsNothing);
+      // The reload answers with the old page; the sheet must not show it.
+      final gate = api.hold('GET /shop/home');
+      await tester.tap(_key('shop-why-personalised'));
+      await tester.pump();
+      await tester.pump();
+      final texts = _whyTexts(tester);
+      expect(texts, isNot(contains(bought)));
+      expect(texts, isNot(contains(host.tr('shop.why.gender'))));
+      expect(texts, contains(host.tr('shop.why.offMember')));
+      gate.complete();
+      await tester.pumpAndSettle();
+      expect(_whyTexts(tester), isNot(contains(bought)));
+      expect(_key('shop-why-off'), findsOneWidget);
+    });
+
+    for (final (mode, key) in [
+      (ShopHomeMode.trainer, 'shop.why.offTrainer'),
+      (ShopHomeMode.owner, 'shop.why.offOwner'),
+    ]) {
+      apiTest('1: off line names the role (${mode.wire})', (tester, api) async {
+        _seedShop(
+          api,
+          _home(
+            mode: mode.wire,
+            personalisation: {'available': true, 'enabled': false},
+          ),
+        );
+        final host = await _pumpShop(tester, api, mode: mode);
+        await _openWhy(tester);
+        expect(find.text(host.tr(key)), findsOneWidget);
+      });
+    }
+
+    apiTest('2: keyboard: Close, then the switch row (one stop), then '
+        'Privacy & data, then back to Close; ring shows; Escape returns '
+        'focus to the opener', (tester, api) async {
+      _seedShop(
+        api,
+        _home(personalisation: {'available': true, 'enabled': true}),
+      );
+      await _pumpShop(tester, api);
+      // Open with the keyboard.
+      final opener = _key('shop-home-why-recommended');
+      Focus.of(
+        tester.element(
+          find.descendant(of: opener, matching: find.byType(Icon)),
+        ),
+      ).requestFocus();
+      await tester.pump();
+      expect(_focusIn('shop-home-why-recommended'), isTrue);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+      expect(_key('shop-why-recommended'), findsOneWidget);
+      await _tab(tester);
+      expect(_focusIn('ff-sheet-close'), isTrue);
+      await _tab(tester);
+      expect(_focusIn('shop-why-personalised-row'), isTrue);
+      // The two-tone ring is drawn round the focused row.
+      expect(
+        find.ancestor(
+          of: _key('shop-why-personalised-row'),
+          matching: find.byKey(const Key('shop-home-focus-ring')),
+        ),
+        findsWidgets,
+      );
+      await _tab(tester);
+      expect(_focusIn('shop-why-privacy'), isTrue);
+      expect(find.byKey(const Key('shop-home-focus-ring')), findsWidgets);
+      await _tab(tester);
+      // Trapped in the sheet: back to Close.
+      expect(_focusIn('ff-sheet-close'), isTrue);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(_key('shop-why-recommended'), findsNothing);
+      expect(_focusIn('shop-home-why-recommended'), isTrue);
+    });
+
+    apiTest('2: Space on the focused row toggles the switch', (
+      tester,
+      api,
+    ) async {
+      _seedShop(
+        api,
+        _home(personalisation: {'available': true, 'enabled': true}),
+      );
+      api.on('PUT /shop/preferences', {
+        'personalised': false,
+        'available': true,
+      });
+      await _pumpShop(tester, api);
+      await _openWhy(tester);
+      await _tab(tester);
+      await _tab(tester);
+      expect(_focusIn('shop-why-personalised-row'), isTrue);
+      await tester.sendKeyEvent(LogicalKeyboardKey.space);
+      await tester.pumpAndSettle();
+      expect(api.only('PUT', '/shop/preferences').body, {
+        'personalised': false,
+        'source': 'why_sheet',
+      });
+    });
+
+    apiTest('5: the mode is sent with the switch', (tester, api) async {
+      _seedShop(
+        api,
+        _home(
+          mode: 'trainer',
+          personalisation: {'available': true, 'enabled': true},
+        ),
+      );
+      api.on('PUT /shop/preferences', {
+        'personalised': false,
+        'available': true,
+      });
+      await _pumpShop(tester, api, mode: ShopHomeMode.trainer);
+      await _openWhy(tester);
+      await tester.tap(_key('shop-why-personalised'));
+      await tester.pumpAndSettle();
+      expect(api.only('PUT', '/shop/preferences').query, 'mode=trainer');
+    });
+
+    apiTest('6: a failed save shows the error once, under the switch', (
+      tester,
+      api,
+    ) async {
+      _seedShop(
+        api,
+        _home(personalisation: {'available': true, 'enabled': true}),
+      );
+      api.fail('PUT /shop/preferences', 500);
+      final host = await _pumpShop(tester, api);
+      await _openWhy(tester);
+      await tester.tap(_key('shop-why-personalised'));
+      await tester.pumpAndSettle();
+      expect(find.text(host.tr('shop.why.saveFailed')), findsOneWidget);
+      expect(host.snack(host.tr('shop.why.saveFailed')), findsNothing);
+    });
+
+    apiTest('9: from 1024 px the sheet is a centred dialog 480 wide', (
+      tester,
+      api,
+    ) async {
+      _seedShop(
+        api,
+        _home(personalisation: {'available': true, 'enabled': true}),
+      );
+      await _pumpShop(tester, api, size: const Size(1280, 900));
+      await _openWhy(tester);
+      expect(find.byType(Dialog), findsOneWidget);
+      expect(find.byType(BottomSheet), findsNothing);
+      expect(
+        tester
+            .getSize(
+              find.descendant(
+                of: find.byType(Dialog),
+                matching: find.byType(FFSheet),
+              ),
+            )
+            .width,
+        lessThanOrEqualTo(480),
+      );
+    });
+
+    apiTest('12: Privacy & data from the Why sheet is pushed; its Back '
+        'returns to the shop', (tester, api) async {
+      _seedShop(
+        api,
+        _home(personalisation: {'available': true, 'enabled': true}),
+      );
+      api.on('GET /shop/preferences', {
+        'personalised': true,
+        'available': true,
+        'uses': <String>[],
+      });
+      final host = await _pumpShop(
+        tester,
+        api,
+        size: const Size(420, 1400),
+        extraRoutes: [
+          GoRoute(
+            path: AppRoutes.memberPrivacy,
+            builder: (_, _) => Scaffold(
+              body: MemberDataScope(
+                data: MemberData(),
+                child: const MemberPrivacyPage(),
+              ),
+            ),
+          ),
+        ],
+      );
+      await _openWhy(tester);
+      await tapVisible(tester, _key('shop-why-privacy'));
+      expect(find.byType(MemberPrivacyPage), findsOneWidget);
+      await tapVisible(tester, buttonLabelled(host.tr('member.profile')));
+      expect(find.byType(MemberPrivacyPage), findsNothing);
+      expect(_key('shop-home'), findsOneWidget);
     });
   });
 
@@ -703,6 +957,96 @@ void main() {
       expect(_key('privacy-shop'), findsNothing);
     });
 
+    apiTest('5: asks with ?mode=member', (tester, api) async {
+      api.on('GET /shop/preferences', {
+        'personalised': true,
+        'available': true,
+      });
+      await pumpTile(tester, api);
+      expect(api.only('GET', '/shop/preferences').query, 'mode=member');
+    });
+
+    apiTest('7: loading shows a skeleton line, announced', (tester, api) async {
+      final handle = tester.ensureSemantics();
+      api.on('GET /shop/preferences', {
+        'personalised': true,
+        'available': true,
+      });
+      final gate = api.hold('GET /shop/preferences');
+      final host = await pumpPage(
+        tester,
+        api,
+        const SingleChildScrollView(child: ShopPrivacyTile()),
+        user: _member,
+        size: const Size(375, 812),
+        settle: false,
+      );
+      await tester.pump();
+      await tester.pump();
+      expect(_key('privacy-shop-loading'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: _key('privacy-shop-loading'),
+          matching: find.byType(FFSkeletonLine),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.bySemanticsLabel(
+          RegExp(RegExp.escape(host.tr('privacy.shop.loading'))),
+        ),
+        findsWidgets,
+      );
+      gate.complete();
+      await tester.pumpAndSettle();
+      expect(find.text(host.tr('privacy.shop.on')), findsOneWidget);
+      handle.dispose();
+    });
+
+    apiTest('7: offline: disabled with "Needs internet"; loads once online', (
+      tester,
+      api,
+    ) async {
+      addTearDown(() => BrowserOnline.debugSet(true));
+      BrowserOnline.debugSet(false);
+      api.on('GET /shop/preferences', {
+        'personalised': true,
+        'available': true,
+      });
+      final host = await pumpTile(tester, api);
+      expect(find.text(host.tr('privacy.shop.offline')), findsOneWidget);
+      expect(tester.widget<FFActionTile>(_key('privacy-shop')).onTap, isNull);
+      await tester.tap(_key('privacy-shop'));
+      await tester.pumpAndSettle();
+      expect(_key('privacy-shop-sheet'), findsNothing);
+      expect(api.sent('GET', '/shop/preferences'), isFalse);
+      BrowserOnline.debugSet(true);
+      await tester.pumpAndSettle();
+      expect(find.text(host.tr('privacy.shop.on')), findsOneWidget);
+    });
+
+    for (final lang in ['en', 'sw']) {
+      apiTest('8: the draft note is muted and seen without scrolling at '
+          '375x812, 130% ($lang)', (tester, api) async {
+        api.on('GET /shop/preferences', {
+          'personalised': true,
+          'available': true,
+          'historyDays': 365,
+          'uses': ['purchase_history', 'profile_gender', 'profile_age', 'goal'],
+        });
+        final host = await pumpTile(tester, api, lang: lang, scale: 1.3);
+        await tapVisible(tester, _key('privacy-shop'));
+        final draft = _key('privacy-shop-draft');
+        expect(find.text(host.tr('privacy.shop.draft')), findsOneWidget);
+        expect(tester.getBottomLeft(draft).dy, lessThanOrEqualTo(812));
+        final ctx = tester.element(draft);
+        expect(
+          tester.widget<Text>(draft).style?.color,
+          Theme.of(ctx).colorScheme.onSurfaceVariant,
+        );
+      });
+    }
+
     apiTest('hidden on 404 feature_disabled', (tester, api) async {
       api.fail('GET /shop/preferences', 404, {'error': 'feature_disabled'});
       await pumpTile(tester, api);
@@ -936,6 +1280,53 @@ void main() {
       handle.dispose();
     });
 
+    apiTest('3: Made for chips are radios, Age group chips checkboxes, '
+        'with their checked state', (tester, api) async {
+      final handle = tester.ensureSemantics();
+      seedVendor(api);
+      await pumpVendor(tester, api);
+      await tester.tap(_key('vendor-add-product'));
+      await tester.pumpAndSettle();
+      await tapVisible(tester, _key('vendor-target-gender-women'));
+      await tapVisible(tester, _key('vendor-target-age-30_44'));
+      SemanticsFlags flags(String k) =>
+          tester.getSemantics(_key(k)).getSemanticsData().flagsCollection;
+      final women = flags('vendor-target-gender-women');
+      expect(women.isChecked, CheckedState.isTrue);
+      expect(women.isInMutuallyExclusiveGroup, isTrue);
+      final men = flags('vendor-target-gender-men');
+      expect(men.isChecked, CheckedState.isFalse);
+      expect(men.isInMutuallyExclusiveGroup, isTrue);
+      final band = flags('vendor-target-age-30_44');
+      expect(band.isChecked, CheckedState.isTrue);
+      expect(band.isInMutuallyExclusiveGroup, isFalse);
+      expect(flags('vendor-target-age-45_59').isChecked, CheckedState.isFalse);
+      handle.dispose();
+    });
+
+    apiTest('13: the product menu is labelled with the product, ledger off', (
+      tester,
+      api,
+    ) async {
+      seedVendor(
+        api,
+        products: [
+          {'id': 'p9', 'name': 'Sports bra', 'priceTzs': 25000, 'stock': 3},
+        ],
+      );
+      final host = await pumpVendor(tester, api);
+      final menu = tester.widget<PopupMenuButton<String>>(
+        find.descendant(
+          of: _key('vendor-product-p9'),
+          matching: find.byType(PopupMenuButton<String>),
+        ),
+      );
+      expect(
+        menu.tooltip,
+        host.tr('vendor.productActions').replaceAll('{name}', 'Sports bra'),
+      );
+    });
+
     apiTest('chips are 48dp and announce their group', (tester, api) async {
       final handle = tester.ensureSemantics();
       seedVendor(api);
@@ -973,6 +1364,29 @@ void main() {
         expect(_key('vendor-product-targets'), findsOneWidget);
       });
     }
+  });
+
+  apiTest('13: product sheet: no struck-through price when the discount '
+      'is 0', (tester, api) async {
+    debugShopHomeV2Override = false;
+    final free = {..._p('p7', 'Water bottle'), 'discountPriceTzs': 0};
+    api.on('GET /shop/products', [free]);
+    api.on('GET /me/shop-orders', <dynamic>[]);
+    api.on('GET /gyms', <dynamic>[]);
+    api.on('GET /shop/products/p7', free);
+    await pumpPage(
+      tester,
+      api,
+      const ShopBrowsePage(),
+      user: _member,
+      size: const Size(420, 900),
+    );
+    await tester.tap(find.text('Water bottle'));
+    await tester.pumpAndSettle();
+    final struck = tester
+        .widgetList<Text>(find.byType(Text))
+        .where((t) => t.style?.decoration == TextDecoration.lineThrough);
+    expect(struck, isEmpty);
   });
 
   group('parsing', () {

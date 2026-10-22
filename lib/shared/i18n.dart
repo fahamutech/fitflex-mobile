@@ -1802,6 +1802,11 @@ class FFLocale extends ChangeNotifier {
       'member.weight': 'Weight (kg)',
       'member.dateOfBirth': 'Date of birth',
       'member.dobPick': 'Choose date of birth',
+      'member.dobFormat':
+          'Enter your date of birth as YYYY-MM-DD, for example 1990-05-21.',
+      'member.dobNoPersonalisation':
+          "Until your date of birth is valid, the shop can't be personalised for you.",
+      'member.photoPick': 'Change profile photo',
       'member.dobClear': 'Clear date of birth',
       'member.dobInvalid':
           'Choose a real date of birth: not in the future and from 1901 on.',
@@ -4418,6 +4423,14 @@ class FFLocale extends ChangeNotifier {
       'shop.why.saveFailed': "Couldn't save. Try again.",
       'shop.why.loadFailed': "Couldn't load your setting",
       'shop.why.privacyLink': 'Privacy & data',
+      'shop.why.offMember':
+          'Personalised suggestions are off. You see the same suggestions as everyone shopping as a member.',
+      'shop.why.offTrainer':
+          'Personalised suggestions are off. You see the same suggestions as everyone shopping as a trainer.',
+      'shop.why.offOwner':
+          'Personalised suggestions are off. You see the same suggestions as everyone shopping as a gym owner.',
+      'shop.why.offVendor':
+          'Personalised suggestions are off. You see the same suggestions as everyone shopping for themselves.',
       'privacy.shop.title': 'Personalised shop',
       'privacy.shop.on': 'On',
       'privacy.shop.off': 'Off',
@@ -7258,6 +7271,11 @@ class FFLocale extends ChangeNotifier {
       'member.weight': 'Uzito (kg)',
       'member.dateOfBirth': 'Tarehe ya kuzaliwa',
       'member.dobPick': 'Chagua tarehe ya kuzaliwa',
+      'member.dobFormat':
+          'Andika tarehe yako ya kuzaliwa kama YYYY-MM-DD, kwa mfano 1990-05-21.',
+      'member.dobNoPersonalisation':
+          'Hadi tarehe yako ya kuzaliwa iwe sahihi, duka haliwezi kupangwa kwa ajili yako.',
+      'member.photoPick': 'Badilisha picha ya wasifu',
       'member.dobClear': 'Futa tarehe ya kuzaliwa',
       'member.dobInvalid':
           'Chagua tarehe halisi ya kuzaliwa: isiwe ya baadaye na iwe kuanzia mwaka 1901.',
@@ -9846,6 +9864,14 @@ class FFLocale extends ChangeNotifier {
       'shop.why.saveFailed': 'Imeshindikana kuhifadhi. Jaribu tena.',
       'shop.why.loadFailed': 'Imeshindikana kupakia chaguo lako',
       'shop.why.privacyLink': 'Faragha na data',
+      'shop.why.offMember':
+          'Mapendekezo ya kwako yamezimwa. Unaona mapendekezo yaleyale wanayoona wote wanaonunua kama mwanachama.',
+      'shop.why.offTrainer':
+          'Mapendekezo ya kwako yamezimwa. Unaona mapendekezo yaleyale wanayoona wote wanaonunua kama trainer.',
+      'shop.why.offOwner':
+          'Mapendekezo ya kwako yamezimwa. Unaona mapendekezo yaleyale wanayoona wote wanaonunua kama mmiliki wa gym.',
+      'shop.why.offVendor':
+          'Mapendekezo ya kwako yamezimwa. Unaona mapendekezo yaleyale wanayoona wote wanaonunua kwa matumizi yao binafsi.',
       'privacy.shop.title': 'Duka kwa ajili yako',
       'privacy.shop.on': 'Imewashwa',
       'privacy.shop.off': 'Imezimwa',

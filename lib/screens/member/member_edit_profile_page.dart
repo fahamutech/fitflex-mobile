@@ -209,14 +209,28 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
   String? _dobProblem(String? value) {
     final text = value?.trim() ?? '';
     if (text.isEmpty) return null;
+    // Says why there is no "Personalised shop" switch until it is fixed
+    // (the server fails closed on an invalid date of birth).
+    String withNote(String key) =>
+        '${context.tr(key)} ${context.tr('member.dobNoPersonalisation')}';
     final date = parseDateOfBirth(text);
-    if (date == null) return context.tr('member.dobInvalid');
+    if (date == null) return withNote('member.dobFormat');
     final today = eastAfricaToday();
     if (date.isAfter(today) || date.isBefore(_firstDob)) {
-      return context.tr('member.dobInvalid');
+      return withNote('member.dobInvalid');
     }
     return null;
   }
+
+  /// A stored value that is not valid is flagged as soon as the page opens.
+  late final bool _storedDobInvalid = () {
+    final text = _dateOfBirth.text.trim();
+    if (text.isEmpty) return false;
+    final date = parseDateOfBirth(text);
+    return date == null ||
+        date.isAfter(eastAfricaToday()) ||
+        date.isBefore(_firstDob);
+  }();
 
   Future<void> _pickDateOfBirth() async {
     final today = eastAfricaToday();
@@ -232,8 +246,26 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
       initialDate: initial,
       firstDate: _firstDob,
       lastDate: today,
-      initialEntryMode: DatePickerEntryMode.calendar,
+      // Calendar only: the picker's own typed entry follows the device
+      // locale (M/D/YYYY in US English). Typing is done in the field
+      // itself, always as YYYY-MM-DD.
+      initialEntryMode: DatePickerEntryMode.calendarOnly,
       helpText: context.tr('member.dateOfBirth'),
+      builder: (context, child) {
+        final theme = Theme.of(context);
+        const buttons = Size(64, 48);
+        return Theme(
+          data: theme.copyWith(
+            datePickerTheme: theme.datePickerTheme.copyWith(
+              // Smaller than the default so a Swahili date fits the header.
+              headerHeadlineStyle: theme.textTheme.titleLarge,
+              cancelButtonStyle: TextButton.styleFrom(minimumSize: buttons),
+              confirmButtonStyle: TextButton.styleFrom(minimumSize: buttons),
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
     if (picked == null || !mounted) return;
     setState(() {
@@ -247,12 +279,24 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
     return FFTextField(
       key: const Key('edit-profile-dob'),
       controller: _dateOfBirth,
-      readOnly: true,
+      enabled: !_busy,
+      // Typed as YYYY-MM-DD only (digits and dashes, 10 characters).
+      keyboardType: TextInputType.datetime,
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r'[0-9-]')),
+        LengthLimitingTextInputFormatter(10),
+      ],
       label: context.tr('member.dateOfBirth'),
       hint: 'YYYY-MM-DD',
+      helperText: _dobError == null ? 'YYYY-MM-DD' : null,
       errorText: _dobError,
       validator: _dobProblem,
-      onTap: _busy ? null : _pickDateOfBirth,
+      autovalidateMode: _storedDobInvalid
+          ? AutovalidateMode.always
+          : AutovalidateMode.onUserInteraction,
+      onChanged: (_) {
+        if (_dobError != null) setState(() => _dobError = null);
+      },
       suffixIcon: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -339,7 +383,9 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
         if (!savedAnything &&
             e.code == 'invalid_field' &&
             body['field'] == 'dateOfBirth') {
-          _dobError = context.tr('member.dobInvalid');
+          _dobError =
+              '${context.tr('member.dobInvalid')} '
+              '${context.tr('member.dobNoPersonalisation')}';
         } else if (savedAnything) {
           // Profile went through; only the username was refused.
           _usernameError = _usernameApiError(e);
@@ -365,12 +411,16 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
       appBar: AppBar(
         title: Text(context.tr('member.editProfile')),
         leading: IconButton(
+          key: const Key('edit-profile-close'),
+          tooltip: context.tr('common.close'),
           icon: const Icon(Icons.close),
           onPressed: _busy ? null : () => Navigator.of(context).pop(),
         ),
         actions: [
           TextButton(
             key: const Key('edit-profile-save'),
+            // 48dp tall on every platform (web/desktop default to 40).
+            style: TextButton.styleFrom(minimumSize: const Size(64, 48)),
             onPressed: _busy ? null : _save,
             child: _busy
                 ? const SizedBox(
@@ -390,6 +440,7 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
             children: [
               Center(
                 child: FFPhotoPickerField(
+                  semanticLabel: context.tr('member.photoPick'),
                   value: _photoUrl,
                   onChanged: (value) => setState(() => _photoUrl = value),
                 ),

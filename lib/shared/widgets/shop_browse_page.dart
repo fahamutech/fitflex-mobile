@@ -2512,7 +2512,9 @@ class _ProductDetailsSheet extends StatelessWidget {
               formatCurrency(product.effectivePrice),
               style: Theme.of(context).textTheme.titleLarge,
             ),
-            if (product.discountPriceTzs != null)
+            // Same rule as the cards: a real reduction only (0 < discount
+            // < price); a 0 or higher "discount" is not a sale.
+            if (product.effectivePrice < product.priceTzs)
               Text(
                 formatCurrency(product.priceTzs),
                 style: const TextStyle(decoration: TextDecoration.lineThrough),
