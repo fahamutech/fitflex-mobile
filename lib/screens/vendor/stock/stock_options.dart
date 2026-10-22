@@ -31,6 +31,7 @@ class VendorTools {
     this.customers = false,
     this.banners = false,
     this.productTargets = false,
+    this.shopAreas = false,
     this.documents = false,
     this.vat = false,
     this.vatInForce,
@@ -77,6 +78,11 @@ class VendorTools {
   /// `true`, else off.
   final bool productTargets;
 
+  /// Shop home Phase 2 S3: "Where you sell" ("Based in" / "Delivers to")
+  /// on the business profile (SHOP_NEAR_YOU), from `merch: {shopAreas:
+  /// true}`. Exactly `true`, else off.
+  final bool shopAreas;
+
   /// S5: share links, PDFs, the share sheet and order invoices
   /// (VENDOR_DOCUMENTS). Exactly `true`, else the S3/S4 text share.
   final bool documents;
@@ -107,6 +113,9 @@ class VendorTools {
         productTargets:
             options['merch'] is Map &&
             (options['merch'] as Map)['productTargets'] == true,
+        shopAreas:
+            options['merch'] is Map &&
+            (options['merch'] as Map)['shopAreas'] == true,
         documents: options['documents'] == true,
         vat: options['vat'] == true,
         vatInForce: options['vatInForce'] is bool
