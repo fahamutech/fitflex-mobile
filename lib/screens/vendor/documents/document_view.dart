@@ -13,7 +13,7 @@ import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
 import '../../../shared/formatters.dart';
 import '../../../shared/i18n.dart';
-import '../sales/receipt_data.dart' show eatDateTime, receiptDay;
+import '../sales/receipt_data.dart' show eatDateTime, eatDayOf, receiptDay;
 import '../sales/sale_models.dart' show paymentMethodKey;
 import '../sales/sales_widgets.dart' show MoneyRow, ReceiptLanguageToggle;
 import '../stock/stock_options.dart';
@@ -132,10 +132,20 @@ class VendorDocumentView extends StatelessWidget {
       color: theme.colorScheme.onSurfaceVariant,
     );
     final title = [t(doc.titleKey), ?doc.number].join(' ');
+    // UAT D1: a cancelled ORDER reads as an order cancellation (as the
+    // server's page), never as a voided document.
+    final orderCancelled = doc.cancelled && doc.docType == 'order_invoice';
+    final cancelledDay = _day(doc.cancelledAt, lang);
     final status = switch (doc.status) {
       'paid' => ('vendor.doc.statusPaid', FFBadgeTone.success),
       'pay_later' => ('vendor.doc.statusPayLater', FFBadgeTone.brand),
       'paid_in_full' => ('vendor.doc.statusPaidInFull', FFBadgeTone.success),
+      'cancelled' when orderCancelled => (
+        cancelledDay == null
+            ? 'vendor.doc.orderCancelledBadge'
+            : 'vendor.doc.orderCancelledOn',
+        FFBadgeTone.danger,
+      ),
       'cancelled' => ('vendor.doc.statusCancelled', FFBadgeTone.danger),
       _ => null,
     };
@@ -190,7 +200,7 @@ class VendorDocumentView extends StatelessWidget {
                 alignment: AlignmentDirectional.centerStart,
                 child: FFBadge(
                   key: const Key('doc-status'),
-                  label: t(status.$1),
+                  label: _fill(status.$1, {'date': cancelledDay}),
                   tone: status.$2,
                   wrap: true,
                 ),
@@ -200,10 +210,12 @@ class VendorDocumentView extends StatelessWidget {
               const SizedBox(height: FFTokens.spacingXs),
               FFAlert(
                 key: const Key('doc-cancelled'),
-                message: _fill('vendor.doc.cancelled', {
-                  'date': eatDateTime(doc.cancelledAt, locale: lang),
-                  'business': doc.businessName ?? '',
-                }),
+                message: orderCancelled
+                    ? t('vendor.doc.orderCancelled')
+                    : _fill('vendor.doc.cancelled', {
+                        'date': eatDateTime(doc.cancelledAt, locale: lang),
+                        'business': doc.businessName ?? '',
+                      }),
                 tone: FFAlertTone.error,
               ),
             ],
@@ -331,6 +343,13 @@ class VendorDocumentView extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// "20 Oct 2026" for an instant, on the EAT calendar; null when unknown.
+  static String? _day(String? iso, String lang) {
+    final d = eatDayOf(iso);
+    if (d == null) return null;
+    return formatDate(DateTime(d.year, d.month, d.day), locale: lang);
   }
 
   Widget _line(BuildContext context, DocLine l, TextStyle? muted) {
@@ -520,12 +539,6 @@ class _VendorOrderInvoicePageState extends State<VendorOrderInvoicePage> {
                 child: ListView(
                   padding: const EdgeInsets.all(FFTokens.spacingLg),
                   children: [
-                    if (d.cancelled) ...[
-                      FFAlert(
-                        message: context.tr('vendor.documents.voidedNote'),
-                      ),
-                      const SizedBox(height: FFTokens.spacingSm),
-                    ],
                     VendorDocumentView(
                       doc: d,
                       t: (k) => locale.tIn(lang, k),
