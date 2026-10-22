@@ -1803,7 +1803,7 @@ class FFLocale extends ChangeNotifier {
       'member.dateOfBirth': 'Date of birth',
       'member.dobPick': 'Choose date of birth',
       'member.dobClear': 'Clear date of birth',
-      'member.dobInvalid': 'Enter a real date of birth.',
+      'member.dobInvalid': 'Choose a real date of birth.',
       'member.dobFuture': "Date of birth can't be in the future.",
       'member.goal.gain_muscle': 'Gain muscle',
       'member.goal.lose_weight': 'Lose weight',
@@ -7255,7 +7255,7 @@ class FFLocale extends ChangeNotifier {
       'member.dobPick': 'Chagua tarehe ya kuzaliwa',
       'member.dobClear': 'Futa tarehe ya kuzaliwa',
       // Draft Swahili, pending native review (2026-10-22).
-      'member.dobInvalid': 'Weka tarehe sahihi ya kuzaliwa.',
+      'member.dobInvalid': 'Chagua tarehe sahihi ya kuzaliwa.',
       'member.dobFuture': 'Tarehe ya kuzaliwa haiwezi kuwa ya baadaye.',
       'member.goal.gain_muscle': 'Kuongeza misuli',
       'member.goal.lose_weight': 'Kupunguza uzito',

@@ -52,6 +52,22 @@ void main() {
       expect(dateOfBirthProblemKey('2026-10-22', now: now), isNull);
     });
 
+    test('a stored timestamp is not a date (it is not cut to its day)', () {
+      // 21:00Z on 9 May is already 10 May in Dar: cutting would be a day early.
+      expect(
+        normaliseDateOfBirth('1990-05-09T21:00:00Z'),
+        '1990-05-09T21:00:00Z',
+      );
+      expect(normaliseDateOfBirth(' 1990-05-09 '), '1990-05-09');
+      expect(
+        dateOfBirthProblemKey(
+          normaliseDateOfBirth('1990-05-09T21:00:00Z'),
+          now: now,
+        ),
+        'member.dobInvalid',
+      );
+    });
+
     test('not a real YYYY-MM-DD day, or before 1901: invalid', () {
       for (final bad in [
         '2011/05/03',
@@ -81,12 +97,12 @@ void main() {
       expect(isDateOfBirthError(_dobRefused), isTrue);
       expect(
         dateOfBirthErrorMessage(loc, _dobRefused),
-        'Enter a real date of birth.',
+        'Choose a real date of birth.',
       );
       loc.set(const Locale('sw'));
       expect(
         dateOfBirthErrorMessage(loc, _dobRefused),
-        'Weka tarehe sahihi ya kuzaliwa.',
+        'Chagua tarehe sahihi ya kuzaliwa.',
       );
     });
 
@@ -128,7 +144,7 @@ void main() {
       String? shown;
       await controller.submit(onSuccess: () {}, onError: (m) => shown = m);
       expect(api.profiles.single['dateOfBirth'], '1990-05-10');
-      expect(shown, 'Weka tarehe sahihi ya kuzaliwa.');
+      expect(shown, 'Chagua tarehe sahihi ya kuzaliwa.');
     });
   });
 

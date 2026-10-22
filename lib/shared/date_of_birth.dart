@@ -35,15 +35,11 @@ String formatDateOfBirth(DateTime d) =>
     '${d.month.toString().padLeft(2, '0')}-'
     '${d.day.toString().padLeft(2, '0')}';
 
-/// A stored date of birth as YYYY-MM-DD: a full timestamp keeps its day;
-/// anything else is left as it is (the field then says it is not valid).
-String normaliseDateOfBirth(String stored) {
-  final text = stored.trim();
-  if (text.length > 10 && parseDateOfBirth(text.substring(0, 10)) != null) {
-    return text.substring(0, 10);
-  }
-  return text;
-}
+/// A stored date of birth for the field: only a plain YYYY-MM-DD is a
+/// date. Anything else, timestamps included, is left as it is so the field
+/// says it is not valid and the member picks again. A timestamp is not cut
+/// to its first 10 characters: "1990-05-09T21:00:00Z" is 10 May in Dar.
+String normaliseDateOfBirth(String stored) => stored.trim();
 
 /// The i18n key for what is wrong with a typed or stored date of birth, or
 /// null when it is fine or empty (empty clears it).
