@@ -6,6 +6,12 @@ import '../shared/design_tokens.dart';
 import '../shared/components/components.dart';
 import '../shared/photo_hero_flag.dart';
 
+/// PHOTO_HERO_UI: the Language hero's share of a phone's height...
+const double languageHeroFraction = 0.42;
+
+/// ...and the clear photo it keeps above the headline from 760px tall.
+const double languageHeroClearPhoto = 80;
+
 class LanguageScreen extends StatefulWidget {
   const LanguageScreen({super.key});
 
@@ -79,9 +85,13 @@ class _LanguageScreenState extends State<LanguageScreen>
     };
     return FFPhotoHeroPage(
       phoneVariant: FFHeroVariant.full,
-      phoneFraction: 0.56,
-      shortPhoneFraction: 0.52,
-      phoneMinHeight: 320,
+      // Compact (owner 2026-10-22, preview 7): about 42% of the screen, so
+      // the prompt, both tiles and Continue follow right under the photo.
+      // Phones from 760 tall keep 80px of clear photo above the headline.
+      phoneFraction: languageHeroFraction,
+      shortPhoneFraction: languageHeroFraction,
+      phoneMinHeight: 240,
+      compactClearPhoto: languageHeroClearPhoto,
       logo: const FFWordmark(),
       actions: const [ThemeToggleButton()],
       hero: (context, f) => FFPhotoHero(
@@ -89,6 +99,8 @@ class _LanguageScreenState extends State<LanguageScreen>
         variant: f.variant,
         minHeight: f.minHeight,
         topInset: f.topInset,
+        clearPhoto: f.clearPhoto,
+        maxHeight: f.maxHeight,
         wideHeadline: f.wide,
         logo: f.wide ? const FFWordmark() : null,
         eyebrow: context.tr('hero.eyebrow.brand'),

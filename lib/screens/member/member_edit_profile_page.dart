@@ -8,6 +8,7 @@ import '../../app_scope.dart';
 import '../../shared/api_client.dart';
 import '../../shared/api_error_message.dart';
 import '../../shared/components/components.dart';
+import '../../shared/date_of_birth.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
@@ -200,57 +201,35 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
 
   // ── Date of birth ──
 
-  // The server's range (functions#239): 1901-01-01 to today, East Africa.
-  static final DateTime _firstDob = DateTime(1901);
-
-  /// A real calendar day (YYYY-MM-DD), not after today in East Africa,
-  /// from 1901-01-01 on.
+  /// What is wrong with the date of birth (see shared/date_of_birth.dart).
   /// Null for an empty field.
+  ///
+  /// The field takes typed text, so a value that is not YYYY-MM-DD at all
+  /// gets the format message; each message also says why the shop cannot
+  /// be personalised until it is fixed (the server fails closed).
   String? _dobProblem(String? value) {
     final text = value?.trim() ?? '';
-    if (text.isEmpty) return null;
-    // Says why there is no "Personalised shop" switch until it is fixed
-    // (the server fails closed on an invalid date of birth).
-    String withNote(String key) =>
-        '${context.tr(key)} ${context.tr('member.dobNoPersonalisation')}';
-    final date = parseDateOfBirth(text);
-    if (date == null) return withNote('member.dobFormat');
-    final today = eastAfricaToday();
-    if (date.isAfter(today) || date.isBefore(_firstDob)) {
-      return withNote('member.dobInvalid');
-    }
-    return null;
+    final key = dateOfBirthProblemKey(text);
+    if (key == null) return null;
+    final shown = RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(text)
+        ? key
+        : 'member.dobFormat';
+    return '${context.tr(shown)} ${context.tr('member.dobNoPersonalisation')}';
   }
 
   /// A stored value that is not valid is flagged as soon as the page opens.
-  late final bool _storedDobInvalid = () {
-    final text = _dateOfBirth.text.trim();
-    if (text.isEmpty) return false;
-    final date = parseDateOfBirth(text);
-    return date == null ||
-        date.isAfter(eastAfricaToday()) ||
-        date.isBefore(_firstDob);
-  }();
+  late final bool _storedDobInvalid =
+      dateOfBirthProblemKey(_dateOfBirth.text) != null;
 
   Future<void> _pickDateOfBirth() async {
-    final today = eastAfricaToday();
-    final current = parseDateOfBirth(_dateOfBirth.text.trim());
-    final initial =
-        current != null &&
-            !current.isAfter(today) &&
-            !current.isBefore(_firstDob)
-        ? current
-        : DateTime(today.year - 25, today.month);
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: initial,
-      firstDate: _firstDob,
-      lastDate: today,
+    final picked = await showDateOfBirthPicker(
+      context,
+      current: parseDateOfBirth(_dateOfBirth.text.trim()),
+      helpText: context.tr('member.dateOfBirth'),
       // Calendar only: the picker's own typed entry follows the device
       // locale (M/D/YYYY in US English). Typing is done in the field
       // itself, always as YYYY-MM-DD.
-      initialEntryMode: DatePickerEntryMode.calendarOnly,
-      helpText: context.tr('member.dateOfBirth'),
+      entryMode: DatePickerEntryMode.calendarOnly,
       builder: (context, child) {
         final theme = Theme.of(context);
         const buttons = Size(64, 48);
@@ -377,12 +356,9 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
       Navigator.of(context).pop(true);
     } on ApiException catch (e) {
       if (!mounted) return;
-      final body = e.body is Map ? e.body as Map : const {};
       setState(() {
         _busy = false;
-        if (!savedAnything &&
-            e.code == 'invalid_field' &&
-            body['field'] == 'dateOfBirth') {
+        if (!savedAnything && isDateOfBirthError(e)) {
           _dobError =
               '${context.tr('member.dobInvalid')} '
               '${context.tr('member.dobNoPersonalisation')}';
@@ -706,38 +682,4 @@ class _ContactField extends StatelessWidget {
       },
     );
   }
-}
-
-/// Today's calendar day in East Africa (UTC+3), the server's "today" for a
-/// date of birth, whatever the device's own time zone.
-DateTime eastAfricaToday({DateTime? now}) {
-  final eat = (now ?? DateTime.now()).toUtc().add(const Duration(hours: 3));
-  return DateTime(eat.year, eat.month, eat.day);
-}
-
-/// YYYY-MM-DD as a real calendar day, else null ("2026-02-30" is null).
-DateTime? parseDateOfBirth(String text) {
-  final m = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$').firstMatch(text);
-  if (m == null) return null;
-  final y = int.parse(m.group(1)!);
-  final mo = int.parse(m.group(2)!);
-  final d = int.parse(m.group(3)!);
-  final date = DateTime(y, mo, d);
-  if (date.year != y || date.month != mo || date.day != d) return null;
-  return date;
-}
-
-String formatDateOfBirth(DateTime d) =>
-    '${d.year.toString().padLeft(4, '0')}-'
-    '${d.month.toString().padLeft(2, '0')}-'
-    '${d.day.toString().padLeft(2, '0')}';
-
-/// A stored date of birth as YYYY-MM-DD: a full timestamp keeps its day;
-/// anything else is left as it is (the field then says it is not valid).
-String normaliseDateOfBirth(String stored) {
-  final text = stored.trim();
-  if (text.length > 10 && parseDateOfBirth(text.substring(0, 10)) != null) {
-    return text.substring(0, 10);
-  }
-  return text;
 }

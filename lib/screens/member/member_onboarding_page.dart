@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app_scope.dart';
 import '../../router.dart';
+import '../../shared/date_of_birth.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import 'member_onboarding_controller.dart';
@@ -405,22 +406,23 @@ class _MemberOnboardingPageState extends State<MemberOnboardingPage> {
             size: FFTokens.iconSm,
           ),
           onTap: () async {
-            final date = await showDatePicker(
-              context: context,
-              initialDate: DateTime(1995),
-              firstDate: DateTime(1940),
-              lastDate: DateTime.now(),
+            // 1901-01-01 to today (East Africa), sent as YYYY-MM-DD.
+            final date = await showDateOfBirthPicker(
+              context,
+              current: parseDateOfBirth(_controller.dobCtrl.text.trim()),
+              helpText: context.tr('onboarding.dob'),
             );
             if (date != null) {
-              _controller.dobCtrl.text = date
-                  .toIso8601String()
-                  .split('T')
-                  .first;
+              _controller.dobCtrl.text = formatDateOfBirth(date);
             }
           },
-          validator: (v) => (v == null || v.trim().isEmpty)
-              ? context.tr('onboarding.required')
-              : null,
+          validator: (v) {
+            if (v == null || v.trim().isEmpty) {
+              return context.tr('onboarding.required');
+            }
+            final key = dateOfBirthProblemKey(v);
+            return key == null ? null : context.tr(key);
+          },
         ),
         const SizedBox(height: 16),
         Row(

@@ -372,6 +372,13 @@ class _ChoosePinStepState extends State<ChoosePinStep> {
   }
 }
 
+/// PHOTO_HERO_UI, PIN entry and the PIN flows' steps: the hero's share of
+/// a phone's height (owner 2026-10-22: compact, content right under it)...
+const double pinHeroFraction = 0.30;
+
+/// ...and the clear photo it keeps above its text from 760px tall.
+const double pinHeroClearPhoto = 48;
+
 /// PHOTO_HERO_UI (spec §22.2): Register, Forgot PIN and PIN setup share the
 /// `pin` photo. [keypad] steps pin their content under the hero and drop
 /// the hero where it would push OK below the fold; text steps scroll (the
@@ -388,9 +395,12 @@ Widget _flowScreen(
     return _flowScaffold(context, title: title, keypad: keypad, child: child);
   }
   return FFPhotoHeroPage(
-    phoneFraction: 0.30,
-    shortPhoneFraction: 0.30,
+    phoneFraction: pinHeroFraction,
+    shortPhoneFraction: pinHeroFraction,
     phoneMinHeight: 220,
+    // Keypad steps: compact like PIN entry (owner 2026-10-22), the content
+    // right under the hero and spare room at the bottom.
+    compactClearPhoto: keypad ? pinHeroClearPhoto : 0,
     pinnedContent: keypad,
     heroMinViewportHeight: keypad ? 800 : null,
     maxHeroTextScale: keypad ? 1.15 : null,
@@ -412,6 +422,8 @@ Widget _flowScreen(
       variant: f.variant,
       minHeight: f.minHeight,
       topInset: f.topInset,
+      clearPhoto: f.clearPhoto,
+      maxHeight: f.maxHeight,
       wideHeadline: f.wide,
       eyebrow: title,
       headlineLead: headline == null ? null : context.tr('$headline.lead'),
