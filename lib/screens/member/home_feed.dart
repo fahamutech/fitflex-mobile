@@ -20,6 +20,9 @@ enum HomeCardKind {
   goal,
   todayActivity,
   recommendation,
+
+  /// "Upcoming events" (events S2 spec §11.1): the two soonest open events.
+  events,
 }
 
 /// Why a card made it onto Home. Drives the copy on streak and
@@ -52,6 +55,8 @@ enum HomeReason {
   gymExplore,
   gymTryNew,
   trainerRegular,
+  // Events
+  upcomingEvents,
 }
 
 @immutable
@@ -121,6 +126,7 @@ List<HomeCardPick> pickHomeCards(
         d.activities.isEmpty && !d.activityIsSample ? 35 : 60,
       ),
     ?_recommendation(d, now, lat: lat, lng: lng),
+    ?_events(d),
   ].where((p) => p.score >= minScore).toList();
 
   picks.sort((a, b) {
@@ -257,6 +263,19 @@ HomeCardPick? _goal(MemberData d, DateTime now) {
         : HomeReason.goalInProgress,
     best.fraction >= 0.75 ? 78 : 48,
     goal: best,
+  );
+}
+
+/// Upcoming events (events S2 spec §11.1): a soft promotion for everyone
+/// (owner, §17.4), scored just under the recommendations so it closes the
+/// page. Only with the flag and the server probe on and at least one open
+/// event; the shell leaves [MemberData.upcomingEvents] empty otherwise.
+HomeCardPick? _events(MemberData d) {
+  if (!d.eventsDiscovery || d.upcomingEvents.isEmpty) return null;
+  return const HomeCardPick(
+    HomeCardKind.events,
+    HomeReason.upcomingEvents,
+    29,
   );
 }
 

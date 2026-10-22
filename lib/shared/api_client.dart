@@ -2867,6 +2867,67 @@ class ApiClient {
 
   static final _discoverSession = RegExp(r'^[A-Za-z0-9_-]{8,64}$');
 
+  // ── Events (Marathon & Running Events S2, member discovery) ──────────────
+  // docs/design/events-s2-organizer-and-discovery.md §13, §14.1, §14.2,
+  // §14.5. Paths, query names and fields are the server's; nothing is
+  // invented here.
+
+  /// Public probe: `{discovery, favourites, registration, currency,
+  /// closingSoonHours, regions, timezones}`. Answers even while the server
+  /// module is off (`discovery: false`); the caller treats a 404 or a
+  /// network error as "off".
+  Future<Map<String, dynamic>> eventsOptions() async {
+    final out = await _request('GET', '/events/options');
+    return out is Map ? Map<String, dynamic>.from(out) : <String, dynamic>{};
+  }
+
+  /// One page of published events: `{items, nextCursor, total?}`.
+  /// [query] holds the filter's parameters (repeated keys as lists, e.g.
+  /// `type`, `distance`); [cursor] is the previous page's `nextCursor`;
+  /// every call carries `limit`.
+  Future<Map<String, dynamic>> listEvents(
+    Map<String, List<String>> query, {
+    String? cursor,
+    int limit = 20,
+  }) async {
+    final params = <String, dynamic>{
+      for (final e in query.entries)
+        if (e.value.isNotEmpty)
+          e.key: e.value.length == 1 ? e.value.single : e.value,
+      if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+      'limit': '$limit',
+    };
+    final out = await _request(
+      'GET',
+      '/events?${Uri(queryParameters: params).query}',
+    );
+    if (out is List) return {'items': out, 'nextCursor': null};
+    return out is Map ? Map<String, dynamic>.from(out) : <String, dynamic>{};
+  }
+
+  /// One event by id (or slug). 404 `event_not_found` for anything not
+  /// published to this caller; 404 `feature_disabled` while the module is off.
+  Future<Map<String, dynamic>> getEvent(String eventId) async {
+    final out = await _request(
+      'GET',
+      '/events/${Uri.encodeComponent(eventId)}',
+    );
+    return Map<String, dynamic>.from(out as Map);
+  }
+
+  /// Saves an event (favourites flag, §14.5). 204.
+  Future<void> saveEvent(String eventId) async => await _request(
+    'PUT',
+    '/me/event-favourites/${Uri.encodeComponent(eventId)}',
+    body: const <String, dynamic>{},
+  );
+
+  /// Removes a saved event. 204.
+  Future<void> unsaveEvent(String eventId) async => await _request(
+    'DELETE',
+    '/me/event-favourites/${Uri.encodeComponent(eventId)}',
+  );
+
   static String _withQuery(String path, Map<String, String> query) =>
       query.isEmpty ? path : '$path?${Uri(queryParameters: query).query}';
 
