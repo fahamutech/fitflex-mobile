@@ -17,6 +17,7 @@ import '../../design_tokens.dart';
 import '../../i18n.dart';
 import '../../shop_near_you.dart';
 import '../ff_area_picker.dart';
+import 'shop_focus_ring.dart';
 
 /// The card in the near-you slot, before the person has answered.
 class ShopNearYouInviteCard extends StatelessWidget {
@@ -88,7 +89,8 @@ class ShopNearYouInviteCard extends StatelessWidget {
                       key: const Key('shop-near-you-use'),
                       label: context.tr('shop.near.use'),
                       variant: FFButtonVariant.secondary,
-                      size: FFButtonSize.sm,
+                      // 48 tall at every width (QA #3).
+                      visualDensity: VisualDensity.standard,
                       icon: Icons.my_location_outlined,
                       onPressed: offline ? null : onUse,
                     ),
@@ -130,6 +132,8 @@ Future<bool?> showShopLocationRationale(
 }) => showFFSheet<bool>(
   context,
   title: context.tr('shop.near.sheetTitle'),
+  // A centred dialog 480 wide on desktop (QA #11).
+  wideDialogWidth: 480,
   child: _RationaleBody(alreadyAllowed: alreadyAllowed),
 );
 
@@ -183,19 +187,30 @@ class _RationaleBody extends StatelessWidget {
           ),
         ),
         const SizedBox(height: FFTokens.spacingMd),
-        FFButton(
-          key: const Key('shop-location-use'),
-          label: context.tr('shop.near.use'),
-          fullWidth: true,
-          onPressed: () => Navigator.of(context).pop(true),
+        // 48 tall at every width (QA #3); two-tone focus rings (QA #7).
+        ShopFocusRing(
+          onPhoto: true,
+          builder: (node) => FFButton(
+            key: const Key('shop-location-use'),
+            focusNode: node,
+            label: context.tr('shop.near.use'),
+            fullWidth: true,
+            visualDensity: VisualDensity.standard,
+            onPressed: () => Navigator.of(context).pop(true),
+          ),
         ),
         const SizedBox(height: FFTokens.spacingXs),
-        FFButton(
-          key: const Key('shop-location-not-now'),
-          label: context.tr('shop.near.notNow'),
-          variant: FFButtonVariant.ghost,
-          fullWidth: true,
-          onPressed: () => Navigator.of(context).pop(false),
+        ShopFocusRing(
+          onPhoto: true,
+          builder: (node) => FFButton(
+            key: const Key('shop-location-not-now'),
+            focusNode: node,
+            label: context.tr('shop.near.notNow'),
+            variant: FFButtonVariant.ghost,
+            fullWidth: true,
+            visualDensity: VisualDensity.standard,
+            onPressed: () => Navigator.of(context).pop(false),
+          ),
         ),
       ],
     );
@@ -394,10 +409,12 @@ class ShopNearYouFlow {
     }
     if (!context.mounted) return;
     final current = ShopNearYouStore.peek(uid)?.areaId;
+    // Only areas the server lets stand for "where you are" (QA #2):
+    // locatable cities and districts, with their parents for context.
     final picked = await showFFAreaPicker(
       context,
       title: context.tr('shop.near.pickArea'),
-      areas: areas,
+      areas: locatableWithParents(areas, const {'city', 'district'}),
       multi: false,
       levels: const {'city', 'district'},
       selected: {?current},
