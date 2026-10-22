@@ -6,6 +6,7 @@ import 'package:fitflexmobile/app_scope.dart';
 import 'package:fitflexmobile/screens/member/member_edit_profile_page.dart';
 import 'package:fitflexmobile/shared/api_client.dart';
 import 'package:fitflexmobile/shared/auth_state.dart';
+import 'package:fitflexmobile/shared/date_of_birth.dart';
 import 'package:fitflexmobile/shared/design_tokens.dart';
 import 'package:fitflexmobile/shared/i18n.dart';
 import 'package:fitflexmobile/shared/models.dart';
@@ -171,7 +172,10 @@ void main() {
       final loc = await _pump(tester, api, stored);
       await _save(tester);
       expect(api.profiles, isEmpty);
-      expect(find.text(loc.t('member.dobInvalid')), findsOneWidget);
+      final key = stored == '2999-01-01'
+          ? 'member.dobFuture'
+          : 'member.dobInvalid';
+      expect(find.text(loc.t(key)), findsOneWidget);
     });
   }
 
