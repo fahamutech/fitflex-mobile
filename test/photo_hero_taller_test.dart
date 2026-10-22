@@ -12,6 +12,7 @@ import 'package:fitflexmobile/app_scope.dart';
 import 'package:fitflexmobile/screens/auth_screen.dart';
 import 'package:fitflexmobile/screens/email_auth_screen.dart';
 import 'package:fitflexmobile/screens/member/member_shell.dart';
+import 'package:fitflexmobile/screens/pin_flows.dart';
 import 'package:fitflexmobile/screens/role_screen.dart';
 import 'package:fitflexmobile/screens/sign_up_screen.dart';
 import 'package:fitflexmobile/shared/api_client.dart';
@@ -514,7 +515,10 @@ void main() {
             initialMode: EmailAuthMode.signIn,
           ),
         );
-        expect(_hero(tester).clearPhoto, 0);
+        // Not the taller hero's target: the compact PIN hero's own floor
+        // (owner 2026-10-22), with no cap from a content reserve.
+        expect(_hero(tester).clearPhoto, pinHeroClearPhoto);
+        expect(_hero(tester).maxHeight, double.infinity);
         final one = find
             .ancestor(of: find.text('1'), matching: find.byType(Material))
             .first;
