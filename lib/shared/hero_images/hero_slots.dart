@@ -25,10 +25,10 @@ const Map<FFHeroPhoto, String> heroSlotOf = {
   FFHeroPhoto.trainer: 'trainer',
   FFHeroPhoto.vendor: 'vendor',
   FFHeroPhoto.owner: 'owner',
-  FFHeroPhoto.footerStudio: kFooterPoolSlot,
-  FFHeroPhoto.footerGymFloor: kFooterPoolSlot,
-  FFHeroPhoto.footerRack: kFooterPoolSlot,
-  FFHeroPhoto.footerShelves: kFooterPoolSlot,
+  FFHeroPhoto.footerStretch: kFooterPoolSlot,
+  FFHeroPhoto.footerRooftop: kFooterPoolSlot,
+  FFHeroPhoto.footerHydration: kFooterPoolSlot,
+  FFHeroPhoto.footerNightHall: kFooterPoolSlot,
 };
 
 const String kFooterPoolSlot = 'footerPool';

@@ -113,6 +113,9 @@ String memberLinkFor({required String deepLink, required String type}) =>
         'training_plan_updated' || 'training_plan_stopped' => 'trainingPlan',
         // Their trainer recorded that they missed a session: open it.
         'trainer_booking_no_show' => 'session',
+        // A running event (events S2; a future `event` notice type with
+        // `data.eventId`): open the event, or the list without an id.
+        'event' => 'event',
         _ => '',
       };
 
@@ -130,6 +133,7 @@ String? memberRouteFor({
   String? trainerId,
   String? planId,
   String? bookingId,
+  String? eventId,
 }) {
   final link = memberLinkFor(deepLink: deepLink, type: type);
   return switch (link) {
@@ -146,6 +150,9 @@ String? memberRouteFor({
       queryParameters: {'booking': bookingId},
     ).toString(),
     'session' => '/member/sessions',
+    'event' when eventId != null && _safeId.hasMatch(eventId) =>
+      '/member/events/$eventId',
+    'event' => '/member/events',
     _ => null,
   };
 }

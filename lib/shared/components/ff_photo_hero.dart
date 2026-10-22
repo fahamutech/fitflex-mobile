@@ -9,79 +9,158 @@ import '../hero_images/hero_image_store.dart';
 import '../i18n.dart';
 import 'ff_skeleton.dart';
 
-/// Bundled hero photos (people-free licensed stock until FitFlex has its own
-/// shoot; see assets/photos/hero/LICENSES.md). Never fetched from a network.
-/// With `HERO_IMAGES_REMOTE` on, an admin-published photo for the same slot
-/// (hero_images/hero_slots.dart) may replace one once it is saved and
-/// decoded ([HeroImageStore]); the bundled file stays the fallback.
-/// No crop shows another gym's or brand's logo or signage (owner rule
-/// 2026-10-20): the treadmill photo with a "smart fit" gym logo is banned.
+/// Bundled hero photos: FitFlex Africa's own AI-generated scenes (Figma AI,
+/// 2026-10-22, no people) and four photos supplied by the owner (people seen
+/// from behind or none; source and licence to be confirmed by the owner
+/// before the flag goes on). See assets/photos/hero/LICENSES.md. Never
+/// fetched from a network. With `HERO_IMAGES_REMOTE` on, an admin-published
+/// photo for the same slot (hero_images/hero_slots.dart) may replace one
+/// once it is saved and decoded ([HeroImageStore]); the bundled file stays
+/// the fallback.
+/// No crop shows another brand's logo or signage (owner rule 2026-10-20);
+/// the FitFlex Africa signage in the generated scenes is kept in the clear
+/// photo above the scrim where the crop allows.
 enum FFHeroPhoto {
-  language('hero_language', 4 / 5, 'pexels-4716814'),
-  signIn('hero_sign_in', 4 / 5, 'scene-tubarones-9545'),
-  signUp('hero_sign_up', 4 / 5, 'pexels-3916766'),
-  // Taller heroes (owner 2026-10-20): Role and Profile re-cut taller from
-  // the same sources, so the photo is not enlarged past its pixels.
-  role('hero_role', 1080 / 1100, 'pexels-29526371'),
+  // Every file is its own scene (sourceId), so no two slots share one.
+  // Focal y = 2 x (the sign's or subject's height in the file, 0..1) - 1:
+  // the sign keeps its place relative to the box on any shape, from a
+  // phone hero to an 840+ banner, so it stays in the clear photo.
+  language(
+    'hero_language',
+    864 / 1080,
+    'fitflex-gen-01-reception',
+    Alignment(0, -0.3),
+  ),
+  signIn(
+    'hero_sign_in',
+    864 / 1080,
+    'fitflex-gen-04-entrance',
+    Alignment(0, -0.45),
+  ),
+  signUp(
+    'hero_sign_up',
+    864 / 1080,
+    'fitflex-gen-05-locker-towel',
+    Alignment(0, -0.4),
+  ),
+  role(
+    'hero_role',
+    864 / 1100,
+    'fitflex-gen-07-wide-floor',
+    Alignment.topCenter,
+  ),
 
   /// Home with no QR: no pass, payment pending, ended.
-  homeStart('hero_home_start', 4 / 5, 'pexels-29526371'),
+  homeStart(
+    'hero_home_start',
+    864 / 1080,
+    'fitflex-gen-08-sunrise-neon',
+    Alignment(0, -0.6),
+  ),
 
   /// Home with a working pass (QR states).
-  homePass('hero_home_pass', 3 / 2, 'pexels-5312212'),
+  homePass(
+    'hero_home_pass',
+    864 / 576,
+    'fitflex-gen-09-rack-shaker',
+    Alignment(0, -0.3),
+  ),
 
-  // Addendum 2026-10-19 (spec §26). Focal points keep the subject in frame
-  // from a 360px phone (about 1.2:1) to a 3:1 desktop banner.
-  profile('hero_profile', 1, 'pexels-4716814', Alignment(0.3, 0)),
-  pin('hero_pin', 1005 / 670, 'pexels-7432872', Alignment(0.3, -0.2)),
-  upgrade('hero_upgrade', 3 / 2, 'scene-ketut-4720', Alignment(-0.3, -0.4)),
+  profile(
+    'hero_profile',
+    864 / 864,
+    'fitflex-gen-10-towel-bench',
+    Alignment(0, 0.1),
+  ),
+  pin('hero_pin', 864 / 576, 'fitflex-gen-06-desk-sign', Alignment(0, -0.1)),
+  upgrade(
+    'hero_upgrade',
+    864 / 576,
+    'fitflex-gen-11-premium-zone',
+    Alignment(0, -0.35),
+  ),
   activityToday(
     'hero_activity_today',
-    3 / 2,
-    'pexels-4173217',
-    Alignment(0.1, 0.2),
+    732 / 488,
+    'owner-16-dumbbells-palms',
+    Alignment(0, 0.5),
   ),
   activityTraining(
     'hero_activity_training',
-    800 / 533,
-    'scene-tubarones-9545',
-    Alignment(-0.4, 0),
+    864 / 576,
+    'fitflex-gen-12-cable-zone',
+    Alignment(0, -0.2),
   ),
   activityChallenges(
     'hero_activity_challenges',
-    900 / 580,
-    'scene-ketut-4720',
-    Alignment(0, 0.1),
+    736 / 490,
+    'owner-02-hooded-bench-back',
+    Alignment(0, -0.3),
   ),
   activityProgress(
     'hero_activity_progress',
-    3 / 2,
-    'pexels-3916766',
-    Alignment(-0.1, -0.3),
+    864 / 576,
+    'fitflex-gen-13-treadmills-decal',
+    Alignment(0, 0.15),
   ),
-  trainer('hero_trainer', 840 / 530, 'scene-tima-6388', Alignment(0.7, 0)),
-  vendor('hero_vendor', 880 / 587, 'scene-tubarones-9545', Alignment(0, -0.3)),
-  owner('hero_owner', 3 / 2, 'pexels-29526371', Alignment(-0.3, -0.3)),
+  trainer(
+    'hero_trainer',
+    864 / 546,
+    'fitflex-gen-14-coaching',
+    Alignment(0, -0.6),
+  ),
+  vendor(
+    'hero_vendor',
+    864 / 576,
+    'fitflex-gen-15-vendor-packing',
+    Alignment(0, 0.2),
+  ),
+  owner(
+    'hero_owner',
+    864 / 576,
+    'fitflex-gen-03-gym-floor',
+    Alignment(0, -0.3),
+  ),
 
   // Section bands (photo-hero spec §32, §34.1): member Gyms, Trainers and
-  // Shop home.
-  gyms('hero_gyms', 1080 / 609, 'pexels-33832204', Alignment(-0.3, -0.2)),
+  // Shop home. Owner photos: Gyms keeps the window row; Trainers keeps the
+  // bar and the hands (the person is seen from behind).
+  gyms(
+    'hero_gyms',
+    736 / 415,
+    'owner-15-empty-gym-windows',
+    Alignment(0, -0.3),
+  ),
   trainers(
     'hero_trainers',
-    1000 / 350,
-    'scene-carbell-sarfo-3651',
-    Alignment(0.15, 0),
+    736 / 440,
+    'owner-01-lat-pulldown-back',
+    Alignment(0, -0.5),
   ),
-  shop('hero_shop', 1080 / 691, 'pexels-5592605', Alignment(-0.1, 0.2)),
+  shop('hero_shop', 864 / 554, 'fitflex-gen-02-shop', Alignment.topCenter),
 
-  // Footer pool (spec §33, §34.1; sharp people-free set, owner 2026-10-20):
-  // tall crops for the full-width footer (about 1:1, the tallest each
-  // source allows at 1080 wide), 1080 wide at 2x from source crops at least
-  // as large (never upscaled).
-  footerStudio('footer_studio', 1080 / 1000, 'pexels-4716814'),
-  footerGymFloor('footer_gym_floor', 1080 / 1080, 'pexels-29526371'),
-  footerRack('footer_rack', 1080 / 972, 'pexels-3916766'),
-  footerShelves('footer_shelves', 1080 / 1000, 'scene-tubarones-9545');
+  // Footer pool (spec §33): four square generated scenes, 1024 wide at 2x
+  // (the source size; never upscaled). Focal on the sign, so a wide footer
+  // keeps it in the clear photo above the lockup.
+  footerStretch(
+    'footer_stretch',
+    1,
+    'fitflex-gen-16-footer-stretch',
+    Alignment(0, -0.5),
+  ),
+  footerRooftop(
+    'footer_rooftop',
+    1,
+    'fitflex-gen-17-footer-rooftop',
+    Alignment(0, 0.15),
+  ),
+  footerHydration('footer_hydration', 1, 'fitflex-gen-18-footer-hydration'),
+  footerNightHall(
+    'footer_night_hall',
+    1,
+    'fitflex-gen-19-footer-night-hall',
+    Alignment(0, -0.55),
+  );
 
   const FFHeroPhoto(
     this.file,
@@ -95,10 +174,10 @@ enum FFHeroPhoto {
   /// Width / height of the bundled file.
   final double aspect;
 
-  /// The scene this file shows (spec §34.1): the original photo's name in
-  /// the parent repo's social/brand/photos/, or a `scene-…` id when several
-  /// originals come from one shoot. Crops of one scene share it, so a page
-  /// can keep its footer photo apart from its top hero.
+  /// The scene this file shows (spec §34.1): `fitflex-gen-…` for a
+  /// generated scene, `owner-…` for an owner-supplied photo (the source
+  /// file's name). Crops of one scene would share it, so a page can keep its
+  /// footer photo apart from its top hero.
   final String sourceId;
 
   /// Where `BoxFit.cover` keeps the subject (the image alignment).
@@ -248,14 +327,16 @@ class FFPhotoHero extends StatelessWidget {
     this.fillHeight = false,
     this.panelSidePad,
   }) : assert(
-         (photo == null) != (networkImage == null),
-         'Give exactly one of photo or networkImage',
+         photo != null || networkImage != null,
+         'Give a photo, a networkImage, or both (photo = fallback)',
        );
 
   /// A bundled photo (never fetched from the network)...
   final FFHeroPhoto? photo;
 
-  /// ...or one from the network (Shop home banners). Exactly one is set.
+  /// ...or one from the network (Shop home banners, an event's own cover).
+  /// At least one is set. With both, the network image leads and [photo] is
+  /// drawn instead when it fails to load (events S2 spec §11.5).
   final FFHeroNetworkImage? networkImage;
   final FFHeroVariant variant;
 
@@ -1246,8 +1327,12 @@ class _HeroPhotoLayerState extends State<_HeroPhotoLayer> {
                     height: c.maxHeight,
                     excludeFromSemantics: true,
                     gaplessPlayback: true,
+                    // A network image that fails (or a saved remote one)
+                    // falls back to the bundled photo when there is one.
                     errorBuilder: (_, _, _) =>
-                        saved != null ? bundled() : const SizedBox.expand(),
+                        (networkImage != null && photo != null) || saved != null
+                        ? bundled()
+                        : const SizedBox.expand(),
                     frameBuilder: (context, child, frame, sync) {
                       if (sync) return child;
                       return AnimatedOpacity(
@@ -1444,9 +1529,15 @@ class FFHeroBand extends StatelessWidget {
     this.subline,
     this.actions = const [],
     this.headingFocusNode,
+    this.networkImage,
   });
 
+  /// The bundled photo; with [networkImage] set it is only the fallback.
   final FFHeroPhoto photo;
+
+  /// The subject's own photo from the network (an event cover, spec
+  /// §11.5). Same scrim and typography; [photo] shows if it fails to load.
+  final FFHeroNetworkImage? networkImage;
 
   /// Phone height (grows with text).
   final double minHeight;
@@ -1466,6 +1557,7 @@ class FFHeroBand extends StatelessWidget {
     final wide = MediaQuery.sizeOf(context).width >= 840;
     return FFPhotoHero(
       photo: photo,
+      networkImage: networkImage,
       variant: wide ? FFHeroVariant.panel : FFHeroVariant.band,
       rounded: wide,
       minHeight: wide ? wideHeight : minHeight,

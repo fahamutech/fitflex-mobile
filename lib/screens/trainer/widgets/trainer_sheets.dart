@@ -145,7 +145,7 @@ class _TrainerSessionsSheetState extends State<TrainerSessionsSheet> {
       await _load();
       messenger.success(done);
     } catch (e) {
-      messenger.error(errorMessage(locale, e));
+      messenger.error(bookingCancelErrorMessage(locale, e));
     }
   }
 

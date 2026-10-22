@@ -3,6 +3,18 @@ import 'package:flutter/services.dart';
 
 import '../design_tokens.dart';
 
+/// What a chip's selection means to assistive tech.
+enum FFChipSelection {
+  /// A button with a selected state (filters; the default).
+  button,
+
+  /// One of a single-choice group: a radio button, checked or not.
+  radio,
+
+  /// One of a multi-choice group: a checkbox, checked or not.
+  checkbox,
+}
+
 /// How a selected [FFFilterChip] is drawn.
 enum FFFilterChipTone {
   /// Selected fills with the primary colour (tier and specialty rows).
@@ -27,9 +39,18 @@ class FFFilterChip extends StatefulWidget {
     this.icon,
     this.tone = FFFilterChipTone.solid,
     this.focusNode,
+    this.semanticLabel,
+    this.selection = FFChipSelection.button,
   });
 
+  /// Radio or checkbox semantics for choice groups (forms); [selected] is
+  /// then read as checked / not checked.
+  final FFChipSelection selection;
+
   final String label;
+
+  /// Read out instead of [label] (e.g. "Age group, 30 to 44").
+  final String? semanticLabel;
   final bool selected;
   final VoidCallback onSelected;
 
@@ -130,9 +151,13 @@ class _FFFilterChipState extends State<FFFilterChip> {
 
     return Semantics(
       container: true,
-      button: true,
+      button: widget.selection == FFChipSelection.button,
       selected: sel,
-      label: widget.label,
+      checked: widget.selection == FFChipSelection.button ? null : sel,
+      inMutuallyExclusiveGroup: widget.selection == FFChipSelection.radio
+          ? true
+          : null,
+      label: widget.semanticLabel ?? widget.label,
       onTap: widget.onSelected,
       child: FocusableActionDetector(
         focusNode: widget.focusNode,

@@ -259,6 +259,7 @@ class _FitFlexAppState extends State<FitFlexApp> with WidgetsBindingObserver {
             trainerId: data['trainerId']?.toString(),
             planId: data['planId']?.toString(),
             bookingId: data['bookingId']?.toString(),
+            eventId: data['eventId']?.toString(),
           )
         : null;
     if (route != null) {

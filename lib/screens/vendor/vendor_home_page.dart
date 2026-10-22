@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app_scope.dart';
 import '../../router.dart';
+import '../partner/verification/partner_progress_actions.dart';
 import '../../shared/api_client.dart';
 import '../../shared/api_error_message.dart';
 import '../../shared/components/components.dart';
@@ -17,6 +18,7 @@ import '../../shared/i18n.dart';
 import '../../shared/photo_footer_flag.dart';
 import '../../shared/photo_hero_flag.dart';
 import '../../shared/product_categories.dart';
+import '../../shared/shop_home.dart' show kTargetAgeBands, kTargetGenders;
 import '../../shared/tone_theme.dart';
 import '../../shared/widgets/product_category_picker.dart';
 import '../../shared/widgets/ff_photo_picker_field.dart';
@@ -36,6 +38,7 @@ import 'stock/adjust_stock_sheet.dart';
 import 'stock/stock_history_page.dart';
 import 'stock/stock_options.dart';
 import 'stock/variant_rows_editor.dart';
+import 'vendor_areas_section.dart';
 import 'sales/offline_sale_queue.dart';
 import 'sales/sale_models.dart' show pluralKey;
 import 'sales/sales_history_tab.dart';
@@ -155,10 +158,17 @@ class _VendorHomePageState extends State<VendorHomePage> {
   /// pending banner (unchanged) directly under it.
   List<Widget> _productsLead() => [
     _hero(),
-    if (_pendingApproval) ...[
-      _pendingBannerCard(),
-      const SizedBox(height: FFTokens.spacingMd),
-    ],
+    if (_isVendorAccount)
+      PartnerProgressBanner(
+        key: const Key('vendor-progress-banner'),
+        padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
+        fallback: _pendingApproval
+            ? Padding(
+                padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
+                child: _pendingBannerCard(),
+              )
+            : null,
+      ),
   ];
 
   bool get _ledger => _tools.stockLedger && _can('products');
@@ -607,7 +617,11 @@ class _VendorHomePageState extends State<VendorHomePage> {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) => VendorProductForm(product: product, vatCodes: _vatCodes),
+      builder: (_) => VendorProductForm(
+        product: product,
+        showTargets: _showTargets,
+        vatCodes: _vatCodes,
+      ),
     );
     if (draft == null || !mounted) return;
     setState(() => _busy = true);
@@ -633,6 +647,11 @@ class _VendorHomePageState extends State<VendorHomePage> {
     }
   }
 
+  /// "Who it's for" (Phase 2 S2) shows only when /vendor/tools/options
+  /// says `merch.productTargets: true` (SHOP_PERSONALISATION on). Vendor
+  /// rows carry the fields either way, so they are not a signal.
+  bool get _showTargets => _tools.productTargets;
+
   /// The product form with the stock ledger on: it saves itself and stays
   /// open (values kept) when the save fails.
   Future<void> _editProductWithLedger(Map<String, dynamic>? product) async {
@@ -646,6 +665,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
       ),
       child: VendorProductForm(
         product: product,
+        showTargets: _showTargets,
         stockLedger: true,
         canSeeCost: _tools.canSeeCost,
         vatCodes: _vatCodes,
@@ -834,8 +854,14 @@ class _VendorHomePageState extends State<VendorHomePage> {
           ListenableBuilder(
             listenable: AppScope.of(context).auth,
             // Under the flag the Products hero carries it, just below.
-            builder: (context, _) => _pendingApproval && !_heroOn(tab)
-                ? _pendingBanner()
+            // Partner progress (B4b): the compact tracker while the vendor
+            // isn't finished; the old pending banner without it.
+            builder: (context, _) => _isVendorAccount && !_heroOn(tab)
+                ? PartnerProgressBanner(
+                    key: const Key('vendor-progress-banner'),
+                    padding: partnerBannerPadding,
+                    fallback: _pendingApproval ? _pendingBanner() : null,
+                  )
                 : const SizedBox.shrink(),
           ),
           // Sales still on this device with the Sales tab gone (feature
@@ -1067,6 +1093,14 @@ class _VendorHomePageState extends State<VendorHomePage> {
     );
   }
 
+  /// The vendor's own account (not staff, not switched off): the one whose
+  /// verification and payouts the progress tracker follows. A suspended
+  /// business already has its own alert, said once.
+  bool get _isVendorAccount =>
+      !_staffDisabled &&
+      !_accountSuspended &&
+      AppScope.of(context).auth.user?['userType'] == 'vendor';
+
   Widget _pendingBanner() => Padding(
     padding: const EdgeInsets.fromLTRB(
       FFTokens.spacingLg,
@@ -1216,9 +1250,10 @@ class _VendorHomePageState extends State<VendorHomePage> {
                 minimumSize: const Size(48, 48),
                 tapTargetSize: MaterialTapTargetSize.padded,
               ),
-              tooltip: ledger
-                  ? fillIn(context.tr('vendor.productActions'), {'name': name})
-                  : null,
+              // Labelled with the product, ledger on or off (QA 2026-10-22).
+              tooltip: fillIn(context.tr('vendor.productActions'), {
+                'name': name,
+              }),
               onSelected: (value) {
                 if (value == 'edit') _editProduct(product);
                 if (value == 'adjust') _adjustStock(product);
@@ -1566,6 +1601,17 @@ class _VendorHomePageState extends State<VendorHomePage> {
     controller.dispose();
   }
 
+  /// The "Where you sell" nudge's text key, or null. Only for the account
+  /// holder of a published profile while `merch.shopAreas` is on.
+  String? get _areasNudge {
+    if (!_tools.shopAreas || !_isVendor) return null;
+    if (_profile['status'] != 'published') return null;
+    final city = _profile['cityId']?.toString() ?? '';
+    if (city.isEmpty) return 'vendor.areas.nudge';
+    if (_profile['areasSource'] == 'backfill') return 'vendor.areas.nudgeCheck';
+    return null;
+  }
+
   Widget _businessTab() {
     return ListView(
       padding: const EdgeInsets.all(FFTokens.spacingLg),
@@ -1607,6 +1653,33 @@ class _VendorHomePageState extends State<VendorHomePage> {
             ],
           ),
         ),
+        // Shop S3: no "Based in" yet (or guessed by the server): say why it
+        // matters. Their products still sell; they just miss near-you.
+        if (_areasNudge != null)
+          Padding(
+            padding: const EdgeInsets.only(top: FFTokens.spacingMd),
+            child: FFCard(
+              key: const Key('vendor-areas-nudge'),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  FFAlert(message: context.tr(_areasNudge!)),
+                  const SizedBox(height: FFTokens.spacingSm),
+                  FFButton(
+                    key: const Key('vendor-areas-nudge-action'),
+                    label: context.tr(
+                      _areasNudge == 'vendor.areas.nudge'
+                          ? 'vendor.areas.nudgeAction'
+                          : 'vendor.areas.nudgeCheckAction',
+                    ),
+                    variant: FFButtonVariant.secondary,
+                    size: FFButtonSize.sm,
+                    onPressed: _editProfile,
+                  ),
+                ],
+              ),
+            ),
+          ),
         // S3: sales still on this device while the Sales tab is gone
         // (feature switched off). They are never deleted for that.
         if (_sales != null)
@@ -1703,22 +1776,21 @@ class _VendorHomePageState extends State<VendorHomePage> {
   }
 
   Future<void> _editProfile() async {
+    final api = AppScope.of(context).api;
+    // The form saves itself and stays open on a refusal (S3: invalid_area
+    // is shown next to "Where you sell"); it closes only once saved.
     final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) => VendorProfileForm(profile: _profile),
+      builder: (_) => VendorProfileForm(
+        profile: _profile,
+        shopAreas: _tools.shopAreas,
+        onSave: api.vendorSaveProfile,
+        describeError: _saveFailedText,
+      ),
     );
     if (result == null || !mounted) return;
-    try {
-      await AppScope.of(context).api.vendorSaveProfile(result);
-    } on ApiException catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(_saveFailedText(e))));
-      return;
-    }
     await _refresh();
   }
 
@@ -1759,6 +1831,7 @@ class VendorProductForm extends StatefulWidget {
   const VendorProductForm({
     super.key,
     this.product,
+    this.showTargets = false,
     this.stockLedger = false,
     this.canSeeCost = false,
     this.onSave,
@@ -1768,6 +1841,10 @@ class VendorProductForm extends StatefulWidget {
   });
 
   final Map<String, dynamic>? product;
+
+  /// Shop Phase 2 S2: the optional "Made for" and "Age group" pickers, sent
+  /// as `targetGender` and `targetAgeBands`. Off: neither is shown or sent.
+  final bool showTargets;
 
   /// S5: the VAT codes offered (GET /vendor/tax-rates), or null to hide the
   /// VAT code field. A private field: saving it never re-queues approval.
@@ -1829,6 +1906,12 @@ class _VendorProductFormState extends State<VendorProductForm> {
   bool _visible = true;
   String _vatCode = 'A';
 
+  /// "Made for": null (everyone), `women` or `men`.
+  String? _targetGender;
+
+  /// "Age group": empty means all ages.
+  final Set<String> _ageBands = {};
+
   bool get _creating => widget.product == null;
 
   /// The stock the form loaded (sent as `stockSeen` with a changed stock).
@@ -1876,6 +1959,13 @@ class _VendorProductFormState extends State<VendorProductForm> {
     _image = images?.firstOrNull;
     _secondImage = images != null && images.length > 1 ? images[1] : null;
     _visible = product?['visibility'] != 'hidden';
+    final gender = product?['targetGender']?.toString();
+    if (kTargetGenders.contains(gender)) _targetGender = gender;
+    for (final b in (product?['targetAgeBands'] as List? ?? const [])) {
+      if (kTargetAgeBands.contains(b)) _ageBands.add(b.toString());
+    }
+    // All four bands is "All ages" (the server stores and returns []).
+    if (_ageBands.length == kTargetAgeBands.length) _ageBands.clear();
     final code = product?['vatCode']?.toString();
     final codes = widget.vatCodes ?? const <VatCodeOption>[];
     _vatCode = codes.any((c) => c.code == code)
@@ -1919,6 +2009,13 @@ class _VendorProductFormState extends State<VendorProductForm> {
       'weightKg': num.tryParse(_weight.text.trim()),
       'visibility': _visible ? 'visible' : 'hidden',
       'images': [?_image, ?_secondImage],
+      if (widget.showTargets) ...{
+        'targetGender': _targetGender,
+        'targetAgeBands': [
+          for (final b in kTargetAgeBands)
+            if (_ageBands.contains(b)) b,
+        ],
+      },
       if (widget.vatCodes != null) 'vatCode': _vatCode,
     };
   }
@@ -2219,7 +2316,128 @@ class _VendorProductFormState extends State<VendorProductForm> {
       current: widget.product?['category']?.toString(),
       onChanged: (key) => _category = key,
     ),
+    if (widget.showTargets) _targetFields(),
   ];
+
+  /// "Who it's for (optional)" (spec §6.2): Made for, single choice; Age
+  /// group, several bands, where "All ages" clears the bands and picking a
+  /// band clears "All ages".
+  Widget _targetFields() {
+    final theme = Theme.of(context);
+    final madeFor = context.tr('vendor.target.madeFor');
+    final ageGroup = context.tr('vendor.target.ageGroup');
+    String option(String group, String label) => fillIn(
+      context.tr('vendor.target.a11yOption'),
+      {'group': group, 'option': label},
+    );
+    String bandSpoken(String band) {
+      final parts = band.split('_');
+      return parts.last == 'plus'
+          ? fillIn(context.tr('vendor.target.a11yBandPlus'), {
+              'from': parts.first,
+            })
+          : fillIn(context.tr('vendor.target.a11yBand'), {
+              'from': parts.first,
+              'to': parts.last,
+            });
+    }
+
+    Widget label(String text) => Padding(
+      padding: const EdgeInsets.only(top: FFTokens.spacingSm),
+      child: Text(text, style: theme.textTheme.labelLarge),
+    );
+    Widget chip(
+      String key,
+      String text,
+      bool sel,
+      VoidCallback onTap, {
+      String? spoken,
+      FFChipSelection selection = FFChipSelection.checkbox,
+    }) => FFFilterChip(
+      key: Key(key),
+      label: text,
+      semanticLabel: spoken,
+      selection: selection,
+      selected: sel,
+      tone: FFFilterChipTone.tint,
+      onSelected: _saving ? () {} : onTap,
+    );
+
+    final everyone = context.tr('vendor.target.everyone');
+    final allAges = context.tr('vendor.target.allAges');
+    return Padding(
+      key: const Key('vendor-product-targets'),
+      padding: const EdgeInsets.symmetric(vertical: FFTokens.spacingSm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Semantics(
+            header: true,
+            child: Text(
+              context.tr('vendor.target.title'),
+              style: theme.textTheme.titleSmall,
+            ),
+          ),
+          Text(
+            context.tr('vendor.target.hint'),
+            style: theme.textTheme.bodySmall,
+          ),
+          label(madeFor),
+          Wrap(
+            spacing: FFTokens.spacingSm,
+            children: [
+              chip(
+                'vendor-target-gender-everyone',
+                everyone,
+                _targetGender == null,
+                () => setState(() => _targetGender = null),
+                spoken: option(madeFor, everyone),
+                selection: FFChipSelection.radio,
+              ),
+              for (final g in kTargetGenders)
+                chip(
+                  'vendor-target-gender-$g',
+                  context.tr('vendor.target.$g'),
+                  _targetGender == g,
+                  () => setState(() => _targetGender = g),
+                  spoken: option(madeFor, context.tr('vendor.target.$g')),
+                  selection: FFChipSelection.radio,
+                ),
+            ],
+          ),
+          label(ageGroup),
+          Wrap(
+            spacing: FFTokens.spacingSm,
+            children: [
+              chip(
+                'vendor-target-age-all',
+                allAges,
+                _ageBands.isEmpty,
+                () => setState(_ageBands.clear),
+                spoken: option(ageGroup, allAges),
+              ),
+              for (final b in kTargetAgeBands)
+                chip(
+                  'vendor-target-age-$b',
+                  context.tr('vendor.target.band.$b'),
+                  _ageBands.contains(b),
+                  () => setState(() {
+                    _ageBands.contains(b)
+                        ? _ageBands.remove(b)
+                        : _ageBands.add(b);
+                    // Every band picked is "All ages" (the server's []).
+                    if (_ageBands.length == kTargetAgeBands.length) {
+                      _ageBands.clear();
+                    }
+                  }),
+                  spoken: option(ageGroup, bandSpoken(b)),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _priceField() => KeyedSubtree(
     key: _priceKey,
@@ -2499,9 +2717,26 @@ class _VendorProductFormState extends State<VendorProductForm> {
 }
 
 class VendorProfileForm extends StatefulWidget {
-  const VendorProfileForm({super.key, required this.profile});
+  const VendorProfileForm({
+    super.key,
+    required this.profile,
+    this.shopAreas = false,
+    this.onSave,
+    this.describeError,
+  });
 
   final Map<String, dynamic> profile;
+
+  /// Saves the profile (PUT /vendor/profile). Set: the form stays open on a
+  /// failure and says why; it closes with the body once saved. Unset: the
+  /// form just closes with the body (the caller saves).
+  final Future<Object?> Function(Map<String, dynamic> body)? onSave;
+
+  /// The message for a failed save other than `invalid_area`.
+  final String Function(Object error)? describeError;
+
+  /// Shop Phase 2 S3 (`merch.shopAreas`): the "Where you sell" pickers.
+  final bool shopAreas;
 
   @override
   State<VendorProfileForm> createState() => _VendorProfileFormState();
@@ -2515,6 +2750,9 @@ class _VendorProfileFormState extends State<VendorProfileForm> {
   late final String _legacyCategory;
   String? _logo;
   String? _banner;
+  late final VendorAreasController _areas = VendorAreasController(
+    widget.profile,
+  );
 
   @override
   void initState() {
@@ -2553,10 +2791,47 @@ class _VendorProfileFormState extends State<VendorProfileForm> {
     for (final controller in _fields.values) {
       controller.dispose();
     }
+    _areas.dispose();
     super.dispose();
   }
 
+  bool _saving = false;
+  String? _saveError;
+
+  Future<void> _save(Map<String, dynamic> body) async {
+    final save = widget.onSave;
+    if (save == null) {
+      Navigator.pop(context, body);
+      return;
+    }
+    setState(() {
+      _saving = true;
+      _saveError = null;
+    });
+    _areas.clearInvalid();
+    try {
+      await save(body);
+      if (!mounted) return;
+      Navigator.pop(context, body);
+    } catch (e) {
+      if (!mounted) return;
+      final areaError = _areas.invalidMessage(e, FFLocaleScope.of(context));
+      setState(() {
+        _saving = false;
+        _saveError = areaError == null
+            ? widget.describeError?.call(e) ?? context.tr('vendor.saveFailed')
+            : null;
+      });
+    }
+  }
+
   void _submit() {
+    if (_saving) return;
+    // "Based in" is needed once the pickers are shown (spec §7.4).
+    if (widget.shopAreas && _areas.missingBasedIn) {
+      _areas.flagMissing();
+      return;
+    }
     if (_logo == null || _banner == null) return;
     // The email is optional; everything else is needed to publish.
     if (_fields.entries.any(
@@ -2579,7 +2854,7 @@ class _VendorProfileFormState extends State<VendorProfileForm> {
                 ),
               )
               .en;
-    Navigator.pop(context, {
+    _save({
       'businessName': _fields['businessName']!.text.trim(),
       'logo': _logo,
       'banner': _banner,
@@ -2593,6 +2868,7 @@ class _VendorProfileFormState extends State<VendorProfileForm> {
         'account': _fields['settlementAccount']!.text.trim(),
       },
       if (_categories.isNotEmpty) 'productCategories': _categories,
+      if (widget.shopAreas) ..._areas.body(),
       'publish': true,
     });
   }
@@ -2650,12 +2926,16 @@ class _VendorProfileFormState extends State<VendorProfileForm> {
                   ),
                 ],
               ),
-              for (final entry in _fields.entries)
+              for (final entry in _fields.entries) ...[
                 FFTextField(
                   key: Key('vendor-profile-${entry.key}'),
                   controller: entry.value,
                   label: labels[entry.key],
                 ),
+                // S3: "Where you sell" right after "Address".
+                if (entry.key == 'address' && widget.shopAreas)
+                  VendorAreasSection(controller: _areas),
+              ],
               const SizedBox(height: FFTokens.spacingSm),
               ProductCategoryMultiSelect(
                 keyPrefix: 'vendor-profile-category',
@@ -2668,9 +2948,24 @@ class _VendorProfileFormState extends State<VendorProfileForm> {
                 child: FFButton(
                   key: const Key('vendor-profile-publish'),
                   label: context.tr('vendor.publishProfile'),
+                  loading: _saving,
                   onPressed: _submit,
                 ),
               ),
+              if (_saveError != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: FFTokens.spacingSm),
+                  child: Semantics(
+                    liveRegion: true,
+                    child: Text(
+                      _saveError!,
+                      key: const Key('vendor-profile-save-error'),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),

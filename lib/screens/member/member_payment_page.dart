@@ -299,6 +299,7 @@ class _PayActionsState extends State<_PayActions> {
           context,
           paymentRequestId: req['id'] as String?,
           amountTzs: (req['amountTzs'] as num?) ?? 0,
+          productType: MomoProduct.fitflexPass,
         );
         if (!mounted) return;
       }

@@ -7,7 +7,9 @@ import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
+import '../../shared/models.dart';
 import '../member/member_scan_gym_page.dart';
+import '../member/widgets/mobile_money_pay.dart';
 import 'trainer_gyms_tab.dart';
 
 /// Trainer › My passes: trainer passes and gym member plans — active ones
@@ -26,12 +28,33 @@ class _TrainerPassesPageState extends State<TrainerPassesPage> {
   bool _started = false;
   String? _busyId;
 
+  /// `GET /payments/options`, asked once for every "Pay now" on the page.
+  Future<Map<String, dynamic>>? _payOptions;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_started) return;
     _started = true;
+    // Unreachable or refused: no "Pay now", nothing else changes.
+    _payOptions = AppScope.of(
+      context,
+    ).api.paymentOptions().catchError((_) => <String, dynamic>{});
     _load();
+  }
+
+  /// The pending payment behind [pass], with its product kind: a trainer
+  /// pass (payable by the trainer once the server allows it) or a gym member
+  /// plan (not payable by mobile money from a trainer account).
+  static PaymentRequest? _pendingPayment(Map<String, dynamic> pass) {
+    final req = pass['paymentRequest'];
+    if (req is! Map || (req['id']?.toString() ?? '').isEmpty) return null;
+    return PaymentRequest.fromJson({
+      ...req.cast<String, dynamic>(),
+      'productType': pass['kind'] == 'trainer_pass'
+          ? MomoProduct.trainerGymPass
+          : MomoProduct.gymPlan,
+    });
   }
 
   Future<void> _load() async {
@@ -119,6 +142,16 @@ class _TrainerPassesPageState extends State<TrainerPassesPage> {
                       variant: FFButtonVariant.ghost,
                       size: FFButtonSize.sm,
                     ),
+                    footer: switch (_pendingPayment(p)) {
+                      final request? => PayNowButton(
+                        key: ValueKey('pay-${request.id}'),
+                        request: request,
+                        role: 'trainer',
+                        options: _payOptions,
+                        onPaid: _load,
+                      ),
+                      null => null,
+                    },
                   ),
                 ),
               ],
@@ -135,10 +168,13 @@ class _TrainerPassesPageState extends State<TrainerPassesPage> {
 }
 
 class _PassTile extends StatelessWidget {
-  const _PassTile({required this.pass, this.trailing});
+  const _PassTile({required this.pass, this.trailing, this.footer});
 
   final Map<String, dynamic> pass;
   final Widget? trailing;
+
+  /// Under the row: "Pay now" on a pass awaiting payment.
+  final Widget? footer;
 
   @override
   Widget build(BuildContext context) {
@@ -170,29 +206,39 @@ class _PassTile extends StatelessWidget {
       key: Key('trainer-pass-${pass['id']}'),
       padding: const EdgeInsets.only(bottom: 8),
       child: FFCard(
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    gym?['name']?.toString() ?? '',
-                    style: const TextStyle(fontWeight: FontWeight.w700),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        gym?['name']?.toString() ?? '',
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      Text(
+                        [
+                          '$kind · $period',
+                          if (amount != null) formatCurrency(amount),
+                        ].join(' · '),
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: 6),
+                      FFBadge(label: statusLabel, tone: tone),
+                    ],
                   ),
-                  Text(
-                    [
-                      '$kind · $period',
-                      if (amount != null) formatCurrency(amount),
-                    ].join(' · '),
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: 6),
-                  FFBadge(label: statusLabel, tone: tone),
-                ],
-              ),
+                ),
+                ?trailing,
+              ],
             ),
-            ?trailing,
+            if (footer != null)
+              Padding(
+                padding: const EdgeInsets.only(top: FFTokens.spacingSm),
+                child: footer,
+              ),
           ],
         ),
       ),

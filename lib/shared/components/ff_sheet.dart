@@ -11,11 +11,15 @@ class FFSheet extends StatelessWidget {
     required this.title,
     required this.child,
     this.showClose = true,
+    this.showHandle = true,
   });
 
   final String title;
   final Widget child;
   final bool showClose;
+
+  /// The drag handle (off when shown as a centred dialog).
+  final bool showHandle;
 
   @override
   Widget build(BuildContext context) {
@@ -31,18 +35,21 @@ class FFSheet extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: FFTokens.spacingSm),
-              Center(
-                child: ExcludeSemantics(
-                  child: Container(
-                    width: 36,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.outline,
-                      borderRadius: BorderRadius.circular(FFTokens.radiusFull),
+              if (showHandle)
+                Center(
+                  child: ExcludeSemantics(
+                    child: Container(
+                      width: 36,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.outline,
+                        borderRadius: BorderRadius.circular(
+                          FFTokens.radiusFull,
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
               Padding(
                 padding: const EdgeInsets.only(
                   left: FFTokens.spacingMd,

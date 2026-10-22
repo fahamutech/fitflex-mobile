@@ -529,24 +529,24 @@ void main() {
     test(
       'bundled footer avoids a remote top photo of the same scene',
       () async {
-        // An admin photo that is the same scene as the bundled studio footer.
+        // An admin photo that is the same scene as the bundled Gyms footer.
         final server = FakeServer()
           ..manifest = manifestJson(7, {
             'gyms': [
-              entryJson('g1', sourceId: FFHeroPhoto.footerStudio.sourceId),
+              entryJson('g1', sourceId: FFHeroPhoto.footerNightHall.sourceId),
             ],
           });
         final store = server.store();
         await store.setSession(signedIn: true, role: 'member');
         await store.onFirstFrame();
         HeroImageStore.debugInstance = store;
-        expect(footerPagePhotos['member.gyms'], FFHeroPhoto.footerStudio);
+        expect(footerPagePhotos['member.gyms'], FFHeroPhoto.footerNightHall);
         store.resolveTop(FFHeroPhoto.gyms);
         final choice = resolveFooterPhoto('member.gyms', top: FFHeroPhoto.gyms);
         expect(choice.remote, isNull);
         expect(
           choice.bundled.sourceId,
-          isNot(FFHeroPhoto.footerStudio.sourceId),
+          isNot(FFHeroPhoto.footerNightHall.sourceId),
         );
       },
     );
