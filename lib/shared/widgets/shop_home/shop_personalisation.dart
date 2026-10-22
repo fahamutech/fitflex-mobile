@@ -352,19 +352,11 @@ class _ShopPrivacySheetState extends State<ShopPrivacySheet> {
   late ShopPreferences _prefs = widget.initial;
   bool _gone = false;
 
-  /// The "What we use" lines, in order. A backend without `uses` gets the
-  /// lines for what the contract always applies when on (history, gender,
-  /// age). Location is not listed until slice 3 ships it.
+  /// The "What we use" lines, in the server's order, from `uses` only. A
+  /// backend without `uses` lists nothing personal. Location is not listed
+  /// until slice 3 ships it.
   List<String> _lines(BuildContext context) {
-    final uses =
-        _prefs.uses ??
-        (_prefs.personalised
-            ? const {
-                ShopSignal.purchaseHistory,
-                ShopSignal.gender,
-                ShopSignal.age,
-              }
-            : const <ShopSignal>{});
+    final uses = _prefs.uses ?? const <ShopSignal>{};
     final months = _prefs.historyMonths ?? 12;
     return [
       if (uses.contains(ShopSignal.purchaseHistory))
@@ -391,7 +383,6 @@ class _ShopPrivacySheetState extends State<ShopPrivacySheet> {
     if (_gone) return const SizedBox.shrink();
     final lines = _lines(context);
     final genderOrAge =
-        (_prefs.uses == null && _prefs.personalised) ||
         (_prefs.uses?.contains(ShopSignal.gender) ?? false) ||
         (_prefs.uses?.contains(ShopSignal.age) ?? false);
     Widget bullet(String text, int i) => Padding(
@@ -429,23 +420,26 @@ class _ShopPrivacySheetState extends State<ShopPrivacySheet> {
             widget.onUnavailable?.call();
           },
         ),
-        const SizedBox(height: FFTokens.spacingMd),
-        Semantics(
-          header: true,
-          child: Text(
-            context.tr('privacy.shop.usesTitle'),
-            style: theme.textTheme.titleSmall,
+        // No `uses` from the server: no list (never a guess).
+        if (_prefs.uses != null) ...[
+          const SizedBox(height: FFTokens.spacingMd),
+          Semantics(
+            header: true,
+            child: Text(
+              context.tr('privacy.shop.usesTitle'),
+              style: theme.textTheme.titleSmall,
+            ),
           ),
-        ),
-        const SizedBox(height: FFTokens.spacingXs),
-        if (lines.isEmpty)
-          Text(
-            context.tr('privacy.shop.usesNone'),
-            key: const Key('privacy-shop-uses-none'),
-            style: theme.textTheme.bodyMedium,
-          )
-        else
-          for (var i = 0; i < lines.length; i++) bullet(lines[i], i),
+          const SizedBox(height: FFTokens.spacingXs),
+          if (lines.isEmpty)
+            Text(
+              context.tr('privacy.shop.usesNone'),
+              key: const Key('privacy-shop-uses-none'),
+              style: theme.textTheme.bodyMedium,
+            )
+          else
+            for (var i = 0; i < lines.length; i++) bullet(lines[i], i),
+        ],
         if (genderOrAge) ...[
           const SizedBox(height: FFTokens.spacingXs),
           Text(

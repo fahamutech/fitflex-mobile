@@ -625,7 +625,7 @@ void main() {
           'personalised': true,
           'available': true,
           'historyDays': 180,
-          'uses': ['history', 'gender', 'goal', 'location'],
+          'uses': ['purchase_history', 'profile_gender', 'goal', 'location'],
         });
         final host = await pumpTile(tester, api, lang: lang);
         await tapVisible(tester, _key('privacy-shop'));
@@ -646,6 +646,42 @@ void main() {
         expect(find.text(host.tr('privacy.shop.usesGenderAge')), findsNothing);
       });
     }
+
+    apiTest('no `uses` from the server: no list, never a guess', (
+      tester,
+      api,
+    ) async {
+      api.on('GET /shop/preferences', {
+        'personalised': true,
+        'available': true,
+      });
+      final host = await pumpTile(tester, api);
+      await tapVisible(tester, _key('privacy-shop'));
+      expect(_key('privacy-shop-sheet'), findsOneWidget);
+      expect(find.text(host.tr('privacy.shop.usesTitle')), findsNothing);
+      expect(_key('privacy-shop-use-0'), findsNothing);
+      expect(_key('privacy-shop-uses-none'), findsNothing);
+      expect(_key('privacy-shop-order-only'), findsNothing);
+      expect(find.text(host.tr('privacy.shop.never')), findsOneWidget);
+    });
+
+    apiTest('unknown or old spellings in `uses` are ignored', (
+      tester,
+      api,
+    ) async {
+      api.on('GET /shop/preferences', {
+        'personalised': true,
+        'available': true,
+        'uses': ['history', 'gender', 'specialty'],
+      });
+      final host = await pumpTile(tester, api);
+      await tapVisible(tester, _key('privacy-shop'));
+      expect(
+        tester.widget<Text>(_key('privacy-shop-use-0')).data,
+        host.tr('privacy.shop.usesSpecialty'),
+      );
+      expect(_key('privacy-shop-use-1'), findsNothing);
+    });
 
     apiTest('a save answering 404 hides the switch and the tile', (
       tester,
@@ -798,6 +834,32 @@ void main() {
       expect(selected('vendor-target-gender-men'), isFalse);
       expect(selected('vendor-target-gender-women'), isTrue);
       expect(selected('vendor-target-gender-everyone'), isFalse);
+    });
+
+    apiTest('picking every band becomes All ages and sends []', (
+      tester,
+      api,
+    ) async {
+      seedVendor(api);
+      await pumpVendor(tester, api);
+      await tester.tap(_key('vendor-add-product'));
+      await tester.pumpAndSettle();
+      for (final b in kTargetAgeBands) {
+        await tapVisible(tester, _key('vendor-target-age-$b'));
+      }
+      expect(
+        tester.widget<FFFilterChip>(_key('vendor-target-age-all')).selected,
+        isTrue,
+      );
+      for (final b in kTargetAgeBands) {
+        expect(
+          tester.widget<FFFilterChip>(_key('vendor-target-age-$b')).selected,
+          isFalse,
+        );
+      }
+      await fillAndSave(tester);
+      final body = api.only('POST', '/vendor/products').body as Map;
+      expect(body['targetAgeBands'], isEmpty);
     });
 
     apiTest('editing prefills the stored targets and PUTs them', (

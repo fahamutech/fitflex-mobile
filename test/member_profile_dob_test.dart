@@ -96,6 +96,17 @@ void main() {
       expect(normaliseDateOfBirth('1990-05-10T00:00:00.000Z'), '1990-05-10');
       expect(normaliseDateOfBirth('1990/05/10'), '1990/05/10');
     });
+
+    test('today is the East Africa day (UTC+3), whatever the device zone', () {
+      expect(
+        eastAfricaToday(now: DateTime.utc(2026, 10, 21, 22, 30)),
+        DateTime(2026, 10, 22),
+      );
+      expect(
+        eastAfricaToday(now: DateTime.utc(2026, 10, 21, 20, 59)),
+        DateTime(2026, 10, 21),
+      );
+    });
   });
 
   testWidgets('the field is a read-only picker; a stored timestamp shows '
@@ -133,22 +144,28 @@ void main() {
     final dialog = tester.widget<DatePickerDialog>(
       find.byType(DatePickerDialog),
     );
-    expect(dialog.firstDate, DateTime(1900));
-    expect(dialog.lastDate, DateUtils.dateOnly(DateTime.now()));
+    expect(dialog.firstDate, DateTime(1901));
+    expect(dialog.lastDate, eastAfricaToday());
   });
 
-  testWidgets('clearing sends null', (tester) async {
+  testWidgets('clearing sends "" (null would keep the stored date)', (
+    tester,
+  ) async {
     final api = _FakeApi();
     await _pump(tester, api, '1990-05-10');
     await tester.tap(find.byKey(const Key('edit-profile-dob-clear')));
     await tester.pump();
     expect(_dobText(tester), '');
     await _save(tester);
-    expect(api.profiles.single.containsKey('dateOfBirth'), isTrue);
-    expect(api.profiles.single['dateOfBirth'], isNull);
+    expect(api.profiles.single['dateOfBirth'], '');
   });
 
-  for (final stored in ['1990/05/01', '2999-01-01', '1899-12-31']) {
+  for (final stored in [
+    '1990/05/01',
+    '2999-01-01',
+    '1900-12-31',
+    '1990-02-30',
+  ]) {
     testWidgets('a stored "$stored" is flagged and not sent', (tester) async {
       final api = _FakeApi();
       final loc = await _pump(tester, api, stored);

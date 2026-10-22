@@ -1925,6 +1925,8 @@ class _VendorProductFormState extends State<VendorProductForm> {
     for (final b in (product?['targetAgeBands'] as List? ?? const [])) {
       if (kTargetAgeBands.contains(b)) _ageBands.add(b.toString());
     }
+    // All four bands is "All ages" (the server stores and returns []).
+    if (_ageBands.length == kTargetAgeBands.length) _ageBands.clear();
     final code = product?['vatCode']?.toString();
     final codes = widget.vatCodes ?? const <VatCodeOption>[];
     _vatCode = codes.any((c) => c.code == code)
@@ -2376,11 +2378,15 @@ class _VendorProductFormState extends State<VendorProductForm> {
                   'vendor-target-age-$b',
                   context.tr('vendor.target.band.$b'),
                   _ageBands.contains(b),
-                  () => setState(
-                    () => _ageBands.contains(b)
+                  () => setState(() {
+                    _ageBands.contains(b)
                         ? _ageBands.remove(b)
-                        : _ageBands.add(b),
-                  ),
+                        : _ageBands.add(b);
+                    // Every band picked is "All ages" (the server's []).
+                    if (_ageBands.length == kTargetAgeBands.length) {
+                      _ageBands.clear();
+                    }
+                  }),
                   spoken: option(ageGroup, bandSpoken(b)),
                 ),
             ],

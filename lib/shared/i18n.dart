@@ -1804,7 +1804,7 @@ class FFLocale extends ChangeNotifier {
       'member.dobPick': 'Choose date of birth',
       'member.dobClear': 'Clear date of birth',
       'member.dobInvalid':
-          'Choose a real date of birth: not in the future and from 1900 on.',
+          'Choose a real date of birth: not in the future and from 1901 on.',
       'member.goal.gain_muscle': 'Gain muscle',
       'member.goal.lose_weight': 'Lose weight',
       'member.goal.stay_fit': 'Stay fit',
@@ -7255,7 +7255,7 @@ class FFLocale extends ChangeNotifier {
       'member.dobPick': 'Chagua tarehe ya kuzaliwa',
       'member.dobClear': 'Futa tarehe ya kuzaliwa',
       'member.dobInvalid':
-          'Chagua tarehe halisi ya kuzaliwa: isiwe ya baadaye na iwe kuanzia mwaka 1900.',
+          'Chagua tarehe halisi ya kuzaliwa: isiwe ya baadaye na iwe kuanzia mwaka 1901.',
       'member.goal.gain_muscle': 'Kuongeza misuli',
       'member.goal.lose_weight': 'Kupunguza uzito',
       'member.goal.stay_fit': 'Kubaki fiti',

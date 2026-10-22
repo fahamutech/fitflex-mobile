@@ -200,16 +200,18 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
 
   // ── Date of birth ──
 
-  static final DateTime _firstDob = DateTime(1900);
+  // The server's range (functions#239): 1901-01-01 to today, East Africa.
+  static final DateTime _firstDob = DateTime(1901);
 
-  /// A real calendar day (YYYY-MM-DD), not in the future, from 1900 on.
+  /// A real calendar day (YYYY-MM-DD), not after today in East Africa,
+  /// from 1901-01-01 on.
   /// Null for an empty field.
   String? _dobProblem(String? value) {
     final text = value?.trim() ?? '';
     if (text.isEmpty) return null;
     final date = parseDateOfBirth(text);
     if (date == null) return context.tr('member.dobInvalid');
-    final today = DateUtils.dateOnly(DateTime.now());
+    final today = eastAfricaToday();
     if (date.isAfter(today) || date.isBefore(_firstDob)) {
       return context.tr('member.dobInvalid');
     }
@@ -217,7 +219,7 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
   }
 
   Future<void> _pickDateOfBirth() async {
-    final today = DateUtils.dateOnly(DateTime.now());
+    final today = eastAfricaToday();
     final current = parseDateOfBirth(_dateOfBirth.text.trim());
     final initial =
         current != null &&
@@ -309,9 +311,9 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
         'weightKg': _weight.text.trim().isEmpty
             ? null
             : num.tryParse(_weight.text.trim()),
-        'dateOfBirth': _dateOfBirth.text.trim().isEmpty
-            ? null
-            : _dateOfBirth.text.trim(),
+        // POST /me/profile: "" clears the date of birth; null would keep
+        // the stored one (functions#239).
+        'dateOfBirth': _dateOfBirth.text.trim(),
         'gender': _gender.isEmpty ? null : _gender,
         'fitnessGoals': _goals.toList(),
         'fitnessLevel': _level,
@@ -653,6 +655,13 @@ class _ContactField extends StatelessWidget {
       },
     );
   }
+}
+
+/// Today's calendar day in East Africa (UTC+3), the server's "today" for a
+/// date of birth, whatever the device's own time zone.
+DateTime eastAfricaToday({DateTime? now}) {
+  final eat = (now ?? DateTime.now()).toUtc().add(const Duration(hours: 3));
+  return DateTime(eat.year, eat.month, eat.day);
 }
 
 /// YYYY-MM-DD as a real calendar day, else null ("2026-02-30" is null).

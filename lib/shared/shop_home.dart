@@ -544,24 +544,24 @@ class ShopPreferences {
   }
 }
 
-/// A personal signal the shop may use, as listed in `uses`. Names the
-/// server may send either way (`profile_gender` or `gender`) are accepted;
-/// anything else (e.g. location before slice 3) is ignored.
+/// A signal the shop uses, as listed in `uses` (functions#239), in the
+/// server's order. Anything else (e.g. location before slice 3) is ignored.
 enum ShopSignal {
-  purchaseHistory,
-  gender,
-  age,
-  goal,
-  specialty;
+  purchaseHistory('purchase_history'),
+  gender('profile_gender'),
+  age('profile_age'),
+  goal('goal'),
+  specialty('specialty');
 
-  static ShopSignal? fromWire(String? wire) => switch (wire) {
-    'purchase_history' || 'history' || 'purchases' => purchaseHistory,
-    'profile_gender' || 'gender' => gender,
-    'profile_age' || 'age' => age,
-    'profile_goal' || 'goal' => goal,
-    'trainer_specialty' || 'specialty' => specialty,
-    _ => null,
-  };
+  const ShopSignal(this.wire);
+  final String wire;
+
+  static ShopSignal? fromWire(String? wire) {
+    for (final s in values) {
+      if (s.wire == wire) return s;
+    }
+    return null;
+  }
 }
 
 /// Product "Made for" values on the wire (null = everyone), Phase 2 S2.
