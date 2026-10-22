@@ -44,6 +44,7 @@ class FFPhotoHeroPage extends StatefulWidget {
     this.contentMaxWidth = 420,
     this.tallContentReserve,
     this.tallReserveGrowth = 0,
+    this.compactClearPhoto = 0,
   }) : assert(
          (heroMinViewportHeight == null && maxHeroTextScale == null) ||
              fallback != null,
@@ -68,8 +69,11 @@ class FFPhotoHeroPage extends StatefulWidget {
   /// [FFHeroVariant.full] or [FFHeroVariant.compact] below 1024 wide.
   final FFHeroVariant phoneVariant;
 
-  /// The content keeps its own height at the bottom of the screen and the
-  /// hero takes what is left; nothing scrolls (the PIN keypad, spec C-6).
+  /// Nothing scrolls (the PIN keypad, spec C-6): the hero keeps its own
+  /// height ([phoneFraction], [compactClearPhoto]) and the content follows
+  /// right under it, with any spare room below the content (owner
+  /// 2026-10-22: "squeeze them a bit up"). When the two do not fit, the
+  /// photo's top edge is cut, never the hero's text or the content.
   final bool pinnedContent;
 
   /// Below this viewport height (narrower than 1024), the page is drawn by
@@ -97,6 +101,14 @@ class FFPhotoHeroPage extends StatefulWidget {
   /// How much [tallContentReserve] grows per 1.0 of text scale above 1.0x
   /// (that content grows with the text too).
   final double tallReserveGrowth;
+
+  /// Compact heroes (owner 2026-10-22, Language and PIN): on phones from
+  /// [FFTokens.heroTallMinViewport] tall, the clear photo the hero keeps
+  /// above its text (divided by the text scale), however small
+  /// [phoneFraction] makes it. The hero is no taller than that or
+  /// [phoneFraction] asks, so the content starts right under it. 0: off.
+  /// Ignored when [tallContentReserve] is set.
+  final double compactClearPhoto;
 
   @override
   State<FFPhotoHeroPage> createState() => _FFPhotoHeroPageState();
@@ -197,13 +209,24 @@ class _FFPhotoHeroPageState extends State<FFPhotoHeroPage> {
     final reserve = widget.tallContentReserve;
     final scale = MediaQuery.textScalerOf(context).scale(1);
     final tall = reserve != null && !tablet && !widget.pinnedContent;
-    final clearPhoto = tall ? heroTallClearTarget(size.height, scale) : 0.0;
+    // Compact heroes: a fixed floor of clear photo, no cap (the content
+    // follows the hero, so nothing is pushed off by a growing photo).
+    final compact =
+        !tall &&
+        widget.compactClearPhoto > 0 &&
+        !tablet &&
+        size.height >= FFTokens.heroTallMinViewport;
+    final clearPhoto = tall
+        ? heroTallClearTarget(size.height, scale)
+        : compact
+        ? widget.compactClearPhoto / math.max(1.0, scale)
+        : 0.0;
     // The reserve is measured on the light sheet, which overlaps the hero;
     // on the dark ground the content starts that much lower.
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final maxHeight = clearPhoto > 0
+    final maxHeight = tall && clearPhoto > 0
         ? size.height -
-              reserve! -
+              reserve -
               (dark ? FFTokens.heroSheetOverlap : 0) -
               widget.tallReserveGrowth * math.max(0.0, scale - 1)
         : double.infinity;
@@ -231,43 +254,28 @@ class _FFPhotoHeroPageState extends State<FFPhotoHeroPage> {
 
     final Widget body;
     if (widget.pinnedContent) {
-      // The hero fills what the content leaves; if the text needs more, the
-      // photo's top edge is cut, never the text or the content.
-      body = Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, c) => ClipRect(
-                child: OverflowBox(
-                  alignment: Alignment.bottomCenter,
-                  minHeight: c.maxHeight,
-                  maxHeight: double.infinity,
-                  child: KeyedSubtree(
-                    key: _heroKey,
-                    child: widget.hero(context, (
-                      variant: widget.phoneVariant,
-                      minHeight: c.maxHeight,
-                      topInset: topInset,
-                      wide: false,
-                      clearPhoto: 0,
-                      maxHeight: double.infinity,
-                    )),
-                  ),
+      // The hero keeps its own height and the content follows it; spare
+      // room goes below the content. If the two need more than the screen,
+      // the photo's top edge is cut, never the text or the content.
+      body = ClipRect(
+        child: CustomMultiChildLayout(
+          delegate: _PinnedHeroDelegate(),
+          children: [
+            LayoutId(id: _PinnedSlot.hero, child: hero),
+            LayoutId(
+              id: _PinnedSlot.sheet,
+              child: FFHeroSheet(
+                padding: EdgeInsets.fromLTRB(
+                  FFTokens.spacingLg,
+                  FFTokens.spacingMd,
+                  FFTokens.spacingLg,
+                  FFTokens.spacingMd + MediaQuery.paddingOf(context).bottom,
                 ),
+                child: Center(child: content),
               ),
             ),
-          ),
-          FFHeroSheet(
-            padding: EdgeInsets.fromLTRB(
-              FFTokens.spacingLg,
-              FFTokens.spacingMd,
-              FFTokens.spacingLg,
-              FFTokens.spacingMd + MediaQuery.paddingOf(context).bottom,
-            ),
-            child: Center(child: content),
-          ),
-        ],
+          ],
+        ),
       );
     } else {
       body = NotificationListener<ScrollNotification>(
@@ -328,4 +336,25 @@ class _FFPhotoHeroPageState extends State<FFPhotoHeroPage> {
       ),
     );
   }
+}
+
+enum _PinnedSlot { hero, sheet }
+
+/// [FFPhotoHeroPage.pinnedContent]: the sheet at its own height right under
+/// the hero at its own height; when they do not fit, the hero moves up (its
+/// photo's top edge goes off screen) so the sheet ends at the bottom.
+class _PinnedHeroDelegate extends MultiChildLayoutDelegate {
+  @override
+  void performLayout(Size size) {
+    final w = BoxConstraints.tightFor(width: size.width);
+    // Unbounded, as in a Column: the sheet is as tall as its content.
+    final sheetH = layoutChild(_PinnedSlot.sheet, w).height;
+    final heroH = layoutChild(_PinnedSlot.hero, w).height;
+    final heroTop = math.min(0.0, size.height - sheetH - heroH);
+    positionChild(_PinnedSlot.hero, Offset(0, heroTop));
+    positionChild(_PinnedSlot.sheet, Offset(0, heroTop + heroH));
+  }
+
+  @override
+  bool shouldRelayout(_PinnedHeroDelegate oldDelegate) => false;
 }
