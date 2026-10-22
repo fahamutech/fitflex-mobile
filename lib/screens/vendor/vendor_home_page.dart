@@ -1249,9 +1249,10 @@ class _VendorHomePageState extends State<VendorHomePage> {
                 minimumSize: const Size(48, 48),
                 tapTargetSize: MaterialTapTargetSize.padded,
               ),
-              tooltip: ledger
-                  ? fillIn(context.tr('vendor.productActions'), {'name': name})
-                  : null,
+              // Labelled with the product, ledger on or off (QA 2026-10-22).
+              tooltip: fillIn(context.tr('vendor.productActions'), {
+                'name': name,
+              }),
               onSelected: (value) {
                 if (value == 'edit') _editProduct(product);
                 if (value == 'adjust') _adjustStock(product);
@@ -2313,10 +2314,12 @@ class _VendorProductFormState extends State<VendorProductForm> {
       bool sel,
       VoidCallback onTap, {
       String? spoken,
+      FFChipSelection selection = FFChipSelection.checkbox,
     }) => FFFilterChip(
       key: Key(key),
       label: text,
       semanticLabel: spoken,
+      selection: selection,
       selected: sel,
       tone: FFFilterChipTone.tint,
       onSelected: _saving ? () {} : onTap,
@@ -2351,6 +2354,7 @@ class _VendorProductFormState extends State<VendorProductForm> {
                 _targetGender == null,
                 () => setState(() => _targetGender = null),
                 spoken: option(madeFor, everyone),
+                selection: FFChipSelection.radio,
               ),
               for (final g in kTargetGenders)
                 chip(
@@ -2359,6 +2363,7 @@ class _VendorProductFormState extends State<VendorProductForm> {
                   _targetGender == g,
                   () => setState(() => _targetGender = g),
                   spoken: option(madeFor, context.tr('vendor.target.$g')),
+                  selection: FFChipSelection.radio,
                 ),
             ],
           ),

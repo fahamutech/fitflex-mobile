@@ -173,6 +173,7 @@ class ShopHomeViewState extends State<ShopHomeView> {
         _error = null;
         _loading = false;
       });
+      _live.value = data;
       widget.onData?.call(data);
       widget.onOfflineChanged?.call(false);
       ShopEvents.newLoad();
@@ -315,17 +316,28 @@ class ShopHomeViewState extends State<ShopHomeView> {
     };
   }
 
-  /// "Why am I seeing this?" (spec §8.1): a bullet per reason code, in the
-  /// customer's language, then the role line. The server's own reason text
-  /// is used only for codes the app does not know (or when none are sent).
-  Future<void> _showWhy(ShopHomeSection section) async {
+  /// The latest home answer, for an open Why sheet to follow (a reload
+  /// after the switch changes what may be said).
+  final ValueNotifier<ShopHomeData?> _live = ValueNotifier(null);
+
+  @override
+  void dispose() {
+    _live.dispose();
+    super.dispose();
+  }
+
+  /// The bullets for [section]: translated reason codes, the server's own
+  /// sentence only for codes the app does not know. With [personal] false
+  /// nothing about the customer's own data is said, whatever was sent (and
+  /// the server's sentence is not used either: it may name a purchase).
+  List<String> _whyLines(
+    BuildContext context,
+    ShopHomeSection section, {
+    required bool personal,
+    required bool serverSentence,
+  }) {
     final lang = FFLocaleScope.of(context).locale.languageCode;
     final lines = <String>[];
-    // Phase 2 S2: with personalisation off or not available (under 18),
-    // nothing about the customer's own data is said, whatever was sent.
-    // A backend without it (null) keeps Phase 1 behaviour.
-    final personalisation = _data?.personalisation;
-    final personal = personalisation == null || personalisation.active;
     final codes = [
       for (final c in section.reasonCodes)
         if (personal || !kPersonalReasonCodes.contains(c.code)) c,
@@ -344,71 +356,138 @@ class ShopHomeViewState extends State<ShopHomeView> {
     // just role_context): the server's sentence too.
     if (lines.isEmpty) unknown = true;
     final server = section.reason?.of(lang);
-    if (unknown && server != null && server.isNotEmpty) lines.add(server);
-    final role = context.tr(_roleLine());
+    if (unknown && serverSentence && server != null && server.isNotEmpty) {
+      lines.add(server);
+    }
+    if (lines.isEmpty && !serverSentence) {
+      lines.add(context.tr('shop.why.generic'));
+    }
+    return lines;
+  }
+
+  String _offLine() => switch (_mode(_data)) {
+    ShopHomeMode.member => 'shop.why.offMember',
+    ShopHomeMode.trainer => 'shop.why.offTrainer',
+    ShopHomeMode.owner => 'shop.why.offOwner',
+    ShopHomeMode.vendorPersonal => 'shop.why.offVendor',
+  };
+
+  /// "Why am I seeing this?" (spec §8.1): a bullet per reason code, in the
+  /// customer's language, then the role line, then (Phase 2 S2) the
+  /// "Personalised shop" switch. The lines follow the switch at once: off
+  /// drops every personal reason and says suggestions are off; the home
+  /// reloads behind the sheet and the sheet follows the new answer.
+  Future<void> _showWhy(ShopHomeSection section) async {
+    _live.value = _data;
+    final first = _data?.personalisation;
     final mode = _mode(_data);
-    final showSwitch = personalisation?.available == true;
-    await showFFSheet<void>(
+    final showSwitch = first?.available == true;
+    // The switch's value as the customer just set it (null: as loaded).
+    bool? on;
+    await showShopSheet<void>(
       context,
       title: context.tr('shop.why.title'),
-      child: Builder(
-        builder: (sheet) {
-          final theme = Theme.of(sheet);
-          return Column(
-            key: Key('shop-why-${section.key}'),
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (final line in lines)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      ExcludeSemantics(
-                        child: Text('•  ', style: theme.textTheme.bodyLarge),
-                      ),
-                      Expanded(
-                        child: Text(line, style: theme.textTheme.bodyLarge),
-                      ),
-                    ],
-                  ),
-                ),
-              Text(
-                role,
-                key: const Key('shop-why-role'),
-                style: theme.textTheme.bodyMedium,
-              ),
-              if (showSwitch) ...[
-                const SizedBox(height: FFTokens.spacingMd),
-                ShopPersonalisedSwitch(
-                  source: ShopPreferences.sourceWhySheet,
-                  initial: personalisation!.enabled,
-                  // Gender and age are used in member mode only.
-                  partnerHint: mode != ShopHomeMode.member,
-                  // The home reloads behind the sheet (§8.2).
-                  onChanged: (_) {
-                    if (mounted) reload();
-                  },
-                ),
-                if (mode == ShopHomeMode.member)
-                  Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: FFButton(
-                      key: const Key('shop-why-privacy'),
-                      label: sheet.tr('shop.why.privacyLink'),
-                      variant: FFButtonVariant.ghost,
-                      visualDensity: VisualDensity.standard,
-                      onPressed: () {
-                        Navigator.of(sheet).pop();
-                        if (mounted) context.go(AppRoutes.memberPrivacy);
-                      },
+      child: ValueListenableBuilder<ShopHomeData?>(
+        valueListenable: _live,
+        builder: (sheet, data, _) => StatefulBuilder(
+          builder: (sheet, setSheet) {
+            final theme = Theme.of(sheet);
+            final p = data?.personalisation ?? first;
+            final current = data?.sections
+                    .where((x) => x.key == section.key)
+                    .firstOrNull ??
+                section;
+            final enabled = on ?? p?.enabled ?? true;
+            // A backend without personalisation (null): Phase 1 sheet.
+            final personal =
+                p == null || (p.available && enabled && p.enabled == enabled);
+            // The server's sentence only while it matches the switch.
+            final serverSentence = p == null || p.enabled == enabled;
+            final lines = _whyLines(
+              sheet,
+              current,
+              personal: personal,
+              serverSentence: serverSentence,
+            );
+            final off = p != null && p.available && !enabled;
+            return Column(
+              key: Key('shop-why-${section.key}'),
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final line in lines)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ExcludeSemantics(
+                          child: Text('•  ', style: theme.textTheme.bodyLarge),
+                        ),
+                        Expanded(
+                          child: Text(line, style: theme.textTheme.bodyLarge),
+                        ),
+                      ],
                     ),
                   ),
+                if (off)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
+                    child: Semantics(
+                      liveRegion: true,
+                      child: Text(
+                        sheet.tr(_offLine()),
+                        key: const Key('shop-why-off'),
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ),
+                  ),
+                Text(
+                  sheet.tr(_roleLine()),
+                  key: const Key('shop-why-role'),
+                  style: theme.textTheme.bodyMedium,
+                ),
+                if (showSwitch) ...[
+                  const SizedBox(height: FFTokens.spacingMd),
+                  ShopPersonalisedSwitch(
+                    source: ShopPreferences.sourceWhySheet,
+                    mode: mode.wire,
+                    initial: first!.enabled,
+                    // Gender and age are used in member mode only.
+                    partnerHint: mode != ShopHomeMode.member,
+                    onChanged: (prefs) {
+                      setSheet(() => on = prefs.personalised);
+                      // The home reloads behind the sheet (§8.2).
+                      if (mounted) reload();
+                    },
+                  ),
+                  if (mode == ShopHomeMode.member)
+                    Padding(
+                      padding: const EdgeInsets.only(top: FFTokens.spacingXs),
+                      child: Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: ShopFocusRing(
+                          onPhoto: true,
+                          builder: (node) => FFButton(
+                            key: const Key('shop-why-privacy'),
+                            focusNode: node,
+                            label: sheet.tr('shop.why.privacyLink'),
+                            variant: FFButtonVariant.ghost,
+                            visualDensity: VisualDensity.standard,
+                            onPressed: () {
+                              Navigator.of(sheet).pop();
+                              // Pushed, so Back returns to the shop.
+                              if (mounted) context.push(AppRoutes.memberPrivacy);
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ],
-            ],
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }

@@ -67,10 +67,16 @@ String? dateOfBirthErrorMessage(FFLocale locale, Object error) =>
 
 /// The date picker for a date of birth: 1901-01-01 to today (East Africa).
 /// [current] is kept as the starting day when it is in range.
+///
+/// [entryMode] and [builder] are passed to [showDatePicker] (Edit profile
+/// uses calendar-only, since its own field takes typed YYYY-MM-DD, and
+/// 48dp buttons). Defaults keep the picker as it was.
 Future<DateTime?> showDateOfBirthPicker(
   BuildContext context, {
   DateTime? current,
   String? helpText,
+  DatePickerEntryMode entryMode = DatePickerEntryMode.calendar,
+  TransitionBuilder? builder,
 }) {
   final today = eastAfricaToday();
   final initial =
@@ -84,7 +90,8 @@ Future<DateTime?> showDateOfBirthPicker(
     initialDate: initial,
     firstDate: firstDateOfBirth,
     lastDate: today,
-    initialEntryMode: DatePickerEntryMode.calendar,
+    initialEntryMode: entryMode,
     helpText: helpText,
+    builder: builder,
   );
 }

@@ -114,17 +114,82 @@ void main() {
     });
   });
 
-  testWidgets('the field is a read-only picker', (tester) async {
-    await _pump(tester, _FakeApi(), '1990-05-10');
+  testWidgets('typing is YYYY-MM-DD only (digits and dashes, 10 '
+      'characters)', (tester) async {
+    final api = _FakeApi();
+    await _pump(tester, api, '1990-05-10');
     expect(_dobText(tester), '1990-05-10');
-    final field = tester.widget<TextField>(
-      find.descendant(of: _dob, matching: find.byType(TextField)),
-    );
-    expect(field.readOnly, isTrue);
     expect(
       tester.getSize(find.byKey(const Key('edit-profile-dob-pick'))).height,
       greaterThanOrEqualTo(48),
     );
+    final input = find.descendant(of: _dob, matching: find.byType(TextField));
+    await tester.enterText(input, '12/05/1988abc');
+    await tester.pump();
+    expect(_dobText(tester), '12051988');
+    await tester.enterText(input, '1988-05-12-99');
+    await tester.pump();
+    expect(_dobText(tester), '1988-05-12');
+    await _save(tester);
+    expect(api.profiles.single['dateOfBirth'], '1988-05-12');
+  });
+
+  testWidgets('a typed date in another order gets the format message', (
+    tester,
+  ) async {
+    final api = _FakeApi();
+    final loc = await _pump(tester, api, null);
+    final input = find.descendant(of: _dob, matching: find.byType(TextField));
+    await tester.enterText(input, '05-12-1988');
+    await _save(tester);
+    expect(api.profiles, isEmpty);
+    expect(
+      find.text(
+        '${loc.t('member.dobFormat')} ${loc.t('member.dobNoPersonalisation')}',
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('the picker is calendar-only with 48dp buttons; Save and '
+      'Close are 48dp and labelled, and so is the photo button', (
+    tester,
+  ) async {
+    await _pump(tester, _FakeApi(), '1990-05-10');
+    expect(
+      tester.getSize(find.byKey(const Key('edit-profile-save'))).height,
+      greaterThanOrEqualTo(48),
+    );
+    expect(
+      tester
+          .widget<IconButton>(find.byKey(const Key('edit-profile-close')))
+          .tooltip,
+      'Close',
+    );
+    expect(find.bySemanticsLabel('Change profile photo'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('edit-profile-dob-pick')));
+    await tester.pumpAndSettle();
+    final dialog = tester.widget<DatePickerDialog>(
+      find.byType(DatePickerDialog),
+    );
+    expect(dialog.initialEntryMode, DatePickerEntryMode.calendarOnly);
+    final l = MaterialLocalizations.of(
+      tester.element(find.byType(DatePickerDialog)),
+    );
+    for (final label in [l.okButtonLabel, l.cancelButtonLabel]) {
+      expect(
+        tester
+            .getSize(
+              find.ancestor(
+                of: find.text(label),
+                matching: find.byType(TextButton),
+              ),
+            )
+            .height,
+        greaterThanOrEqualTo(48),
+        reason: label,
+      );
+    }
   });
 
   testWidgets('picking a day sends YYYY-MM-DD', (tester) async {
@@ -171,15 +236,23 @@ void main() {
     '1900-12-31',
     '1990-02-30',
   ]) {
-    testWidgets('a stored "$stored" is flagged and not sent', (tester) async {
+    testWidgets('a stored "$stored" is flagged on open and not sent', (
+      tester,
+    ) async {
       final api = _FakeApi();
       final loc = await _pump(tester, api, stored);
-      await _save(tester);
-      expect(api.profiles, isEmpty);
-      final key = stored == '2999-01-01'
+      await tester.pumpAndSettle();
+      final key = !RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(stored)
+          ? 'member.dobFormat'
+          : stored == '2999-01-01'
           ? 'member.dobFuture'
           : 'member.dobInvalid';
-      expect(find.text(loc.t(key)), findsOneWidget);
+      final message = '${loc.t(key)} ${loc.t('member.dobNoPersonalisation')}';
+      // Shown at once, before Save, with why the shop isn't personalised.
+      expect(find.text(message), findsOneWidget);
+      await _save(tester);
+      expect(api.profiles, isEmpty);
+      expect(find.text(message), findsOneWidget);
     });
   }
 
@@ -197,8 +270,10 @@ void main() {
       await tester.pumpAndSettle();
       await _save(tester);
       expect(api.profiles, hasLength(1));
-      final message = loc.t('member.dobInvalid');
-      expect(message, isNot('member.dobInvalid'));
+      final message =
+          '${loc.t('member.dobInvalid')} '
+          '${loc.t('member.dobNoPersonalisation')}';
+      expect(loc.t('member.dobInvalid'), isNot('member.dobInvalid'));
       expect(
         find.descendant(of: _dob, matching: find.text(message)),
         findsOneWidget,
