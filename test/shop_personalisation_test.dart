@@ -470,6 +470,7 @@ void main() {
         'member.dobPick',
         'member.dobClear',
         'member.dobInvalid',
+        'member.dobFuture',
         'privacy.shop.orderOnly',
         'privacy.shop.never',
         'privacy.shop.draft',

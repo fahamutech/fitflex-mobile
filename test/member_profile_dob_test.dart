@@ -6,6 +6,7 @@ import 'package:fitflexmobile/app_scope.dart';
 import 'package:fitflexmobile/screens/member/member_edit_profile_page.dart';
 import 'package:fitflexmobile/shared/api_client.dart';
 import 'package:fitflexmobile/shared/auth_state.dart';
+import 'package:fitflexmobile/shared/date_of_birth.dart';
 import 'package:fitflexmobile/shared/design_tokens.dart';
 import 'package:fitflexmobile/shared/i18n.dart';
 import 'package:fitflexmobile/shared/models.dart';
@@ -93,7 +94,11 @@ void main() {
       expect(parseDateOfBirth('1990/05/10'), isNull);
       expect(parseDateOfBirth('10-05-1990'), isNull);
       expect(formatDateOfBirth(DateTime(1990, 5, 1)), '1990-05-01');
-      expect(normaliseDateOfBirth('1990-05-10T00:00:00.000Z'), '1990-05-10');
+      // A timestamp is not cut to its day (it may be a day early in Dar).
+      expect(
+        normaliseDateOfBirth('1990-05-09T21:00:00Z'),
+        '1990-05-09T21:00:00Z',
+      );
       expect(normaliseDateOfBirth('1990/05/10'), '1990/05/10');
     });
 
@@ -109,9 +114,8 @@ void main() {
     });
   });
 
-  testWidgets('the field is a read-only picker; a stored timestamp shows '
-      'as YYYY-MM-DD', (tester) async {
-    await _pump(tester, _FakeApi(), '1990-05-10T00:00:00.000Z');
+  testWidgets('the field is a read-only picker', (tester) async {
+    await _pump(tester, _FakeApi(), '1990-05-10');
     expect(_dobText(tester), '1990-05-10');
     final field = tester.widget<TextField>(
       find.descendant(of: _dob, matching: find.byType(TextField)),
@@ -161,6 +165,7 @@ void main() {
   });
 
   for (final stored in [
+    '1990-05-09T21:00:00Z',
     '1990/05/01',
     '2999-01-01',
     '1900-12-31',
@@ -171,7 +176,10 @@ void main() {
       final loc = await _pump(tester, api, stored);
       await _save(tester);
       expect(api.profiles, isEmpty);
-      expect(find.text(loc.t('member.dobInvalid')), findsOneWidget);
+      final key = stored == '2999-01-01'
+          ? 'member.dobFuture'
+          : 'member.dobInvalid';
+      expect(find.text(loc.t(key)), findsOneWidget);
     });
   }
 
