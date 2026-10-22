@@ -30,6 +30,7 @@ class VendorTools {
     this.walkInSales = false,
     this.customers = false,
     this.banners = false,
+    this.productTargets = false,
     this.documents = false,
     this.vat = false,
     this.vatInForce,
@@ -71,6 +72,11 @@ class VendorTools {
   /// from `merch: {banners: true}`. Exactly `true`, else off.
   final bool banners;
 
+  /// Shop home Phase 2 S2: products may carry "Made for" / "Age group"
+  /// (SHOP_PERSONALISATION), from `merch: {productTargets: true}`. Exactly
+  /// `true`, else off.
+  final bool productTargets;
+
   /// S5: share links, PDFs, the share sheet and order invoices
   /// (VENDOR_DOCUMENTS). Exactly `true`, else the S3/S4 text share.
   final bool documents;
@@ -98,6 +104,9 @@ class VendorTools {
         banners:
             options['merch'] is Map &&
             (options['merch'] as Map)['banners'] == true,
+        productTargets:
+            options['merch'] is Map &&
+            (options['merch'] as Map)['productTargets'] == true,
         documents: options['documents'] == true,
         vat: options['vat'] == true,
         vatInForce: options['vatInForce'] is bool

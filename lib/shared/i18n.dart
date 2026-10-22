@@ -1801,6 +1801,10 @@ class FFLocale extends ChangeNotifier {
       'member.height': 'Height (cm)',
       'member.weight': 'Weight (kg)',
       'member.dateOfBirth': 'Date of birth',
+      'member.dobPick': 'Choose date of birth',
+      'member.dobClear': 'Clear date of birth',
+      'member.dobInvalid':
+          'Choose a real date of birth: not in the future and from 1901 on.',
       'member.goal.gain_muscle': 'Gain muscle',
       'member.goal.lose_weight': 'Lose weight',
       'member.goal.stay_fit': 'Stay fit',
@@ -4352,7 +4356,7 @@ class FFLocale extends ChangeNotifier {
       'shop.why.boughtCategory': "You've bought {category} before.",
       'shop.why.boughtProduct': 'Suggested because you bought {product}.',
       'shop.why.gender': 'The gender in your profile.',
-      'shop.why.deliversToArea': 'It delivers to the area in your profile.',
+      'shop.why.deliversToArea': 'It delivers to your current area.',
       'shop.why.featured':
           'Featured products are chosen by FitFlex or paid for by sellers. Paid ones are labelled Sponsored.',
       'shop.why.flashSale': 'The seller has set a discount for a limited time.',
@@ -4403,6 +4407,59 @@ class FFLocale extends ChangeNotifier {
       'shop.home.emptyBody': 'Sellers are adding products. Check back soon.',
       'shop.why.title': 'Why am I seeing this?',
       'shop.why.a11y': 'Why am I seeing these suggestions?',
+      // Shop Phase 2 S2: personalisation (spec shop-home-phase2 §6, §10.5–10.6).
+      'shop.why.switch': 'Personalised shop',
+      'shop.why.switchHintMember':
+          "Use my purchases and my profile's gender and age to order the shop for me.",
+      'shop.why.switchHintPartner':
+          'Use my purchases to order the shop for me.',
+      'shop.why.age': 'The age in your profile.',
+      'shop.why.saved': 'Shop updated',
+      'shop.why.saveFailed': "Couldn't save. Try again.",
+      'shop.why.loadFailed': "Couldn't load your setting",
+      'shop.why.privacyLink': 'Privacy & data',
+      'privacy.shop.title': 'Personalised shop',
+      'privacy.shop.on': 'On',
+      'privacy.shop.off': 'Off',
+      'privacy.shop.loadFailed': "Couldn't load",
+      'privacy.shop.offline': 'Needs internet',
+      'privacy.shop.loading': 'Loading your setting',
+      'privacy.shop.usesTitle': 'What we use',
+      'privacy.shop.usesHistory':
+          'What you bought on FitFlex in the last {months} months',
+      'privacy.shop.usesHistoryOne':
+          'What you bought on FitFlex in the last month',
+      'privacy.shop.usesGenderAge':
+          'Gender and age from your profile, to show tagged products first (never used for under-18s)',
+      'privacy.shop.usesGender':
+          'Gender from your profile, to show tagged products first (never used for under-18s)',
+      'privacy.shop.usesAge':
+          'Age from your profile, to show tagged products first (never used for under-18s)',
+      'privacy.shop.usesGoal': 'The fitness goal in your profile',
+      'privacy.shop.usesSpecialty': 'The specialties on your trainer profile',
+      'privacy.shop.usesNone':
+          'Nothing from your account is used to order the shop right now.',
+      'privacy.shop.orderOnly':
+          'Gender and age only change the order. You can still find and buy everything.',
+      'privacy.shop.never':
+          'We never use your activity, health, training or company data.',
+      'privacy.shop.draft': 'This text is a draft and may change.',
+      'vendor.target.title': "Who it's for (optional)",
+      'vendor.target.hint':
+          'Helps FitFlex show it first to members it suits. Everyone can still find and buy it.',
+      'vendor.target.madeFor': 'Made for',
+      'vendor.target.everyone': 'Everyone',
+      'vendor.target.women': 'Women',
+      'vendor.target.men': 'Men',
+      'vendor.target.ageGroup': 'Age group',
+      'vendor.target.allAges': 'All ages',
+      'vendor.target.band.18_29': '18–29',
+      'vendor.target.band.30_44': '30–44',
+      'vendor.target.band.45_59': '45–59',
+      'vendor.target.band.60_plus': '60+',
+      'vendor.target.a11yBand': '{from} to {to}',
+      'vendor.target.a11yBandPlus': '{from} and over',
+      'vendor.target.a11yOption': '{group}, {option}',
       'shop.a11y.price': 'Price {price}',
       'shop.a11y.salePrice': 'Sale price {sale}, was {old}, {pct} percent off',
       'shop.a11y.rating': 'Rated {rating} out of 5 from {count} reviews',
@@ -7195,6 +7252,10 @@ class FFLocale extends ChangeNotifier {
       'member.height': 'Urefu (cm)',
       'member.weight': 'Uzito (kg)',
       'member.dateOfBirth': 'Tarehe ya kuzaliwa',
+      'member.dobPick': 'Chagua tarehe ya kuzaliwa',
+      'member.dobClear': 'Futa tarehe ya kuzaliwa',
+      'member.dobInvalid':
+          'Chagua tarehe halisi ya kuzaliwa: isiwe ya baadaye na iwe kuanzia mwaka 1901.',
       'member.goal.gain_muscle': 'Kuongeza misuli',
       'member.goal.lose_weight': 'Kupunguza uzito',
       'member.goal.stay_fit': 'Kubaki fiti',
@@ -9714,8 +9775,7 @@ class FFLocale extends ChangeNotifier {
       'shop.why.boughtCategory': 'Uliwahi kununua {category}.',
       'shop.why.boughtProduct': 'Imependekezwa kwa sababu ulinunua {product}.',
       'shop.why.gender': 'Jinsia uliyoweka kwenye wasifu wako.',
-      'shop.why.deliversToArea':
-          'Ina delivery kwenye eneo lililo kwenye wasifu wako.',
+      'shop.why.deliversToArea': 'Ina delivery kwenye eneo ulipo sasa.',
       'shop.why.featured':
           'Bidhaa zilizoangaziwa huchaguliwa na FitFlex au hulipiwa na wauzaji. Zilizolipiwa zimeandikwa "Iliyodhaminiwa".',
       'shop.why.flashSale': 'Muuzaji ameweka punguzo kwa muda maalum.',
@@ -9770,6 +9830,59 @@ class FFLocale extends ChangeNotifier {
       'shop.home.emptyBody': 'Wauzaji wanaongeza bidhaa. Rudi baadaye.',
       'shop.why.title': 'Kwa nini naona hii?',
       'shop.why.a11y': 'Kwa nini naona mapendekezo haya?',
+      // Shop Phase 2 S2 [SW native review].
+      'shop.why.switch': 'Duka kwa ajili yako',
+      'shop.why.switchHintMember':
+          'Tumia manunuzi yangu, na jinsia na umri kwenye wasifu wangu, kupanga duka kwa ajili yangu.',
+      'shop.why.switchHintPartner':
+          'Tumia manunuzi yangu kupanga duka kwa ajili yangu.',
+      'shop.why.age': 'Umri ulioweka kwenye wasifu wako.',
+      'shop.why.saved': 'Duka limesasishwa',
+      'shop.why.saveFailed': 'Imeshindikana kuhifadhi. Jaribu tena.',
+      'shop.why.loadFailed': 'Imeshindikana kupakia chaguo lako',
+      'shop.why.privacyLink': 'Faragha na data',
+      'privacy.shop.title': 'Duka kwa ajili yako',
+      'privacy.shop.on': 'Imewashwa',
+      'privacy.shop.off': 'Imezimwa',
+      'privacy.shop.loadFailed': 'Imeshindikana kupakia',
+      'privacy.shop.offline': 'Inahitaji intaneti',
+      'privacy.shop.loading': 'Inapakia chaguo lako',
+      'privacy.shop.usesTitle': 'Tunachotumia',
+      'privacy.shop.usesHistory':
+          'Ulichonunua kwenye FitFlex katika miezi {months} iliyopita',
+      'privacy.shop.usesHistoryOne':
+          'Ulichonunua kwenye FitFlex katika mwezi uliopita',
+      'privacy.shop.usesGenderAge':
+          'Jinsia na umri kwenye wasifu wako, kuonyesha kwanza bidhaa zilizowekewa lebo (havitumiki kwa walio chini ya miaka 18)',
+      'privacy.shop.usesGender':
+          'Jinsia kwenye wasifu wako, kuonyesha kwanza bidhaa zilizowekewa lebo (haitumiki kwa walio chini ya miaka 18)',
+      'privacy.shop.usesAge':
+          'Umri kwenye wasifu wako, kuonyesha kwanza bidhaa zilizowekewa lebo (hautumiki kwa walio chini ya miaka 18)',
+      'privacy.shop.usesGoal': 'Lengo la mazoezi kwenye wasifu wako',
+      'privacy.shop.usesSpecialty': 'Utaalamu ulio kwenye wasifu wako wa trainer',
+      'privacy.shop.usesNone':
+          'Hakuna chochote kutoka kwenye akaunti yako kinachotumika kupanga duka kwa sasa.',
+      'privacy.shop.orderOnly':
+          'Jinsia na umri hubadilisha mpangilio tu. Bado unaweza kupata na kununua kila kitu.',
+      'privacy.shop.never':
+          'Hatutumii kamwe data za shughuli, afya, mazoezi au kampuni yako.',
+      'privacy.shop.draft': 'Maandishi haya ni rasimu na yanaweza kubadilika.',
+      'vendor.target.title': 'Ni kwa ajili ya nani (si lazima)',
+      'vendor.target.hint':
+          'Inasaidia FitFlex kuionyesha kwanza kwa wanachama ambao bidhaa hii inawafaa. Kila mtu bado anaweza kuipata na kuinunua.',
+      'vendor.target.madeFor': 'Walengwa',
+      'vendor.target.everyone': 'Wote',
+      'vendor.target.women': 'Wanawake',
+      'vendor.target.men': 'Wanaume',
+      'vendor.target.ageGroup': 'Kundi la umri',
+      'vendor.target.allAges': 'Umri wote',
+      'vendor.target.band.18_29': '18–29',
+      'vendor.target.band.30_44': '30–44',
+      'vendor.target.band.45_59': '45–59',
+      'vendor.target.band.60_plus': '60+',
+      'vendor.target.a11yBand': '{from} hadi {to}',
+      'vendor.target.a11yBandPlus': '{from} na zaidi',
+      'vendor.target.a11yOption': '{group}, {option}',
       'shop.a11y.price': 'Bei {price}',
       'shop.a11y.salePrice':
           'Bei ya ofa {sale}, awali {old}, punguzo la asilimia {pct}',
