@@ -144,6 +144,16 @@ class ShopHomeSection {
   factory ShopHomeSection.fromJson(Map<String, dynamic> json) {
     final viewAll = json['viewAll'];
     final query = viewAll is Map ? viewAll['query'] : null;
+    // Phase 2 S2: `reasonParams` ({category} / {productName}) sits on the
+    // section; `reasonCodes` stays a list of strings. Codes sent without
+    // their own params take the section's.
+    final rawParams = json['reasonParams'];
+    final sectionParams = rawParams is Map
+        ? {
+            for (final e in rawParams.entries)
+              if (e.value != null) e.key.toString(): e.value.toString(),
+          }
+        : const <String, String>{};
     return ShopHomeSection(
       key: json['key']?.toString() ?? '',
       title: ShopText.fromJson(json['title']),
@@ -151,6 +161,11 @@ class ShopHomeSection {
       reasonCodes: (json['reasonCodes'] as List? ?? [])
           .map(ShopReasonCode.fromJson)
           .whereType<ShopReasonCode>()
+          .map(
+            (c) => c.params.isEmpty && sectionParams.isNotEmpty
+                ? ShopReasonCode(c.code, sectionParams)
+                : c,
+          )
           .toList(),
       hasMore: json['hasMore'] is bool ? json['hasMore'] as bool : null,
       viewAll: query is Map
@@ -377,7 +392,13 @@ class ShopHomeData {
     this.allProductsCount,
     this.banners = const [],
     this.bannersOn = false,
+    this.personalisation,
   });
+
+  /// Phase 2 S2 (SHOP_PERSONALISATION): whether the "Personalised shop"
+  /// switch is offered and on. Null from a backend without the flag: no
+  /// switch and nothing personal is shown.
+  final ShopPersonalisation? personalisation;
 
   /// The server sent a `banners` key (SHOP_BANNERS on), even if empty.
   /// Off: no key, and the home is laid out exactly as before.
@@ -404,6 +425,7 @@ class ShopHomeData {
     final rawProducts = json['products'];
     final serverNow = DateTime.tryParse(json['serverNow']?.toString() ?? '');
     return ShopHomeData(
+      personalisation: ShopPersonalisation.fromJson(json['personalisation']),
       bannersOn: json['banners'] is List,
       banners: (json['banners'] is List ? json['banners'] as List : const [])
           .map(ShopBanner.fromJson)
@@ -451,6 +473,64 @@ class ShopHomeData {
     );
   }
 }
+
+/// `personalisation` on GET /shop/home (Phase 2 S2). [available] is false
+/// when the flag is off for this account or it may not be personalised
+/// (under 18): the switch is then hidden and nothing personal is shown.
+class ShopPersonalisation {
+  const ShopPersonalisation({required this.available, required this.enabled});
+  final bool available;
+  final bool enabled;
+
+  /// Personal reasons may be shown only when both are true.
+  bool get active => available && enabled;
+
+  static ShopPersonalisation? fromJson(Object? json) {
+    if (json is! Map) return null;
+    return ShopPersonalisation(
+      available: json['available'] == true,
+      enabled: json['enabled'] == true,
+    );
+  }
+}
+
+/// GET/PUT /shop/preferences (Phase 2 S2). A 404 `feature_disabled` (or any
+/// 404 / non-JSON answer) means personalisation does not exist here: every
+/// personalisation control is hidden.
+class ShopPreferences {
+  const ShopPreferences({required this.personalised, required this.available});
+  final bool personalised;
+  final bool available;
+
+  /// Where a change was made, sent with every PUT.
+  static const sourcePrivacyPage = 'privacy_page';
+  static const sourceWhySheet = 'why_sheet';
+
+  static ShopPreferences fromJson(Object? json) {
+    final m = json is Map ? json : const {};
+    return ShopPreferences(
+      // Default on (O-6): only an explicit false is off.
+      personalised: m['personalised'] != false,
+      available: m['available'] == true,
+    );
+  }
+}
+
+/// Product "Made for" values on the wire (null = everyone), Phase 2 S2.
+const kTargetGenders = ['women', 'men'];
+
+/// Product "Age group" bands on the wire, in display order (none = all ages).
+const kTargetAgeBands = ['18_29', '30_44', '45_59', '60_plus'];
+
+/// Reason codes that rest on the customer's own data. Never shown unless
+/// the server says personalisation is available and on.
+const kPersonalReasonCodes = {
+  'bought_category',
+  'bought_product',
+  'profile_gender',
+  'profile_age',
+  'delivers_to_area',
+};
 
 /// The app's own name for a category key (the compiled-in list), or the key
 /// itself when even that does not know it.

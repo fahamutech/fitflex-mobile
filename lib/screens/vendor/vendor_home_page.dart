@@ -17,6 +17,7 @@ import '../../shared/i18n.dart';
 import '../../shared/photo_footer_flag.dart';
 import '../../shared/photo_hero_flag.dart';
 import '../../shared/product_categories.dart';
+import '../../shared/shop_home.dart' show kTargetAgeBands, kTargetGenders;
 import '../../shared/tone_theme.dart';
 import '../../shared/widgets/product_category_picker.dart';
 import '../../shared/widgets/ff_photo_picker_field.dart';
@@ -560,7 +561,8 @@ class _VendorHomePageState extends State<VendorHomePage> {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) => VendorProductForm(product: product),
+      builder: (_) =>
+          VendorProductForm(product: product, showTargets: _showTargets),
     );
     if (draft == null || !mounted) return;
     setState(() => _busy = true);
@@ -586,6 +588,11 @@ class _VendorHomePageState extends State<VendorHomePage> {
     }
   }
 
+  /// "Who it's for" (Phase 2 S2) shows only when /vendor/tools/options
+  /// says `merch.productTargets: true` (SHOP_PERSONALISATION on). Vendor
+  /// rows carry the fields either way, so they are not a signal.
+  bool get _showTargets => _tools.productTargets;
+
   /// The product form with the stock ledger on: it saves itself and stays
   /// open (values kept) when the save fails.
   Future<void> _editProductWithLedger(Map<String, dynamic>? product) async {
@@ -599,6 +606,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
       ),
       child: VendorProductForm(
         product: product,
+        showTargets: _showTargets,
         stockLedger: true,
         canSeeCost: _tools.canSeeCost,
         describeError: _saveFailedText,
@@ -1706,6 +1714,7 @@ class VendorProductForm extends StatefulWidget {
   const VendorProductForm({
     super.key,
     this.product,
+    this.showTargets = false,
     this.stockLedger = false,
     this.canSeeCost = false,
     this.onSave,
@@ -1714,6 +1723,10 @@ class VendorProductForm extends StatefulWidget {
   });
 
   final Map<String, dynamic>? product;
+
+  /// Shop Phase 2 S2: the optional "Made for" and "Age group" pickers, sent
+  /// as `targetGender` and `targetAgeBands`. Off: neither is shown or sent.
+  final bool showTargets;
 
   /// Vendor tools · S1 is on: per-variant rows, reorder level, cost price,
   /// stock changed only through "Adjust stock". Off: the form as before.
@@ -1770,6 +1783,12 @@ class _VendorProductFormState extends State<VendorProductForm> {
   String? _secondImage;
   bool _visible = true;
 
+  /// "Made for": null (everyone), `women` or `men`.
+  String? _targetGender;
+
+  /// "Age group": empty means all ages.
+  final Set<String> _ageBands = {};
+
   bool get _creating => widget.product == null;
 
   /// The stock the form loaded (sent as `stockSeen` with a changed stock).
@@ -1817,6 +1836,11 @@ class _VendorProductFormState extends State<VendorProductForm> {
     _image = images?.firstOrNull;
     _secondImage = images != null && images.length > 1 ? images[1] : null;
     _visible = product?['visibility'] != 'hidden';
+    final gender = product?['targetGender']?.toString();
+    if (kTargetGenders.contains(gender)) _targetGender = gender;
+    for (final b in (product?['targetAgeBands'] as List? ?? const [])) {
+      if (kTargetAgeBands.contains(b)) _ageBands.add(b.toString());
+    }
   }
 
   @override
@@ -1853,6 +1877,13 @@ class _VendorProductFormState extends State<VendorProductForm> {
       'weightKg': num.tryParse(_weight.text.trim()),
       'visibility': _visible ? 'visible' : 'hidden',
       'images': [?_image, ?_secondImage],
+      if (widget.showTargets) ...{
+        'targetGender': _targetGender,
+        'targetAgeBands': [
+          for (final b in kTargetAgeBands)
+            if (_ageBands.contains(b)) b,
+        ],
+      },
     };
   }
 
@@ -2152,7 +2183,120 @@ class _VendorProductFormState extends State<VendorProductForm> {
       current: widget.product?['category']?.toString(),
       onChanged: (key) => _category = key,
     ),
+    if (widget.showTargets) _targetFields(),
   ];
+
+  /// "Who it's for (optional)" (spec §6.2): Made for, single choice; Age
+  /// group, several bands, where "All ages" clears the bands and picking a
+  /// band clears "All ages".
+  Widget _targetFields() {
+    final theme = Theme.of(context);
+    final madeFor = context.tr('vendor.target.madeFor');
+    final ageGroup = context.tr('vendor.target.ageGroup');
+    String option(String group, String label) => fillIn(
+      context.tr('vendor.target.a11yOption'),
+      {'group': group, 'option': label},
+    );
+    String bandSpoken(String band) {
+      final parts = band.split('_');
+      return parts.last == 'plus'
+          ? fillIn(context.tr('vendor.target.a11yBandPlus'), {
+              'from': parts.first,
+            })
+          : fillIn(context.tr('vendor.target.a11yBand'), {
+              'from': parts.first,
+              'to': parts.last,
+            });
+    }
+
+    Widget label(String text) => Padding(
+      padding: const EdgeInsets.only(top: FFTokens.spacingSm),
+      child: Text(text, style: theme.textTheme.labelLarge),
+    );
+    Widget chip(
+      String key,
+      String text,
+      bool sel,
+      VoidCallback onTap, {
+      String? spoken,
+    }) => FFFilterChip(
+      key: Key(key),
+      label: text,
+      semanticLabel: spoken,
+      selected: sel,
+      tone: FFFilterChipTone.tint,
+      onSelected: _saving ? () {} : onTap,
+    );
+
+    final everyone = context.tr('vendor.target.everyone');
+    final allAges = context.tr('vendor.target.allAges');
+    return Padding(
+      key: const Key('vendor-product-targets'),
+      padding: const EdgeInsets.symmetric(vertical: FFTokens.spacingSm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Semantics(
+            header: true,
+            child: Text(
+              context.tr('vendor.target.title'),
+              style: theme.textTheme.titleSmall,
+            ),
+          ),
+          Text(
+            context.tr('vendor.target.hint'),
+            style: theme.textTheme.bodySmall,
+          ),
+          label(madeFor),
+          Wrap(
+            spacing: FFTokens.spacingSm,
+            children: [
+              chip(
+                'vendor-target-gender-everyone',
+                everyone,
+                _targetGender == null,
+                () => setState(() => _targetGender = null),
+                spoken: option(madeFor, everyone),
+              ),
+              for (final g in kTargetGenders)
+                chip(
+                  'vendor-target-gender-$g',
+                  context.tr('vendor.target.$g'),
+                  _targetGender == g,
+                  () => setState(() => _targetGender = g),
+                  spoken: option(madeFor, context.tr('vendor.target.$g')),
+                ),
+            ],
+          ),
+          label(ageGroup),
+          Wrap(
+            spacing: FFTokens.spacingSm,
+            children: [
+              chip(
+                'vendor-target-age-all',
+                allAges,
+                _ageBands.isEmpty,
+                () => setState(_ageBands.clear),
+                spoken: option(ageGroup, allAges),
+              ),
+              for (final b in kTargetAgeBands)
+                chip(
+                  'vendor-target-age-$b',
+                  context.tr('vendor.target.band.$b'),
+                  _ageBands.contains(b),
+                  () => setState(
+                    () => _ageBands.contains(b)
+                        ? _ageBands.remove(b)
+                        : _ageBands.add(b),
+                  ),
+                  spoken: option(ageGroup, bandSpoken(b)),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _priceField() => KeyedSubtree(
     key: _priceKey,

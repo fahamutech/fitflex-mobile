@@ -1,0 +1,385 @@
+// Shop Phase 2 S2: the "Personalised shop" switch (Why sheet and member
+// Privacy page) and the Privacy page tile. Spec: docs/design/
+// shop-home-phase2.md §6.3–6.4 and shop-home.md §8.2.
+//
+// Contract: GET /shop/preferences → {personalised, available}; PUT the same
+// path with {personalised, source}. A 404 (feature_disabled) or a non-JSON
+// answer means personalisation does not exist on this backend, and every
+// control here hides itself.
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+
+import '../../../app_scope.dart';
+import '../../api_client.dart';
+import '../../api_error_message.dart';
+import '../../components/components.dart';
+import '../../design_tokens.dart';
+import '../../i18n.dart';
+import '../../shop_home.dart';
+
+/// Whether this failure means "there is no personalisation here".
+bool shopPersonalisationMissing(Object error) =>
+    error is FormatException || (error is ApiException && error.status == 404);
+
+/// The "Personalised shop" switch row. Saves at once with an optimistic
+/// update: the switch moves, is disabled with a spinner while saving, and
+/// goes back (with "Couldn't save. Try again.") if the save fails.
+///
+/// [initial] is the value already known (from GET /shop/home); null loads it
+/// from GET /shop/preferences first. When the backend has no preferences, or
+/// says they are not available for this account, nothing is shown.
+class ShopPersonalisedSwitch extends StatefulWidget {
+  const ShopPersonalisedSwitch({
+    super.key,
+    required this.source,
+    this.initial,
+    this.partnerHint = false,
+    this.onChanged,
+  });
+
+  /// `privacy_page` or `why_sheet` (sent with the PUT).
+  final String source;
+  final bool? initial;
+
+  /// Trainer and owner modes never use gender or age: their own hint.
+  final bool partnerHint;
+
+  /// Called with the saved value after a successful save.
+  final ValueChanged<bool>? onChanged;
+
+  @override
+  State<ShopPersonalisedSwitch> createState() => _ShopPersonalisedSwitchState();
+}
+
+class _ShopPersonalisedSwitchState extends State<ShopPersonalisedSwitch> {
+  bool? _value;
+  bool _loading = false;
+  bool _loadFailed = false;
+  bool _hidden = false;
+  bool _saving = false;
+  bool _saveFailed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _value = widget.initial;
+    if (_value == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _load();
+      });
+    }
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _loadFailed = false;
+    });
+    try {
+      final prefs = ShopPreferences.fromJson(
+        await AppScope.of(context).api.shopPreferences(),
+      );
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _hidden = !prefs.available;
+        _value = prefs.personalised;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _hidden = shopPersonalisationMissing(e);
+        _loadFailed = !_hidden;
+      });
+    }
+  }
+
+  Future<void> _set(bool next) async {
+    final before = _value ?? true;
+    if (_saving || next == before) return;
+    final api = AppScope.of(context).api;
+    final snack = FFSnack.of(context);
+    final locale = FFLocaleScope.of(context);
+    setState(() {
+      _value = next;
+      _saving = true;
+      _saveFailed = false;
+    });
+    try {
+      final prefs = ShopPreferences.fromJson(
+        await api.updateShopPreferences(
+          personalised: next,
+          source: widget.source,
+        ),
+      );
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _value = prefs.personalised;
+      });
+      snack.success(locale.t('shop.why.saved'));
+      widget.onChanged?.call(prefs.personalised);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _value = before;
+        _saveFailed = true;
+      });
+      snack.error(locale.t('shop.why.saveFailed'));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_hidden) return const SizedBox.shrink();
+    final theme = Theme.of(context);
+    final title = context.tr('shop.why.switch');
+    final hint = context.tr(
+      widget.partnerHint
+          ? 'shop.why.switchHintPartner'
+          : 'shop.why.switchHintMember',
+    );
+    if (_loadFailed) {
+      return Row(
+        key: const Key('shop-why-personalised-failed'),
+        children: [
+          Expanded(
+            child: Text(
+              context.tr('shop.why.loadFailed'),
+              style: theme.textTheme.bodyMedium,
+            ),
+          ),
+          FFButton(
+            key: const Key('shop-why-personalised-retry'),
+            label: context.tr('common.retry'),
+            variant: FFButtonVariant.ghost,
+            visualDensity: VisualDensity.standard,
+            onPressed: _load,
+          ),
+        ],
+      );
+    }
+    if (_loading || _value == null) {
+      return Semantics(
+        label: context.tr('privacy.shop.loading'),
+        child: const ExcludeSemantics(
+          child: SizedBox(height: 48, child: FFSkeletonLine()),
+        ),
+      );
+    }
+    final value = _value!;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        MergeSemantics(
+          child: InkWell(
+            onTap: _saving ? null : () => _set(!value),
+            borderRadius: BorderRadius.circular(FFTokens.radiusMd),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 48),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(title, style: theme.textTheme.bodyLarge),
+                        Text(hint, style: theme.textTheme.bodySmall),
+                      ],
+                    ),
+                  ),
+                  if (_saving)
+                    const Padding(
+                      padding: EdgeInsets.only(left: FFTokens.spacingSm),
+                      child: FFSpinner(size: 16),
+                    ),
+                  Switch(
+                    key: const Key('shop-why-personalised'),
+                    value: value,
+                    materialTapTargetSize: MaterialTapTargetSize.padded,
+                    onChanged: _saving ? null : _set,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (_saveFailed)
+          Semantics(
+            liveRegion: true,
+            child: Text(
+              context.tr('shop.why.saveFailed'),
+              key: const Key('shop-why-personalised-error'),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.error,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Privacy & data → "Personalised shop" (spec §6.4). Hidden when the
+/// backend has no shop preferences (SHOP_PERSONALISATION off) or they are
+/// not available for this account (under 18).
+class ShopPrivacyTile extends StatefulWidget {
+  const ShopPrivacyTile({super.key});
+
+  @override
+  State<ShopPrivacyTile> createState() => _ShopPrivacyTileState();
+}
+
+enum _TileState { loading, ready, failed, offline, hidden }
+
+class _ShopPrivacyTileState extends State<ShopPrivacyTile> {
+  _TileState _state = _TileState.loading;
+  bool _on = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _load();
+    });
+  }
+
+  Future<void> _load() async {
+    setState(() => _state = _TileState.loading);
+    try {
+      final prefs = ShopPreferences.fromJson(
+        await AppScope.of(context).api.shopPreferences(),
+      );
+      if (!mounted) return;
+      setState(() {
+        _on = prefs.personalised;
+        _state = prefs.available ? _TileState.ready : _TileState.hidden;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(
+        () => _state = shopPersonalisationMissing(e)
+            ? _TileState.hidden
+            : isNetworkError(e) || e is TimeoutException
+            ? _TileState.offline
+            : _TileState.failed,
+      );
+    }
+  }
+
+  Future<void> _open() async {
+    await showFFSheet<void>(
+      context,
+      title: context.tr('privacy.shop.title'),
+      child: ShopPrivacySheet(
+        initial: _on,
+        onChanged: (on) {
+          if (mounted) setState(() => _on = on);
+        },
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_state == _TileState.hidden) return const SizedBox.shrink();
+    final subtitle = switch (_state) {
+      _TileState.loading => context.tr('privacy.shop.loading'),
+      _TileState.failed => context.tr('privacy.shop.loadFailed'),
+      _TileState.offline => context.tr('privacy.shop.offline'),
+      _ => context.tr(_on ? 'privacy.shop.on' : 'privacy.shop.off'),
+    };
+    return FFActionTile(
+      key: const Key('privacy-shop'),
+      icon: Icons.storefront_outlined,
+      title: context.tr('privacy.shop.title'),
+      subtitle: subtitle,
+      onTap: switch (_state) {
+        _TileState.ready => _open,
+        _TileState.failed => _load,
+        // Offline: tapping retries; the subtitle says it needs internet.
+        _TileState.offline => _load,
+        _ => () {},
+      },
+    );
+  }
+}
+
+/// The Privacy page sheet: the same switch, then what is used and what is
+/// never used, and the draft note.
+class ShopPrivacySheet extends StatelessWidget {
+  const ShopPrivacySheet({super.key, required this.initial, this.onChanged});
+
+  final bool initial;
+  final ValueChanged<bool>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    Widget bullet(String key) => Padding(
+      padding: const EdgeInsets.only(bottom: FFTokens.spacingXs),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ExcludeSemantics(
+            child: Text('•  ', style: theme.textTheme.bodyMedium),
+          ),
+          Expanded(
+            child: Text(
+              context.tr(key),
+              key: Key('privacy-shop-$key'),
+              style: theme.textTheme.bodyMedium,
+            ),
+          ),
+        ],
+      ),
+    );
+    return Column(
+      key: const Key('privacy-shop-sheet'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ShopPersonalisedSwitch(
+          source: ShopPreferences.sourcePrivacyPage,
+          initial: initial,
+          onChanged: onChanged,
+        ),
+        const SizedBox(height: FFTokens.spacingMd),
+        Semantics(
+          header: true,
+          child: Text(
+            context.tr('privacy.shop.usesTitle'),
+            style: theme.textTheme.titleSmall,
+          ),
+        ),
+        const SizedBox(height: FFTokens.spacingXs),
+        bullet('privacy.shop.uses1'),
+        bullet('privacy.shop.uses2'),
+        bullet('privacy.shop.uses3'),
+        const SizedBox(height: FFTokens.spacingXs),
+        Text(
+          context.tr('privacy.shop.orderOnly'),
+          style: theme.textTheme.bodyMedium,
+        ),
+        const SizedBox(height: FFTokens.spacingSm),
+        Text(
+          context.tr('privacy.shop.never'),
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: FFTokens.spacingMd),
+        Text(
+          context.tr('privacy.shop.draft'),
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+  }
+}

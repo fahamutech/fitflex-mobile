@@ -30,6 +30,7 @@ class VendorTools {
     this.walkInSales = false,
     this.customers = false,
     this.banners = false,
+    this.productTargets = false,
     this.suspended = false,
     this.fromCache = false,
   });
@@ -68,6 +69,11 @@ class VendorTools {
   /// from `merch: {banners: true}`. Exactly `true`, else off.
   final bool banners;
 
+  /// Shop home Phase 2 S2: products may carry "Made for" / "Age group"
+  /// (SHOP_PERSONALISATION), from `merch: {productTargets: true}`. Exactly
+  /// `true`, else off.
+  final bool productTargets;
+
   /// The answer is the one kept on this device (the server could not be
   /// reached): ask again once the connection is back.
   final bool fromCache;
@@ -82,6 +88,9 @@ class VendorTools {
         banners:
             options['merch'] is Map &&
             (options['merch'] as Map)['banners'] == true,
+        productTargets:
+            options['merch'] is Map &&
+            (options['merch'] as Map)['productTargets'] == true,
         fromCache: fromCache,
       );
 }
