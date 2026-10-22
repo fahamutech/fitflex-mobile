@@ -138,6 +138,23 @@ String? _timedReason(FFLocale locale, String reason, dynamic body) {
 String? _detailedReason(FFLocale locale, String reason, dynamic body) {
   if (body is! Map) return null;
   switch (reason.trim().toLowerCase()) {
+    // Which field the server refused (fitflex-functions#253, #239).
+    case 'invalid_field':
+      return switch (body['field']?.toString()) {
+        'dateOfBirth' => locale.t('member.dobInvalid'),
+        'gender' => locale.t('error.reason.invalidGender'),
+        _ => null,
+      };
+    // 429 with the wait the server gave.
+    case 'rate_limited':
+      final seconds = body['retryAfterSeconds'];
+      final n = seconds is num
+          ? seconds.ceil()
+          : int.tryParse(seconds?.toString() ?? '');
+      if (n == null || n <= 0) return null;
+      return locale
+          .t('error.reason.rateLimitedSeconds')
+          .replaceFirst('{seconds}', '$n');
     case 'not_payable_by_role':
       final product = body['product']?.toString();
       if (product == null) return null;
@@ -276,6 +293,9 @@ String? _knownReason(FFLocale locale, String reason) {
     'cannot_invite_self': 'error.reason.cannotInviteSelf',
     'cannot_remove_owner': 'error.reason.cannotRemoveOwner',
     'kyc_incomplete': 'error.reason.kycIncomplete',
+    // Partner date of birth (fitflex-functions#253).
+    'partner_under_18': 'error.reason.partnerUnder18',
+    'personal_details_unavailable': 'error.reason.personalDetailsUnavailable',
   };
   final key = keys[reason.trim().toLowerCase()];
   return key == null ? null : locale.t(key);

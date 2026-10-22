@@ -670,6 +670,24 @@ class ApiClient {
     Map<String, dynamic> profile,
   ) async => await _request('POST', '/me/profile', body: profile);
 
+  /// Partner date of birth (fitflex-functions#253): the date of birth and
+  /// gender kept on the Person → { dateOfBirth, gender, source, ask,
+  /// required, genderFrom }. 404 feature_disabled while the server flag
+  /// PARTNER_DOB_REQUIRED is off.
+  Future<Map<String, dynamic>> personalDetails() async =>
+      Map<String, dynamic>.from(
+        await _request('GET', '/me/personal-details') as Map,
+      );
+
+  /// Saves { dateOfBirth?, gender? }: a key left out keeps the stored value;
+  /// dateOfBirth "" clears it; gender null clears it ("prefer not to say").
+  /// Answers the same body as [personalDetails].
+  Future<Map<String, dynamic>> savePersonalDetails(
+    Map<String, dynamic> changes,
+  ) async => Map<String, dynamic>.from(
+    await _request('PUT', '/me/personal-details', body: changes) as Map,
+  );
+
   Future<List<dynamic>> listPasses() async => await _request('GET', '/passes');
 
   Future<List<dynamic>> listSubscriptionTiers() async =>

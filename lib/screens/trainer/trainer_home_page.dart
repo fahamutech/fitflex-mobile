@@ -14,6 +14,7 @@ import '../../shared/models.dart';
 import '../../shared/photo_footer_flag.dart';
 import '../../shared/photo_hero_flag.dart';
 import '../../shared/root_back_navigation.dart';
+import '../../shared/widgets/partner_details_widgets.dart';
 import '../../shared/widgets/partner_not_verified.dart';
 import '../../router.dart';
 import '../../shared/shop_home.dart';
@@ -437,6 +438,8 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
           const SizedBox(height: FFTokens.spacingMd),
         ],
         const PartnerNotVerifiedNotice(),
+        // Partner date of birth: a dismissible ask, never blocking.
+        const PartnerDobPromptCard(canEditGender: false),
         // Quick gym access: show the check-in QR, or scan the gym's QR.
         if (!photoHeroUi)
           FFCard(
@@ -666,6 +669,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
     const InvitationsTile(),
     const ContactDetailsTile(),
     const ChangePinTile(),
+    const PartnerDetailsTile(canEditGender: false),
     const PersonaSwitcherTile(),
     const SizedBox(height: 16),
     FFButton(

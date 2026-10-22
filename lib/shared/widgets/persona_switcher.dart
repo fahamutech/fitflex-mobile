@@ -7,6 +7,7 @@ import '../api_client.dart';
 import '../api_error_message.dart';
 import '../design_tokens.dart';
 import '../i18n.dart';
+import '../partner_details.dart';
 import 'terms_agreement.dart';
 import '../components/components.dart';
 
@@ -102,6 +103,10 @@ Future<void> addPersonaAndContinue(
         content: Text(
           e.code == 'persona_identifier_in_use'
               ? inUse
+              // Trainers and gym owners must be 18 or older
+              // (fitflex-functions#253).
+              : isPartnerUnder18Error(e)
+              ? locale.t('partnerDob.errUnder18')
               : '$failed ${errorMessage(locale, e)}'.trim(),
         ),
       ),
