@@ -1284,7 +1284,8 @@ void main() {
       for (final p in added) {
         expect(p.focal, isNot(Alignment.center), reason: p.name);
       }
-      expect(FFHeroPhoto.signIn.focal, Alignment.center);
+      // Sign in (2026-10-22) has a focal point too: its door sign.
+      expect(FFHeroPhoto.signIn.focal, isNot(Alignment.center));
     });
   });
 
