@@ -1935,6 +1935,10 @@ class ApiClient {
     bool? delivery,
     bool? promotions,
     String? sort,
+
+    /// Shop S3 (QA #4): the near-you area, in `X-FF-Area` (never the URL),
+    /// so rows can carry `deliversToViewerArea`.
+    String? areaId,
   }) async {
     final query = <String, String>{
       if (category != null && category.isNotEmpty) 'category': category,
@@ -1952,7 +1956,7 @@ class ApiClient {
     final path = query.isEmpty
         ? '/shop/products'
         : '/shop/products?${Uri(queryParameters: query).query}';
-    return await _request('GET', path);
+    return await _request('GET', path, extraHeaders: _areaHeader(areaId));
   }
 
   Future<Map<String, dynamic>> createShopOrder(
@@ -1982,8 +1986,17 @@ class ApiClient {
     },
   );
 
-  Future<Map<String, dynamic>> shopProduct(String id) async =>
-      await _request('GET', '/shop/products/$id');
+  /// [areaId]: the near-you area in `X-FF-Area` (QA #4), for the
+  /// "Delivers to your area" badge.
+  Future<Map<String, dynamic>> shopProduct(String id, {String? areaId}) async =>
+      await _request(
+        'GET',
+        '/shop/products/$id',
+        extraHeaders: _areaHeader(areaId),
+      );
+
+  static Map<String, String>? _areaHeader(String? areaId) =>
+      areaId == null || areaId.isEmpty ? null : {kShopAreaHeader: areaId};
 
   Future<Map<String, dynamic>> vendorStore(String id) async =>
       await _request('GET', '/shop/vendors/$id');

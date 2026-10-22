@@ -3,8 +3,9 @@
 //
 // Privacy rules this file keeps (owner decision O-7, DD-P2-9):
 // - The phone works out the area itself, from GET /shop/areas. Only the
-//   area's id is ever sent: in the `X-FF-Area` header of GET /shop/home,
-//   and only while the last answer said near-you is available. It is
+//   area's id is ever sent: in the `X-FF-Area` header of GET /shop/home and
+//   the product list / details, and only while the last home answer said
+//   near-you is available. It is
 //   redacted from the app's own debug log (rest_log.dart).
 // - The position is read with low accuracy, used once to pick the area and
 //   then dropped. It is never stored, logged or sent anywhere.
@@ -243,6 +244,15 @@ class ShopNearYouStore {
   /// Whether the last GET /shop/home answer for an account said near-you
   /// is available (L1): the area is sent only then. Memory only.
   static final Map<String, bool> _lastAvailable = {};
+
+  /// The area to send for [userId] right now, or null: near-you on, an
+  /// area kept, and the last Shop home answer said available (L1). Used for
+  /// GET /shop/home, /shop/products and /shop/products/:id.
+  static String? areaToSend(String? userId) {
+    final state = _memory[_id(userId)];
+    if (state == null || state.choice != ShopNearYouChoice.on) return null;
+    return lastAvailable(userId) ? state.areaId : null;
+  }
 
   static bool lastAvailable(String? userId) =>
       _lastAvailable[_id(userId)] == true;

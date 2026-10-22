@@ -1675,7 +1675,8 @@ class _VendorHomePageState extends State<VendorHomePage> {
                     ),
                     variant: FFButtonVariant.secondary,
                     size: FFButtonSize.sm,
-                    onPressed: _editProfile,
+                    // Opens the form at "Where you sell" (QA #8).
+                    onPressed: () => _editProfile(toAreas: true),
                   ),
                 ],
               ),
@@ -1792,7 +1793,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
     );
   }
 
-  Future<void> _editProfile() async {
+  Future<void> _editProfile({bool toAreas = false}) async {
     final api = AppScope.of(context).api;
     // The form saves itself and stays open on a refusal (S3: invalid_area
     // is shown next to "Where you sell"); it closes only once saved.
@@ -1803,6 +1804,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
       builder: (_) => VendorProfileForm(
         profile: _profile,
         shopAreas: _tools.shopAreas,
+        scrollToAreas: toAreas,
         onSave: api.vendorSaveProfile,
         describeError: _saveFailedText,
       ),
@@ -2740,9 +2742,14 @@ class VendorProfileForm extends StatefulWidget {
     this.shopAreas = false,
     this.onSave,
     this.describeError,
+    this.scrollToAreas = false,
   });
 
   final Map<String, dynamic> profile;
+
+  /// Opened from the "Add where you're based" nudge: scroll to "Where you
+  /// sell" once it is laid out (QA #8).
+  final bool scrollToAreas;
 
   /// Saves the profile (PUT /vendor/profile). Set: the form stays open on a
   /// failure and says why; it closes with the body once saved. Unset: the
@@ -2814,6 +2821,24 @@ class _VendorProfileFormState extends State<VendorProfileForm> {
 
   bool _saving = false;
   String? _saveError;
+  final _areasKey = GlobalKey(debugLabel: 'vendor-areas');
+  bool _revealed = false;
+
+  void _revealAreas() {
+    if (_revealed) return;
+    _revealed = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _areasKey.currentContext;
+      if (ctx == null || !ctx.mounted) return;
+      Scrollable.ensureVisible(
+        ctx,
+        alignment: 0.1,
+        duration: MediaQuery.disableAnimationsOf(ctx)
+            ? Duration.zero
+            : FFTokens.motionMedium,
+      );
+    });
+  }
 
   Future<void> _save(Map<String, dynamic> body) async {
     final save = widget.onSave;
@@ -2951,7 +2976,11 @@ class _VendorProfileFormState extends State<VendorProfileForm> {
                 ),
                 // S3: "Where you sell" right after "Address".
                 if (entry.key == 'address' && widget.shopAreas)
-                  VendorAreasSection(controller: _areas),
+                  VendorAreasSection(
+                    key: _areasKey,
+                    controller: _areas,
+                    onReady: widget.scrollToAreas ? _revealAreas : null,
+                  ),
               ],
               const SizedBox(height: FFTokens.spacingSm),
               ProductCategoryMultiSelect(

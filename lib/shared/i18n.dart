@@ -4510,7 +4510,7 @@ class FFLocale extends ChangeNotifier {
       'shop.near.sheetTitle': "Use your location in the shop?",
       'shop.near.point1':
           "Your phone works out your approximate area, such as your city or district.",
-      'shop.near.point2': "Only the area is sent to FitFlex, and it isn't stored. For the shop, your exact location never leaves your device.",
+      'shop.near.point2': "Only the area is sent to FitFlex, and FitFlex doesn't keep it on its servers. For the shop, your exact location never leaves your device.",
       'shop.near.point3':
           "You can turn this off any time with \"Personalised shop\", in the shop or in Privacy & data.",
       'shop.near.alreadyAllowed':
@@ -4526,7 +4526,7 @@ class FFLocale extends ChangeNotifier {
       'shop.near.badge': "Delivers to your area",
       'shop.near.finding': "Finding your area",
       'shop.near.changeArea': "Change area",
-      'shop.near.pickArea': "Choose your area",
+      'shop.near.pickArea': "Pick your city or district",
       'shop.why.nearOn': "Popular near you: On · {area}",
       'shop.why.nearOff': "Popular near you: Off",
       'shop.why.nearNoArea': "No sellers listed for your area yet",
@@ -10196,7 +10196,7 @@ class FFLocale extends ChangeNotifier {
       'shop.near.offline': "Inahitaji intaneti",
       'shop.near.sheetTitle': "Tumia mahali ulipo dukani?",
       'shop.near.point1': "Simu yako inakadiria eneo lako, kama jiji au wilaya yako.",
-      'shop.near.point2': "FitFlex inapokea eneo tu, na halihifadhiwi. Kwa ajili ya duka, mahali hasa ulipo hapatoki kwenye kifaa chako.",
+      'shop.near.point2': "FitFlex inapokea eneo tu, na FitFlex haihifadhi kwenye seva zake. Kwa ajili ya duka, mahali hasa ulipo hapatoki kwenye kifaa chako.",
       'shop.near.point3':
           "Unaweza kuzima hili wakati wowote kwa \"Duka kwa ajili yako\", dukani au kwenye Faragha na data.",
       'shop.near.alreadyAllowed':
@@ -10214,7 +10214,7 @@ class FFLocale extends ChangeNotifier {
       'shop.near.badge': "Ina delivery hadi eneo lako",
       'shop.near.finding': "Tunatafuta eneo lako",
       'shop.near.changeArea': "Badilisha eneo",
-      'shop.near.pickArea': "Chagua eneo lako",
+      'shop.near.pickArea': "Chagua jiji au wilaya yako",
       'shop.why.nearOn': "Maarufu karibu nawe: Imewashwa · {area}",
       'shop.why.nearOff': "Maarufu karibu nawe: Imezimwa",
       'shop.why.nearNoArea': "Bado hakuna wauzaji kwenye eneo lako",

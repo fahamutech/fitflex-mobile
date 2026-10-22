@@ -153,8 +153,11 @@ class VendorAreasController extends ChangeNotifier {
 }
 
 class VendorAreasSection extends StatefulWidget {
-  const VendorAreasSection({super.key, required this.controller});
+  const VendorAreasSection({super.key, required this.controller, this.onReady});
   final VendorAreasController controller;
+
+  /// Called once the areas are shown (or say why not), e.g. to scroll here.
+  final VoidCallback? onReady;
 
   @override
   State<VendorAreasSection> createState() => _VendorAreasSectionState();
@@ -177,7 +180,9 @@ class _VendorAreasSectionState extends State<VendorAreasSection> {
   }
 
   void _changed() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    setState(() {});
+    if (_c.load != VendorAreasLoad.loading) widget.onReady?.call();
   }
 
   Future<void> _load() async {
@@ -356,9 +361,9 @@ class _VendorAreasSectionState extends State<VendorAreasSection> {
               : context
                     .tr('vendor.areas.basedInRow')
                     .replaceAll('{area}', _basedInName(context, city)),
-          sub: _c.showMissing && city == null
-              ? context.tr('vendor.areas.basedInMissing')
-              : null,
+          // Said before Save too (QA #8); in the error colour after a
+          // Publish without it.
+          sub: city == null ? context.tr('vendor.areas.basedInMissing') : null,
           error: _c.showMissing && city == null,
           onTap: _pickBasedIn,
         ),

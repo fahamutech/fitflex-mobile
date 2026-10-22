@@ -433,6 +433,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
   void initState() {
     super.initState();
     addRootBackHandler(_onRootBack);
+    ShopNearYouStore.changes.addListener(_nearChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _load();
       _loadAreas();
@@ -447,6 +448,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
   void dispose() {
     _heroFocus.dispose();
     removeRootBackHandler(_onRootBack);
+    ShopNearYouStore.changes.removeListener(_nearChanged);
     // "Added to cart" belongs to the shop: it does not follow to other tabs.
     // After this frame, and only if the app (and its messenger) is still
     // there: on a full teardown the messenger goes too.
@@ -564,7 +566,9 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
     final messenger = FFSnack.of(context);
     final gone = context.tr('shop.home.productGone');
     try {
-      final json = await AppScope.of(context).api.shopProduct(id);
+      final json = await AppScope.of(
+        context,
+      ).api.shopProduct(id, areaId: _areaToSend);
       if (!mounted) return;
       await _openProduct(ShopProduct.fromJson(json));
     } catch (_) {
@@ -701,6 +705,17 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
     }
   }
 
+  /// The near-you area to send with product requests (QA #4), or null.
+  String? get _areaToSend => ShopNearYouStore.areaToSend(
+    AppScope.of(context).auth.user?['id']?.toString(),
+  );
+
+  /// The area changed or went (S3): the product list asks again, so
+  /// "Delivers to your area" follows it.
+  void _nearChanged() {
+    if (mounted && _catalogueLoaded) unawaited(_load());
+  }
+
   /// Whether the shop has areas (S3). A backend without them (404) keeps
   /// the distance filter.
   Future<void> _loadAreas() async {
@@ -718,7 +733,8 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
     final catalogue = _needsCatalogue;
     try {
       final results = await Future.wait([
-        if (catalogue) AppScope.of(context).api.listShopProducts(),
+        if (catalogue)
+          AppScope.of(context).api.listShopProducts(areaId: _areaToSend),
         AppScope.of(context).api.myShopOrders(),
       ]);
       if (!mounted) return;
@@ -991,7 +1007,9 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
     var detailedProduct = product;
     try {
       detailedProduct = ShopProduct.fromJson(
-        await AppScope.of(context).api.shopProduct(product.id),
+        await AppScope.of(
+          context,
+        ).api.shopProduct(product.id, areaId: _areaToSend),
       );
     } on ApiException {
       // The cached catalogue record still supports cart actions offline.
@@ -2106,6 +2124,13 @@ class _ProductTile extends StatelessWidget {
                         key: Key('shop-oos-${product.id}'),
                         label: context.tr('shop.outOfStock'),
                       ),
+                    ),
+                  // S3 (QA #4): the seller delivers to the shopper's area.
+                  if (product.deliversToViewerArea)
+                    Padding(
+                      key: Key('shop-delivers-${product.id}'),
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: const ShopDeliversBadge(),
                     ),
                   if (shopOnSale(product)) ...[
                     // Sale price in Fuel, the original struck through below;
