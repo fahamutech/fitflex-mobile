@@ -213,6 +213,12 @@ class _FitFlexAppState extends State<FitFlexApp> with WidgetsBindingObserver {
   Future<void> _openFromPush(Map<String, dynamic> data) async {
     final message = await _inbox.openFromPush(data);
     final role = widget.auth.user?['userType']?.toString() ?? widget.auth.role;
+    // An organisation asked to add them: open the requests, where they
+    // accept or decline (any side; an organisation role can go to anyone).
+    if (isB2BMemberRequest(data['type']?.toString() ?? '', data)) {
+      _router.go(b2bMemberRequestsRoute);
+      return;
+    }
     // A plan from their trainer opens on the plan itself, where they answer.
     if (role == 'member' &&
         opensScreenDirectly(data['type']?.toString() ?? '')) {

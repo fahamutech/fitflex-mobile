@@ -113,13 +113,30 @@ String memberLinkFor({required String deepLink, required String type}) =>
         'training_plan_updated' || 'training_plan_stopped' => 'trainingPlan',
         // Their trainer recorded that they missed a session: open it.
         'trainer_booking_no_show' => 'session',
+        // An organisation asked to add them: open the requests to answer.
+        b2bMemberRequestType => 'memberRequests',
         _ => '',
       };
 
 /// Messages whose push opens their screen directly, not the message: the
 /// screen says everything the message does, and is where the member acts.
-bool opensScreenDirectly(String type) =>
-    memberLinkFor(deepLink: '', type: type).startsWith('training');
+bool opensScreenDirectly(String type) {
+  final link = memberLinkFor(deepLink: '', type: type);
+  return link.startsWith('training') || link == 'memberRequests';
+}
+
+/// The notice an organisation's request to add someone by user id sends
+/// (fitflex-functions#241); its data carries `open: 'b2b_member_requests'`.
+const b2bMemberRequestType = 'b2b_member_request';
+
+/// Where organisation requests are answered. Not under `/member`: a request
+/// for an organisation role can reach anyone with a FitFlex account.
+const b2bMemberRequestsRoute = '/organisation-requests';
+
+/// Whether a notice (push data or inbox message) is an organisation asking
+/// to add the user, whatever side of FitFlex they are signed in on.
+bool isB2BMemberRequest(String type, Map<String, dynamic> data) =>
+    type == b2bMemberRequestType || data['open'] == 'b2b_member_requests';
 
 /// Where a message's button (or a tap on its push) takes a member. Null
 /// means "show the message itself". Only fixed app screens are allowed.
@@ -146,6 +163,7 @@ String? memberRouteFor({
       queryParameters: {'booking': bookingId},
     ).toString(),
     'session' => '/member/sessions',
+    'memberRequests' || 'b2b_member_requests' => b2bMemberRequestsRoute,
     _ => null,
   };
 }
