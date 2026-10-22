@@ -29,8 +29,20 @@ class VendorTools {
     this.buyerContact = false,
     this.walkInSales = false,
     this.customers = false,
+    this.banners = false,
+    this.documents = false,
+    this.vat = false,
+    this.vatInForce,
+    this.suspended = false,
     this.fromCache = false,
   });
+
+  /// The server refused with 403 `account_suspended`: the business is
+  /// suspended. Every tool is off, and screens say why (not "isn't
+  /// available yet").
+  final bool suspended;
+
+  static const accountSuspended = VendorTools(suspended: true);
 
   /// Everything off: the old screens.
   static const off = VendorTools();
@@ -55,6 +67,23 @@ class VendorTools {
   /// also needs [walkInSales] (it lives in the POS).
   final bool customers;
 
+  /// Shop home Phase 2 S1: vendors propose hero banners (SHOP_BANNERS),
+  /// from `merch: {banners: true}`. Exactly `true`, else off.
+  final bool banners;
+
+  /// S5: share links, PDFs, the share sheet and order invoices
+  /// (VENDOR_DOCUMENTS). Exactly `true`, else the S3/S4 text share.
+  final bool documents;
+
+  /// S5: tax details, product VAT codes and VAT blocks (VENDOR_VAT).
+  /// Exactly `true`, else none of them.
+  final bool vat;
+
+  /// S5: the vendor's VAT is in force right now (verified, certificate
+  /// stands), from the options answer. Null when the server does not send
+  /// it (older backend): screens then ask GET /vendor/tax-profile.
+  final bool? vatInForce;
+
   /// The answer is the one kept on this device (the server could not be
   /// reached): ask again once the connection is back.
   final bool fromCache;
@@ -66,6 +95,14 @@ class VendorTools {
         buyerContact: options['buyerContact'] == true,
         walkInSales: options['walkInSales'] == true,
         customers: options['customers'] == true,
+        banners:
+            options['merch'] is Map &&
+            (options['merch'] as Map)['banners'] == true,
+        documents: options['documents'] == true,
+        vat: options['vat'] == true,
+        vatInForce: options['vatInForce'] is bool
+            ? options['vatInForce'] as bool
+            : null,
         fromCache: fromCache,
       );
 }
@@ -115,10 +152,13 @@ class VendorToolsOptions {
         }
       }
       return tools;
-    } on ApiException {
-      // The server answered and refused: off (fail closed).
+    } on ApiException catch (e) {
+      // The server answered and refused: off (fail closed). A suspended
+      // business is told so.
       _cache[api] = null;
-      return VendorTools.off;
+      return e.status == 403 && e.code == 'account_suspended'
+          ? VendorTools.accountSuspended
+          : VendorTools.off;
     } catch (_) {
       // No answer: the last one kept on this device, if recent enough. Not
       // remembered in memory, so the next load asks the server again.

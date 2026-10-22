@@ -10,6 +10,7 @@ import '../../app_scope.dart';
 import '../api_error_message.dart';
 import '../components/components.dart';
 import '../design_tokens.dart';
+import '../formatters.dart';
 import '../friend_invites.dart';
 import '../i18n.dart';
 import 'inbox_controller.dart';
@@ -38,14 +39,19 @@ class InboxBellButton extends StatelessWidget {
   }
 }
 
-String _when(DateTime? at) {
+/// Today: the time; other days: day and month, in the app's language
+/// ("19 Okt" in Swahili).
+String _when(BuildContext context, DateTime? at) {
   if (at == null) return '';
   final now = DateTime.now();
   final sameDay =
       at.year == now.year && at.month == now.month && at.day == now.day;
   return sameDay
       ? DateFormat('HH:mm').format(at)
-      : DateFormat('d MMM').format(at);
+      : formatDayMonth(
+          at,
+          locale: FFLocaleScope.of(context).locale.languageCode,
+        );
 }
 
 /// Where a message's button goes, for the signed-in role: members,
@@ -64,6 +70,7 @@ String? routeForMessage(BuildContext context, InboxMessage m) {
       variant: m.data['variant']?.toString(),
       saleId: m.data['saleId']?.toString(),
       customerId: m.data['customerId']?.toString(),
+      bannerId: (m.data['bannerId'] ?? m.data['item'])?.toString(),
     );
   }
   if (role != 'member') return null;
@@ -73,6 +80,7 @@ String? routeForMessage(BuildContext context, InboxMessage m) {
     gymId: m.gymId,
     trainerId: m.data['trainerId']?.toString(),
     planId: m.data['planId']?.toString(),
+    bookingId: m.data['bookingId']?.toString(),
   );
 }
 
@@ -227,16 +235,14 @@ class _InboxPageState extends State<InboxPage> {
       body: context.tr('friendInvite.cardBody').replaceFirst('{name}', who),
     );
   }
-  // Partner notices may carry their own Swahili (e.g. vendor_low_stock).
-  if (FFLocaleScope.of(context).locale.languageCode == 'sw') {
-    final title = m.data['titleSw']?.toString() ?? '';
-    final body = m.data['bodySw']?.toString() ?? '';
-    return (
-      title: title.isEmpty ? m.title : title,
-      body: body.isEmpty ? m.body : body,
-    );
-  }
-  return (title: m.title, body: m.body);
+  // Some notices carry their own Swahili (vendor_low_stock,
+  // trainer_booking_no_show…).
+  return localisedNoticeText(
+    lang: FFLocaleScope.of(context).locale.languageCode,
+    data: m.data,
+    title: m.title,
+    body: m.body,
+  );
 }
 
 class _MessageTile extends StatelessWidget {
@@ -288,7 +294,7 @@ class _MessageTile extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        _when(m.createdAt),
+                        _when(context, m.createdAt),
                         style: theme.textTheme.labelSmall,
                       ),
                     ],
@@ -394,7 +400,11 @@ class _InboxMessagePageState extends State<InboxMessagePage> {
         Text(_text(context, m).title, style: theme.textTheme.titleLarge),
         if (m.createdAt != null)
           Text(
-            DateFormat('d MMM yyyy, HH:mm').format(m.createdAt!),
+            // Month names in the app's language ("19 Okt 2026" in Swahili).
+            formatDateTime(
+              m.createdAt,
+              locale: FFLocaleScope.of(context).locale.languageCode,
+            ),
             style: theme.textTheme.bodySmall,
           ),
         const SizedBox(height: FFTokens.spacingMd),

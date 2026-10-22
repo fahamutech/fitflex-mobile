@@ -12,6 +12,7 @@ import '../../../shared/api_client.dart';
 import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
 import '../../../shared/i18n.dart';
+import '../documents/document_entry.dart';
 import '../stock/stock_options.dart';
 import 'offline_sale_queue.dart';
 import 'receipt_data.dart';
@@ -49,6 +50,9 @@ class _SaleReceiptPageState extends State<SaleReceiptPage> {
   String? _lang;
   final _heading = FocusNode();
   StreamSubscription<String>? _synced;
+  VendorTools _tools = VendorTools.off;
+  ({String? tin, String? vrn}) _taxIds = (tin: null, vrn: null);
+  String? _taxIdsFor;
 
   @override
   void initState() {
@@ -69,6 +73,7 @@ class _SaleReceiptPageState extends State<SaleReceiptPage> {
   Future<void> _start() async {
     final tools = await enterSalesRoute(context, allowQueued: true);
     if (tools == null || !mounted) return;
+    setState(() => _tools = tools);
     final session = SalesSession.of(context);
     _session = session?..attach();
     session?.addListener(_onSession);
@@ -147,7 +152,14 @@ class _SaleReceiptPageState extends State<SaleReceiptPage> {
 
   ReceiptData? get _data {
     final sale = _sale;
-    if (sale != null) return ReceiptData.fromSale(sale, profile: _profile);
+    if (sale != null) {
+      return ReceiptData.fromSale(
+        sale,
+        profile: _profile,
+        documents: _tools.documents,
+        vat: _tools.vat,
+      );
+    }
     final ref = widget.clientRef;
     final queued = ref == null ? null : _session?.byRef(ref);
     if (queued != null) {
@@ -165,7 +177,19 @@ class _SaleReceiptPageState extends State<SaleReceiptPage> {
   void _newSale() => context.go(posRoute);
   void _done() => context.go(salesHomeRoute);
 
+  /// S5: the seller's TIN/VRN when VAT applied (asked once per sale).
+  void _loadTaxIds(ReceiptData data) {
+    if (data.id == null || _taxIdsFor == data.id || !data.hasVat) return;
+    _taxIdsFor = data.id;
+    sellerTaxIdsFor(context, data, _tools).then((ids) {
+      if (mounted) setState(() => _taxIds = ids);
+    });
+  }
+
   Future<void> _share(ReceiptData data, String lang) async {
+    if (_tools.documents) {
+      return openSaleShareSheet(context, data: data, lang: lang, tools: _tools);
+    }
     final locale = FFLocaleScope.of(context);
     String t(String key) => locale.tIn(lang, key);
     final subject = [
@@ -182,6 +206,7 @@ class _SaleReceiptPageState extends State<SaleReceiptPage> {
     final lang = _lang ?? appLang;
     final locale = FFLocaleScope.of(context);
     final data = _data;
+    if (data != null) _loadTaxIds(data);
     final queued = widget.clientRef == null
         ? null
         : _session?.byRef(widget.clientRef!);
@@ -241,6 +266,8 @@ class _SaleReceiptPageState extends State<SaleReceiptPage> {
                         lang: lang,
                         t: (k) => locale.tIn(lang, k),
                         headingFocus: _heading,
+                        tin: _taxIds.tin,
+                        vrn: _taxIds.vrn,
                       ),
                       const SizedBox(height: FFTokens.spacingMd),
                       ReceiptLanguageToggle(

@@ -153,6 +153,8 @@ class _TrainerBookingSheetState extends State<TrainerBookingSheet> {
       'slot_in_past' => context.tr('member.slotInPast'),
       'too_many_slots' => context.tr('member.tooManySlots'),
       'trainer_rate_not_set' => context.tr('member.trainerRateNotSet'),
+      // Quote and booking: a trainer can't book their own sessions.
+      'cannot_book_own_sessions' => context.tr('member.cannotBookOwnSessions'),
       _ => context.tr('member.bookingFailed'),
     };
   }

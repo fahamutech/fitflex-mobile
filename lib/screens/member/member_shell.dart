@@ -747,9 +747,11 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
             child: RefreshIndicator(
               edgeOffset: top,
               onRefresh: _refreshAll,
-              child: widget.child,
+              child: FFPhotoBarHost(child: widget.child),
             ),
           ),
+          // The bar's band stays put while the hero scrolls (spec §5).
+          FFPhotoBarScrim(barBottom: top, visible: !_homeBarSolid),
           // The offline strip keeps its place under the app bar, on a solid
           // surface so it stays readable over the photo.
           Positioned(

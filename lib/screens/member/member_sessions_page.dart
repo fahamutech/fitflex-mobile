@@ -2,7 +2,8 @@
 // unpaid one any time before it starts, a paid one up to 24 hours before,
 // refunded in full), follows each refund from approved to paid, and can ask
 // for a pass or plan payment back. The server decides what can be cancelled:
-// every booking carries its own `cancellation` answer.
+// every booking carries its own `cancellation` answer. A session that took
+// place, or that the trainer recorded as missed (`no_show`), can be reviewed.
 
 import 'package:flutter/material.dart';
 
@@ -14,9 +15,13 @@ import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
 import '../../shared/payment_labels.dart';
+import '../../shared/widgets/reviews_section.dart';
 
 class MemberSessionsPage extends StatefulWidget {
-  const MemberSessionsPage({super.key});
+  const MemberSessionsPage({super.key, this.focusBookingId});
+
+  /// The booking a message linked to (`?booking=`): scrolled into view.
+  final String? focusBookingId;
 
   @override
   State<MemberSessionsPage> createState() => _MemberSessionsPageState();
@@ -28,6 +33,8 @@ class _MemberSessionsPageState extends State<MemberSessionsPage> {
   Object? _error;
   String? _busyId;
   bool _started = false;
+  final _focusKey = GlobalKey();
+  bool _focused = false;
 
   @override
   void didChangeDependencies() {
@@ -58,9 +65,54 @@ class _MemberSessionsPageState extends State<MemberSessionsPage> {
         _refunds = _maps(refunds['refunds']);
         _error = null;
       });
+      _focusOnce();
     } catch (e) {
       if (mounted) setState(() => _error = e);
     }
+  }
+
+  void _focusOnce() {
+    if (_focused || widget.focusBookingId == null) return;
+    _focused = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final target = _focusKey.currentContext;
+      if (target != null && target.mounted) {
+        Scrollable.ensureVisible(target, alignment: 0.1);
+      }
+    });
+  }
+
+  /// Review the trainer of a session that took place or was missed. The
+  /// server decides who may review; the sheet opens on any earlier review.
+  Future<void> _review(Map<String, dynamic> booking) async {
+    final trainerId = _trainerId(booking);
+    if (trainerId == null) return;
+    final api = AppScope.of(context).api;
+    final locale = FFLocaleScope.of(context);
+    final messenger = FFSnack.of(context);
+    MyReviewState? mine;
+    try {
+      mine = await api.myReviewState(ReviewSubject.trainer, trainerId);
+    } catch (_) {}
+    if (!mounted) return;
+    if (mine != null && !mine.eligible && !mine.hasReview) {
+      messenger.info(locale.t('reviews.trainerHint'));
+      return;
+    }
+    final result = await showReviewSheet(
+      context,
+      subject: ReviewSubject.trainer,
+      subjectId: trainerId,
+      initialRating: mine?.rating,
+      initialText: mine?.text,
+    );
+    if (result != null) messenger.success(locale.t('reviews.posted'));
+  }
+
+  static String? _trainerId(Map<String, dynamic> booking) {
+    final id = (booking['trainerId'] ?? (booking['trainer'] as Map?)?['id'])
+        ?.toString();
+    return id == null || id.isEmpty ? null : id;
   }
 
   Future<void> _cancel(Map<String, dynamic> booking) async {
@@ -148,9 +200,17 @@ class _MemberSessionsPageState extends State<MemberSessionsPage> {
                   else
                     for (final b in bookings) ...[
                       _SessionCard(
+                        key:
+                            widget.focusBookingId != null &&
+                                b['id']?.toString() == widget.focusBookingId
+                            ? _focusKey
+                            : null,
                         booking: b,
                         busy: _busyId == b['id']?.toString(),
                         onCancel: () => _cancel(b),
+                        onReview: _trainerId(b) == null
+                            ? null
+                            : () => _review(b),
                       ),
                       const SizedBox(height: FFTokens.spacingSm),
                     ],
@@ -189,20 +249,26 @@ class _MemberSessionsPageState extends State<MemberSessionsPage> {
 
 class _SessionCard extends StatelessWidget {
   const _SessionCard({
+    super.key,
     required this.booking,
     required this.busy,
     required this.onCancel,
+    this.onReview,
   });
 
   final Map<String, dynamic> booking;
   final bool busy;
   final VoidCallback onCancel;
+  final VoidCallback? onReview;
 
   @override
   Widget build(BuildContext context) {
     final status = booking['status']?.toString() ?? '';
     final rule = (booking['cancellation'] as Map?) ?? const {};
-    final canCancel = rule['canCancel'] == true;
+    // A missed session is settled: never cancellable here.
+    final canCancel = rule['canCancel'] == true && status != 'no_show';
+    final canReview =
+        onReview != null && (status == 'completed' || status == 'no_show');
     // A paid, upcoming session inside the notice period: say why there is no button.
     final tooLate =
         !canCancel && status == 'confirmed' && rule['cancelBy'] != null;
@@ -211,6 +277,7 @@ class _SessionCard extends StatelessWidget {
       'payment_pending' => ('sessions.status.pending', FFBadgeTone.warning),
       'completed' => ('sessions.status.completed', FFBadgeTone.brand),
       'cancelled' => ('sessions.status.cancelled', FFBadgeTone.gray),
+      'no_show' => ('booking.status.no_show', FFBadgeTone.warning),
       _ => ('sessions.status.notPaid', FFBadgeTone.gray),
     };
     final trainer = (booking['trainer'] as Map?)?['displayName']?.toString();
@@ -256,6 +323,18 @@ class _SessionCard extends StatelessWidget {
                 onPressed: busy ? null : onCancel,
                 variant: FFButtonVariant.ghost,
                 size: FFButtonSize.sm,
+              ),
+            ),
+          if (canReview)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: FFButton(
+                key: Key('session-review-${booking['id']}'),
+                label: context.tr('sessions.reviewTrainer'),
+                onPressed: onReview,
+                variant: FFButtonVariant.ghost,
+                size: FFButtonSize.sm,
+                icon: Icons.rate_review_outlined,
               ),
             ),
         ],

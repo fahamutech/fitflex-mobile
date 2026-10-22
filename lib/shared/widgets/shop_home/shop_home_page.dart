@@ -13,6 +13,7 @@ import '../../product_categories.dart';
 import '../../promotion_events.dart' show discoverSessionId;
 import '../../shop_home.dart';
 import '../shop_browse_page.dart' show ShopCart, ShopProduct;
+import 'shop_banner_carousel.dart';
 import 'shop_category_row.dart';
 import 'shop_product_card.dart';
 import 'shop_focus_ring.dart';
@@ -54,6 +55,9 @@ class ShopHomeView extends StatefulWidget {
     this.showHero = false,
     this.heroFocusNode,
     this.onHasContent,
+    this.onBanner,
+    this.bannerIndex = 0,
+    this.onBannerIndex,
   });
 
   final ShopHomeMode mode;
@@ -97,6 +101,15 @@ class ShopHomeView extends StatefulWidget {
   /// Whether the home shows rails or the All products grid (the page's
   /// footer shows only then). Called after the frame, when it changes.
   final ValueChanged<bool>? onHasContent;
+
+  /// A hero banner's button was tapped (Phase 2 S1): open its target. The
+  /// carousel is shown only when this is set and the server sent banners.
+  final ValueChanged<ShopBanner>? onBanner;
+
+  /// The slide last shown, so coming back from a banner's target shows it
+  /// again.
+  final int bannerIndex;
+  final ValueChanged<int>? onBannerIndex;
 
   @override
   State<ShopHomeView> createState() => ShopHomeViewState();
@@ -378,10 +391,32 @@ class ShopHomeViewState extends State<ShopHomeView> {
   Widget build(BuildContext context) {
     final data = _data;
     final children = <Widget>[_padded(_searchRow(context))];
+    // Live banners (Phase 2 S1) take slot 3; the brand band is then not in
+    // the tree (PH §32.5 rule 4). No banners: exactly today's layout.
+    // Image addresses are root-relative on the API server.
+    final base = AppScope.of(context).api.baseUrl;
+    final banners = widget.onBanner == null
+        ? const <ShopBanner>[]
+        : [
+            for (final b in data?.banners ?? const <ShopBanner>[])
+              b.withImageBase(base),
+          ];
     // The static brand band (spec §32.5): slot 3, after the search row and
     // after the offline alert (the alert is about the content and must not
     // sit under a photo).
-    final band = widget.showHero && photoHeroUi
+    final band = banners.isNotEmpty
+        ? _padded(
+            Padding(
+              padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
+              child: ShopBannerCarousel(
+                banners: banners,
+                onOpen: widget.onBanner!,
+                initialIndex: widget.bannerIndex,
+                onIndexChanged: widget.onBannerIndex,
+              ),
+            ),
+          )
+        : widget.showHero && photoHeroUi
         ? _padded(
             Padding(
               padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
@@ -395,6 +430,19 @@ class ShopHomeViewState extends State<ShopHomeView> {
                 headlineLead: context.tr('hero.shop.lead'),
                 headlineAccent: context.tr('hero.shop.accent'),
               ),
+            ),
+          )
+        // Banners on but none live for this role, and no band (owner and
+        // trainer shops; member with PHOTO_HERO_UI off): the navy fallback
+        // slide (S1-AC-15). Not while the shop is still getting ready.
+        : widget.onBanner != null &&
+              data != null &&
+              data.bannersOn &&
+              data.allProductsCount != 0
+        ? _padded(
+            Padding(
+              padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
+              child: ShopFallbackSlide(onBrowseAll: widget.onBrowseAll),
             ),
           )
         : null;

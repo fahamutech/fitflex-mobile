@@ -412,7 +412,7 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
       padding: const EdgeInsets.all(2),
       decoration: const BoxDecoration(
         shape: BoxShape.circle,
-        // 10.6:1 on the 80% scrim, so the edge shows on any photo.
+        // 13.2:1 on the 86% text zone, so the edge shows on any photo.
         border: Border.fromBorderSide(
           BorderSide(color: FFTokens.heroText, width: 2),
         ),
@@ -440,6 +440,10 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
       rounded: wide,
       minHeight: wide ? 0 : (height * 0.3).clamp(240.0, double.infinity),
       topInset: wide ? 0 : topInset,
+      // Taller hero on phones (spec §5.3): clear photo above the name.
+      clearPhoto: MediaQuery.sizeOf(context).width < 600
+          ? heroTallClearTarget(height, scale)
+          : 0,
       leading: avatar,
       eyebrow: context.tr('member.profile'),
       // The name, no accent: an accent-coloured name reads as a link.

@@ -242,6 +242,10 @@ class _SignUpScreenState extends State<SignUpScreen>
     }
     final role = _roleKey(AppScope.of(context).auth.role);
     return FFPhotoHeroPage(
+      // Taller hero (spec §5.3): the photo gives way so Continue stays on
+      // screen (Google, the field and Continue are 264px below the hero).
+      tallContentReserve: 272,
+      tallReserveGrowth: 60,
       leading: IconButton(
         tooltip: context.tr('a11y.back'),
         icon: const Icon(Icons.arrow_back),
@@ -257,6 +261,8 @@ class _SignUpScreenState extends State<SignUpScreen>
         variant: f.variant,
         minHeight: f.minHeight,
         topInset: f.topInset,
+        clearPhoto: f.clearPhoto,
+        maxHeight: f.maxHeight,
         wideHeadline: f.wide,
         eyebrow: context.tr('role.$role'),
         headlineLead: context.tr('hero.signUp.$role.lead'),

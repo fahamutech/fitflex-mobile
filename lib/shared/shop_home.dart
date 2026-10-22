@@ -167,6 +167,202 @@ class ShopHomeSection {
   }
 }
 
+/// Where a banner's button leads (Phase 2 S1). [type] is one of
+/// [ShopBannerTarget.types]; [value] is a product id, a vendor id or a
+/// category key. A `results` target carries the product list's filters
+/// (the GET /shop/products query: category, search, brand, vendorId,
+/// promotions, sort, delivery) in [query]; none means every product.
+class ShopBannerTarget {
+  const ShopBannerTarget(this.type, this.value, [this.query = const {}]);
+  final String type;
+  final String value;
+  final Map<String, String> query;
+
+  static const types = {'product', 'vendor_store', 'category', 'results'};
+
+  static ShopBannerTarget? fromJson(Object? json) {
+    if (json is! Map) return null;
+    final type = json['type']?.toString() ?? '';
+    if (!types.contains(type)) return null;
+    final raw = json['value'];
+    if (type == 'results') {
+      return ShopBannerTarget(type, '', _query(raw));
+    }
+    final value = raw is String || raw is num ? raw.toString() : '';
+    // Everything but "all products" needs something to open.
+    if (value.isEmpty) return null;
+    return ShopBannerTarget(type, value);
+  }
+
+  static Map<String, String> _query(Object? raw) {
+    if (raw is Map) {
+      return {
+        for (final e in raw.entries)
+          if (e.value != null && '${e.value}'.isNotEmpty)
+            e.key.toString(): e.value.toString(),
+      };
+    }
+    if (raw is String && raw.isNotEmpty) {
+      try {
+        return Uri.splitQueryString(
+          raw.startsWith('?') ? raw.substring(1) : raw,
+        );
+      } catch (_) {
+        return const {};
+      }
+    }
+    return const {};
+  }
+}
+
+/// A banner's image in three sizes: 1x and 2x phone crops and a wide crop
+/// for 840 px and up, and where `BoxFit.cover` keeps the subject ([focalX],
+/// [focalY], -1..1, as an Alignment). The server sends root-relative
+/// `/storage/...` addresses; [resolved] makes them absolute.
+class ShopBannerImage {
+  const ShopBannerImage({
+    this.url1x = '',
+    this.url2x = '',
+    this.urlWide = '',
+    this.focalX = 0,
+    this.focalY = 0,
+  });
+  final String url1x;
+  final String url2x;
+  final String urlWide;
+  final double focalX;
+  final double focalY;
+
+  /// An absolute http(s) address or a root-relative path ("/storage/..."),
+  /// else empty (no "//host", no other schemes).
+  static String _url(Object? v) {
+    final s = v?.toString().trim() ?? '';
+    if (s.startsWith('https://') || s.startsWith('http://')) return s;
+    if (s.startsWith('/') && !s.startsWith('//')) return s;
+    return '';
+  }
+
+  static double _focal(Object? v) =>
+      v is num && v.isFinite ? v.toDouble().clamp(-1.0, 1.0) : 0;
+
+  static ShopBannerImage fromJson(Object? json) {
+    if (json is! Map) return const ShopBannerImage();
+    final focal = json['focal'] is Map ? json['focal'] as Map : const {};
+    return ShopBannerImage(
+      url1x: _url(json['url1x']),
+      url2x: _url(json['url2x']),
+      urlWide: _url(json['urlWide']),
+      focalX: _focal(focal['x']),
+      focalY: _focal(focal['y']),
+    );
+  }
+
+  bool get isEmpty => url1x.isEmpty && url2x.isEmpty && urlWide.isEmpty;
+
+  /// Root-relative addresses on the API server [base].
+  ShopBannerImage resolved(String base) {
+    final root = base.endsWith('/') ? base.substring(0, base.length - 1) : base;
+    String abs(String u) => u.startsWith('/') ? '$root$u' : u;
+    return ShopBannerImage(
+      url1x: abs(url1x),
+      url2x: abs(url2x),
+      urlWide: abs(urlWide),
+      focalX: focalX,
+      focalY: focalY,
+    );
+  }
+
+  /// The best file for a slide [width] logical px wide at [dpr], falling
+  /// back to whichever exists. Null when there is none.
+  String? pick(double width, double dpr) {
+    final order = width >= 840
+        ? [urlWide, url2x, url1x]
+        : dpr > 1.5
+        ? [url2x, url1x, urlWide]
+        : [url1x, url2x, urlWide];
+    for (final u in order) {
+      if (u.isNotEmpty) return u;
+    }
+    return null;
+  }
+}
+
+/// One hero banner on the Shop home (Phase 2 S1, flag SHOP_BANNERS on the
+/// server). Only live, approved banners for this role are sent.
+class ShopBanner {
+  const ShopBanner({
+    required this.id,
+    required this.image,
+    required this.headlineLead,
+    required this.target,
+    this.imageAlt,
+    this.headlineAccent,
+    this.subline,
+    this.ctaLabel,
+    this.origin = 'staff',
+    this.vendorName,
+    this.endsAt,
+  });
+
+  final String id;
+  final ShopBannerImage image;
+
+  /// Sent by the server; the slide's photo is decorative (the headline
+  /// carries the meaning), so this is not read out.
+  final ShopText? imageAlt;
+  final ShopText headlineLead;
+  final ShopText? headlineAccent;
+  final ShopText? subline;
+  final ShopText? ctaLabel;
+  final ShopBannerTarget target;
+
+  /// `vendor` or `staff`.
+  final String origin;
+  final String? vendorName;
+  final DateTime? endsAt;
+
+  /// The same banner with its image addresses on the API server [base].
+  ShopBanner withImageBase(String base) => ShopBanner(
+    id: id,
+    image: image.resolved(base),
+    imageAlt: imageAlt,
+    headlineLead: headlineLead,
+    headlineAccent: headlineAccent,
+    subline: subline,
+    ctaLabel: ctaLabel,
+    target: target,
+    origin: origin,
+    vendorName: vendorName,
+    endsAt: endsAt,
+  );
+
+  /// A vendor's banner shows "From {vendor}"; staff banners show nothing.
+  bool get fromVendor =>
+      origin == 'vendor' && (vendorName ?? '').trim().isNotEmpty;
+
+  /// A banner the app can show: an id, a headline and a target it knows.
+  static ShopBanner? fromJson(Object? json) {
+    if (json is! Map) return null;
+    final id = json['id']?.toString() ?? '';
+    final lead = ShopText.fromJson(json['headlineLead']);
+    final target = ShopBannerTarget.fromJson(json['target']);
+    if (id.isEmpty || lead == null || target == null) return null;
+    return ShopBanner(
+      id: id,
+      image: ShopBannerImage.fromJson(json['image']),
+      imageAlt: ShopText.fromJson(json['imageAlt']),
+      headlineLead: lead,
+      headlineAccent: ShopText.fromJson(json['headlineAccent']),
+      subline: ShopText.fromJson(json['subline']),
+      ctaLabel: ShopText.fromJson(json['ctaLabel']),
+      target: target,
+      origin: json['origin']?.toString() == 'vendor' ? 'vendor' : 'staff',
+      vendorName: json['vendorName']?.toString(),
+      endsAt: DateTime.tryParse(json['endsAt']?.toString() ?? ''),
+    );
+  }
+}
+
 /// The answer to GET /shop/home. Products stay raw JSON here so the shop's own
 /// product model reads them, exactly as it reads the product list.
 class ShopHomeData {
@@ -179,7 +375,18 @@ class ShopHomeData {
     this.products = const {},
     this.serverNow,
     this.allProductsCount,
+    this.banners = const [],
+    this.bannersOn = false,
   });
+
+  /// The server sent a `banners` key (SHOP_BANNERS on), even if empty.
+  /// Off: no key, and the home is laid out exactly as before.
+  final bool bannersOn;
+
+  /// Hero banners (Phase 2 S1), in the server's order. Empty when the
+  /// server's SHOP_BANNERS is off or sends none: the home is then laid out
+  /// exactly as before.
+  final List<ShopBanner> banners;
 
   final String mode;
   final bool personalised;
@@ -195,13 +402,26 @@ class ShopHomeData {
 
   factory ShopHomeData.fromJson(Map<String, dynamic> json) {
     final rawProducts = json['products'];
+    final serverNow = DateTime.tryParse(json['serverNow']?.toString() ?? '');
     return ShopHomeData(
+      bannersOn: json['banners'] is List,
+      banners: (json['banners'] is List ? json['banners'] as List : const [])
+          .map(ShopBanner.fromJson)
+          .whereType<ShopBanner>()
+          // One that ended by the server's own clock is not shown.
+          .where(
+            (b) =>
+                b.endsAt == null ||
+                serverNow == null ||
+                b.endsAt!.isAfter(serverNow),
+          )
+          .toList(),
       mode: json['mode']?.toString() ?? '',
       personalised: json['personalised'] == true,
       signalsUsed: (json['signalsUsed'] as List? ?? [])
           .map((s) => s.toString())
           .toList(),
-      serverNow: DateTime.tryParse(json['serverNow']?.toString() ?? ''),
+      serverNow: serverNow,
       allProductsCount: json['allProductsCount'] is num
           ? (json['allProductsCount'] as num).toInt()
           : null,

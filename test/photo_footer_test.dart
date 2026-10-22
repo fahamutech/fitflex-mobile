@@ -29,6 +29,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'support/hero_scrim.dart';
 import 'support/recording_api.dart';
 
 // ── fixtures ─────────────────────────────────────────────────────────────
@@ -384,8 +385,18 @@ void main() {
       expect(find.text('FitFlex Africa'), findsOneWidget);
       expect(find.text("That's all for now."), findsNothing);
       expect(_key('photo-footer-back-to-top'), findsOneWidget);
-      // 24px corners, inside the page padding.
-      expect(tester.getTopLeft(_key('photo-footer')).dx, FFTokens.spacingLg);
+      // Edge to edge (owner 2026-10-20): the screen's full width, no corners.
+      final band = tester.getRect(_key('photo-footer'));
+      expect(band.left, 0);
+      expect(band.width, 390);
+      expect(tester.widget(_key('photo-footer')), isA<ClipRect>());
+      expect(
+        find.ancestor(
+          of: _key('photo-footer-photo'),
+          matching: find.byType(ClipRRect),
+        ),
+        findsNothing,
+      );
     });
 
     footerTest('short Trainers list: no footer; growing past the screen '
@@ -580,12 +591,13 @@ void main() {
         tester.getTopLeft(_key('photo-footer')).dy,
         greaterThan(tester.getBottomLeft(_key('shop-home-browse-all')).dy),
       );
-      // The cart bar is a sibling below the list: the band ends above it
-      // with 24px to spare.
+      // The cart bar is a sibling below the list: the band ends above it.
       expect(
-        tester.getBottomLeft(_key('photo-footer')).dy + FFTokens.spacingLg,
+        tester.getBottomLeft(_key('photo-footer')).dy,
         lessThanOrEqualTo(tester.getTopLeft(_key('shop-home-checkout')).dy),
       );
+      // Full width on Shop too (it used to sit inside the 16px gutter).
+      expect(tester.getRect(_key('photo-footer')).width, 390);
       expect(_key('photo-footer-back-to-top'), findsOneWidget);
     });
 
@@ -625,15 +637,13 @@ void main() {
       ],
     );
 
-    footerTest('vendor FAB room: 88px extra under the band', (
-      tester,
-      api,
-    ) async {
+    footerTest('vendor FAB: the dark zone runs under it; the lockup clears '
+        'it by 24px', (tester, api) async {
       await _host(
         tester,
         Stack(
           children: [
-            page(extraBottom: 88),
+            page(extraBottom: 88, backToTop: true),
             const Positioned(
               right: 16,
               bottom: 16,
@@ -644,9 +654,129 @@ void main() {
       );
       await _toEnd(tester, 'page');
       final band = tester.getRect(_key('photo-footer'));
-      expect(band.bottom, lessThanOrEqualTo(tester.getTopLeft(_key('fab')).dy));
-      expect(844 - band.bottom, closeTo(24 + 88, 0.5));
+      final fabTop = tester.getTopLeft(_key('fab')).dy;
+      // The band reaches the bottom edge; the FAB floats over its dark zone.
+      expect(band.bottom, closeTo(844, 0.5));
+      expect(
+        tester.getRect(_key('photo-footer-scrim')).top,
+        lessThan(fabTop - 56),
+      );
+      // Everything in the lockup (and Back to top) ends above the FAB.
+      final content = tester.getRect(_key('photo-footer-content'));
+      expect(content.bottom, lessThanOrEqualTo(fabTop));
+      expect(844 - content.bottom, closeTo(24 + 88, 0.5));
+      // The band keeps its full height on top of the FAB room.
+      expect(band.height, greaterThanOrEqualTo(405.12 + 88 - 0.5));
     });
+
+    footerTest('height: 48% of the viewport, clamped to 320..440', (
+      tester,
+      api,
+    ) async {
+      for (final (size, want) in <(Size, double)>[
+        (const Size(360, 640), 320), // 307 -> 320
+        (const Size(390, 844), 405.12),
+        (const Size(430, 932), 440), // 447 -> 440
+        (const Size(1280, 800), 384),
+      ]) {
+        await _host(tester, page(), size: size);
+        await _toEnd(tester, 'page');
+        final ctx = tester.element(_key('photo-footer'));
+        expect(photoFooterHeight(ctx), closeTo(want, 0.01), reason: '$size');
+        expect(
+          tester.getSize(_key('photo-footer')).height,
+          closeTo(want, 0.5),
+          reason: '$size',
+        );
+        // Full width at every size.
+        expect(
+          tester.getSize(_key('photo-footer')).width,
+          size.width,
+          reason: '$size',
+        );
+      }
+    });
+
+    footerTest('height grows with text; the photo keeps >= 140 clear', (
+      tester,
+      api,
+    ) async {
+      await _host(
+        tester,
+        page(backToTop: true),
+        lang: 'sw',
+        textScale: 2,
+        size: const Size(360, 640),
+      );
+      await _toEnd(tester, 'page');
+      final band = tester.getRect(_key('photo-footer'));
+      expect(band.height, greaterThanOrEqualTo(320));
+      expect(
+        tester.getSize(_key('photo-footer-fade-zone')).height,
+        greaterThanOrEqualTo(FFTokens.footerClearMin - 0.01),
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    for (final scale in [1.0, 1.3, 2.0]) {
+      footerTest('lockup inside the dark band (>= 0.86) at ${scale}x', (
+        tester,
+        api,
+      ) async {
+        await _host(
+          tester,
+          page(backToTop: true),
+          textScale: scale,
+          size: const Size(390, 844),
+        );
+        await _toEnd(tester, 'page');
+        final zone = _key('photo-footer-scrim');
+        final zoneRect = tester.getRect(zone);
+        for (final k in [
+          'photo-footer-plate',
+          'photo-footer-brand',
+          'photo-footer-tagline',
+          'photo-footer-back-to-top',
+        ]) {
+          final r = tester.getRect(_key(k));
+          expect(
+            find.descendant(of: zone, matching: _key(k)),
+            findsOneWidget,
+            reason: k,
+          );
+          // 24px below the ramp start, then >= 0.86 over every row.
+          expect(r.top - zoneRect.top, greaterThanOrEqualTo(24 - 0.01));
+          for (final y in [r.top, r.center.dy, r.bottom]) {
+            expect(
+              scrimAlphaAtY(tester, zone, y),
+              greaterThanOrEqualTo(FFTokens.heroScrimText - 1e-9),
+              reason: '$k at $y',
+            );
+          }
+        }
+        // Above it: the photo, clear, no text; the page ground fades in at
+        // the very top.
+        final fade = _key('photo-footer-fade-zone');
+        expect(
+          find.descendant(of: fade, matching: find.byType(RichText)),
+          findsNothing,
+        );
+        final fadeRect = tester.getRect(fade);
+        expect(scrimAlphaAtY(tester, fade, fadeRect.top + 60), 0);
+        final top = tester.widget<DecoratedBox>(_key('photo-footer-top-fade'));
+        final g = (top.decoration as BoxDecoration).gradient! as LinearGradient;
+        expect(
+          g.colors.first,
+          Theme.of(tester.element(fade)).scaffoldBackgroundColor,
+        );
+        expect(g.colors.last.a, 0);
+        expect(
+          tester.getSize(_key('photo-footer-top-fade')).height,
+          FFTokens.footerTopFade,
+        );
+        expect(tester.takeException(), isNull);
+      });
+    }
 
     footerTest('lazy: the photo is not decoded until the footer is near', (
       tester,
@@ -886,8 +1016,9 @@ void main() {
       for (final p in footerPhotoPool) {
         final x1 = File('assets/photos/hero/${p.file}.webp');
         final x2 = File('assets/photos/hero/2.0x/${p.file}.webp');
-        expect(x2.lengthSync(), lessThanOrEqualTo(60 * 1000), reason: p.name);
-        expect(x1.lengthSync(), lessThanOrEqualTo(25 * 1000), reason: p.name);
+        // Caps raised for the taller full-width crops (owner 2026-10-20).
+        expect(x2.lengthSync(), lessThanOrEqualTo(90 * 1000), reason: p.name);
+        expect(x1.lengthSync(), lessThanOrEqualTo(35 * 1000), reason: p.name);
         for (final f in [x1, x2]) {
           expect(_webpChunks(f), ['VP8 '], reason: f.path);
         }
@@ -909,7 +1040,8 @@ void main() {
       expect(total, lessThanOrEqualTo(1600 * 1000));
     });
 
-    test('sharp set: 1080px wide at 2x, 540 at 1x, 16:7 (from the file)', () {
+    test('full-width set: 1080 wide at 2x, 540 at 1x, tall (about 1:1), '
+        'never upscaled', () {
       for (final p in footerPhotoPool) {
         final (w2, h2) = _vp8Size(
           File('assets/photos/hero/2.0x/${p.file}.webp'),
@@ -917,8 +1049,11 @@ void main() {
         final (w1, h1) = _vp8Size(File('assets/photos/hero/${p.file}.webp'));
         expect(w2, greaterThanOrEqualTo(1080), reason: p.name);
         expect(w1, greaterThanOrEqualTo(540), reason: p.name);
-        expect(w2 / h2, closeTo(16 / 7, 0.01), reason: p.name);
-        expect(w1 / h1, closeTo(16 / 7, 0.01), reason: p.name);
+        // Taller than the old 16:7 strips: covers a 390x405 band at 2x
+        // without upscaling (the landscape sources are 972-1000 tall).
+        expect(h2, greaterThanOrEqualTo(972), reason: p.name);
+        expect(w2 / h2, lessThanOrEqualTo(1.12), reason: p.name);
+        expect(w1 / h1, closeTo(w2 / h2, 0.01), reason: p.name);
         expect(p.aspect, closeTo(w2 / h2, 0.001), reason: p.name);
       }
       // The licence rows record source crops at least as large as the
@@ -930,9 +1065,26 @@ void main() {
         final row = licences
             .split('\n')
             .firstWhere((l) => l.startsWith('| `${p.file}.webp`'));
-        final m = RegExp(r'\((\d+)x(\d+), 16:7\)').firstMatch(row)!;
-        expect(int.parse(m[1]!), greaterThanOrEqualTo(1080), reason: p.name);
-        expect(int.parse(m[2]!), greaterThanOrEqualTo(472), reason: p.name);
+        final m = RegExp(
+          r'(\d+),(\d+),(\d+),(\d+) \((\d+)x(\d+), ',
+        ).firstMatch(row)!;
+        final cw = int.parse(m[3]!) - int.parse(m[1]!);
+        final ch = int.parse(m[4]!) - int.parse(m[2]!);
+        expect((cw, ch), (int.parse(m[5]!), int.parse(m[6]!)), reason: p.name);
+        final (w2, h2) = _vp8Size(
+          File('assets/photos/hero/2.0x/${p.file}.webp'),
+        );
+        expect(cw, greaterThanOrEqualTo(w2), reason: p.name);
+        expect(ch, greaterThanOrEqualTo(h2), reason: p.name);
+      }
+    });
+
+    test('a 390x405 band at 2x is covered without upscaling', () {
+      // BoxFit.cover scale = max(780 / w, 810 / h) <= 1 for every file.
+      for (final p in footerPhotoPool) {
+        final (w, h) = _vp8Size(File('assets/photos/hero/2.0x/${p.file}.webp'));
+        final scale = [780 / w, 810 / h].reduce((a, b) => a > b ? a : b);
+        expect(scale, lessThanOrEqualTo(1), reason: p.name);
       }
     });
 
@@ -947,7 +1099,7 @@ void main() {
           final codec = await ui.instantiateImageCodec(bytes);
           final frame = await codec.getNextFrame();
           expect(frame.image.width, greaterThanOrEqualTo(1080), reason: p.name);
-          expect(frame.image.height, greaterThanOrEqualTo(472), reason: p.name);
+          expect(frame.image.height, greaterThanOrEqualTo(972), reason: p.name);
           frame.image.dispose();
           codec.dispose();
         }

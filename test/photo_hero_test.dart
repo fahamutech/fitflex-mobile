@@ -1,5 +1,7 @@
 // Photo hero screens behind PHOTO_HERO_UI (docs/design/photo-hero-screens.md).
 
+import 'dart:math' as math;
+
 import 'package:fitflexmobile/app_scope.dart';
 import 'package:fitflexmobile/screens/auth_screen.dart';
 import 'package:fitflexmobile/screens/language_screen.dart';
@@ -18,6 +20,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'support/hero_scrim.dart';
 
 final _evening = DateTime(2026, 10, 19, 19);
 
@@ -314,11 +318,11 @@ void main() {
   });
 
   group('Scrim rule (§5.2)', () {
-    Widget hero() => const Scaffold(
+    Widget hero({double minHeight = 300}) => Scaffold(
       body: SingleChildScrollView(
         child: FFPhotoHero(
           photo: FFHeroPhoto.signIn,
-          minHeight: 300,
+          minHeight: minHeight,
           topInset: 80,
           eyebrow: 'Sign in',
           headlineLead: 'Karibu',
@@ -330,65 +334,179 @@ void main() {
     );
 
     for (final scale in [1.0, 1.3, 2.0]) {
-      testWidgets('the 0.80 stop sits >= 24px above all text at ${scale}x', (
-        tester,
-      ) async {
+      testWidgets('all text in the >= 0.86 zone, ramp starting 24px above it '
+          'at ${scale}x', (tester) async {
         await _pump(tester, hero(), textScale: scale, width: 360);
-        final zone = find.byKey(const Key('ff-hero-text-zone'));
-        final zoneBox = tester.widget<ColoredBox>(zone);
-        expect(zoneBox.color.a, closeTo(FFTokens.heroScrimText, 0.01));
-        final stopY = tester.getTopLeft(zone).dy;
-        // Every piece of text in the hero is inside the 80% zone, and the
-        // first line starts at least 24px below the stop.
-        final texts = find.descendant(
-          of: find.byType(FFPhotoHero),
-          matching: find.byType(RichText),
-        );
-        expect(texts, findsWidgets);
-        for (final e in texts.evaluate()) {
-          final top = tester.getTopLeft(find.byWidget(e.widget)).dy;
-          expect(top - stopY, greaterThanOrEqualTo(24 - 0.01));
-          expect(
-            find.descendant(of: zone, matching: find.byWidget(e.widget)),
-            findsOneWidget,
-          );
-        }
-        // The fade zone above holds no text and runs 50% -> 80%.
-        final fade = find.byKey(const Key('ff-hero-fade-zone'));
-        expect(
-          find.descendant(of: fade, matching: find.byType(RichText)),
-          findsNothing,
-        );
-        final g =
-            (tester.widget<DecoratedBox>(fade).decoration as BoxDecoration)
-                    .gradient
-                as LinearGradient;
-        expect(g.colors.first.a, closeTo(FFTokens.heroScrimTop, 0.01));
-        expect(g.colors.last.a, closeTo(FFTokens.heroScrimText, 0.01));
+        expectHeroScrimRule(tester);
         expect(tester.takeException(), isNull);
       });
     }
 
-    test('scrim tokens meet the measured contrast over pure white', () {
-      double ratio(Color a, Color b) {
-        final la = a.computeLuminance(), lb = b.computeLuminance();
-        return ((la > lb ? la : lb) + 0.05) / ((la > lb ? lb : la) + 0.05);
+    testWidgets('lighter: bar band over the bar, then the photo clear, '
+        'gone by 16% of the height', (tester) async {
+      // A full hero (Language-sized) with room for photo above the text.
+      await _pump(tester, hero(minHeight: 560), width: 360);
+      final band = find.byKey(const Key('ff-hero-top-band'));
+      expect(band, findsOneWidget);
+      final r = tester.getRect(band);
+      // Held at 0.46 down to the bar's bottom edge (topInset 80).
+      for (final y in [0.0, 40.0, 80.0]) {
+        expect(
+          scrimAlphaAtY(tester, band, r.top + y),
+          closeTo(FFTokens.heroScrimTop, 1e-6),
+        );
       }
+      // Gone 32px under the bar, or by 16% of the height if that is lower.
+      final end = math.max(80 + FFTokens.heroScrimBarFade, 0.16 * r.height);
+      expect(scrimAlphaAtY(tester, band, r.top + end), closeTo(0, 1e-6));
+      // Between the band and the lead-in: the photo, no scrim at all.
+      final fade = find.byKey(const Key('ff-hero-fade-zone'));
+      final leadStart =
+          tester.getRect(fade).bottom - FFTokens.heroScrimLeadInLength;
+      expect(leadStart, greaterThan(r.top + end));
+      final mid = (r.top + end + leadStart) / 2;
+      expect(scrimAlphaAtY(tester, band, mid), 0);
+      expect(scrimAlphaAtY(tester, fade, mid), 0);
+    });
 
-      final zone = Color.alphaBlend(
-        FFTokens.heroScrim.withValues(alpha: FFTokens.heroScrimText),
-        Colors.white,
+    testWidgets('Sign in: the page draws the bar band; it stays at the top '
+        'while the hero scrolls and goes once the bar is solid', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        const AuthScreen(enableFirebaseRecovery: false),
+        // Short enough that the page scrolls past the whole hero.
+        height: 400,
       );
-      expect(ratio(FFTokens.heroText, zone), greaterThanOrEqualTo(10.5));
-      expect(ratio(FFTokens.heroTextBody, zone), greaterThanOrEqualTo(7.8));
-      expect(ratio(FFTokens.heroAccentDark, zone), greaterThanOrEqualTo(4.5));
-      expect(ratio(FFTokens.heroAccentLight, zone), greaterThanOrEqualTo(3));
-      expect(ratio(FFTokens.heroChipFuelText, zone), greaterThanOrEqualTo(4.5));
-      final top = Color.alphaBlend(
-        FFTokens.heroScrim.withValues(alpha: FFTokens.heroScrimTop),
-        Colors.white,
+      // The hero leaves its own band out (FFPhotoBarHost above it).
+      expect(find.byKey(const Key('ff-hero-top-band')), findsNothing);
+      final bar = find.byKey(const Key('ff-photo-bar-scrim'));
+      expect(bar, findsOneWidget);
+      final barBottom = tester.getBottomLeft(find.byType(AppBar)).dy;
+      double opacity() => tester.widget<AnimatedOpacity>(bar).opacity;
+      Rect rect() => tester.getRect(bar);
+      expect(rect().top, 0);
+      expect(opacity(), 1);
+      // 0.46 under every icon of the bar, at rest and after scrolling.
+      for (final scroll in [0.0, 60.0]) {
+        if (scroll > 0) {
+          await tester.drag(
+            find.byType(SingleChildScrollView).first,
+            Offset(0, -scroll),
+          );
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 200));
+        }
+        expect(rect().top, 0, reason: 'scroll $scroll');
+        expect(opacity(), 1, reason: 'scroll $scroll');
+        final paint = find.descendant(
+          of: bar,
+          matching: find.byType(CustomPaint),
+        );
+        for (final y in [0.0, barBottom / 2, barBottom]) {
+          expect(
+            scrimAlphaAtY(tester, paint, y),
+            closeTo(FFTokens.heroScrimTop, 1e-6),
+            reason: 'y $y, scroll $scroll',
+          );
+        }
+        expect(scrimAlphaAtY(tester, paint, rect().bottom), closeTo(0, 1e-6));
+      }
+      // Past the hero the bar turns solid and the band fades out.
+      await tester.drag(
+        find.byType(SingleChildScrollView).first,
+        const Offset(0, -600),
       );
-      expect(ratio(FFTokens.heroText, top), greaterThanOrEqualTo(3));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(opacity(), 0);
+      // The text rule still holds inside the page's hero.
+      await _pump(tester, const AuthScreen(enableFirebaseRecovery: false));
+      expectHeroScrimRule(tester);
+    });
+
+    test('scrim geometry: ramp, text zone, bar band and panel stops', () {
+      // Fade zone 300 tall: clear until 48px above its bottom, then 0.40.
+      final ramp = heroRampStops(300);
+      expect(scrimAlphaAt(ramp, 0), 0);
+      expect(scrimAlphaAt(ramp, (300 - 48) / 300), 0);
+      expect(scrimAlphaAt(ramp, 1), FFTokens.heroScrimLeadIn);
+      // Text zone 200 tall: 0.40 at the top, 0.86 from 24px down.
+      final zone = heroTextZoneStops(200);
+      expect(scrimAlphaAt(zone, 0), FFTokens.heroScrimLeadIn);
+      expect(scrimAlphaAt(zone, 24 / 200), FFTokens.heroScrimText);
+      expect(scrimAlphaAt(zone, 1), FFTokens.heroScrimText);
+      // Bar band on a 500-tall hero under an 80px bar: 16% (80) is not
+      // below the bar + 32, so the fade ends at 112.
+      final top = heroTopBandStops(500, 80);
+      expect(scrimAlphaAt(top, 80 / 500), FFTokens.heroScrimTop);
+      expect(scrimAlphaAt(top, 112 / 500), 0);
+      // No bar (band variant): 0.46 at the top edge, 0 by 16%.
+      final noBar = heroTopBandStops(300, 0);
+      expect(scrimAlphaAt(noBar, 0), FFTokens.heroScrimTop);
+      expect(scrimAlphaAt(noBar, 0.16), closeTo(0, 1e-9));
+      // Panel 1000 wide, text column ending at 460: >= 0.86 to 484, then
+      // down to the far edge's 0.15.
+      final panel = heroPanelStops(1000, 460);
+      expect(scrimAlphaAt(panel, 0), FFTokens.heroScrimPanelLead);
+      expect(scrimAlphaAt(panel, 0.484), closeTo(FFTokens.heroScrimText, 1e-9));
+      expect(scrimAlphaAt(panel, 1), FFTokens.heroScrimPanelTail);
+      expect(FFTokens.heroScrimPanelTail, inInclusiveRange(0, 0.2));
+    });
+
+    test('contrast over a pure-white pixel (§5.2 table)', () {
+      final zone = scrimOverWhite(FFTokens.heroScrimText);
+      // Headline, body, Volt accent, light accent (large only), Fuel chip.
+      expect(
+        contrastRatio(FFTokens.heroText, zone),
+        greaterThanOrEqualTo(13.2),
+      );
+      expect(
+        contrastRatio(FFTokens.heroTextBody, zone),
+        greaterThanOrEqualTo(9.7),
+      );
+      expect(
+        contrastRatio(FFTokens.heroAccentDark, zone),
+        greaterThanOrEqualTo(11.0),
+      );
+      expect(
+        contrastRatio(FFTokens.heroAccentLight, zone),
+        greaterThanOrEqualTo(5.2),
+      );
+      expect(
+        contrastRatio(FFTokens.heroChipFuelText, zone),
+        greaterThanOrEqualTo(6.2),
+      );
+      // The chip: text on its own fill, and its border against the zone.
+      final chipFill = Color.alphaBlend(FFTokens.heroChipFuelFill, zone);
+      expect(
+        contrastRatio(FFTokens.heroChipFuelText, chipFill),
+        greaterThanOrEqualTo(7.4),
+      );
+      expect(
+        contrastRatio(
+          Color.alphaBlend(FFTokens.heroChipFuelBorder, chipFill),
+          zone,
+        ),
+        greaterThanOrEqualTo(3),
+      );
+      // Controls: Volt CTA fill (dark), onPhoto border/label.
+      expect(contrastRatio(FFTokens.volt, zone), greaterThanOrEqualTo(3));
+      expect(contrastRatio(FFTokens.heroText, zone), greaterThanOrEqualTo(4.5));
+      // The bar band: white icons at 3:1 (0.45 would not be enough).
+      final top = scrimOverWhite(FFTokens.heroScrimTop);
+      expect(contrastRatio(FFTokens.heroText, top), greaterThanOrEqualTo(3));
+      expect(
+        contrastRatio(FFTokens.heroText, scrimOverWhite(0.45)),
+        lessThan(3),
+      );
+      // The footer's lockup zone (same text value, darker at the bottom).
+      final footer = scrimOverWhite(FFTokens.footerScrimBottom);
+      expect(
+        contrastRatio(FFTokens.heroTextBody, footer),
+        greaterThan(contrastRatio(FFTokens.heroTextBody, zone)),
+      );
     });
 
     testWidgets('high contrast: navy ground, no photo, same text', (
@@ -549,6 +667,19 @@ void main() {
       expect(find.text('Sign in'), findsOneWidget);
       expect(find.byKey(const Key('login-identifier')), findsOneWidget);
       expect(find.byKey(const Key('login-continue')), findsOneWidget);
+      // No scrim layers of the lighter hero either (flag-off parity).
+      expect(find.byKey(const Key('ff-photo-bar-scrim')), findsNothing);
+      expect(find.byType(FFPhotoBarHost), findsNothing);
+      expect(find.byKey(const Key('ff-hero-top-band')), findsNothing);
+    });
+
+    testWidgets('member Home flag off: no bar band, solid app bar', (
+      tester,
+    ) async {
+      await _pump(tester, _home(_member()));
+      expect(find.byType(FFPhotoHero), findsNothing);
+      expect(find.byKey(const Key('ff-photo-bar-scrim')), findsNothing);
+      expect(find.byType(FFPhotoBarHost), findsNothing);
     });
 
     testWidgets('Language, Role and Sign up have no hero', (tester) async {

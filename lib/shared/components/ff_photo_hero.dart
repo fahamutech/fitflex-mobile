@@ -1,17 +1,28 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
 import '../design_tokens.dart';
+import '../hero_images/hero_image_store.dart';
 import '../i18n.dart';
 import 'ff_skeleton.dart';
 
 /// Bundled hero photos (people-free licensed stock until FitFlex has its own
 /// shoot; see assets/photos/hero/LICENSES.md). Never fetched from a network.
+/// With `HERO_IMAGES_REMOTE` on, an admin-published photo for the same slot
+/// (hero_images/hero_slots.dart) may replace one once it is saved and
+/// decoded ([HeroImageStore]); the bundled file stays the fallback.
+/// No crop shows another gym's or brand's logo or signage (owner rule
+/// 2026-10-20): the treadmill photo with a "smart fit" gym logo is banned.
 enum FFHeroPhoto {
-  language('hero_language', 4 / 5, 'pexels-12250460'),
+  language('hero_language', 4 / 5, 'pexels-4716814'),
   signIn('hero_sign_in', 4 / 5, 'scene-tubarones-9545'),
   signUp('hero_sign_up', 4 / 5, 'pexels-3916766'),
-  role('hero_role', 16 / 9, 'pexels-29526371'),
+  // Taller heroes (owner 2026-10-20): Role and Profile re-cut taller from
+  // the same sources, so the photo is not enlarged past its pixels.
+  role('hero_role', 1080 / 1100, 'pexels-29526371'),
 
   /// Home with no QR: no pass, payment pending, ended.
   homeStart('hero_home_start', 4 / 5, 'pexels-29526371'),
@@ -21,14 +32,14 @@ enum FFHeroPhoto {
 
   // Addendum 2026-10-19 (spec §26). Focal points keep the subject in frame
   // from a 360px phone (about 1.2:1) to a 3:1 desktop banner.
-  profile('hero_profile', 3 / 2, 'pexels-4716814', Alignment(0.3, 0)),
+  profile('hero_profile', 1, 'pexels-4716814', Alignment(0.3, 0)),
   pin('hero_pin', 1005 / 670, 'pexels-7432872', Alignment(0.3, -0.2)),
   upgrade('hero_upgrade', 3 / 2, 'scene-ketut-4720', Alignment(-0.3, -0.4)),
   activityToday(
     'hero_activity_today',
     3 / 2,
-    'pexels-12250460',
-    Alignment(-0.2, -0.3),
+    'pexels-4173217',
+    Alignment(0.1, 0.2),
   ),
   activityTraining(
     'hero_activity_training',
@@ -64,12 +75,13 @@ enum FFHeroPhoto {
   shop('hero_shop', 1080 / 691, 'pexels-5592605', Alignment(-0.1, 0.2)),
 
   // Footer pool (spec §33, §34.1; sharp people-free set, owner 2026-10-20):
-  // 16:7 strips, 1080x472 at 2x from source crops at least as large (never
-  // upscaled), under a uniform 80% scrim.
-  footerStudio('footer_studio', 1080 / 472, 'pexels-4716814'),
-  footerGymFloor('footer_gym_floor', 1080 / 472, 'pexels-29526371'),
-  footerRack('footer_rack', 1080 / 472, 'pexels-3916766'),
-  footerShelves('footer_shelves', 1080 / 472, 'scene-tubarones-9545');
+  // tall crops for the full-width footer (about 1:1, the tallest each
+  // source allows at 1080 wide), 1080 wide at 2x from source crops at least
+  // as large (never upscaled).
+  footerStudio('footer_studio', 1080 / 1000, 'pexels-4716814'),
+  footerGymFloor('footer_gym_floor', 1080 / 1080, 'pexels-29526371'),
+  footerRack('footer_rack', 1080 / 972, 'pexels-3916766'),
+  footerShelves('footer_shelves', 1080 / 1000, 'scene-tubarones-9545');
 
   const FFHeroPhoto(
     this.file,
@@ -95,6 +107,27 @@ enum FFHeroPhoto {
   String get asset => 'assets/photos/hero/$file.webp';
 }
 
+/// A photo fetched from the network for a hero (Shop home banners, Phase 2
+/// S1): the same scrim, focal alignment and navy placeholder as a bundled
+/// [FFHeroPhoto]. The placeholder shows while it loads, if it fails and
+/// under high contrast, so the text on it stays readable.
+@immutable
+class FFHeroNetworkImage {
+  const FFHeroNetworkImage(this.url, {this.focal = Alignment.center});
+
+  final String url;
+
+  /// Where `BoxFit.cover` keeps the subject.
+  final Alignment focal;
+
+  @override
+  bool operator ==(Object other) =>
+      other is FFHeroNetworkImage && other.url == url && other.focal == focal;
+
+  @override
+  int get hashCode => Object.hash(url, focal);
+}
+
 /// How the hero is laid out.
 /// [full] and [compact] stack the text over a vertical scrim (phones);
 /// [panel] puts it bottom-left over a horizontal scrim (desktop, wide
@@ -118,6 +151,22 @@ ImageProvider heroImageProvider(FFHeroPhoto photo, Size box, double dpr) {
   );
 }
 
+/// The decode size for a network hero image drawn into [box]: its width at
+/// this pixel ratio, rounded up to a 128px step (the aspect is unknown until
+/// it loads, so only the width is capped).
+ImageProvider heroNetworkImageProvider(
+  FFHeroNetworkImage image,
+  Size box,
+  double dpr,
+) {
+  final px = box.width.isFinite ? ((box.width * dpr) / 128).ceil() * 128 : 0;
+  return ResizeImage.resizeIfNeeded(
+    px <= 0 ? null : px,
+    null,
+    NetworkImage(image.url),
+  );
+}
+
 /// Decodes hero photos ahead of time so they appear without a placeholder.
 /// Sized for a phone-width hero; errors are ignored (the placeholder shows).
 /// Pass [box] when the hero's size is known, so the pre-cache and the hero
@@ -129,27 +178,53 @@ void precacheHeroPhotos(
 }) {
   final size = MediaQuery.sizeOf(context);
   final dpr = MediaQuery.devicePixelRatioOf(context);
+  final store = HeroImageStore.instance;
   for (final p in photos) {
+    final b = box ?? Size(size.width, size.height * 0.5);
+    final remote = store?.peekTop(p);
     precacheImage(
-      heroImageProvider(p, box ?? Size(size.width, size.height * 0.5), dpr),
+      remote != null
+          ? heroRemoteImageProvider(remote, b, dpr)
+          : heroImageProvider(p, b, dpr),
       context,
       onError: (_, _) {},
     );
   }
 }
 
+/// The decode size for an admin-published photo drawn with `BoxFit.cover`
+/// into [box] (as [heroImageProvider]), on phones (the saved file) and on
+/// the web (the bytes that decoded in this session) alike.
+ImageProvider heroRemoteImageProvider(
+  RemoteHeroImage image,
+  Size box,
+  double dpr,
+) {
+  final logical = box.width > box.height * image.aspect
+      ? box.width
+      : box.height * image.aspect;
+  final px = logical.isFinite ? ((logical * dpr) / 128).ceil() * 128 : 0;
+  return ResizeImage.resizeIfNeeded(px <= 0 ? null : px, null, image.provider);
+}
+
 /// A photo under a slate-950 scrim with light text: the "always-dark island"
 /// of docs/design/photo-hero-screens.md.
 ///
-/// Scrim rule (§5): the text block sits on a solid 80% scrim that starts 24px
-/// above the first line of text, whatever the text scale, so every text pixel
-/// is at least 10.6:1 even over a pure-white photo. Above that, the scrim
-/// fades from 50% (status bar, app bar icons, logo) to 80%; nothing but the
-/// photo sits there.
+/// Scrim rule (§5, owner 2026-10-20 "lighter"): the scrim is local, so the
+/// photo shows. From the top: a band behind the status bar and app bar
+/// ([FFTokens.heroScrimTop], held over the bar, gone by 16% of the height);
+/// then the photo, clear; then a ramp that starts 24px above the first line
+/// of text (after a 48px soft lead-in) and reaches [FFTokens.heroScrimText]
+/// at that line, whatever the text scale. From there down to the bottom
+/// edge it stays at that value or darker, so every text pixel is at least
+/// 9.7:1 (body) even over a pure-white photo. When the page draws the bar band itself (a
+/// [FFPhotoBarHost] above, so it stays put while the hero scrolls), the
+/// hero leaves it out.
 class FFPhotoHero extends StatelessWidget {
   const FFPhotoHero({
     super.key,
-    required this.photo,
+    this.photo,
+    this.networkImage,
     this.variant = FFHeroVariant.full,
     this.minHeight = 0,
     this.topInset = 0,
@@ -167,13 +242,36 @@ class FFPhotoHero extends StatelessWidget {
     this.rounded = false,
     this.wideHeadline = false,
     this.headingFocusNode,
-  });
+    this.clearPhoto = 0,
+    this.maxHeight = double.infinity,
+    this.excludeHeadingSemantics = false,
+    this.fillHeight = false,
+    this.panelSidePad,
+  }) : assert(
+         (photo == null) != (networkImage == null),
+         'Give exactly one of photo or networkImage',
+       );
 
-  final FFHeroPhoto photo;
+  /// A bundled photo (never fetched from the network)...
+  final FFHeroPhoto? photo;
+
+  /// ...or one from the network (Shop home banners). Exactly one is set.
+  final FFHeroNetworkImage? networkImage;
   final FFHeroVariant variant;
 
   /// The hero never gets shorter than this; text at large scales grows it.
   final double minHeight;
+
+  /// Taller heroes (owner 2026-10-20, spec §5.3; vertical variants only):
+  /// the photo kept clear of any scrim between the bar band and the ramp's
+  /// lead-in, in logical px. The hero grows to fit it on top of its text.
+  /// 0: as before.
+  final double clearPhoto;
+
+  /// A soft cap for [clearPhoto]: the clear photo shrinks (to none) so the
+  /// hero stays within this height, but the text is never cut, and the hero
+  /// is never shorter than [minHeight].
+  final double maxHeight;
 
   /// Space kept clear at the top for the status bar and app bar.
   final double topInset;
@@ -222,6 +320,20 @@ class FFPhotoHero extends StatelessWidget {
   /// §32.1): focusable on request, but no extra Tab stop. Null: as before.
   final FocusNode? headingFocusNode;
 
+  /// Leaves the heading out of the semantics tree, for a parent that reads
+  /// the hero as one node with its own label (a carousel slide: "Banner 1
+  /// of 3"). The actions stay separate buttons.
+  final bool excludeHeadingSemantics;
+
+  /// Under a fixed height (a carousel slide sized to the tallest), the text
+  /// stays at the bottom over the scrim and the photo fills the rest. Off:
+  /// the hero is as tall as its text needs, as before.
+  final bool fillHeight;
+
+  /// The panel's side padding instead of the default (room for arrows
+  /// inside the photo's edges). Null: as before.
+  final double? panelSidePad;
+
   /// The accent colour for the current theme: Volt on dark, brand-500 on
   /// light (large text only).
   static Color accentFor(BuildContext context) =>
@@ -265,122 +377,134 @@ class FFPhotoHero extends StatelessWidget {
 
   Widget _vertical(BuildContext context) {
     final band = variant == FFHeroVariant.band;
-    // A band is a card: its bottom edge stays at 80%, no melt.
+    // A band is a card: its bottom edge stays at the text value, no melt.
     final dark = !band && Theme.of(context).brightness == Brightness.dark;
     final scrim = FFTokens.heroScrim;
+    final hosted = FFPhotoBarHost.of(context);
     // Light theme: the sheet below overlaps the hero, so keep that strip
     // free of text and buttons. A band has no sheet over it.
     final bottomPad =
         FFTokens.spacingLg + (dark || band ? 0 : FFTokens.heroSheetOverlap);
-    return Stack(
-      children: [
-        Positioned.fill(child: _HeroPhotoLayer(photo: photo)),
-        ConstrainedBox(
-          key: const Key('ff-hero-body'),
-          constraints: BoxConstraints(minHeight: minHeight),
-          child: IntrinsicHeight(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Photo only: 50% at the top edge, 80% where the text zone
-                // starts.
-                Expanded(
-                  child: DecoratedBox(
-                    key: const Key('ff-hero-fade-zone'),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          scrim.withValues(alpha: FFTokens.heroScrimTop),
-                          scrim.withValues(alpha: FFTokens.heroScrimText),
-                        ],
-                      ),
-                    ),
-                    child: SizedBox(height: topInset),
-                  ),
-                ),
-                ColoredBox(
-                  key: const Key('ff-hero-text-zone'),
-                  color: scrim.withValues(alpha: FFTokens.heroScrimText),
-                  child: Stack(
-                    children: [
-                      if (dark)
-                        // Dark theme: melt into the page ground over the
-                        // last 48px (80% -> 100%).
-                        Positioned(
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          height: 48,
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  scrim.withValues(alpha: 0),
-                                  scrim.withValues(
-                                    alpha: FFTokens.heroScrimGround,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      Padding(
-                        padding: EdgeInsets.fromLTRB(
-                          FFTokens.spacingLg,
-                          FFTokens.spacingLg,
-                          FFTokens.spacingLg,
-                          bottomPad,
-                        ),
-                        child: _content(context),
-                      ),
+    Widget fadeZone(Widget child) => CustomPaint(
+      key: const Key('ff-hero-fade-zone'),
+      painter: FFScrimPainter((size) => heroRampStops(size.height)),
+      child: child,
+    );
+    final textZone = CustomPaint(
+      key: const Key('ff-hero-text-zone'),
+      painter: FFScrimPainter((size) => heroTextZoneStops(size.height)),
+      child: Stack(
+        children: [
+          if (dark)
+            // Dark theme: melt into the page ground over the
+            // last 48px (text value -> 100%).
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: 48,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      scrim.withValues(alpha: 0),
+                      scrim.withValues(alpha: FFTokens.heroScrimGround),
                     ],
                   ),
                 ),
-              ],
+              ),
+            ),
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              FFTokens.spacingLg,
+              FFTokens.spacingLg,
+              FFTokens.spacingLg,
+              bottomPad,
+            ),
+            child: _content(context),
+          ),
+        ],
+      ),
+    );
+    return Stack(
+      // fillHeight: a tight height reaches the body, so its photo-only
+      // zone grows and the text keeps to the bottom.
+      fit: fillHeight ? StackFit.passthrough : StackFit.loose,
+      children: [
+        Positioned.fill(
+          child: _HeroPhotoLayer(photo: photo, networkImage: networkImage),
+        ),
+        // The status bar / app bar band, unless the page draws it.
+        if (!hosted)
+          Positioned.fill(
+            child: CustomPaint(
+              key: const Key('ff-hero-top-band'),
+              painter: FFScrimPainter(
+                (size) => heroTopBandStops(size.height, topInset),
+              ),
             ),
           ),
-        ),
+        if (_tall)
+          _HeroTallBody(
+            key: const Key('ff-hero-body'),
+            minHeight: minHeight,
+            maxHeight: maxHeight,
+            topInset: topInset,
+            clearPhoto: clearPhoto,
+            barHosted: hosted,
+            children: [fadeZone(const SizedBox.shrink()), textZone],
+          )
+        else
+          ConstrainedBox(
+            key: const Key('ff-hero-body'),
+            constraints: BoxConstraints(minHeight: minHeight),
+            child: IntrinsicHeight(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Photo only: clear, then the soft lead-in to the ramp.
+                  Expanded(child: fadeZone(SizedBox(height: topInset))),
+                  textZone,
+                ],
+              ),
+            ),
+          ),
       ],
     );
   }
 
+  /// The tall layout ([clearPhoto] or [maxHeight] set).
+  bool get _tall => clearPhoto > 0 || maxHeight.isFinite;
+
+  /// The panel's left padding (and right): canon h1 panels get more room.
+  double get _panelPad =>
+      panelSidePad ?? (wideHeadline ? 64.0 : FFTokens.spacingXl);
+
+  /// Width of the panel's text column in a panel [width] wide.
+  double _panelTextWidth(double width) =>
+      width.isFinite ? (width / 2 - _panelPad).clamp(240.0, 560.0) : 480.0;
+
   Widget _panel(BuildContext context) {
-    final scrim = FFTokens.heroScrim;
     return Stack(
       fit: StackFit.passthrough,
       children: [
-        Positioned.fill(child: _HeroPhotoLayer(photo: photo)),
         Positioned.fill(
-          child: DecoratedBox(
-            key: const Key('ff-hero-panel-scrim'),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  scrim.withValues(alpha: FFTokens.heroScrimPanelLead),
-                  scrim.withValues(alpha: FFTokens.heroScrimText),
-                  scrim.withValues(alpha: FFTokens.heroScrimPanelTail),
-                ],
-                stops: const [0, 0.5, 1],
-              ),
-            ),
-          ),
+          child: _HeroPhotoLayer(photo: photo, networkImage: networkImage),
         ),
+        // Left to right: the text column (and the logo above it) stays at
+        // the text value or darker; past it the photo clears towards the
+        // far edge.
         Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.bottomCenter,
-                end: Alignment.topCenter,
-                colors: [
-                  scrim.withValues(alpha: 0.85),
-                  scrim.withValues(alpha: 0),
-                ],
-                stops: const [0, 0.3],
+          child: CustomPaint(
+            key: const Key('ff-hero-panel-scrim'),
+            painter: FFScrimPainter(
+              (size) => heroPanelStops(
+                size.width,
+                _panelPad + _panelTextWidth(size.width),
               ),
+              horizontal: true,
             ),
           ),
         ),
@@ -388,11 +512,8 @@ class FFPhotoHero extends StatelessWidget {
           constraints: BoxConstraints(minHeight: minHeight),
           child: LayoutBuilder(
             builder: (context, c) {
-              final pad = wideHeadline ? 64.0 : FFTokens.spacingXl;
-              // Text stays in the left half, where the scrim is >= 80%.
-              final textWidth = c.maxWidth.isFinite
-                  ? (c.maxWidth / 2 - pad).clamp(240.0, 560.0)
-                  : 480.0;
+              final pad = _panelPad;
+              final textWidth = _panelTextWidth(c.maxWidth);
               return Stack(
                 children: [
                   if (logo != null)
@@ -603,6 +724,7 @@ class FFPhotoHero extends StatelessWidget {
         child: KeyedSubtree(key: ValueKey(_semanticsLabel), child: heading),
       );
     }
+    if (excludeHeadingSemantics) heading = ExcludeSemantics(child: heading);
     if (leading != null) {
       final lead = ExcludeSemantics(
         child: KeyedSubtree(key: const Key('ff-hero-leading'), child: leading!),
@@ -650,16 +772,444 @@ class FFPhotoHero extends StatelessWidget {
   }
 }
 
-/// The photo, or the navy placeholder: before it decodes, if it fails, and
-/// always under high contrast. Never in the accessibility tree.
-class _HeroPhotoLayer extends StatelessWidget {
-  const _HeroPhotoLayer({required this.photo});
+/// One stop of a scrim gradient: where (0..1 along the gradient) and the
+/// scrim's alpha there.
+typedef ScrimStop = (double at, double alpha);
 
-  final FFHeroPhoto photo;
+/// A vertical hero's fade zone, [height] px tall (the photo above the text
+/// zone): clear, then the soft lead-in to [FFTokens.heroScrimLeadIn] over
+/// its last [FFTokens.heroScrimLeadInLength] px.
+List<ScrimStop> heroRampStops(double height) {
+  const lead = FFTokens.heroScrimLeadIn;
+  if (height <= 0) return const [(0, lead), (1, lead)];
+  final len = math.min(FFTokens.heroScrimLeadInLength, height);
+  return [(0, 0), (1 - len / height, 0), (1, lead)];
+}
+
+/// A text zone [height] px tall: from [FFTokens.heroScrimLeadIn] at its top
+/// edge up to [FFTokens.heroScrimText] [FFTokens.heroScrimRampLength] px
+/// down (where the first line of text starts), then at least that down to
+/// [bottom] at the bottom edge.
+List<ScrimStop> heroTextZoneStops(
+  double height, {
+  double bottom = FFTokens.heroScrimText,
+}) {
+  const text = FFTokens.heroScrimText;
+  if (height <= 0) return [(0, text), (1, bottom)];
+  final at = math.min(1.0, FFTokens.heroScrimRampLength / height);
+  return [(0, FFTokens.heroScrimLeadIn), (at, text), (1, bottom)];
+}
+
+/// The status bar / app bar band on a hero [heroHeight] tall whose bar ends
+/// [barBottom] px down (0: no bar): [FFTokens.heroScrimTop] held over the
+/// bar, then faded to 0 by 16% of the height, and never sooner than
+/// [FFTokens.heroScrimBarFade] below the bar.
+List<ScrimStop> heroTopBandStops(double heroHeight, double barBottom) {
+  const top = FFTokens.heroScrimTop;
+  if (heroHeight <= 0) return const [(0, top), (1, 0)];
+  final hold = barBottom.clamp(0.0, heroHeight) / heroHeight;
+  final end = math.max(
+    barBottom > 0 ? barBottom + FFTokens.heroScrimBarFade : 0.0,
+    FFTokens.heroScrimTopFade * heroHeight,
+  );
+  final fadeEnd = math.min(1.0, end / heroHeight);
+  return [(0, top), (hold, top), (math.max(hold, fadeEnd), 0), (1, 0)];
+}
+
+/// The bar band a page draws itself ([FFPhotoBarScrim]), [height] px tall
+/// for a bar that ends [barBottom] px down.
+List<ScrimStop> heroBarStops(double height, double barBottom) {
+  const top = FFTokens.heroScrimTop;
+  if (height <= 0) return const [(0, top), (1, 0)];
+  return [(0, top), (math.min(1.0, barBottom / height), top), (1, 0)];
+}
+
+/// The panel scrim, left to right, for a panel [width] wide whose text
+/// column ends [textRight] px from the left: [FFTokens.heroScrimPanelLead]
+/// at the edge, at least [FFTokens.heroScrimText] until 24px past the text,
+/// then down to [FFTokens.heroScrimPanelTail] at the far edge.
+List<ScrimStop> heroPanelStops(double width, double textRight) {
+  const lead = FFTokens.heroScrimPanelLead;
+  const text = FFTokens.heroScrimText;
+  if (width <= 0) return const [(0, lead), (1, text)];
+  final hold = (textRight + FFTokens.spacingLg) / width;
+  if (hold >= 1) return const [(0, lead), (1, text)];
+  return [(0, lead), (hold, text), (1, FFTokens.heroScrimPanelTail)];
+}
+
+/// The scrim's alpha at [t] (0..1) along [stops].
+double scrimAlphaAt(List<ScrimStop> stops, double t) {
+  if (t <= stops.first.$1) return stops.first.$2;
+  for (var i = 1; i < stops.length; i++) {
+    final (a0, v0) = stops[i - 1];
+    final (a1, v1) = stops[i];
+    if (t <= a1) {
+      if (t == a1 || a1 == a0) return v1;
+      return v0 + (v1 - v0) * (t - a0) / (a1 - a0);
+    }
+  }
+  return stops.last.$2;
+}
+
+/// Paints a slate-950 scrim gradient whose stops depend on the painted
+/// size (so the ramp keeps its pixel length at any hero height).
+class FFScrimPainter extends CustomPainter {
+  FFScrimPainter(this.stopsFor, {this.horizontal = false});
+
+  final List<ScrimStop> Function(Size size) stopsFor;
+  final bool horizontal;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    if (rect.isEmpty) return;
+    final stops = stopsFor(size);
+    final paint = Paint()
+      ..shader = LinearGradient(
+        begin: horizontal ? Alignment.centerLeft : Alignment.topCenter,
+        end: horizontal ? Alignment.centerRight : Alignment.bottomCenter,
+        colors: [
+          for (final (_, a) in stops) FFTokens.heroScrim.withValues(alpha: a),
+        ],
+        stops: [for (final (at, _) in stops) at],
+      ).createShader(rect);
+    canvas.drawRect(rect, paint);
+  }
+
+  @override
+  bool shouldRepaint(FFScrimPainter old) =>
+      old.horizontal != horizontal || old.stopsFor != stopsFor;
+}
+
+/// Marks content scrolling under a transparent app bar whose band the page
+/// draws itself ([FFPhotoBarScrim]): heroes inside leave out their own.
+class FFPhotoBarHost extends InheritedWidget {
+  const FFPhotoBarHost({super.key, required super.child});
+
+  static bool of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<FFPhotoBarHost>() != null;
+
+  @override
+  bool updateShouldNotify(FFPhotoBarHost old) => false;
+}
+
+/// The band behind a transparent app bar over a photo hero, fixed to the
+/// top of the screen so the bar's icons stay at 3:1 however far the hero
+/// has scrolled: [FFTokens.heroScrimTop] down to [barBottom], then a
+/// [FFTokens.heroScrimBarFade] fade. Hidden once the bar turns solid.
+/// Put it above the page body (under the app bar) and the body in a
+/// [FFPhotoBarHost].
+class FFPhotoBarScrim extends StatelessWidget {
+  const FFPhotoBarScrim({
+    super.key,
+    required this.barBottom,
+    required this.visible,
+  });
+
+  final double barBottom;
+  final bool visible;
 
   @override
   Widget build(BuildContext context) {
-    final noPhoto = MediaQuery.highContrastOf(context);
+    return Positioned(
+      top: 0,
+      left: 0,
+      right: 0,
+      height: barBottom + FFTokens.heroScrimBarFade,
+      child: IgnorePointer(
+        child: ExcludeSemantics(
+          child: AnimatedOpacity(
+            key: const Key('ff-photo-bar-scrim'),
+            opacity: visible ? 1 : 0,
+            duration: MediaQuery.disableAnimationsOf(context)
+                ? Duration.zero
+                : const Duration(milliseconds: 150),
+            child: CustomPaint(
+              painter: FFScrimPainter(
+                (size) => heroBarStops(size.height, barBottom),
+              ),
+              child: const SizedBox.expand(),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Taller heroes (owner 2026-10-20, spec §5.3): the clear photo a phone
+/// hero aims for in a viewport [viewportHeight] tall at [textScale], or 0
+/// below [FFTokens.heroTallMinViewport] (those phones keep today's heights).
+double heroTallClearTarget(double viewportHeight, double textScale) {
+  if (viewportHeight < FFTokens.heroTallMinViewport) return 0;
+  final base = (viewportHeight * FFTokens.heroTallClearShare).clamp(
+    FFTokens.heroTallClearMin,
+    FFTokens.heroTallClearMax,
+  );
+  // Larger text takes room from the photo first (never below 0).
+  return base / math.max(1.0, textScale);
+}
+
+/// The height of a tall hero's photo-only zone above a text zone [text] px
+/// tall: enough for [clearPhoto] px with no scrim between the bar band and
+/// the lead-in, capped so the hero stays within [maxHeight] (the clear
+/// photo gives way, the text does not), and never less than today's
+/// layout gives ([minHeight], [topInset]).
+///
+/// The bar band ends [FFTokens.heroScrimBarFade] below [topInset] when the
+/// page draws it ([barHosted], fixed at the top of the screen); otherwise
+/// it is the hero's own ([heroTopBandStops]): at least 16% of the hero.
+double heroTallFade({
+  required double text,
+  required double topInset,
+  required bool barHosted,
+  double clearPhoto = 0,
+  double minHeight = 0,
+  double maxHeight = double.infinity,
+}) {
+  var target = 0.0;
+  if (clearPhoto > 0) {
+    const lead = FFTokens.heroScrimLeadInLength;
+    final bar = topInset > 0 ? topInset + FFTokens.heroScrimBarFade : 0.0;
+    if (barHosted) {
+      target = bar + clearPhoto + lead;
+    } else {
+      // fade - lead - max(bar, 16% of (fade + text)) >= clearPhoto
+      const share = FFTokens.heroScrimTopFade;
+      target = math.max(
+        bar + clearPhoto + lead,
+        (clearPhoto + lead + share * text) / (1 - share),
+      );
+    }
+  }
+  final today = math.max(topInset, minHeight - text);
+  if (maxHeight.isFinite && target > maxHeight - text) {
+    target = maxHeight - text;
+    // Capped so far that no photo would be clear: keep today's height
+    // rather than grow the hero for nothing (and push the content down).
+    if (heroTallClearOf(target, text, topInset, barHosted) <= 0) {
+      return today;
+    }
+  }
+  return math.max(today, target);
+}
+
+/// The clear photo (no scrim) a vertical hero shows with a photo-only zone
+/// [fade] px tall over a text zone [text] px tall (see [heroTallFade]).
+double heroTallClearOf(
+  double fade,
+  double text,
+  double topInset,
+  bool barHosted,
+) {
+  final bar = topInset > 0 ? topInset + FFTokens.heroScrimBarFade : 0.0;
+  final bandEnd = barHosted
+      ? bar
+      : math.max(bar, FFTokens.heroScrimTopFade * (fade + text));
+  return math.max(0, fade - FFTokens.heroScrimLeadInLength - bandEnd);
+}
+
+/// Lays out a tall hero's two zones: the text zone at its own height, the
+/// photo-only zone above it sized by [heroTallFade].
+class _HeroTallBody extends MultiChildRenderObjectWidget {
+  const _HeroTallBody({
+    super.key,
+    required this.minHeight,
+    required this.maxHeight,
+    required this.topInset,
+    required this.clearPhoto,
+    required this.barHosted,
+    required super.children,
+  }) : assert(children.length == 2);
+
+  final double minHeight;
+  final double maxHeight;
+  final double topInset;
+  final double clearPhoto;
+  final bool barHosted;
+
+  @override
+  _RenderHeroTallBody createRenderObject(BuildContext context) =>
+      _RenderHeroTallBody(
+        minHeight: minHeight,
+        maxHeight: maxHeight,
+        topInset: topInset,
+        clearPhoto: clearPhoto,
+        barHosted: barHosted,
+      );
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    _RenderHeroTallBody renderObject,
+  ) {
+    renderObject
+      ..minHeight = minHeight
+      ..maxHeight = maxHeight
+      ..topInset = topInset
+      ..clearPhoto = clearPhoto
+      ..barHosted = barHosted;
+  }
+}
+
+class _HeroTallParentData extends ContainerBoxParentData<RenderBox> {}
+
+class _RenderHeroTallBody extends RenderBox
+    with
+        ContainerRenderObjectMixin<RenderBox, _HeroTallParentData>,
+        RenderBoxContainerDefaultsMixin<RenderBox, _HeroTallParentData> {
+  _RenderHeroTallBody({
+    required double minHeight,
+    required double maxHeight,
+    required double topInset,
+    required double clearPhoto,
+    required bool barHosted,
+  }) : _minHeight = minHeight,
+       _maxHeight = maxHeight,
+       _topInset = topInset,
+       _clearPhoto = clearPhoto,
+       _barHosted = barHosted;
+
+  double _minHeight;
+  set minHeight(double v) {
+    if (v == _minHeight) return;
+    _minHeight = v;
+    markNeedsLayout();
+  }
+
+  double _maxHeight;
+  set maxHeight(double v) {
+    if (v == _maxHeight) return;
+    _maxHeight = v;
+    markNeedsLayout();
+  }
+
+  double _topInset;
+  set topInset(double v) {
+    if (v == _topInset) return;
+    _topInset = v;
+    markNeedsLayout();
+  }
+
+  double _clearPhoto;
+  set clearPhoto(double v) {
+    if (v == _clearPhoto) return;
+    _clearPhoto = v;
+    markNeedsLayout();
+  }
+
+  bool _barHosted;
+  set barHosted(bool v) {
+    if (v == _barHosted) return;
+    _barHosted = v;
+    markNeedsLayout();
+  }
+
+  RenderBox get _fade => firstChild!;
+  RenderBox get _text => lastChild!;
+
+  @override
+  void setupParentData(RenderBox child) {
+    if (child.parentData is! _HeroTallParentData) {
+      child.parentData = _HeroTallParentData();
+    }
+  }
+
+  double _fadeFor(double text, double minHeight) => heroTallFade(
+    text: text,
+    topInset: _topInset,
+    barHosted: _barHosted,
+    clearPhoto: _clearPhoto,
+    minHeight: math.max(minHeight, _minHeight),
+    maxHeight: _maxHeight,
+  );
+
+  @override
+  double computeMinIntrinsicWidth(double height) =>
+      _text.getMinIntrinsicWidth(double.infinity);
+
+  @override
+  double computeMaxIntrinsicWidth(double height) =>
+      _text.getMaxIntrinsicWidth(double.infinity);
+
+  @override
+  double computeMinIntrinsicHeight(double width) {
+    final t = _text.getMinIntrinsicHeight(width);
+    return t + _fadeFor(t, 0);
+  }
+
+  @override
+  double computeMaxIntrinsicHeight(double width) {
+    final t = _text.getMaxIntrinsicHeight(width);
+    return t + _fadeFor(t, 0);
+  }
+
+  @override
+  Size computeDryLayout(covariant BoxConstraints constraints) {
+    final w = constraints.maxWidth;
+    final t = _text.getDryLayout(BoxConstraints.tightFor(width: w)).height;
+    return constraints.constrain(
+      Size(w, t + _fadeFor(t, constraints.minHeight)),
+    );
+  }
+
+  @override
+  void performLayout() {
+    final w = constraints.maxWidth;
+    _text.layout(BoxConstraints.tightFor(width: w), parentUsesSize: true);
+    final t = _text.size.height;
+    final f = _fadeFor(t, constraints.minHeight);
+    _fade.layout(BoxConstraints.tight(Size(w, f)));
+    (_fade.parentData! as _HeroTallParentData).offset = Offset.zero;
+    (_text.parentData! as _HeroTallParentData).offset = Offset(0, f);
+    size = constraints.constrain(Size(w, f + t));
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) =>
+      defaultPaint(context, offset);
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) =>
+      defaultHitTestChildren(result, position: position);
+}
+
+/// The photo, or the navy placeholder: before it decodes, if it fails, and
+/// always under high contrast. Never in the accessibility tree.
+///
+/// With admin-published photos on, each bundled [FFHeroPhoto] is looked up
+/// once, the first time this layer shows it, and the answer is kept: a photo
+/// saved while the screen is open shows only the next time the screen is
+/// built (never a swap mid-view). If a saved photo fails to load, the
+/// bundled one shows.
+class _HeroPhotoLayer extends StatefulWidget {
+  const _HeroPhotoLayer({this.photo, this.networkImage});
+
+  final FFHeroPhoto? photo;
+  final FFHeroNetworkImage? networkImage;
+
+  @override
+  State<_HeroPhotoLayer> createState() => _HeroPhotoLayerState();
+}
+
+class _HeroPhotoLayerState extends State<_HeroPhotoLayer> {
+  final Map<FFHeroPhoto, RemoteHeroImage?> _resolved = {};
+
+  RemoteHeroImage? _remoteFor(FFHeroPhoto photo) {
+    if (_resolved.containsKey(photo)) return _resolved[photo];
+    final r = HeroImageStore.instance?.resolveTop(photo);
+    _resolved[photo] = r;
+    return r;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final photo = widget.photo;
+    final networkImage = widget.networkImage;
+    // A network hero with no file to load shows the placeholder alone.
+    final noPhoto =
+        MediaQuery.highContrastOf(context) ||
+        (networkImage != null && networkImage.url.isEmpty);
     final instant = MediaQuery.disableAnimationsOf(context);
     final dpr = MediaQuery.devicePixelRatioOf(context);
     return ExcludeSemantics(
@@ -670,9 +1220,10 @@ class _HeroPhotoLayer extends StatelessWidget {
             ? const SizedBox.expand()
             : LayoutBuilder(
                 builder: (context, c) {
-                  final image = Image(
+                  final saved = photo == null ? null : _remoteFor(photo);
+                  Widget bundled() => Image(
                     key: const Key('ff-hero-photo'),
-                    image: heroImageProvider(photo, c.biggest, dpr),
+                    image: heroImageProvider(photo!, c.biggest, dpr),
                     fit: BoxFit.cover,
                     alignment: photo.focal,
                     width: c.maxWidth,
@@ -680,6 +1231,23 @@ class _HeroPhotoLayer extends StatelessWidget {
                     excludeFromSemantics: true,
                     gaplessPlayback: true,
                     errorBuilder: (_, _, _) => const SizedBox.expand(),
+                  );
+                  final image = Image(
+                    key: const Key('ff-hero-photo'),
+                    image: networkImage != null
+                        ? heroNetworkImageProvider(networkImage, c.biggest, dpr)
+                        : saved != null
+                        ? heroRemoteImageProvider(saved, c.biggest, dpr)
+                        : heroImageProvider(photo!, c.biggest, dpr),
+                    fit: BoxFit.cover,
+                    alignment:
+                        networkImage?.focal ?? saved?.focal ?? photo!.focal,
+                    width: c.maxWidth,
+                    height: c.maxHeight,
+                    excludeFromSemantics: true,
+                    gaplessPlayback: true,
+                    errorBuilder: (_, _, _) =>
+                        saved != null ? bundled() : const SizedBox.expand(),
                     frameBuilder: (context, child, frame, sync) {
                       if (sync) return child;
                       return AnimatedOpacity(
@@ -703,7 +1271,10 @@ class _HeroPhotoLayer extends StatelessWidget {
                       fit: StackFit.expand,
                       children: [...previous, ?current],
                     ),
-                    child: KeyedSubtree(key: ValueKey(photo), child: image),
+                    child: KeyedSubtree(
+                      key: ValueKey<Object?>(networkImage ?? photo),
+                      child: image,
+                    ),
                   );
                 },
               ),
@@ -792,7 +1363,7 @@ class FFWordmark extends StatelessWidget {
 }
 
 /// App bar controls drawn on the photo: icons and labels in the hero text
-/// colour (3.5:1 on the 50% band over pure white).
+/// colour (3.04:1 on the 46% bar band over pure white).
 class FFOnPhotoTheme extends StatelessWidget {
   const FFOnPhotoTheme({super.key, required this.child});
 

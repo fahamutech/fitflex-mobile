@@ -18,6 +18,9 @@ import '../../../shared/formatters.dart';
 import '../../../shared/network/browser_online.dart';
 import '../customers/customers_widgets.dart';
 import '../customers/payment_sheets.dart';
+import '../documents/document_entry.dart';
+import '../documents/document_models.dart' show DocumentRef;
+import '../documents/document_share_sheet.dart' show showDocumentLinksSheet;
 import '../stock/stock_options.dart';
 import 'offline_sale_queue.dart';
 import 'receipt_data.dart';
@@ -66,6 +69,8 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
   bool _suspended = false;
   String? _lang;
   VendorTools _tools = VendorTools.off;
+  ({String? tin, String? vrn}) _taxIds = (tin: null, vrn: null);
+  String? _taxIdsFor;
 
   @override
   void initState() {
@@ -211,7 +216,19 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
     if (out != null && mounted) await _load();
   }
 
+  /// S5: the seller's TIN/VRN when VAT applied (asked once per sale).
+  void _loadTaxIds(ReceiptData data) {
+    if (data.id == null || _taxIdsFor == data.id || !data.hasVat) return;
+    _taxIdsFor = data.id;
+    sellerTaxIdsFor(context, data, _tools).then((ids) {
+      if (mounted) setState(() => _taxIds = ids);
+    });
+  }
+
   Future<void> _share(ReceiptData data, String lang) async {
+    if (_tools.documents) {
+      return openSaleShareSheet(context, data: data, lang: lang, tools: _tools);
+    }
     final locale = FFLocaleScope.of(context);
     String t(String key) => locale.tIn(lang, key);
     await shareReceipt(
@@ -230,7 +247,13 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
     final sale = _sale;
     final data = sale == null
         ? null
-        : ReceiptData.fromSale(sale, profile: _profile);
+        : ReceiptData.fromSale(
+            sale,
+            profile: _profile,
+            documents: _tools.documents,
+            vat: _tools.vat,
+          );
+    if (data != null) _loadTaxIds(data);
     final user = AppScope.of(context).auth.user;
     final mayVoid = data != null && _salesActions && canVoidSale(user, data);
     return Scaffold(
@@ -239,10 +262,39 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
         title: Text(
           data?.number == null
               ? context.tr('vendor.documents.receipt')
+              : data!.credit && data.invoiceNumber != null
+              ? '${context.tr('vendor.doc.invoice')} ${data.invoiceNumber}'
               : fillIn(context.tr('vendor.pos.receiptNo'), {
-                  'number': data!.number,
+                  'number': data.number,
                 }),
         ),
+        actions: [
+          // S5: an app-bar Share (§1.1), and a voided sale's links, which
+          // can still be turned off (§2.4).
+          if (data != null && _salesActions && _tools.documents)
+            IconButton(
+              key: Key(
+                data.voided ? 'sale-detail-links' : 'sale-detail-share-icon',
+              ),
+              style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
+              tooltip: context.tr(
+                data.voided
+                    ? 'vendor.documents.linksTitle'
+                    : 'vendor.documents.share',
+              ),
+              icon: Icon(data.voided ? Icons.manage_history : Icons.share),
+              onPressed: data.voided
+                  ? () => showDocumentLinksSheet(
+                      context,
+                      DocumentRef.sale(
+                        saleId: widget.saleId,
+                        credit: data.credit,
+                        number: data.invoiceNumber ?? data.number,
+                      ),
+                    )
+                  : () => _share(data, _lang ?? locale.locale.languageCode),
+            ),
+        ],
       ),
       body: _loading
           ? const Center(child: FFSpinner())
@@ -308,11 +360,20 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
                       ),
                       const SizedBox(height: FFTokens.spacingSm),
                     ],
+                    if (data.voided && _tools.documents) ...[
+                      FFAlert(
+                        key: const Key('sale-detail-voided-note'),
+                        message: context.tr('vendor.documents.voidedNote'),
+                      ),
+                      const SizedBox(height: FFTokens.spacingSm),
+                    ],
                     ReceiptView(
                       data: data,
                       lang: lang,
                       t: (k) => locale.tIn(lang, k),
                       audit: true,
+                      tin: _taxIds.tin,
+                      vrn: _taxIds.vrn,
                     ),
                     // From the profile itself there is nothing to go back to.
                     if (widget.customerId == null &&

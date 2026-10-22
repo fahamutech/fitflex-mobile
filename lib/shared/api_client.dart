@@ -1647,7 +1647,9 @@ class ApiClient {
     Map<String, dynamic> data,
   ) async => await _request('PUT', '/trainer/me', body: data);
 
-  /// C3: sessions for a date (bookings + manual). Defaults to today.
+  /// C3: sessions for a date (bookings + manual). Defaults to today. With
+  /// TRAINER_SESSION_OUTCOMES on, each `source: "booking"` entry carries
+  /// `actions: { canComplete, canMarkNoShow }` (fitflex-functions#231).
   Future<Map<String, dynamic>> trainerSessions({String? date}) async {
     final path = (date == null || date.isEmpty)
         ? '/trainer/sessions'
@@ -1955,6 +1957,22 @@ class ApiClient {
   Future<Map<String, dynamic>> trainerCancelBooking(String bookingId) async =>
       await _request('POST', '/trainer/bookings/$bookingId/cancel');
 
+  /// Trainer: the session took place. Only once it has started
+  /// (409 `session_not_started` with `startsAt`).
+  Future<Map<String, dynamic>> trainerCompleteBooking(String bookingId) async =>
+      await _request(
+        'POST',
+        '/trainer/bookings/${Uri.encodeComponent(bookingId)}/complete',
+      );
+
+  /// Trainer: the client didn't come. The session is paid as booked and the
+  /// member is told. 404 `feature_disabled` while the flag is off.
+  Future<Map<String, dynamic>> trainerMarkNoShow(String bookingId) async =>
+      await _request(
+        'POST',
+        '/trainer/bookings/${Uri.encodeComponent(bookingId)}/no-show',
+      );
+
   Future<Map<String, dynamic>> myRefunds() async =>
       await _request('GET', '/me/refunds');
 
@@ -1994,6 +2012,131 @@ class ApiClient {
   /// `{stockLedger: true, ...}`. Anything but `true` means "not on".
   Future<Map<String, dynamic>> vendorToolsOptions() async =>
       await _request('GET', '/vendor/tools/options');
+
+  // ── Vendor shop banners (Shop home Phase 2 S1, SHOP_BANNERS) ──────────
+
+  /// The vendor's own banner proposals, newest first:
+  /// `{items: [banner], total, nextCursor, vendor: {canPropose, reason},
+  /// proposalExpiryDays}` (docs/shop-banners-api.md). 404
+  /// `feature_disabled` while SHOP_BANNERS is off.
+  /// One page: [limit] (the server allows up to 100) from [cursor] (the
+  /// previous page's `nextCursor`).
+  Future<Map<String, dynamic>> vendorShopBanners({
+    int limit = 100,
+    String? cursor,
+    String? status,
+  }) async {
+    final out = await _request(
+      'GET',
+      _withQuery('/vendor/shop-banners', {
+        'limit': '$limit',
+        if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+        if (status != null && status.isNotEmpty) 'status': status,
+      }),
+    );
+    if (out is List) return {'items': out};
+    return out is Map ? Map<String, dynamic>.from(out) : <String, dynamic>{};
+  }
+
+  /// Creates a banner (not yet sent for approval). Answers the banner.
+  Future<Map<String, dynamic>> vendorCreateShopBanner(
+    Map<String, dynamic> body,
+  ) async =>
+      _bannerOf(await _request('POST', '/vendor/shop-banners', body: body));
+
+  /// Changes a banner. 409 `not_editable` once it can no longer change.
+  Future<Map<String, dynamic>> vendorUpdateShopBanner(
+    String id,
+    Map<String, dynamic> body,
+  ) async => _bannerOf(
+    await _request('PATCH', '/vendor/shop-banners/${_seg(id)}', body: body),
+  );
+
+  /// Sends a banner to FitFlex for approval.
+  Future<Map<String, dynamic>> vendorSubmitShopBanner(String id) async =>
+      _bannerOf(
+        await _request(
+          'POST',
+          '/vendor/shop-banners/${_seg(id)}/submit',
+          body: const <String, dynamic>{},
+        ),
+      );
+
+  /// Ends a live banner now.
+  Future<Map<String, dynamic>> vendorEndShopBanner(String id) async =>
+      _bannerOf(
+        await _request(
+          'POST',
+          '/vendor/shop-banners/${_seg(id)}/end',
+          body: const <String, dynamic>{},
+        ),
+      );
+
+  /// Takes a banner back before it goes live.
+  Future<Map<String, dynamic>> vendorWithdrawShopBanner(String id) async =>
+      _bannerOf(
+        await _request(
+          'POST',
+          '/vendor/shop-banners/${_seg(id)}/withdraw',
+          body: const <String, dynamic>{},
+        ),
+      );
+
+  /// Uploads a banner's photo: `file`, `people` (`none` |
+  /// `product_models`), `rightsConfirmed` and, for models,
+  /// `peopleConfirmed`. Answers the banner.
+  Future<Map<String, dynamic>> vendorUploadShopBannerImage(
+    String id, {
+    required List<int> bytes,
+    required String filename,
+    required String people,
+    required bool rightsConfirmed,
+    bool peopleConfirmed = false,
+    String? confirmationVersion,
+    String? consentRef,
+    String? licenceRef,
+  }) async {
+    final uri = Uri.parse('$baseUrl/vendor/shop-banners/${_seg(id)}/image');
+    final request = http.MultipartRequest('POST', uri)
+      ..files.add(
+        http.MultipartFile.fromBytes('file', bytes, filename: filename),
+      )
+      ..fields['people'] = people;
+    if (rightsConfirmed) request.fields['rightsConfirmed'] = 'true';
+    if (peopleConfirmed) request.fields['peopleConfirmed'] = 'true';
+    if (confirmationVersion != null && confirmationVersion.isNotEmpty) {
+      request.fields['confirmationVersion'] = confirmationVersion;
+    }
+    if (consentRef != null && consentRef.isNotEmpty) {
+      request.fields['consentRef'] = consentRef;
+    }
+    if (licenceRef != null && licenceRef.isNotEmpty) {
+      request.fields['licenceRef'] = licenceRef;
+    }
+    request.headers['x-fitflex-client'] = kIdentityV2Client;
+    if (_token != null) request.headers['authorization'] = 'Bearer $_token';
+    _log.multipart('POST', uri, bytes.length);
+    final streamed = await request.send().timeout(const Duration(seconds: 90));
+    final res = await http.Response.fromStream(streamed);
+    _log.response('POST', uri, res.statusCode, res.body);
+    final ok = res.statusCode >= 200 && res.statusCode < 300;
+    final decoded = res.body.isEmpty
+        ? null
+        : ok
+        ? jsonDecode(res.body)
+        : _decodeErrorBody(res.body);
+    if (ok) return _bannerOf(decoded);
+    if (res.statusCode == 401 && onUnauthorized != null) onUnauthorized!();
+    throw ApiException(res.statusCode, decoded);
+  }
+
+  /// A banner answer: the banner itself or `{banner: {...}}`.
+  static Map<String, dynamic> _bannerOf(Object? out) {
+    if (out is Map && out['banner'] is Map) {
+      return Map<String, dynamic>.from(out['banner'] as Map);
+    }
+    return out is Map ? Map<String, dynamic>.from(out) : <String, dynamic>{};
+  }
 
   /// Records a stock change with a reason. Answers `{movement, product}`;
   /// a retried [body] (same `clientRef`) gets the first answer back.
@@ -2218,6 +2361,154 @@ class ApiClient {
       if (sort != null && sort.isNotEmpty && sort != 'overdue') 'sort': sort,
       if (limit != null) 'limit': '$limit',
       if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+    }),
+  );
+
+  // ── Vendor documents and VAT (S5) ──────────────────────────────────────
+
+  /// Makes a share link for one document (fitflex-functions #229). [kind] is
+  /// `sale`, `order`, `payment` (needs [customerId]) or `statement` ([id] is
+  /// the customer id). 201 `{linkId, url, lang, docType, docId, number,
+  /// texts: {en: {whatsapp, sms}, sw: {…}}, whatsappText, smsText}`. The
+  /// URL is shown once: only its hash is kept on the server. 503
+  /// `public_url_not_configured` while the server has no public address.
+  Future<Map<String, dynamic>> vendorShareDocument({
+    required String kind,
+    required String id,
+    String? customerId,
+    String? lang,
+  }) async {
+    final path = switch (kind) {
+      'sale' => '/vendor/sales/${_seg(id)}/share',
+      'order' => '/vendor/orders/${_seg(id)}/share',
+      'payment' =>
+        '/vendor/customers/${_seg(customerId ?? '')}/payments/${_seg(id)}/share',
+      'statement' => '/vendor/customers/${_seg(id)}/statement/share',
+      _ => throw ArgumentError.value(kind, 'kind'),
+    };
+    return await _request('POST', path, body: {'lang': ?lang});
+  }
+
+  /// The links made for one document (never their URLs):
+  /// `{links: [{id, n, docType, docId, lang, createdAt, createdBy {id,
+  /// firstName}, lastOpenedAt, revokedAt, active}], activeCount}`.
+  Future<Map<String, dynamic>> vendorDocumentLinks({
+    required String docType,
+    required String docId,
+  }) async => await _request(
+    'GET',
+    _withQuery('/vendor/document-links', {'docType': docType, 'docId': docId}),
+  );
+
+  /// Turns one link off (permanent). `{link}`.
+  Future<Map<String, dynamic>> vendorRevokeDocumentLink(String linkId) async =>
+      await _request('POST', '/vendor/documents/${_seg(linkId)}/revoke');
+
+  /// Turns every active link of one document off. `{links, revokedCount}`.
+  Future<Map<String, dynamic>> vendorRevokeDocumentLinks({
+    required String docType,
+    required String docId,
+  }) async => await _request(
+    'POST',
+    '/vendor/document-links/revoke',
+    body: {'docType': docType, 'docId': docId},
+  );
+
+  /// One document as JSON `{doc}` (no link is made). [docType] is `sale`,
+  /// `payment`, `statement` (id = customer id, live) or `order`.
+  Future<Map<String, dynamic>> vendorDocument(
+    String docType,
+    String docId, {
+    String? lang,
+  }) async => await _request(
+    'GET',
+    _withQuery('/vendor/documents/${_seg(docType)}/${_seg(docId)}', {
+      'format': 'json',
+      'lang': ?lang,
+    }),
+  );
+
+  /// The same document as a PDF (`paper` a4 or 80mm). Answers the bytes and
+  /// the server's file name.
+  Future<({Uint8List bytes, String? fileName})> vendorDocumentPdf(
+    String docType,
+    String docId, {
+    String? lang,
+    String paper = 'a4',
+  }) => _binary(
+    _withQuery('/vendor/documents/${_seg(docType)}/${_seg(docId)}', {
+      'format': 'pdf',
+      'lang': ?lang,
+      'paper': paper,
+    }),
+  );
+
+  /// My tax (VAT) details: `{taxProfile}`. Vendor, or staff with `payments`.
+  Future<Map<String, dynamic>> vendorTaxProfile() async =>
+      await _request('GET', '/vendor/tax-profile');
+
+  /// Saves my tax details (vendor account only; staff get 403 owner_only).
+  Future<Map<String, dynamic>> vendorSaveTaxProfile(
+    Map<String, dynamic> body,
+  ) async => await _request('PUT', '/vendor/tax-profile', body: body);
+
+  /// The VAT codes a product may use: `{asOf, codes: [{code, nameEn,
+  /// nameSw, exempt, ratePct}]}`.
+  Future<Map<String, dynamic>> vendorTaxRates() async =>
+      await _request('GET', '/vendor/tax-rates');
+
+  /// A binary answer (a PDF) with its file name from Content-Disposition.
+  Future<({Uint8List bytes, String? fileName})> _binary(String path) async {
+    final uri = Uri.parse('$baseUrl$path');
+    _log.request('GET', uri, const {}, null);
+    final res = await http
+        .get(
+          uri,
+          headers: {
+            'x-fitflex-client': kIdentityV2Client,
+            if (_token != null) 'authorization': 'Bearer $_token',
+          },
+        )
+        .timeout(const Duration(seconds: 30));
+    _log.response(
+      'GET',
+      uri,
+      res.statusCode,
+      '<${res.bodyBytes.length} bytes>',
+    );
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final disposition = res.headers['content-disposition'] ?? '';
+      final name = RegExp(r'filename="?([^";]+)"?').firstMatch(disposition);
+      return (bytes: res.bodyBytes, fileName: name?.group(1));
+    }
+    if (res.statusCode == 401 && onUnauthorized != null) onUnauthorized!();
+    throw ApiException(res.statusCode, _decodeErrorBody(res.body));
+  }
+
+  /// My invoices for a paid shop order, one per seller (S5):
+  /// `{invoices: [doc + vendorId]}`. 404 `feature_disabled` while documents
+  /// are off; 404 `invoice_not_ready` until the order is paid.
+  Future<Map<String, dynamic>> myShopOrderInvoices(
+    String orderId, {
+    String? lang,
+  }) async => await _request(
+    'GET',
+    _withQuery('/me/shop-orders/${_seg(orderId)}/invoice', {
+      'format': 'json',
+      'lang': ?lang,
+    }),
+  );
+
+  /// One seller's invoice for my order as a PDF.
+  Future<({Uint8List bytes, String? fileName})> myShopOrderInvoicePdf(
+    String orderId, {
+    required String vendorId,
+    String? lang,
+  }) => _binary(
+    _withQuery('/me/shop-orders/${_seg(orderId)}/invoice', {
+      'format': 'pdf',
+      'vendorId': vendorId,
+      'lang': ?lang,
     }),
   );
 

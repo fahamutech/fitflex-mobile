@@ -10,6 +10,7 @@ class FFRemoteImage extends StatefulWidget {
     this.height,
     this.fit,
     this.fallback,
+    this.headers,
   });
 
   final String src;
@@ -17,6 +18,10 @@ class FFRemoteImage extends StatefulWidget {
   final double? height;
   final BoxFit? fit;
   final Widget? fallback;
+
+  /// Sent with a network image request (a private preview that needs the
+  /// signed-in session, e.g. a vendor's own banner photo before approval).
+  final Map<String, String>? headers;
 
   @override
   State<FFRemoteImage> createState() => _FFRemoteImageState();
@@ -35,7 +40,9 @@ class _FFRemoteImageState extends State<FFRemoteImage> {
   @override
   void didUpdateWidget(FFRemoteImage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.src != widget.src) {
+    if (oldWidget.src != widget.src ||
+        oldWidget.headers?['authorization'] !=
+            widget.headers?['authorization']) {
       _provider = null;
       _invalid = false;
       _resolveProvider(widget.src);
@@ -52,7 +59,7 @@ class _FFRemoteImageState extends State<FFRemoteImage> {
         _invalid = true;
       }
     } else {
-      _provider = NetworkImage(src);
+      _provider = NetworkImage(src, headers: widget.headers);
     }
   }
 

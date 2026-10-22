@@ -20,6 +20,8 @@ import '../promotion_events.dart';
 import '../root_back_navigation.dart';
 import '../shop_checkout.dart';
 import '../shop_home.dart';
+import '../../screens/vendor/documents/document_view.dart'
+    show buyerInvoiceRoute, documentIdPattern;
 import 'shop_home/shop_home_page.dart';
 import 'shop_home/shop_product_card.dart'
     show ShopOutOfStockBadge, shopOnSale, shopDiscountPercent;
@@ -40,6 +42,7 @@ class ShopProduct {
     required this.id,
     required this.vendorId,
     required this.name,
+    this.vendorName,
     this.description,
     this.category,
     this.brand,
@@ -62,6 +65,10 @@ class ShopProduct {
   final String id;
   final String vendorId;
   final String name;
+
+  /// The seller's business name on the product row (functions
+  /// fix/shop-banners-qa2), for a store list's heading after a refresh.
+  final String? vendorName;
   final String? description;
   final String? category;
   final String? brand;
@@ -89,6 +96,9 @@ class ShopProduct {
     id: json['id'] as String? ?? '',
     vendorId: json['vendorId'] as String? ?? '',
     name: json['name'] as String? ?? '',
+    vendorName: json['vendorName'] is String
+        ? (json['vendorName'] as String).trim()
+        : null,
     description: json['description'] as String?,
     category: json['category'] as String?,
     brand: json['brand'] as String?,
@@ -293,6 +303,27 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
   bool _promotionsOnly = false;
   String _brand = '';
   String _vendorId = '';
+
+  /// The store's name when the list was opened from a banner's "Visit
+  /// store" (shown as the list's heading); empty otherwise.
+  String _vendorName = '';
+
+  /// The carousel slide shown last (Back from a banner's target).
+  int _bannerIndex = 0;
+
+  /// The store heading for a seller's product list: the banner's name, or
+  /// (after a refresh) the name on that seller's products.
+  String get _storeName {
+    if (_vendorName.isNotEmpty) return _vendorName;
+    for (final p in _products) {
+      if (p.vendorId != _vendorId) continue;
+      final name = (p.vendorName ?? '').isNotEmpty
+          ? p.vendorName!
+          : p.vendor['businessName']?.toString().trim() ?? '';
+      if (name.isNotEmpty) return name;
+    }
+    return '';
+  }
   num? _minPrice;
   num? _maxPrice;
   num? _minRating;
@@ -411,6 +442,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
     if (_results && _sort != 'newest') 'sort': _sort,
     if (_results && _promotionsOnly) 'promotions': 'true',
     if (_results && _deliveryOnly) 'delivery': 'true',
+    if (_results && _vendorId.isNotEmpty) 'vendorId': _vendorId,
     'product': ?_openProductId,
   };
 
@@ -455,6 +487,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
           'sort': ?q['sort'],
           'promotions': ?q['promotions'],
           'delivery': ?q['delivery'],
+          'vendorId': ?q['vendorId'],
         },
       );
     } else if (_results) {
@@ -537,6 +570,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
       _category = category ?? _nonEmpty(query['category']);
       _brand = query['brand'] ?? '';
       _vendorId = query['vendorId'] ?? '';
+      if (_vendorId.isEmpty) _vendorName = '';
       _minPrice = num.tryParse(query['minPrice'] ?? '');
       _maxPrice = num.tryParse(query['maxPrice'] ?? '');
       _minRating = num.tryParse(query['minRating'] ?? '');
@@ -557,9 +591,29 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
   static String? _nonEmpty(String? value) =>
       value == null || value.isEmpty ? null : value;
 
+  /// A hero banner's button (Phase 2 S1): its product's details, the
+  /// seller's products, a category, or the product list.
+  void _openBanner(ShopBanner banner) {
+    final target = banner.target;
+    switch (target.type) {
+      case 'product':
+        unawaited(_openProductById(target.value));
+      case 'vendor_store':
+        _vendorName = banner.vendorName?.trim() ?? '';
+        _openResults(query: {'vendorId': target.value});
+      case 'category':
+        _openResults(category: target.value);
+      default:
+        if (target.query['vendorId'] == null) _vendorName = '';
+        _openResults(query: target.query);
+    }
+  }
+
   void _backToHome() {
     setState(() {
       _results = false;
+      _vendorId = '';
+      _vendorName = '';
       _search = '';
       _searchController.clear();
       _category = null;
@@ -932,6 +986,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
     _shopEvent('filter_applied');
     setState(() {
       _brand = values.brand;
+      if (values.vendorId != _vendorId) _vendorName = '';
       _vendorId = values.vendorId;
       _minPrice = values.minPrice;
       _maxPrice = values.maxPrice;
@@ -964,6 +1019,40 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
       }
     }
     if (mounted) setState(() => _section = 0);
+  }
+
+  /// S5: whether the server has seller invoices on (null = not asked yet).
+  /// A 404 feature_disabled keeps the plain-text invoice for this session.
+  bool? _sellerInvoices;
+
+  /// Invoice: a paid order opens the sellers' invoices (one per seller,
+  /// O-11) while the server has them on; otherwise the plain text as before.
+  Future<void> _openInvoice(Map<String, dynamic> order) async {
+    final id = order['id']?.toString() ?? '';
+    if (_sellerInvoices != false &&
+        shopOrderPayment(order) == ShopOrderPayment.paid &&
+        documentIdPattern.hasMatch(id)) {
+      try {
+        final res = await AppScope.of(context).api.myShopOrderInvoices(
+          id,
+          lang: FFLocaleScope.of(context).locale.languageCode,
+        );
+        _sellerInvoices = true;
+        final list = (res['invoices'] as List? ?? []).whereType<Map>().toList();
+        if (list.isNotEmpty && mounted) {
+          final vendor = list.length == 1 ? list.single['vendorId'] : null;
+          await context.push(
+            buyerInvoiceRoute(id, vendorId: vendor?.toString()),
+          );
+          return;
+        }
+      } on ApiException catch (e) {
+        if (e.code == 'feature_disabled') _sellerInvoices = false;
+      } catch (_) {
+        // No answer: the plain-text invoice below.
+      }
+    }
+    if (mounted) _showInvoice(order);
   }
 
   void _showInvoice(Map<String, dynamic> order) {
@@ -1074,8 +1163,6 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
                     headingFocus: _heroFocus,
                     enabled: _homeHasContent,
                     gap: FFTokens.spacingXl - FFTokens.spacingLg,
-                    inset: side + gutter,
-                    maxWidth: 1200,
                   )
                 : null,
             children: [
@@ -1116,6 +1203,9 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
                   onCategory: (key) => _openResults(category: key),
                   onViewAll: (query) => _openResults(query: query),
                   onBrowseAll: () => _openResults(),
+                  onBanner: _openBanner,
+                  bannerIndex: _bannerIndex,
+                  onBannerIndex: (i) => _bannerIndex = i,
                   onCheckout: _checkout,
                   onUnavailable: () {
                     setState(() => _homeUnavailable = true);
@@ -1219,6 +1309,20 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
             variant: FFButtonVariant.ghost,
             size: FFButtonSize.sm,
             icon: Icons.arrow_back,
+          ),
+        ),
+      if (_vendorId.isNotEmpty && _storeName.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
+          child: Semantics(
+            header: true,
+            child: Text(
+              _storeName,
+              key: const Key('shop-results-vendor'),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+            ),
           ),
         ),
       FFTextField(
@@ -1474,8 +1578,9 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
                       size: FFButtonSize.sm,
                     ),
                   FFButton(
+                    key: Key('shop-invoice-${order['id']}'),
                     label: context.tr('shop.invoice'),
-                    onPressed: () => _showInvoice(order),
+                    onPressed: () => _openInvoice(order),
                     variant: FFButtonVariant.ghost,
                     size: FFButtonSize.sm,
                   ),

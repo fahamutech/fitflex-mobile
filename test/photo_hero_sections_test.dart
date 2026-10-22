@@ -674,7 +674,8 @@ void main() {
       );
       expect(FFHeroPhoto.upgrade.sourceId, 'scene-ketut-4720');
       expect(FFHeroPhoto.activityChallenges.sourceId, 'scene-ketut-4720');
-      expect(FFHeroPhoto.language.sourceId, FFHeroPhoto.activityToday.sourceId);
+      expect(FFHeroPhoto.language.sourceId, 'pexels-4716814');
+      expect(FFHeroPhoto.activityToday.sourceId, 'pexels-4173217');
       expect(FFHeroPhoto.role.sourceId, FFHeroPhoto.owner.sourceId);
       expect(FFHeroPhoto.trainer.sourceId, 'scene-tima-6388');
       expect(FFHeroPhoto.gyms.sourceId, 'pexels-33832204');

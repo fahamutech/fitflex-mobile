@@ -52,6 +52,8 @@ import 'shared/friend_invites.dart';
 import 'shared/inbox/inbox_pages.dart';
 import 'screens/vendor/vendor_home_page.dart';
 import 'screens/vendor/stock/stock_history_page.dart';
+import 'screens/vendor/merch/banner_form_route.dart';
+import 'screens/vendor/merch/vendor_banners_page.dart';
 import 'screens/vendor/sales/pos_page.dart';
 import 'screens/vendor/sales/receipt_page.dart';
 import 'screens/vendor/sales/sale_detail_page.dart';
@@ -61,6 +63,8 @@ import 'screens/vendor/customers/customer_form_page.dart';
 import 'screens/vendor/customers/customer_profile_page.dart';
 import 'screens/vendor/customers/statement_page.dart';
 import 'screens/vendor/customers/customers_widgets.dart' show customerIdPattern;
+import 'screens/vendor/documents/document_view.dart';
+import 'screens/vendor/settings/tax_details_page.dart';
 import 'screens/partner/verification/verification_center_page.dart';
 import 'shared/widgets/invitations.dart';
 import 'shared/pending_org_invite.dart';
@@ -98,6 +102,13 @@ abstract class AppRoutes {
 
   // Vendor
   static const vendorHome = '/vendor/home';
+
+  /// Shop home Phase 2 S1: the vendor's Promotions (banner proposals).
+  static const vendorMerch = '/vendor/merch';
+
+  /// The banner form (its own address, so a refresh restores it).
+  static const vendorMerchNew = '/vendor/merch/banner/new';
+  static String vendorMerchEdit(String id) => '/vendor/merch/banner/$id/edit';
 
   /// Vendor tools · S1: one product's stock history.
   static String vendorStockHistory(String productId) =>
@@ -210,6 +221,18 @@ final _vendorStockPath = RegExp(
 /// Walk-in sales pages (S3). Pending vendors may sell too (Q-4).
 final _vendorSalesPath = RegExp(
   r'^/vendor/sales/(new|sync|receipt/queued/[A-Za-z0-9._:-]{1,100}|receipt/[A-Za-z0-9._:-]{1,100}|[A-Za-z0-9._:-]{1,100})$',
+);
+
+/// Document pages (S5): tax details and my order invoice. Pending vendors
+/// keep their own records too (§2.4).
+final _vendorDocumentsPath = RegExp(
+  r'^/vendor/(settings/tax|orders/[A-Za-z0-9._:-]{1,100}/invoice)$',
+);
+
+/// Promotions and the banner form (Phase 2 S1). Pending vendors see why
+/// they cannot propose yet.
+final _vendorMerchPath = RegExp(
+  r'^/vendor/merch(/banner/(new|[A-Za-z0-9_-]{1,64}/edit))?$',
 );
 
 /// Customer pages (S4). Pending vendors keep their own records too.
@@ -510,9 +533,12 @@ GoRouter buildRouter(AuthState auth) {
           // verification centre is the only other place they need.
           if (loc == AppRoutes.vendorHome ||
               loc == AppRoutes.verification ||
+              // Shows why proposing waits for approval.
+              _vendorMerchPath.hasMatch(loc) ||
               _vendorStockPath.hasMatch(loc) ||
               _vendorSalesPath.hasMatch(loc) ||
-              _vendorCustomersPath.hasMatch(loc)) {
+              _vendorCustomersPath.hasMatch(loc) ||
+              _vendorDocumentsPath.hasMatch(loc)) {
             return null;
           }
           return AppRoutes.vendorHome;
@@ -700,6 +726,32 @@ GoRouter buildRouter(AuthState auth) {
           view: state.uri.queryParameters['view'],
         ),
       ),
+      // Shop home Phase 2 S1: the page checks the tool (merch.banners) and
+      // the `products` permission itself.
+      GoRoute(
+        path: AppRoutes.vendorMerch,
+        name: 'vendorMerch',
+        builder: (context, state) =>
+            VendorBannersPage(item: state.uri.queryParameters['item']),
+      ),
+      GoRoute(
+        path: AppRoutes.vendorMerchNew,
+        name: 'vendorMerchNew',
+        builder: (context, state) =>
+            VendorBannerFormRoute(copyId: state.uri.queryParameters['copy']),
+      ),
+      GoRoute(
+        path: '/vendor/merch/banner/:bannerId/edit',
+        name: 'vendorMerchEdit',
+        redirect: (context, state) =>
+            RegExp(
+              r'^[A-Za-z0-9_-]{1,64}$',
+            ).hasMatch(state.pathParameters['bannerId'] ?? '')
+            ? null
+            : AppRoutes.vendorMerch,
+        builder: (context, state) =>
+            VendorBannerFormRoute(bannerId: state.pathParameters['bannerId']),
+      ),
       // Vendor customers (S4). Each page checks the feature and the
       // `customers` permission itself; `new` comes before `:customerId`.
       GoRoute(
@@ -769,6 +821,41 @@ GoRouter buildRouter(AuthState auth) {
             productId: state.pathParameters['productId']!,
             variant: variant == null || variant.isEmpty ? null : variant,
             fromPush: state.uri.queryParameters['from'] == 'push',
+          );
+        },
+      ),
+      // Vendor documents and VAT (S5). Each page checks its feature
+      // (`documents` / `vat`) and permission itself.
+      GoRoute(
+        path: vendorTaxRoute,
+        name: 'vendorTaxDetails',
+        builder: (context, state) => const TaxDetailsPage(),
+      ),
+      GoRoute(
+        path: '/vendor/orders/:orderId/invoice',
+        name: 'vendorOrderInvoice',
+        redirect: (context, state) =>
+            documentIdPattern.hasMatch(state.pathParameters['orderId'] ?? '')
+            ? null
+            : '${AppRoutes.vendorHome}?open=orders',
+        builder: (context, state) =>
+            VendorOrderInvoicePage(orderId: state.pathParameters['orderId']!),
+      ),
+      GoRoute(
+        path: '/shop/orders/:orderId/invoice',
+        name: 'shopOrderInvoice',
+        redirect: (context, state) =>
+            documentIdPattern.hasMatch(state.pathParameters['orderId'] ?? '')
+            ? null
+            : AppRoutes.memberShop,
+        builder: (context, state) {
+          final vendor = state.uri.queryParameters['vendor'];
+          return BuyerInvoicePage(
+            key: ValueKey('buyer-invoice-${state.uri}'),
+            orderId: state.pathParameters['orderId']!,
+            vendorId: vendor != null && documentIdPattern.hasMatch(vendor)
+                ? vendor
+                : null,
           );
         },
       ),
@@ -916,7 +1003,9 @@ GoRouter buildRouter(AuthState auth) {
       GoRoute(
         path: AppRoutes.memberSessions,
         name: 'memberSessions',
-        builder: (context, state) => const MemberSessionsPage(),
+        builder: (context, state) => MemberSessionsPage(
+          focusBookingId: state.uri.queryParameters['booking'],
+        ),
       ),
       // Message templates. "new" comes before ":templateId" so it wins.
       GoRoute(

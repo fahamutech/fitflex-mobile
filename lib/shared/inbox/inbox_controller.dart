@@ -111,6 +111,8 @@ String memberLinkFor({required String deepLink, required String type}) =>
         'training_plan_offered' => 'trainingOffer',
         // Their trainer changed or stopped the plan they are on.
         'training_plan_updated' || 'training_plan_stopped' => 'trainingPlan',
+        // Their trainer recorded that they missed a session: open it.
+        'trainer_booking_no_show' => 'session',
         _ => '',
       };
 
@@ -127,6 +129,7 @@ String? memberRouteFor({
   String? gymId,
   String? trainerId,
   String? planId,
+  String? bookingId,
 }) {
   final link = memberLinkFor(deepLink: deepLink, type: type);
   return switch (link) {
@@ -138,8 +141,30 @@ String? memberRouteFor({
     'trainingOffer' when planId != null && _safeId.hasMatch(planId) =>
       '/member/activity/training/offers/$planId',
     'trainingPlan' => '/member/activity/training',
+    'session' when bookingId != null && _safeId.hasMatch(bookingId) => Uri(
+      path: '/member/sessions',
+      queryParameters: {'booking': bookingId},
+    ).toString(),
+    'session' => '/member/sessions',
     _ => null,
   };
+}
+
+/// A notice's words in the app language. Some notices carry both languages
+/// in their data (`titleEn`/`bodyEn`, `titleSw`/`bodySw`, e.g.
+/// trainer_booking_no_show), while the top-level title/body follow the
+/// member's saved `locale`, which may differ from the app's. The app
+/// language's copy wins; a missing line keeps the server's text.
+({String title, String body}) localisedNoticeText({
+  required String lang,
+  required Map<String, dynamic> data,
+  required String title,
+  required String body,
+}) {
+  final suffix = lang == 'sw' ? 'Sw' : 'En';
+  final t = data['title$suffix']?.toString().trim() ?? '';
+  final b = data['body$suffix']?.toString().trim() ?? '';
+  return (title: t.isEmpty ? title : t, body: b.isEmpty ? body : b);
 }
 
 final _safeId = RegExp(r'^[A-Za-z0-9_-]{1,64}$');
@@ -184,6 +209,20 @@ String partnerLinkFor({required String side, required String type}) =>
         // S4: the daily overdue digest, and a payment voided by staff.
         'vendor_customers_overdue' => 'owed',
         'vendor_customer_payment_voided' => 'customer',
+        // S5: a KYC reviewer verified or did not accept the VAT details
+        // (push data.open = 'tax').
+        'vendor_vat_verified' || 'vendor_vat_rejected' => 'tax',
+        // Shop home Phase 2 S1: a banner was approved, rejected, expired or
+        // ended by FitFlex (push `vendor_shop_banner_*`, inbox
+        // `shop_banner_*`).
+        'vendor_shop_banner_approved' ||
+        'vendor_shop_banner_rejected' ||
+        'vendor_shop_banner_expired' ||
+        'vendor_shop_banner_ended' ||
+        'shop_banner_approved' ||
+        'shop_banner_rejected' ||
+        'shop_banner_expired' ||
+        'shop_banner_ended' => 'merch',
         _ => '',
       },
       'gym' => switch (type) {
@@ -210,6 +249,7 @@ String? partnerRouteFor({
   String? variant,
   String? saleId,
   String? customerId,
+  String? bannerId,
 }) {
   bool ok(String? id) => id != null && _safeId.hasMatch(id);
   return switch (partnerLinkFor(side: side, type: type)) {
@@ -239,6 +279,11 @@ String? partnerRouteFor({
     'owed' => '/vendor/home?open=customers&view=owed',
     'customer' when ok(customerId) => '/vendor/customers/$customerId',
     'customer' => '/vendor/home?open=customers',
+    // The page checks the `vat` tool and who may see it.
+    'tax' => '/vendor/settings/tax',
+    // The Promotions page checks the tool and the `products` permission.
+    'merch' when ok(bannerId) => '/vendor/merch?item=$bannerId',
+    'merch' => '/vendor/merch',
     'checkins' when ok(gymId) => '/owner/gyms/$gymId/checkins',
     'member' when ok(memberId) => '/owner/members/$memberId',
     'memberPayments' when ok(memberId) => '/owner/members/$memberId/payments',

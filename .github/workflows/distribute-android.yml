@@ -18,6 +18,11 @@ on:
         type: boolean
         required: false
         default: false
+      hero_images_remote:
+        description: 'Tester build that reads admin-published app photos (HERO_IMAGES_REMOTE). Takes effect only with photo_hero ticked too. Manual runs only; pushes to main always build with it off.'
+        type: boolean
+        required: false
+        default: false
 
 concurrency:
   group: android-distribution
@@ -47,6 +52,13 @@ jobs:
       # Photo footer (PHOTO_FOOTER_UI): the same rule; the app ignores it unless
       # PHOTO_HERO_UI is on as well.
       PHOTO_FOOTER_UI: ${{ github.event_name == 'workflow_dispatch' && inputs.photo_footer && 'true' || 'false' }}
+      # Admin-published app photos (HERO_IMAGES_REMOTE): the same rule; the app
+      # ignores it unless PHOTO_HERO_UI is on as well.
+      HERO_IMAGES_REMOTE: ${{ github.event_name == 'workflow_dispatch' && inputs.hero_images_remote && 'true' || 'false' }}
+      # Hosts the /storage photo addresses may redirect to (the backend's
+      # ZEBRA_BASE_URL host), comma-separated. Empty: only the API host, so
+      # every redirected photo falls back to the bundled one.
+      HERO_IMAGES_ALLOWED_HOSTS: ${{ vars.HERO_IMAGES_ALLOWED_HOSTS || '' }}
       # Comma-separated App Distribution group aliases (Firebase console →
       # App Distribution → Testers & Groups).
       TESTER_GROUPS: ${{ vars.FIREBASE_TESTER_GROUPS || 'testers' }}
@@ -107,7 +119,7 @@ jobs:
           flutter pub get
           flutter build apk --release \
             --build-number=$((100 + ${{ github.run_number }})) \
-            --dart-define=API_BASE="$API_BASE" --dart-define=SHOP_HOME_V2="$SHOP_HOME_V2" --dart-define=PHOTO_HERO_UI="$PHOTO_HERO_UI" --dart-define=PHOTO_FOOTER_UI="$PHOTO_FOOTER_UI"
+            --dart-define=API_BASE="$API_BASE" --dart-define=SHOP_HOME_V2="$SHOP_HOME_V2" --dart-define=PHOTO_HERO_UI="$PHOTO_HERO_UI" --dart-define=PHOTO_FOOTER_UI="$PHOTO_FOOTER_UI" --dart-define=HERO_IMAGES_REMOTE="$HERO_IMAGES_REMOTE" --dart-define=HERO_IMAGES_ALLOWED_HOSTS="$HERO_IMAGES_ALLOWED_HOSTS"
 
       # Testers first: nothing after this may stop a build reaching them.
       - name: Distribute to testers

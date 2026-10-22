@@ -209,24 +209,72 @@ class FFTokens {
   static const Color darkFgSecondary = Color(0xFFCBD5E1); // slate-300
   static const Color darkFgMuted = Color(0xFF94A3B8); // slate-400
 
-  // ── Photo hero (docs/design/photo-hero-screens.md §3.3) ──
+  // ── Photo hero (docs/design/photo-hero-screens.md §3.3, §5) ──
   // The hero is an always-dark island: a photo under a slate-950 scrim with
   // light text, in both themes. Contrast is guaranteed against a pure-white
-  // photo pixel, so it holds for any photo.
+  // photo pixel, so it holds for any photo. Owner 2026-10-20 ("lighter"):
+  // the scrim is local. A band behind the status bar and app bar, the photo
+  // clear in between, and a ramp into a dark zone that holds all text.
   static const Color heroScrim = darkBg;
 
-  /// Behind the status bar, app bar icons and logo. No other text.
-  static const double heroScrimTop = 0.50;
+  /// Behind the status bar, app bar icons and logo (no other text): held
+  /// over the bar, then faded out. 0.46 is the lowest value that keeps
+  /// [heroText] icons at 3:1 over a pure-white pixel (3.04:1).
+  static const double heroScrimTop = 0.46;
 
-  /// Minimum under any text (10.6:1 for [heroText] over pure white).
-  static const double heroScrimText = 0.80;
+  /// Where the bar band has faded to 0, as a share of the hero's height
+  /// (never above the bar's bottom edge plus [heroScrimBarFade]).
+  static const double heroScrimTopFade = 0.16;
+
+  /// The bar band's fade below the bar, in logical px.
+  static const double heroScrimBarFade = 32;
+
+  /// Minimum under any text, chip or button (13.2:1 for [heroText] over
+  /// pure white), from the first line of text down to the bottom edge.
+  static const double heroScrimText = 0.86;
+
+  /// The ramp up to [heroScrimText]: a soft lead-in from 0 to
+  /// [heroScrimLeadIn] over [heroScrimLeadInLength] px, then the steep part
+  /// from there to [heroScrimText] over the 24px above the first line of
+  /// text (the text zone's top padding).
+  static const double heroScrimLeadIn = 0.40;
+  static const double heroScrimLeadInLength = 48;
+  static const double heroScrimRampLength = spacingLg;
 
   /// Dark theme bottom edge: seamless into the page ground.
   static const double heroScrimGround = 1.00;
 
-  /// Horizontal (panel / wide banner) scrim: leading and far edge.
+  /// Taller heroes (owner 2026-10-20, spec §5.3): on phones at least
+  /// [heroTallMinViewport] tall, the clear photo between the bar band and
+  /// the ramp's lead-in aims for this share of the viewport height, clamped
+  /// to [heroTallClearMin] .. [heroTallClearMax] at 1.0x text (divided by
+  /// the text scale above it). A page may cap the hero so its first control
+  /// stays on screen; the clear photo then shrinks, never the text.
+  static const double heroTallClearShare = 0.19;
+  static const double heroTallClearMin = 120;
+  static const double heroTallClearMax = 200;
+  static const double heroTallMinViewport = 760;
+
+  /// Horizontal (panel / wide banner) scrim: the text column's leading edge
+  /// and the far edge. The text column itself stays at >= [heroScrimText].
   static const double heroScrimPanelLead = 0.92;
-  static const double heroScrimPanelTail = 0.30;
+  static const double heroScrimPanelTail = 0.15;
+
+  /// Photo footer (spec §33, owner 2026-10-20): the band's height is this
+  /// share of the viewport height, clamped to [footerMinHeight] ..
+  /// [footerMaxHeight]; larger text makes it taller still.
+  static const double footerViewportShare = 0.48;
+  static const double footerMinHeight = 320;
+  static const double footerMaxHeight = 440;
+
+  /// The photo the footer always keeps clear above its lockup zone.
+  static const double footerClearMin = 140;
+
+  /// The page ground fading into the footer photo at its top edge.
+  static const double footerTopFade = 40;
+
+  /// The footer lockup zone's bottom edge (top edge is [heroScrimText]).
+  static const double footerScrimBottom = 0.92;
 
   static const Color heroText = Color(0xFFF1F5F9);
 
@@ -237,9 +285,10 @@ class FFTokens {
   static const Color heroAccentDark = volt;
   static const Color heroAccentLight = fgBrand;
 
-  /// Fuel state chip on the hero.
+  /// Fuel state chip on the hero. The border is 3.6:1 against the 86% zone
+  /// over pure white (0.6 gave 2.9:1).
   static const Color heroChipFuelText = fuelOnDark;
-  static Color get heroChipFuelBorder => fuelOnDark.withValues(alpha: 0.6);
+  static Color get heroChipFuelBorder => fuelOnDark.withValues(alpha: 0.7);
   static Color get heroChipFuelFill => heroScrim.withValues(alpha: 0.4);
 
   /// Shown before the photo decodes, under high contrast and on failure.
