@@ -6,9 +6,12 @@
 // The rationale sheet always comes before the OS / browser prompt, and is
 // shown even when the OS already lets FitFlex read the location (for gyms):
 // the shop is a different use (O-7).
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../app_scope.dart';
+import '../../api_client.dart';
 import '../../components/components.dart';
 import '../../design_tokens.dart';
 import '../../i18n.dart';
@@ -250,7 +253,46 @@ class ShopNearYouFlow {
       return off;
     }
     onLocating?.call();
-    final areas = await ShopAreas.load(scope.api);
+    return _locate(
+      api: scope.api,
+      uid: uid,
+      snack: snack,
+      locale: locale,
+      lang: lang,
+      locator: locator,
+    );
+  }
+
+  /// After a yes on the rationale sheet: the area list, the OS prompt (only
+  /// if needed), one fix and the area. When the area list can't be fetched
+  /// (no connection, 5xx) nothing changes and the snackbar offers Try again
+  /// (#6), which runs this again without the sheet.
+  static Future<ShopNearYouState> _locate({
+    required ApiClient api,
+    required String? uid,
+    required FFSnackMessenger snack,
+    required FFLocale locale,
+    required String lang,
+    required ShopLocator locator,
+  }) async {
+    final areas = await ShopAreas.tryLoad(api);
+    if (areas == null) {
+      snack.info(
+        locale.t('shop.near.failed'),
+        actionLabel: locale.t('common.retry'),
+        onAction: () => unawaited(
+          _locate(
+            api: api,
+            uid: uid,
+            snack: snack,
+            locale: locale,
+            lang: lang,
+            locator: locator,
+          ),
+        ),
+      );
+      return ShopNearYouStore.peek(uid) ?? ShopNearYouState.empty;
+    }
     final (outcome, area) = await detectShopArea(
       areas: areas,
       ask: true,
@@ -309,8 +351,9 @@ class ShopNearYouFlow {
     if (state.choice != ShopNearYouChoice.on || state.manual) return false;
     if (ShopNearYouStore.readThisSession(uid)) return false;
     ShopNearYouStore.markRead(uid);
-    final areas = await ShopAreas.load(api);
-    if (areas.isEmpty) return false;
+    final areas = await ShopAreas.tryLoad(api);
+    // No list (offline) or none at all: keep what is kept; next session.
+    if (areas == null || areas.isEmpty) return false;
     final (outcome, area) = await detectShopArea(areas: areas, ask: false);
     final ShopNearYouState next;
     switch (outcome) {
@@ -377,11 +420,21 @@ class ShopNearYouFlow {
 /// "Popular near you: Off" with Turn on (spec §6.3 item 5). Shown in the
 /// Why sheet and the Privacy sheet while near-you is available.
 class ShopNearYouLine extends StatefulWidget {
-  const ShopNearYouLine({super.key, this.onChanged, this.serverArea});
+  const ShopNearYouLine({
+    super.key,
+    this.onChanged,
+    this.serverArea,
+    this.inHome = false,
+  });
 
   /// The area the last Shop home answer was built for (`nearYou.areaId`
-  /// and its name), preferred over the name kept on the device.
+  /// and its name).
   final ({String id, String name})? serverArea;
+
+  /// In the Shop home's Why sheet: only the area the server echoed is
+  /// named; none echoed means "No sellers listed for your area yet" (#5).
+  /// Elsewhere (Privacy) the name comes from GET /shop/areas.
+  final bool inHome;
 
   /// After any change (the Shop home reloads).
   final VoidCallback? onChanged;
@@ -394,6 +447,9 @@ class _ShopNearYouLineState extends State<ShopNearYouLine> {
   ShopNearYouState? _state;
   bool _busy = false;
 
+  /// The kept area's name from /shop/areas (Privacy sheet).
+  String? _listedName;
+
   @override
   void initState() {
     super.initState();
@@ -402,10 +458,24 @@ class _ShopNearYouLineState extends State<ShopNearYouLine> {
 
   Future<void> _load() async {
     if (!mounted) return;
+    final scope = AppScope.of(context);
+    final lang = FFLocaleScope.of(context).locale.languageCode;
     final state = await ShopNearYouStore.load(
-      AppScope.of(context).auth.user?['id']?.toString(),
+      scope.auth.user?['id']?.toString(),
     );
-    if (mounted) setState(() => _state = state);
+    String? name;
+    if (!widget.inHome && state.areaId != null) {
+      final areas = await ShopAreas.tryLoad(scope.api) ?? const [];
+      for (final a in areas) {
+        if (a.id == state.areaId) name = a.nameIn(lang);
+      }
+    }
+    if (mounted) {
+      setState(() {
+        _state = state;
+        _listedName = name;
+      });
+    }
   }
 
   Future<void> _run(Future<void> Function() action) async {
@@ -427,9 +497,9 @@ class _ShopNearYouLineState extends State<ShopNearYouLine> {
     final theme = Theme.of(context);
     final on = state.choice == ShopNearYouChoice.on;
     final server = widget.serverArea;
-    final area = server != null && server.id == state.areaId
-        ? server.name
-        : state.areaName ?? '';
+    final area = widget.inHome
+        ? (server != null && server.id == state.areaId ? server.name : '')
+        : _listedName ?? state.areaName ?? '';
     final text = !on
         ? context.tr('shop.why.nearOff')
         : area.isEmpty

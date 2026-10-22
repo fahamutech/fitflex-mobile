@@ -1827,9 +1827,10 @@ class ApiClient {
   /// the server's default role.
   ///
   /// [areaId] (Phase 2 S3, "Popular near you") is the id of the area the
-  /// phone worked out from its own position. It is the only location-derived
-  /// value the app ever sends: there is deliberately no latitude/longitude
-  /// parameter here.
+  /// phone worked out from its own position, sent in the `X-FF-Area` header
+  /// (not the URL, so it stays out of URL logs and history). It is the only
+  /// location-derived value the app ever sends: there is deliberately no
+  /// latitude/longitude parameter here.
   Future<Map<String, dynamic>> shopHome({
     String? mode,
     String? session,
@@ -1843,11 +1844,16 @@ class ApiClient {
         if (session != null && _discoverSession.hasMatch(session))
           'session': session,
         if (recent.isNotEmpty) 'recent': recent.join(','),
-        if (areaId != null && areaId.isNotEmpty) 'areaId': areaId,
       }),
+      extraHeaders: {
+        if (areaId != null && areaId.isNotEmpty) kShopAreaHeader: areaId,
+      },
     );
     return Map<String, dynamic>.from(out as Map);
   }
+
+  /// The header that carries the near-you area on GET /shop/home.
+  static const kShopAreaHeader = 'X-FF-Area';
 
   /// The active shop areas (Phase 2 S3): `{areas: [{id, level, name, names,
   /// parentId, lat, lng, radiusKm}]}`. 404 `feature_disabled` when

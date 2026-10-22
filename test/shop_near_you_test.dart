@@ -10,15 +10,18 @@
 // merch.shopAreas). Mocked at the HTTP level (test/support/recording_api);
 // the OS location calls are a fake ShopLocator.
 import 'dart:convert';
+import 'dart:io';
 import 'dart:ui' show Tristate;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:fitflexmobile/app_scope.dart';
 import 'package:fitflexmobile/screens/vendor/stock/stock_options.dart';
 import 'package:fitflexmobile/screens/vendor/vendor_home_page.dart';
 import 'package:fitflexmobile/shared/api_client.dart';
 import 'package:fitflexmobile/shared/i18n.dart';
+import 'package:fitflexmobile/shared/rest_log.dart' show redactHeaders;
 import 'package:fitflexmobile/shared/shop_home.dart';
 import 'package:fitflexmobile/shared/shop_near_you.dart';
 import 'package:fitflexmobile/shared/widgets/ff_area_picker.dart';
@@ -91,6 +94,10 @@ final _areasJson = [
 ];
 
 final _areas = ShopArea.listFromJson({'areas': _areasJson});
+
+/// A real 1x1 PNG (vendor logo / banner).
+const _png =
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
 
 // Points used below. Kinondoni centre is inside the district (and the city
 // and region around it); Ubungo-ish is inside the city but not the district;
@@ -185,7 +192,7 @@ void _seed(RecordingApi api, Map<String, dynamic> home, {bool areas = true}) {
 void _seedAreaAware(RecordingApi api) {
   _seed(api, _home(nearYou: _on));
   api.onCall('GET /shop/home', (r) {
-    final areaId = Uri.splitQueryString(r.query)['areaId'];
+    final areaId = r.headers['x-ff-area'];
     return _home(
       nearYou: areaId == null
           ? _on
@@ -294,9 +301,14 @@ void _expectNoCoordinates(RecordingApi api) {
   }
 }
 
+/// The area sent with each GET /shop/home (the `X-FF-Area` header), and
+/// never in the URL.
 List<String?> _sentAreaIds(RecordingApi api) => [
   for (final r in api.where('GET', '/shop/home'))
-    Uri.splitQueryString(r.query)['areaId'],
+    (() {
+      expect(r.query, isNot(contains('areaId')), reason: 'area in the URL');
+      return r.headers['x-ff-area'];
+    })(),
 ];
 
 void main() {
@@ -389,35 +401,43 @@ void main() {
   // ── the request ───────────────────────────────────────────────────────
 
   group('ApiClient', () {
-    test(
-      'shopHome sends only areaId: no latitude/longitude parameter',
-      () async {
-        final seen = <Uri>[];
-        await http.runWithClient(
-          () async {
-            final api = ApiClient(baseUrl: 'http://fixtures.local');
-            await api.shopHome(mode: 'member', areaId: 'tz-dar-city');
-            await api.shopHome(mode: 'member');
-            await api.shopAreas();
-          },
-          () => MockClient((req) async {
-            seen.add(req.url);
-            return http.Response('{}', 200);
-          }),
-        );
-        expect(seen[0].queryParameters['areaId'], 'tz-dar-city');
-        expect(seen[1].queryParameters.containsKey('areaId'), isFalse);
-        expect(seen[2].path, '/shop/areas');
-        for (final uri in seen) {
-          for (final k in uri.queryParameters.keys) {
-            expect(
-              k.toLowerCase(),
-              isNot(anyOf(contains('lat'), contains('lng'), contains('lon'))),
-            );
-          }
+    test('shopHome sends the area only in X-FF-Area: not in the URL, no '
+        'latitude/longitude anywhere', () async {
+      final seen = <Uri>[];
+      final headers = <Map<String, String>>[];
+      await http.runWithClient(
+        () async {
+          final api = ApiClient(baseUrl: 'http://fixtures.local');
+          await api.shopHome(mode: 'member', areaId: 'tz-dar-city');
+          await api.shopHome(mode: 'member');
+          await api.shopAreas();
+        },
+        () => MockClient((req) async {
+          seen.add(req.url);
+          headers.add({
+            for (final e in req.headers.entries) e.key.toLowerCase(): e.value,
+          });
+          return http.Response('{}', 200);
+        }),
+      );
+      expect(headers[0]['x-ff-area'], 'tz-dar-city');
+      expect(seen[0].query, isNot(contains('tz-dar-city')));
+      expect(seen[0].queryParameters.containsKey('areaId'), isFalse);
+      expect(headers[1].containsKey('x-ff-area'), isFalse);
+      expect(
+        redactHeaders({'X-FF-Area': 'tz-dar-city'})['X-FF-Area'],
+        '<redacted>',
+      );
+      expect(seen[2].path, '/shop/areas');
+      for (final uri in seen) {
+        for (final k in uri.queryParameters.keys) {
+          expect(
+            k.toLowerCase(),
+            isNot(anyOf(contains('lat'), contains('lng'), contains('lon'))),
+          );
         }
-      },
-    );
+      }
+    });
   });
 
   // ── invite card, rationale, outcomes ──────────────────────────────────
@@ -453,6 +473,30 @@ void main() {
       _seed(api, _home(nearYou: _off));
       await _pumpShop(tester, api);
       expect(_key('shop-near-you-invite'), findsNothing);
+      expect(loc.calls, isEmpty);
+      // Nothing sent, and the kept area is forgotten (L1).
+      expect(_sentAreaIds(api), everyElement(isNull));
+      expect(ShopNearYouStore.peek('m1')!.choice, ShopNearYouChoice.notAsked);
+      expect(ShopNearYouStore.peek('m1')!.areaId, isNull);
+    });
+
+    apiTest('switch off on the server (personalisation.enabled false): the '
+        'kept area is forgotten, nothing sent', (tester, api) async {
+      final loc = debugShopLocatorOverride = FakeLocator(
+        access: ShopLocationAccess.granted,
+        fix: _kinondoni,
+      );
+      await ShopNearYouStore.save(
+        'm1',
+        const ShopNearYouState(
+          choice: ShopNearYouChoice.on,
+          areaId: 'tz-dar-city',
+        ),
+      );
+      _seed(api, _home(personalised: false));
+      await _pumpShop(tester, api);
+      expect(_sentAreaIds(api), everyElement(isNull));
+      expect(ShopNearYouStore.peek('m1')!.areaId, isNull);
       expect(loc.calls, isEmpty);
     });
 
@@ -701,8 +745,11 @@ void main() {
   // ── once a session, refresh, switch off ──────────────────────────────
 
   group('later sessions', () {
-    apiTest('turned on before: the kept area is sent at once and the '
-        'position read once, without asking', (tester, api) async {
+    apiTest('turned on before: the kept area is sent once the server says '
+        'near-you is available, and the position read once, without asking', (
+      tester,
+      api,
+    ) async {
       final loc = debugShopLocatorOverride = FakeLocator(
         access: ShopLocationAccess.granted,
         fix: _darCity,
@@ -717,9 +764,10 @@ void main() {
       );
       _seedAreaAware(api);
       await _pumpShop(tester, api);
-      expect(_sentAreaIds(api).first, 'tz-dar-kinondoni');
-      // Moved: the new area is sent.
-      expect(_sentAreaIds(api).last, 'tz-dar-city');
+      // L1: the first answer this session has not said "available" yet,
+      // so the first request carries no area; then the kept one; then,
+      // after the position moved, the new one.
+      expect(_sentAreaIds(api), [null, 'tz-dar-kinondoni', 'tz-dar-city']);
       expect(loc.count('position'), 1);
       expect(loc.count('request'), 0);
       expect(_key('shop-location-sheet'), findsNothing);
@@ -1131,7 +1179,7 @@ void main() {
       expect(sw.t('shop.why.nearOn'), contains('{area}'));
       expect(sw.t('shop.why.popularInArea'), contains('{areaName}'));
       expect(sw.t('vendor.areas.a11yRow'), contains('{parent}'));
-      expect(sw.t('shop.near.badge'), 'Ina delivery eneo lako');
+      expect(sw.t('shop.near.badge'), 'Ina delivery hadi eneo lako');
     });
   });
 
@@ -1156,10 +1204,8 @@ void main() {
         'businessHours': {'summary': '8-6'},
         'settlementAccount': {'account': '123'},
         'productCategories': ['equipment'],
-        'logo':
-            'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
-        'banner':
-            'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+        'logo': _png,
+        'banner': _png,
         ...profile,
       };
       await pumpPage(
@@ -1364,6 +1410,315 @@ void main() {
         isFalse,
       );
       expect(VendorTools.fromOptions({}).shopAreas, isFalse);
+    });
+  });
+
+  // ── review round 1 ─────────────────────────────────────────────────────
+
+  group('review fixes', () {
+    apiTest('#6 area list fails (5xx): "Couldn\'t find your area" with Try '
+        'again, not "no sellers"; Try again works', (tester, api) async {
+      final loc = debugShopLocatorOverride = FakeLocator(
+        access: ShopLocationAccess.granted,
+        fix: _darCity,
+      );
+      _seedAreaAware(api);
+      api.fail('GET /shop/areas', 503);
+      final host = await _pumpShop(tester, api);
+      await tapVisible(tester, _key('shop-near-you-use'));
+      await tapVisible(tester, _key('shop-location-use'));
+      expect(host.snack(host.tr('shop.near.failed')), findsOneWidget);
+      expect(host.snack(host.tr('shop.near.noArea')), findsNothing);
+      expect(loc.count('position'), 0);
+      // Nothing was decided: the card is still offered.
+      expect(
+        ShopNearYouStore.peek('m1')?.choice ?? ShopNearYouChoice.notAsked,
+        ShopNearYouChoice.notAsked,
+      );
+
+      api.heal('GET /shop/areas');
+      await tester.tap(buttonLabelled(host.tr('common.retry')));
+      await tester.pumpAndSettle();
+      expect(loc.count('position'), 1);
+      expect(_sentAreaIds(api).last, 'tz-dar-city');
+      expect(_key('shop-location-sheet'), findsNothing);
+    });
+
+    apiTest('#5 the server did not echo the area: the Why line says "no '
+        'sellers listed", not the kept name', (tester, api) async {
+      debugShopLocatorOverride = FakeLocator(
+        access: ShopLocationAccess.granted,
+        fix: _darCity,
+      );
+      await ShopNearYouStore.save(
+        'm1',
+        const ShopNearYouState(
+          choice: ShopNearYouChoice.on,
+          areaId: 'tz-dar-city',
+          areaName: 'Dar es Salaam',
+        ),
+      );
+      // Available, but the area is not recognised (no areaId echoed).
+      _seed(api, _home(nearYou: _on));
+      final host = await _pumpShop(tester, api);
+      await tapVisible(tester, _key('shop-home-why-recommended'));
+      expect(
+        tester.widget<Text>(_key('shop-near-you-status')).data,
+        host.tr('shop.why.nearNoArea'),
+      );
+    });
+
+    test('only the choice and the area id are stored', () {
+      const state = ShopNearYouState(
+        choice: ShopNearYouChoice.on,
+        areaId: 'tz-dar-city',
+        areaName: 'Dar es Salaam',
+        manual: true,
+      );
+      expect(state.toJson(), {'choice': 'on', 'areaId': 'tz-dar-city'});
+      final back = ShopNearYouState.fromJson({
+        'choice': 'on',
+        'areaId': 'tz-dar-city',
+        'areaName': 'old',
+        'manual': true,
+      });
+      expect(back.areaName, isNull);
+      expect(back.manual, isFalse);
+      // Areas with no centre never match (M1).
+      expect(
+        areaFor(0, 0, const [
+          ShopArea(id: 'a', name: 'A', level: 'city', radiusKm: 999),
+        ]),
+        isNull,
+      );
+    });
+
+    Future<void> pumpSaving(
+      WidgetTester tester,
+      RecordingApi api,
+      Map<String, dynamic> profile,
+      List<Map<String, dynamic>?> results, {
+      String lang = 'en',
+    }) async {
+      await pumpPage(
+        tester,
+        api,
+        Builder(
+          builder: (context) => Center(
+            child: FilledButton(
+              key: const Key('open-form'),
+              onPressed: () async {
+                final api0 = AppScope.of(context).api;
+                results.add(
+                  await showModalBottomSheet<Map<String, dynamic>>(
+                    context: context,
+                    isScrollControlled: true,
+                    builder: (_) => VendorProfileForm(
+                      profile: profile,
+                      shopAreas: true,
+                      onSave: api0.vendorSaveProfile,
+                    ),
+                  ),
+                );
+              },
+              child: const Text('open'),
+            ),
+          ),
+        ),
+        lang: lang,
+        size: const Size(400, 1600),
+      );
+      await tester.tap(_key('open-form'));
+      await tester.pumpAndSettle();
+    }
+
+    final fullProfile = {
+      'businessName': 'Dar Fit Supplies',
+      'description': 'Gear',
+      'contactNumber': '0700000000',
+      'address': 'Kinondoni',
+      'businessHours': {'summary': '8-6'},
+      'settlementAccount': {'account': '123'},
+      'productCategories': ['equipment'],
+      'logo': _png,
+      'banner': _png,
+    };
+
+    for (final lang in ['en', 'sw']) {
+      apiTest('vendor: 400 invalid_area is shown in the form, which stays '
+          'open ($lang)', (tester, api) async {
+        api.on('GET /shop/areas', {'areas': _areasJson});
+        api.fail('PUT /vendor/profile', 400, {
+          'error': 'invalid_area',
+          'field': 'deliveryAreaIds',
+          'ids': ['tz-arusha-city'],
+          'reason': 'inactive',
+        });
+        final results = <Map<String, dynamic>?>[];
+        await pumpSaving(
+          tester,
+          api,
+          {
+            ...fullProfile,
+            'cityId': 'tz-dar-city',
+            'deliveryAreaIds': ['tz-arusha-city'],
+          },
+          results,
+          lang: lang,
+        );
+        await tapVisible(tester, _key('vendor-profile-publish'));
+        final l = FFLocale()..set(Locale(lang));
+        expect(
+          tester.widget<Text>(_key('vendor-areas-invalid')).data,
+          l.t('vendor.areas.invalid.gone').replaceAll('{areas}', 'Arusha'),
+        );
+        expect(_key('vendor-areas'), findsOneWidget, reason: 'sheet open');
+        expect(results, isEmpty);
+        expect(api.where('PUT', '/vendor/profile'), hasLength(1));
+
+        // Saved on a second try: the sheet closes with the body.
+        api.heal('PUT /vendor/profile');
+        await tapVisible(tester, _key('vendor-profile-publish'));
+        expect(results, hasLength(1));
+        expect(_key('vendor-areas'), findsNothing);
+      });
+    }
+
+    apiTest('vendor: other reasons have their own words', (tester, api) async {
+      api.on('GET /shop/areas', {'areas': _areasJson});
+      final l = FFLocale();
+      for (final (reason, key) in [
+        ('too_many', 'tooMany'),
+        ('wrong_level', 'wrongLevel'),
+        ('not_in_region', 'notInRegion'),
+        ('not_a_list', 'other'),
+      ]) {
+        api.fail('PUT /vendor/profile', 400, {
+          'error': 'invalid_area',
+          'field': 'cityId',
+          'ids': <String>[],
+          'reason': reason,
+        });
+        final results = <Map<String, dynamic>?>[];
+        await pumpSaving(tester, api, {
+          ...fullProfile,
+          'cityId': 'tz-dar-city',
+        }, results);
+        await tapVisible(tester, _key('vendor-profile-publish'));
+        expect(
+          tester.widget<Text>(_key('vendor-areas-invalid')).data,
+          l.t('vendor.areas.invalid.$key'),
+          reason: reason,
+        );
+        await tester.pumpWidget(const SizedBox());
+      }
+    });
+
+    apiTest('vendor: a non-area failure is shown in the form too', (
+      tester,
+      api,
+    ) async {
+      api.on('GET /shop/areas', {'areas': _areasJson});
+      api.fail('PUT /vendor/profile', 500);
+      final results = <Map<String, dynamic>?>[];
+      await pumpSaving(tester, api, {
+        ...fullProfile,
+        'cityId': 'tz-dar-city',
+      }, results);
+      await tapVisible(tester, _key('vendor-profile-publish'));
+      expect(_key('vendor-profile-save-error'), findsOneWidget);
+      expect(results, isEmpty);
+    });
+
+    apiTest('vendor: a stored cityId that is no longer usable is dropped', (
+      tester,
+      api,
+    ) async {
+      api.on('GET /shop/areas', {'areas': _areasJson});
+      final results = <Map<String, dynamic>?>[];
+      await pumpSaving(tester, api, {
+        ...fullProfile,
+        'cityId': 'tz-gone-city',
+        'deliveryAreaIds': ['tz-gone-city', 'tz-dar'],
+      }, results);
+      expect(find.text(FFLocale().t('vendor.areas.basedIn')), findsWidgets);
+      await tapVisible(tester, _key('vendor-profile-publish'));
+      // Based in must be picked again; nothing was sent.
+      expect(
+        find.text(FFLocale().t('vendor.areas.basedInMissing')),
+        findsOneWidget,
+      );
+      expect(api.sent('PUT', '/vendor/profile'), isFalse);
+      await tapVisible(tester, _key('vendor-areas-based-in'));
+      await tapVisible(tester, _key('ff-area-row-tz-dar-city'));
+      await tapVisible(tester, _key('ff-area-done'));
+      await tapVisible(tester, _key('vendor-profile-publish'));
+      final body = api.only('PUT', '/vendor/profile').body as Map;
+      expect(body['cityId'], 'tz-dar-city');
+      expect(body['deliveryAreaIds'], ['tz-dar']);
+    });
+
+    test('iOS: location prompts name the shop use, in English and Swahili', () {
+      final plist = File('ios/Runner/Info.plist').readAsStringSync();
+      expect(plist, contains('approximate area for the shop'));
+      expect(plist, contains('only while you record a run'));
+      expect(plist, contains('<string>sw</string>'));
+      final en = File(
+        'ios/Runner/en.lproj/InfoPlist.strings',
+      ).readAsStringSync();
+      final sw = File(
+        'ios/Runner/sw.lproj/InfoPlist.strings',
+      ).readAsStringSync();
+      final keys = RegExp(r'^"(NS\w+)"', multiLine: true);
+      final plistKeys = RegExp(
+        r'<key>(NS\w+UsageDescription)</key>',
+      ).allMatches(plist).map((m) => m.group(1)).toSet();
+      expect(keys.allMatches(en).map((m) => m.group(1)).toSet(), plistKeys);
+      expect(keys.allMatches(sw).map((m) => m.group(1)).toSet(), plistKeys);
+      expect(sw, contains('kukadiria eneo lako kwa ajili ya duka'));
+      expect(sw, contains('chinichini tu unaporekodi mbio'));
+      final pbx = File(
+        'ios/Runner.xcodeproj/project.pbxproj',
+      ).readAsStringSync();
+      expect(pbx, contains('sw.lproj/InfoPlist.strings'));
+      expect(pbx, contains('InfoPlist.strings in Resources'));
+      expect(RegExp(r'knownRegions = \([^)]*\bsw,').hasMatch(pbx), isTrue);
+    });
+
+    test('new wording in both languages', () {
+      final en = FFLocale()..set(const Locale('en'));
+      final sw = FFLocale()..set(const Locale('sw'));
+      for (final k in [
+        'gone',
+        'wrongLevel',
+        'notInRegion',
+        'tooMany',
+        'other',
+      ]) {
+        final key = 'vendor.areas.invalid.$k';
+        expect(en.t(key), isNot(key));
+        expect(sw.t(key), isNot(key));
+        expect(sw.t(key), isNot(en.t(key)));
+      }
+      expect(sw.t('vendor.areas.basedIn'), 'Mahali biashara ilipo');
+      expect(
+        sw.t('vendor.areas.basedInRow').replaceAll('{area}', 'X'),
+        'Biashara ipo: X',
+      );
+      expect(sw.t('shop.near.badge'), 'Ina delivery hadi eneo lako');
+      expect(sw.t('shop.near.inviteTitle'), 'Ona bidhaa maarufu karibu nawe');
+      expect(
+        sw.t('vendor.areas.nationwide').replaceAll('{area}', 'Tanzania'),
+        'Nchi nzima (Tanzania yote)',
+      );
+      expect(
+        en.t('shop.why.deliversToArea'),
+        'These sellers deliver to your current area.',
+      );
+      expect(
+        sw.t('shop.why.deliversToArea'),
+        'Wauzaji hawa wana delivery hadi eneo ulipo sasa.',
+      );
     });
   });
 }

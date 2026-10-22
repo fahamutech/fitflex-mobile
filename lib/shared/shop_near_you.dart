@@ -3,11 +3,14 @@
 //
 // Privacy rules this file keeps (owner decision O-7, DD-P2-9):
 // - The phone works out the area itself, from GET /shop/areas. Only the
-//   area's id is ever sent (`areaId` on GET /shop/home and the product list).
+//   area's id is ever sent: in the `X-FF-Area` header of GET /shop/home,
+//   and only while the last answer said near-you is available. It is
+//   redacted from the app's own debug log (rest_log.dart).
 // - The position is read with low accuracy, used once to pick the area and
 //   then dropped. It is never stored, logged or sent anywhere.
 // - What is kept on the device, per signed-in account: whether the shop may
-//   use location ("on" / "off") and the area last worked out. No coordinates.
+//   use location ("on" / "off") and the area id last worked out. Nothing
+//   else (no coordinates, no area name; names are read from /shop/areas).
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
@@ -185,22 +188,20 @@ class ShopNearYouState {
 
   final ShopNearYouChoice choice;
 
-  /// The area last worked out (or picked), sent as `areaId`.
+  /// The area last worked out (or picked), sent in `X-FF-Area`.
   final String? areaId;
+
+  /// For display this session only; never stored.
   final String? areaName;
 
-  /// The area was picked by hand ("Change area"): the position is then not
-  /// read again until location is used again.
+  /// The area was picked by hand ("Change area") this session: the position
+  /// is not read again this session. Never stored.
   final bool manual;
 
   static const empty = ShopNearYouState();
 
-  Map<String, dynamic> toJson() => {
-    'choice': choice.name,
-    'areaId': ?areaId,
-    'areaName': ?areaName,
-    if (manual) 'manual': true,
-  };
+  /// What is stored on the device: the choice and the area id only.
+  Map<String, dynamic> toJson() => {'choice': choice.name, 'areaId': ?areaId};
 
   static ShopNearYouState fromJson(Object? json) {
     if (json is! Map) return empty;
@@ -209,13 +210,10 @@ class ShopNearYouState {
       orElse: () => ShopNearYouChoice.notAsked,
     );
     final id = json['areaId']?.toString() ?? '';
-    final name = json['areaName']?.toString() ?? '';
     return ShopNearYouState(
       choice: choice,
       // An area only means something while the choice is on.
       areaId: choice == ShopNearYouChoice.on && id.isNotEmpty ? id : null,
-      areaName: choice == ShopNearYouChoice.on && name.isNotEmpty ? name : null,
-      manual: choice == ShopNearYouChoice.on && json['manual'] == true,
     );
   }
 }
@@ -231,6 +229,15 @@ class ShopNearYouStore {
 
   /// Accounts whose position was already read this app session.
   static final Set<String> _readThisSession = {};
+
+  /// Whether the last GET /shop/home answer for an account said near-you
+  /// is available (L1): the area is sent only then. Memory only.
+  static final Map<String, bool> _lastAvailable = {};
+
+  static bool lastAvailable(String? userId) =>
+      _lastAvailable[_id(userId)] == true;
+  static void setLastAvailable(String? userId, bool available) =>
+      _lastAvailable[_id(userId)] = available;
 
   /// Bumped whenever an account's choice or area changes, so a Shop home
   /// kept alive in another tab reloads with the new area (or without one).
@@ -296,6 +303,7 @@ class ShopNearYouStore {
   static void reset() {
     _memory.clear();
     _readThisSession.clear();
+    _lastAvailable.clear();
   }
 }
 
@@ -325,6 +333,24 @@ class ShopAreas {
       return _cache[api] = const [];
     } catch (_) {
       return const [];
+    }
+  }
+
+  /// Like [load], but null when the list could not be fetched (no
+  /// connection, 5xx): the caller says "Couldn't find your area" with Try
+  /// again, not "no sellers here". 404 / non-JSON = no areas (empty).
+  static Future<List<ShopArea>?> tryLoad(ApiClient api) async {
+    final cached = _cache[api];
+    if (cached != null && cached.isNotEmpty) return cached;
+    try {
+      return _cache[api] = ShopArea.listFromJson(await api.shopAreas());
+    } on ApiException catch (e) {
+      if (e.status == 404) return _cache[api] = const [];
+      return null;
+    } on FormatException {
+      return _cache[api] = const [];
+    } catch (_) {
+      return null;
     }
   }
 

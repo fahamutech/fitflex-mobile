@@ -89,7 +89,14 @@ class RestLogger {
   }
 }
 
-const _secretHeaders = {'authorization', 'cookie', 'set-cookie', 'x-api-key'};
+// x-ff-area: the shopper's area (shop near-you) is personal; never printed.
+const _secretHeaders = {
+  'authorization',
+  'cookie',
+  'set-cookie',
+  'x-api-key',
+  'x-ff-area',
+};
 
 Map<String, String> redactHeaders(Map<String, String> headers) => {
   for (final e in headers.entries)

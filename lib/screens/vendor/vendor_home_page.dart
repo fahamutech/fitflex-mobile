@@ -1776,23 +1776,21 @@ class _VendorHomePageState extends State<VendorHomePage> {
   }
 
   Future<void> _editProfile() async {
+    final api = AppScope.of(context).api;
+    // The form saves itself and stays open on a refusal (S3: invalid_area
+    // is shown next to "Where you sell"); it closes only once saved.
     final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) =>
-          VendorProfileForm(profile: _profile, shopAreas: _tools.shopAreas),
+      builder: (_) => VendorProfileForm(
+        profile: _profile,
+        shopAreas: _tools.shopAreas,
+        onSave: api.vendorSaveProfile,
+        describeError: _saveFailedText,
+      ),
     );
     if (result == null || !mounted) return;
-    try {
-      await AppScope.of(context).api.vendorSaveProfile(result);
-    } on ApiException catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(_saveFailedText(e))));
-      return;
-    }
     await _refresh();
   }
 
@@ -2723,9 +2721,19 @@ class VendorProfileForm extends StatefulWidget {
     super.key,
     required this.profile,
     this.shopAreas = false,
+    this.onSave,
+    this.describeError,
   });
 
   final Map<String, dynamic> profile;
+
+  /// Saves the profile (PUT /vendor/profile). Set: the form stays open on a
+  /// failure and says why; it closes with the body once saved. Unset: the
+  /// form just closes with the body (the caller saves).
+  final Future<Object?> Function(Map<String, dynamic> body)? onSave;
+
+  /// The message for a failed save other than `invalid_area`.
+  final String Function(Object error)? describeError;
 
   /// Shop Phase 2 S3 (`merch.shopAreas`): the "Where you sell" pickers.
   final bool shopAreas;
@@ -2787,7 +2795,38 @@ class _VendorProfileFormState extends State<VendorProfileForm> {
     super.dispose();
   }
 
+  bool _saving = false;
+  String? _saveError;
+
+  Future<void> _save(Map<String, dynamic> body) async {
+    final save = widget.onSave;
+    if (save == null) {
+      Navigator.pop(context, body);
+      return;
+    }
+    setState(() {
+      _saving = true;
+      _saveError = null;
+    });
+    _areas.clearInvalid();
+    try {
+      await save(body);
+      if (!mounted) return;
+      Navigator.pop(context, body);
+    } catch (e) {
+      if (!mounted) return;
+      final areaError = _areas.invalidMessage(e, FFLocaleScope.of(context));
+      setState(() {
+        _saving = false;
+        _saveError = areaError == null
+            ? widget.describeError?.call(e) ?? context.tr('vendor.saveFailed')
+            : null;
+      });
+    }
+  }
+
   void _submit() {
+    if (_saving) return;
     // "Based in" is needed once the pickers are shown (spec §7.4).
     if (widget.shopAreas && _areas.missingBasedIn) {
       _areas.flagMissing();
@@ -2815,7 +2854,7 @@ class _VendorProfileFormState extends State<VendorProfileForm> {
                 ),
               )
               .en;
-    Navigator.pop(context, {
+    _save({
       'businessName': _fields['businessName']!.text.trim(),
       'logo': _logo,
       'banner': _banner,
@@ -2909,9 +2948,24 @@ class _VendorProfileFormState extends State<VendorProfileForm> {
                 child: FFButton(
                   key: const Key('vendor-profile-publish'),
                   label: context.tr('vendor.publishProfile'),
+                  loading: _saving,
                   onPressed: _submit,
                 ),
               ),
+              if (_saveError != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: FFTokens.spacingSm),
+                  child: Semantics(
+                    liveRegion: true,
+                    child: Text(
+                      _saveError!,
+                      key: const Key('vendor-profile-save-error'),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),

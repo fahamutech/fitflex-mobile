@@ -10,6 +10,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app_scope.dart';
+import '../../shared/api_client.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
@@ -69,7 +70,52 @@ class VendorAreasController extends ChangeNotifier {
   void loaded(VendorAreasLoad state, [List<ShopArea> list = const []]) {
     load = state;
     areas = list;
+    if (state == VendorAreasLoad.ready) {
+      // A stored area that is no longer usable is dropped (picked again).
+      final usable = {for (final a in list) a.id};
+      if (cityId != null && !usable.contains(cityId)) cityId = null;
+      deliveryIds = {
+        for (final id in deliveryIds)
+          if (usable.contains(id)) id,
+      };
+    }
     notifyListeners();
+  }
+
+  /// The last save's `invalid_area` message, shown in the section.
+  String? invalid;
+
+  void clearInvalid() {
+    if (invalid == null) return;
+    invalid = null;
+    notifyListeners();
+  }
+
+  /// For a 400 `invalid_area {field, ids, reason}` from PUT /vendor/profile:
+  /// the message (same wording as the portal's vendors.areas.invalid.*),
+  /// also shown in the section. Null for any other failure.
+  String? invalidMessage(Object error, FFLocale locale) {
+    if (error is! ApiException || error.code != 'invalid_area') return null;
+    final body = error.body is Map ? error.body as Map : const {};
+    final ids = body['ids'] is List ? body['ids'] as List : const [];
+    final lang = locale.locale.languageCode;
+    final names = [
+      for (final id in ids) byId(id?.toString())?.nameIn(lang) ?? '$id',
+    ].join(', ');
+    final key = switch (body['reason']) {
+      'too_many' => 'tooMany',
+      'wrong_level' => 'wrongLevel',
+      'not_in_region' => 'notInRegion',
+      'unknown' || 'inactive' => 'gone',
+      _ => 'other',
+    };
+    // A city that is gone: the picker must be used again.
+    if (key == 'gone' && body['field'] == 'cityId') cityId = null;
+    invalid = locale
+        .t('vendor.areas.invalid.$key')
+        .replaceAll('{areas}', names);
+    notifyListeners();
+    return invalid;
   }
 
   /// "Based in" is needed once the pickers are shown.
@@ -324,6 +370,17 @@ class _VendorAreasSectionState extends State<VendorAreasSection> {
           sub: picked.isEmpty ? context.tr('vendor.areas.deliversEmpty') : null,
           onTap: _pickDelivery,
         ),
+        if (_c.invalid != null)
+          Semantics(
+            liveRegion: true,
+            child: Text(
+              _c.invalid!,
+              key: const Key('vendor-areas-invalid'),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.error,
+              ),
+            ),
+          ),
       ],
     );
   }

@@ -784,11 +784,11 @@ void main() {
       expect(en.t('vendor.target.hint'), contains('members it suits'));
       expect(
         en.t('shop.why.deliversToArea'),
-        'It delivers to your current area.',
+        'These sellers deliver to your current area.',
       );
       expect(
         sw.t('shop.why.deliversToArea'),
-        'Ina delivery kwenye eneo ulipo sasa.',
+        'Wauzaji hawa wana delivery hadi eneo ulipo sasa.',
       );
       for (final key in ['shop.why.switchHintPartner', 'vendor.target.hint']) {
         expect(sw.t(key), isNot(contains('mkufunzi')));

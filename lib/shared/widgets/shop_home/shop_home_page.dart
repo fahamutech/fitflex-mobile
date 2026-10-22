@@ -144,7 +144,6 @@ class ShopHomeViewState extends State<ShopHomeView> {
     });
   }
 
-
   /// The choice or the area changed (here, in the Why sheet or on the
   /// Privacy page): ask again with the new area, or without one.
   void _nearChanged() {
@@ -160,8 +159,9 @@ class ShopHomeViewState extends State<ShopHomeView> {
 
   /// Fetches the home again. Content already shown stays while it loads.
   ///
-  /// The only location-derived value sent is the `areaId` the phone worked
-  /// out (Phase 2 S3), and only while this account has near-you on.
+  /// The only location-derived value sent is the area id the phone worked
+  /// out (Phase 2 S3, `X-FF-Area`), and only while this account has
+  /// near-you on AND the last answer said near-you is available (L1).
   Future<void> reload() async {
     final scope = AppScope.of(context);
     final id = ++_load;
@@ -171,7 +171,11 @@ class ShopHomeViewState extends State<ShopHomeView> {
     final near = await ShopNearYouStore.load(uid);
     if (!mounted) return;
     _near = near;
-    final areaId = near.choice == ShopNearYouChoice.on ? near.areaId : null;
+    final areaId =
+        near.choice == ShopNearYouChoice.on &&
+            ShopNearYouStore.lastAvailable(uid)
+        ? near.areaId
+        : null;
     Future<Map<String, dynamic>> fetch(String? mode) => scope.api.shopHome(
       mode: mode,
       // Lets the server sign promotion tokens for Featured cards.
@@ -200,14 +204,24 @@ class ShopHomeViewState extends State<ShopHomeView> {
       widget.onOfflineChanged?.call(false);
       ShopEvents.newLoad();
       ShopEvents.send(scope.api, 'shop_home_viewed', mode: _mode(data));
-      // Near-you on for this account: work the area out again once a
-      // session (never prompting). Not when the server says near-you is
-      // not available (flag off, personalisation off or not allowed).
-      if (data.nearYou?.available == true &&
-          near.choice == ShopNearYouChoice.on) {
-        final lang = FFLocaleScope.of(context).locale.languageCode;
-        // A change is saved, which reloads the home through the listener.
-        unawaited(ShopNearYouFlow.refresh(context, lang));
+      final available = data.nearYou?.available == true;
+      ShopNearYouStore.setLastAvailable(uid, available);
+      // Near-you not available (personalisation off, not allowed, flag
+      // switched off) or the switch is off: forget the kept area (L1).
+      if (data.nearYou?.available == false ||
+          data.personalisation?.enabled == false) {
+        unawaited(ShopNearYouStore.clear(uid));
+      } else if (available && near.choice == ShopNearYouChoice.on) {
+        if (areaId == null && near.areaId != null) {
+          // The first answer this session says near-you is available: ask
+          // again, now with the kept area.
+          unawaited(reload());
+        } else {
+          // Work the area out again once a session (never prompting). A
+          // change is saved, which reloads the home through the listener.
+          final lang = FFLocaleScope.of(context).locale.languageCode;
+          unawaited(ShopNearYouFlow.refresh(context, lang));
+        }
       }
     } on ApiException catch (e) {
       if (!mounted || id != _load) return;
@@ -436,9 +450,8 @@ class ShopHomeViewState extends State<ShopHomeView> {
           builder: (sheet, setSheet) {
             final theme = Theme.of(sheet);
             final p = data?.personalisation ?? first;
-            final current = data?.sections
-                    .where((x) => x.key == section.key)
-                    .firstOrNull ??
+            final current =
+                data?.sections.where((x) => x.key == section.key).firstOrNull ??
                 section;
             final enabled = on ?? p?.enabled ?? true;
             // A backend without personalisation (null): Phase 1 sheet.
@@ -533,7 +546,9 @@ class ShopHomeViewState extends State<ShopHomeView> {
                             onPressed: () {
                               Navigator.of(sheet).pop();
                               // Pushed, so Back returns to the shop.
-                              if (mounted) context.push(AppRoutes.memberPrivacy);
+                              if (mounted) {
+                                context.push(AppRoutes.memberPrivacy);
+                              }
                             },
                           ),
                         ),

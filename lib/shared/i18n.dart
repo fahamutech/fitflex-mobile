@@ -4389,7 +4389,7 @@ class FFLocale extends ChangeNotifier {
       'shop.why.boughtCategory': "You've bought {category} before.",
       'shop.why.boughtProduct': 'Suggested because you bought {product}.',
       'shop.why.gender': 'The gender in your profile.',
-      'shop.why.deliversToArea': 'It delivers to your current area.',
+      'shop.why.deliversToArea': "These sellers deliver to your current area.",
       'shop.why.featured':
           'Featured products are chosen by FitFlex or paid for by sellers. Paid ones are labelled Sponsored.',
       'shop.why.flashSale': 'The seller has set a discount for a limited time.',
@@ -4510,8 +4510,7 @@ class FFLocale extends ChangeNotifier {
       'shop.near.sheetTitle': "Use your location in the shop?",
       'shop.near.point1':
           "Your phone works out your approximate area, such as your city or district.",
-      'shop.near.point2':
-          "Only the area is sent to FitFlex, and it isn't stored. Your exact location never leaves your phone.",
+      'shop.near.point2': "Only the area is sent to FitFlex, and it isn't stored. For the shop, your exact location never leaves your device.",
       'shop.near.point3':
           "You can turn this off any time with \"Personalised shop\", in the shop or in Privacy & data.",
       'shop.near.alreadyAllowed':
@@ -4564,6 +4563,11 @@ class FFLocale extends ChangeNotifier {
       'vendor.areas.level.district': "district",
       'vendor.areas.none': "Areas aren't set up yet.",
       'vendor.areas.failed': "Couldn't load areas. Try again.",
+      'vendor.areas.invalid.gone': "{areas}: this area is no longer available. Pick another.",
+      'vendor.areas.invalid.wrongLevel': "Based in must be a city or district.",
+      'vendor.areas.invalid.notInRegion': "The city is not inside that region. Pick the city again.",
+      'vendor.areas.invalid.tooMany': "Pick up to 50 delivery areas.",
+      'vendor.areas.invalid.other': "Some areas couldn't be saved. Check them and try again.",
       'vendor.areas.nudge':
           "Add where you're based and where you deliver, so buyers nearby find you.",
       'vendor.areas.nudgeAction': "Add now",
@@ -9925,7 +9929,7 @@ class FFLocale extends ChangeNotifier {
       'shop.why.boughtCategory': 'Uliwahi kununua {category}.',
       'shop.why.boughtProduct': 'Imependekezwa kwa sababu ulinunua {product}.',
       'shop.why.gender': 'Jinsia uliyoweka kwenye wasifu wako.',
-      'shop.why.deliversToArea': 'Ina delivery kwenye eneo ulipo sasa.',
+      'shop.why.deliversToArea': "Wauzaji hawa wana delivery hadi eneo ulipo sasa.",
       'shop.why.featured':
           'Bidhaa zilizoangaziwa huchaguliwa na FitFlex au hulipiwa na wauzaji. Zilizolipiwa zimeandikwa "Iliyodhaminiwa".',
       'shop.why.flashSale': 'Muuzaji ameweka punguzo kwa muda maalum.',
@@ -10041,17 +10045,14 @@ class FFLocale extends ChangeNotifier {
       'vendor.target.a11yBand': '{from} hadi {to}',
       'vendor.target.a11yBandPlus': '{from} na zaidi',
       // Shop Phase 2 S3: near you (spec shop-home-phase2 §7, §10.5, §10.7). Swahili needs native review.
-      'shop.near.inviteTitle': "Ona kinachopendwa karibu nawe",
-      'shop.near.inviteBody':
-          "Pata bidhaa kutoka kwa wauzaji wenye delivery kwenye eneo lako.",
+      'shop.near.inviteTitle': "Ona bidhaa maarufu karibu nawe",
+      'shop.near.inviteBody': "Pata bidhaa kutoka kwa wauzaji wenye delivery hadi eneo lako.",
       'shop.near.use': "Tumia mahali nilipo",
       'shop.near.notNow': "Si sasa",
       'shop.near.offline': "Inahitaji intaneti",
       'shop.near.sheetTitle': "Tumia mahali ulipo dukani?",
-      'shop.near.point1':
-          "Simu yako inatambua eneo lako la takriban, kama jiji au wilaya yako.",
-      'shop.near.point2':
-          "FitFlex inapokea eneo tu, na halihifadhiwi. Mahali hasa ulipo hapatoki kwenye simu yako.",
+      'shop.near.point1': "Simu yako inakadiria eneo lako, kama jiji au wilaya yako.",
+      'shop.near.point2': "FitFlex inapokea eneo tu, na halihifadhiwi. Kwa ajili ya duka, mahali hasa ulipo hapatoki kwenye kifaa chako.",
       'shop.near.point3':
           "Unaweza kuzima hili wakati wowote kwa \"Duka kwa ajili yako\", dukani au kwenye Faragha na data.",
       'shop.near.alreadyAllowed':
@@ -10060,14 +10061,13 @@ class FFLocale extends ChangeNotifier {
           "Bado hakuna wauzaji walioorodheshwa kwenye eneo lako.",
       'shop.near.failed':
           "Imeshindikana kupata eneo lako. Jaribu tena baadaye.",
-      'shop.near.denied':
-          "Mahali ulipo pamezimwa, kwa hiyo \"Maarufu karibu nawe\" imefichwa.",
+      'shop.near.denied': "Ruhusa ya mahali ulipo imezimwa, kwa hiyo \"Maarufu karibu nawe\" imefichwa.",
       'shop.near.openSettings': "Fungua mipangilio",
       'shop.near.browserBlocked':
           "Ruhusu mahali ulipo kwa tovuti hii kwenye mipangilio ya kivinjari.",
       'shop.near.servicesOff':
           "Washa mahali ulipo kwenye simu yako uone \"Maarufu karibu nawe\".",
-      'shop.near.badge': "Ina delivery eneo lako",
+      'shop.near.badge': "Ina delivery hadi eneo lako",
       'shop.near.finding': "Tunatafuta eneo lako",
       'shop.near.changeArea': "Badilisha eneo",
       'shop.near.pickArea': "Chagua eneo lako",
@@ -10085,15 +10085,14 @@ class FFLocale extends ChangeNotifier {
       'privacy.shop.usesLocation':
           "Eneo ulipo sasa, ikiwa tu umeruhusu mahali ulipo",
       'vendor.areas.title': "Unapouzia",
-      'vendor.areas.basedIn': "Ipo",
-      'vendor.areas.basedInRow': "Ipo: {area}",
+      'vendor.areas.basedIn': "Mahali biashara ilipo",
+      'vendor.areas.basedInRow': "Biashara ipo: {area}",
       'vendor.areas.basedInMissing': "Chagua mahali biashara yako ilipo.",
       'vendor.areas.deliversTo': "Ina delivery hadi",
       'vendor.areas.deliversRow': "Ina delivery hadi: {areas}",
       'vendor.areas.deliversMore': "(+{n})",
-      'vendor.areas.deliversEmpty':
-          "Acha wazi kama huna delivery. Wanunuzi bado wanaweza kuagiza na kupanga kuchukua.",
-      'vendor.areas.included': "Imo ndani ya {parent}",
+      'vendor.areas.deliversEmpty': "Acha wazi kama huna delivery. Wanunuzi bado wanaweza kuagiza na kupanga jinsi ya kuchukua.",
+      'vendor.areas.included': "Limo ndani ya {parent}",
       'vendor.areas.nationwide': "Nchi nzima ({area} yote)",
       'vendor.areas.search': "Tafuta maeneo",
       'vendor.areas.selected': "Uliyochagua: {areas}",
@@ -10107,8 +10106,12 @@ class FFLocale extends ChangeNotifier {
       'vendor.areas.level.district': "wilaya",
       'vendor.areas.none': "Maeneo bado hayajawekwa.",
       'vendor.areas.failed': "Imeshindikana kupakia maeneo. Jaribu tena.",
-      'vendor.areas.nudge':
-          "Ongeza mahali ulipo na unapopeleka delivery, ili wanunuzi walio karibu wakupate.",
+      'vendor.areas.invalid.gone': "{areas}: eneo hili halipatikani tena. Chagua lingine.",
+      'vendor.areas.invalid.wrongLevel': "Mahali ilipo lazima pawe jiji au wilaya.",
+      'vendor.areas.invalid.notInRegion': "Jiji haliko ndani ya mkoa huo. Chagua jiji tena.",
+      'vendor.areas.invalid.tooMany': "Chagua hadi maeneo 50 ya delivery.",
+      'vendor.areas.invalid.other': "Baadhi ya maeneo hayakuweza kuhifadhiwa. Yaangalie kisha ujaribu tena.",
+      'vendor.areas.nudge': "Ongeza mahali biashara yako ilipo na unapopeleka delivery, ili wanunuzi walio karibu wakupate.",
       'vendor.areas.nudgeAction': "Ongeza sasa",
       'vendor.areas.nudgeCheck':
           "Tumejaza unapouzia kutokana na anwani yako. Hakiki kama ni sahihi.",
