@@ -1848,13 +1848,32 @@ class ApiClient {
   /// [mode] (the role being shopped as, as on /shop/home) lets the server
   /// say what is used in that mode; an older server ignores it.
   Future<Map<String, dynamic>> shopPreferences({String? mode}) async {
-    final out = await _request(
+    Future<Object?> ask(String? m) => _request(
       'GET',
       _withQuery('/shop/preferences', {
-        if (mode != null && mode.isNotEmpty) 'mode': mode,
+        if (m != null && m.isNotEmpty) 'mode': m,
       }),
     );
-    return Map<String, dynamic>.from(out as Map);
+    return Map<String, dynamic>.from(await _retryWithoutMode(mode, ask) as Map);
+  }
+
+  /// `403 mode_not_allowed` (this person does not hold [mode]): ask once
+  /// more without a mode, for the server's default role (as /shop/home).
+  Future<Object?> _retryWithoutMode(
+    String? mode,
+    Future<Object?> Function(String? mode) call,
+  ) async {
+    try {
+      return await call(mode);
+    } on ApiException catch (e) {
+      if (mode == null ||
+          mode.isEmpty ||
+          e.status != 403 ||
+          e.code != 'mode_not_allowed') {
+        rethrow;
+      }
+      return await call(null);
+    }
   }
 
   /// Turns "Personalised shop" on or off. [source] is `privacy_page` or
@@ -1864,12 +1883,16 @@ class ApiClient {
     required String source,
     String? mode,
   }) async {
-    final out = await _request(
-      'PUT',
-      _withQuery('/shop/preferences', {
-        if (mode != null && mode.isNotEmpty) 'mode': mode,
-      }),
-      body: {'personalised': personalised, 'source': source},
+    // A refused mode saves nothing on the server, so the retry is safe.
+    final out = await _retryWithoutMode(
+      mode,
+      (m) => _request(
+        'PUT',
+        _withQuery('/shop/preferences', {
+          if (m != null && m.isNotEmpty) 'mode': m,
+        }),
+        body: {'personalised': personalised, 'source': source},
+      ),
     );
     return Map<String, dynamic>.from(out as Map);
   }

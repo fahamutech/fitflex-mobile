@@ -130,6 +130,9 @@ Future<void> _tab(WidgetTester tester, {bool shift = false}) async {
 
 Finder _key(String k) => find.byKey(Key(k));
 
+/// The server's answer for a mode this person does not hold.
+const _modeNotAllowed = RawResponse(403, '{"error":"mode_not_allowed"}');
+
 Future<void> _openWhy(WidgetTester tester) async {
   await tapVisible(tester, _key('shop-home-why-recommended'));
   expect(_key('shop-why-recommended'), findsOneWidget);
@@ -550,6 +553,29 @@ void main() {
       expect(api.only('PUT', '/shop/preferences').query, 'mode=trainer');
     });
 
+    apiTest('5: PUT refused with 403 mode_not_allowed is retried once '
+        'without mode', (tester, api) async {
+      _seedShop(
+        api,
+        _home(
+          mode: 'owner',
+          personalisation: {'available': true, 'enabled': true},
+        ),
+      );
+      api.onCall('PUT /shop/preferences', (r) {
+        if (r.query.contains('mode=')) return _modeNotAllowed;
+        return {'personalised': false, 'available': true, 'uses': <String>[]};
+      });
+      await _pumpShop(tester, api, mode: ShopHomeMode.owner);
+      await _openWhy(tester);
+      await tester.tap(_key('shop-why-personalised'));
+      await tester.pumpAndSettle();
+      final puts = api.where('PUT', '/shop/preferences');
+      expect(puts.map((r) => r.query), ['mode=owner', '']);
+      expect(_switchValue(tester), isFalse);
+      expect(_key('shop-why-personalised-saved'), findsOneWidget);
+    });
+
     apiTest('6: a failed save shows the error once, under the switch', (
       tester,
       api,
@@ -965,6 +991,46 @@ void main() {
       });
       await pumpTile(tester, api);
       expect(api.only('GET', '/shop/preferences').query, 'mode=member');
+    });
+
+    apiTest('5: GET refused with 403 mode_not_allowed is retried once '
+        'without mode', (tester, api) async {
+      api.onCall('GET /shop/preferences', (r) {
+        if (r.query.contains('mode=')) return _modeNotAllowed;
+        return {
+          'personalised': true,
+          'available': true,
+          'mode': 'member',
+          'uses': ['purchase_history'],
+        };
+      });
+      final host = await pumpTile(tester, api);
+      expect(api.where('GET', '/shop/preferences').map((r) => r.query), [
+        'mode=member',
+        '',
+      ]);
+      expect(find.text(host.tr('privacy.shop.on')), findsOneWidget);
+    });
+
+    apiTest('5: an owner-mode answer lists purchase history only', (
+      tester,
+      api,
+    ) async {
+      api.on('GET /shop/preferences', {
+        'personalised': true,
+        'available': true,
+        'historyDays': 365,
+        'mode': 'owner',
+        'uses': ['purchase_history'],
+      });
+      final host = await pumpTile(tester, api);
+      await tapVisible(tester, _key('privacy-shop'));
+      expect(
+        tester.widget<Text>(_key('privacy-shop-use-0')).data,
+        host.tr('privacy.shop.usesHistory').replaceAll('{months}', '12'),
+      );
+      expect(_key('privacy-shop-use-1'), findsNothing);
+      expect(_key('privacy-shop-order-only'), findsNothing);
     });
 
     apiTest('7: loading shows a skeleton line, announced', (tester, api) async {

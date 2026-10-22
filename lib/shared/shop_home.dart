@@ -503,9 +503,14 @@ class ShopPreferences {
     required this.available,
     this.historyDays,
     this.uses,
+    this.mode,
   });
   final bool personalised;
   final bool available;
+
+  /// The shopping mode the answer is for (`member`, `trainer`, `owner`,
+  /// `vendor_personal`); null from a backend that does not say.
+  final String? mode;
 
   /// How far back purchase history is read (server `SHOP_HISTORY_DAYS`).
   /// Null from a backend that does not say.
@@ -534,6 +539,7 @@ class ShopPreferences {
       // Default on (O-6): only an explicit false is off.
       personalised: m['personalised'] != false,
       available: m['available'] == true,
+      mode: m['mode'] is String ? m['mode'] as String : null,
       historyDays: m['historyDays'] is num
           ? (m['historyDays'] as num).toInt()
           : null,
