@@ -1085,7 +1085,9 @@ void main() {
           '${host.tr('shop.orderStatus.accepted')}';
       expect(find.text(progress), findsOneWidget);
       expect(find.byType(Chip), findsNothing);
-      final text = tester.widget<Text>(find.byKey(const Key('order-status-o1')));
+      final text = tester.widget<Text>(
+        find.byKey(const Key('order-status-o1')),
+      );
       expect(
         text.semanticsLabel,
         '${host.tr('shop.orderProgress')}: '
@@ -1269,6 +1271,41 @@ void main() {
       expect(body['items'], [
         {'productId': 'p1', 'qty': 1, 'variant': 'Cocoa'},
       ]);
+    });
+
+    apiTest('Invoice only on paid / refund-pending / refunded orders (AC-28)', (
+      tester,
+      api,
+    ) async {
+      _seed(
+        api,
+        orders: [
+          _order('o1'),
+          _order('o2', paymentStatus: 'refund_pending'),
+          _order('o3', paymentStatus: 'refunded'),
+          _order('o4', paymentStatus: 'pending'),
+          _order('o5', paymentStatus: 'failed'),
+          _order('o6', paymentStatus: 'cancelled'),
+        ],
+      );
+      final host = await _pump(tester, api);
+      await _openMyOrders(tester, host);
+      for (final id in ['o1', 'o2', 'o3']) {
+        await tester.scrollUntilVisible(
+          _key('shop-invoice-$id'),
+          200,
+          scrollable: find.byType(Scrollable).first,
+        );
+        expect(_key('shop-invoice-$id'), findsOneWidget, reason: id);
+      }
+      for (final id in ['o4', 'o5', 'o6']) {
+        await tester.scrollUntilVisible(
+          _key('order-ref-$id'),
+          200,
+          scrollable: find.byType(Scrollable).first,
+        );
+        expect(_key('shop-invoice-$id'), findsNothing, reason: id);
+      }
     });
 
     apiTest('invoice shows the order lines and a download button', (

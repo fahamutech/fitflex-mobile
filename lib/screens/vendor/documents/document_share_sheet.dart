@@ -451,7 +451,10 @@ class _DocumentShareSheetState extends State<DocumentShareSheet> {
         label: _t(
           web ? 'vendor.documents.openPdf' : 'vendor.documents.sendPdf',
         ),
-        semantics: _a11y('vendor.documents.a11y.pdf'),
+        // UAT D5: what is said matches what is shown.
+        semantics: _a11y(
+          web ? 'vendor.documents.a11y.openPdf' : 'vendor.documents.a11y.pdf',
+        ),
         row: _Row.pdf,
         onTap: pdfRows ? () => _pdf() : null,
       ),
