@@ -150,6 +150,62 @@ String? memberRouteFor({
   };
 }
 
+/// Where a tapped push takes the signed-in user: `go` replaces the stack
+/// with a screen; otherwise the location is pushed over it. Members with a
+/// plan from their trainer, and partners with news about one of their
+/// screens, go straight there; anything else (a gym or FitFlex campaign,
+/// for every role) opens its in-app copy, or the inbox when there is none.
+({String location, bool go}) pushTargetFor({
+  required String? role,
+  required Map<String, dynamic> data,
+  InboxMessage? message,
+}) {
+  final type = data['type']?.toString() ?? '';
+  // A plan from their trainer opens on the plan itself, where they answer.
+  if (role == 'member' && opensScreenDirectly(type)) {
+    final direct = memberRouteFor(
+      deepLink: '',
+      type: type,
+      planId: data['planId']?.toString(),
+    );
+    if (direct != null) return (location: direct, go: true);
+  }
+  // Trainers, vendors and gyms go straight to the screen the news is about.
+  if (partnerSide(role) case final side?) {
+    final direct = partnerRouteFor(
+      side: side,
+      type: type,
+      gymId: data['gymId']?.toString(),
+      memberId: data['memberId']?.toString(),
+      productId: data['productId']?.toString(),
+      variant: data['variant']?.toString(),
+      saleId: data['saleId']?.toString(),
+      customerId: data['customerId']?.toString(),
+      bannerId: (data['bannerId'] ?? data['item'])?.toString(),
+    );
+    if (direct != null) return (location: direct, go: true);
+  }
+  if (message != null) {
+    // A friend request is answered on its card in the list.
+    return (
+      location: message.isFriendInvitation ? '/inbox' : '/inbox/${message.id}',
+      go: false,
+    );
+  }
+  final route = role == 'member'
+      ? memberRouteFor(
+          deepLink: data['deepLink']?.toString() ?? '',
+          type: type,
+          gymId: data['gymId']?.toString(),
+          trainerId: data['trainerId']?.toString(),
+          planId: data['planId']?.toString(),
+          bookingId: data['bookingId']?.toString(),
+        )
+      : null;
+  if (route != null) return (location: route, go: true);
+  return (location: '/inbox', go: false);
+}
+
 /// A notice's words in the app language. Some notices carry both languages
 /// in their data (`titleEn`/`bodyEn`, `titleSw`/`bodySw`, e.g.
 /// trainer_booking_no_show), while the top-level title/body follow the

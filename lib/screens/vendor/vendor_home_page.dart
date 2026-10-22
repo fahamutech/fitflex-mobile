@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../shared/inbox/inbox_pages.dart';
+import '../member/member_message_settings_page.dart';
 import '../../shared/file-export.dart';
 import 'package:go_router/go_router.dart';
 
@@ -1654,6 +1655,22 @@ class _VendorHomePageState extends State<VendorHomePage> {
                   ),
           ),
         if (_taxEntryShown) _taxEntry(),
+        // Which offers they get in the app and by push — the same page
+        // members and trainers use. Staff without this tab reach it from
+        // the inbox.
+        Padding(
+          padding: const EdgeInsets.only(top: FFTokens.spacingMd),
+          child: FFActionTile(
+            key: const Key('vendor-message-settings'),
+            icon: Icons.notifications_outlined,
+            title: context.tr('msgPrefs.title'),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const MemberMessageSettingsPage(),
+              ),
+            ),
+          ),
+        ),
         const SizedBox(height: FFTokens.spacingLg),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,

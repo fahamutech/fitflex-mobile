@@ -213,58 +213,11 @@ class _FitFlexAppState extends State<FitFlexApp> with WidgetsBindingObserver {
   Future<void> _openFromPush(Map<String, dynamic> data) async {
     final message = await _inbox.openFromPush(data);
     final role = widget.auth.user?['userType']?.toString() ?? widget.auth.role;
-    // A plan from their trainer opens on the plan itself, where they answer.
-    if (role == 'member' &&
-        opensScreenDirectly(data['type']?.toString() ?? '')) {
-      final direct = memberRouteFor(
-        deepLink: '',
-        type: data['type']?.toString() ?? '',
-        planId: data['planId']?.toString(),
-      );
-      if (direct != null) {
-        _router.go(direct);
-        return;
-      }
-    }
-    // Trainers, vendors and gyms go straight to the screen the news is about.
-    if (partnerSide(role) case final side?) {
-      final direct = partnerRouteFor(
-        side: side,
-        type: data['type']?.toString() ?? '',
-        gymId: data['gymId']?.toString(),
-        memberId: data['memberId']?.toString(),
-        productId: data['productId']?.toString(),
-        variant: data['variant']?.toString(),
-        saleId: data['saleId']?.toString(),
-        customerId: data['customerId']?.toString(),
-        bannerId: (data['bannerId'] ?? data['item'])?.toString(),
-      );
-      if (direct != null) {
-        _router.go(direct);
-        return;
-      }
-    }
-    if (message != null) {
-      // A friend request is answered on its card in the list.
-      _router.push(
-        message.isFriendInvitation ? '/inbox' : '/inbox/${message.id}',
-      );
-      return;
-    }
-    final route = role == 'member'
-        ? memberRouteFor(
-            deepLink: data['deepLink']?.toString() ?? '',
-            type: data['type']?.toString() ?? '',
-            gymId: data['gymId']?.toString(),
-            trainerId: data['trainerId']?.toString(),
-            planId: data['planId']?.toString(),
-            bookingId: data['bookingId']?.toString(),
-          )
-        : null;
-    if (route != null) {
-      _router.go(route);
+    final target = pushTargetFor(role: role, data: data, message: message);
+    if (target.go) {
+      _router.go(target.location);
     } else {
-      _router.push('/inbox');
+      _router.push(target.location);
     }
   }
 
