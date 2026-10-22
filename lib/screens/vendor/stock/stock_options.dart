@@ -30,6 +30,9 @@ class VendorTools {
     this.walkInSales = false,
     this.customers = false,
     this.banners = false,
+    this.documents = false,
+    this.vat = false,
+    this.vatInForce,
     this.suspended = false,
     this.fromCache = false,
   });
@@ -68,6 +71,19 @@ class VendorTools {
   /// from `merch: {banners: true}`. Exactly `true`, else off.
   final bool banners;
 
+  /// S5: share links, PDFs, the share sheet and order invoices
+  /// (VENDOR_DOCUMENTS). Exactly `true`, else the S3/S4 text share.
+  final bool documents;
+
+  /// S5: tax details, product VAT codes and VAT blocks (VENDOR_VAT).
+  /// Exactly `true`, else none of them.
+  final bool vat;
+
+  /// S5: the vendor's VAT is in force right now (verified, certificate
+  /// stands), from the options answer. Null when the server does not send
+  /// it (older backend): screens then ask GET /vendor/tax-profile.
+  final bool? vatInForce;
+
   /// The answer is the one kept on this device (the server could not be
   /// reached): ask again once the connection is back.
   final bool fromCache;
@@ -82,6 +98,11 @@ class VendorTools {
         banners:
             options['merch'] is Map &&
             (options['merch'] as Map)['banners'] == true,
+        documents: options['documents'] == true,
+        vat: options['vat'] == true,
+        vatInForce: options['vatInForce'] is bool
+            ? options['vatInForce'] as bool
+            : null,
         fromCache: fromCache,
       );
 }

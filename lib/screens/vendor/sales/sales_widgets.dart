@@ -11,6 +11,7 @@ import '../../../shared/design_tokens.dart';
 import '../../../shared/formatters.dart';
 import '../../../shared/i18n.dart';
 import '../../../shared/tone_theme.dart';
+import '../documents/document_view.dart' show VatBlock;
 import '../stock/stock_options.dart';
 import 'offline_sale_queue.dart';
 import 'receipt_data.dart';
@@ -221,9 +222,16 @@ class ReceiptView extends StatelessWidget {
     required this.lang,
     this.audit = false,
     this.headingFocus,
+    this.tin,
+    this.vrn,
   });
 
   final ReceiptData data;
+
+  /// S5: the seller's TIN and VRN, only when VAT applied to this sale (the
+  /// server's document says so; O-12).
+  final String? tin;
+  final String? vrn;
   final String Function(String key) t;
   final String lang;
 
@@ -246,7 +254,10 @@ class ReceiptView extends StatelessWidget {
       color: theme.colorScheme.onSurfaceVariant,
     );
     final number = data.number;
-    final heading = number == null || data.queued
+    final invoice = data.credit && !data.queued ? data.invoiceNumber : null;
+    final heading = invoice != null
+        ? '${t('vendor.doc.invoice')} $invoice'
+        : number == null || data.queued
         ? t('vendor.documents.receipt')
         : _fill('vendor.pos.receiptNo', {'number': number});
     return FFCard(
@@ -258,6 +269,18 @@ class ReceiptView extends StatelessWidget {
             Text(data.business!, style: theme.textTheme.titleLarge),
           if (data.contact != null) Text(data.contact!, style: muted),
           if (data.address != null) Text(data.address!, style: muted),
+          if (tin != null)
+            Text(
+              _fill('vendor.doc.tin', {'tin': tin}),
+              key: const Key('sales-receipt-tin'),
+              style: muted,
+            ),
+          if (vrn != null)
+            Text(
+              _fill('vendor.doc.vrn', {'vrn': vrn}),
+              key: const Key('sales-receipt-vrn'),
+              style: muted,
+            ),
           const SizedBox(height: FFTokens.spacingSm),
           Focus(
             focusNode: headingFocus,
@@ -270,6 +293,12 @@ class ReceiptView extends StatelessWidget {
               ),
             ),
           ),
+          if (invoice != null && number != null)
+            Text(
+              _fill('vendor.doc.saleRef', {'number': number}),
+              key: const Key('sales-receipt-sale-ref'),
+              style: muted,
+            ),
           if (data.queued) ...[
             const SizedBox(height: FFTokens.spacingXs),
             Wrap(
@@ -340,6 +369,12 @@ class ReceiptView extends StatelessWidget {
             strong: true,
             strike: data.voided,
           ),
+          if (data.hasVat)
+            VatBlock(
+              vatIncludedTzs: data.vatIncludedTzs,
+              rows: data.vatSummary,
+              t: t,
+            ),
           if (data.payments.isNotEmpty)
             const SizedBox(height: FFTokens.spacingSm),
           for (final p in data.payments)
@@ -399,7 +434,12 @@ class ReceiptView extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            MoneyRow('${l.qty} × $name', formatMoney(l.qty * l.unitPriceTzs)),
+            MoneyRow(
+              '${l.qty} × $name',
+              l.vatCode == null
+                  ? formatMoney(l.qty * l.unitPriceTzs)
+                  : '${formatMoney(l.qty * l.unitPriceTzs)} ${l.vatCode}',
+            ),
             if (l.qty > 1 || l.priceChanged)
               Text('@ ${formatMoney(l.unitPriceTzs)}', style: muted),
             if (audit && l.priceChanged)

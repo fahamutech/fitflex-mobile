@@ -862,6 +862,45 @@ void main() {
       },
     };
 
+    testWidgets(
+      'S5: the optional VAT certificate is labelled and uploads as vat_certificate',
+      (tester) async {
+        _tall(tester);
+        final json = vendor();
+        ((json['checklist'] as Map)['sections'] as List).first['items'].add({
+          ..._item(
+            'business.vat_certificate',
+            'missing',
+            requirementKey: 'vat_certificate',
+          ),
+          'optional': true,
+        });
+        final repo = _FakeRepo(json);
+        await tester.pumpWidget(
+          _app(
+            VerificationCenterPage(
+              repository: repo,
+              pickDocument: (_) async =>
+                  PickedDocument(Uint8List.fromList([1, 2, 3]), 'vat.pdf'),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        // A label, never the raw key.
+        expect(find.text('VAT certificate'), findsWidgets);
+        expect(find.textContaining('kyc.item'), findsNothing);
+        await tester.tap(
+          find.byKey(const Key('kyc-item-business.vat_certificate')),
+        );
+        await tester.pumpAndSettle();
+        expect(find.textContaining('kyc.doc.intro'), findsNothing);
+        await tester.ensureVisible(find.byKey(const Key('kyc-doc-pdf')));
+        await tester.tap(find.byKey(const Key('kyc-doc-pdf')));
+        await tester.pumpAndSettle();
+        expect(repo.calls, ['upload:vat_certificate:vat_certificate']);
+      },
+    );
+
     testWidgets('optional items say so instead of "To do"', (tester) async {
       _tall(tester);
       await tester.pumpWidget(
