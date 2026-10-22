@@ -18,6 +18,8 @@ import '../../design_tokens.dart';
 import '../../i18n.dart';
 import '../../network/browser_online.dart';
 import '../../shop_home.dart';
+import '../../shop_near_you.dart';
+import 'shop_near_you_ui.dart';
 import 'shop_focus_ring.dart';
 
 /// The Why and Privacy sheets: a bottom sheet on phones and tablets, a
@@ -65,9 +67,14 @@ class ShopPersonalisedSwitch extends StatefulWidget {
     this.mode,
     this.initial,
     this.partnerHint = false,
+    this.areaHint = false,
     this.onChanged,
     this.onUnavailable,
   });
+
+  /// Phase 2 S3: near-you can be used, so the hint also names "my current
+  /// area".
+  final bool areaHint;
 
   /// `privacy_page` or `why_sheet` (sent with the PUT).
   final String source;
@@ -151,6 +158,7 @@ class _ShopPersonalisedSwitchState extends State<ShopPersonalisedSwitch> {
     final before = _value ?? true;
     if (_saving || next == before) return;
     final api = AppScope.of(context).api;
+    final uid = AppScope.of(context).auth.user?['id']?.toString();
     setState(() {
       _value = next;
       _saving = true;
@@ -165,6 +173,9 @@ class _ShopPersonalisedSwitchState extends State<ShopPersonalisedSwitch> {
           mode: widget.mode,
         ),
       );
+      // Off also turns near-you off: the area kept on this device for this
+      // account is forgotten, and location is not read again (DD-P2-8).
+      if (!prefs.personalised) await ShopNearYouStore.clear(uid);
       if (!mounted) return;
       setState(() {
         _saving = false;
@@ -197,9 +208,8 @@ class _ShopPersonalisedSwitchState extends State<ShopPersonalisedSwitch> {
     final theme = Theme.of(context);
     final title = context.tr('shop.why.switch');
     final hint = context.tr(
-      widget.partnerHint
-          ? 'shop.why.switchHintPartner'
-          : 'shop.why.switchHintMember',
+      '${widget.partnerHint ? 'shop.why.switchHintPartner' : 'shop.why.switchHintMember'}'
+      '${widget.areaHint ? 'Area' : ''}',
     );
     if (_loadFailed) {
       return Row(
@@ -452,9 +462,12 @@ class _ShopPrivacySheetState extends State<ShopPrivacySheet> {
   late ShopPreferences _prefs = widget.initial;
   bool _gone = false;
 
+  /// The server lists `location` in `uses` (SHOP_NEAR_YOU on and the
+  /// switch on).
+  bool get _location => _prefs.uses?.contains(ShopSignal.location) ?? false;
+
   /// The "What we use" lines, in the server's order, from `uses` only. A
-  /// backend without `uses` lists nothing personal. Location is not listed
-  /// until slice 3 ships it.
+  /// backend without `uses` lists nothing personal.
   List<String> _lines(BuildContext context) {
     final uses = _prefs.uses ?? const <ShopSignal>{};
     final months = _prefs.historyMonths ?? 12;
@@ -471,6 +484,8 @@ class _ShopPrivacySheetState extends State<ShopPrivacySheet> {
         context.tr('privacy.shop.usesGender')
       else if (uses.contains(ShopSignal.age))
         context.tr('privacy.shop.usesAge'),
+      if (uses.contains(ShopSignal.location))
+        context.tr('privacy.shop.usesLocation'),
       if (uses.contains(ShopSignal.goal)) context.tr('privacy.shop.usesGoal'),
       if (uses.contains(ShopSignal.specialty))
         context.tr('privacy.shop.usesSpecialty'),
@@ -512,6 +527,7 @@ class _ShopPrivacySheetState extends State<ShopPrivacySheet> {
           source: ShopPreferences.sourcePrivacyPage,
           mode: widget.mode,
           initial: _prefs.personalised,
+          areaHint: _location,
           onChanged: (prefs) {
             setState(() => _prefs = prefs);
             widget.onChanged?.call(prefs);
@@ -533,6 +549,11 @@ class _ShopPrivacySheetState extends State<ShopPrivacySheet> {
             ),
           ),
         ),
+        // Phase 2 S3: on, off or the area, with Turn on / Change / Turn off.
+        if (_location && _prefs.personalised) ...[
+          const SizedBox(height: FFTokens.spacingSm),
+          const ShopNearYouLine(),
+        ],
         // No `uses` from the server: no list (never a guess).
         if (_prefs.uses != null) ...[
           const SizedBox(height: FFTokens.spacingMd),

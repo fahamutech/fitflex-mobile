@@ -784,11 +784,11 @@ void main() {
       expect(en.t('vendor.target.hint'), contains('members it suits'));
       expect(
         en.t('shop.why.deliversToArea'),
-        'It delivers to your current area.',
+        'These sellers deliver to your current area.',
       );
       expect(
         sw.t('shop.why.deliversToArea'),
-        'Ina delivery kwenye eneo ulipo sasa.',
+        'Wauzaji hawa wana delivery hadi eneo ulipo sasa.',
       );
       for (final key in ['shop.why.switchHintPartner', 'vendor.target.hint']) {
         expect(sw.t(key), isNot(contains('mkufunzi')));
@@ -915,9 +915,11 @@ void main() {
             if (find.byKey(Key('privacy-shop-use-$i')).evaluate().isNotEmpty)
               tester.widget<Text>(_key('privacy-shop-use-$i')).data,
         ];
+        // Slice 3: `location` is listed (between age and goal).
         expect(texts, [
           host.tr('privacy.shop.usesHistory').replaceAll('{months}', '6'),
           host.tr('privacy.shop.usesGender'),
+          host.tr('privacy.shop.usesLocation'),
           host.tr('privacy.shop.usesGoal'),
         ]);
         if (lang == 'sw') {
