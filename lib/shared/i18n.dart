@@ -11057,8 +11057,8 @@ class FFLocale extends ChangeNotifier {
       'events.availability.closed': 'Umefungwa', // TODO(sw-review): noun class
       'events.availability.not_yet_open': 'Hufunguliwa {date}', // TODO(sw-review): noun class
       'events.availability.cancelled': 'Limeghairiwa', // TODO(sw-review): noun class
-      'events.availability.in_progress': 'Inaendelea', // TODO(sw-review): noun class
-      'events.availability.completed': 'Limemalizika', // TODO(sw-review): noun class
+      'events.availability.in_progress': 'Linaendelea', // TODO(sw-review): noun class
+      'events.availability.completed': 'Limekamilika', // TODO(sw-review): noun class
       'events.loadMore': 'Pakia zaidi',
       'events.loadMoreFailed': 'Imeshindikana kupakia zaidi.',
       'events.loadingMore': 'Inapakia zaidi',
@@ -11132,7 +11132,7 @@ class FFLocale extends ChangeNotifier {
       'error.reason.notYourOrganizer': 'Tukio hili ni la mwandaaji mwingine.',
       'error.reason.organizerNotActive': 'Mwandaaji bado hajathibitishwa.',
       'error.reason.organizerSuspended': 'Akaunti ya mwandaaji imesimamishwa.',
-      'error.reason.invalidTransition': 'Tukio hili tayari limebadilika. Onyesha upya kisha ujaribu tena.',
+      'error.reason.invalidTransition': 'Tukio limebadilika. Onyesha upya kisha ujaribu tena.',
       'error.reason.versionConflict': 'Tukio hili limebadilishwa mahali pengine. Pakia upya kuona la sasa.',
       'error.reason.eventInvalid': 'Baadhi ya maelezo ya tukio hayapo au si sahihi.',
       'error.reason.changeNoteRequired': 'Ujumbe wa mabadiliko unahitajika kwa hariri hii.',
