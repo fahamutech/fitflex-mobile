@@ -8,13 +8,13 @@ import '../i18n.dart';
 import 'ff_button.dart';
 import 'ff_photo_hero.dart';
 
-/// The footer pool, in table order (photo-hero spec §34.1; sharp,
-/// people-free set, owner decision 2026-10-20).
+/// The footer pool, in table order (photo-hero spec §34.1; FitFlex Africa's
+/// generated scenes, owner decision 2026-10-22).
 const footerPhotoPool = [
-  FFHeroPhoto.footerStudio,
-  FFHeroPhoto.footerGymFloor,
-  FFHeroPhoto.footerRack,
-  FFHeroPhoto.footerShelves,
+  FFHeroPhoto.footerStretch,
+  FFHeroPhoto.footerRooftop,
+  FFHeroPhoto.footerHydration,
+  FFHeroPhoto.footerNightHall,
 ];
 
 /// The footer photo of each footer page while photos are bundled (spec
@@ -24,18 +24,18 @@ const footerPhotoPool = [
 /// gym detail; Trainers and gym detail to trainer detail; Home to Upgrade
 /// and Shop).
 const footerPagePhotos = <String, FFHeroPhoto>{
-  'member.home': FFHeroPhoto.footerStudio,
-  'member.activity': FFHeroPhoto.footerGymFloor,
-  'member.profile': FFHeroPhoto.footerRack,
-  'member.passes': FFHeroPhoto.footerRack,
-  'member.gyms': FFHeroPhoto.footerStudio,
-  'member.trainers': FFHeroPhoto.footerGymFloor,
-  'member.shop': FFHeroPhoto.footerShelves,
-  'member.gymDetail': FFHeroPhoto.footerRack,
-  'member.trainerDetail': FFHeroPhoto.footerStudio,
-  'trainer.home': FFHeroPhoto.footerShelves,
-  'vendor.products': FFHeroPhoto.footerRack,
-  'owner.home': FFHeroPhoto.footerStudio,
+  'member.home': FFHeroPhoto.footerStretch,
+  'member.activity': FFHeroPhoto.footerRooftop,
+  'member.profile': FFHeroPhoto.footerNightHall,
+  'member.passes': FFHeroPhoto.footerRooftop,
+  'member.gyms': FFHeroPhoto.footerNightHall,
+  'member.trainers': FFHeroPhoto.footerStretch,
+  'member.shop': FFHeroPhoto.footerHydration,
+  'member.gymDetail': FFHeroPhoto.footerRooftop,
+  'member.trainerDetail': FFHeroPhoto.footerHydration,
+  'trainer.home': FFHeroPhoto.footerStretch,
+  'vendor.products': FFHeroPhoto.footerRooftop,
+  'owner.home': FFHeroPhoto.footerNightHall,
 };
 
 /// FNV-1a 32-bit over UTF-8: the same on the VM and on the web (unlike
