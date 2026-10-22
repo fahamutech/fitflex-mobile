@@ -770,6 +770,10 @@ class FFLocale extends ChangeNotifier {
           'The amount received does not match this payment, so our team will check it. You do not need to pay again.',
       'member.bookingPaid': 'Paid. Your sessions are confirmed.',
       'trainerPass.paidNow': 'Paid. Your trainer pass is active.',
+      'momo.held.transactionMismatch':
+          'The transaction details from mobile money do not match this payment, so our team will check it. You do not need to pay again.',
+      'error.reason.bookingPaymentInProgress':
+          'A mobile money payment is in progress for this booking. Wait for the phone prompt to finish, then try again.',
       'upgrade.currentPlan': 'Your current plan',
       'upgrade.choose': 'Choose a higher plan',
       'upgrade.pay': 'Pay {amount} more',
@@ -6169,6 +6173,10 @@ class FFLocale extends ChangeNotifier {
           'Kiasi kilichopokelewa hakilingani na malipo haya, kwa hiyo timu yetu itakagua. Huhitaji kulipa tena.',
       'member.bookingPaid': 'Imelipwa. Vipindi vyako vimethibitishwa.',
       'trainerPass.paidNow': 'Imelipwa. Pasi yako ya trainer inafanya kazi.',
+      'momo.held.transactionMismatch':
+          'Taarifa za muamala kutoka mtandao wa simu hazilingani na malipo haya, kwa hiyo timu yetu itakagua. Huhitaji kulipa tena.',
+      'error.reason.bookingPaymentInProgress':
+          'Malipo kwa mtandao wa simu yanaendelea kwa kipindi hiki. Subiri ombi kwenye simu likamilike, kisha ujaribu tena.',
       'upgrade.currentPlan': 'Mpango wako wa sasa',
       'upgrade.choose': 'Chagua mpango wa juu zaidi',
       'upgrade.pay': 'Lipa {amount} zaidi',

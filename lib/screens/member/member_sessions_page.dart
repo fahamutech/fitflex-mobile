@@ -177,7 +177,7 @@ class _MemberSessionsPageState extends State<MemberSessionsPage> {
       await _load();
       messenger.success(done);
     } catch (e) {
-      messenger.error(errorMessage(locale, e));
+      messenger.error(bookingCancelErrorMessage(locale, e));
       await _load();
     } finally {
       if (mounted) setState(() => _busyId = null);

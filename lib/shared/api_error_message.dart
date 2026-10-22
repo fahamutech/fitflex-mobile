@@ -19,6 +19,17 @@ String errorMessage(FFLocale locale, Object error, {bool vendorStaff = false}) {
   return locale.t('error.requestFailed');
 }
 
+/// A refused trainer-booking cancel (member or trainer side). While a
+/// mobile-money prompt is out for the booking the server answers
+/// 409 payment_in_progress (fitflex-functions#240): say so plainly.
+String bookingCancelErrorMessage(FFLocale locale, Object error) {
+  if (error is ApiException &&
+      _firstReason(error.body)?.trim().toLowerCase() == 'payment_in_progress') {
+    return locale.t('error.reason.bookingPaymentInProgress');
+  }
+  return errorMessage(locale, error);
+}
+
 /// The request never reached the server (offline, DNS, timeout), as
 /// opposed to the server answering with an error.
 bool isNetworkError(Object error) {

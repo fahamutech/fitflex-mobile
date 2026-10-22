@@ -10,6 +10,7 @@ import 'package:fitflexmobile/screens/member/widgets/trainer_actions_sheet.dart'
 import 'package:fitflexmobile/screens/trainer/trainer_gyms_tab.dart';
 import 'package:fitflexmobile/shared/models.dart';
 import 'package:fitflexmobile/screens/trainer/trainer_passes_page.dart';
+import 'package:fitflexmobile/screens/trainer/widgets/trainer_sheets.dart';
 import 'package:fitflexmobile/shared/api_client.dart';
 import 'package:fitflexmobile/shared/api_error_message.dart';
 import 'package:fitflexmobile/shared/i18n.dart';
@@ -488,12 +489,106 @@ void main() {
     }
   });
 
+  group('cancelling while a prompt is out (409 payment_in_progress)', () {
+    const busy = {'error': 'payment_in_progress'};
+
+    for (final lang in ['en', 'sw']) {
+      test('the booking wording, not the generic one ($lang)', () {
+        final locale = FFLocale()..set(Locale(lang));
+        final msg = bookingCancelErrorMessage(locale, ApiException(409, busy));
+        expect(msg, locale.t('error.reason.bookingPaymentInProgress'));
+        expect(msg, isNot(contains('payment_in_progress')));
+        // Anything else reads as before.
+        final other = ApiException(409, {'error': 'booking_not_cancellable'});
+        expect(
+          bookingCancelErrorMessage(locale, other),
+          errorMessage(locale, other),
+        );
+      });
+    }
+
+    test('English as agreed; Swahili its own, saying mtandao wa simu', () {
+      expect(
+        FFLocale.textOf('en', 'error.reason.bookingPaymentInProgress'),
+        'A mobile money payment is in progress for this booking. Wait for the '
+        'phone prompt to finish, then try again.',
+      );
+      final sw = FFLocale.textOf('sw', 'error.reason.bookingPaymentInProgress');
+      expect(sw, contains('mtandao wa simu'));
+      expect(FFLocale.textOf('sw', 'momo.held.transactionMismatch'), isNotNull);
+      expect(
+        FFLocale.textOf('sw', 'momo.held.transactionMismatch'),
+        isNot(FFLocale.textOf('en', 'momo.held.transactionMismatch')),
+      );
+    });
+
+    for (final lang in ['en', 'sw']) {
+      apiTest('member cancel is told to wait ($lang)', (t, api) async {
+        api.on('GET /payments/options', _legacyOn);
+        _seedSessions(api, [_booking('tbk_1')]);
+        api.fail('POST /me/trainer-bookings/tbk_1/cancel', 409, busy);
+        final host = await _sessions(
+          t,
+          api,
+          lang: lang,
+          size: const Size(360, 740),
+        );
+        await tapVisible(t, find.byKey(const Key('session-cancel-tbk_1')));
+        await t.tap(find.byKey(const Key('session-cancel-confirm')));
+        await t.pumpAndSettle();
+        expect(api.sent('POST', '/me/trainer-bookings/tbk_1/cancel'), isTrue);
+        expect(
+          find.text(host.tr('error.reason.bookingPaymentInProgress')),
+          findsOneWidget,
+        );
+        expect(t.takeException(), isNull);
+      });
+
+      apiTest('trainer cancel is told to wait ($lang)', (t, api) async {
+        api.on('GET /trainer/sessions', {
+          'sessions': [
+            {
+              'id': 'tbk_1',
+              'source': 'booking',
+              'status': 'payment_pending',
+              'date': '2099-05-05',
+              'slot': '07:00',
+              'amountTzs': 20000,
+              'member': {'displayName': 'Amina'},
+            },
+          ],
+        });
+        api.fail('POST /trainer/bookings/tbk_1/cancel', 409, busy);
+        final host = await pumpPage(
+          t,
+          api,
+          const TrainerSessionsSheet(),
+          user: _trainer,
+          lang: lang,
+          size: const Size(360, 740),
+        );
+        await tapVisible(t, find.byKey(const Key('trainer-cancel-tbk_1')));
+        await t.tap(find.byKey(const Key('trainer-cancel-confirm')));
+        await t.pumpAndSettle();
+        expect(api.sent('POST', '/trainer/bookings/tbk_1/cancel'), isTrue);
+        expect(
+          find.text(host.tr('error.reason.bookingPaymentInProgress')),
+          findsOneWidget,
+        );
+        expect(t.takeException(), isNull);
+      });
+    }
+  });
+
   group('held reasons', () {
     for (final lang in ['en', 'sw']) {
       for (final (reason, key) in const [
         ('group_slot_rebooked', 'momo.held.groupSlotRebooked'),
+        // Can be held with every flag off too (fitflex-functions#240):
+        // the mapping does not depend on any flag.
         ('reference_already_used', 'momo.held.referenceAlreadyUsed'),
         ('amount_mismatch', 'momo.held.amountMismatch'),
+        ('transaction_mismatch', 'momo.held.transactionMismatch'),
         ('something_new', 'momo.heldBody'),
         (null, 'momo.heldBody'),
       ]) {

@@ -127,6 +127,7 @@ const momoHeldReasons = {
   'group_slot_rebooked': 'momo.held.groupSlotRebooked',
   'reference_already_used': 'momo.held.referenceAlreadyUsed',
   'amount_mismatch': 'momo.held.amountMismatch',
+  'transaction_mismatch': 'momo.held.transactionMismatch',
 };
 
 /// The body text key for a completed payment of [productType].
