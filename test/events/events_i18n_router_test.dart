@@ -11,7 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  const keys = [
+  final keys = <String>[
     'activity.events',
     'home.events.title',
     'home.events.seeAll',
@@ -137,6 +137,9 @@ void main() {
     'a11y.clear',
     'common.share',
     'common.copied',
+    // Events S3 (spec §5.12): the flow, orders, registrations, claims,
+    // teams, validation and error reasons.
+    ...s3Keys,
   ];
 
   test('every §11.9 key exists in both languages', () {
@@ -153,6 +156,7 @@ void main() {
     const same = {
       'events.share.text',
       'events.availability.in_progress', // "Inaendelea" differs; listed for clarity
+      'events.participant.email', // "Barua pepe" differs; listed for clarity
     };
     for (final k in keys) {
       if (same.contains(k)) continue;
@@ -182,6 +186,77 @@ void main() {
         errorMessage(locale, r),
         contains(locale.t('error.reason.rateLimited')),
       );
+      // S3 (§3.17): every surfaced code has copy; numbers are filled in.
+      for (final code in const [
+        'capacity_unavailable',
+        'event_not_open',
+        'registration_closed',
+        'sale_not_open',
+        'sale_closed',
+        'terms_not_accepted',
+        'consent_version_stale',
+        'participant_invalid',
+        'price_changed',
+        'order_not_found',
+        'registration_not_found',
+        'invalid_reason',
+        'remove_whole_line',
+        'team_not_found',
+        'team_full',
+        'team_disbanded',
+        'team_name_taken',
+        'claim_token_invalid',
+        'claim_token_expired',
+        'claim_not_verified',
+        'already_claimed',
+        'claim_own_contact',
+        'registration_closed_state',
+        'idempotency_key_reused',
+        'organization_not_allowed',
+      ]) {
+        final msg = errorMessage(locale, ApiException(409, {'error': code}));
+        expect(msg, isNot(contains(code)), reason: code);
+        expect(msg, isNot(contains('_')), reason: code);
+      }
+      expect(
+        errorMessage(
+          locale,
+          ApiException(400, {
+            'error': 'quantity_out_of_range',
+            'min': 1,
+            'max': 10,
+          }),
+        ),
+        contains(
+          locale
+              .t('error.reason.quantityOutOfRange')
+              .replaceFirst('{min}', '1')
+              .replaceFirst('{max}', '10'),
+        ),
+      );
+      expect(
+        errorMessage(
+          locale,
+          ApiException(400, {'error': 'too_many_participants', 'max': 10}),
+        ),
+        contains(
+          locale
+              .t('error.reason.tooManyParticipants')
+              .replaceFirst('{max}', '10'),
+        ),
+      );
+      expect(
+        errorMessage(
+          locale,
+          ApiException(409, {
+            'error': 'invalid_transition',
+            'kind': 'order',
+            'from': 'cancelled',
+            'to': 'cancelled',
+          }),
+        ),
+        contains(locale.t('error.reason.invalidTransition.events')),
+      );
     }
   });
 
@@ -202,6 +277,49 @@ void main() {
       expect(list.last.route.name, 'memberEvents');
       expect(AppRoutes.memberEvents, '/member/events');
       expect(AppRoutes.memberEventDetail, '/member/events/:eventId');
+    });
+
+    test(
+      'flag on: every S3 route matches its page (static before :eventId)',
+      () {
+        debugEventsDiscoveryOverride = true;
+        final router = buildRouter(AuthState(ApiClient(baseUrl: 'http://x')));
+        addTearDown(router.dispose);
+        String nameOf(String path) =>
+            router.configuration.findMatch(Uri.parse(path)).last.route.name ??
+            '';
+        expect(nameOf('/member/events/evt_1/register'), 'memberEventRegister');
+        expect(nameOf('/member/events/orders'), 'memberEventOrders');
+        expect(nameOf('/member/events/orders/ord_1'), 'memberEventOrder');
+        expect(
+          nameOf('/member/events/registrations/reg_1'),
+          'memberEventRegistration',
+        );
+        expect(nameOf('/member/events/claim/reg_1'), 'memberEventClaim');
+        expect(nameOf('/member/events/teams/team_1'), 'memberEventTeam');
+        expect(nameOf('/event-claim'), 'eventClaim');
+        expect(
+          AppRoutes.memberEventRegisterPath('evt_1', ticket: 'tt_std'),
+          '/member/events/evt_1/register?ticket=tt_std',
+        );
+        expect(AppRoutes.memberEventOrder('o1'), '/member/events/orders/o1');
+      },
+    );
+
+    test('flag off: S3 member routes are gone, /event-claim stays', () {
+      debugEventsDiscoveryOverride = false;
+      final router = buildRouter(AuthState(ApiClient(baseUrl: 'http://x')));
+      addTearDown(router.dispose);
+      expect(
+        router.configuration
+            .findMatch(Uri.parse('/member/events/orders'))
+            .isError,
+        isTrue,
+      );
+      expect(
+        router.configuration.findMatch(Uri.parse('/event-claim')).isError,
+        isFalse,
+      );
     });
 
     test('flag off: the routes do not exist (not found)', () {
@@ -234,5 +352,100 @@ void main() {
       );
       expect(memberLinkFor(deepLink: '', type: 'event'), 'event');
     });
+
+    test('S3 notices open the order, the claim page or the registration', () {
+      expect(
+        memberRouteFor(
+          deepLink: '',
+          type: 'event_order_created',
+          orderId: 'o1',
+        ),
+        '/member/events/orders/o1',
+      );
+      expect(
+        memberRouteFor(deepLink: '', type: 'event_order_expired'),
+        '/member/events/orders',
+      );
+      expect(
+        memberRouteFor(
+          deepLink: '',
+          type: 'event_claim_available',
+          registrationId: 'r1',
+        ),
+        '/member/events/claim/r1',
+      );
+      expect(
+        memberRouteFor(
+          deepLink: '',
+          type: 'event_place_claimed',
+          registrationId: 'r1',
+        ),
+        '/member/events/registrations/r1',
+      );
+      expect(
+        memberRouteFor(
+          deepLink: '',
+          type: 'event_claim_available',
+          registrationId: 'bad id!',
+        ),
+        '/member/events/orders',
+      );
+      expect(
+        memberLinkFor(deepLink: '', type: 'event_order_created'),
+        'eventOrder',
+      );
+      expect(
+        memberLinkFor(deepLink: '', type: 'event_claim_available'),
+        'eventClaim',
+      );
+      for (final link in const [
+        'eventOrder',
+        'eventClaim',
+        'eventRegistration',
+      ]) {
+        expect(FFLocale.keysOf('en'), contains('inbox.open.$link'));
+        expect(FFLocale.keysOf('sw'), contains('inbox.open.$link'));
+      }
+    });
   });
 }
+
+/// The §5.12 keys, read once from the EN map so the list cannot drift
+/// from the code: every `events.register.*`, `events.order.*`, … key.
+final s3Keys = [
+  for (final k in FFLocale.keysOf('en'))
+    if (k.startsWith('events.register.') ||
+        k.startsWith('events.team.') ||
+        k.startsWith('events.participant.') ||
+        k.startsWith('events.draft.') ||
+        k.startsWith('events.review.') ||
+        k.startsWith('events.order.') ||
+        k.startsWith('events.status.') ||
+        k.startsWith('events.claim.') ||
+        k.startsWith('events.mine.') ||
+        k.startsWith('events.reg.') ||
+        k.startsWith('events.validation.'))
+      k,
+  'error.reason.capacityUnavailable',
+  'error.reason.eventNotOpen',
+  'error.reason.registrationClosed',
+  'error.reason.saleClosed',
+  'error.reason.saleNotOpen',
+  'error.reason.quantityOutOfRange',
+  'error.reason.tooManyParticipants',
+  'error.reason.termsNotAccepted',
+  'error.reason.orderNotFound',
+  'error.reason.registrationNotFound',
+  'error.reason.teamNotFound',
+  'error.reason.teamFull',
+  'error.reason.teamDisbanded',
+  'error.reason.teamNameTaken',
+  'error.reason.alreadyClaimed',
+  'error.reason.claimTokenInvalid',
+  'error.reason.claimTokenExpired',
+  'error.reason.claimOwnContact',
+  'error.reason.registrationClosedState',
+  'error.reason.removeWholeLine',
+  'error.reason.invalidTransition.events',
+  'common.copy',
+];
