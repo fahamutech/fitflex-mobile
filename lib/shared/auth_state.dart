@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'api_client.dart';
 import 'firebase_auth_service.dart';
 import 'held_nav_extras.dart';
+import 'events/event_claim_link.dart';
 import 'pending_friend_invite.dart';
 import 'pending_org_invite.dart';
 import 'push_service.dart';
@@ -336,6 +337,7 @@ class AuthState extends ChangeNotifier {
     // to the persona switched to.
     await PendingOrgInvite.clear();
     await PendingFriendInvite.clear();
+    await PendingEventClaim.clear();
     // Push belongs to the persona: drop it for the old one, the new session
     // registers again in signIn().
     await push?.unregister();
@@ -484,6 +486,7 @@ class AuthState extends ChangeNotifier {
     if (_token != null) {
       await PendingOrgInvite.clear();
       await PendingFriendInvite.clear();
+      await PendingEventClaim.clear();
     }
     // While the session token is still set, so the backend accepts the call.
     await push?.unregister();

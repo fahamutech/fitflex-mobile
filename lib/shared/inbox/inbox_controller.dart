@@ -116,6 +116,12 @@ String memberLinkFor({required String deepLink, required String type}) =>
         // A running event (events S2; a future `event` notice type with
         // `data.eventId`): open the event, or the list without an id.
         'event' => 'event',
+        // Events S3 (spec §3.14): the purchaser's order notices open the
+        // order; "Is this you?" opens the claim page; a claim opens the
+        // registration.
+        'event_order_created' || 'event_order_expired' => 'eventOrder',
+        'event_claim_available' => 'eventClaim',
+        'event_place_claimed' => 'eventRegistration',
         _ => '',
       };
 
@@ -134,6 +140,8 @@ String? memberRouteFor({
   String? planId,
   String? bookingId,
   String? eventId,
+  String? orderId,
+  String? registrationId,
 }) {
   final link = memberLinkFor(deepLink: deepLink, type: type);
   return switch (link) {
@@ -153,6 +161,17 @@ String? memberRouteFor({
     'event' when eventId != null && _safeId.hasMatch(eventId) =>
       '/member/events/$eventId',
     'event' => '/member/events',
+    'eventOrder' when orderId != null && _safeId.hasMatch(orderId) =>
+      '/member/events/orders/$orderId',
+    'eventOrder' => '/member/events/orders',
+    'eventClaim'
+        when registrationId != null && _safeId.hasMatch(registrationId) =>
+      '/member/events/claim/$registrationId',
+    'eventClaim' => '/member/events/orders',
+    'eventRegistration'
+        when registrationId != null && _safeId.hasMatch(registrationId) =>
+      '/member/events/registrations/$registrationId',
+    'eventRegistration' => '/member/events/orders',
     _ => null,
   };
 }
@@ -208,6 +227,8 @@ String? memberRouteFor({
           planId: data['planId']?.toString(),
           bookingId: data['bookingId']?.toString(),
           eventId: data['eventId']?.toString(),
+          orderId: data['orderId']?.toString(),
+          registrationId: data['registrationId']?.toString(),
         )
       : null;
   if (route != null) return (location: route, go: true);
