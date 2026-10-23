@@ -2158,4 +2158,173 @@ void main() {
       expect(top, greaterThanOrEqualTo(0));
     });
   });
+
+  // ── QA round 2 (RC e57f1f6) ─────────────────────────────────────────────
+
+  group('QA round 2', () {
+    /// Products answer with the badge only when the area header came.
+    void seedAreaProducts(RecordingApi api) {
+      api.onCall('GET /shop/products', (r) {
+        final area = r.headers['x-ff-area'];
+        return [
+          for (final p in _products().values)
+            {
+              ...p,
+              if (area != null && p['id'] == 'p3') 'deliversToViewerArea': true,
+            },
+        ];
+      });
+      api.onCall(
+        'GET /shop/products/p3',
+        (r) => {
+          ..._products()['p3']!,
+          if (r.headers['x-ff-area'] != null) 'deliversToViewerArea': true,
+        },
+      );
+    }
+
+    Future<PageHost> pumpAt(
+      WidgetTester tester,
+      RecordingApi api,
+      String location, {
+      Size size = const Size(420, 1400),
+    }) => pumpPage(
+      tester,
+      api,
+      const ShopBrowseBody(mode: ShopHomeMode.member, routePath: '/'),
+      user: _member,
+      size: size,
+      keepRequests: true,
+      initialLocation: location,
+    );
+
+    Future<void> keepArea() => ShopNearYouStore.save(
+      'm1',
+      const ShopNearYouState(
+        choice: ShopNearYouChoice.on,
+        areaId: 'tz-dar-city',
+      ),
+    );
+
+    apiTest('#1 cold load of Results (refresh): the badge shows once the '
+        'server says near-you is available', (tester, api) async {
+      debugShopLocatorOverride = FakeLocator(
+        access: ShopLocationAccess.granted,
+        fix: _darCity,
+      );
+      await keepArea();
+      _seedAreaAware(api);
+      seedAreaProducts(api);
+      await pumpAt(tester, api, '/?view=results');
+      expect(_key('shop-home'), findsNothing);
+      final list = api.where('GET', '/shop/products');
+      expect(list.first.headers.containsKey('x-ff-area'), isFalse);
+      expect(list.last.headers['x-ff-area'], 'tz-dar-city');
+      expect(_key('shop-delivers-p3'), findsOneWidget);
+      // The probe asked /shop/home without the area.
+      final homes = api.where('GET', '/shop/home');
+      expect(homes, isNotEmpty);
+      expect(homes.first.headers.containsKey('x-ff-area'), isFalse);
+      _expectNoCoordinates(api);
+    });
+
+    apiTest('#1 cold ?product= link: the open sheet refetches with the area '
+        'and shows the badge', (tester, api) async {
+      debugShopLocatorOverride = FakeLocator(
+        access: ShopLocationAccess.granted,
+        fix: _darCity,
+      );
+      await keepArea();
+      _seedAreaAware(api);
+      seedAreaProducts(api);
+      await pumpAt(tester, api, '/?product=p3');
+      final details = api.where('GET', '/shop/products/p3');
+      expect(details.first.headers.containsKey('x-ff-area'), isFalse);
+      expect(details.last.headers['x-ff-area'], 'tz-dar-city');
+      expect(_key('shop-delivers-badge'), findsOneWidget);
+    });
+
+    for (final location in ['/?view=results', '/?product=p3']) {
+      apiTest('#1 not available: no area header on $location', (
+        tester,
+        api,
+      ) async {
+        debugShopLocatorOverride = FakeLocator();
+        await keepArea();
+        _seed(api, _home(nearYou: _off));
+        seedAreaProducts(api);
+        await pumpAt(tester, api, location);
+        for (final r in [
+          ...api.where('GET', '/shop/products'),
+          ...api.where('GET', '/shop/products/p3'),
+          ...api.where('GET', '/shop/home'),
+        ]) {
+          expect(r.headers.containsKey('x-ff-area'), isFalse, reason: '$r');
+        }
+        expect(_key('shop-delivers-badge'), findsNothing);
+        // The kept area was forgotten (L1).
+        expect(ShopNearYouStore.peek('m1')!.areaId, isNull);
+      });
+    }
+
+    for (final width in [375.0, 1280.0]) {
+      apiTest('#2 area picker Done/Cancel are 48 tall (width $width)', (
+        tester,
+        api,
+      ) async {
+        await pumpPage(
+          tester,
+          api,
+          Builder(
+            builder: (context) => Center(
+              child: FilledButton(
+                key: const Key('open-picker'),
+                onPressed: () => showFFAreaPicker(
+                  context,
+                  title: 'Pick',
+                  areas: _areas,
+                  multi: false,
+                  levels: const {'city', 'district'},
+                ),
+                child: const Text('open'),
+              ),
+            ),
+          ),
+          size: Size(width, 1600),
+        );
+        await tester.tap(_key('open-picker'));
+        await tester.pumpAndSettle();
+        for (final k in ['ff-area-done', 'ff-area-cancel']) {
+          final visible = find
+              .descendant(of: _key(k), matching: find.byType(Material))
+              .first;
+          expect(tester.getSize(visible).height, greaterThanOrEqualTo(48));
+        }
+      });
+    }
+
+    for (final lang in ['en', 'sw']) {
+      apiTest('#3 product sheet backdrop reads Close, no Scrim or Dismiss '
+          '($lang)', (tester, api) async {
+        debugShopLocatorOverride = FakeLocator();
+        _seed(api, _home(nearYou: _on));
+        api.on('GET /shop/products/p3', _products()['p3']);
+        final handle = tester.ensureSemantics();
+        final host = await pumpAt(
+          tester,
+          api,
+          '/?product=p3',
+          size: const Size(420, 1400),
+        );
+        expect(_key('shop-product-close'), findsOneWidget);
+        expect(find.bySemanticsLabel('Scrim'), findsNothing);
+        expect(find.bySemanticsLabel('Dismiss'), findsNothing);
+        expect(find.bySemanticsLabel(RegExp('Ondoa')), findsNothing);
+        expect(find.bySemanticsLabel(host.tr('common.close')), findsWidgets);
+        // The handle is still drawn.
+        expect(_key('shop-product-handle'), findsOneWidget);
+        handle.dispose();
+      });
+    }
+  });
 }

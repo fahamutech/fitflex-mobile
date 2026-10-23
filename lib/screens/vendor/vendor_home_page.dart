@@ -1687,7 +1687,8 @@ class _VendorHomePageState extends State<VendorHomePage> {
                           : 'vendor.areas.nudgeCheckAction',
                     ),
                     variant: FFButtonVariant.secondary,
-                    size: FFButtonSize.sm,
+                    // 48 tall at every width (QA2 #4).
+                    visualDensity: VisualDensity.standard,
                     // Opens the form at "Where you sell" (QA #8).
                     onPressed: () => _editProfile(toAreas: true),
                   ),

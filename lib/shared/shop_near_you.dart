@@ -256,8 +256,51 @@ class ShopNearYouStore {
 
   static bool lastAvailable(String? userId) =>
       _lastAvailable[_id(userId)] == true;
-  static void setLastAvailable(String? userId, bool available) =>
-      _lastAvailable[_id(userId)] = available;
+
+  /// Records the last Shop home answer. Flipping to available while an
+  /// area is kept bumps [changes], so screens that loaded first (Results, a
+  /// product sheet opened from a link) ask again with the area (QA2 #1).
+  static void setLastAvailable(String? userId, bool available) {
+    final was = _lastAvailable[_id(userId)] == true;
+    _lastAvailable[_id(userId)] = available;
+    if (available && !was && areaToSend(userId) != null) changes.value++;
+  }
+
+  /// Whether a Shop home answer was seen for [userId] this session.
+  static bool availabilityKnown(String? userId) =>
+      _lastAvailable.containsKey(_id(userId));
+
+  static final Map<String, Future<void>> _probes = {};
+
+  /// For a screen that loads without the Shop home (cold Results, a
+  /// `?product=` link): once a session, and only when near-you is on with a
+  /// kept area, ask GET /shop/home (without the area) whether near-you is
+  /// available. Nothing location-derived is sent. Failures are ignored.
+  static Future<void> probe(
+    ApiClient api,
+    String? userId, {
+    String? mode,
+  }) async {
+    final state = await load(userId);
+    if (state.choice != ShopNearYouChoice.on || state.areaId == null) return;
+    if (availabilityKnown(userId)) return;
+    final id = _id(userId);
+    return _probes[id] ??= () async {
+      try {
+        final json = await api.shopHome(mode: mode);
+        final near = ShopNearYou.fromJson(json['nearYou']);
+        final p = json['personalisation'];
+        if (near?.available == false || (p is Map && p['enabled'] == false)) {
+          setLastAvailable(userId, false);
+          await clear(userId);
+        } else {
+          setLastAvailable(userId, near?.available == true);
+        }
+      } catch (_) {
+        // Unknown: nothing is sent until the Shop home answers.
+      }
+    }();
+  }
 
   /// Bumped whenever an account's choice or area changes, so a Shop home
   /// kept alive in another tab reloads with the new area (or without one).
@@ -324,6 +367,7 @@ class ShopNearYouStore {
     _memory.clear();
     _readThisSession.clear();
     _lastAvailable.clear();
+    _probes.clear();
   }
 }
 

@@ -242,6 +242,8 @@ class _FFAreaPickerState extends State<FFAreaPicker> {
                 key: const Key('ff-area-cancel'),
                 label: context.tr('common.cancel'),
                 variant: FFButtonVariant.ghost,
+                // 48 tall at every width, desktop too (QA2 #2).
+                visualDensity: VisualDensity.standard,
                 onPressed: () => Navigator.of(context).pop(),
               ),
             ),
@@ -250,6 +252,7 @@ class _FFAreaPickerState extends State<FFAreaPicker> {
               child: FFButton(
                 key: const Key('ff-area-done'),
                 label: context.tr('vendor.areas.done'),
+                visualDensity: VisualDensity.standard,
                 onPressed: () => Navigator.of(context).pop({..._selected}),
               ),
             ),
