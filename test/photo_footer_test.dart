@@ -409,10 +409,12 @@ void main() {
     footerTest('short Trainers list: no footer; growing past the screen '
         'shows it, and it stays (hysteresis)', (tester, api) async {
       final data = _data(trainers: 1);
+      // Tall enough that one trainer under the band (taller since owner
+      // 2026-10-22, clear photo above its text) still fits on the screen.
       await _host(
         tester,
         _scoped(data, const MemberTrainersTab()),
-        size: const Size(430, 932),
+        size: const Size(430, 1100),
       );
       expect(_key('photo-footer'), findsNothing);
       expect(
@@ -574,6 +576,11 @@ void main() {
     ) async {
       _seedShop(api);
       await _host(tester, const MemberShopTab());
+      // The band (taller since owner 2026-10-22) may push the rail down.
+      await tester.ensureVisible(
+        find.byKey(const Key('shop-home-add-p0')).first,
+      );
+      await _frames(tester);
       await tester.tap(find.byKey(const Key('shop-home-add-p0')).first);
       await _frames(tester);
       expect(_key('shop-home-checkout'), findsOneWidget);

@@ -28,6 +28,11 @@ import 'shop_product_rail.dart';
 /// home must use it (anything else is refused as `invalid_placement`).
 const kShopHomePlacement = 'marketplace';
 
+/// PHOTO_HERO_UI (owner 2026-10-22): the member Shop band's clear photo
+/// above its text, on every phone, so the FitFlex Africa sign
+/// ([FFHeroPhoto.shop], focal top) sits wholly above the text.
+const double shopBandClearPhoto = FFTokens.heroBandClearPhoto;
+
 /// The personalised Shop home (V2, Phase 1): search and cart, "Shop by
 /// category", then the sections the server chose, in the server's order.
 ///
@@ -644,6 +649,11 @@ class ShopHomeViewState extends State<ShopHomeView> {
                 photo: FFHeroPhoto.shop,
                 headingFocusNode: widget.heroFocusNode,
                 minHeight: 160,
+                // Search sits above the band, so the full clear photo on
+                // every phone: the FitFlex Africa sign stays above the
+                // text (owner 2026-10-22).
+                clearPhoto: shopBandClearPhoto,
+                clearPhotoEverywhere: true,
                 wideHeight: 200,
                 eyebrow: context.tr('member.shopTitle'),
                 headlineLead: context.tr('hero.shop.lead'),

@@ -563,7 +563,9 @@ void main() {
       }
     }
 
-    testWidgets('Activity keeps its height: switcher stays above 460', (
+    // Owner 2026-10-22: Activity grows for clear photo above its text, as
+    // far as the switcher can stay above 55% of the screen.
+    testWidgets('Activity: clear photo, switcher stays above 55%', (
       tester,
     ) async {
       await _pump(
@@ -572,11 +574,15 @@ void main() {
         api: _MeApi(),
         shellLocation: '/member/activity',
       );
-      expect(_hero(tester).clearPhoto, 0);
-      expect(_hero(tester).maxHeight, double.infinity);
+      expect(_hero(tester).clearPhoto, FFTokens.heroBandClearPhoto);
+      // The shell's activity is the sample here: room for its badge too,
+      // which leaves too little clear photo, so the hero keeps today's
+      // height (the sample-free case is in photo_hero_bands_test.dart).
+      expect(_hero(tester).maxHeight, closeTo(844 * 0.55 - 8 - 28, 0.01));
+      expect(find.byKey(const Key('activity-sample-badge')), findsOneWidget);
       expect(
         tester.getRect(find.byKey(const Key('activity-sections'))).top,
-        lessThanOrEqualTo(460),
+        lessThanOrEqualTo(844 * 0.55 + 0.01),
       );
       await _unmount(tester);
     });

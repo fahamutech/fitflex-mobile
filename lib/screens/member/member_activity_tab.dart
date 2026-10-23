@@ -46,6 +46,16 @@ class MemberActivityTab extends StatefulWidget {
   State<MemberActivityTab> createState() => _MemberActivityTabState();
 }
 
+/// PHOTO_HERO_UI (owner 2026-10-22, heroes "too dark"): Activity's hero
+/// grows for [FFTokens.heroBandClearPhoto] of clear photo above its text on
+/// phones from 760 tall, but the section switcher under it keeps its top
+/// edge above [FFTokens.heroBandControlShare] of the screen; the clear
+/// photo gives way (45px at 390x844).
+const double activityHeroClearPhoto = FFTokens.heroBandClearPhoto;
+
+/// The Sample badge's height at 1.0x text (an [FFPill]).
+const double _sampleBadgeHeight = 28;
+
 /// PHOTO_HERO_UI: each section's photo and headline keys (spec §24).
 const activityHeroSections = <String, (FFHeroPhoto, String)>{
   'overview': (FFHeroPhoto.activityToday, 'hero.activity.today'),
@@ -64,8 +74,10 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
       data.activityLoaded &&
       (data.activities.isNotEmpty || _section != 'overview');
 
-  /// The hero's height: fixed, so switching sections never moves the
-  /// segmented control (spec §24).
+  /// The hero's least height: fixed, so switching sections never moves
+  /// the segmented control (spec §24). With clear photo above the text the
+  /// hero is taller, and as fixed (its text keeps the tallest headline's
+  /// room).
   double _heroHeight(BuildContext context, double topInset) =>
       topInset +
       (Theme.of(context).brightness == Brightness.dark ? 228.0 : 252.0);
@@ -83,6 +95,15 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
       precacheHeroPhotos(context, [
         for (final v in activityHeroSections.values) v.$1,
       ], box: Size(width, _heroHeight(context, topInset)));
+      // Again at the hero's laid-out size, which the clear photo makes
+      // taller than its least height: the sizes share a cache entry.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final size = _heroKey.currentContext?.size;
+        if (!mounted || size == null || size.isEmpty) return;
+        precacheHeroPhotos(context, [
+          for (final v in activityHeroSections.values) v.$1,
+        ], box: size);
+      });
     }
   }
 
@@ -105,6 +126,28 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
       rounded: panel,
       minHeight: panel ? 200 : _heroHeight(context, topInset),
       topInset: panel ? 0 : topInset,
+      clearPhoto: panel
+          ? 0
+          : heroBandClear(
+              activityHeroClearPhoto,
+              viewportHeight: MediaQuery.sizeOf(context).height,
+              textScale: MediaQuery.textScalerOf(context).scale(1),
+            ),
+      // The hero starts at the top of the screen; the switcher follows it
+      // 24px down on the dark ground, or right at its edge on the light
+      // sheet that overlaps it, and below the Sample badge when shown.
+      maxHeight: panel
+          ? double.infinity
+          : FFTokens.heroBandControlShare * MediaQuery.sizeOf(context).height -
+                (Theme.of(context).brightness == Brightness.dark
+                    ? FFTokens.spacingLg
+                    : 0) -
+                (data.activityIsSample
+                    ? FFTokens.spacingSm +
+                          _sampleBadgeHeight *
+                              MediaQuery.textScalerOf(context).scale(1)
+                    : 0),
+      minClearPhoto: FFTokens.heroBandMinClearPhoto,
       eyebrow: context.tr('activity.title'),
       headlineLead: context.tr('$key.lead'),
       headlineAccent: context.tr('$key.accent'),
@@ -199,9 +242,10 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
         ? FFPhotoFooter.sliver(
             key: const Key('activity-footer'),
             pageKey: 'member.activity',
-            top: (activityHeroSections[_section] ??
-                    activityHeroSections['overview']!)
-                .$1,
+            top:
+                (activityHeroSections[_section] ??
+                        activityHeroSections['overview']!)
+                    .$1,
             enabled: data.activityLoaded,
             gap: padded
                 ? FFTokens.spacingXl - FFTokens.spacingLg

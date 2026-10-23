@@ -14,6 +14,13 @@ import '../member/member_group_page.dart' show openGroupManager;
 import 'widgets/gym_engagement_widgets.dart';
 import 'widgets/latest_checkins_card.dart';
 
+/// PHOTO_HERO_UI (owner 2026-10-22, bands "too dark"): the band grows for
+/// [FFTokens.heroBandClearPhoto] of clear photo above its text, but no taller
+/// than this on a 390x844 screen, so Check-in (in the band) starts above
+/// 55% of the screen
+/// (FFHeroBand.maxHeightAt844).
+const double ownerHomeBandMaxHeight = 417;
+
 /// Owner dashboard home tab — shows stats, quick actions, and gym summary.
 class OwnerHomeTab extends StatefulWidget {
   const OwnerHomeTab({super.key, this.now});
@@ -142,6 +149,8 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
             FFHeroBand(
               key: const Key('owner-hero'),
               photo: FFHeroPhoto.owner,
+              clearPhoto: FFTokens.heroBandClearPhoto,
+              maxHeightAt844: ownerHomeBandMaxHeight,
               eyebrow: _greetingLine(context, data.displayName),
               headlineLead: hasBrand
                   ? title.replaceFirst('FitFlex', '').trim()
@@ -237,6 +246,8 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
           FFHeroBand(
             key: const Key('owner-hero'),
             photo: FFHeroPhoto.owner,
+            clearPhoto: FFTokens.heroBandClearPhoto,
+            maxHeightAt844: ownerHomeBandMaxHeight,
             eyebrow: greetingLine,
             headlineLead: context.tr('hero.owner.lead'),
             headlineAccent: context.tr('hero.owner.accent'),
