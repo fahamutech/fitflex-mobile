@@ -9,6 +9,7 @@ import '../../shared/photo_footer_flag.dart';
 import '../../shared/photo_hero_flag.dart';
 import 'owner_shell.dart';
 import '../../shared/widgets/challenge_manager_page.dart';
+import '../../shared/widgets/partner_details_widgets.dart';
 import '../../shared/widgets/partner_not_verified.dart';
 import '../member/member_group_page.dart' show openGroupManager;
 import 'widgets/gym_engagement_widgets.dart';
@@ -263,6 +264,8 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
           const SizedBox(height: FFTokens.spacingMd),
         ],
         const PartnerNotVerifiedNotice(),
+        // Partner date of birth: a dismissible ask, never blocking.
+        if (!data.isStaff) const PartnerDobPromptCard(canEditGender: true),
         // Greeting follows the time of day; the date filter is the one
         // control that scopes everything below it.
         if (!hero) ...[
