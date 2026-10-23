@@ -15,8 +15,9 @@ const _generated =
     'FitFlex Africa, AI-generated via Figma AI (gpt-image-2.5), '
     '2026-10-22, no people';
 const _owner =
-    'Supplied by owner 2026-10-22; owner to confirm source/licence before '
-    'flag on';
+    'Collected from the internet by owner; NOT cleared for release — '
+    'testing only (owner 2026-10-22). Replace before PHOTO_HERO_UI goes on '
+    'for users.';
 
 /// The approved slot → scene mapping (owner, 2026-10-22).
 const _mapping = <FFHeroPhoto, String>{

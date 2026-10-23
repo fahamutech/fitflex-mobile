@@ -37,6 +37,13 @@ import '../../shared/widgets/invitations.dart';
 import '../../shared/widgets/verify_identifier.dart';
 import '../pin_flows.dart';
 
+/// PHOTO_HERO_UI (owner 2026-10-22, bands "too dark"): the band grows for
+/// [FFTokens.heroBandClearPhoto] of clear photo above its text, but no taller
+/// than this on a 390x844 screen, so the check-in buttons (in the band)
+/// start above 55% of the screen
+/// (FFHeroBand.maxHeightAt844).
+const double trainerHomeBandMaxHeight = 469;
+
 /// Standalone trainer dashboard shown after trainer is onboarded.
 class TrainerHomePage extends StatefulWidget {
   const TrainerHomePage({super.key, this.open});
@@ -410,6 +417,8 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
           FFHeroBand(
             key: const Key('trainer-hero'),
             photo: FFHeroPhoto.trainer,
+            clearPhoto: FFTokens.heroBandClearPhoto,
+            maxHeightAt844: trainerHomeBandMaxHeight,
             eyebrow: heroGreeting(
               context,
               DateTime.now(),
