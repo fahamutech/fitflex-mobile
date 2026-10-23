@@ -214,9 +214,9 @@ class ShopHomeViewState extends State<ShopHomeView> {
         unawaited(ShopNearYouStore.clear(uid));
       } else if (available && near.choice == ShopNearYouChoice.on) {
         if (areaId == null && near.areaId != null) {
-          // The first answer this session says near-you is available: ask
-          // again, now with the kept area.
-          unawaited(reload());
+          // The first answer this session says near-you is available:
+          // setLastAvailable bumped `changes`, and the listener asks again
+          // with the kept area.
         } else {
           // Work the area out again once a session (never prompting). A
           // change is saved, which reloads the home through the listener.
