@@ -138,6 +138,25 @@ String? _timedReason(FFLocale locale, String reason, dynamic body) {
 String? _detailedReason(FFLocale locale, String reason, dynamic body) {
   if (body is! Map) return null;
   switch (reason.trim().toLowerCase()) {
+    // Events S3 (spec §3.17): refusals that carry numbers, and the order /
+    // registration state machines' `invalid_transition { kind }`.
+    case 'quantity_out_of_range':
+      if (body['min'] is! num || body['max'] is! num) return null;
+      return locale
+          .t('error.reason.quantityOutOfRange')
+          .replaceFirst('{min}', '${body['min']}')
+          .replaceFirst('{max}', '${body['max']}');
+    case 'too_many_participants':
+      if (body['max'] is! num) return null;
+      return locale
+          .t('error.reason.tooManyParticipants')
+          .replaceFirst('{max}', '${body['max']}');
+    case 'invalid_transition':
+      final kind = body['kind']?.toString();
+      if (kind == 'order' || kind == 'registration') {
+        return locale.t('error.reason.invalidTransition.events');
+      }
+      return null;
     case 'not_payable_by_role':
       final product = body['product']?.toString();
       if (product == null) return null;
@@ -276,6 +295,41 @@ String? _knownReason(FFLocale locale, String reason) {
     'cannot_invite_self': 'error.reason.cannotInviteSelf',
     'cannot_remove_owner': 'error.reason.cannotRemoveOwner',
     'kyc_incomplete': 'error.reason.kycIncomplete',
+    // Events S3: registration, orders, claims, teams (spec §3.17).
+    'capacity_unavailable': 'error.reason.capacityUnavailable',
+    'event_not_open': 'error.reason.eventNotOpen',
+    'registration_closed': 'error.reason.registrationClosed',
+    'sale_closed': 'error.reason.saleClosed',
+    'sale_not_open': 'error.reason.saleNotOpen',
+    'ticket_type_inactive': 'error.reason.ticketUnavailable',
+    'ticket_type_not_found': 'error.reason.ticketUnavailable',
+    'category_inactive': 'error.reason.ticketUnavailable',
+    'quantity_out_of_range': 'error.reason.quantityOutOfRange',
+    'too_many_participants': 'error.reason.tooManyParticipants',
+    'terms_not_accepted': 'error.reason.termsNotAccepted',
+    'consent_version_stale': 'error.reason.consentVersionStale',
+    'participant_invalid': 'error.reason.participantInvalid',
+    'invalid_participant': 'error.reason.participantInvalid',
+    'participants_mismatch': 'error.reason.participantInvalid',
+    'multiple_self_participants': 'error.reason.participantInvalid',
+    'price_changed': 'error.reason.priceChanged',
+    'order_not_found': 'error.reason.orderNotFound',
+    'registration_not_found': 'error.reason.registrationNotFound',
+    'invalid_reason': 'error.reason.invalidReason',
+    'remove_whole_line': 'error.reason.removeWholeLine',
+    'team_not_found': 'error.reason.teamNotFound',
+    'team_full': 'error.reason.teamFull',
+    'team_disbanded': 'error.reason.teamDisbanded',
+    'team_name_taken': 'error.reason.teamNameTaken',
+    'claim_token_invalid': 'error.reason.claimTokenInvalid',
+    'claim_token_expired': 'error.reason.claimTokenExpired',
+    'claim_not_verified': 'error.reason.claimNotVerified',
+    'already_claimed': 'error.reason.alreadyClaimed',
+    'claim_own_contact': 'error.reason.claimOwnContact',
+    'registration_closed_state': 'error.reason.registrationClosedState',
+    'idempotency_key_reused': 'error.reason.idempotencyKeyReused',
+    'idempotency_key_required': 'error.reason.idempotencyKeyReused',
+    'organization_not_allowed': 'error.reason.organizationNotAllowed',
   };
   final key = keys[reason.trim().toLowerCase()];
   return key == null ? null : locale.t(key);
