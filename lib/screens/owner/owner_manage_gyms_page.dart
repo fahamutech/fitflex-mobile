@@ -7,6 +7,7 @@ import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import '../../shared/widgets/gym_form_page.dart';
+import '../../shared/widgets/payout_owner_marker.dart';
 import 'owner_shell.dart';
 import '../member/widgets/gym_filters.dart';
 
@@ -201,6 +202,21 @@ class _OwnerGymGridCard extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
+  static Widget _cover(ColorScheme cs, String? src) {
+    final placeholder = Container(
+      color: cs.primary.withValues(alpha: 0.1),
+      child: Icon(Icons.fitness_center, size: 36, color: cs.primary),
+    );
+    if (src == null) return placeholder;
+    return FFRemoteImage(
+      src: src,
+      width: double.infinity,
+      height: double.infinity,
+      fit: BoxFit.cover,
+      fallback: placeholder,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -227,29 +243,25 @@ class _OwnerGymGridCard extends StatelessWidget {
             ),
             child: AspectRatio(
               aspectRatio: 4 / 3,
-              child: coverThumbnail == null
-                  ? Container(
-                      color: cs.primary.withValues(alpha: 0.1),
-                      child: Icon(
-                        Icons.fitness_center,
-                        size: 36,
-                        color: cs.primary,
-                      ),
-                    )
-                  : FFRemoteImage(
-                      src: coverThumbnail,
-                      width: double.infinity,
-                      height: double.infinity,
-                      fit: BoxFit.cover,
-                      fallback: Container(
-                        color: cs.primary.withValues(alpha: 0.1),
-                        child: Icon(
-                          Icons.fitness_center,
-                          size: 36,
-                          color: cs.primary,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  _cover(cs, coverThumbnail),
+                  // On the photo, so a narrow card keeps its height.
+                  if (isPayoutOwnerGym(gym))
+                    PositionedDirectional(
+                      top: FFTokens.spacingSm,
+                      start: FFTokens.spacingSm,
+                      end: FFTokens.spacingSm,
+                      child: Align(
+                        alignment: AlignmentDirectional.topStart,
+                        child: PayoutOwnerMarker(
+                          key: Key('owner-gym-payout-owner-${gym['id']}'),
                         ),
                       ),
                     ),
+                ],
+              ),
             ),
           ),
           Expanded(
