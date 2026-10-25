@@ -6,6 +6,7 @@
 // app shows nothing new.
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'api_client.dart';
@@ -86,6 +87,70 @@ Future<PersonalDetails?> loadPersonalDetails(
   }
 }
 
+/// One GET /me/personal-details per signed-in account per session, shared
+/// by the home card and the settings tile, and replaced by what a save
+/// answers (security review L1). A feature-disabled answer is kept too (no
+/// new UI for the session); any other failure is not kept, so the next
+/// screen asks again. Registration pages read fresh ([loadPersonalDetails]).
+class PartnerDetailsSession {
+  PartnerDetailsSession._();
+
+  static String? _account;
+  static Future<PersonalDetails?>? _pending;
+
+  /// The details for the account last loaded, or null (not loaded, off or
+  /// failed). Widgets listen so a save in one place updates the other.
+  static final ValueNotifier<PersonalDetails?> current = ValueNotifier(null);
+
+  /// The details for [account], from the session copy when there is one.
+  static Future<PersonalDetails?> load(ApiClient api, String account) {
+    final pending = _pending;
+    if (pending != null && _account == account) return pending;
+    _account = account;
+    current.value = null;
+    late final Future<PersonalDetails?> future;
+    future = _fetch(api).then((result) {
+      if (!identical(_pending, future)) return result.$1;
+      if (result.$2) {
+        current.value = result.$1;
+      } else {
+        _pending = null; // not kept: try again next time
+      }
+      return result.$1;
+    });
+    _pending = future;
+    return future;
+  }
+
+  /// (details, keep): keep is false for a failure worth retrying.
+  static Future<(PersonalDetails?, bool)> _fetch(ApiClient api) async {
+    try {
+      final body = await api.personalDetails().timeout(
+        const Duration(seconds: 8),
+      );
+      return (PersonalDetails.fromJson(body), true);
+    } on ApiException catch (e) {
+      return (null, e.code == 'feature_disabled');
+    } catch (_) {
+      return (null, false);
+    }
+  }
+
+  /// What a save answered, for [account].
+  static void saved(String account, PersonalDetails details) {
+    _account = account;
+    _pending = Future.value(details);
+    current.value = details;
+  }
+
+  /// Sign-out (and tests): forget the session copy.
+  static void clear() {
+    _account = null;
+    _pending = null;
+    current.value = null;
+  }
+}
+
 /// Whole years from [dateOfBirth] to today in East Africa, as the server
 /// counts them (src/shared/date-of-birth.mjs ageOnDay).
 int ageOn(DateTime dateOfBirth, {DateTime? now}) {
@@ -115,7 +180,7 @@ String? partnerDobProblemKey(
   if (text.isEmpty) return required ? 'onboarding.required' : null;
   final problem = dateOfBirthProblemKey(text, now: now);
   if (problem != null) return problem;
-  if (isUnderPartnerAge(text, now: now)) return 'partnerDob.errUnder18';
+  if (isUnderPartnerAge(text, now: now)) return 'error.reason.partnerUnder18';
   return null;
 }
 
@@ -136,11 +201,13 @@ bool isGenderFieldError(Object error) =>
 /// call refused for the partner age rule), without the generic "Request
 /// declined" prefix. Anything else goes through [errorMessage].
 String partnerDetailsErrorMessage(FFLocale locale, Object error) {
-  if (isPartnerUnder18Error(error)) return locale.t('partnerDob.errUnder18');
+  if (isPartnerUnder18Error(error)) {
+    return locale.t('error.reason.partnerUnder18');
+  }
   if (isDateOfBirthError(error)) return locale.t('member.dobInvalid');
-  if (isGenderFieldError(error)) return locale.t('partnerDob.errGender');
+  if (isGenderFieldError(error)) return locale.t('error.reason.invalidGender');
   if (_isCode(error, 'personal_details_unavailable')) {
-    return locale.t('partnerDob.errUnavailable');
+    return locale.t('error.reason.personalDetailsUnavailable');
   }
   if (_isCode(error, 'rate_limited')) {
     final body = (error as ApiException).body;
@@ -179,6 +246,19 @@ class PartnerDobPromptStore {
       return !(now ?? DateTime.now()).toUtc().isBefore(last.add(askAgainAfter));
     } catch (_) {
       return true;
+    }
+  }
+
+  /// Sign-out (security review L2): remove every prompt count kept on this
+  /// device, so the next person to sign in here starts clean.
+  static Future<void> clearAll() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      for (final key in prefs.getKeys().toList()) {
+        if (key.startsWith('ff.partnerDob.')) await prefs.remove(key);
+      }
+    } catch (_) {
+      // Nothing kept, or storage unavailable.
     }
   }
 

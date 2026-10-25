@@ -75,7 +75,7 @@ class PartnerDobField extends StatelessWidget {
       enabled: enabled,
       onTap: enabled ? () => _pick(context) : null,
       label: context.tr('onboarding.dob'),
-      hint: 'YYYY-MM-DD',
+      hint: context.tr('partnerDob.tapToChoose'),
       helperText: showHelp && errorText == null
           ? context.tr('partnerDob.help')
           : null,
@@ -336,6 +336,7 @@ class PartnerDetailsTile extends StatefulWidget {
 
 class _PartnerDetailsTileState extends State<PartnerDetailsTile> {
   PersonalDetails? _details;
+  String? _account;
   bool _started = false;
 
   @override
@@ -343,12 +344,26 @@ class _PartnerDetailsTileState extends State<PartnerDetailsTile> {
     super.didChangeDependencies();
     if (_started) return;
     _started = true;
-    if (_accountOf(context) == null) return;
-    _load();
+    _account = _accountOf(context);
+    if (_account == null) return;
+    PartnerDetailsSession.current.addListener(_onSession);
+    _load(AppScope.of(context).api);
   }
 
-  Future<void> _load() async {
-    final details = await loadPersonalDetails(AppScope.of(context).api);
+  @override
+  void dispose() {
+    PartnerDetailsSession.current.removeListener(_onSession);
+    super.dispose();
+  }
+
+  /// A save elsewhere (the home card) updates this tile too.
+  void _onSession() {
+    final details = PartnerDetailsSession.current.value;
+    if (details != null && mounted) setState(() => _details = details);
+  }
+
+  Future<void> _load(ApiClient api) async {
+    final details = await PartnerDetailsSession.load(api, _account!);
     if (mounted) setState(() => _details = details);
   }
 
@@ -362,6 +377,7 @@ class _PartnerDetailsTileState extends State<PartnerDetailsTile> {
       canEditGender: widget.canEditGender,
     );
     if (result == null || !mounted) return;
+    PartnerDetailsSession.saved(_account!, result);
     setState(() => _details = result);
     FFSnack.success(context, saved);
   }
@@ -413,11 +429,27 @@ class _PartnerDobPromptCardState extends State<PartnerDobPromptCard> {
     _started = true;
     _account = _accountOf(context);
     if (_account == null) return;
+    PartnerDetailsSession.current.addListener(_onSession);
     _load(AppScope.of(context).api);
   }
 
+  @override
+  void dispose() {
+    PartnerDetailsSession.current.removeListener(_onSession);
+    super.dispose();
+  }
+
+  /// A save elsewhere (the settings tile) hides the card once nothing is
+  /// left to ask.
+  void _onSession() {
+    final details = PartnerDetailsSession.current.value;
+    if (details != null && !details.ask && _show && mounted) {
+      setState(() => _show = false);
+    }
+  }
+
   Future<void> _load(ApiClient api) async {
-    final details = await loadPersonalDetails(api);
+    final details = await PartnerDetailsSession.load(api, _account!);
     if (details == null || !details.ask) return;
     if (!await PartnerDobPromptStore.mayShow(_account!, now: _now)) return;
     if (!mounted) return;
@@ -435,6 +467,7 @@ class _PartnerDobPromptCardState extends State<PartnerDobPromptCard> {
       canEditGender: widget.canEditGender,
     );
     if (result == null || !mounted) return;
+    PartnerDetailsSession.saved(_account!, result);
     setState(() {
       _details = result;
       _show = result.ask;

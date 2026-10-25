@@ -178,7 +178,10 @@ TextEditingController _dobController(WidgetTester tester) => tester
 const _under18 = 'You must be 18 or older to be a Trainer or gym owner.';
 
 void main() {
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+    PartnerDetailsSession.clear();
+  });
 
   group('age rule (matches the server ageOnDay)', () {
     test('18 on the 18th birthday, not the day before', () {
@@ -204,7 +207,7 @@ void main() {
       expect(partnerDobProblemKey('2027-01-01', now: now), 'member.dobFuture');
       expect(
         partnerDobProblemKey('2010-01-01', now: now),
-        'partnerDob.errUnder18',
+        'error.reason.partnerUnder18',
       );
       expect(partnerDobProblemKey('1990-05-10', now: now), isNull);
     });
@@ -219,7 +222,7 @@ void main() {
     final cases = <ApiException, (String, String)>{
       ApiException(400, {'error': 'partner_under_18'}): (
         _under18,
-        'Lazima uwe na miaka 18 au zaidi kuwa Trainer au mmiliki wa gym.',
+        'Lazima uwe na miaka 18 au zaidi kuwa trainer au mmiliki wa gym.',
       ),
       ApiException(400, {'error': 'invalid_field', 'field': 'gender'}): (
         'Choose a gender from the list.',
@@ -258,7 +261,7 @@ void main() {
       );
       expect(
         apiErrorMessage(sw, ApiException(400, {'error': 'partner_under_18'})),
-        'Ombi limekataliwa: Lazima uwe na miaka 18 au zaidi kuwa Trainer au '
+        'Ombi limekataliwa: Lazima uwe na miaka 18 au zaidi kuwa trainer au '
         'mmiliki wa gym.',
       );
       expect(
@@ -302,7 +305,7 @@ void main() {
             k == 'error.reason.invalidGender' ||
             k == 'error.reason.rateLimitedSeconds',
       );
-      expect(mine.length, 19);
+      expect(mine.length, 17);
       for (final k in mine) {
         expect(sw, contains(k), reason: k);
         expect(FFLocale.textOf('sw', k), isNot(FFLocale.textOf('en', k)));
@@ -445,6 +448,146 @@ void main() {
       await tester.pumpAndSettle();
       // On to the gyms step without leaving the gender unanswered blocking.
       expect(find.byKey(const Key('owner-reg-dob')), findsNothing);
+    });
+  });
+
+  group('Gym owner registration submit', () {
+    Future<void> fillAndSubmit(WidgetTester tester) async {
+      await tester.enterText(find.byType(TextFormField).first, 'Asha Said');
+      _dobController(tester).text = _years(40);
+      await tester.tap(find.byKey(const Key('partner-gender')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Prefer not to say').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Next'));
+      await tester.pumpAndSettle();
+      final fields = find.byType(TextFormField);
+      for (final (i, v) in const [
+        (0, 'Asha Gym'),
+        (1, 'Mikocheni'),
+        (2, '5000'),
+        (3, '20000'),
+        (4, '60000'),
+      ]) {
+        await tester.enterText(fields.at(i), v);
+      }
+      await tester.tap(find.text('Submit'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('asked: dateOfBirth and gender null are sent', (tester) async {
+      final api = _FakeApi(details: _details(ask: true));
+      await _pump(tester, api, const OwnerRegistrationPage(), page: true);
+      await fillAndSubmit(tester);
+      final body = api.registered.single;
+      expect(body['dateOfBirth'], _years(40));
+      expect(body.containsKey('gender'), isTrue);
+      expect(body['gender'], isNull);
+    });
+
+    testWidgets('a server gender refusal goes back to the first step', (
+      tester,
+    ) async {
+      final api = _FakeApi(details: _details(ask: true))
+        ..registerError = ApiException(400, {
+          'error': 'invalid_field',
+          'field': 'gender',
+        });
+      await _pump(tester, api, const OwnerRegistrationPage(), page: true);
+      await fillAndSubmit(tester);
+      expect(api.registered, hasLength(1));
+      expect(find.byKey(const Key('owner-reg-dob')), findsOneWidget);
+      final gender = tester.widget<InputDecorator>(
+        find.descendant(
+          of: find.byKey(const Key('partner-gender')),
+          matching: find.byType(InputDecorator),
+        ),
+      );
+      expect(gender.decoration.errorText, 'Choose a gender from the list.');
+    });
+  });
+
+  group('one read per session', () {
+    testWidgets('the card and the tile share one GET; a save from the tile '
+        'hides the card without another GET', (tester) async {
+      final api = _FakeApi(details: _details(ask: true));
+      await _pump(
+        tester,
+        api,
+        const Column(
+          children: [
+            PartnerDobPromptCard(canEditGender: true),
+            PartnerDetailsTile(canEditGender: true),
+          ],
+        ),
+      );
+      expect(api.detailsCalls, 1);
+      expect(find.byKey(const Key('partner-dob-prompt')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('partner-details-tile')));
+      await tester.pumpAndSettle();
+      _dobController(tester).text = '1985-01-01';
+      await tester.tap(find.byKey(const Key('partner-details-save')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('partner-dob-prompt')), findsNothing);
+      // Opened again later in the session: still the one read.
+      await _pump(
+        tester,
+        api,
+        PartnerDetailsTile(key: UniqueKey(), canEditGender: true),
+      );
+      expect(api.detailsCalls, 1);
+      expect(PartnerDetailsSession.current.value?.dateOfBirth, '1985-01-01');
+    });
+
+    testWidgets('a failed read is not kept; the next screen asks again', (
+      tester,
+    ) async {
+      final api = _FakeApi(detailsError: ApiException(500, null));
+      await _pump(tester, api, const PartnerDetailsTile(canEditGender: true));
+      expect(find.byKey(const Key('partner-details-tile')), findsNothing);
+      api
+        ..detailsError = null
+        ..details = _details(dob: '1990-05-10');
+      await _pump(
+        tester,
+        api,
+        PartnerDetailsTile(key: UniqueKey(), canEditGender: true),
+      );
+      expect(api.detailsCalls, 2);
+      expect(find.byKey(const Key('partner-details-tile')), findsOneWidget);
+    });
+
+    testWidgets('feature off is kept for the session', (tester) async {
+      final api = _FakeApi(detailsError: _off);
+      await _pump(tester, api, const PartnerDetailsTile(canEditGender: true));
+      await _pump(
+        tester,
+        api,
+        PartnerDobPromptCard(key: UniqueKey(), canEditGender: true),
+      );
+      expect(api.detailsCalls, 1);
+    });
+
+    test('sign-out forgets the prompt counts and the session copy', () async {
+      SharedPreferences.setMockInitialValues({
+        PartnerDobPromptStore.countKey('usr_partner'): 2,
+        PartnerDobPromptStore.atKey('usr_partner'): 1,
+        PartnerDobPromptStore.countKey('usr_other'): 1,
+        'ff.locale': 'sw',
+      });
+      final api = _FakeApi(details: _details(ask: true));
+      final auth = AuthState(api);
+      await auth.signIn('jwt', {'id': 'usr_partner', 'userType': 'trainer'});
+      await PartnerDetailsSession.load(api, 'usr_partner');
+      expect(PartnerDetailsSession.current.value, isNotNull);
+      await auth.signOut();
+      final prefs = await SharedPreferences.getInstance();
+      expect(
+        prefs.getKeys().where((k) => k.startsWith('ff.partnerDob.')),
+        isEmpty,
+      );
+      expect(prefs.getString('ff.locale'), 'sw');
+      expect(PartnerDetailsSession.current.value, isNull);
     });
   });
 
@@ -647,7 +790,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         find.text(
-          'Lazima uwe na miaka 18 au zaidi kuwa Trainer au mmiliki wa gym.',
+          'Lazima uwe na miaka 18 au zaidi kuwa trainer au mmiliki wa gym.',
         ),
         findsOneWidget,
       );

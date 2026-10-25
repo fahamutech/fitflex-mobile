@@ -147,7 +147,7 @@ class MemberOnboardingController extends ChangeNotifier {
       // 400 partner_under_18: a Trainer or gym owner must be 18 or older.
       onError(
         isPartnerUnder18Error(e)
-            ? locale.t('partnerDob.errUnder18')
+            ? locale.t('error.reason.partnerUnder18')
             : dateOfBirthErrorMessage(locale, e) ?? apiErrorMessage(locale, e),
       );
     } catch (e) {

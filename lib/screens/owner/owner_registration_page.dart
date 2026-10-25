@@ -44,6 +44,7 @@ class _OwnerRegistrationPageState extends State<OwnerRegistrationPage> {
   final _dobCtrl = TextEditingController();
   String? _dobError;
   String? _gender;
+  String? _genderError;
 
   // Step 1 — Gym list
   final List<_GymDraft> _gyms = [_GymDraft()];
@@ -231,10 +232,16 @@ class _OwnerRegistrationPageState extends State<OwnerRegistrationPage> {
       if (!mounted) return;
       // partner_under_18 and the date-of-birth/gender refusals say so plainly.
       final message = partnerDetailsErrorMessage(FFLocaleScope.of(context), e);
+      // Back to the step with the field the server refused.
       if (_askDob && (isPartnerUnder18Error(e) || isDateOfBirthError(e))) {
         setState(() {
           _step = 0;
           _dobError = message;
+        });
+      } else if (_askDob && isGenderFieldError(e)) {
+        setState(() {
+          _step = 0;
+          _genderError = message;
         });
       }
       FFSnack.error(context, message);
@@ -411,7 +418,11 @@ class _OwnerRegistrationPageState extends State<OwnerRegistrationPage> {
           const SizedBox(height: FFTokens.spacingMd),
           PartnerGenderField(
             value: _gender,
-            onChanged: (v) => setState(() => _gender = v),
+            errorText: _genderError,
+            onChanged: (v) => setState(() {
+              _gender = v;
+              _genderError = null;
+            }),
           ),
         ],
       ],

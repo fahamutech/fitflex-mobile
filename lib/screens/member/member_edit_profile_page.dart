@@ -272,8 +272,8 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
         LengthLimitingTextInputFormatter(10),
       ],
       label: context.tr('member.dateOfBirth'),
-      hint: 'YYYY-MM-DD',
-      helperText: _dobError == null ? 'YYYY-MM-DD' : null,
+      hint: context.tr('member.dobFormatHint'),
+      helperText: _dobError == null ? context.tr('member.dobFormatHint') : null,
       errorText: _dobError,
       validator: _dobProblem,
       autovalidateMode: _storedDobInvalid
@@ -367,7 +367,7 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
       setState(() {
         _busy = false;
         if (!savedAnything && isPartnerUnder18Error(e)) {
-          _dobError = context.tr('partnerDob.errUnder18');
+          _dobError = context.tr('error.reason.partnerUnder18');
         } else if (!savedAnything && isDateOfBirthError(e)) {
           _dobError =
               '${context.tr('member.dobInvalid')} '

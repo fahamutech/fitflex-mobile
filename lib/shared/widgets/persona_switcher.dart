@@ -106,7 +106,7 @@ Future<void> addPersonaAndContinue(
               // Trainers and gym owners must be 18 or older
               // (fitflex-functions#253).
               : isPartnerUnder18Error(e)
-              ? locale.t('partnerDob.errUnder18')
+              ? locale.t('error.reason.partnerUnder18')
               : '$failed ${errorMessage(locale, e)}'.trim(),
         ),
       ),
