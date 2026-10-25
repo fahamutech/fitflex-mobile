@@ -106,6 +106,21 @@ void main() {
       expect(out, contains('"name":"kept"'));
     });
 
+    test('redacts date of birth and gender (fitflex-functions#253)', () {
+      final out = redactBody(
+        jsonEncode({
+          'dateOfBirth': '1994-03-21',
+          'gender': 'female',
+          'memberProfile': {'dateOfBirth': '1990-05-10', 'gender': 'male'},
+          'source': 'person',
+        }),
+      );
+      for (final v in ['1994-03-21', 'female', '1990-05-10', '"male"']) {
+        expect(out, isNot(contains(v)));
+      }
+      expect(out, contains('"source":"person"'));
+    });
+
     test('truncates long bodies', () {
       expect(redactBody('x' * 5000), endsWith('...<truncated>'));
     });

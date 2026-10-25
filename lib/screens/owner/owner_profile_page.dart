@@ -6,6 +6,7 @@ import '../../app_scope.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
+import '../../shared/widgets/partner_details_widgets.dart';
 import '../../shared/widgets/profile_form_page.dart';
 import '../language_screen.dart';
 import 'owner_shell.dart';
@@ -177,6 +178,8 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
           const InvitationsTile(),
           const ContactDetailsTile(),
           const ChangePinTile(),
+          if (ownerData?.isStaff != true)
+            const PartnerDetailsTile(canEditGender: true),
           GymInvitationsTile(
             gymId: OwnerDataScope.maybeOf(context)?.activeGymId,
           ),

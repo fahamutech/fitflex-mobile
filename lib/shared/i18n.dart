@@ -1832,6 +1832,7 @@ class FFLocale extends ChangeNotifier {
       'member.dobPick': 'Choose date of birth',
       'member.dobFormat':
           'Enter your date of birth as YYYY-MM-DD, for example 1990-05-21.',
+      'member.dobFormatHint': 'YYYY-MM-DD',
       'member.dobNoPersonalisation':
           "Until your date of birth is valid, the shop can't be personalised for you.",
       'member.photoPick': 'Change profile photo',
@@ -2757,6 +2758,24 @@ class FFLocale extends ChangeNotifier {
       'onboarding.gender_female': 'Female',
       'onboarding.gender_other': 'Other',
       'onboarding.dob': 'Date of birth',
+      // Partner date of birth (fitflex-functions#253).
+      'partnerDob.help':
+          'Used to suggest shop products for your age group. Not shown on your profile.',
+      'partnerDob.errRateLimited':
+          'Too many changes. Try again in {seconds} seconds.',
+      'partnerDob.promptTitle': 'Add your date of birth',
+      'partnerDob.promptBody':
+          "Get shop suggestions that suit you. It isn't shown on your profile.",
+      'partnerDob.add': 'Add',
+      'partnerDob.tapToChoose': 'Tap to choose',
+      'partnerDob.notNow': 'Not now',
+      'partnerDob.tileTitle': 'Date of birth and gender',
+      'partnerDob.tileSubtitle': 'Used only for shop suggestions',
+      'partnerDob.saved': 'Saved',
+      'partnerGender.optional': 'Gender (optional)',
+      'partnerGender.preferNot': 'Prefer not to say',
+      'partnerGender.fromTrainerProfile':
+          'This comes from your trainer profile. Change it there.',
       'onboarding.fitnessTitle': 'What are your fitness goals',
       'onboarding.fitnessSubtitle': 'Select all that apply',
       'onboarding.fitnessGoal': 'Fitness goal',
@@ -5691,6 +5710,13 @@ class FFLocale extends ChangeNotifier {
       'error.reason.cannotInviteSelf': 'You can\'t invite yourself.',
       'error.reason.cannotRemoveOwner': 'The owner can\'t be removed.',
       'error.reason.kycIncomplete': 'Verification is not complete yet.',
+      'error.reason.partnerUnder18':
+          'You must be 18 or older to be a Trainer or gym owner.',
+      'error.reason.personalDetailsUnavailable':
+          "Personal details can't be saved right now. Try again later.",
+      'error.reason.invalidGender': 'Choose a gender from the list.',
+      'error.reason.rateLimitedSeconds':
+          'Too many requests. Try again in {seconds} seconds.',
     },
     'sw': {
       'app.title': 'FitFlex',
@@ -7547,6 +7573,8 @@ class FFLocale extends ChangeNotifier {
       'member.dobPick': 'Chagua tarehe ya kuzaliwa',
       'member.dobFormat':
           'Andika tarehe yako ya kuzaliwa kama YYYY-MM-DD, kwa mfano 1990-05-21.',
+      // Same pattern as English: the field takes digits as YYYY-MM-DD.
+      'member.dobFormatHint': 'YYYY-MM-DD',
       'member.dobNoPersonalisation':
           'Hadi tarehe yako ya kuzaliwa iwe sahihi, duka haliwezi kupangwa kwa ajili yako.',
       'member.photoPick': 'Badilisha picha ya wasifu',
@@ -8497,6 +8525,24 @@ class FFLocale extends ChangeNotifier {
       'onboarding.gender_female': 'Mwanamke',
       'onboarding.gender_other': 'Nyingine',
       'onboarding.dob': 'Tarehe ya kuzaliwa',
+      // Partner date of birth (fitflex-functions#253). Draft: needs native review.
+      'partnerDob.help':
+          'Hutumika kupendekeza bidhaa za dukani zinazofaa kundi lako la umri. Haionyeshwi kwenye wasifu wako.',
+      'partnerDob.errRateLimited':
+          'Mabadiliko mengi mno. Jaribu tena baada ya sekunde {seconds}.',
+      'partnerDob.promptTitle': 'Ongeza tarehe yako ya kuzaliwa',
+      'partnerDob.promptBody':
+          'Pata mapendekezo ya dukani yanayokufaa. Haionyeshwi kwenye wasifu wako.',
+      'partnerDob.add': 'Ongeza',
+      'partnerDob.tapToChoose': 'Gusa kuchagua',
+      'partnerDob.notNow': 'Si sasa',
+      'partnerDob.tileTitle': 'Tarehe ya kuzaliwa na jinsia',
+      'partnerDob.tileSubtitle': 'Hutumika kwa mapendekezo ya dukani tu',
+      'partnerDob.saved': 'Imehifadhiwa',
+      'partnerGender.optional': 'Jinsia (si lazima)',
+      'partnerGender.preferNot': 'Sipendi kusema',
+      'partnerGender.fromTrainerProfile':
+          'Hii inatoka kwenye wasifu wako wa trainer. Ibadilishe huko.',
       'onboarding.fitnessTitle': 'Malengo yako ya mazoezi ni yapi',
       'onboarding.fitnessSubtitle': 'Chagua yote yanayofaa',
       'onboarding.fitnessGoal': 'Lengo la mazoezi',
@@ -11383,6 +11429,13 @@ class FFLocale extends ChangeNotifier {
       'error.reason.cannotInviteSelf': 'Huwezi kujialika mwenyewe.',
       'error.reason.cannotRemoveOwner': 'Mmiliki hawezi kuondolewa.',
       'error.reason.kycIncomplete': 'Uthibitisho bado haujakamilika.',
+      'error.reason.partnerUnder18':
+          'Lazima uwe na miaka 18 au zaidi kuwa trainer au mmiliki wa gym.',
+      'error.reason.personalDetailsUnavailable':
+          'Imeshindikana kuhifadhi taarifa binafsi kwa sasa. Jaribu tena baadaye.',
+      'error.reason.invalidGender': 'Chagua jinsia kutoka kwenye orodha.',
+      'error.reason.rateLimitedSeconds':
+          'Maombi mengi mno. Jaribu tena baada ya sekunde {seconds}.',
     },
   };
 }
