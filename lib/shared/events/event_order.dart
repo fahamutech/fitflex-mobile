@@ -569,6 +569,17 @@ class EventRegistration {
 
   bool get canCancel => allowedActions.contains('cancel');
 
+  /// Any personal detail came back. After a participant claims a place the
+  /// server masks the purchaser's view (phone, email, date of birth,
+  /// gender, emergency contact are null), so the section is then hidden.
+  bool get hasParticipantDetails =>
+      phone != null ||
+      email != null ||
+      dateOfBirth != null ||
+      gender != null ||
+      kitSize != null ||
+      (emergencyContact != null && !emergencyContact!.isEmpty);
+
   /// The viewer bought this place (relation `self` or `purchased`); a
   /// `claimed` relation means someone else did.
   bool get viewerIsPurchaser => relation != 'claimed';
@@ -835,7 +846,7 @@ String eventOrderStatusKey(EventOrderStatus s) => switch (s) {
   EventOrderStatus.awaitingPayment => 'events.status.order.awaiting',
   EventOrderStatus.confirmed => 'events.status.order.paid',
   EventOrderStatus.cancelled => 'events.status.order.cancelled',
-  EventOrderStatus.expired => 'events.status.expired',
+  EventOrderStatus.expired => 'events.status.order.expired',
   EventOrderStatus.other => 'events.status.order.awaiting',
 };
 

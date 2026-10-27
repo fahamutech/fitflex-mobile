@@ -213,6 +213,8 @@ void main() {
         'registration_closed_state',
         'idempotency_key_reused',
         'organization_not_allowed',
+        'hold_limit_reached',
+        'expected_total_required',
       ]) {
         final msg = errorMessage(locale, ApiException(409, {'error': code}));
         expect(msg, isNot(contains(code)), reason: code);
@@ -259,6 +261,8 @@ void main() {
       );
     }
   });
+
+  holdLimitTests();
 
   group('routes', () {
     tearDown(() => debugEventsDiscoveryOverride = null);
@@ -449,3 +453,31 @@ final s3Keys = [
   'error.reason.invalidTransition.events',
   'common.copy',
 ];
+
+void holdLimitTests() {
+  test('hold_limit_reached has its own copy in both languages', () {
+    expect(
+      FFLocale.textOf('en', 'error.reason.holdLimitReached'),
+      'You already have an unpaid registration for this event',
+    );
+    expect(
+      FFLocale.textOf('sw', 'error.reason.holdLimitReached'),
+      'Tayari una usajili ambao haujalipwa kwa tukio hili',
+    );
+  });
+
+  test(
+    'order pills use the i-class forms with "oda"; registration keeps its own',
+    () {
+      const sw = {
+        'events.status.order.awaiting': 'Inasubiri malipo',
+        'events.status.order.cancelled': 'Imeghairiwa',
+        'events.status.order.paid': 'Imelipwa',
+        'events.status.order.expired': 'Imeisha muda',
+        'events.status.awaiting': 'Inasubiri malipo',
+        'events.status.expired': 'Muda umeisha',
+      };
+      sw.forEach((k, v) => expect(FFLocale.textOf('sw', k), v, reason: k));
+    },
+  );
+}

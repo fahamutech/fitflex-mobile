@@ -330,6 +330,9 @@ String? _knownReason(FFLocale locale, String reason) {
     'idempotency_key_reused': 'error.reason.idempotencyKeyReused',
     'idempotency_key_required': 'error.reason.idempotencyKeyReused',
     'organization_not_allowed': 'error.reason.organizationNotAllowed',
+    'hold_limit_reached': 'error.reason.holdLimitReached',
+    // Always sent by the app; only a stale client would see it.
+    'expected_total_required': 'error.reason.priceChanged',
   };
   final key = keys[reason.trim().toLowerCase()];
   return key == null ? null : locale.t(key);

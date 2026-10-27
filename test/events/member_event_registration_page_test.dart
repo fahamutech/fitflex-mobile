@@ -1,6 +1,7 @@
 // Events S3 (spec §5.14 member_event_registration_page_test): sections by
 // relation (purchaser vs claimed participant), the QR placeholder, the
 // remove flow incl. remove_whole_line, 404.
+import 'package:fitflexmobile/screens/member/events/member_event_order_page.dart';
 import 'package:fitflexmobile/screens/member/events/member_event_registration_page.dart';
 import 'package:fitflexmobile/shared/events_flag.dart';
 import 'package:flutter/material.dart';
@@ -142,11 +143,109 @@ void main() {
     expect(find.byKey(const Key('reg-remove')), findsNothing);
   });
 
+  maskedTests();
+
   apiTest('404 shows the gone state', (tester, api) async {
     api.fail('GET /me/event-registrations/reg_1', 404, {
       'error': 'registration_not_found',
     });
     await _pump(tester, api);
     expect(find.byKey(const Key('reg-gone')), findsOneWidget);
+  });
+}
+
+void maskedTests() {
+  apiTest('masked purchaser view (claimed place): no blank rows, no crash', (
+    tester,
+    api,
+  ) async {
+    api.on(
+      'GET /me/event-registrations/reg_1',
+      registrationJson(
+        isSelf: false,
+        claimState: 'claimed',
+        consentBasis: 'purchaser_authorised',
+        phone: null,
+        email: null,
+        dateOfBirth: null,
+        gender: null,
+        kitSize: null,
+        emergencyContact: null,
+      ),
+    );
+    await _pump(tester, api);
+    expect(tester.takeException(), isNull);
+    expect(find.text('Asha Mollel'), findsOneWidget);
+    expect(find.byKey(const Key('reg-participant')), findsNothing);
+    expect(find.text('Participant'), findsNothing);
+    expect(find.byKey(const Key('reg-emergency')), findsNothing);
+    expect(find.text('Mobile number'), findsNothing);
+    expect(find.text('Date of birth'), findsNothing);
+    // The rest of the page still renders, and the purchaser can still act.
+    expect(find.byKey(const Key('reg-ticket-placeholder')), findsOneWidget);
+    expect(find.byKey(const Key('reg-event')), findsOneWidget);
+    expect(find.byKey(const Key('reg-remove')), findsOneWidget);
+  });
+
+  apiTest('partly masked: only the rows that came back show', (
+    tester,
+    api,
+  ) async {
+    api.on(
+      'GET /me/event-registrations/reg_1',
+      registrationJson(
+        email: null,
+        dateOfBirth: null,
+        gender: null,
+        kitSize: 'l',
+        emergencyContact: null,
+      ),
+    );
+    await _pump(tester, api);
+    expect(find.byKey(const Key('reg-participant')), findsOneWidget);
+    expect(find.text('+255712345678'), findsOneWidget);
+    expect(find.text('L'), findsOneWidget);
+    expect(find.text('Email'), findsNothing);
+    expect(find.text('Date of birth'), findsNothing);
+  });
+
+  apiTest('the order page copes with a masked participant row', (
+    tester,
+    api,
+  ) async {
+    api.on(
+      'GET /me/event-orders/ord_1',
+      orderJson(
+        registrations: [
+          registrationJson(
+            isSelf: false,
+            claimState: 'claimed',
+            phone: null,
+            email: null,
+            dateOfBirth: null,
+            gender: null,
+            kitSize: null,
+            emergencyContact: null,
+          ),
+        ],
+      ),
+    );
+    await pumpPage(
+      tester,
+      api,
+      MemberEventOrderPage(
+        orderId: 'ord_1',
+        options: optsS3(),
+        now: DateTime.utc(2027, 3, 10, 12),
+      ),
+      user: member,
+      size: const Size(375, 1800),
+      extraRoutes: s3Routes,
+      keepRequests: true,
+    );
+    expect(tester.takeException(), isNull);
+    expect(find.byKey(const Key('order-participant-reg_1')), findsOneWidget);
+    expect(find.text('Asha Mollel'), findsOneWidget);
+    expect(find.text('Claimed'), findsOneWidget);
   });
 }

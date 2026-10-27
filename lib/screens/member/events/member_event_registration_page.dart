@@ -299,39 +299,41 @@ class _MemberEventRegistrationPageState
         ),
       ),
       // ── participant ───────────────────────────────────────────────────
-      FFSectionTitle(context.tr('events.reg.participant')),
-      FFCard(
-        key: const Key('reg-participant'),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            line(context.tr('events.participant.phone'), r.phone),
-            line(context.tr('events.participant.email'), r.email),
-            line(
-              context.tr('events.participant.dob'),
-              r.dateOfBirth == null
-                  ? null
-                  : formatDate(r.dateOfBirth, locale: lang),
-            ),
-            line(
-              context.tr('events.participant.gender'),
-              r.gender == null
-                  ? null
-                  : context.tr('onboarding.gender_${r.gender}'),
-            ),
-            line(
-              context.tr('events.participant.kitSize'),
-              r.kitSize?.toUpperCase(),
-            ),
-            if (r.emergencyContact != null && !r.emergencyContact!.isEmpty)
+      if (r.hasParticipantDetails) ...[
+        FFSectionTitle(context.tr('events.reg.participant')),
+        FFCard(
+          key: const Key('reg-participant'),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              line(context.tr('events.participant.phone'), r.phone),
+              line(context.tr('events.participant.email'), r.email),
               line(
-                context.tr('events.participant.emergency'),
-                '${r.emergencyContact!.name} · ${r.emergencyContact!.phone}',
-                key: const Key('reg-emergency'),
+                context.tr('events.participant.dob'),
+                r.dateOfBirth == null
+                    ? null
+                    : formatDate(r.dateOfBirth, locale: lang),
               ),
-          ],
+              line(
+                context.tr('events.participant.gender'),
+                r.gender == null
+                    ? null
+                    : context.tr('onboarding.gender_${r.gender}'),
+              ),
+              line(
+                context.tr('events.participant.kitSize'),
+                r.kitSize?.toUpperCase(),
+              ),
+              if (r.emergencyContact != null && !r.emergencyContact!.isEmpty)
+                line(
+                  context.tr('events.participant.emergency'),
+                  '${r.emergencyContact!.name} · ${r.emergencyContact!.phone}',
+                  key: const Key('reg-emergency'),
+                ),
+            ],
+          ),
         ),
-      ),
+      ],
       // ── event ─────────────────────────────────────────────────────────
       if (e != null) ...[
         FFSectionTitle(context.tr('events.reg.event')),

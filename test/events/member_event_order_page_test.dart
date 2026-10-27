@@ -318,7 +318,7 @@ void main() {
   apiTest('Swahili: status pill and hold copy', (tester, api) async {
     api.on('GET /me/event-orders/ord_1', orderJson());
     await _pump(tester, api, lang: 'sw');
-    expect(find.text('Linasubiri malipo'), findsOneWidget);
+    expect(find.text('Inasubiri malipo'), findsNWidgets(2)); // order + its place
     expect(find.text('zimebaki dakika 27'), findsOneWidget);
     expect(find.text('Inakuja kwenye toleo lijalo la app'), findsOneWidget);
   });
