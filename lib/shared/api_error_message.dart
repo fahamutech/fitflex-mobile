@@ -19,6 +19,25 @@ String errorMessage(FFLocale locale, Object error, {bool vendorStaff = false}) {
   return locale.t('error.requestFailed');
 }
 
+/// Events (S4): like [errorMessage], but `payment_in_progress` and
+/// `unsupported_currency` say what they mean for event tickets instead of
+/// the trainer-booking and mobile-money wording the shared map keeps.
+String eventsErrorMessage(FFLocale locale, Object error) {
+  if (error is ApiException) {
+    final key = switch (error.code) {
+      'payment_in_progress' => 'error.reason.payment_in_progress',
+      'unsupported_currency' => 'error.reason.unsupported_currency',
+      _ => null,
+    };
+    if (key != null) {
+      return locale
+          .t('error.requestDeclined')
+          .replaceFirst('{reason}', locale.t(key));
+    }
+  }
+  return errorMessage(locale, error);
+}
+
 /// A refused trainer-booking cancel (member or trainer side). While a
 /// mobile-money prompt is out for the booking the server answers
 /// 409 payment_in_progress (fitflex-functions#240): say so plainly.
@@ -376,6 +395,24 @@ String? _knownReason(FFLocale locale, String reason) {
     'hold_limit_reached': 'error.reason.holdLimitReached',
     // Always sent by the app; only a stale client would see it.
     'expected_total_required': 'error.reason.priceChanged',
+    // Events S4: payments, tickets, cancel and refund (spec §3.17).
+    'order_not_payable': 'error.reason.order_not_payable',
+    'hold_expired': 'error.reason.hold_expired',
+    'payment_submitted': 'error.reason.payment_submitted',
+    'tickets_unavailable': 'error.reason.tickets_unavailable',
+    'payment_mode_mismatch': 'error.reason.payment_mode_mismatch',
+    'ticket_revoked': 'error.reason.ticket_revoked',
+    'ticket_not_issued': 'error.reason.ticket_not_issued',
+    'refund_changed': 'error.reason.refund_changed',
+    'refund_in_progress': 'error.reason.refund_in_progress',
+    'cancellation_window_closed': 'error.reason.cancellation_window_closed',
+    'purchaser_only': 'error.reason.purchaser_only',
+    'resend_limit_reached': 'error.reason.resend_limit_reached',
+    'event_cancelled': 'error.reason.event_cancelled',
+    'kit_collected': 'error.reason.kit_collected',
+    'order_not_confirmed': 'error.reason.order_not_confirmed',
+    'rotate_required': 'error.reason.rotate_required',
+    'event_unavailable': 'error.reason.event_unavailable',
     // Partner date of birth (fitflex-functions#253).
     'partner_under_18': 'error.reason.partnerUnder18',
     'personal_details_unavailable': 'error.reason.personalDetailsUnavailable',

@@ -6,6 +6,7 @@ import '../../../../shared/events/event_detail.dart';
 import '../../../../shared/events/event_order.dart';
 import '../../../../shared/formatters.dart';
 import '../../../../shared/i18n.dart';
+import '../event_status.dart';
 
 /// The itemised server quote (events S3 spec §5.6), reused on the order
 /// page: tickets, discount and fee lines only when they are non-zero (D21),
@@ -213,12 +214,8 @@ class QuoteSummary extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (refund.preset == 'no_refund' ||
-                  refund.preset == 'refund_until_close')
-                Text(
-                  context.tr('events.detail.policy.${refund.preset}'),
-                  style: tt.titleSmall,
-                ),
+              if (refundPolicyLine(context, refund) case final line?)
+                Text(line, style: tt.titleSmall),
               if (refund.text.isNotEmpty)
                 Text(refund.text.of(lang), style: tt.bodySmall),
             ],

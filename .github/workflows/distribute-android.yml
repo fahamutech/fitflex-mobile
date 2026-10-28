@@ -9,12 +9,12 @@ on:
         description: 'Release notes shown to testers (defaults to the commit message)'
         required: false
       photo_hero:
-        description: 'Tester build with the photo-hero screens on (PHOTO_HERO_UI). Manual runs only; pushes to main always build with it off.'
+        description: 'Build with the photo-hero screens on (PHOTO_HERO_UI). On when ticked here OR when the PHOTO_HERO_UI repository variable is true (pushes to main follow the variable).'
         type: boolean
         required: false
         default: false
       photo_footer:
-        description: 'Tester build with the photo footer band on (PHOTO_FOOTER_UI). Takes effect only with photo_hero ticked too. Manual runs only; pushes to main always build with it off.'
+        description: 'Build with the photo footer band on (PHOTO_FOOTER_UI). On when ticked here OR when the PHOTO_FOOTER_UI repository variable is true. Takes effect only with the photo hero on too.'
         type: boolean
         required: false
         default: false
@@ -46,18 +46,16 @@ jobs:
       # Shop home V2 (on/off). Set repo variable SHOP_HOME_V2=true to switch it on;
       # the server also needs SHOP_HOME_V2=1, otherwise the app falls back to today's shop.
       SHOP_HOME_V2: ${{ vars.SHOP_HOME_V2 || 'false' }}
-      # Photo hero (PHOTO_HERO_UI). Only a manual run with photo_hero ticked turns it on,
-      # for testers; pushes to main always build it off.
-      # Testers only: some hero photos are test-only (collected from the internet,
-      # not cleared for release; owner 2026-10-22). Before a build that shows
-      # PHOTO_HERO_UI to users, run
-      #   flutter test test/photo_hero_release_guard_test.dart --dart-define=PHOTO_HERO_UI=true --dart-define=PHOTO_HERO_RELEASE=true
-      # It fails while any is still bundled (kTestOnlyHeroAssets, LICENSES.md).
-      PHOTO_HERO_UI: ${{ github.event_name == 'workflow_dispatch' && inputs.photo_hero && 'true' || 'false' }}
-      # Photo footer (PHOTO_FOOTER_UI): the same rule; the app ignores it unless
-      # PHOTO_HERO_UI is on as well.
-      PHOTO_FOOTER_UI: ${{ github.event_name == 'workflow_dispatch' && inputs.photo_footer && 'true' || 'false' }}
-      # Admin-published app photos (HERO_IMAGES_REMOTE): the same rule; the app
+      # Photo hero (PHOTO_HERO_UI): on when a manual run ticks photo_hero OR the
+      # PHOTO_HERO_UI repository variable is true; off otherwise. With it on,
+      # the release guard runs before the build (no test-only hero photo may
+      # ship; kTestOnlyHeroAssets, assets/photos/hero/LICENSES.md).
+      PHOTO_HERO_UI: ${{ (github.event_name == 'workflow_dispatch' && inputs.photo_hero) && 'true' || vars.PHOTO_HERO_UI || 'false' }}
+      # Photo footer (PHOTO_FOOTER_UI): the same rule (photo_footer input OR the
+      # PHOTO_FOOTER_UI variable); the app ignores it unless PHOTO_HERO_UI is on.
+      PHOTO_FOOTER_UI: ${{ (github.event_name == 'workflow_dispatch' && inputs.photo_footer) && 'true' || vars.PHOTO_FOOTER_UI || 'false' }}
+      # Admin-published app photos (HERO_IMAGES_REMOTE): manual runs with
+      # hero_images_remote ticked only (no repository variable); the app
       # ignores it unless PHOTO_HERO_UI is on as well.
       HERO_IMAGES_REMOTE: ${{ github.event_name == 'workflow_dispatch' && inputs.hero_images_remote && 'true' || 'false' }}
       # Hosts the /storage photo addresses may redirect to (the backend's
@@ -116,6 +114,15 @@ jobs:
           } > android/key.properties
           mkdir -p ~/.gradle
           echo "org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError" >> ~/.gradle/gradle.properties
+
+      # Photo heroes (PHOTO_HERO_UI) shown to users: no test-only hero photo
+      # may ship (kTestOnlyHeroAssets, assets/photos/hero/LICENSES.md). This
+      # fails the job, before anything is built, if one is still bundled.
+      - name: Photo hero release guard
+        if: env.PHOTO_HERO_UI == 'true'
+        run: |
+          flutter pub get
+          flutter test test/photo_hero_release_guard_test.dart --dart-define=PHOTO_HERO_UI=true --dart-define=PHOTO_HERO_RELEASE=true
 
       # versionCode must increase with every build testers install; offset the
       # run number past the pubspec build number (+2).

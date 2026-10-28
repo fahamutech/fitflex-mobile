@@ -46,7 +46,7 @@ void main() {
     );
     expect(find.byKey(const Key('reg-ticket-placeholder')), findsOneWidget);
     expect(
-      find.text('Your entry QR appears here once payment is confirmed'),
+      find.text('Your ticket appears here once your payment is confirmed'),
       findsOneWidget,
     );
     expect(find.text('+255712345678'), findsOneWidget);

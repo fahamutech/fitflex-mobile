@@ -805,10 +805,9 @@ class _MemberEventDetailPageState extends State<MemberEventDetailPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (d.refundPolicy.preset == 'no_refund' ||
-                d.refundPolicy.preset == 'refund_until_close')
+            if (refundPolicyLine(context, d.refundPolicy) case final line?)
               Text(
-                context.tr('events.detail.policy.${d.refundPolicy.preset}'),
+                line,
                 key: const Key('event-refund-summary'),
                 style: tt.titleSmall,
               ),

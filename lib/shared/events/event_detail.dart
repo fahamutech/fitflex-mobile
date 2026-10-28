@@ -215,18 +215,63 @@ class EventContact {
   }
 }
 
-class EventRefundPolicy {
-  const EventRefundPolicy({this.preset = '', this.text = const EventText()});
+class EventRefundTier {
+  const EventRefundTier({this.daysBefore = 0, this.percent = 0});
+  final int daysBefore;
+  final int percent;
+}
 
-  /// `no_refund`, `refund_until_close` or `custom`.
+class EventRefundPolicy {
+  const EventRefundPolicy({
+    this.preset = '',
+    this.text = const EventText(),
+    this.generated = const EventText(),
+    this.days,
+    this.tiers = const [],
+  });
+
+  /// `no_refund`, `refund_until_close`, `full_until_days`, `tiered` or
+  /// `custom` (events S4 spec §3.12.1).
   final String preset;
+
+  /// The organizer's own words (the whole policy for `custom`).
   final EventText text;
+
+  /// The plain line the server writes from the structured fields. It is the
+  /// single source for the policy line shown before purchase and in the
+  /// cancel screens (the app never builds one itself).
+  final EventText generated;
+
+  /// `full_until_days`: days before the start.
+  final int? days;
+
+  /// `tiered`: up to three `{daysBefore, percent}` steps.
+  final List<EventRefundTier> tiers;
+
+  /// The server's line in [lang], or empty.
+  String generatedLine(String lang) => generated.of(lang).trim();
 
   static EventRefundPolicy fromJson(Object? json) {
     if (json is! Map) return const EventRefundPolicy();
     return EventRefundPolicy(
       preset: json['preset']?.toString() ?? '',
       text: EventText.fromJson(json['text']),
+      generated: EventText.fromJson(json['generated']),
+      days: json['days'] is num ? (json['days'] as num).toInt() : null,
+      tiers: json['tiers'] is List
+          ? [
+              for (final t in json['tiers'] as List)
+                if (t is Map)
+                  EventRefundTier(
+                    daysBefore: t['daysBefore'] is num
+                        ? (t['daysBefore'] as num).toInt()
+                        : 0,
+                    percent: t['percent'] is num
+                        ? (t['percent'] as num).toInt()
+                        : 0,
+                  ),
+            ]
+          : const [],
     );
   }
 }

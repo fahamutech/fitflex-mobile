@@ -673,8 +673,8 @@ void main() {
       expect({
         for (final p in FFHeroPhoto.values) p.sourceId,
       }, hasLength(FFHeroPhoto.values.length));
-      expect(FFHeroPhoto.gyms.sourceId, 'owner-15-empty-gym-windows');
-      expect(FFHeroPhoto.trainers.sourceId, 'owner-01-lat-pulldown-back');
+      expect(FFHeroPhoto.gyms.sourceId, 'fitflex-gen-21-gyms-bright-floor');
+      expect(FFHeroPhoto.trainers.sourceId, 'fitflex-gen-22-trainers-station');
       expect(FFHeroPhoto.shop.sourceId, 'fitflex-gen-02-shop');
     });
 

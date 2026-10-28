@@ -16,11 +16,15 @@ import '../../../shared/formatters.dart';
 import '../../../shared/i18n.dart';
 import 'event_status.dart';
 import 'events_registration_gate.dart';
+import 'pay/event_payment_cards.dart';
+import 'tickets/member_event_tickets_view.dart';
 
 /// Where "Not me" dismissals are remembered on this device (§5.8).
 const kDismissedClaimsKey = 'events.claim.dismissed';
 
-/// `/member/events/orders` (events S3 spec §5.8): Registrations | Orders.
+/// `/member/events/orders` (events S3 spec §5.8, S4 spec §5.4): Tickets |
+/// Registrations | Orders. The Tickets segment is there while the server
+/// says tickets carry a QR, and is first when the member holds a ticket.
 class MemberEventOrdersPage extends StatefulWidget {
   const MemberEventOrdersPage({
     super.key,
@@ -29,7 +33,8 @@ class MemberEventOrdersPage extends StatefulWidget {
     this.now,
   });
 
-  /// `registrations` (default) | `orders`.
+  /// `tickets` | `registrations` (default) | `orders`. Empty picks Tickets
+  /// when the member has an active ticket, else Registrations.
   final String initialTab;
   final EventsOptions? options;
   final DateTime? now;
@@ -41,7 +46,9 @@ class MemberEventOrdersPage extends StatefulWidget {
 }
 
 class _MemberEventOrdersPageState extends State<MemberEventOrdersPage> {
-  late String _tab = widget.initialTab == 'orders' ? 'orders' : 'registrations';
+  String _tab = '';
+  EventTicketsController? _ticketsCtl;
+  EventTicketsController get _tickets => _ticketsCtl!;
   final _regs = _PagedList<EventRegistration>();
   final _orders = _PagedList<EventOrder>();
   List<ClaimPreview> _claimable = [];
@@ -52,9 +59,12 @@ class _MemberEventOrdersPageState extends State<MemberEventOrdersPage> {
   ApiClient get _api => AppScope.of(context).api;
   EventsOptions get _options => eventsOptionsOf(context, widget.options);
 
+  bool get _qr => _options.tickets.qr;
+
   @override
   void initState() {
     super.initState();
+    _tab = widget.initialTab == 'orders' ? 'orders' : 'registrations';
     _scroll.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) => _start());
   }
@@ -62,14 +72,34 @@ class _MemberEventOrdersPageState extends State<MemberEventOrdersPage> {
   @override
   void dispose() {
     _scroll.dispose();
+    _ticketsCtl?.dispose();
     super.dispose();
   }
 
   Future<void> _start() async {
     if (!mounted || !eventsRegistrationAllowed(context, _options)) return;
+    _ticketsCtl = EventTicketsController(api: _api);
     _started = true;
     await _loadDismissed();
-    await Future.wait([_loadRegistrations(), _loadOrders()]);
+    await Future.wait([
+      _loadRegistrations(),
+      _loadOrders(),
+      if (_qr) _loadTickets(),
+    ]);
+  }
+
+  /// Loads the wallet and settles the first tab: an explicit one from the
+  /// route, else Tickets when there is an active ticket.
+  Future<void> _loadTickets() async {
+    await _tickets.load();
+    if (!mounted) return;
+    setState(() {
+      if (widget.initialTab == 'tickets') {
+        _tab = 'tickets';
+      } else if (widget.initialTab.isEmpty && _tickets.hasActive) {
+        _tab = 'tickets';
+      }
+    });
   }
 
   Future<void> _loadDismissed() async {
@@ -90,7 +120,9 @@ class _MemberEventOrdersPageState extends State<MemberEventOrdersPage> {
   void _onScroll() {
     if (!_scroll.hasClients) return;
     if (_scroll.position.extentAfter < 300) {
-      if (_tab == 'registrations') {
+      if (_tab == 'tickets') {
+        _tickets.loadMore();
+      } else if (_tab == 'registrations') {
         _loadRegistrations(more: true);
       } else {
         _loadOrders(more: true);
@@ -259,7 +291,9 @@ class _MemberEventOrdersPageState extends State<MemberEventOrdersPage> {
       body: !_started
           ? const SizedBox.shrink()
           : RefreshIndicator(
-              onRefresh: () => _tab == 'registrations'
+              onRefresh: () => _tab == 'tickets'
+                  ? _tickets.load()
+                  : _tab == 'registrations'
                   ? _loadRegistrations()
                   : _loadOrders(),
               child: ListView(
@@ -271,6 +305,7 @@ class _MemberEventOrdersPageState extends State<MemberEventOrdersPage> {
                     key: const Key('mine-tabs'),
                     value: _tab,
                     options: [
+                      if (_qr) ('tickets', context.tr('events.tickets.title')),
                       (
                         'registrations',
                         context.tr('events.mine.registrations'),
@@ -280,7 +315,12 @@ class _MemberEventOrdersPageState extends State<MemberEventOrdersPage> {
                     onChanged: (t) => setState(() => _tab = t),
                   ),
                   const SizedBox(height: FFTokens.spacingMd),
-                  if (_tab == 'registrations')
+                  if (_tab == 'tickets' && _qr)
+                    MemberEventTicketsView(
+                      controller: _tickets,
+                      now: widget.now,
+                    )
+                  else if (_tab == 'registrations' || _tab == 'tickets')
                     ..._registrationsTab(context)
                   else
                     ..._ordersTab(context),
@@ -544,11 +584,7 @@ class _MemberEventOrdersPageState extends State<MemberEventOrdersPage> {
     final tt = Theme.of(context).textTheme;
     final cs = Theme.of(context).colorScheme;
     final status = context.tr(eventOrderStatusKey(o.status));
-    final tone = switch (o.status) {
-      EventOrderStatus.awaitingPayment => FFBadgeTone.warning,
-      EventOrderStatus.confirmed => FFBadgeTone.success,
-      _ => FFBadgeTone.gray,
-    };
+    final tone = eventOrderStatusTone(o.status);
     final places = context
         .tr('events.order.places')
         .replaceFirst('{n}', '${o.placesCount}');
