@@ -1,7 +1,8 @@
 // Hero and footer photos from approved sources only (owner approval
-// 2026-10-22): FitFlex Africa's own AI-generated scenes and four photos the
-// owner supplied. The Pexels stand-ins are gone; no crop shows another
-// brand's logo (owner rule 2026-10-20), and nothing is upscaled.
+// 2026-10-22): FitFlex Africa's own AI-generated scenes. The Pexels
+// stand-ins are gone, and so (owner approval 2026-10-28) are the four
+// test-only photos the owner collected from the internet; no crop shows
+// another brand's logo (owner rule 2026-10-20), and nothing is upscaled.
 
 import 'dart:io';
 import 'dart:typed_data';
@@ -11,15 +12,21 @@ import 'package:fitflexmobile/shared/components/ff_photo_hero.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-const _generated =
+String _generated(String date) =>
     'FitFlex Africa, AI-generated via Figma AI (gpt-image-2.5), '
-    '2026-10-22, no people';
-const _owner =
-    'Collected from the internet by owner; NOT cleared for release — '
-    'testing only (owner 2026-10-22). Replace before PHOTO_HERO_UI goes on '
-    'for users.';
+    '$date, no people';
 
-/// The approved slot → scene mapping (owner, 2026-10-22).
+/// The scenes generated on 2026-10-28 that replaced the owner's test-only
+/// photos (owner approval 2026-10-28); every other scene is 2026-10-22.
+const _replaced20261028 = {
+  FFHeroPhoto.gyms,
+  FFHeroPhoto.trainers,
+  FFHeroPhoto.activityToday,
+  FFHeroPhoto.activityChallenges,
+};
+
+/// The approved slot → scene mapping (owner, 2026-10-22; Gyms, Trainers and
+/// Activity: Today and Challenges 2026-10-28).
 const _mapping = <FFHeroPhoto, String>{
   FFHeroPhoto.language: 'fitflex-gen-01-reception',
   FFHeroPhoto.signIn: 'fitflex-gen-04-entrance',
@@ -30,12 +37,12 @@ const _mapping = <FFHeroPhoto, String>{
   FFHeroPhoto.homePass: 'fitflex-gen-09-rack-shaker',
   FFHeroPhoto.profile: 'fitflex-gen-10-towel-bench',
   FFHeroPhoto.upgrade: 'fitflex-gen-11-premium-zone',
-  FFHeroPhoto.activityToday: 'owner-16-dumbbells-palms',
+  FFHeroPhoto.activityToday: 'fitflex-gen-23-activity-today-sunrise',
   FFHeroPhoto.activityTraining: 'fitflex-gen-12-cable-zone',
-  FFHeroPhoto.activityChallenges: 'owner-02-hooded-bench-back',
+  FFHeroPhoto.activityChallenges: 'fitflex-gen-24-activity-challenges-zone',
   FFHeroPhoto.activityProgress: 'fitflex-gen-13-treadmills-decal',
-  FFHeroPhoto.gyms: 'owner-15-empty-gym-windows',
-  FFHeroPhoto.trainers: 'owner-01-lat-pulldown-back',
+  FFHeroPhoto.gyms: 'fitflex-gen-21-gyms-bright-floor',
+  FFHeroPhoto.trainers: 'fitflex-gen-22-trainers-station',
   FFHeroPhoto.shop: 'fitflex-gen-02-shop',
   FFHeroPhoto.trainer: 'fitflex-gen-14-coaching',
   FFHeroPhoto.vendor: 'fitflex-gen-15-vendor-packing',
@@ -74,14 +81,13 @@ void main() {
       final c = cells(row(p));
       final source = p.sourceId.replaceFirst('fitflex-', '');
       expect(c[3], contains('`$source.'), reason: p.name);
-      if (p.sourceId.startsWith('owner-')) {
-        expect(c[5], _owner, reason: p.name);
-        expect(c[3], contains('owner-supplied'), reason: p.name);
-      } else {
-        expect(p.sourceId, startsWith('fitflex-gen-'), reason: p.name);
-        expect(c[5], _generated, reason: p.name);
-        expect(c[3], contains('puGVsWuNb8IJb43IkB85Hc'), reason: p.name);
-      }
+      // Only FitFlex Africa's own generated scenes (no owner-collected or
+      // stock photo is bundled since 2026-10-28).
+      expect(p.sourceId, startsWith('fitflex-gen-'), reason: p.name);
+      final date = _replaced20261028.contains(p) ? '2026-10-28' : '2026-10-22';
+      expect(c[5], _generated(date), reason: p.name);
+      expect(c[3], contains('puGVsWuNb8IJb43IkB85Hc'), reason: p.name);
+      expect(c[5], isNot(contains('NOT cleared')), reason: p.name);
       expect(c[10], contains('no face in frame'), reason: p.name);
     }
     // One row per bundled file, and no row for a file that is not bundled.
@@ -96,6 +102,19 @@ void main() {
         if (f is File) f.uri.pathSegments.last,
     };
     expect(files2x, files);
+  });
+
+  test('the owner-collected test-only photos are gone', () {
+    expect(kTestOnlyHeroAssets, isEmpty);
+    for (final dir in ['assets/photos/hero', 'assets/photos/hero/2.0x']) {
+      for (final f in Directory(dir).listSync()) {
+        expect(f.uri.pathSegments.last, isNot(startsWith('owner-')));
+      }
+    }
+    for (final r in rows) {
+      expect(r, isNot(contains('owner-supplied')));
+      expect(r, isNot(contains('Collected from the internet')));
+    }
   });
 
   test('no stock photo is referenced anywhere', () {

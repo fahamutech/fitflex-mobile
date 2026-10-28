@@ -1,13 +1,16 @@
-// Release guard for the photo heroes (owner 2026-10-22): the four photos the
-// owner collected from the internet are OK for testing, NOT cleared for
-// release. They are listed in kTestOnlyHeroAssets; a test run with
-// `--dart-define=PHOTO_HERO_RELEASE=true` fails while any is still mapped:
+// Release guard for the photo heroes (owner 2026-10-22): a photo that is OK
+// for testing but NOT cleared for release (the four the owner collected
+// from the internet, until 2026-10-28) is listed in kTestOnlyHeroAssets; a
+// test run with `--dart-define=PHOTO_HERO_RELEASE=true` fails while any is
+// still mapped:
 //
 //   flutter test test/photo_hero_release_guard_test.dart \
 //     --dart-define=PHOTO_HERO_UI=true --dart-define=PHOTO_HERO_RELEASE=true
 //
-// Run it before any build that shows PHOTO_HERO_UI to users (see the notes
-// in .github/workflows/deploy-web.yml and distribute-android.yml).
+// The user builds (deploy-web, distribute-android, release-play-store) run
+// it before building whenever PHOTO_HERO_UI is on, and fail if it fails.
+// Since 2026-10-28 (owner approval) the four are replaced by FitFlex
+// Africa's own generated scenes and the list is empty.
 
 import 'dart:io';
 
@@ -27,12 +30,8 @@ void main() {
       .firstWhere((l) => l.startsWith('| `${p.file}.webp`'));
 
   test('the test-only list is exactly the owner-collected photos', () {
-    expect(kTestOnlyHeroAssets, {
-      FFHeroPhoto.trainers,
-      FFHeroPhoto.activityChallenges,
-      FFHeroPhoto.gyms,
-      FFHeroPhoto.activityToday,
-    });
+    // None left since 2026-10-28 (replaced by gen-21..gen-24).
+    expect(kTestOnlyHeroAssets, isEmpty);
     for (final p in FFHeroPhoto.values) {
       final owner = p.sourceId.startsWith('owner-');
       // Every owner photo is on the list (a new one must be added too).

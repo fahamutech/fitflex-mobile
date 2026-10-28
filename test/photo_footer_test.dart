@@ -1122,7 +1122,10 @@ void main() {
       });
     });
 
-    test('distribute-android: photo_footer only on manual runs', () {
+    test('distribute-android: photo_footer input OR the repo variable', () {
+      // Since 2026-10-28 (owner approval) a user build also follows the
+      // PHOTO_FOOTER_UI repository variable; off unless one of them is on.
+      // test/photo_switches_workflows_test.dart covers every workflow.
       final wf = File(
         '.github/workflows/distribute-android.yml',
       ).readAsStringSync();
@@ -1130,8 +1133,9 @@ void main() {
       expect(
         wf,
         contains(
-          "PHOTO_FOOTER_UI: \${{ github.event_name == 'workflow_dispatch' "
-          "&& inputs.photo_footer && 'true' || 'false' }}",
+          "PHOTO_FOOTER_UI: \${{ (github.event_name == 'workflow_dispatch' "
+          "&& inputs.photo_footer) && 'true' || vars.PHOTO_FOOTER_UI || "
+          "'false' }}",
         ),
       );
       expect(wf, contains('--dart-define=PHOTO_FOOTER_UI="\$PHOTO_FOOTER_UI"'));
