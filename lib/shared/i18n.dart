@@ -6392,6 +6392,7 @@ class FFLocale extends ChangeNotifier {
       'error.reason.order_not_confirmed': 'This order isn\'t confirmed yet.',
       'error.reason.event_unavailable':
           'This event can\'t take payments or changes right now.',
+      'error.reason.rotate_required': 'This ticket\'s code needs to be replaced. Get a new code to continue.',
       'error.reason.removeWholeLine':
           'Cancel the whole order to remove this place',
       'error.reason.invalidTransition.events':
@@ -12838,6 +12839,7 @@ class FFLocale extends ChangeNotifier {
       'error.reason.order_not_confirmed': 'Oda hii bado haijathibitishwa.',
       'error.reason.event_unavailable':
           'Tukio hili haliwezi kupokea malipo au mabadiliko kwa sasa.',
+      'error.reason.rotate_required': 'Msimbo wa tiketi hii unahitaji kubadilishwa. Pata msimbo mpya ili uendelee.',
       'error.reason.removeWholeLine': 'Ghairi oda yote ili uondoe tiketi hii',
       'error.reason.invalidTransition.events':
           'Oda hii haiwezi kubadilishwa tena',

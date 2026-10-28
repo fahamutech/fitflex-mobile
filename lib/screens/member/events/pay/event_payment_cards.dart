@@ -573,9 +573,21 @@ class EventRefundCard extends StatelessWidget {
                 key: const Key('refund-sent'),
               ),
             if (refund.status == 'rejected') ...[
-              if ((refund.rejectionNote ?? '').isNotEmpty)
+              if (lang == 'sw' && (refund.rejectionNoteSw ?? '').isNotEmpty)
                 line(
-                  refund.rejectionNote!,
+                  refund.rejectionNoteSw!,
+                  key: const Key('refund-note'),
+                  strong: true,
+                )
+              else if ((refund.rejectionNote ?? '').isNotEmpty)
+                // No Swahili note: the English one, labelled as English in
+                // Swahili (same rule as a payment's note).
+                line(
+                  lang == 'sw'
+                      ? context
+                            .tr('events.pay.rejected.noteEn')
+                            .replaceFirst('{note}', refund.rejectionNote!)
+                      : refund.rejectionNote!,
                   key: const Key('refund-note'),
                   strong: true,
                 ),

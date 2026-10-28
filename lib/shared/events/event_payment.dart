@@ -196,6 +196,7 @@ class EventRefundView {
     this.registrationId,
     this.paymentReference,
     this.rejectionNote,
+    this.rejectionNoteSw,
   });
 
   final String id;
@@ -221,6 +222,9 @@ class EventRefundView {
   /// The member-visible note on a refusal.
   final String? rejectionNote;
 
+  /// The same note in Swahili, when the admin wrote one.
+  final String? rejectionNoteSw;
+
   bool get isPaid => status == 'paid';
   bool get isOpen => status == 'requested' || status == 'approved';
 
@@ -241,6 +245,7 @@ class EventRefundView {
       ),
       paymentReference: _opt(json['paymentReference']),
       rejectionNote: _opt(json['rejectionNote']),
+      rejectionNoteSw: _opt(json['rejectionNoteSw']),
     );
   }
 

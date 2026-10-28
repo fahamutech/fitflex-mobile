@@ -411,6 +411,7 @@ String? _knownReason(FFLocale locale, String reason) {
     'event_cancelled': 'error.reason.event_cancelled',
     'kit_collected': 'error.reason.kit_collected',
     'order_not_confirmed': 'error.reason.order_not_confirmed',
+    'rotate_required': 'error.reason.rotate_required',
     'event_unavailable': 'error.reason.event_unavailable',
     // Partner date of birth (fitflex-functions#253).
     'partner_under_18': 'error.reason.partnerUnder18',

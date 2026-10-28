@@ -16,7 +16,7 @@ import '../../../../shared/formatters.dart';
 import '../../../../shared/i18n.dart';
 import '../events_registration_gate.dart';
 
-enum _Phase { loading, ready, revoked, claimedElsewhere, error }
+enum _Phase { loading, ready, revoked, claimedElsewhere, rotateRequired, error }
 
 /// `/member/events/registrations/:registrationId/ticket` (events S4 spec
 /// §5.5, §5.8). Draws the QR from the server's own payload; the ticket
@@ -122,6 +122,16 @@ class _MemberEventTicketPageState extends State<MemberEventTicketPage> {
               : 'cancelled';
           _ticket = null;
           _phase = _Phase.revoked;
+        });
+        _focusHeading();
+      case 'rotate_required':
+        // The signing key was retired: the old code can't be shown, a new
+        // one can be made.
+        await EventTicketCache.remove(id);
+        if (!mounted) return;
+        setState(() {
+          _ticket = null;
+          _phase = _Phase.rotateRequired;
         });
         _focusHeading();
       case 'ticket_not_issued':
@@ -255,6 +265,7 @@ class _MemberEventTicketPageState extends State<MemberEventTicketPage> {
     final children = switch (_phase) {
       _Phase.revoked => _revoked(context),
       _Phase.claimedElsewhere => _claimed(context),
+      _Phase.rotateRequired => _rotateRequired(context),
       _ => _ready(context, _ticket!),
     };
     return ListView(
@@ -304,6 +315,61 @@ class _MemberEventTicketPageState extends State<MemberEventTicketPage> {
             ),
           ],
         ),
+      ),
+      _viewRegistration(context),
+    ];
+  }
+
+  /// Rotate, then read the ticket again.
+  Future<void> _rotateThenReload() async {
+    if (_busy) return;
+    final snack = FFSnack.of(context);
+    final locale = FFLocaleScope.of(context);
+    setState(() => _busy = true);
+    try {
+      await _api.rotateEventTicket(widget.registrationId);
+      if (!mounted) return;
+      EventsAnalytics.ticketRotated();
+      setState(() => _busy = false);
+      await _load();
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      if (e.code == 'ticket_revoked') {
+        await _onRefused(e);
+      } else {
+        snack.error(eventsErrorMessage(locale, e));
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      snack.error(eventsErrorMessage(locale, e));
+    }
+  }
+
+  List<Widget> _rotateRequired(BuildContext context) {
+    final tt = Theme.of(context).textTheme;
+    return [
+      Focus(
+        focusNode: _heading,
+        child: Semantics(
+          header: true,
+          child: Text(context.tr('events.ticket.show'), style: tt.titleLarge),
+        ),
+      ),
+      const SizedBox(height: FFTokens.spacingSm),
+      FFCard(
+        key: const Key('ticket-rotate-required'),
+        child: Text(
+          context.tr('error.reason.rotate_required'),
+          style: tt.bodyMedium,
+        ),
+      ),
+      FFButton(
+        key: const Key('ticket-rotate-now'),
+        label: context.tr('events.ticket.rotate'),
+        loading: _busy,
+        onPressed: _rotateThenReload,
       ),
       _viewRegistration(context),
     ];
