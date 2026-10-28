@@ -390,24 +390,26 @@ class EventPaymentStatusCard extends StatelessWidget {
           Semantics(
             liveRegion: true,
             container: true,
-            child: Row(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Text(
-                    title,
-                    key: const Key('pay-card-title'),
-                    style: tt.titleSmall,
-                  ),
+                Text(
+                  title,
+                  key: const Key('pay-card-title'),
+                  style: tt.titleSmall,
                 ),
-                if (pill != null) ...[
-                  const SizedBox(width: FFTokens.spacingSm),
-                  FFBadge(
-                    key: const Key('pay-card-pill'),
-                    label: pill,
-                    tone: pillTone ?? FFBadgeTone.defaultTone,
+                // Below the title and allowed to wrap: "Uthibitisho wa mkono"
+                // must fit at 375 px and 1.3x text.
+                if (pill != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: FFTokens.spacingXs),
+                    child: FFBadge(
+                      key: const Key('pay-card-pill'),
+                      label: pill,
+                      tone: pillTone ?? FFBadgeTone.defaultTone,
+                      wrap: true,
+                    ),
                   ),
-                ],
               ],
             ),
           ),
