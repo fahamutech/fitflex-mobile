@@ -304,4 +304,164 @@ void main() {
       expect(await PendingEventClaim.peek(), _tok);
     },
   );
+
+  // ── Events S4 (spec §5.9): the claim landing is live ────────────────────
+
+  group('S4: paid places', () {
+    apiTest('a confirmed place says it is paid and confirmed', (
+      tester,
+      api,
+    ) async {
+      await PendingEventClaim.save(_tok);
+      api.on(
+        'GET /event-claims/preview/$_tok',
+        claimPreviewJson(status: 'confirmed'),
+      );
+      final host = await _pumpLink(tester, api);
+      expect(find.byKey(const Key('claim-paid')), findsOneWidget);
+      expect(find.text(host.tr('events.claim.paid')), findsOneWidget);
+      expect(
+        find.text(
+          'This place is paid and confirmed. Claim it to get your ticket.',
+        ),
+        findsOneWidget,
+      );
+    });
+
+    apiTest('a reserved place keeps the S3 text (no paid line)', (
+      tester,
+      api,
+    ) async {
+      await PendingEventClaim.save(_tok);
+      api.on('GET /event-claims/preview/$_tok', claimPreviewJson());
+      await _pumpLink(tester, api);
+      expect(find.byKey(const Key('claim-paid')), findsNothing);
+    });
+
+    apiTest('claiming a paid place lands on its ticket', (tester, api) async {
+      await PendingEventClaim.save(_tok);
+      api.on(
+        'GET /event-claims/preview/$_tok',
+        claimPreviewJson(status: 'confirmed'),
+      );
+      api.on('POST /me/event-registrations/claim', {
+        'registration': registrationJson(
+          id: 'reg_9',
+          status: 'confirmed',
+          orderStatus: 'confirmed',
+          relation: 'claimed',
+          ticket: {'state': 'active', 'displayCode': 'T-3F9A2B'},
+        ),
+      });
+      final host = await _pumpLink(tester, api);
+      await tapVisible(tester, find.byKey(const Key('claim-confirm')));
+      expect(host.snack(host.tr('events.claim.done')), findsOneWidget);
+      expect(find.text('ROUTE-TICKET-reg_9'), findsOneWidget);
+      expect(await PendingEventClaim.peek(), isNull);
+    });
+
+    apiTest('a confirmed place whose answer names no ticket is still tried', (
+      tester,
+      api,
+    ) async {
+      await PendingEventClaim.save(_tok);
+      api.on(
+        'GET /event-claims/preview/$_tok',
+        claimPreviewJson(status: 'confirmed'),
+      );
+      api.on('POST /me/event-registrations/claim', {
+        'registration': registrationJson(
+          id: 'reg_9',
+          status: 'confirmed',
+          orderStatus: 'confirmed',
+          relation: 'claimed',
+        ),
+      });
+      await _pumpLink(tester, api);
+      await tapVisible(tester, find.byKey(const Key('claim-confirm')));
+      expect(find.text('ROUTE-TICKET-reg_9'), findsOneWidget);
+    });
+
+    apiTest('a revoked ticket lands on the registration instead', (
+      tester,
+      api,
+    ) async {
+      await PendingEventClaim.save(_tok);
+      api.on(
+        'GET /event-claims/preview/$_tok',
+        claimPreviewJson(status: 'confirmed'),
+      );
+      api.on('POST /me/event-registrations/claim', {
+        'registration': registrationJson(
+          id: 'reg_9',
+          status: 'confirmed',
+          orderStatus: 'confirmed',
+          relation: 'claimed',
+          ticket: {'state': 'revoked'},
+        ),
+      });
+      await _pumpLink(tester, api);
+      await tapVisible(tester, find.byKey(const Key('claim-confirm')));
+      expect(find.text('ROUTE-REG-reg_9'), findsOneWidget);
+    });
+
+    apiTest('an expired link says who to ask for a new one', (
+      tester,
+      api,
+    ) async {
+      await PendingEventClaim.save(_tok);
+      api.fail('GET /event-claims/preview/$_tok', 410, {
+        'error': 'claim_token_expired',
+      });
+      await _pumpLink(tester, api);
+      expect(
+        find.text(
+          'Ask the person who registered you to send the invitation again.',
+        ),
+        findsOneWidget,
+      );
+      expect(await PendingEventClaim.peek(), isNull);
+    });
+
+    apiTest('an expired link at claim time names the purchaser', (
+      tester,
+      api,
+    ) async {
+      await PendingEventClaim.save(_tok);
+      api.on(
+        'GET /event-claims/preview/$_tok',
+        claimPreviewJson(status: 'confirmed'),
+      );
+      api.fail('POST /me/event-registrations/claim', 410, {
+        'error': 'claim_token_expired',
+      });
+      await _pumpLink(tester, api);
+      await tapVisible(tester, find.byKey(const Key('claim-confirm')));
+      expect(
+        find.text('Ask N**** to send the invitation again.'),
+        findsOneWidget,
+      );
+    });
+
+    apiTest('a cancelled or refunded place is no longer active', (
+      tester,
+      api,
+    ) async {
+      await PendingEventClaim.save(_tok);
+      api.on(
+        'GET /event-claims/preview/$_tok',
+        claimPreviewJson(status: 'confirmed'),
+      );
+      api.fail('POST /me/event-registrations/claim', 409, {
+        'error': 'registration_closed_state',
+      });
+      await _pumpLink(tester, api);
+      await tapVisible(tester, find.byKey(const Key('claim-confirm')));
+      expect(
+        find.byKey(const Key('claim-refused-registration_closed_state')),
+        findsOneWidget,
+      );
+      expect(find.text('This registration is no longer active'), findsOneWidget);
+    });
+  });
 }

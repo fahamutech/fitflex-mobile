@@ -469,7 +469,8 @@ class _MemberEventRegistrationPageState
     final cs = Theme.of(context).colorScheme;
     final t = r.ticket;
     // The purchaser loses the ticket when the participant claims the place.
-    final claimedAway = r.claimState == ClaimState.claimed && !r.isSelf;
+    final claimedAway =
+        r.viewerIsPurchaser && r.claimState == ClaimState.claimed && !r.isSelf;
     if (t != null && t.isActive && !claimedAway) {
       return FFCard(
         key: const Key('reg-ticket'),
