@@ -32,31 +32,6 @@ Future<Set<String>?> showFFAreaPicker(
   ),
 );
 
-/// Areas of [levels] the server marks locatable (never a `locatable: false`
-/// one, nor one without a circle), plus their parents so the tree keeps its
-/// context. For "Change area": a too-small area can't be picked (QA #2).
-List<ShopArea> locatableWithParents(List<ShopArea> areas, Set<String> levels) {
-  final byId = {for (final a in areas) a.id: a};
-  final keep = <String>{};
-  for (final a in areas) {
-    final ok =
-        levels.contains(a.level) &&
-        a.locatable != false &&
-        a.lat != null &&
-        a.lng != null &&
-        (a.radiusKm ?? 0) > 0;
-    if (!ok) continue;
-    String? id = a.id;
-    while (id != null && keep.add(id)) {
-      id = byId[id]?.parentId;
-    }
-  }
-  return [
-    for (final a in areas)
-      if (keep.contains(a.id)) a,
-  ];
-}
-
 /// The country, region, city or district word for [level].
 String areaLevelLabel(BuildContext context, String level) =>
     context.tr('vendor.areas.level.$level');

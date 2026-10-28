@@ -189,30 +189,37 @@ enum ShopNearYouChoice {
 }
 
 /// The device's record for one account. Never holds coordinates.
+///
+/// The area only ever comes from [detectShopArea] (GPS matched on the phone
+/// against GET /shop/areas). There is no way to pick one by hand (owner
+/// decision 2026-10-28: "Change area" dropped).
 class ShopNearYouState {
   const ShopNearYouState({
     this.choice = ShopNearYouChoice.notAsked,
     this.areaId,
     this.areaName,
-    this.manual = false,
   });
 
   final ShopNearYouChoice choice;
 
-  /// The area last worked out (or picked), sent in `X-FF-Area`.
+  /// The area last worked out on the device, sent in `X-FF-Area`.
   final String? areaId;
 
   /// For display this session only; never stored.
   final String? areaName;
 
-  /// The area was picked by hand ("Change area") this session: the position
-  /// is not read again this session. Never stored.
-  final bool manual;
-
   static const empty = ShopNearYouState();
 
+  /// Marks a stored area as worked out on the device. A stored area without
+  /// it (kept by an older build, which also let people pick one by hand) is
+  /// dropped on read and worked out again.
+  static const _deviceSource = 'device';
+
   /// What is stored on the device: the choice and the area id only.
-  Map<String, dynamic> toJson() => {'choice': choice.name, 'areaId': ?areaId};
+  Map<String, dynamic> toJson() => {
+    'choice': choice.name,
+    if (areaId != null) ...{'areaId': areaId, 'areaSource': _deviceSource},
+  };
 
   static ShopNearYouState fromJson(Object? json) {
     if (json is! Map) return empty;
@@ -221,10 +228,14 @@ class ShopNearYouState {
       orElse: () => ShopNearYouChoice.notAsked,
     );
     final id = json['areaId']?.toString() ?? '';
+    final fromDevice = json['areaSource'] == _deviceSource;
     return ShopNearYouState(
       choice: choice,
-      // An area only means something while the choice is on.
-      areaId: choice == ShopNearYouChoice.on && id.isNotEmpty ? id : null,
+      // An area only means something while the choice is on, and only one
+      // worked out on the device counts.
+      areaId: choice == ShopNearYouChoice.on && fromDevice && id.isNotEmpty
+          ? id
+          : null,
     );
   }
 }
@@ -421,7 +432,8 @@ class ShopAreas {
   /// The areas already loaded for [api] this session, else null.
   static List<ShopArea>? peek(ApiClient api) => _cache[api];
 
-  /// Like [load] but throws on failure (the vendor pickers say so).
+  /// Like [load] but throws on failure (the vendor pickers say so). Vendor
+  /// "Where you sell" only: shoppers never pick an area.
   static Future<List<ShopArea>> loadOrThrow(ApiClient api) async {
     final cached = _cache[api];
     if (cached != null && cached.isNotEmpty) return cached;

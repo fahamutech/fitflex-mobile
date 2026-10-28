@@ -31,6 +31,7 @@ import 'package:fitflexmobile/shared/widgets/shop_home/shop_near_you_ui.dart';
 import 'package:fitflexmobile/shared/widgets/shop_home/shop_personalisation.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'support/recording_api.dart';
 
@@ -1128,8 +1129,6 @@ void main() {
           'servicesOff',
           'badge',
           'finding',
-          'changeArea',
-          'pickArea',
         ])
           'shop.near.$k',
         'shop.why.nearOn',
@@ -1480,17 +1479,20 @@ void main() {
         choice: ShopNearYouChoice.on,
         areaId: 'tz-dar-city',
         areaName: 'Dar es Salaam',
-        manual: true,
       );
-      expect(state.toJson(), {'choice': 'on', 'areaId': 'tz-dar-city'});
+      expect(state.toJson(), {
+        'choice': 'on',
+        'areaId': 'tz-dar-city',
+        'areaSource': 'device',
+      });
       final back = ShopNearYouState.fromJson({
         'choice': 'on',
         'areaId': 'tz-dar-city',
+        'areaSource': 'device',
         'areaName': 'old',
-        'manual': true,
       });
+      expect(back.areaId, 'tz-dar-city');
       expect(back.areaName, isNull);
-      expect(back.manual, isFalse);
       // Areas with no centre never match (M1).
       expect(
         areaFor(0, 0, const [
@@ -1995,35 +1997,6 @@ void main() {
       }
     });
 
-    test('#2 Change area lists only locatable cities and districts', () {
-      final list = ShopArea.listFromJson({
-        'areas': [
-          ..._areasJson.map((a) => {...a, 'locatable': a['radiusKm'] != null}),
-          {
-            'id': 'tz-dar-tiny',
-            'level': 'district',
-            'name': 'Tiny',
-            'parentId': 'tz-dar-city',
-            'locatable': false,
-            'lat': null,
-            'lng': null,
-            'radiusKm': null,
-          },
-        ],
-      });
-      final ids = locatableWithParents(list, const {
-        'city',
-        'district',
-      }).map((a) => a.id).toSet();
-      expect(ids, containsAll(['tz-dar-city', 'tz-dar-kinondoni', 'tz-dar']));
-      expect(ids, isNot(contains('tz-dar-tiny')));
-      expect(FFLocale().t('shop.near.pickArea'), 'Pick your city or district');
-      expect(
-        (FFLocale()..set(const Locale('sw'))).t('shop.near.pickArea'),
-        'Chagua jiji au wilaya yako',
-      );
-    });
-
     for (final width in [375.0, 1280.0]) {
       apiTest('#3 #7 #11 invite and sheet buttons are 48 tall, the sheet is '
           '480 wide on desktop (width $width)', (tester, api) async {
@@ -2326,5 +2299,174 @@ void main() {
         handle.dispose();
       });
     }
+  });
+
+  // ── no manual area (owner decision 2026-10-28) ────────────────────────
+
+  group('no Change area: the area comes only from the device', () {
+    void expectNoChangeArea() {
+      expect(_key('shop-near-you-change'), findsNothing);
+      expect(find.text('Change area'), findsNothing);
+      expect(find.text('Badilisha eneo'), findsNothing);
+      expect(find.text('Pick your city or district'), findsNothing);
+      expect(find.text('Chagua jiji au wilaya yako'), findsNothing);
+    }
+
+    Future<void> keepDetectedArea() => ShopNearYouStore.save(
+      'm1',
+      const ShopNearYouState(
+        choice: ShopNearYouChoice.on,
+        areaId: 'tz-dar-city',
+        areaName: 'Dar es Salaam',
+      ),
+    );
+
+    for (final lang in ['en', 'sw']) {
+      apiTest('Why sheet, near-you on: Turn off only, no Change area ($lang)', (
+        tester,
+        api,
+      ) async {
+        debugShopLocatorOverride = FakeLocator(
+          access: ShopLocationAccess.granted,
+          fix: _darCity,
+        );
+        await keepDetectedArea();
+        _seedAreaAware(api);
+        final host = await _pumpShop(tester, api, lang: lang);
+        await tapVisible(tester, _key('shop-home-why-popular_near_you'));
+        expect(_key('shop-near-you-line'), findsOneWidget);
+        expect(_key('shop-near-you-turn-off'), findsOneWidget);
+        expect(
+          find.text(
+            host.tr('shop.why.nearOn').replaceAll('{area}', 'Dar es Salaam'),
+          ),
+          findsOneWidget,
+        );
+        expectNoChangeArea();
+      });
+
+      apiTest('Why sheet, near-you off: Turn on only, no Change area ($lang)', (
+        tester,
+        api,
+      ) async {
+        debugShopLocatorOverride = FakeLocator(fix: _darCity);
+        await ShopNearYouStore.save(
+          'm1',
+          const ShopNearYouState(choice: ShopNearYouChoice.off),
+        );
+        _seedAreaAware(api);
+        await _pumpShop(tester, api, lang: lang);
+        await tapVisible(tester, _key('shop-home-why-recommended'));
+        expect(_key('shop-near-you-turn-on'), findsOneWidget);
+        expect(_key('shop-near-you-turn-off'), findsNothing);
+        expectNoChangeArea();
+      });
+
+      apiTest('Privacy sheet, near-you on: Turn off only, no Change area '
+          '($lang)', (tester, api) async {
+        debugShopLocatorOverride = FakeLocator();
+        await keepDetectedArea();
+        api.on('GET /shop/preferences', {
+          'personalised': true,
+          'available': true,
+          'historyDays': 365,
+          'uses': ['purchase_history', 'location'],
+        });
+        api.on('GET /shop/areas', {'areas': _areasJson});
+        await pumpPage(
+          tester,
+          api,
+          const SingleChildScrollView(child: ShopPrivacyTile()),
+          user: _member,
+          lang: lang,
+          size: const Size(375, 1200),
+        );
+        await tapVisible(tester, _key('privacy-shop'));
+        expect(_key('shop-near-you-line'), findsOneWidget);
+        expect(_key('shop-near-you-turn-off'), findsOneWidget);
+        expectNoChangeArea();
+      });
+    }
+
+    test('a kept area not marked as worked out on the device is dropped', () {
+      // An older build stored the area without a source, and could store
+      // one picked by hand: it is not sent; the device works it out again.
+      final legacy = ShopNearYouState.fromJson({
+        'choice': 'on',
+        'areaId': 'tz-dar-city',
+      });
+      expect(legacy.choice, ShopNearYouChoice.on);
+      expect(legacy.areaId, isNull);
+      expect(
+        ShopNearYouState.fromJson({
+          'choice': 'on',
+          'areaId': 'tz-dar-city',
+          'areaSource': 'manual',
+        }).areaId,
+        isNull,
+      );
+    });
+
+    apiTest('a dropped legacy area is worked out again from GPS', (
+      tester,
+      api,
+    ) async {
+      final loc = debugShopLocatorOverride = FakeLocator(
+        access: ShopLocationAccess.granted,
+        fix: _kinondoni,
+      );
+      // What an older build left on the phone (no areaSource).
+      SharedPreferences.setMockInitialValues({
+        'ff.shop.nearYou.m1': jsonEncode({
+          'choice': 'on',
+          'areaId': 'tz-arusha-city',
+        }),
+      });
+      final kept = await ShopNearYouStore.load('m1');
+      expect(kept.choice, ShopNearYouChoice.on);
+      expect(kept.areaId, isNull);
+      _seedAreaAware(api);
+      await _pumpShop(tester, api);
+      expect(loc.count('position'), 1);
+      expect(loc.count('request'), 0);
+      expect(ShopNearYouStore.peek('m1')!.areaId, 'tz-dar-kinondoni');
+      expect(_sentAreaIds(api), isNot(contains('tz-arusha-city')));
+      _expectNoCoordinates(api);
+    });
+
+    test('no shopper code opens an area picker or names Change area', () {
+      final offenders = <String>[];
+      for (final f in Directory('lib').listSync(recursive: true)) {
+        if (f is! File || !f.path.endsWith('.dart')) continue;
+        final path = f.path.replaceAll('\\', '/');
+        final src = f.readAsStringSync();
+        final vendor = path.startsWith('lib/screens/vendor/');
+        final picker = path == 'lib/shared/widgets/ff_area_picker.dart';
+        if (!vendor && !picker && src.contains('showFFAreaPicker')) {
+          offenders.add('$path opens the area picker');
+        }
+        if (!vendor && !picker && src.contains('FFAreaPicker(')) {
+          offenders.add('$path builds the area picker');
+        }
+        for (final word in [
+          'shop.near.changeArea',
+          'shop.near.pickArea',
+          'shop-near-you-change',
+          'manual: true',
+        ]) {
+          if (path.contains('shop') && src.contains(word)) {
+            offenders.add('$path has $word');
+          }
+        }
+      }
+      expect(offenders, isEmpty);
+      final en = FFLocale();
+      final sw = FFLocale()..set(const Locale('sw'));
+      for (final k in ['shop.near.changeArea', 'shop.near.pickArea']) {
+        expect(en.t(k), isNot('Change area'));
+        expect(en.t(k), isNot('Pick your city or district'));
+        expect(sw.t(k), isNot('Badilisha eneo'));
+      }
+    });
   });
 }
