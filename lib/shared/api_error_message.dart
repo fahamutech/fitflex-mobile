@@ -177,6 +177,23 @@ String? _detailedReason(FFLocale locale, String reason, dynamic body) {
         return locale.t('error.reason.invalidTransition.events');
       }
       return null;
+    // Which field the server refused (fitflex-functions#253, #239).
+    case 'invalid_field':
+      return switch (body['field']?.toString()) {
+        'dateOfBirth' => locale.t('member.dobInvalid'),
+        'gender' => locale.t('error.reason.invalidGender'),
+        _ => null,
+      };
+    // 429 with the wait the server gave.
+    case 'rate_limited':
+      final seconds = body['retryAfterSeconds'];
+      final n = seconds is num
+          ? seconds.ceil()
+          : int.tryParse(seconds?.toString() ?? '');
+      if (n == null || n <= 0) return null;
+      return locale
+          .t('error.reason.rateLimitedSeconds')
+          .replaceFirst('{seconds}', '$n');
     case 'not_payable_by_role':
       final product = body['product']?.toString();
       if (product == null) return null;
@@ -359,6 +376,9 @@ String? _knownReason(FFLocale locale, String reason) {
     'hold_limit_reached': 'error.reason.holdLimitReached',
     // Always sent by the app; only a stale client would see it.
     'expected_total_required': 'error.reason.priceChanged',
+    // Partner date of birth (fitflex-functions#253).
+    'partner_under_18': 'error.reason.partnerUnder18',
+    'personal_details_unavailable': 'error.reason.personalDetailsUnavailable',
   };
   final key = keys[reason.trim().toLowerCase()];
   return key == null ? null : locale.t(key);

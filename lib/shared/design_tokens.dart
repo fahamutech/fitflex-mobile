@@ -255,6 +255,22 @@ class FFTokens {
   static const double heroTallClearMax = 200;
   static const double heroTallMinViewport = 760;
 
+  /// Band heroes (owner 2026-10-22, "too dark"): the clear photo a band
+  /// keeps above its text on phones from [heroTallMinViewport] tall, at
+  /// 1.0x text (divided by the text scale above it). A screen caps its band
+  /// so its first control stays above [heroBandControlShare] of the screen
+  /// (FFHeroBand.maxHeightAt844); the clear photo then gives way. The bar
+  /// band and the scrim under the text are unchanged.
+  static const double heroBandClearPhoto = 100;
+
+  /// How far down the screen a band screen's first control may sit (its top
+  /// edge, as a share of the viewport height).
+  static const double heroBandControlShare = 0.55;
+
+  /// The least clear photo a capped band grows for; with less it keeps
+  /// today's height.
+  static const double heroBandMinClearPhoto = 24;
+
   /// Horizontal (panel / wide banner) scrim: the text column's leading edge
   /// and the far edge. The text column itself stays at >= [heroScrimText].
   static const double heroScrimPanelLead = 0.92;

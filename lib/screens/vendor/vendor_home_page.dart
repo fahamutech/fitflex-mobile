@@ -48,6 +48,13 @@ import 'sales/sales_widgets.dart';
 /// Bottom padding for vendor lists: the extended FAB (56) plus margins.
 const vendorFabClearance = 96.0;
 
+/// PHOTO_HERO_UI (owner 2026-10-22, bands "too dark"): the band grows for
+/// [FFTokens.heroBandClearPhoto] of clear photo above its text, but no taller
+/// than this on a 390x844 screen, so Add product (in the band) starts
+/// above 55% of the screen
+/// (FFHeroBand.maxHeightAt844).
+const double vendorHomeBandMaxHeight = 409;
+
 class VendorHomePage extends StatefulWidget {
   const VendorHomePage({super.key, this.open, this.filter, this.view});
 
@@ -109,12 +116,16 @@ class _VendorHomePageState extends State<VendorHomePage> {
     }
   }
 
-  /// The FAB comes back once at least half of the hero has scrolled away;
-  /// until then the hero's Add product is the one on screen.
+  /// The FAB comes back once the hero's own Add product, at the band's
+  /// foot, has scrolled at least half away; until then that one is on
+  /// screen. (The band is taller with clear photo above its text, owner
+  /// 2026-10-22, so half the band is no longer enough.) The list's top
+  /// padding and the band's bottom padding are both spacingLg, so the
+  /// button's centre sits half a button above the band's height.
   bool _onProductsScroll(ScrollNotification n) {
     if (n.depth != 0) return false;
     final h = _heroKey.currentContext?.size?.height ?? 0;
-    final visible = h == 0 || n.metrics.pixels < h / 2;
+    final visible = h == 0 || n.metrics.pixels < h - 24;
     if (visible != _heroVisible) setState(() => _heroVisible = visible);
     return false;
   }
@@ -129,6 +140,8 @@ class _VendorHomePageState extends State<VendorHomePage> {
         child: FFHeroBand(
           key: const Key('vendor-hero'),
           photo: FFHeroPhoto.vendor,
+          clearPhoto: FFTokens.heroBandClearPhoto,
+          maxHeightAt844: vendorHomeBandMaxHeight,
           eyebrow: name.isEmpty ? context.tr('vendor.title') : name,
           headlineLoading: loading,
           headlineLead: loading
@@ -1674,8 +1687,10 @@ class _VendorHomePageState extends State<VendorHomePage> {
                           : 'vendor.areas.nudgeCheckAction',
                     ),
                     variant: FFButtonVariant.secondary,
-                    size: FFButtonSize.sm,
-                    onPressed: _editProfile,
+                    // 48 tall at every width (QA2 #4).
+                    visualDensity: VisualDensity.standard,
+                    // Opens the form at "Where you sell" (QA #8).
+                    onPressed: () => _editProfile(toAreas: true),
                   ),
                 ],
               ),
@@ -1792,7 +1807,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
     );
   }
 
-  Future<void> _editProfile() async {
+  Future<void> _editProfile({bool toAreas = false}) async {
     final api = AppScope.of(context).api;
     // The form saves itself and stays open on a refusal (S3: invalid_area
     // is shown next to "Where you sell"); it closes only once saved.
@@ -1803,6 +1818,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
       builder: (_) => VendorProfileForm(
         profile: _profile,
         shopAreas: _tools.shopAreas,
+        scrollToAreas: toAreas,
         onSave: api.vendorSaveProfile,
         describeError: _saveFailedText,
       ),
@@ -2740,9 +2756,14 @@ class VendorProfileForm extends StatefulWidget {
     this.shopAreas = false,
     this.onSave,
     this.describeError,
+    this.scrollToAreas = false,
   });
 
   final Map<String, dynamic> profile;
+
+  /// Opened from the "Add where you're based" nudge: scroll to "Where you
+  /// sell" once it is laid out (QA #8).
+  final bool scrollToAreas;
 
   /// Saves the profile (PUT /vendor/profile). Set: the form stays open on a
   /// failure and says why; it closes with the body once saved. Unset: the
@@ -2814,6 +2835,24 @@ class _VendorProfileFormState extends State<VendorProfileForm> {
 
   bool _saving = false;
   String? _saveError;
+  final _areasKey = GlobalKey(debugLabel: 'vendor-areas');
+  bool _revealed = false;
+
+  void _revealAreas() {
+    if (_revealed) return;
+    _revealed = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _areasKey.currentContext;
+      if (ctx == null || !ctx.mounted) return;
+      Scrollable.ensureVisible(
+        ctx,
+        alignment: 0.1,
+        duration: MediaQuery.disableAnimationsOf(ctx)
+            ? Duration.zero
+            : FFTokens.motionMedium,
+      );
+    });
+  }
 
   Future<void> _save(Map<String, dynamic> body) async {
     final save = widget.onSave;
@@ -2951,7 +2990,11 @@ class _VendorProfileFormState extends State<VendorProfileForm> {
                 ),
                 // S3: "Where you sell" right after "Address".
                 if (entry.key == 'address' && widget.shopAreas)
-                  VendorAreasSection(controller: _areas),
+                  VendorAreasSection(
+                    key: _areasKey,
+                    controller: _areas,
+                    onReady: widget.scrollToAreas ? _revealAreas : null,
+                  ),
               ],
               const SizedBox(height: FFTokens.spacingSm),
               ProductCategoryMultiSelect(

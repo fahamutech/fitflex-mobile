@@ -22,6 +22,8 @@ Future<Set<String>?> showFFAreaPicker(
 }) => showFFSheet<Set<String>>(
   context,
   title: title,
+  // A centred dialog 480 wide on desktop (spec §12).
+  wideDialogWidth: 480,
   child: FFAreaPicker(
     areas: areas,
     multi: multi,
@@ -29,6 +31,31 @@ Future<Set<String>?> showFFAreaPicker(
     initial: selected,
   ),
 );
+
+/// Areas of [levels] the server marks locatable (never a `locatable: false`
+/// one, nor one without a circle), plus their parents so the tree keeps its
+/// context. For "Change area": a too-small area can't be picked (QA #2).
+List<ShopArea> locatableWithParents(List<ShopArea> areas, Set<String> levels) {
+  final byId = {for (final a in areas) a.id: a};
+  final keep = <String>{};
+  for (final a in areas) {
+    final ok =
+        levels.contains(a.level) &&
+        a.locatable != false &&
+        a.lat != null &&
+        a.lng != null &&
+        (a.radiusKm ?? 0) > 0;
+    if (!ok) continue;
+    String? id = a.id;
+    while (id != null && keep.add(id)) {
+      id = byId[id]?.parentId;
+    }
+  }
+  return [
+    for (final a in areas)
+      if (keep.contains(a.id)) a,
+  ];
+}
 
 /// The country, region, city or district word for [level].
 String areaLevelLabel(BuildContext context, String level) =>
@@ -215,6 +242,8 @@ class _FFAreaPickerState extends State<FFAreaPicker> {
                 key: const Key('ff-area-cancel'),
                 label: context.tr('common.cancel'),
                 variant: FFButtonVariant.ghost,
+                // 48 tall at every width, desktop too (QA2 #2).
+                visualDensity: VisualDensity.standard,
                 onPressed: () => Navigator.of(context).pop(),
               ),
             ),
@@ -223,6 +252,7 @@ class _FFAreaPickerState extends State<FFAreaPicker> {
               child: FFButton(
                 key: const Key('ff-area-done'),
                 label: context.tr('vendor.areas.done'),
+                visualDensity: VisualDensity.standard,
                 onPressed: () => Navigator.of(context).pop({..._selected}),
               ),
             ),
@@ -259,6 +289,10 @@ class _FFAreaPickerState extends State<FFAreaPicker> {
               .replaceAll('{parent}', _name(context, cover, lang))
         : null;
     if (!pickable) {
+      // No "Nationwide" heading when only one place is picked (QA #6).
+      if (!widget.multi && a.level == 'country') {
+        return const SizedBox.shrink();
+      }
       // Context only (e.g. the region above its cities in "Based in").
       return Padding(
         padding: EdgeInsetsDirectional.only(start: indent),
@@ -285,12 +319,14 @@ class _FFAreaPickerState extends State<FFAreaPicker> {
     return Semantics(
       key: Key('ff-area-row-${a.id}'),
       button: true,
-      label: label,
-      checked: widget.multi ? checked : null,
+      // "Included in {parent}" is part of what is read (QA #6).
+      label: subtitle == null ? label : '$label, $subtitle',
+      // Single mode reads as a radio: checked + mutually exclusive, and
+      // selected (QA #6).
+      checked: checked,
       selected: widget.multi ? null : checked,
       inMutuallyExclusiveGroup: widget.multi ? null : true,
       enabled: enabled,
-      hint: subtitle,
       excludeSemantics: true,
       child: InkWell(
         onTap: enabled ? () => _toggle(a) : null,

@@ -28,6 +28,11 @@ import 'shop_product_rail.dart';
 /// home must use it (anything else is refused as `invalid_placement`).
 const kShopHomePlacement = 'marketplace';
 
+/// PHOTO_HERO_UI (owner 2026-10-22): the member Shop band's clear photo
+/// above its text, on every phone, so the FitFlex Africa sign
+/// ([FFHeroPhoto.shop], focal top) sits wholly above the text.
+const double shopBandClearPhoto = FFTokens.heroBandClearPhoto;
+
 /// The personalised Shop home (V2, Phase 1): search and cart, "Shop by
 /// category", then the sections the server chose, in the server's order.
 ///
@@ -171,11 +176,7 @@ class ShopHomeViewState extends State<ShopHomeView> {
     final near = await ShopNearYouStore.load(uid);
     if (!mounted) return;
     _near = near;
-    final areaId =
-        near.choice == ShopNearYouChoice.on &&
-            ShopNearYouStore.lastAvailable(uid)
-        ? near.areaId
-        : null;
+    final areaId = ShopNearYouStore.areaToSend(uid);
     Future<Map<String, dynamic>> fetch(String? mode) => scope.api.shopHome(
       mode: mode,
       // Lets the server sign promotion tokens for Featured cards.
@@ -213,9 +214,9 @@ class ShopHomeViewState extends State<ShopHomeView> {
         unawaited(ShopNearYouStore.clear(uid));
       } else if (available && near.choice == ShopNearYouChoice.on) {
         if (areaId == null && near.areaId != null) {
-          // The first answer this session says near-you is available: ask
-          // again, now with the kept area.
-          unawaited(reload());
+          // The first answer this session says near-you is available:
+          // setLastAvailable bumped `changes`, and the listener asks again
+          // with the kept area.
         } else {
           // Work the area out again once a session (never prompting). A
           // change is saved, which reloads the home through the listener.
@@ -437,6 +438,7 @@ class ShopHomeViewState extends State<ShopHomeView> {
   /// reloads behind the sheet and the sheet follows the new answer.
   Future<void> _showWhy(ShopHomeSection section) async {
     _live.value = _data;
+    final first0 = _data;
     final first = _data?.personalisation;
     final mode = _mode(_data);
     final showSwitch = first?.available == true;
@@ -452,15 +454,22 @@ class ShopHomeViewState extends State<ShopHomeView> {
           builder: (sheet, setSheet) {
             final theme = Theme.of(sheet);
             final p = data?.personalisation ?? first;
-            final current =
-                data?.sections.where((x) => x.key == section.key).firstOrNull ??
-                section;
+            final live = data?.sections
+                .where((x) => x.key == section.key)
+                .firstOrNull;
+            // The rail can leave the page (near-you after the switch goes
+            // off): its old reasons are then only used without anything
+            // personal and without the server's sentence (QA #1).
+            final current = live ?? section;
             final enabled = on ?? p?.enabled ?? true;
             // A backend without personalisation (null): Phase 1 sheet.
             final personal =
                 p == null || (p.available && enabled && p.enabled == enabled);
-            // The server's sentence only while it matches the switch.
-            final serverSentence = p == null || p.enabled == enabled;
+            // The server's sentence only while it matches the switch and
+            // the section is still in the answer it came with.
+            final serverSentence =
+                (p == null || p.enabled == enabled) &&
+                (live != null || identical(data, first0));
             final lines = _whyLines(
               sheet,
               current,
@@ -508,6 +517,9 @@ class ShopHomeViewState extends State<ShopHomeView> {
                 if (showSwitch) ...[
                   const SizedBox(height: FFTokens.spacingMd),
                   ShopPersonalisedSwitch(
+                    // Keyed: lines appearing above it must not rebuild it
+                    // from its first value (QA #1).
+                    key: const ValueKey('shop-why-switch'),
                     source: ShopPreferences.sourceWhySheet,
                     mode: mode.wire,
                     initial: first!.enabled,
@@ -515,7 +527,8 @@ class ShopHomeViewState extends State<ShopHomeView> {
                     partnerHint: mode != ShopHomeMode.member,
                     // Phase 2 S3: near-you can be used, so the hint names
                     // the current area too.
-                    areaHint: data?.nearYou?.available == true,
+                    // Not while off (QA #9).
+                    areaHint: data?.nearYou?.available == true && enabled,
                     onChanged: (prefs) {
                       setSheet(() => on = prefs.personalised);
                       // The home reloads behind the sheet (§8.2).
@@ -636,6 +649,11 @@ class ShopHomeViewState extends State<ShopHomeView> {
                 photo: FFHeroPhoto.shop,
                 headingFocusNode: widget.heroFocusNode,
                 minHeight: 160,
+                // Search sits above the band, so the full clear photo on
+                // every phone: the FitFlex Africa sign stays above the
+                // text (owner 2026-10-22).
+                clearPhoto: shopBandClearPhoto,
+                clearPhotoEverywhere: true,
                 wideHeight: 200,
                 eyebrow: context.tr('member.shopTitle'),
                 headlineLead: context.tr('hero.shop.lead'),

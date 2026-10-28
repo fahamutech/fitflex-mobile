@@ -11,7 +11,7 @@
 // the OS location calls are a fake ShopLocator.
 import 'dart:convert';
 import 'dart:io';
-import 'dart:ui' show Tristate;
+import 'dart:ui' show CheckedState, Tristate;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -26,6 +26,7 @@ import 'package:fitflexmobile/shared/shop_home.dart';
 import 'package:fitflexmobile/shared/shop_near_you.dart';
 import 'package:fitflexmobile/shared/widgets/ff_area_picker.dart';
 import 'package:fitflexmobile/shared/widgets/shop_browse_page.dart';
+import 'package:fitflexmobile/shared/widgets/shop_home/shop_focus_ring.dart';
 import 'package:fitflexmobile/shared/widgets/shop_home/shop_near_you_ui.dart';
 import 'package:fitflexmobile/shared/widgets/shop_home/shop_personalisation.dart';
 import 'package:http/http.dart' as http;
@@ -1291,7 +1292,10 @@ void main() {
       await tapVisible(tester, _key('vendor-areas-delivers'));
       await tapVisible(tester, _key('ff-area-row-tz-dar'));
       final covered = tester.getSemantics(_key('ff-area-row-tz-dar-city'));
-      expect(covered.hint, 'Included in Dar es Salaam');
+      expect(
+        covered.label,
+        'Dar es Salaam, city in Dar es Salaam, Included in Dar es Salaam',
+      );
       expect(
         covered.getSemanticsData().flagsCollection.isEnabled,
         Tristate.isFalse,
@@ -1844,5 +1848,483 @@ void main() {
         host.tr('shop.why.nearOn').replaceAll('{area}', 'Mji wa Dar'),
       );
     });
+  });
+
+  // ── QA round 1 (design-QA + UAT on RC 3ea5cf8) ──────────────────────────
+
+  group('QA round 1', () {
+    apiTest('#1 Why sheet of the near-you rail follows the switch at once, '
+        'even when the rail leaves the page', (tester, api) async {
+      debugShopLocatorOverride = FakeLocator(
+        access: ShopLocationAccess.granted,
+        fix: _darCity,
+      );
+      await ShopNearYouStore.save(
+        'm1',
+        const ShopNearYouState(
+          choice: ShopNearYouChoice.on,
+          areaId: 'tz-dar-city',
+        ),
+      );
+      var personalised = true;
+      _seedAreaAware(api);
+      api.onCall('GET /shop/home', (r) {
+        if (!personalised) {
+          return _home(nearYou: _off, personalised: false);
+        }
+        final areaId = r.headers['x-ff-area'];
+        final home = _home(
+          nearYou: areaId == null
+              ? _on
+              : {
+                  'available': true,
+                  'areaId': areaId,
+                  'areaName': {'en': 'Dar es Salaam', 'sw': 'Dar es Salaam'},
+                },
+          areaSection: areaId != null,
+          delivers: areaId != null,
+        );
+        for (final sec in home['sections'] as List) {
+          if ((sec as Map)['key'] == 'popular_near_you') {
+            sec['reason'] = {
+              'en': 'Popular with shoppers in Dar es Salaam.',
+              'sw': 'Maarufu kwa wanunuzi wa Dar es Salaam.',
+            };
+          }
+        }
+        return home;
+      });
+      api.onCall('PUT /shop/preferences', (_) {
+        personalised = false;
+        return {'personalised': false, 'available': true};
+      });
+      final host = await _pumpShop(tester, api);
+      await tapVisible(tester, _key('shop-home-why-popular_near_you'));
+      final why = _key('shop-why-popular_near_you');
+      String whyText() => tester
+          .widgetList<Text>(
+            find.descendant(of: why, matching: find.byType(Text)),
+          )
+          .map((t) => t.data ?? '')
+          .join('\n');
+      expect(whyText(), contains('Dar es Salaam'));
+
+      await tester.tap(_key('shop-why-personalised'));
+      await tester.pumpAndSettle();
+
+      // The rail is gone from the page, the sheet is still open and right.
+      expect(_key('shop-home-section-popular_near_you'), findsNothing);
+      expect(why, findsOneWidget);
+      expect(
+        tester.widget<Switch>(_key('shop-why-personalised')).value,
+        isFalse,
+      );
+      expect(whyText(), isNot(contains('Dar es Salaam')));
+      expect(whyText(), isNot(contains(host.tr('shop.why.deliversToArea'))));
+      expect(_key('shop-near-you-line'), findsNothing);
+      // #9: the hint no longer names the current area.
+      expect(find.text(host.tr('shop.why.switchHintMember')), findsOneWidget);
+      expect(find.text(host.tr('shop.why.switchHintMemberArea')), findsNothing);
+    });
+
+    apiTest('#4 product list and details carry X-FF-Area; Results tiles '
+        'show the badge', (tester, api) async {
+      debugShopLocatorOverride = FakeLocator(
+        access: ShopLocationAccess.granted,
+        fix: _darCity,
+      );
+      await ShopNearYouStore.save(
+        'm1',
+        const ShopNearYouState(
+          choice: ShopNearYouChoice.on,
+          areaId: 'tz-dar-city',
+        ),
+      );
+      _seedAreaAware(api);
+      api.onCall('GET /shop/products', (r) {
+        final area = r.headers['x-ff-area'];
+        return [
+          for (final p in _products().values)
+            {
+              ...p,
+              if (area != null && p['id'] == 'p3') 'deliversToViewerArea': true,
+            },
+        ];
+      });
+      api.onCall(
+        'GET /shop/products/p3',
+        (r) => {
+          ..._products()['p3']!,
+          if (r.headers['x-ff-area'] != null) 'deliversToViewerArea': true,
+        },
+      );
+      await _pumpShop(tester, api);
+      await tapVisible(tester, _key('shop-home-browse-all'));
+      final list = api.where('GET', '/shop/products');
+      expect(list, isNotEmpty);
+      expect(list.last.headers['x-ff-area'], 'tz-dar-city');
+      expect(list.last.query, isNot(contains('area')));
+      expect(_key('shop-delivers-p3'), findsOneWidget);
+      expect(_key('shop-delivers-p4'), findsNothing);
+      await tapVisible(tester, find.text('Kettlebell').first);
+      expect(
+        api.where('GET', '/shop/products/p3').last.headers['x-ff-area'],
+        'tz-dar-city',
+      );
+      expect(_key('shop-delivers-badge'), findsWidgets);
+      _expectNoCoordinates(api);
+    });
+
+    apiTest('#4 no area header while near-you is not available', (
+      tester,
+      api,
+    ) async {
+      debugShopLocatorOverride = FakeLocator();
+      await ShopNearYouStore.save(
+        'm1',
+        const ShopNearYouState(
+          choice: ShopNearYouChoice.on,
+          areaId: 'tz-dar-city',
+        ),
+      );
+      _seed(api, _home(nearYou: _off));
+      await _pumpShop(tester, api);
+      await tapVisible(tester, _key('shop-home-browse-all'));
+      for (final r in api.where('GET', '/shop/products')) {
+        expect(r.headers.containsKey('x-ff-area'), isFalse);
+      }
+    });
+
+    test('#2 Change area lists only locatable cities and districts', () {
+      final list = ShopArea.listFromJson({
+        'areas': [
+          ..._areasJson.map((a) => {...a, 'locatable': a['radiusKm'] != null}),
+          {
+            'id': 'tz-dar-tiny',
+            'level': 'district',
+            'name': 'Tiny',
+            'parentId': 'tz-dar-city',
+            'locatable': false,
+            'lat': null,
+            'lng': null,
+            'radiusKm': null,
+          },
+        ],
+      });
+      final ids = locatableWithParents(list, const {
+        'city',
+        'district',
+      }).map((a) => a.id).toSet();
+      expect(ids, containsAll(['tz-dar-city', 'tz-dar-kinondoni', 'tz-dar']));
+      expect(ids, isNot(contains('tz-dar-tiny')));
+      expect(FFLocale().t('shop.near.pickArea'), 'Pick your city or district');
+      expect(
+        (FFLocale()..set(const Locale('sw'))).t('shop.near.pickArea'),
+        'Chagua jiji au wilaya yako',
+      );
+    });
+
+    for (final width in [375.0, 1280.0]) {
+      apiTest('#3 #7 #11 invite and sheet buttons are 48 tall, the sheet is '
+          '480 wide on desktop (width $width)', (tester, api) async {
+        debugShopLocatorOverride = FakeLocator();
+        _seed(api, _home(nearYou: _on));
+        await _pumpShop(tester, api, size: Size(width, 1400));
+        expect(
+          tester.getSize(_key('shop-near-you-use')).height,
+          greaterThanOrEqualTo(48),
+        );
+        await tapVisible(tester, _key('shop-near-you-use'));
+        for (final k in ['shop-location-use', 'shop-location-not-now']) {
+          expect(tester.getSize(_key(k)).height, greaterThanOrEqualTo(48));
+          // Two-tone focus ring around each (QA #7).
+          expect(
+            find.ancestor(of: _key(k), matching: find.byType(ShopFocusRing)),
+            findsOneWidget,
+          );
+        }
+        final sheetWidth = tester.getSize(_key('shop-location-sheet')).width;
+        if (width >= 1024) {
+          expect(find.byType(Dialog), findsOneWidget);
+          expect(sheetWidth, lessThanOrEqualTo(480));
+        } else {
+          expect(find.byType(Dialog), findsNothing);
+        }
+      });
+    }
+
+    test('#5 rationale says FitFlex does not keep the area on its servers', () {
+      final en = FFLocale();
+      final sw = FFLocale()..set(const Locale('sw'));
+      expect(
+        en.t('shop.near.point2'),
+        contains("doesn't keep it on its servers"),
+      );
+      expect(en.t('shop.near.point2'), isNot(contains("isn't stored")));
+      expect(sw.t('shop.near.point2'), contains('haihifadhi kwenye seva zake'));
+    });
+
+    apiTest('#6 single-mode rows read as selected radios; no Nationwide '
+        'heading', (tester, api) async {
+      api.on('GET /shop/areas', {'areas': _areasJson});
+      await tester.binding.setSurfaceSize(const Size(400, 1600));
+      final handle = tester.ensureSemantics();
+      await pumpPage(
+        tester,
+        api,
+        Builder(
+          builder: (context) => Center(
+            child: FilledButton(
+              key: const Key('open-picker'),
+              onPressed: () => showFFAreaPicker(
+                context,
+                title: 'Pick',
+                areas: _areas,
+                multi: false,
+                levels: const {'city', 'district'},
+                selected: const {'tz-dar-city'},
+              ),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+        size: const Size(400, 1600),
+      );
+      await tester.tap(_key('open-picker'));
+      await tester.pumpAndSettle();
+      final flags = tester
+          .getSemantics(_key('ff-area-row-tz-dar-city'))
+          .getSemanticsData()
+          .flagsCollection;
+      expect(flags.isChecked, CheckedState.isTrue);
+      expect(flags.isSelected, Tristate.isTrue);
+      expect(flags.isInMutuallyExclusiveGroup, isTrue);
+      expect(find.textContaining('Nationwide'), findsNothing);
+      handle.dispose();
+      await tester.binding.setSurfaceSize(null);
+    });
+
+    apiTest('#10 the sheet backdrop is announced as Close, not Scrim', (
+      tester,
+      api,
+    ) async {
+      debugShopLocatorOverride = FakeLocator();
+      _seed(api, _home(nearYou: _on));
+      final handle = tester.ensureSemantics();
+      final host = await _pumpShop(tester, api, lang: 'sw');
+      await tapVisible(tester, _key('shop-near-you-use'));
+      expect(find.bySemanticsLabel('Scrim'), findsNothing);
+      expect(find.bySemanticsLabel(host.tr('common.close')), findsWidgets);
+      handle.dispose();
+    });
+
+    apiTest('#8 the Based in hint shows before Save; Add now opens at Where '
+        'you sell', (tester, api) async {
+      api.on('GET /shop/areas', {'areas': _areasJson});
+      final l = FFLocale();
+      await pumpPage(
+        tester,
+        api,
+        Builder(
+          builder: (context) => Center(
+            child: FilledButton(
+              key: const Key('open-form'),
+              onPressed: () => showModalBottomSheet<void>(
+                context: context,
+                isScrollControlled: true,
+                builder: (_) => VendorProfileForm(
+                  profile: {
+                    'businessName': 'Dar Fit Supplies',
+                    'description': 'Gear ' * 40,
+                    'logo': _png,
+                    'banner': _png,
+                  },
+                  shopAreas: true,
+                  scrollToAreas: true,
+                ),
+              ),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+        size: const Size(400, 640),
+      );
+      await tester.tap(_key('open-form'));
+      await tester.pumpAndSettle();
+      expect(find.text(l.t('vendor.areas.basedInMissing')), findsOneWidget);
+      // Scrolled so the section is on screen.
+      final top = tester.getTopLeft(_key('vendor-areas')).dy;
+      expect(top, lessThan(640));
+      expect(top, greaterThanOrEqualTo(0));
+    });
+  });
+
+  // ── QA round 2 (RC e57f1f6) ─────────────────────────────────────────────
+
+  group('QA round 2', () {
+    /// Products answer with the badge only when the area header came.
+    void seedAreaProducts(RecordingApi api) {
+      api.onCall('GET /shop/products', (r) {
+        final area = r.headers['x-ff-area'];
+        return [
+          for (final p in _products().values)
+            {
+              ...p,
+              if (area != null && p['id'] == 'p3') 'deliversToViewerArea': true,
+            },
+        ];
+      });
+      api.onCall(
+        'GET /shop/products/p3',
+        (r) => {
+          ..._products()['p3']!,
+          if (r.headers['x-ff-area'] != null) 'deliversToViewerArea': true,
+        },
+      );
+    }
+
+    Future<PageHost> pumpAt(
+      WidgetTester tester,
+      RecordingApi api,
+      String location, {
+      Size size = const Size(420, 1400),
+    }) => pumpPage(
+      tester,
+      api,
+      const ShopBrowseBody(mode: ShopHomeMode.member, routePath: '/'),
+      user: _member,
+      size: size,
+      keepRequests: true,
+      initialLocation: location,
+    );
+
+    Future<void> keepArea() => ShopNearYouStore.save(
+      'm1',
+      const ShopNearYouState(
+        choice: ShopNearYouChoice.on,
+        areaId: 'tz-dar-city',
+      ),
+    );
+
+    apiTest('#1 cold load of Results (refresh): the badge shows once the '
+        'server says near-you is available', (tester, api) async {
+      debugShopLocatorOverride = FakeLocator(
+        access: ShopLocationAccess.granted,
+        fix: _darCity,
+      );
+      await keepArea();
+      _seedAreaAware(api);
+      seedAreaProducts(api);
+      await pumpAt(tester, api, '/?view=results');
+      expect(_key('shop-home'), findsNothing);
+      final list = api.where('GET', '/shop/products');
+      expect(list.first.headers.containsKey('x-ff-area'), isFalse);
+      expect(list.last.headers['x-ff-area'], 'tz-dar-city');
+      expect(_key('shop-delivers-p3'), findsOneWidget);
+      // The probe asked /shop/home without the area.
+      final homes = api.where('GET', '/shop/home');
+      expect(homes, isNotEmpty);
+      expect(homes.first.headers.containsKey('x-ff-area'), isFalse);
+      _expectNoCoordinates(api);
+    });
+
+    apiTest('#1 cold ?product= link: the open sheet refetches with the area '
+        'and shows the badge', (tester, api) async {
+      debugShopLocatorOverride = FakeLocator(
+        access: ShopLocationAccess.granted,
+        fix: _darCity,
+      );
+      await keepArea();
+      _seedAreaAware(api);
+      seedAreaProducts(api);
+      await pumpAt(tester, api, '/?product=p3');
+      final details = api.where('GET', '/shop/products/p3');
+      expect(details.first.headers.containsKey('x-ff-area'), isFalse);
+      expect(details.last.headers['x-ff-area'], 'tz-dar-city');
+      expect(_key('shop-delivers-badge'), findsOneWidget);
+    });
+
+    for (final location in ['/?view=results', '/?product=p3']) {
+      apiTest('#1 not available: no area header on $location', (
+        tester,
+        api,
+      ) async {
+        debugShopLocatorOverride = FakeLocator();
+        await keepArea();
+        _seed(api, _home(nearYou: _off));
+        seedAreaProducts(api);
+        await pumpAt(tester, api, location);
+        for (final r in [
+          ...api.where('GET', '/shop/products'),
+          ...api.where('GET', '/shop/products/p3'),
+          ...api.where('GET', '/shop/home'),
+        ]) {
+          expect(r.headers.containsKey('x-ff-area'), isFalse, reason: '$r');
+        }
+        expect(_key('shop-delivers-badge'), findsNothing);
+        // The kept area was forgotten (L1).
+        expect(ShopNearYouStore.peek('m1')!.areaId, isNull);
+      });
+    }
+
+    for (final width in [375.0, 1280.0]) {
+      apiTest('#2 area picker Done/Cancel are 48 tall (width $width)', (
+        tester,
+        api,
+      ) async {
+        await pumpPage(
+          tester,
+          api,
+          Builder(
+            builder: (context) => Center(
+              child: FilledButton(
+                key: const Key('open-picker'),
+                onPressed: () => showFFAreaPicker(
+                  context,
+                  title: 'Pick',
+                  areas: _areas,
+                  multi: false,
+                  levels: const {'city', 'district'},
+                ),
+                child: const Text('open'),
+              ),
+            ),
+          ),
+          size: Size(width, 1600),
+        );
+        await tester.tap(_key('open-picker'));
+        await tester.pumpAndSettle();
+        for (final k in ['ff-area-done', 'ff-area-cancel']) {
+          final visible = find
+              .descendant(of: _key(k), matching: find.byType(Material))
+              .first;
+          expect(tester.getSize(visible).height, greaterThanOrEqualTo(48));
+        }
+      });
+    }
+
+    for (final lang in ['en', 'sw']) {
+      apiTest('#3 product sheet backdrop reads Close, no Scrim or Dismiss '
+          '($lang)', (tester, api) async {
+        debugShopLocatorOverride = FakeLocator();
+        _seed(api, _home(nearYou: _on));
+        api.on('GET /shop/products/p3', _products()['p3']);
+        final handle = tester.ensureSemantics();
+        final host = await pumpAt(
+          tester,
+          api,
+          '/?product=p3',
+          size: const Size(420, 1400),
+        );
+        expect(_key('shop-product-close'), findsOneWidget);
+        expect(find.bySemanticsLabel('Scrim'), findsNothing);
+        expect(find.bySemanticsLabel('Dismiss'), findsNothing);
+        expect(find.bySemanticsLabel(RegExp('Ondoa')), findsNothing);
+        expect(find.bySemanticsLabel(host.tr('common.close')), findsWidgets);
+        // The handle is still drawn.
+        expect(_key('shop-product-handle'), findsOneWidget);
+        handle.dispose();
+      });
+    }
   });
 }

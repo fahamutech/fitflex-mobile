@@ -57,9 +57,16 @@ String _when(BuildContext context, DateTime? at) {
 /// Where a message's button goes, for the signed-in role: members,
 /// trainers, vendors and gyms each get their own screens.
 String? routeForMessage(BuildContext context, InboxMessage m) {
+  // An organisation's request is answered on its own screen, on any side.
+  if (isB2BMemberRequest(m.type, m.data)) return b2bMemberRequestsRoute;
   final role =
       AppScope.of(context).auth.user?['userType']?.toString() ??
       AppScope.of(context).auth.role;
+  // A FitFlex admin added them: a member's benefits; otherwise the message
+  // says it all (no button).
+  if (m.type == b2bAdminAddedType) {
+    return adminAddedOpensBenefits(role, m.data) ? memberBenefitsRoute : null;
+  }
   if (partnerSide(role) case final side?) {
     return partnerRouteFor(
       side: side,
@@ -93,7 +100,11 @@ String inboxButtonLabel(BuildContext context, InboxMessage m) {
       AppScope.of(context).auth.user?['userType']?.toString() ??
       AppScope.of(context).auth.role;
   final side = partnerSide(role);
-  final link = side == null
+  final link = isB2BMemberRequest(m.type, m.data)
+      ? 'memberRequests'
+      : m.type == b2bAdminAddedType
+      ? (adminAddedOpensBenefits(role, m.data) ? 'benefits' : '')
+      : side == null
       ? memberLinkFor(deepLink: m.deepLink, type: m.type)
       : partnerLinkFor(side: side, type: m.type);
   final key = 'inbox.open.${link.isEmpty ? 'message' : link}';

@@ -363,10 +363,11 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
     final rowHeight = MediaQuery.sizeOf(context).height >= 844 ? 68.0 : 60.0;
     return FFPhotoHeroPage(
       pinnedContent: true,
-      // Compact (owner 2026-10-22, preview 7): the dots and keypad follow
-      // right under the hero; spare room goes below the links.
-      phoneFraction: pinHeroFraction,
-      shortPhoneFraction: pinHeroFraction,
+      // A thin strip (owner 2026-10-22): the eyebrow, headline and contact
+      // line over the photo, no clear photo above them; the dots and keypad
+      // follow right under it, spare room goes below the links.
+      phoneFraction: pinStripFraction,
+      shortPhoneFraction: pinStripFraction,
       phoneMinHeight: 0,
       compactClearPhoto: pinHeroClearPhoto,
       heroMinViewportHeight: heroMinViewportHeight,

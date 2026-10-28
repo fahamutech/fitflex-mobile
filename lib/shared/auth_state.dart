@@ -6,6 +6,7 @@ import 'api_client.dart';
 import 'firebase_auth_service.dart';
 import 'held_nav_extras.dart';
 import 'events/event_claim_link.dart';
+import 'partner_details.dart';
 import 'pending_friend_invite.dart';
 import 'pending_org_invite.dart';
 import 'push_service.dart';
@@ -488,6 +489,10 @@ class AuthState extends ChangeNotifier {
       await PendingFriendInvite.clear();
       await PendingEventClaim.clear();
     }
+    // Partner date of birth: the session copy and the device-side prompt
+    // counts are not the next person's (security review L1/L2).
+    PartnerDetailsSession.clear();
+    if (_token != null) await PartnerDobPromptStore.clearAll();
     // While the session token is still set, so the backend accepts the call.
     await push?.unregister();
     _token = null;

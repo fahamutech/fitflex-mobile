@@ -1832,6 +1832,7 @@ class FFLocale extends ChangeNotifier {
       'member.dobPick': 'Choose date of birth',
       'member.dobFormat':
           'Enter your date of birth as YYYY-MM-DD, for example 1990-05-21.',
+      'member.dobFormatHint': 'YYYY-MM-DD',
       'member.dobNoPersonalisation':
           "Until your date of birth is valid, the shop can't be personalised for you.",
       'member.photoPick': 'Change profile photo',
@@ -2757,6 +2758,24 @@ class FFLocale extends ChangeNotifier {
       'onboarding.gender_female': 'Female',
       'onboarding.gender_other': 'Other',
       'onboarding.dob': 'Date of birth',
+      // Partner date of birth (fitflex-functions#253).
+      'partnerDob.help':
+          'Used to suggest shop products for your age group. Not shown on your profile.',
+      'partnerDob.errRateLimited':
+          'Too many changes. Try again in {seconds} seconds.',
+      'partnerDob.promptTitle': 'Add your date of birth',
+      'partnerDob.promptBody':
+          "Get shop suggestions that suit you. It isn't shown on your profile.",
+      'partnerDob.add': 'Add',
+      'partnerDob.tapToChoose': 'Tap to choose',
+      'partnerDob.notNow': 'Not now',
+      'partnerDob.tileTitle': 'Date of birth and gender',
+      'partnerDob.tileSubtitle': 'Used only for shop suggestions',
+      'partnerDob.saved': 'Saved',
+      'partnerGender.optional': 'Gender (optional)',
+      'partnerGender.preferNot': 'Prefer not to say',
+      'partnerGender.fromTrainerProfile':
+          'This comes from your trainer profile. Change it there.',
       'onboarding.fitnessTitle': 'What are your fitness goals',
       'onboarding.fitnessSubtitle': 'Select all that apply',
       'onboarding.fitnessGoal': 'Fitness goal',
@@ -4510,7 +4529,7 @@ class FFLocale extends ChangeNotifier {
       'shop.near.sheetTitle': "Use your location in the shop?",
       'shop.near.point1':
           "Your phone works out your approximate area, such as your city or district.",
-      'shop.near.point2': "Only the area is sent to FitFlex, and it isn't stored. For the shop, your exact location never leaves your device.",
+      'shop.near.point2': "Only the area is sent to FitFlex, and FitFlex doesn't keep it on its servers. For the shop, your exact location never leaves your device.",
       'shop.near.point3':
           "You can turn this off any time with \"Personalised shop\", in the shop or in Privacy & data.",
       'shop.near.alreadyAllowed':
@@ -4526,7 +4545,7 @@ class FFLocale extends ChangeNotifier {
       'shop.near.badge': "Delivers to your area",
       'shop.near.finding': "Finding your area",
       'shop.near.changeArea': "Change area",
-      'shop.near.pickArea': "Choose your area",
+      'shop.near.pickArea': "Pick your city or district",
       'shop.why.nearOn': "Popular near you: On · {area}",
       'shop.why.nearOff': "Popular near you: Off",
       'shop.why.nearNoArea': "No sellers listed for your area yet",
@@ -5547,6 +5566,95 @@ class FFLocale extends ChangeNotifier {
       'shop.invoice.download': 'Download PDF',
       'shop.invoice.failed': 'Couldn\'t load the invoice.',
       'inbox.open.tax': 'Open tax details',
+      // Organisation requests to add the member by account id
+      // (fitflex-functions#241, privacy ruling A-02).
+      'memberRequests.title': 'Requests from organisations',
+      'memberRequests.intro':
+          'These organisations asked to add you on FitFlex. Nothing is shared and nothing changes until you accept.',
+      'memberRequests.empty.title': 'No requests waiting',
+      'memberRequests.empty.body':
+          'When an organisation asks to add you, it shows here for you to accept or decline.',
+      'memberRequests.loadFailed': 'Couldn\'t load requests',
+      'memberRequests.ask.beneficiary':
+          'Wants to add you to its wellness programme',
+      'memberRequests.ask.org_user':
+          'Wants to give you the {role} role in its FitFlex portal',
+      'memberRequests.ask.employee_link':
+          'Wants to link your FitFlex account to your staff record',
+      'memberRequests.group': 'Group: {group}',
+      'memberRequests.sees': 'What {org} will see',
+      'memberRequests.seesUnknown':
+          'We couldn\'t load what {org} will see. Check with them before you accept.',
+      'memberRequests.willSee': 'Will see: {items}',
+      'memberRequests.wontSee': 'Won\'t see: {items}',
+      'memberRequests.item.name': 'your name',
+      'memberRequests.item.email': 'your email',
+      'memberRequests.item.role': 'your role',
+      'memberRequests.item.activity': 'your activity',
+      'memberRequests.item.gym_visits': 'gym visits',
+      'memberRequests.item.trainer_sessions': 'trainer sessions',
+      'memberRequests.item.workouts': 'workouts',
+      'memberRequests.item.steps': 'steps',
+      'memberRequests.item.active_minutes': 'active minutes',
+      'memberRequests.item.challenge_progress': 'challenge progress',
+      'memberRequests.item.sponsored_benefit_use':
+          'how you use the benefits it pays for',
+      'memberRequests.item.weight': 'weight',
+      'memberRequests.item.height': 'height',
+      'memberRequests.item.calories': 'calories',
+      'memberRequests.item.notes': 'notes',
+      'memberRequests.item.routes': 'routes',
+      'memberRequests.item.other_sponsors': 'what other sponsors give you',
+      'memberRequests.gets': 'What you would get',
+      'memberRequests.noBenefits':
+          'No benefits to show yet. Some are added after you join.',
+      'memberRequests.upTo': 'Up to {limit} {period}',
+      'memberRequests.sponsorTier': '{tier} pass',
+      'memberRequests.funding.full': 'Your sponsor pays in full',
+      'memberRequests.funding.sponsor_fixed':
+          'Your sponsor pays up to a set amount; you pay the rest',
+      'memberRequests.funding.sponsor_percentage':
+          'Your sponsor pays a share; you pay the rest',
+      'memberRequests.funding.beneficiary_fixed':
+          'You pay a set amount; your sponsor pays the rest',
+      'memberRequests.funding.none': 'Nothing to pay',
+      'memberRequests.subsidy.fully_funded': 'Your employer pays in full',
+      'memberRequests.subsidy.copay_50_50':
+          'Your employer pays 50%, you pay 50%',
+      'memberRequests.subsidy.copay_70_30':
+          'Your employer pays 70%, you pay 30%',
+      'memberRequests.subsidy.employee_paid': 'You pay for the pass yourself',
+      'memberRequests.role.owner': 'owner',
+      'memberRequests.role.admin': 'admin',
+      'memberRequests.role.manager': 'manager',
+      'memberRequests.role.finance': 'finance',
+      'memberRequests.role.hr': 'HR',
+      'memberRequests.role.analyst': 'analyst',
+      'memberRequests.role.viewer': 'viewer',
+      'memberRequests.expires': 'Answer by {date}',
+      'memberRequests.accept': 'Accept',
+      'memberRequests.decline': 'Decline',
+      'memberRequests.confirm.title': 'Accept and share with {org}?',
+      'memberRequests.confirm.action': 'Accept and share',
+      'memberRequests.accepted': 'Done. You are now linked to {org}.',
+      'memberRequests.declined': 'Declined. Nothing was shared with {org}.',
+      'memberRequests.error.expired':
+          'This request has expired. Ask the organisation to send a new one.',
+      'memberRequests.error.notPending': 'This request was already answered.',
+      'memberRequests.error.gone': 'This request is no longer available.',
+      'memberRequests.error.noLongerValid':
+          'This request is no longer valid. Ask the organisation to send a new one.',
+      'memberRequests.error.alreadyLinked':
+          'You are already linked to this organisation.',
+      'memberRequests.card.one': 'An organisation wants to add you',
+      'memberRequests.card.many': '{n} organisations want to add you',
+      'memberRequests.card.body': 'Nothing is shared until you accept.',
+      'memberRequests.card.action': 'Review requests',
+      'memberRequests.backToBenefits': 'View my benefits',
+      'inbox.open.memberRequests': 'Review request',
+      'inbox.open.benefits': 'View my benefits',
+      'memberRequests.item.past_activity':
+          'your activity from before you joined',
       // ── Events: member discovery (Marathon & Running Events S2, spec §11.9)
       'a11y.clear': 'Clear',
       'common.share': 'Share',
@@ -5919,6 +6027,13 @@ class FFLocale extends ChangeNotifier {
       'error.reason.rawTextTooLong': 'That text is too long',
       'events.review.unavailable': 'That ticket is no longer available',
       'events.review.problems': 'This order can\'t be placed yet',
+      'error.reason.partnerUnder18':
+          'You must be 18 or older to be a Trainer or gym owner.',
+      'error.reason.personalDetailsUnavailable':
+          "Personal details can't be saved right now. Try again later.",
+      'error.reason.invalidGender': 'Choose a gender from the list.',
+      'error.reason.rateLimitedSeconds':
+          'Too many requests. Try again in {seconds} seconds.',
     },
     'sw': {
       'app.title': 'FitFlex',
@@ -7775,6 +7890,8 @@ class FFLocale extends ChangeNotifier {
       'member.dobPick': 'Chagua tarehe ya kuzaliwa',
       'member.dobFormat':
           'Andika tarehe yako ya kuzaliwa kama YYYY-MM-DD, kwa mfano 1990-05-21.',
+      // Same pattern as English: the field takes digits as YYYY-MM-DD.
+      'member.dobFormatHint': 'YYYY-MM-DD',
       'member.dobNoPersonalisation':
           'Hadi tarehe yako ya kuzaliwa iwe sahihi, duka haliwezi kupangwa kwa ajili yako.',
       'member.photoPick': 'Badilisha picha ya wasifu',
@@ -8725,6 +8842,24 @@ class FFLocale extends ChangeNotifier {
       'onboarding.gender_female': 'Mwanamke',
       'onboarding.gender_other': 'Nyingine',
       'onboarding.dob': 'Tarehe ya kuzaliwa',
+      // Partner date of birth (fitflex-functions#253). Draft: needs native review.
+      'partnerDob.help':
+          'Hutumika kupendekeza bidhaa za dukani zinazofaa kundi lako la umri. Haionyeshwi kwenye wasifu wako.',
+      'partnerDob.errRateLimited':
+          'Mabadiliko mengi mno. Jaribu tena baada ya sekunde {seconds}.',
+      'partnerDob.promptTitle': 'Ongeza tarehe yako ya kuzaliwa',
+      'partnerDob.promptBody':
+          'Pata mapendekezo ya dukani yanayokufaa. Haionyeshwi kwenye wasifu wako.',
+      'partnerDob.add': 'Ongeza',
+      'partnerDob.tapToChoose': 'Gusa kuchagua',
+      'partnerDob.notNow': 'Si sasa',
+      'partnerDob.tileTitle': 'Tarehe ya kuzaliwa na jinsia',
+      'partnerDob.tileSubtitle': 'Hutumika kwa mapendekezo ya dukani tu',
+      'partnerDob.saved': 'Imehifadhiwa',
+      'partnerGender.optional': 'Jinsia (si lazima)',
+      'partnerGender.preferNot': 'Sipendi kusema',
+      'partnerGender.fromTrainerProfile':
+          'Hii inatoka kwenye wasifu wako wa trainer. Ibadilishe huko.',
       'onboarding.fitnessTitle': 'Malengo yako ya mazoezi ni yapi',
       'onboarding.fitnessSubtitle': 'Chagua yote yanayofaa',
       'onboarding.fitnessGoal': 'Lengo la mazoezi',
@@ -10424,7 +10559,7 @@ class FFLocale extends ChangeNotifier {
       'shop.near.offline': "Inahitaji intaneti",
       'shop.near.sheetTitle': "Tumia mahali ulipo dukani?",
       'shop.near.point1': "Simu yako inakadiria eneo lako, kama jiji au wilaya yako.",
-      'shop.near.point2': "FitFlex inapokea eneo tu, na halihifadhiwi. Kwa ajili ya duka, mahali hasa ulipo hapatoki kwenye kifaa chako.",
+      'shop.near.point2': "FitFlex inapokea eneo tu, na FitFlex haihifadhi kwenye seva zake. Kwa ajili ya duka, mahali hasa ulipo hapatoki kwenye kifaa chako.",
       'shop.near.point3':
           "Unaweza kuzima hili wakati wowote kwa \"Duka kwa ajili yako\", dukani au kwenye Faragha na data.",
       'shop.near.alreadyAllowed':
@@ -10442,7 +10577,7 @@ class FFLocale extends ChangeNotifier {
       'shop.near.badge': "Ina delivery hadi eneo lako",
       'shop.near.finding': "Tunatafuta eneo lako",
       'shop.near.changeArea': "Badilisha eneo",
-      'shop.near.pickArea': "Chagua eneo lako",
+      'shop.near.pickArea': "Chagua jiji au wilaya yako",
       'shop.why.nearOn': "Maarufu karibu nawe: Imewashwa · {area}",
       'shop.why.nearOff': "Maarufu karibu nawe: Imezimwa",
       'shop.why.nearNoArea': "Bado hakuna wauzaji kwenye eneo lako",
@@ -11466,6 +11601,100 @@ class FFLocale extends ChangeNotifier {
       'shop.invoice.download': 'Pakua PDF',
       'shop.invoice.failed': 'Imeshindikana kupakia ankara.',
       'inbox.open.tax': 'Fungua taarifa za kodi',
+      // Maombi ya mashirika kukuongeza kwa namba ya akaunti
+      // (fitflex-functions#241). Swahili drafts for native review.
+      'memberRequests.title': 'Maombi kutoka kwa mashirika',
+      'memberRequests.intro':
+          'Mashirika haya yameomba kukuongeza kwenye FitFlex. Hakuna kinachoshirikiwa wala kubadilika hadi ukubali.',
+      'memberRequests.empty.title': 'Hakuna maombi yanayosubiri',
+      'memberRequests.empty.body':
+          'Shirika likiomba kukuongeza, ombi litaonekana hapa ili ukubali au ukatae.',
+      'memberRequests.loadFailed': 'Imeshindikana kupakia maombi',
+      'memberRequests.ask.beneficiary':
+          'Linataka kukuongeza kwenye mpango wake wa afya',
+      'memberRequests.ask.org_user':
+          'Linataka kukupa nafasi ya {role} kwenye portal yake ya FitFlex',
+      'memberRequests.ask.employee_link':
+          'Linataka kuunganisha akaunti yako ya FitFlex na taarifa zako za mfanyakazi',
+      'memberRequests.group': 'Kundi: {group}',
+      'memberRequests.sees': '{org} litaona nini',
+      'memberRequests.seesUnknown':
+          'Hatukuweza kupakia kile {org} litaona. Wasiliana nao kabla ya kukubali.',
+      'memberRequests.willSee': 'Litaona: {items}',
+      'memberRequests.wontSee': 'Halitaona: {items}',
+      'memberRequests.item.name': 'jina lako',
+      'memberRequests.item.email': 'barua pepe yako',
+      'memberRequests.item.role': 'nafasi yako',
+      'memberRequests.item.activity': 'shughuli zako',
+      'memberRequests.item.gym_visits': 'kuingia gym',
+      'memberRequests.item.trainer_sessions': 'vipindi vya trainer',
+      'memberRequests.item.workouts': 'mazoezi',
+      'memberRequests.item.steps': 'hatua',
+      'memberRequests.item.active_minutes': 'dakika za mazoezi',
+      'memberRequests.item.challenge_progress': 'maendeleo kwenye challenge',
+      'memberRequests.item.sponsored_benefit_use':
+          'jinsi unavyotumia benefits linazolipia',
+      'memberRequests.item.weight': 'uzito',
+      'memberRequests.item.height': 'urefu',
+      'memberRequests.item.calories': 'kalori',
+      'memberRequests.item.notes': 'maelezo',
+      'memberRequests.item.routes': 'njia zako',
+      'memberRequests.item.other_sponsors':
+          'unachopewa na wadhamini wengine',
+      'memberRequests.gets': 'Utakachopata',
+      'memberRequests.noBenefits':
+          'Bado hakuna benefits za kuonyesha. Baadhi huongezwa baada ya kujiunga.',
+      'memberRequests.upTo': 'Hadi {limit} {period}',
+      'memberRequests.sponsorTier': 'Pasi ya {tier}',
+      'memberRequests.funding.full': 'Mdhamini wako analipa yote',
+      'memberRequests.funding.sponsor_fixed':
+          'Mdhamini wako analipa hadi kiasi fulani; wewe unalipa kilichobaki',
+      'memberRequests.funding.sponsor_percentage':
+          'Mdhamini wako analipa sehemu; wewe unalipa kilichobaki',
+      'memberRequests.funding.beneficiary_fixed':
+          'Unalipa kiasi fulani; mdhamini wako analipa kilichobaki',
+      'memberRequests.funding.none': 'Hakuna cha kulipa',
+      'memberRequests.subsidy.fully_funded': 'Mwajiri wako analipa yote',
+      'memberRequests.subsidy.copay_50_50':
+          'Mwajiri wako analipa 50%, wewe unalipa 50%',
+      'memberRequests.subsidy.copay_70_30':
+          'Mwajiri wako analipa 70%, wewe unalipa 30%',
+      'memberRequests.subsidy.employee_paid':
+          'Unalipia pasi mwenyewe',
+      'memberRequests.role.owner': 'mmiliki',
+      'memberRequests.role.admin': 'msimamizi',
+      'memberRequests.role.manager': 'meneja',
+      'memberRequests.role.finance': 'fedha',
+      'memberRequests.role.hr': 'rasilimali watu',
+      'memberRequests.role.analyst': 'mchambuzi',
+      'memberRequests.role.viewer': 'mtazamaji',
+      'memberRequests.expires': 'Jibu kabla ya {date}',
+      'memberRequests.accept': 'Kubali',
+      'memberRequests.decline': 'Kataa',
+      'memberRequests.confirm.title': 'Ukubali na kushiriki na {org}?',
+      'memberRequests.confirm.action': 'Kubali na shiriki',
+      'memberRequests.accepted': 'Tayari. Sasa umeunganishwa na {org}.',
+      'memberRequests.declined':
+          'Umekataa. Hakuna kilichoshirikiwa na {org}.',
+      'memberRequests.error.expired':
+          'Muda wa ombi hili umeisha. Omba shirika likutumie jipya.',
+      'memberRequests.error.notPending': 'Ombi hili tayari limejibiwa.',
+      'memberRequests.error.gone': 'Ombi hili halipatikani tena.',
+      'memberRequests.error.noLongerValid':
+          'Ombi hili halitumiki tena. Omba shirika likutumie jipya.',
+      'memberRequests.error.alreadyLinked':
+          'Tayari umeunganishwa na shirika hili.',
+      'memberRequests.card.one': 'Shirika linataka kukuongeza',
+      'memberRequests.card.many': 'Mashirika {n} yanataka kukuongeza',
+      'memberRequests.card.body':
+          'Hakuna kinachoshirikiwa hadi ukubali.',
+      'memberRequests.card.action': 'Angalia maombi',
+      'memberRequests.backToBenefits': 'Angalia benefits zangu',
+      'inbox.open.memberRequests': 'Angalia ombi',
+      'inbox.open.benefits': 'Angalia benefits zangu',
+      // Draft for native review.
+      'memberRequests.item.past_activity':
+          'shughuli zako za kabla hujajiunga',
       // ── Events: member discovery (Marathon & Running Events S2, spec §11.9)
       // TODO(sw-review): every line in this block is a draft pending native review.
       'a11y.clear': 'Futa',
@@ -11838,6 +12067,13 @@ class FFLocale extends ChangeNotifier {
       'error.reason.rawTextTooLong': 'Maandishi hayo ni marefu mno',
       'events.review.unavailable': 'Tiketi hiyo haipatikani tena',
       'events.review.problems': 'Oda hii haiwezi kuwekwa bado',
+      'error.reason.partnerUnder18':
+          'Lazima uwe na miaka 18 au zaidi kuwa trainer au mmiliki wa gym.',
+      'error.reason.personalDetailsUnavailable':
+          'Imeshindikana kuhifadhi taarifa binafsi kwa sasa. Jaribu tena baadaye.',
+      'error.reason.invalidGender': 'Chagua jinsia kutoka kwenye orodha.',
+      'error.reason.rateLimitedSeconds':
+          'Maombi mengi mno. Jaribu tena baada ya sekunde {seconds}.',
     },
   };
 }

@@ -28,21 +28,12 @@ Future<T?> showShopSheet<T>(
   BuildContext context, {
   required String title,
   required Widget child,
-}) {
-  if (MediaQuery.sizeOf(context).width >= 1024) {
-    return showDialog<T>(
-      context: context,
-      builder: (_) => Dialog(
-        insetPadding: const EdgeInsets.all(FFTokens.spacingLg),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 480),
-          child: FFSheet(title: title, showHandle: false, child: child),
-        ),
-      ),
-    );
-  }
-  return showFFSheet<T>(context, title: title, child: child);
-}
+}) => showFFSheet<T>(
+  context,
+  title: title,
+  wideDialogWidth: 480,
+  child: child,
+);
 
 /// Whether this failure means "there is no personalisation here".
 bool shopPersonalisationMissing(Object error) =>

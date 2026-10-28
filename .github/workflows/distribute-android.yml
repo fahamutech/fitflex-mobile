@@ -48,6 +48,11 @@ jobs:
       SHOP_HOME_V2: ${{ vars.SHOP_HOME_V2 || 'false' }}
       # Photo hero (PHOTO_HERO_UI). Only a manual run with photo_hero ticked turns it on,
       # for testers; pushes to main always build it off.
+      # Testers only: some hero photos are test-only (collected from the internet,
+      # not cleared for release; owner 2026-10-22). Before a build that shows
+      # PHOTO_HERO_UI to users, run
+      #   flutter test test/photo_hero_release_guard_test.dart --dart-define=PHOTO_HERO_UI=true --dart-define=PHOTO_HERO_RELEASE=true
+      # It fails while any is still bundled (kTestOnlyHeroAssets, LICENSES.md).
       PHOTO_HERO_UI: ${{ github.event_name == 'workflow_dispatch' && inputs.photo_hero && 'true' || 'false' }}
       # Photo footer (PHOTO_FOOTER_UI): the same rule; the app ignores it unless
       # PHOTO_HERO_UI is on as well.

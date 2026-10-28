@@ -45,6 +45,7 @@ class _FakeApi extends ApiClient {
   final added = <String>[];
   List<String> addable = const [];
   bool addConflict = false;
+  ApiException? addError;
   final termsAsked = <String?>[];
   final termsAccepted = <String>[];
   List<Map<String, dynamic>> personas = [
@@ -105,6 +106,7 @@ class _FakeApi extends ApiClient {
     if (addConflict) {
       throw ApiException(409, {'error': 'persona_identifier_in_use'});
     }
+    if (addError != null) throw addError!;
     added.add(userType);
     final persona = _persona('usr_new_$userType', userType);
     personas = [...personas, persona];
@@ -347,6 +349,28 @@ void main() {
       findsOneWidget,
     );
     expect(api.switched, isEmpty);
+    expect(auth.user?['userType'], 'member');
+  });
+
+  testWidgets('adding a Trainer role under 18 says so plainly '
+      '(partner_under_18)', (tester) async {
+    final api = _soloMemberApi()
+      ..addError = ApiException(400, {'error': 'partner_under_18'});
+    final auth = await _signedIn(api);
+    await tester.pumpWidget(_app(auth, const PersonaSwitcherTile()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('persona-switch')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('add-persona-trainer')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('terms-page-check')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('terms-page-agree')));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('You must be 18 or older to be a Trainer or gym owner.'),
+      findsOneWidget,
+    );
     expect(auth.user?['userType'], 'member');
   });
 }

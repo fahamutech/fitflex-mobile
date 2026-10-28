@@ -3,8 +3,9 @@
 //
 // Privacy rules this file keeps (owner decision O-7, DD-P2-9):
 // - The phone works out the area itself, from GET /shop/areas. Only the
-//   area's id is ever sent: in the `X-FF-Area` header of GET /shop/home,
-//   and only while the last answer said near-you is available. It is
+//   area's id is ever sent: in the `X-FF-Area` header of GET /shop/home and
+//   the product list / details, and only while the last home answer said
+//   near-you is available. It is
 //   redacted from the app's own debug log (rest_log.dart).
 // - The position is read with low accuracy, used once to pick the area and
 //   then dropped. It is never stored, logged or sent anywhere.
@@ -244,10 +245,62 @@ class ShopNearYouStore {
   /// is available (L1): the area is sent only then. Memory only.
   static final Map<String, bool> _lastAvailable = {};
 
+  /// The area to send for [userId] right now, or null: near-you on, an
+  /// area kept, and the last Shop home answer said available (L1). Used for
+  /// GET /shop/home, /shop/products and /shop/products/:id.
+  static String? areaToSend(String? userId) {
+    final state = _memory[_id(userId)];
+    if (state == null || state.choice != ShopNearYouChoice.on) return null;
+    return lastAvailable(userId) ? state.areaId : null;
+  }
+
   static bool lastAvailable(String? userId) =>
       _lastAvailable[_id(userId)] == true;
-  static void setLastAvailable(String? userId, bool available) =>
-      _lastAvailable[_id(userId)] = available;
+
+  /// Records the last Shop home answer. Flipping to available while an
+  /// area is kept bumps [changes], so screens that loaded first (Results, a
+  /// product sheet opened from a link) ask again with the area (QA2 #1).
+  static void setLastAvailable(String? userId, bool available) {
+    final was = _lastAvailable[_id(userId)] == true;
+    _lastAvailable[_id(userId)] = available;
+    if (available && !was && areaToSend(userId) != null) changes.value++;
+  }
+
+  /// Whether a Shop home answer was seen for [userId] this session.
+  static bool availabilityKnown(String? userId) =>
+      _lastAvailable.containsKey(_id(userId));
+
+  static final Map<String, Future<void>> _probes = {};
+
+  /// For a screen that loads without the Shop home (cold Results, a
+  /// `?product=` link): once a session, and only when near-you is on with a
+  /// kept area, ask GET /shop/home (without the area) whether near-you is
+  /// available. Nothing location-derived is sent. Failures are ignored.
+  static Future<void> probe(
+    ApiClient api,
+    String? userId, {
+    String? mode,
+  }) async {
+    final state = await load(userId);
+    if (state.choice != ShopNearYouChoice.on || state.areaId == null) return;
+    if (availabilityKnown(userId)) return;
+    final id = _id(userId);
+    return _probes[id] ??= () async {
+      try {
+        final json = await api.shopHome(mode: mode);
+        final near = ShopNearYou.fromJson(json['nearYou']);
+        final p = json['personalisation'];
+        if (near?.available == false || (p is Map && p['enabled'] == false)) {
+          setLastAvailable(userId, false);
+          await clear(userId);
+        } else {
+          setLastAvailable(userId, near?.available == true);
+        }
+      } catch (_) {
+        // Unknown: nothing is sent until the Shop home answers.
+      }
+    }();
+  }
 
   /// Bumped whenever an account's choice or area changes, so a Shop home
   /// kept alive in another tab reloads with the new area (or without one).
@@ -314,6 +367,7 @@ class ShopNearYouStore {
     _memory.clear();
     _readThisSession.clear();
     _lastAvailable.clear();
+    _probes.clear();
   }
 }
 

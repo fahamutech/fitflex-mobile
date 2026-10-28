@@ -670,6 +670,24 @@ class ApiClient {
     Map<String, dynamic> profile,
   ) async => await _request('POST', '/me/profile', body: profile);
 
+  /// Partner date of birth (fitflex-functions#253): the date of birth and
+  /// gender kept on the Person → { dateOfBirth, gender, source, ask,
+  /// required, genderFrom }. 404 feature_disabled while the server flag
+  /// PARTNER_DOB_REQUIRED is off.
+  Future<Map<String, dynamic>> personalDetails() async =>
+      Map<String, dynamic>.from(
+        await _request('GET', '/me/personal-details') as Map,
+      );
+
+  /// Saves { dateOfBirth?, gender? }: a key left out keeps the stored value;
+  /// dateOfBirth "" clears it; gender null clears it ("prefer not to say").
+  /// Answers the same body as [personalDetails].
+  Future<Map<String, dynamic>> savePersonalDetails(
+    Map<String, dynamic> changes,
+  ) async => Map<String, dynamic>.from(
+    await _request('PUT', '/me/personal-details', body: changes) as Map,
+  );
+
   Future<List<dynamic>> listPasses() async => await _request('GET', '/passes');
 
   Future<List<dynamic>> listSubscriptionTiers() async =>
@@ -1597,6 +1615,28 @@ class ApiClient {
   Future<Map<String, dynamic>> myWellnessBenefits() async =>
       await _request('GET', '/b2b/me/benefits') as Map<String, dynamic>;
 
+  /// Organisations waiting for the member to accept being added by user id
+  /// (fitflex-functions#241): `{ items: [...] }`. Each item says who is
+  /// asking, what they will see (A-02) and what the member would get.
+  Future<Map<String, dynamic>> myMemberRequests() async =>
+      await _request('GET', '/b2b/me/member-requests') as Map<String, dynamic>;
+
+  /// Accept an organisation's request: the add happens now. Single use.
+  Future<Map<String, dynamic>> acceptMemberRequest(String requestId) async =>
+      await _request(
+            'POST',
+            '/b2b/me/member-requests/${Uri.encodeComponent(requestId)}/accept',
+          )
+          as Map<String, dynamic>;
+
+  /// Decline an organisation's request. Nothing is added.
+  Future<Map<String, dynamic>> declineMemberRequest(String requestId) async =>
+      await _request(
+            'POST',
+            '/b2b/me/member-requests/${Uri.encodeComponent(requestId)}/decline',
+          )
+          as Map<String, dynamic>;
+
   /// Ask to pay the member's share of a sponsored pass for this month.
   Future<Map<String, dynamic>> unlockSponsoredPass(
     String entitlementId,
@@ -1935,6 +1975,10 @@ class ApiClient {
     bool? delivery,
     bool? promotions,
     String? sort,
+
+    /// Shop S3 (QA #4): the near-you area, in `X-FF-Area` (never the URL),
+    /// so rows can carry `deliversToViewerArea`.
+    String? areaId,
   }) async {
     final query = <String, String>{
       if (category != null && category.isNotEmpty) 'category': category,
@@ -1952,7 +1996,7 @@ class ApiClient {
     final path = query.isEmpty
         ? '/shop/products'
         : '/shop/products?${Uri(queryParameters: query).query}';
-    return await _request('GET', path);
+    return await _request('GET', path, extraHeaders: _areaHeader(areaId));
   }
 
   Future<Map<String, dynamic>> createShopOrder(
@@ -1982,8 +2026,17 @@ class ApiClient {
     },
   );
 
-  Future<Map<String, dynamic>> shopProduct(String id) async =>
-      await _request('GET', '/shop/products/$id');
+  /// [areaId]: the near-you area in `X-FF-Area` (QA #4), for the
+  /// "Delivers to your area" badge.
+  Future<Map<String, dynamic>> shopProduct(String id, {String? areaId}) async =>
+      await _request(
+        'GET',
+        '/shop/products/$id',
+        extraHeaders: _areaHeader(areaId),
+      );
+
+  static Map<String, String>? _areaHeader(String? areaId) =>
+      areaId == null || areaId.isEmpty ? null : {kShopAreaHeader: areaId};
 
   Future<Map<String, dynamic>> vendorStore(String id) async =>
       await _request('GET', '/shop/vendors/$id');
