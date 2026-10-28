@@ -632,6 +632,11 @@ class PaymentRequest {
   final String? plan;
   final String? gymId;
   final String? gymName;
+
+  /// An event-ticket request (EVENT_ORDER): the event's title and the
+  /// order's reference, when the server sends them (events S4 §8 item 11).
+  final String? eventTitle;
+  final String? eventOrderReference;
   final num amountTzs;
   final String status;
   final String provider;
@@ -656,6 +661,8 @@ class PaymentRequest {
     this.plan,
     this.gymId,
     this.gymName,
+    this.eventTitle,
+    this.eventOrderReference,
     required this.amountTzs,
     required this.status,
     required this.provider,
@@ -678,6 +685,8 @@ class PaymentRequest {
     gymName: json['gym'] is Map
         ? (json['gym'] as Map)['name'] as String?
         : null,
+    eventTitle: json['eventTitle'] as String?,
+    eventOrderReference: json['eventOrderReference'] as String?,
     amountTzs: json['amountTzs'] as num? ?? 0,
     status: json['status'] as String? ?? 'pending',
     provider: json['provider'] as String? ?? '',

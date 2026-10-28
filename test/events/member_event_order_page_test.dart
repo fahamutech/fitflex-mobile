@@ -383,6 +383,6 @@ void main() {
       findsNWidgets(2),
     ); // order + its place
     expect(find.text('zimebaki dakika 27'), findsOneWidget);
-    expect(find.text('Inakuja kwenye toleo lijalo la app'), findsOneWidget);
+    expect(find.text('Malipo bado hayapatikani'), findsOneWidget);
   });
 }

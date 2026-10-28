@@ -36,6 +36,37 @@ final s3Routes = <RouteBase>[
       body: Text('ROUTE-CLAIM-${s.pathParameters['registrationId']}'),
     ),
   ),
+  // Events S4 stand-ins.
+  GoRoute(
+    path: AppRoutes.memberEventTickets,
+    builder: (_, _) => const Scaffold(body: Text('ROUTE-TICKETS')),
+  ),
+  GoRoute(
+    path: AppRoutes.memberEventOrderPay,
+    builder: (_, s) =>
+        Scaffold(body: Text('ROUTE-PAY-${s.pathParameters['orderId']}')),
+  ),
+  GoRoute(
+    path: AppRoutes.memberEventOrderCancel,
+    builder: (_, s) => Scaffold(
+      body: Text('ROUTE-ORDER-CANCEL-${s.pathParameters['orderId']}'),
+    ),
+  ),
+  GoRoute(
+    path: AppRoutes.memberEventTicket,
+    builder: (_, s) => Scaffold(
+      body: Text('ROUTE-TICKET-${s.pathParameters['registrationId']}'),
+    ),
+  ),
+  GoRoute(
+    path: AppRoutes.memberEventRegistrationCancel,
+    builder: (_, s) => Scaffold(
+      body: Text(
+        'ROUTE-REG-CANCEL-${s.pathParameters['registrationId']}'
+        '-${s.uri.queryParameters['order'] ?? ''}',
+      ),
+    ),
+  ),
   GoRoute(
     path: AppRoutes.memberEventTeam,
     builder: (_, s) =>

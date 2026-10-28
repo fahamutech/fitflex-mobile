@@ -54,6 +54,16 @@
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="https" android:host="fitflex-af-app.web.app" android:pathPrefix="/friend-invite/"/>
             </intent-filter>
+            <!-- Event claim links (events S4): the claim SMS or email opens the
+                 app on the claim page when it is installed. The token stays in
+                 the URL fragment and is never sent to the host. Needs the same
+                 /.well-known/assetlinks.json as the friend-invite link. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https" android:host="fitflex-af-app.web.app" android:pathPrefix="/event-claim/"/>
+            </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

@@ -8,16 +8,22 @@ import '../../../shared/api_error_message.dart';
 import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
 import '../../../shared/events/event_order.dart';
+import '../../../shared/events/event_summary.dart' show EventAvailability;
+import '../../../shared/events/event_payment.dart' show EventRefundView;
 import '../../../shared/events/event_time.dart';
+import '../../../shared/events/events_analytics.dart';
 import '../../../shared/events/events_options.dart';
 import '../../../shared/formatters.dart';
 import '../../../shared/i18n.dart';
 import 'event_cancel_reason_dialog.dart';
 import 'events_registration_gate.dart';
+import 'pay/event_payment_cards.dart';
 
-/// `/member/events/registrations/:registrationId` (events S3 spec §5.9):
-/// one place — status, the QR placeholder (S5), the participant's details,
-/// event, team and order rows, and "remove this person" for the purchaser.
+/// `/member/events/registrations/:registrationId` (events S3 spec §5.9, S4
+/// spec §5.6): one place — status, its ticket (state, number and "Show
+/// ticket"; the code itself is on the ticket page), the participant's
+/// details, event, team and order rows, "remove this person" for an unpaid
+/// order and "Cancel and refund" for a paid one.
 class MemberEventRegistrationPage extends StatefulWidget {
   const MemberEventRegistrationPage({
     super.key,
@@ -36,6 +42,9 @@ class MemberEventRegistrationPage extends StatefulWidget {
 class _MemberEventRegistrationPageState
     extends State<MemberEventRegistrationPage> {
   EventRegistration? _reg;
+
+  /// Refunds read from the order when the registration carries none.
+  List<EventRefundView> _orderRefunds = const [];
   bool _loading = true;
   Object? _error;
   bool _gone = false;
@@ -64,10 +73,12 @@ class _MemberEventRegistrationPageState
     try {
       final json = await _api.getEventRegistration(widget.registrationId);
       if (!mounted) return;
+      final reg = EventRegistration.fromJson(json);
       setState(() {
-        _reg = EventRegistration.fromJson(json);
+        _reg = reg;
         _loading = false;
       });
+      await _loadOrderRefunds(reg);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -78,6 +89,35 @@ class _MemberEventRegistrationPageState
           _error = e;
         }
       });
+    }
+  }
+
+  /// The registration read carries its own `refunds`; when it has none for
+  /// a paid place, the order's refunds that cover this place are used.
+  Future<void> _loadOrderRefunds(EventRegistration reg) async {
+    if (reg.refunds.isNotEmpty ||
+        !reg.viewerIsPurchaser ||
+        reg.orderId.isEmpty ||
+        !(reg.orderStatus.wasPaid ||
+            reg.status == EventRegistrationStatus.cancelled ||
+            reg.status == EventRegistrationStatus.refunded)) {
+      return;
+    }
+    try {
+      final d = EventOrderDetail.fromJson(
+        await _api.getEventOrder(reg.orderId),
+      );
+      if (!mounted) return;
+      setState(
+        () => _orderRefunds = [
+          for (final rf in d.refunds)
+            if (rf.registrationId == reg.id ||
+                (rf.registrationId == null && rf.scope != 'registration'))
+              rf,
+        ],
+      );
+    } catch (_) {
+      // The page already shows what it has.
     }
   }
 
@@ -127,6 +167,36 @@ class _MemberEventRegistrationPageState
       if (!mounted) return;
       setState(() => _busy = false);
       snack.error(errorMessage(locale, e));
+    }
+  }
+
+  Future<void> _resendInvite() async {
+    final r = _reg;
+    if (r == null || _busy) return;
+    final yes = await showFFConfirmDialog(
+      context,
+      title: context.tr('events.invite.resend'),
+      message: context.tr('events.invite.resend.body'),
+      confirmLabel: context.tr('events.invite.resend'),
+      cancelLabel: context.tr('common.cancel'),
+      confirmKey: const Key('invite-confirm'),
+    );
+    if (!yes || !mounted) return;
+    final snack = FFSnack.of(context);
+    final locale = FFLocaleScope.of(context);
+    final sent = context.tr('events.invite.resent');
+    setState(() => _busy = true);
+    try {
+      await _api.resendEventClaimInvitation(r.orderId, registrationId: r.id);
+      if (!mounted) return;
+      EventsAnalytics.invitationResent();
+      setState(() => _busy = false);
+      snack.success(sent);
+      await _load();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      snack.error(eventsErrorMessage(locale, e));
     }
   }
 
@@ -270,34 +340,11 @@ class _MemberEventRegistrationPageState
                 context.push(AppRoutes.memberEventOrder(r.orderId)),
           ),
         ),
-      // ── ticket placeholder (S5) ───────────────────────────────────────
+      // ── ticket (S4 spec §5.6) ─────────────────────────────────────────
       FFSectionTitle(context.tr('events.reg.ticket')),
-      FFCard(
-        key: const Key('reg-ticket-placeholder'),
-        child: Column(
-          children: [
-            ExcludeSemantics(
-              child: Container(
-                height: 120,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(FFTokens.radiusLg),
-                  border: Border.all(
-                    color: cs.outline,
-                    style: BorderStyle.solid,
-                  ),
-                ),
-                child: Icon(Icons.qr_code_2, size: 48, color: cs.outline),
-              ),
-            ),
-            const SizedBox(height: FFTokens.spacingSm),
-            Text(
-              context.tr('events.reg.ticketSoon'),
-              textAlign: TextAlign.center,
-              style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-            ),
-          ],
-        ),
-      ),
+      _ticketCard(context, r),
+      for (final rf in (r.refunds.isNotEmpty ? r.refunds : _orderRefunds))
+        EventRefundCard(refund: rf, options: _options, utcOffsetMinutes: off),
       // ── participant ───────────────────────────────────────────────────
       if (r.hasParticipantDetails) ...[
         FFSectionTitle(context.tr('events.reg.participant')),
@@ -388,6 +435,31 @@ class _MemberEventRegistrationPageState
         key: const Key('reg-consent'),
         style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
       ),
+      if (r.canResendInvite) ...[
+        const SizedBox(height: FFTokens.spacingSm),
+        Text(
+          r.invitedAt == null
+              ? context.tr('events.invite.notSent')
+              : context
+                    .tr('events.invite.sent')
+                    .replaceFirst(
+                      '{date}',
+                      formatDate(r.invitedAt, locale: lang),
+                    ),
+          key: const Key('reg-invite-status'),
+          style: tt.bodySmall,
+        ),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: FFButton(
+            key: const Key('reg-invite-resend'),
+            label: context.tr('events.invite.resend'),
+            variant: FFButtonVariant.ghost,
+            size: FFButtonSize.sm,
+            onPressed: _busy ? null : _resendInvite,
+          ),
+        ),
+      ],
       const SizedBox(height: FFTokens.spacingMd),
       // ── actions ───────────────────────────────────────────────────────
       if (r.viewerIsPurchaser && reserved && r.canCancel)
@@ -397,6 +469,18 @@ class _MemberEventRegistrationPageState
           variant: FFButtonVariant.destructive,
           loading: _busy,
           onPressed: _remove,
+        )
+      else if (r.viewerIsPurchaser && r.canCancelRefund)
+        FFButton(
+          key: const Key('reg-cancel-refund'),
+          label: context.tr('events.cancelpaid.title'),
+          variant: FFButtonVariant.destructive,
+          onPressed: () => context.push(
+            AppRoutes.memberEventRegistrationCancelPath(
+              r.id,
+              orderId: r.orderId,
+            ),
+          ),
         )
       else if (!r.viewerIsPurchaser && live)
         Text(
@@ -410,5 +494,125 @@ class _MemberEventRegistrationPageState
           style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
         ),
     ];
+  }
+
+  /// The ticket slot (spec §5.6). No QR thumbnail here: a shared screen
+  /// should not show a code. The state, the number and "Show ticket" are.
+  Widget _ticketCard(BuildContext context, EventRegistration r) {
+    final tt = Theme.of(context).textTheme;
+    final cs = Theme.of(context).colorScheme;
+    final t = r.ticket;
+    // The purchaser loses the ticket when the participant claims the place.
+    final claimedAway =
+        r.viewerIsPurchaser && r.claimState == ClaimState.claimed && !r.isSelf;
+    if (t != null && t.isActive && !claimedAway) {
+      return FFCard(
+        key: const Key('reg-ticket'),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                FFBadge(
+                  key: const Key('reg-ticket-state'),
+                  label: context.tr('events.ticket.ready'),
+                  tone: FFBadgeTone.success,
+                ),
+                const SizedBox(width: FFTokens.spacingSm),
+                if ((t.displayCode ?? '').isNotEmpty)
+                  Expanded(
+                    child: Text(
+                      context
+                          .tr('events.ticket.number')
+                          .replaceFirst('{code}', t.displayCode!),
+                      key: const Key('reg-ticket-number'),
+                      style: tt.bodyMedium?.copyWith(
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: FFTokens.spacingSm),
+            FFButton(
+              key: const Key('reg-show-ticket'),
+              label: context.tr('events.ticket.show'),
+              onPressed: () =>
+                  context.push(AppRoutes.memberEventTicketPath(r.id)),
+            ),
+          ],
+        ),
+      );
+    }
+    if (t != null && t.isRevoked) {
+      final eventCancelled =
+          r.event?.availability == EventAvailability.cancelled;
+      return FFCard(
+        key: const Key('reg-ticket-revoked'),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            FFBadge(
+              label: context.tr(
+                eventCancelled
+                    ? 'events.ticket.revoked.event_cancelled'
+                    : 'events.ticket.revoked.cancelled',
+              ),
+              tone: FFBadgeTone.gray,
+            ),
+            const SizedBox(height: FFTokens.spacingXs),
+            Text(context.tr('events.ticket.revoked.body'), style: tt.bodySmall),
+          ],
+        ),
+      );
+    }
+    if (r.status == EventRegistrationStatus.confirmed && !claimedAway) {
+      // Paid but no ticket row yet (it should not happen): say so, offer a
+      // refresh.
+      return FFCard(
+        key: const Key('reg-ticket-preparing'),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                context.tr('events.ticket.preparing'),
+                style: tt.bodyMedium,
+              ),
+            ),
+            IconButton(
+              key: const Key('reg-ticket-refresh'),
+              tooltip: context.tr('common.retry'),
+              icon: const Icon(Icons.refresh),
+              onPressed: _load,
+            ),
+          ],
+        ),
+      );
+    }
+    if (claimedAway) return const SizedBox.shrink();
+    // Reserved or otherwise not issued: the S3 sentence.
+    return FFCard(
+      key: const Key('reg-ticket-placeholder'),
+      child: Column(
+        children: [
+          ExcludeSemantics(
+            child: Container(
+              height: 120,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(FFTokens.radiusLg),
+                border: Border.all(color: cs.outline),
+              ),
+              child: Icon(Icons.qr_code_2, size: 48, color: cs.outline),
+            ),
+          ),
+          const SizedBox(height: FFTokens.spacingSm),
+          Text(
+            context.tr('events.reg.ticketSoon'),
+            textAlign: TextAlign.center,
+            style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+          ),
+        ],
+      ),
+    );
   }
 }

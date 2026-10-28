@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
+import '../../../shared/events/event_detail.dart' show EventRefundPolicy;
 import '../../../shared/events/event_summary.dart';
 import '../../../shared/events/event_time.dart';
 import '../../../shared/i18n.dart';
@@ -53,6 +54,20 @@ Color fuelTextColor(BuildContext context) =>
     Theme.of(context).brightness == Brightness.dark
     ? FFTokens.fuelOnDark
     : FFTokens.fuel;
+
+/// The policy line for [p] in the active language: the server's `generated`
+/// line (the single source, all five presets). An older server that sends
+/// none still gets the two original presets' fixed sentence; any other
+/// preset then shows only the organizer's own text.
+String? refundPolicyLine(BuildContext context, EventRefundPolicy p) {
+  final lang = FFLocaleScope.of(context).locale.languageCode;
+  final line = p.generatedLine(lang);
+  if (line.isNotEmpty) return line;
+  if (p.preset == 'no_refund' || p.preset == 'refund_until_close') {
+    return context.tr('events.detail.policy.${p.preset}');
+  }
+  return null;
+}
 
 /// `events.type.<type>` or the raw word for one the app does not know.
 String eventTypeLabel(BuildContext context, String type) {

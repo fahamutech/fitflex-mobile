@@ -3,7 +3,9 @@
 // are the server's; the client never invents one. Everything is tolerant of
 // a missing key (an older or newer server) and never throws on parse.
 import 'event_detail.dart';
+import 'event_payment.dart';
 import 'event_summary.dart';
+import 'event_ticket.dart';
 
 int _int(Object? v, [int fallback = 0]) => v is num
     ? v.toInt()
@@ -350,10 +352,14 @@ class EventQuote {
 
 // ── Orders (§3.5, §3.6) ──────────────────────────────────────────────────
 
-/// Order statuses this app knows (§3.12; `confirmed` and refunds are S4).
+/// Order statuses this app knows (S3 §3.12; S4 §3.3 adds the paid and
+/// refund states).
 enum EventOrderStatus {
   awaitingPayment,
   confirmed,
+  partiallyCancelled,
+  refundPending,
+  refunded,
   cancelled,
   expired,
   other;
@@ -361,22 +367,35 @@ enum EventOrderStatus {
   static EventOrderStatus parse(Object? v) => switch (v?.toString()) {
     'awaiting_payment' => awaitingPayment,
     'confirmed' => confirmed,
+    'partially_cancelled' => partiallyCancelled,
+    'refund_pending' => refundPending,
+    'refunded' => refunded,
     'cancelled' => cancelled,
     'expired' => expired,
     _ => other,
   };
+
+  /// Money was taken for this order at some point (paid, or since given
+  /// back in whole or part).
+  bool get wasPaid =>
+      this == confirmed ||
+      this == partiallyCancelled ||
+      this == refundPending ||
+      this == refunded;
 }
 
 enum EventRegistrationStatus {
   reserved,
   confirmed,
   cancelled,
+  refunded,
   other;
 
   static EventRegistrationStatus parse(Object? v) => switch (v?.toString()) {
     'reserved' => reserved,
     'confirmed' => confirmed,
     'cancelled' => cancelled,
+    'refunded' => refunded,
     _ => other,
   };
 }
@@ -524,6 +543,10 @@ class EventRegistration {
     this.purchaserNameMasked,
     this.allowedActions = const [],
     this.event,
+    this.ticket,
+    this.refunds = const [],
+    this.invitedAt,
+    this.inviteCount = 0,
   });
 
   final String id;
@@ -564,10 +587,31 @@ class EventRegistration {
   final List<String> allowedActions;
   final EventSummary? event;
 
+  /// The ticket's state and number (no token; S4 §3.5).
+  final RegistrationTicket? ticket;
+
+  /// Refunds that cover this place, when the server sends them.
+  final List<EventRefundView> refunds;
+
+  /// When the last claim invitation went out, and how many were sent (the
+  /// purchaser's view of an unclaimed place).
+  final DateTime? invitedAt;
+  final int inviteCount;
+
   String get fullName =>
       [firstName, lastName].where((s) => s.trim().isNotEmpty).join(' ');
 
   bool get canCancel => allowedActions.contains('cancel');
+
+  /// The paid-place cancel and refund screen is open to the purchaser (S4).
+  bool get canCancelRefund => allowedActions.contains('cancel_refund');
+
+  /// The purchaser can send the claim invitation again (S4 §3.10).
+  bool get canResendInvite =>
+      viewerIsPurchaser &&
+      !isSelf &&
+      claimState == ClaimState.unclaimed &&
+      status == EventRegistrationStatus.confirmed;
 
   /// Any personal detail came back. After a participant claims a place the
   /// server masks the purchaser's view (phone, email, date of birth,
@@ -626,6 +670,10 @@ class EventRegistration {
       purchaserNameMasked: purchaserNameMasked,
       allowedActions: allowedActions,
       event: event,
+      ticket: ticket,
+      refunds: refunds,
+      invitedAt: invitedAt,
+      inviteCount: inviteCount,
     );
   }
 
@@ -683,6 +731,24 @@ class EventRegistration {
           ? [for (final a in json['allowedActions'] as List) _str(a)]
           : const [],
       event: json['event'] is Map ? eventSummaryOf(json['event']) : null,
+      ticket: RegistrationTicket.fromJson(json['ticket']),
+      refunds: EventRefundView.listFrom(json['refunds']),
+      // Flat fields first; the nested `invitation {sentAt, count}` is kept
+      // as a fallback.
+      invitedAt: parseInstant(
+        json['claimInvitedAt'] ??
+            json['invitedAt'] ??
+            (json['invitation'] is Map
+                ? (json['invitation'] as Map)['sentAt']
+                : null),
+      ),
+      inviteCount: _int(
+        json['claimInviteCount'] ??
+            json['inviteCount'] ??
+            (json['invitation'] is Map
+                ? (json['invitation'] as Map)['count']
+                : null),
+      ),
     );
   }
 }
@@ -841,6 +907,9 @@ class EventOrderDetail {
     this.paymentInstructions,
     this.allowedActions = const [],
     this.replayed = false,
+    this.paymentView,
+    this.paymentRequestId,
+    this.refunds = const [],
   });
 
   final EventOrder order;
@@ -855,7 +924,44 @@ class EventOrderDetail {
   final List<String> allowedActions;
   final bool replayed;
 
+  /// The latest payment on the order (S4 §3.5), or null.
+  final EventPaymentView? paymentView;
+
+  /// `next.paymentRequestId`: what the mobile-money sheet pays.
+  final String? paymentRequestId;
+  final List<EventRefundView> refunds;
+
   bool get canCancel => allowedActions.contains('cancel');
+
+  /// Paid places can be cancelled with a refund (S4).
+  bool get canCancelRefund => allowedActions.contains('cancel_refund');
+
+  /// A real payment exists (the server's `state: none` means "not yet paid").
+  bool get hasPayment =>
+      paymentView != null && paymentView!.state != EventPaymentState.none;
+
+  /// The manual-payment block of `next.instructions`, when it is usable.
+  EventManualInstructions? get manualInstructions =>
+      EventManualInstructions.fromJson(paymentInstructions);
+
+  EventOrderDetail copyWith({
+    EventOrder? order,
+    List<EventRegistration>? registrations,
+    List<String>? allowedActions,
+  }) => EventOrderDetail(
+    order: order ?? this.order,
+    lines: lines,
+    registrations: registrations ?? this.registrations,
+    event: event,
+    team: team,
+    payment: payment,
+    paymentInstructions: paymentInstructions,
+    allowedActions: allowedActions ?? this.allowedActions,
+    replayed: replayed,
+    paymentView: paymentView,
+    paymentRequestId: paymentRequestId,
+    refunds: refunds,
+  );
 
   static EventOrderDetail fromJson(Map<String, dynamic> json) {
     final orderJson = json['order'] is Map ? json['order'] as Map : json;
@@ -885,6 +991,9 @@ class EventOrderDetail {
           ? [for (final a in json['allowedActions'] as List) _str(a)]
           : const [],
       replayed: json['replayed'] == true,
+      paymentView: EventPaymentView.fromJson(json['payment']),
+      paymentRequestId: _opt(next['paymentRequestId']),
+      refunds: EventRefundView.listFrom(json['refunds']),
     );
   }
 }
@@ -895,6 +1004,10 @@ class EventOrderDetail {
 String eventOrderStatusKey(EventOrderStatus s) => switch (s) {
   EventOrderStatus.awaitingPayment => 'events.status.order.awaiting',
   EventOrderStatus.confirmed => 'events.status.order.paid',
+  EventOrderStatus.partiallyCancelled =>
+    'events.order.status.partiallyCancelled',
+  EventOrderStatus.refundPending => 'events.order.status.refundPending',
+  EventOrderStatus.refunded => 'events.order.status.refunded',
   EventOrderStatus.cancelled => 'events.status.order.cancelled',
   EventOrderStatus.expired => 'events.status.order.expired',
   EventOrderStatus.other => 'events.status.order.awaiting',
@@ -908,6 +1021,7 @@ String eventRegistrationStatusKey(
 ) => switch (s) {
   EventRegistrationStatus.confirmed => 'events.status.confirmed',
   EventRegistrationStatus.cancelled => 'events.status.cancelled',
+  EventRegistrationStatus.refunded => 'events.status.refunded',
   EventRegistrationStatus.reserved ||
   EventRegistrationStatus.other => switch (order) {
     EventOrderStatus.expired => 'events.status.expired',
@@ -919,5 +1033,6 @@ String eventRegistrationStatusKey(
 /// Whether a registration (with its order's state) is still live.
 bool registrationIsLive(EventRegistrationStatus s, EventOrderStatus order) =>
     s != EventRegistrationStatus.cancelled &&
+    s != EventRegistrationStatus.refunded &&
     order != EventOrderStatus.expired &&
     order != EventOrderStatus.cancelled;
