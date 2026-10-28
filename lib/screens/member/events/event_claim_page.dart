@@ -48,7 +48,6 @@ class _EventClaimPageState extends State<EventClaimPage> {
   /// A refusal that has its own screen state (`claim_not_verified`,
   /// `claim_token_expired`, …), keyed by code.
   String? _refusal;
-  Map<String, dynamic> _refusalBody = const {};
   bool _busy = false;
 
   ApiClient get _api => AppScope.of(context).api;
@@ -184,9 +183,6 @@ class _EventClaimPageState extends State<EventClaimPage> {
           'registration_not_found',
         }.contains(code)) {
           _refusal = code;
-          _refusalBody = e.body is Map
-              ? Map<String, dynamic>.from(e.body as Map)
-              : const {};
         }
       });
       if (_refusal == null) snack.error(errorMessage(locale, e));
@@ -345,14 +341,11 @@ class _EventClaimPageState extends State<EventClaimPage> {
     }
 
     if (_refusal == 'claim_not_verified') {
-      final contact = _refusalBody['contact'] is Map
-          ? _refusalBody['contact'] as Map
-          : const {};
-      final type = contact['type']?.toString() ?? p?.contactType ?? 'phone';
-      final masked = contact['masked']?.toString() ?? p?.contactMasked ?? '';
-      final verifiable = _refusalBody['verifiable'] is bool
-          ? _refusalBody['verifiable'] as bool
-          : _options.claim.verifiable(type);
+      // The 403 body names no contact: the preview's masked contact and
+      // the server's `claim` options say what can be verified.
+      final type = p?.contactType.isNotEmpty == true ? p!.contactType : 'phone';
+      final masked = p?.contactMasked ?? '';
+      final verifiable = _options.claim.verifiable(type);
       out.add(
         FFAlert(
           key: const Key('claim-not-verified'),

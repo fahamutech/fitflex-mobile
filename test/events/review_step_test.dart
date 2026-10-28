@@ -408,6 +408,100 @@ void main() {
     expect(find.byKey(const Key('register-step-1')), findsOneWidget);
   });
 
+  apiTest('capacity_unavailable without a count never says "Only 0 left"', (
+    tester,
+    api,
+  ) async {
+    _seed(api);
+    api.fail('POST /me/event-orders', 409, {
+      'error': 'capacity_unavailable',
+      'ticketTypeId': 'tt_std',
+      'requested': 1,
+    });
+    await _toReview(tester, api);
+    await _acceptAndPlace(tester);
+    expect(find.byKey(const Key('review-banner-capacity')), findsOneWidget);
+    expect(find.text('That ticket is no longer available'), findsOneWidget);
+    expect(find.textContaining('Only'), findsNothing);
+    expect(find.byKey(const Key('review-change-tickets')), findsOneWidget);
+  });
+
+  apiTest(
+    'a quote with valid:false lists its problems and blocks Place order',
+    (tester, api) async {
+      _seed(api);
+      api.on(
+        'POST /me/event-orders/quote',
+        quoteJson(
+          valid: false,
+          problems: [
+            {'code': 'sale_closed'},
+            {'code': 'too_many_participants', 'max': 10},
+          ],
+          team: {
+            'mode': 'join',
+            'name': 'Coco Runners',
+            'memberCount': 50,
+            'maxMembers': 50,
+            'ok': false,
+            'problems': ['team_full', 'team_name_taken'],
+          },
+        ),
+      );
+      await _toReview(tester, api);
+      final issues = find.byKey(const Key('review-quote-issues'));
+      expect(issues, findsOneWidget);
+      final text = tester
+          .widget<Text>(
+            find.descendant(of: issues, matching: find.byType(Text)),
+          )
+          .data!;
+      expect(text, contains('That ticket is no longer on sale'));
+      expect(text, contains('Up to 10 people per order'));
+      expect(text, contains('That team is full'));
+      expect(text, contains('A team with that name already exists'));
+      await tapVisible(tester, find.byKey(const Key('review-accept')));
+      expect(isEnabled(tester, _primary), isFalse);
+    },
+  );
+
+  apiTest('valid:false with nothing to name still explains itself', (
+    tester,
+    api,
+  ) async {
+    _seed(api);
+    api.on('POST /me/event-orders/quote', quoteJson(valid: false));
+    await _toReview(tester, api);
+    expect(find.text('This order can\'t be placed yet'), findsOneWidget);
+    await tapVisible(tester, find.byKey(const Key('review-accept')));
+    expect(isEnabled(tester, _primary), isFalse);
+  });
+
+  apiTest('hold_limit_reached (real body) shows its own message', (
+    tester,
+    api,
+  ) async {
+    _seed(api);
+    api.fail('POST /me/event-orders', 409, {
+      'error': 'hold_limit_reached',
+      'limit': 'unpaid_order_exists',
+    });
+    final host = await _toReview(tester, api);
+    await _acceptAndPlace(tester);
+    expect(
+      find.textContaining(
+        'You already have an unpaid registration for this event',
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Unpaid order exists'), findsNothing);
+    expect(
+      host.snack(host.tr('error.reason.holdLimitReached')),
+      findsNothing,
+      reason: 'the snack wraps the reason in the "declined" line',
+    );
+  });
+
   apiTest('participant_invalid maps every row\'s problems to its card', (
     tester,
     api,

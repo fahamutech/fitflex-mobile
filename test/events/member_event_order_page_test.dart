@@ -296,6 +296,66 @@ void main() {
     expect(find.byKey(const Key('remove-whole-line-cancel')), findsOneWidget);
   });
 
+  apiTest('registration names missing from the server fall back to the lines', (
+    tester,
+    api,
+  ) async {
+    api.on(
+      'GET /me/event-orders/ord_1',
+      orderJson(
+        lines: [
+          quoteLine(quantity: 2),
+          quoteLine(
+            ticketTypeId: 'tt_free',
+            name: 'Free entry',
+            categoryId: 'cat_5',
+            categoryName: '5K Fun Run',
+            unit: 0,
+          ),
+        ],
+        registrations: [
+          registrationJson(ticketTypeName: '', categoryName: ''),
+          registrationJson(
+            id: 'reg_2',
+            ticketTypeName: '',
+            categoryName: '',
+            firstName: 'Juma',
+            isSelf: false,
+            claimState: 'unclaimed',
+          ),
+          registrationJson(
+            id: 'reg_3',
+            ticketTypeId: 'tt_free',
+            ticketTypeName: '',
+            categoryId: 'cat_5',
+            categoryName: '',
+            firstName: 'Zawadi',
+            isSelf: false,
+            claimState: 'unclaimed',
+          ),
+        ],
+      ),
+    );
+    api.fail('POST /me/event-registrations/reg_3/cancel', 409, {
+      'error': 'remove_whole_line',
+    });
+    await _pump(tester, api);
+    expect(find.text('21K Half Marathon · Standard'), findsNWidgets(2));
+    expect(find.text('5K Fun Run · Free entry'), findsOneWidget);
+    await tapVisible(
+      tester,
+      find.byKey(const Key('order-participant-menu-reg_3')),
+    );
+    await tester.tap(find.byKey(const Key('order-participant-remove-reg_3')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('event-cancel-confirm')));
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('last Free entry place in the order'),
+      findsOneWidget,
+    );
+  });
+
   apiTest('polls while awaiting and refreshes on resume', (tester, api) async {
     api.on('GET /me/event-orders/ord_1', orderJson());
     await _pump(tester, api, pollEvery: const Duration(seconds: 5));
@@ -318,7 +378,10 @@ void main() {
   apiTest('Swahili: status pill and hold copy', (tester, api) async {
     api.on('GET /me/event-orders/ord_1', orderJson());
     await _pump(tester, api, lang: 'sw');
-    expect(find.text('Inasubiri malipo'), findsNWidgets(2)); // order + its place
+    expect(
+      find.text('Inasubiri malipo'),
+      findsNWidgets(2),
+    ); // order + its place
     expect(find.text('zimebaki dakika 27'), findsOneWidget);
     expect(find.text('Inakuja kwenye toleo lijalo la app'), findsOneWidget);
   });

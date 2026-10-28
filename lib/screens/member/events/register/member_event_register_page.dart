@@ -374,7 +374,9 @@ class _MemberEventRegisterPageState extends State<MemberEventRegisterPage> {
               (a.remaining != null && a.remaining! < (_lines[e.key] ?? 0))) {
             _banner = 'onlyLeft';
             _bannerTicket = _ticketName(e.key);
-            _bannerLeft = a.remaining ?? 0;
+            // Only a real count is shown; sold out / unknown reads
+            // "no longer available".
+            _bannerLeft = a.remaining;
           }
         }
       });
@@ -498,7 +500,7 @@ class _MemberEventRegisterPageState extends State<MemberEventRegisterPage> {
             _bannerTicket = id == null ? '' : _ticketName(id);
             _bannerLeft = e.body is Map && (e.body as Map)['remaining'] is num
                 ? ((e.body as Map)['remaining'] as num).toInt()
-                : 0;
+                : null;
           });
         case 'participant_invalid':
           setState(() {
@@ -794,6 +796,24 @@ class _MemberEventRegisterPageState extends State<MemberEventRegisterPage> {
         ),
       );
     }
+    if (!_quoteLoading && q != null) {
+      final issues = _quoteIssues(context, q);
+      if (issues.isNotEmpty) {
+        children.add(
+          Padding(
+            padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
+            child: Semantics(
+              liveRegion: true,
+              child: FFAlert(
+                key: const Key('review-quote-issues'),
+                tone: FFAlertTone.error,
+                message: issues.join('\n'),
+              ),
+            ),
+          ),
+        );
+      }
+    }
     if (_quoteLoading) {
       children.add(
         Semantics(
@@ -865,6 +885,41 @@ class _MemberEventRegisterPageState extends State<MemberEventRegisterPage> {
     );
   }
 
+  /// What the quote says is wrong at order level (§3.4 `problems[]`,
+  /// `team.problems`): sale closed, team full, team name taken, too many
+  /// participants, capacity short. A quote that is not `valid` and has
+  /// nothing else to say still gets one line, so the disabled button is
+  /// never unexplained. Participant-level problems have their own banner.
+  List<String> _quoteIssues(BuildContext context, EventQuote q) {
+    final locale = FFLocaleScope.of(context);
+    final seen = <String>{};
+    final out = <String>[];
+    void add(String code, Map<String, dynamic>? extra) {
+      if (code.isEmpty || !seen.add(code)) return;
+      // Capacity already has its own banner with the change-tickets action.
+      if (_banner == 'onlyLeft' &&
+          (code == 'capacity_unavailable' || code == 'capacity_short')) {
+        return;
+      }
+      out.add(errorReasonText(locale, code, extra));
+    }
+
+    for (final p in q.problems) {
+      add(p.code, p.extra);
+    }
+    for (final code in q.team?.problems ?? const <String>[]) {
+      add(code, null);
+    }
+    if (!q.valid &&
+        out.isEmpty &&
+        _banner != 'fix' &&
+        _banner != 'onlyLeft' &&
+        q.participantProblems.isEmpty) {
+      out.add(context.tr('events.review.problems'));
+    }
+    return out;
+  }
+
   Widget _bannerWidget(BuildContext context) {
     switch (_banner) {
       case 'priceChanged':
@@ -880,10 +935,12 @@ class _MemberEventRegisterPageState extends State<MemberEventRegisterPage> {
             FFAlert(
               key: const Key('review-banner-capacity'),
               tone: FFAlertTone.warning,
-              message: context
-                  .tr('events.review.onlyLeft')
-                  .replaceFirst('{n}', '${_bannerLeft ?? 0}')
-                  .replaceFirst('{ticket}', _bannerTicket ?? ''),
+              message: _bannerLeft == null
+                  ? context.tr('events.review.unavailable')
+                  : context
+                        .tr('events.review.onlyLeft')
+                        .replaceFirst('{n}', '$_bannerLeft')
+                        .replaceFirst('{ticket}', _bannerTicket ?? ''),
             ),
             Align(
               alignment: Alignment.centerLeft,
@@ -958,7 +1015,12 @@ class _MemberEventRegisterPageState extends State<MemberEventRegisterPage> {
                     '{amount}',
                     formatCurrency(q.totalTzs, currency: q.currency),
                   );
-        onPressed = q != null && _accepted && !_quoteLoading && _banner != 'fix'
+        onPressed =
+            q != null &&
+                q.valid &&
+                _accepted &&
+                !_quoteLoading &&
+                _banner != 'fix'
             ? _place
             : null;
     }

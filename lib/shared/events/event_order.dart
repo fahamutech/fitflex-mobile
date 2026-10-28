@@ -580,6 +580,55 @@ class EventRegistration {
       kitSize != null ||
       (emergencyContact != null && !emergencyContact!.isEmpty);
 
+  /// This registration with its ticket / category names filled from the
+  /// order's [lines] when the server did not send them (flat
+  /// `categoryName` / `ticketTypeName`), so nothing renders blank.
+  EventRegistration withNamesFrom(List<QuoteLine> lines) {
+    if (ticketTypeName.isNotEmpty && categoryName.isNotEmpty) return this;
+    QuoteLine? line;
+    for (final l in lines) {
+      if (l.ticketTypeId == ticketTypeId) line = l;
+    }
+    if (line == null) return this;
+    return EventRegistration(
+      id: id,
+      ticketTypeId: ticketTypeId,
+      ticketTypeName: ticketTypeName.isEmpty
+          ? line.ticketTypeName
+          : ticketTypeName,
+      categoryId: categoryId,
+      categoryName: categoryName.isEmpty ? line.categoryName : categoryName,
+      categoryDistanceM: categoryDistanceM,
+      categoryStartsAt: categoryStartsAt,
+      firstName: firstName,
+      lastName: lastName,
+      status: status,
+      statusWire: statusWire,
+      consentBasis: consentBasis,
+      consentAt: consentAt,
+      isSelf: isSelf,
+      claimState: claimState,
+      relation: relation,
+      phone: phone,
+      email: email,
+      dateOfBirth: dateOfBirth,
+      gender: gender,
+      kitSize: kitSize,
+      emergencyContact: emergencyContact,
+      cancelReason: cancelReason,
+      orderId: orderId,
+      orderReference: orderReference,
+      orderStatus: orderStatus,
+      holdExpiresAt: holdExpiresAt,
+      createdAt: createdAt,
+      teamId: teamId,
+      teamName: teamName,
+      purchaserNameMasked: purchaserNameMasked,
+      allowedActions: allowedActions,
+      event: event,
+    );
+  }
+
   /// The viewer bought this place (relation `self` or `purchased`); a
   /// `claimed` relation means someone else did.
   bool get viewerIsPurchaser => relation != 'claimed';
@@ -815,13 +864,14 @@ class EventOrderDetail {
         : null;
     final event = eventJson == null ? null : EventDetail.fromJson(eventJson);
     final next = json['next'] is Map ? json['next'] as Map : const {};
+    final lines = [for (final l in _maps(json['lines'])) QuoteLine.fromJson(l)];
     final registrations = [
       for (final r in _maps(json['registrations']))
-        EventRegistration.fromJson(r),
+        EventRegistration.fromJson(r).withNamesFrom(lines),
     ];
     return EventOrderDetail(
       order: EventOrder.fromJson(orderJson, event: event?.summary),
-      lines: [for (final l in _maps(json['lines'])) QuoteLine.fromJson(l)],
+      lines: lines,
       registrations: registrations,
       event: event,
       team: json['team'] is Map

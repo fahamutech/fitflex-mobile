@@ -119,8 +119,6 @@ void main() {
     api.on('GET /event-claims/preview/$_tok', claimPreviewJson());
     api.fail('POST /me/event-registrations/claim', 403, {
       'error': 'claim_not_verified',
-      'contact': {'type': 'phone', 'masked': '••• 678'},
-      'verifiable': true,
     });
     await _pumpLink(tester, api);
     await tapVisible(tester, find.byKey(const Key('claim-confirm')));
@@ -143,8 +141,6 @@ void main() {
     api.on('GET /event-claims/preview/$_tok', claimPreviewJson(type: 'email'));
     api.fail('POST /me/event-registrations/claim', 403, {
       'error': 'claim_not_verified',
-      'contact': {'type': 'email', 'masked': 'a•••@example.com'},
-      'verifiable': false,
     });
     await _pumpLink(tester, api);
     await tapVisible(tester, find.byKey(const Key('claim-confirm')));
@@ -155,6 +151,21 @@ void main() {
       findsOneWidget,
     );
   });
+
+  apiTest(
+    'phone not verifiable (smsCodes off): explains instead of Verify now',
+    (tester, api) async {
+      await PendingEventClaim.save(_tok);
+      api.on('GET /event-claims/preview/$_tok', claimPreviewJson());
+      api.fail('POST /me/event-registrations/claim', 403, {
+        'error': 'claim_not_verified',
+      });
+      await _pumpLink(tester, api, smsCodes: false);
+      await tapVisible(tester, find.byKey(const Key('claim-confirm')));
+      expect(find.byKey(const Key('claim-verify-now')), findsNothing);
+      expect(find.byKey(const Key('claim-email-not-yet')), findsOneWidget);
+    },
+  );
 
   apiTest('expired (410) and invalid (404) links', (tester, api) async {
     await PendingEventClaim.save(_tok);

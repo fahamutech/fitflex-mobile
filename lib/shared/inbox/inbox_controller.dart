@@ -119,9 +119,11 @@ String memberLinkFor({required String deepLink, required String type}) =>
         // Events S3 (spec §3.14): the purchaser's order notices open the
         // order; "Is this you?" opens the claim page; a claim opens the
         // registration.
-        'event_order_created' || 'event_order_expired' => 'eventOrder',
+        'event_order_created' ||
+        'event_order_expired' ||
+        'event_order_cancelled' => 'eventOrder',
         'event_claim_available' => 'eventClaim',
-        'event_place_claimed' => 'eventRegistration',
+        'event_place_claimed' || 'event_place_cancelled' => 'eventRegistration',
         _ => '',
       };
 

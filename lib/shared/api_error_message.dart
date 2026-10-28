@@ -50,7 +50,13 @@ String apiErrorMessage(
   if (isVendorStaffDisabled(exception, vendorStaff: vendorStaff)) {
     return locale.t('error.reason.vendorStaffInactive');
   }
-  final reason = _firstReason(exception.body);
+  // Events S3: `hold_limit_reached` carries a second field (`limit`, e.g.
+  // 'unpaid_order_exists'); its `error` code is what names the refusal,
+  // whatever other reason-like key sits beside it.
+  final body = exception.body;
+  final reason = body is Map && body['error'] == 'hold_limit_reached'
+      ? 'hold_limit_reached'
+      : _firstReason(body);
   if (reason != null && reason.isNotEmpty) {
     final translated =
         _timedReason(locale, reason, exception.body) ??
@@ -70,6 +76,20 @@ String apiErrorMessage(
     _ => 'error.requestFailed',
   };
   return locale.t(key);
+}
+
+/// The translated reason for one server code (no "request declined"
+/// wrapper), for banners that list several problems (the quote's
+/// `problems[]`, §3.4). [extra] holds numbers such as `min` / `max`.
+String errorReasonText(
+  FFLocale locale,
+  String code, [
+  Map<String, dynamic>? extra,
+]) {
+  final body = <String, dynamic>{...?extra, 'error': code};
+  return _detailedReason(locale, code, body) ??
+      _knownReason(locale, code) ??
+      _humanize(code);
 }
 
 /// Vendor staff whose access the business owner turned off (vendor tools
@@ -311,7 +331,13 @@ String? _knownReason(FFLocale locale, String reason) {
     'participant_invalid': 'error.reason.participantInvalid',
     'invalid_participant': 'error.reason.participantInvalid',
     'participants_mismatch': 'error.reason.participantInvalid',
-    'multiple_self_participants': 'error.reason.participantInvalid',
+    'multiple_self_participants': 'error.reason.multipleSelf',
+    'invalid_text': 'error.reason.invalidText',
+    'field_too_long': 'error.reason.fieldTooLong',
+    'team_name_invalid': 'error.reason.teamNameInvalid',
+    'team_type_invalid': 'error.reason.teamTypeInvalid',
+    'raw_text_too_long': 'error.reason.rawTextTooLong',
+    'capacity_short': 'error.reason.capacityUnavailable',
     'price_changed': 'error.reason.priceChanged',
     'order_not_found': 'error.reason.orderNotFound',
     'registration_not_found': 'error.reason.registrationNotFound',

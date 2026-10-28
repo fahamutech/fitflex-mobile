@@ -157,7 +157,8 @@ class _MemberEventOrderPageState extends State<MemberEventOrderPage>
             registrations: res['registrations'] is List
                 ? [
                     for (final r in res['registrations'] as List)
-                      if (r is Map) EventRegistration.fromJson(r),
+                      if (r is Map)
+                        EventRegistration.fromJson(r).withNamesFrom(d.lines),
                   ]
                 : d.registrations,
             event: d.event,

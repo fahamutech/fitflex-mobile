@@ -455,6 +455,51 @@ final s3Keys = [
 ];
 
 void holdLimitTests() {
+  test('validation reasons from the backend have en + sw copy', () {
+    for (final code in const [
+      'invalid_text',
+      'multiple_self_participants',
+      'field_too_long',
+      'team_name_invalid',
+      'team_type_invalid',
+      'raw_text_too_long',
+      'hold_limit_reached',
+    ]) {
+      for (final lang in ['en', 'sw']) {
+        final locale = FFLocale()..set(Locale(lang));
+        final msg = errorReasonText(locale, code);
+        expect(msg, isNot(contains('_')), reason: '$lang $code');
+        expect(msg, isNot(startsWith('Invalid')), reason: '$lang $code');
+        expect(msg, isNot(startsWith('Raw ')), reason: '$lang $code');
+      }
+      expect(
+        errorReasonText(FFLocale()..set(const Locale('sw')), code),
+        isNot(errorReasonText(FFLocale()..set(const Locale('en')), code)),
+        reason: code,
+      );
+    }
+  });
+
+  test('hold_limit_reached wins over the field beside it', () {
+    final body = {
+      'error': 'hold_limit_reached',
+      'limit': 'unpaid_order_exists',
+    };
+    final en = apiErrorMessage(
+      FFLocale()..set(const Locale('en')),
+      ApiException(409, body),
+    );
+    expect(
+      en,
+      contains('You already have an unpaid registration for this event'),
+    );
+    final sw = apiErrorMessage(
+      FFLocale()..set(const Locale('sw')),
+      ApiException(409, body),
+    );
+    expect(sw, contains('Tayari una usajili ambao haujalipwa kwa tukio hili'));
+  });
+
   test('hold_limit_reached has its own copy in both languages', () {
     expect(
       FFLocale.textOf('en', 'error.reason.holdLimitReached'),
