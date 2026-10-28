@@ -797,10 +797,10 @@ void main() {
     }
 
     for (final lang in ['en', 'sw']) {
-      heroTest('$lang 390x844: segmented control ends <= 440px, on the sheet', (
-        tester,
-        api,
-      ) async {
+      // Owner 2026-10-22: the hero grows for clear photo above its text,
+      // but the switcher keeps its top edge above 55% of the screen.
+      heroTest('$lang 390x844: segmented control starts above 55%, on the '
+          'sheet', (tester, api) async {
         await _host(
           tester,
           api,
@@ -808,8 +808,8 @@ void main() {
           lang: lang,
         );
         expect(
-          tester.getBottomLeft(_key('activity-sections')).dy,
-          lessThanOrEqualTo(440),
+          tester.getTopLeft(_key('activity-sections')).dy,
+          lessThanOrEqualTo(844 * 0.55 + 0.01),
         );
         expect(_inHero(_key('activity-sections')), isFalse);
       });
@@ -1002,7 +1002,8 @@ void main() {
       expect(_inHero(_key('vendor-add-product')), isTrue);
       expect(find.byType(FloatingActionButton), findsNothing);
 
-      await tester.drag(find.byType(ListView).first, const Offset(0, -400));
+      // Past the (taller, owner 2026-10-22) band and its Add product.
+      await tester.drag(find.byType(ListView).first, const Offset(0, -600));
       await tester.pumpAndSettle();
       expect(find.byType(FloatingActionButton), findsOneWidget);
       expect(_key('vendor-add-product'), findsOneWidget);
@@ -1284,7 +1285,8 @@ void main() {
       for (final p in added) {
         expect(p.focal, isNot(Alignment.center), reason: p.name);
       }
-      expect(FFHeroPhoto.signIn.focal, Alignment.center);
+      // Sign in (2026-10-22) has a focal point too: its door sign.
+      expect(FFHeroPhoto.signIn.focal, isNot(Alignment.center));
     });
   });
 

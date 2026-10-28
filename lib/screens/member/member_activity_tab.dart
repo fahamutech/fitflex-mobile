@@ -15,6 +15,7 @@ import '../../shared/i18n.dart';
 import '../../shared/photo_footer_flag.dart';
 import '../../shared/photo_hero_flag.dart';
 import 'member_shell.dart';
+import 'events/events_discovery_view.dart';
 import 'widgets/home_hero.dart';
 import 'widgets/phone_steps_card.dart';
 import 'widgets/run_widgets.dart';
@@ -45,6 +46,16 @@ class MemberActivityTab extends StatefulWidget {
   State<MemberActivityTab> createState() => _MemberActivityTabState();
 }
 
+/// PHOTO_HERO_UI (owner 2026-10-22, heroes "too dark"): Activity's hero
+/// grows for [FFTokens.heroBandClearPhoto] of clear photo above its text on
+/// phones from 760 tall, but the section switcher under it keeps its top
+/// edge above [FFTokens.heroBandControlShare] of the screen; the clear
+/// photo gives way (45px at 390x844).
+const double activityHeroClearPhoto = FFTokens.heroBandClearPhoto;
+
+/// The Sample badge's height at 1.0x text (an [FFPill]).
+const double _sampleBadgeHeight = 28;
+
 /// PHOTO_HERO_UI: each section's photo and headline keys (spec §24).
 const activityHeroSections = <String, (FFHeroPhoto, String)>{
   'overview': (FFHeroPhoto.activityToday, 'hero.activity.today'),
@@ -63,8 +74,10 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
       data.activityLoaded &&
       (data.activities.isNotEmpty || _section != 'overview');
 
-  /// The hero's height: fixed, so switching sections never moves the
-  /// segmented control (spec §24).
+  /// The hero's least height: fixed, so switching sections never moves
+  /// the segmented control (spec §24). With clear photo above the text the
+  /// hero is taller, and as fixed (its text keeps the tallest headline's
+  /// room).
   double _heroHeight(BuildContext context, double topInset) =>
       topInset +
       (Theme.of(context).brightness == Brightness.dark ? 228.0 : 252.0);
@@ -82,11 +95,21 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
       precacheHeroPhotos(context, [
         for (final v in activityHeroSections.values) v.$1,
       ], box: Size(width, _heroHeight(context, topInset)));
+      // Again at the hero's laid-out size, which the clear photo makes
+      // taller than its least height: the sizes share a cache entry.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final size = _heroKey.currentContext?.size;
+        if (!mounted || size == null || size.isEmpty) return;
+        precacheHeroPhotos(context, [
+          for (final v in activityHeroSections.values) v.$1,
+        ], box: size);
+      });
     }
   }
 
   Widget _hero(BuildContext context, MemberData data, {bool panel = false}) {
-    final (photo, key) = activityHeroSections[_section]!;
+    final (photo, key) =
+        activityHeroSections[_section] ?? activityHeroSections['overview']!;
     Widget logButton(Key? k) => FFButton(
       key: k,
       label: context.tr('logActivity.open'),
@@ -103,6 +126,28 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
       rounded: panel,
       minHeight: panel ? 200 : _heroHeight(context, topInset),
       topInset: panel ? 0 : topInset,
+      clearPhoto: panel
+          ? 0
+          : heroBandClear(
+              activityHeroClearPhoto,
+              viewportHeight: MediaQuery.sizeOf(context).height,
+              textScale: MediaQuery.textScalerOf(context).scale(1),
+            ),
+      // The hero starts at the top of the screen; the switcher follows it
+      // 24px down on the dark ground, or right at its edge on the light
+      // sheet that overlaps it, and below the Sample badge when shown.
+      maxHeight: panel
+          ? double.infinity
+          : FFTokens.heroBandControlShare * MediaQuery.sizeOf(context).height -
+                (Theme.of(context).brightness == Brightness.dark
+                    ? FFTokens.spacingLg
+                    : 0) -
+                (data.activityIsSample
+                    ? FFTokens.spacingSm +
+                          _sampleBadgeHeight *
+                              MediaQuery.textScalerOf(context).scale(1)
+                    : 0),
+      minClearPhoto: FFTokens.heroBandMinClearPhoto,
       eyebrow: context.tr('activity.title'),
       headlineLead: context.tr('$key.lead'),
       headlineAccent: context.tr('$key.accent'),
@@ -139,12 +184,12 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
               child: ActivitySampleBadge(),
             ),
           ),
-        _sections(context),
+        _sections(context, data),
         const SizedBox(height: FFTokens.spacingMd),
         ..._sectionContent(context, data, today),
       ];
 
-  Widget _sections(BuildContext context) => SizedBox(
+  Widget _sections(BuildContext context, MemberData data) => SizedBox(
     width: double.infinity,
     child: FFSegmented(
       key: const Key('activity-sections'),
@@ -154,6 +199,9 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
         ('workouts', context.tr('activity.workouts')),
         ('challenges', context.tr('activity.challenges')),
         ('progress', context.tr('activity.progress')),
+        // Events S2 (spec §11.1): only with the build flag and the server
+        // probe on. The hero keeps the Activity photo set.
+        if (data.eventsDiscovery) ('events', context.tr('activity.events')),
       ],
       onChanged: (v) => setState(() => _section = v),
     ),
@@ -164,7 +212,10 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
     MemberData data,
     DateTime today,
   ) => [
-    if (!data.activityLoaded)
+    // Events have their own loading states and do not wait for activity.
+    if (_section == 'events' && data.eventsDiscovery)
+      const EventsDiscoveryView(key: Key('activity-events'), inline: true)
+    else if (!data.activityLoaded)
       const Padding(
         padding: EdgeInsets.all(FFTokens.spacingXl),
         child: Center(child: FFSpinner(size: 32)),
@@ -191,7 +242,10 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
         ? FFPhotoFooter.sliver(
             key: const Key('activity-footer'),
             pageKey: 'member.activity',
-            top: activityHeroSections[_section]!.$1,
+            top:
+                (activityHeroSections[_section] ??
+                        activityHeroSections['overview']!)
+                    .$1,
             enabled: data.activityLoaded,
             gap: padded
                 ? FFTokens.spacingXl - FFTokens.spacingLg
@@ -275,33 +329,9 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
               child: ActivitySampleBadge(),
             ),
           ),
-        SizedBox(
-          width: double.infinity,
-          child: FFSegmented(
-            key: const Key('activity-sections'),
-            value: _section,
-            options: [
-              ('overview', context.tr('activity.overview')),
-              ('workouts', context.tr('activity.workouts')),
-              ('challenges', context.tr('activity.challenges')),
-              ('progress', context.tr('activity.progress')),
-            ],
-            onChanged: (v) => setState(() => _section = v),
-          ),
-        ),
+        _sections(context, data),
         const SizedBox(height: FFTokens.spacingMd),
-        if (!data.activityLoaded)
-          const Padding(
-            padding: EdgeInsets.all(FFTokens.spacingXl),
-            child: Center(child: FFSpinner(size: 32)),
-          )
-        else
-          ...switch (_section) {
-            'workouts' => _workouts(context, data, today),
-            'challenges' => buildChallengesSection(context, data, today),
-            'progress' => buildProgressSection(context, data, today),
-            _ => _overview(context, data.activities, data.goals, today),
-          },
+        ..._sectionContent(context, data, today),
       ],
     );
   }

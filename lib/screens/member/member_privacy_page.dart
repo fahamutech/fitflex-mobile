@@ -8,6 +8,7 @@ import '../../shared/activity/trainer_connection.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
+import '../../shared/widgets/shop_home/shop_personalisation.dart';
 import 'member_shell.dart';
 import 'widgets/phone_steps_card.dart';
 import 'widgets/share_picker.dart' show SocialPrivacySection;
@@ -42,6 +43,8 @@ class MemberPrivacyPage extends StatelessWidget {
           subtitle: context.tr('msgPrefs.tile'),
           onTap: () => context.push(AppRoutes.memberMessageSettings),
         ),
+        // Shop Phase 2 S2: hidden unless SHOP_PERSONALISATION is on.
+        const ShopPrivacyTile(),
         FFActionTile(
           key: const Key('privacy-activity-sharing'),
           icon: Icons.share_outlined,
@@ -413,7 +416,9 @@ class _BackRow extends StatelessWidget {
     alignment: Alignment.centerLeft,
     child: FFButton(
       label: label,
-      onPressed: () => context.go(to),
+      // Opened on top of another screen (the shop's Why sheet pushes the
+      // Privacy page): Back returns there. Otherwise go to [to].
+      onPressed: () => context.canPop() ? context.pop() : context.go(to),
       variant: FFButtonVariant.ghost,
       size: FFButtonSize.sm,
       icon: Icons.arrow_back,

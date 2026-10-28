@@ -670,6 +670,24 @@ class ApiClient {
     Map<String, dynamic> profile,
   ) async => await _request('POST', '/me/profile', body: profile);
 
+  /// Partner date of birth (fitflex-functions#253): the date of birth and
+  /// gender kept on the Person → { dateOfBirth, gender, source, ask,
+  /// required, genderFrom }. 404 feature_disabled while the server flag
+  /// PARTNER_DOB_REQUIRED is off.
+  Future<Map<String, dynamic>> personalDetails() async =>
+      Map<String, dynamic>.from(
+        await _request('GET', '/me/personal-details') as Map,
+      );
+
+  /// Saves { dateOfBirth?, gender? }: a key left out keeps the stored value;
+  /// dateOfBirth "" clears it; gender null clears it ("prefer not to say").
+  /// Answers the same body as [personalDetails].
+  Future<Map<String, dynamic>> savePersonalDetails(
+    Map<String, dynamic> changes,
+  ) async => Map<String, dynamic>.from(
+    await _request('PUT', '/me/personal-details', body: changes) as Map,
+  );
+
   Future<List<dynamic>> listPasses() async => await _request('GET', '/passes');
 
   Future<List<dynamic>> listSubscriptionTiers() async =>
@@ -1847,10 +1865,17 @@ class ApiClient {
   /// [session] (the app's promotion session, as on `/discover/*`) lets the
   /// server sign promotion tokens for Featured cards. [mode] null asks for
   /// the server's default role.
+  ///
+  /// [areaId] (Phase 2 S3, "Popular near you") is the id of the area the
+  /// phone worked out from its own position, sent in the `X-FF-Area` header
+  /// (not the URL, so it stays out of URL logs and history). It is the only
+  /// location-derived value the app ever sends: there is deliberately no
+  /// latitude/longitude parameter here.
   Future<Map<String, dynamic>> shopHome({
     String? mode,
     String? session,
     List<String> recent = const [],
+    String? areaId,
   }) async {
     final out = await _request(
       'GET',
@@ -1860,6 +1885,75 @@ class ApiClient {
           'session': session,
         if (recent.isNotEmpty) 'recent': recent.join(','),
       }),
+      extraHeaders: {
+        if (areaId != null && areaId.isNotEmpty) kShopAreaHeader: areaId,
+      },
+    );
+    return Map<String, dynamic>.from(out as Map);
+  }
+
+  /// The header that carries the near-you area on GET /shop/home.
+  static const kShopAreaHeader = 'X-FF-Area';
+
+  /// The active shop areas (Phase 2 S3): `{areas: [{id, level, name, names,
+  /// parentId, lat, lng, radiusKm}]}`. 404 `feature_disabled` when
+  /// SHOP_NEAR_YOU is off. The same for everyone (nothing personal).
+  Future<Map<String, dynamic>> shopAreas() async {
+    final out = await _request('GET', '/shop/areas');
+    return Map<String, dynamic>.from(out as Map);
+  }
+
+  /// Shop personalisation (Phase 2 S2): `{personalised, available}`. 404
+  /// `feature_disabled` when SHOP_PERSONALISATION is off.
+  ///
+  /// [mode] (the role being shopped as, as on /shop/home) lets the server
+  /// say what is used in that mode; an older server ignores it.
+  Future<Map<String, dynamic>> shopPreferences({String? mode}) async {
+    Future<Object?> ask(String? m) => _request(
+      'GET',
+      _withQuery('/shop/preferences', {
+        if (m != null && m.isNotEmpty) 'mode': m,
+      }),
+    );
+    return Map<String, dynamic>.from(await _retryWithoutMode(mode, ask) as Map);
+  }
+
+  /// `403 mode_not_allowed` (this person does not hold [mode]): ask once
+  /// more without a mode, for the server's default role (as /shop/home).
+  Future<Object?> _retryWithoutMode(
+    String? mode,
+    Future<Object?> Function(String? mode) call,
+  ) async {
+    try {
+      return await call(mode);
+    } on ApiException catch (e) {
+      if (mode == null ||
+          mode.isEmpty ||
+          e.status != 403 ||
+          e.code != 'mode_not_allowed') {
+        rethrow;
+      }
+      return await call(null);
+    }
+  }
+
+  /// Turns "Personalised shop" on or off. [source] is `privacy_page` or
+  /// `why_sheet`. Answers like [shopPreferences].
+  Future<Map<String, dynamic>> updateShopPreferences({
+    required bool personalised,
+    required String source,
+    String? mode,
+  }) async {
+    // A refused mode saves nothing on the server, so the retry is safe.
+    final out = await _retryWithoutMode(
+      mode,
+      (m) => _request(
+        'PUT',
+        _withQuery('/shop/preferences', {
+          if (m != null && m.isNotEmpty) 'mode': m,
+        }),
+        body: {'personalised': personalised, 'source': source},
+      ),
     );
     return Map<String, dynamic>.from(out as Map);
   }
@@ -1881,6 +1975,10 @@ class ApiClient {
     bool? delivery,
     bool? promotions,
     String? sort,
+
+    /// Shop S3 (QA #4): the near-you area, in `X-FF-Area` (never the URL),
+    /// so rows can carry `deliversToViewerArea`.
+    String? areaId,
   }) async {
     final query = <String, String>{
       if (category != null && category.isNotEmpty) 'category': category,
@@ -1898,7 +1996,7 @@ class ApiClient {
     final path = query.isEmpty
         ? '/shop/products'
         : '/shop/products?${Uri(queryParameters: query).query}';
-    return await _request('GET', path);
+    return await _request('GET', path, extraHeaders: _areaHeader(areaId));
   }
 
   Future<Map<String, dynamic>> createShopOrder(
@@ -1928,8 +2026,17 @@ class ApiClient {
     },
   );
 
-  Future<Map<String, dynamic>> shopProduct(String id) async =>
-      await _request('GET', '/shop/products/$id');
+  /// [areaId]: the near-you area in `X-FF-Area` (QA #4), for the
+  /// "Delivers to your area" badge.
+  Future<Map<String, dynamic>> shopProduct(String id, {String? areaId}) async =>
+      await _request(
+        'GET',
+        '/shop/products/$id',
+        extraHeaders: _areaHeader(areaId),
+      );
+
+  static Map<String, String>? _areaHeader(String? areaId) =>
+      areaId == null || areaId.isEmpty ? null : {kShopAreaHeader: areaId};
 
   Future<Map<String, dynamic>> vendorStore(String id) async =>
       await _request('GET', '/shop/vendors/$id');
@@ -2867,6 +2974,67 @@ class ApiClient {
   // ── Owner communications (messages to the gym's direct members) ─────────
 
   static final _discoverSession = RegExp(r'^[A-Za-z0-9_-]{8,64}$');
+
+  // ── Events (Marathon & Running Events S2, member discovery) ──────────────
+  // docs/design/events-s2-organizer-and-discovery.md §13, §14.1, §14.2,
+  // §14.5. Paths, query names and fields are the server's; nothing is
+  // invented here.
+
+  /// Public probe: `{discovery, favourites, registration, currency,
+  /// closingSoonHours, regions, timezones}`. Answers even while the server
+  /// module is off (`discovery: false`); the caller treats a 404 or a
+  /// network error as "off".
+  Future<Map<String, dynamic>> eventsOptions() async {
+    final out = await _request('GET', '/events/options');
+    return out is Map ? Map<String, dynamic>.from(out) : <String, dynamic>{};
+  }
+
+  /// One page of published events: `{items, nextCursor, total?}`.
+  /// [query] holds the filter's parameters (repeated keys as lists, e.g.
+  /// `type`, `distance`); [cursor] is the previous page's `nextCursor`;
+  /// every call carries `limit`.
+  Future<Map<String, dynamic>> listEvents(
+    Map<String, List<String>> query, {
+    String? cursor,
+    int limit = 20,
+  }) async {
+    final params = <String, dynamic>{
+      for (final e in query.entries)
+        if (e.value.isNotEmpty)
+          e.key: e.value.length == 1 ? e.value.single : e.value,
+      if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+      'limit': '$limit',
+    };
+    final out = await _request(
+      'GET',
+      '/events?${Uri(queryParameters: params).query}',
+    );
+    if (out is List) return {'items': out, 'nextCursor': null};
+    return out is Map ? Map<String, dynamic>.from(out) : <String, dynamic>{};
+  }
+
+  /// One event by id (or slug). 404 `event_not_found` for anything not
+  /// published to this caller; 404 `feature_disabled` while the module is off.
+  Future<Map<String, dynamic>> getEvent(String eventId) async {
+    final out = await _request(
+      'GET',
+      '/events/${Uri.encodeComponent(eventId)}',
+    );
+    return Map<String, dynamic>.from(out as Map);
+  }
+
+  /// Saves an event (favourites flag, §14.5). 204.
+  Future<void> saveEvent(String eventId) async => await _request(
+    'PUT',
+    '/me/event-favourites/${Uri.encodeComponent(eventId)}',
+    body: const <String, dynamic>{},
+  );
+
+  /// Removes a saved event. 204.
+  Future<void> unsaveEvent(String eventId) async => await _request(
+    'DELETE',
+    '/me/event-favourites/${Uri.encodeComponent(eventId)}',
+  );
 
   static String _withQuery(String path, Map<String, String> query) =>
       query.isEmpty ? path : '$path?${Uri(queryParameters: query).query}';

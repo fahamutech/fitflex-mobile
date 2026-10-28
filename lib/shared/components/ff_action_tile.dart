@@ -9,6 +9,7 @@ class FFActionTile extends StatelessWidget {
     required this.icon,
     required this.title,
     this.subtitle,
+    this.subtitleWidget,
     this.trailing,
     required this.onTap,
   });
@@ -16,13 +17,18 @@ class FFActionTile extends StatelessWidget {
   final IconData icon;
   final String title;
   final String? subtitle;
+
+  /// Shown instead of [subtitle] (e.g. a loading line).
+  final Widget? subtitleWidget;
   final Widget? trailing;
-  final VoidCallback onTap;
+
+  /// Null: the tile is disabled (dimmed, not tappable).
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return FFCard(
+    final tile = FFCard(
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(FFTokens.radiusXl),
@@ -48,7 +54,10 @@ class FFActionTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(title, style: theme.textTheme.titleSmall),
-                  if (subtitle != null) ...[
+                  if (subtitleWidget != null) ...[
+                    const SizedBox(height: FFTokens.spacing2xs),
+                    subtitleWidget!,
+                  ] else if (subtitle != null) ...[
                     const SizedBox(height: FFTokens.spacing2xs),
                     Text(subtitle!, style: theme.textTheme.bodySmall),
                   ],
@@ -65,5 +74,6 @@ class FFActionTile extends StatelessWidget {
         ),
       ),
     );
+    return onTap == null ? Opacity(opacity: 0.6, child: tile) : tile;
   }
 }

@@ -12,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'api_client.dart';
 import 'product_categories.dart';
+import 'shop_near_you.dart';
 
 /// `--dart-define=SHOP_HOME_V2=true` turns the new shop home on. Off (the
 /// default) leaves today's shop screen exactly as it was.
@@ -93,15 +94,35 @@ class ShopReasonCode {
     final params = json['params'];
     return ShopReasonCode(
       code,
-      params is Map
-          ? {
-              for (final e in params.entries)
-                if (e.value != null) e.key.toString(): e.value.toString(),
-            }
-          : const {},
+      params is Map ? shopReasonParams(params) : const {},
     );
   }
 }
+
+/// Reason values as strings. A value sent in both languages (`areaName:
+/// {en, sw}`, slice 3) becomes `areaName` (English) and `areaName.sw`; read
+/// it with [shopReasonParam].
+Map<String, String> shopReasonParams(Map raw) {
+  final out = <String, String>{};
+  for (final e in raw.entries) {
+    final key = e.key.toString();
+    final v = e.value;
+    if (v == null) continue;
+    if (v is Map) {
+      final text = ShopText.fromJson(v);
+      if (text == null) continue;
+      out[key] = text.of('en');
+      out['$key.sw'] = text.of('sw');
+    } else {
+      out[key] = v.toString();
+    }
+  }
+  return out;
+}
+
+/// The value of [key] in [lang] from [shopReasonParams] output.
+String? shopReasonParam(Map<String, String> params, String key, String lang) =>
+    (lang == 'sw' ? params['$key.sw'] : null) ?? params[key];
 
 class ShopHomeSection {
   const ShopHomeSection({
@@ -144,6 +165,13 @@ class ShopHomeSection {
   factory ShopHomeSection.fromJson(Map<String, dynamic> json) {
     final viewAll = json['viewAll'];
     final query = viewAll is Map ? viewAll['query'] : null;
+    // Phase 2 S2: `reasonParams` ({category} / {productName}) sits on the
+    // section; `reasonCodes` stays a list of strings. Codes sent without
+    // their own params take the section's.
+    final rawParams = json['reasonParams'];
+    final sectionParams = rawParams is Map
+        ? shopReasonParams(rawParams)
+        : const <String, String>{};
     return ShopHomeSection(
       key: json['key']?.toString() ?? '',
       title: ShopText.fromJson(json['title']),
@@ -151,6 +179,11 @@ class ShopHomeSection {
       reasonCodes: (json['reasonCodes'] as List? ?? [])
           .map(ShopReasonCode.fromJson)
           .whereType<ShopReasonCode>()
+          .map(
+            (c) => c.params.isEmpty && sectionParams.isNotEmpty
+                ? ShopReasonCode(c.code, sectionParams)
+                : c,
+          )
           .toList(),
       hasMore: json['hasMore'] is bool ? json['hasMore'] as bool : null,
       viewAll: query is Map
@@ -377,7 +410,19 @@ class ShopHomeData {
     this.allProductsCount,
     this.banners = const [],
     this.bannersOn = false,
+    this.personalisation,
+    this.nearYou,
   });
+
+  /// Phase 2 S3 (SHOP_NEAR_YOU): whether "Popular near you" may be used for
+  /// this person now, and the area the answer was built for. Null from a
+  /// backend without the flag: no invite, no rail, no location read.
+  final ShopNearYou? nearYou;
+
+  /// Phase 2 S2 (SHOP_PERSONALISATION): whether the "Personalised shop"
+  /// switch is offered and on. Null from a backend without the flag: no
+  /// switch and nothing personal is shown.
+  final ShopPersonalisation? personalisation;
 
   /// The server sent a `banners` key (SHOP_BANNERS on), even if empty.
   /// Off: no key, and the home is laid out exactly as before.
@@ -404,6 +449,8 @@ class ShopHomeData {
     final rawProducts = json['products'];
     final serverNow = DateTime.tryParse(json['serverNow']?.toString() ?? '');
     return ShopHomeData(
+      personalisation: ShopPersonalisation.fromJson(json['personalisation']),
+      nearYou: ShopNearYou.fromJson(json['nearYou']),
       bannersOn: json['banners'] is List,
       banners: (json['banners'] is List ? json['banners'] as List : const [])
           .map(ShopBanner.fromJson)
@@ -451,6 +498,124 @@ class ShopHomeData {
     );
   }
 }
+
+/// `personalisation` on GET /shop/home (Phase 2 S2). [available] is false
+/// when the flag is off for this account or it may not be personalised
+/// (under 18): the switch is then hidden and nothing personal is shown.
+class ShopPersonalisation {
+  const ShopPersonalisation({required this.available, required this.enabled});
+  final bool available;
+  final bool enabled;
+
+  /// Personal reasons may be shown only when both are true.
+  bool get active => available && enabled;
+
+  static ShopPersonalisation? fromJson(Object? json) {
+    if (json is! Map) return null;
+    return ShopPersonalisation(
+      available: json['available'] == true,
+      enabled: json['enabled'] == true,
+    );
+  }
+}
+
+/// GET/PUT /shop/preferences (Phase 2 S2). A 404 `feature_disabled` (or any
+/// 404 / non-JSON answer) means personalisation does not exist here: every
+/// personalisation control is hidden.
+class ShopPreferences {
+  const ShopPreferences({
+    required this.personalised,
+    required this.available,
+    this.historyDays,
+    this.uses,
+    this.mode,
+  });
+  final bool personalised;
+  final bool available;
+
+  /// The shopping mode the answer is for (`member`, `trainer`, `owner`,
+  /// `vendor_personal`); null from a backend that does not say.
+  final String? mode;
+
+  /// How far back purchase history is read (server `SHOP_HISTORY_DAYS`).
+  /// Null from a backend that does not say.
+  final int? historyDays;
+
+  /// The signals actually in use for this account right now, as
+  /// [ShopSignal] names. Null from a backend that does not send `uses`.
+  final Set<ShopSignal>? uses;
+
+  /// Where a change was made, sent with every PUT.
+  static const sourcePrivacyPage = 'privacy_page';
+  static const sourceWhySheet = 'why_sheet';
+
+  /// [historyDays] as whole months (365 → 12), at least 1. Null when unknown.
+  int? get historyMonths {
+    final days = historyDays;
+    if (days == null || days <= 0) return null;
+    final months = (days / 30.4).round();
+    return months < 1 ? 1 : months;
+  }
+
+  static ShopPreferences fromJson(Object? json) {
+    final m = json is Map ? json : const {};
+    final rawUses = m['uses'];
+    return ShopPreferences(
+      // Default on (O-6): only an explicit false is off.
+      personalised: m['personalised'] != false,
+      available: m['available'] == true,
+      mode: m['mode'] is String ? m['mode'] as String : null,
+      historyDays: m['historyDays'] is num
+          ? (m['historyDays'] as num).toInt()
+          : null,
+      uses: rawUses is List
+          ? {for (final u in rawUses) ?ShopSignal.fromWire(u?.toString())}
+          : null,
+    );
+  }
+}
+
+/// A signal the shop uses, as listed in `uses` (functions#239), in the
+/// server's order. Anything else is ignored.
+enum ShopSignal {
+  purchaseHistory('purchase_history'),
+  gender('profile_gender'),
+  age('profile_age'),
+
+  /// Phase 2 S3: "your current area is used if you allow location on this
+  /// device" (the server cannot know the device's choice).
+  location('location'),
+  goal('goal'),
+  specialty('specialty');
+
+  const ShopSignal(this.wire);
+  final String wire;
+
+  static ShopSignal? fromWire(String? wire) {
+    for (final s in values) {
+      if (s.wire == wire) return s;
+    }
+    return null;
+  }
+}
+
+/// Product "Made for" values on the wire (null = everyone), Phase 2 S2.
+const kTargetGenders = ['women', 'men'];
+
+/// Product "Age group" bands on the wire, in display order (none = all ages).
+const kTargetAgeBands = ['18_29', '30_44', '45_59', '60_plus'];
+
+/// Reason codes that rest on the customer's own data. Never shown unless
+/// the server says personalisation is available and on.
+const kPersonalReasonCodes = {
+  'bought_category',
+  'bought_product',
+  'profile_gender',
+  'profile_age',
+  'delivers_to_area',
+  'popular_in_area',
+  'seller_in_area',
+};
 
 /// The app's own name for a category key (the compiled-in list), or the key
 /// itself when even that does not know it.

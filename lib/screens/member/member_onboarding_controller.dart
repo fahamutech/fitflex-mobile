@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import '../../shared/api_client.dart';
 import '../../shared/api_error_message.dart';
 import '../../shared/auth_state.dart';
+import '../../shared/date_of_birth.dart';
 import '../../shared/i18n.dart';
+import '../../shared/partner_details.dart';
 
 class MemberOnboardingController extends ChangeNotifier {
   final ApiClient api;
@@ -141,7 +143,13 @@ class MemberOnboardingController extends ChangeNotifier {
       await auth.signIn(auth.token!, user);
       onSuccess();
     } on ApiException catch (e) {
-      onError(apiErrorMessage(locale, e));
+      // 400 invalid_field dateOfBirth: say so plainly, not a generic error.
+      // 400 partner_under_18: a Trainer or gym owner must be 18 or older.
+      onError(
+        isPartnerUnder18Error(e)
+            ? locale.t('error.reason.partnerUnder18')
+            : dateOfBirthErrorMessage(locale, e) ?? apiErrorMessage(locale, e),
+      );
     } catch (e) {
       onError(errorMessage(locale, e));
     } finally {

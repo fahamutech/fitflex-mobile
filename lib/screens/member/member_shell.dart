@@ -18,6 +18,10 @@ import '../../shared/activity/workout.dart';
 import '../../shared/api_error_message.dart';
 import '../../shared/auth_state.dart';
 import '../../shared/design_tokens.dart';
+import '../../shared/events/event_filter.dart';
+import '../../shared/events/event_summary.dart';
+import '../../shared/events/events_options.dart';
+import '../../shared/events_flag.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
 import '../../shared/root_back_navigation.dart';
@@ -77,6 +81,18 @@ class MemberData extends ChangeNotifier {
   List<GymSharing> gymSharing = [];
   List<Challenge> challenges = [];
   bool challengesLoaded = false;
+
+  /// Events S2 (spec §11.1, §13): what `GET /events/options` said. Off until
+  /// the probe answers; off again when it fails. Only read with the
+  /// `EVENTS_DISCOVERY` build flag on.
+  EventsOptions eventsOptions = EventsOptions.off;
+
+  /// Whether event discovery shows (build flag and server probe both on).
+  bool get eventsDiscovery => eventsDiscoveryEnabled && eventsOptions.discovery;
+
+  /// The two soonest open events for the Home card (`GET
+  /// /events?limit=2&availability=open`); empty hides the card.
+  List<EventSummary> upcomingEvents = [];
 
   /// Gym check-ins as the challenge engine needs them.
   List<({DateTime at, String? gymId})> get checkInMoments => [
@@ -197,6 +213,8 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
   int get _tabIndex {
     final loc = GoRouterState.of(context).matchedLocation;
     if (loc.startsWith('/member/activity')) return 1;
+    // Event discovery is a section of Activity (events S2 spec §11.1).
+    if (loc.startsWith('/member/events')) return 1;
     // Trainer discovery lives under Gyms now that Activity has the tab.
     if (loc.startsWith('/member/gyms')) return 2;
     if (loc.startsWith('/member/trainers')) return 2;
@@ -309,6 +327,7 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
         _refreshGymSharing(),
         _refreshChallenges(),
         _refreshBenefits(),
+        _refreshEvents(),
       ]);
       if (_data.canCheckIn) await _refreshQr();
     } finally {
@@ -665,6 +684,44 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
       _data.update((d) => d.sponsoredGymAccess = sponsored);
     } catch (_) {}
   }
+
+  /// Events S2: probe `GET /events/options`, then the two soonest open
+  /// events for the Home card. Nothing is asked with the build flag off; any
+  /// failure (404 while the server module is off, offline) means "off" and
+  /// an empty card list, never an error on screen.
+  Future<void> _refreshEvents() async {
+    if (!eventsDiscoveryEnabled) return;
+    final api = AppScope.of(context).api;
+    EventsOptions options;
+    try {
+      options = EventsOptions.fromJson(await api.eventsOptions());
+    } catch (_) {
+      options = EventsOptions.off;
+    }
+    var upcoming = <EventSummary>[];
+    if (options.discovery) {
+      try {
+        final page = await api.listEvents(
+          const EventFilter(openOnly: true).toQuery(),
+          limit: 2,
+        );
+        upcoming = [
+          for (final item in (page['items'] as List?) ?? const [])
+            if (item is Map)
+              EventSummary.fromJson(Map<String, dynamic>.from(item)),
+        ];
+      } catch (_) {
+        upcoming = [];
+      }
+    }
+    _data.update(
+      (d) => d
+        ..eventsOptions = options
+        ..upcomingEvents = upcoming,
+    );
+  }
+
+  Future<void> refreshEvents() => _refreshEvents();
 
   Future<void> refreshMe() async {
     await _refreshMe();

@@ -20,6 +20,13 @@ import 'widgets/gym_card.dart';
 import 'widgets/directory_states.dart';
 import 'widgets/gym_filters.dart';
 
+/// PHOTO_HERO_UI (owner 2026-10-22, bands "too dark"): the band grows for
+/// [FFTokens.heroBandClearPhoto] of clear photo above its text, but no taller
+/// than this on a 390x844 screen, so search (16px under it) starts
+/// above 55% of the screen
+/// (FFHeroBand.maxHeightAt844).
+const double gymsBandMaxHeight = 321;
+
 class MemberGymsTab extends StatefulWidget {
   const MemberGymsTab({super.key});
 
@@ -277,6 +284,8 @@ class _MemberGymsTabState extends State<MemberGymsTab> {
                         photo: FFHeroPhoto.gyms,
                         headingFocusNode: _heroFocus,
                         minHeight: 160,
+                        clearPhoto: FFTokens.heroBandClearPhoto,
+                        maxHeightAt844: gymsBandMaxHeight,
                         wideHeight: 200,
                         // Not "Discover gyms": the section strip below
                         // already says it (spec §32.2).

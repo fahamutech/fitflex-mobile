@@ -89,7 +89,14 @@ class RestLogger {
   }
 }
 
-const _secretHeaders = {'authorization', 'cookie', 'set-cookie', 'x-api-key'};
+// x-ff-area: the shopper's area (shop near-you) is personal; never printed.
+const _secretHeaders = {
+  'authorization',
+  'cookie',
+  'set-cookie',
+  'x-api-key',
+  'x-ff-area',
+};
 
 Map<String, String> redactHeaders(Map<String, String> headers) => {
   for (final e in headers.entries)
@@ -100,9 +107,10 @@ Map<String, String> redactHeaders(Map<String, String> headers) => {
 
 /// JSON keys whose string or number values are replaced with `<redacted>`:
 /// any key ending in token, pin, password, secret or otp (idToken, setupToken,
-/// newPin, ...), plus verification `code`.
+/// newPin, ...), plus verification `code` and the personal details
+/// `dateOfBirth` and `gender` (fitflex-functions#253).
 final _secretValue = RegExp(
-  r'"([A-Za-z_]*(?:token|pin|password|secret|otp)|code)"\s*:\s*("(?:[^"\\]|\\.)*"|-?\d+)',
+  r'"([A-Za-z_]*(?:token|pin|password|secret|otp)|code|dateOfBirth|gender)"\s*:\s*("(?:[^"\\]|\\.)*"|-?\d+)',
   caseSensitive: false,
 );
 

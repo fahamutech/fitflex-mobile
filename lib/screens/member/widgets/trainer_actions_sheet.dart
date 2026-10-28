@@ -7,6 +7,7 @@ import '../../../shared/design_tokens.dart';
 import '../../../shared/formatters.dart';
 import '../../../shared/i18n.dart';
 import '../../../shared/models.dart';
+import 'mobile_money_pay.dart';
 
 /// A4 — next calendar date (YYYY-MM-DD) for an availability day label.
 /// Supports weekday names ('monday'...) and legacy exact dates ('2026-05-05').
@@ -44,13 +45,18 @@ Future<bool?> showTrainerBookingSheet(
   TrainerProfile trainer, {
   List<({String date, String slot})> slots = const [],
   String? gymId,
+  VoidCallback? onPaid,
 }) {
   return showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
-    builder: (ctx) =>
-        TrainerBookingSheet(trainer: trainer, slots: slots, gymId: gymId),
+    builder: (ctx) => TrainerBookingSheet(
+      trainer: trainer,
+      slots: slots,
+      gymId: gymId,
+      onPaid: onPaid,
+    ),
   );
 }
 
@@ -60,9 +66,14 @@ class TrainerBookingSheet extends StatefulWidget {
     required this.trainer,
     this.slots = const [],
     this.gymId,
+    this.onPaid,
   });
 
   final TrainerProfile trainer;
+
+  /// Runs when the booking was paid by mobile money straight away
+  /// (fitflex-functions#240): the sessions are confirmed.
+  final VoidCallback? onPaid;
 
   /// Slots already picked on the calendar (skips the pick step).
   final List<({String date, String slot})> slots;
@@ -186,11 +197,24 @@ class _TrainerBookingSheetState extends State<TrainerBookingSheet> {
   });
 
   Future<void> _confirm() => _run(() async {
-    await AppScope.of(context).api.bookTrainer(
+    final created = await AppScope.of(context).api.bookTrainer(
       trainerId: widget.trainer.id,
       gymId: _pickedGymId!,
       slots: _slotJson,
     );
+    if (!mounted) return;
+    // With mobile money on for trainer sessions, pay straight away. A free
+    // session has no payment request and is confirmed already.
+    final req = created['paymentRequest'];
+    if (req is Map) {
+      await offerMobileMoney(
+        context,
+        paymentRequestId: req['id'] as String?,
+        amountTzs: (req['amountTzs'] as num?) ?? 0,
+        productType: MomoProduct.trainerSession,
+        onCompleted: widget.onPaid,
+      );
+    }
     if (mounted) Navigator.pop(context, true);
   });
 

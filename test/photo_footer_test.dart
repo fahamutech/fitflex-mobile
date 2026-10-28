@@ -276,18 +276,18 @@ void main() {
   group('photo choice (spec §33.6, AC-M4)', () {
     test('the stand-in mapping equals the spec table', () {
       expect(footerPagePhotos, {
-        'member.home': FFHeroPhoto.footerStudio,
-        'member.activity': FFHeroPhoto.footerGymFloor,
-        'member.profile': FFHeroPhoto.footerRack,
-        'member.passes': FFHeroPhoto.footerRack,
-        'member.gyms': FFHeroPhoto.footerStudio,
-        'member.trainers': FFHeroPhoto.footerGymFloor,
-        'member.shop': FFHeroPhoto.footerShelves,
-        'member.gymDetail': FFHeroPhoto.footerRack,
-        'member.trainerDetail': FFHeroPhoto.footerStudio,
-        'trainer.home': FFHeroPhoto.footerShelves,
-        'vendor.products': FFHeroPhoto.footerRack,
-        'owner.home': FFHeroPhoto.footerStudio,
+        'member.home': FFHeroPhoto.footerStretch,
+        'member.activity': FFHeroPhoto.footerRooftop,
+        'member.profile': FFHeroPhoto.footerNightHall,
+        'member.passes': FFHeroPhoto.footerRooftop,
+        'member.gyms': FFHeroPhoto.footerNightHall,
+        'member.trainers': FFHeroPhoto.footerStretch,
+        'member.shop': FFHeroPhoto.footerHydration,
+        'member.gymDetail': FFHeroPhoto.footerRooftop,
+        'member.trainerDetail': FFHeroPhoto.footerHydration,
+        'trainer.home': FFHeroPhoto.footerStretch,
+        'vendor.products': FFHeroPhoto.footerRooftop,
+        'owner.home': FFHeroPhoto.footerNightHall,
       });
     });
 
@@ -352,15 +352,22 @@ void main() {
     });
 
     test('a clash with the top photo moves to the next pool photo', () {
-      // footerStudio shares the Profile photo's scene.
+      // Every bundled photo is its own scene now (2026-10-22), so a clash
+      // only comes from an admin-published top photo of a footer's scene.
       expect(
-        footerPhotoFor('member.home', top: FFHeroPhoto.profile),
-        FFHeroPhoto.footerGymFloor,
+        footerPhotoFor(
+          'member.home',
+          avoidSourceId: FFHeroPhoto.footerStretch.sourceId,
+        ),
+        FFHeroPhoto.footerRooftop,
       );
-      // footerShelves shares the vendor photo's scene (pool wraps around).
+      // The pool wraps around.
       expect(
-        footerPhotoFor('member.shop', top: FFHeroPhoto.vendor),
-        FFHeroPhoto.footerStudio,
+        footerPhotoFor(
+          'owner.home',
+          avoidSourceId: FFHeroPhoto.footerNightHall.sourceId,
+        ),
+        FFHeroPhoto.footerStretch,
       );
       // A page not in the table: a stable pick, the same every time.
       expect(footerPhotoFor('some.page'), footerPhotoFor('some.page'));
@@ -402,10 +409,12 @@ void main() {
     footerTest('short Trainers list: no footer; growing past the screen '
         'shows it, and it stays (hysteresis)', (tester, api) async {
       final data = _data(trainers: 1);
+      // Tall enough that one trainer under the band (taller since owner
+      // 2026-10-22, clear photo above its text) still fits on the screen.
       await _host(
         tester,
         _scoped(data, const MemberTrainersTab()),
-        size: const Size(430, 932),
+        size: const Size(430, 1100),
       );
       expect(_key('photo-footer'), findsNothing);
       expect(
@@ -567,6 +576,11 @@ void main() {
     ) async {
       _seedShop(api);
       await _host(tester, const MemberShopTab());
+      // The band (taller since owner 2026-10-22) may push the rail down.
+      await tester.ensureVisible(
+        find.byKey(const Key('shop-home-add-p0')).first,
+      );
+      await _frames(tester);
       await tester.tap(find.byKey(const Key('shop-home-add-p0')).first);
       await _frames(tester);
       expect(_key('shop-home-checkout'), findsOneWidget);
@@ -1009,7 +1023,7 @@ void main() {
   // ── assets ──────────────────────────────────────────────────────────
 
   group('photos', () {
-    test('caps, licence rows, no metadata, total within 1.6 MB', () {
+    test('caps, licence rows, no metadata, total within 2.0 MB', () {
       final licences = File(
         'assets/photos/hero/LICENSES.md',
       ).readAsStringSync();
@@ -1017,6 +1031,7 @@ void main() {
         final x1 = File('assets/photos/hero/${p.file}.webp');
         final x2 = File('assets/photos/hero/2.0x/${p.file}.webp');
         // Caps raised for the taller full-width crops (owner 2026-10-20).
+        // Generated set (2026-10-22): 1024x1024 at 2x, still within them.
         expect(x2.lengthSync(), lessThanOrEqualTo(90 * 1000), reason: p.name);
         expect(x1.lengthSync(), lessThanOrEqualTo(35 * 1000), reason: p.name);
         for (final f in [x1, x2]) {
@@ -1037,20 +1052,21 @@ void main() {
       ).listSync(recursive: true)) {
         if (f is File && f.path.endsWith('.webp')) total += f.lengthSync();
       }
-      expect(total, lessThanOrEqualTo(1600 * 1000));
+      // Budget raised to 2.0 MB for the FitFlex Africa set (2026-10-22).
+      expect(total, lessThanOrEqualTo(2000 * 1000));
     });
 
-    test('full-width set: 1080 wide at 2x, 540 at 1x, tall (about 1:1), '
-        'never upscaled', () {
+    test('full-width set: the full 1024 source width at 2x, 512 at 1x, '
+        'square, never upscaled', () {
       for (final p in footerPhotoPool) {
         final (w2, h2) = _vp8Size(
           File('assets/photos/hero/2.0x/${p.file}.webp'),
         );
         final (w1, h1) = _vp8Size(File('assets/photos/hero/${p.file}.webp'));
-        expect(w2, greaterThanOrEqualTo(1080), reason: p.name);
-        expect(w1, greaterThanOrEqualTo(540), reason: p.name);
-        // Taller than the old 16:7 strips: covers a 390x405 band at 2x
-        // without upscaling (the landscape sources are 972-1000 tall).
+        // The generated footer sources are 1024x1024: used at 1:1.
+        expect(w2, greaterThanOrEqualTo(1024), reason: p.name);
+        expect(w1, greaterThanOrEqualTo(512), reason: p.name);
+        // Covers a 390x405 band at 2x without upscaling.
         expect(h2, greaterThanOrEqualTo(972), reason: p.name);
         expect(w2 / h2, lessThanOrEqualTo(1.12), reason: p.name);
         expect(w1 / h1, closeTo(w2 / h2, 0.01), reason: p.name);
@@ -1088,7 +1104,7 @@ void main() {
       }
     });
 
-    testWidgets('sharp set: decoded size at 2x is at least 1080 wide', (
+    testWidgets('sharp set: decoded size at 2x is at least 1024 wide', (
       tester,
     ) async {
       await tester.runAsync(() async {
@@ -1098,7 +1114,7 @@ void main() {
           ).readAsBytesSync();
           final codec = await ui.instantiateImageCodec(bytes);
           final frame = await codec.getNextFrame();
-          expect(frame.image.width, greaterThanOrEqualTo(1080), reason: p.name);
+          expect(frame.image.width, greaterThanOrEqualTo(1024), reason: p.name);
           expect(frame.image.height, greaterThanOrEqualTo(972), reason: p.name);
           frame.image.dispose();
           codec.dispose();

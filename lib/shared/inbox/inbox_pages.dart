@@ -62,6 +62,11 @@ String? routeForMessage(BuildContext context, InboxMessage m) {
   final role =
       AppScope.of(context).auth.user?['userType']?.toString() ??
       AppScope.of(context).auth.role;
+  // A FitFlex admin added them: a member's benefits; otherwise the message
+  // says it all (no button).
+  if (m.type == b2bAdminAddedType) {
+    return adminAddedOpensBenefits(role, m.data) ? memberBenefitsRoute : null;
+  }
   if (partnerSide(role) case final side?) {
     return partnerRouteFor(
       side: side,
@@ -83,6 +88,7 @@ String? routeForMessage(BuildContext context, InboxMessage m) {
     trainerId: m.data['trainerId']?.toString(),
     planId: m.data['planId']?.toString(),
     bookingId: m.data['bookingId']?.toString(),
+    eventId: m.data['eventId']?.toString(),
   );
 }
 
@@ -94,6 +100,8 @@ String inboxButtonLabel(BuildContext context, InboxMessage m) {
   final side = partnerSide(role);
   final link = isB2BMemberRequest(m.type, m.data)
       ? 'memberRequests'
+      : m.type == b2bAdminAddedType
+      ? (adminAddedOpensBenefits(role, m.data) ? 'benefits' : '')
       : side == null
       ? memberLinkFor(deepLink: m.deepLink, type: m.type)
       : partnerLinkFor(side: side, type: m.type);
@@ -127,10 +135,12 @@ class _InboxPageState extends State<InboxPage> {
   @override
   Widget build(BuildContext context) {
     final inbox = AppScope.of(context).inbox;
-    final isMember =
-        (AppScope.of(context).auth.user?['userType'] ??
-            AppScope.of(context).auth.role) ==
-        'member';
+    final role =
+        AppScope.of(context).auth.user?['userType']?.toString() ??
+        AppScope.of(context).auth.role;
+    // Members, and vendors and their staff (some staff have no Business
+    // tab, where vendors also find it), choose their offers from here.
+    final showSettings = role == 'member' || partnerSide(role) == 'vendor';
     return Scaffold(
       appBar: AppBar(
         title: Text(context.tr('inbox.title')),
@@ -146,7 +156,7 @@ class _InboxPageState extends State<InboxPage> {
                 size: FFButtonSize.sm,
               ),
             ),
-          if (isMember)
+          if (showSettings)
             IconButton(
               key: const Key('inbox-settings'),
               tooltip: context.tr('msgPrefs.title'),

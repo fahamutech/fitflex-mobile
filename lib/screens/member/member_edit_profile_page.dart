@@ -8,9 +8,11 @@ import '../../app_scope.dart';
 import '../../shared/api_client.dart';
 import '../../shared/api_error_message.dart';
 import '../../shared/components/components.dart';
+import '../../shared/date_of_birth.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
+import '../../shared/partner_details.dart';
 import '../../shared/tone_theme.dart';
 import '../../shared/widgets/ff_photo_picker_field.dart';
 import '../../shared/widgets/verify_identifier.dart';
@@ -85,6 +87,9 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
   bool _busy = false;
   String? _error;
 
+  /// The server refused the date of birth (400 invalid_field dateOfBirth).
+  String? _dobError;
+
   MemberSummary get _user => widget.me.user;
   MemberProfile? get _profile => _user.memberProfile;
 
@@ -105,7 +110,10 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
     _username = TextEditingController(text: _currentUsername);
     _height = TextEditingController(text: _profile?.heightCm?.toString() ?? '');
     _weight = TextEditingController(text: _profile?.weightKg?.toString() ?? '');
-    _dateOfBirth = TextEditingController(text: _profile?.dateOfBirth ?? '');
+    _dateOfBirth = TextEditingController(
+      text: normaliseDateOfBirth(_profile?.dateOfBirth ?? ''),
+    );
+    _initialDob = _dateOfBirth.text.trim();
     _gender = _profile?.gender ?? '';
     _level = _profile?.fitnessLevel;
     _goals = {
@@ -193,6 +201,115 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
     return _check != _Check.available;
   }
 
+  // ── Date of birth ──
+
+  /// What is wrong with the date of birth (see shared/date_of_birth.dart).
+  /// Null for an empty field.
+  ///
+  /// The field takes typed text, so a value that is not YYYY-MM-DD at all
+  /// gets the format message; each message also says why the shop cannot
+  /// be personalised until it is fixed (the server fails closed).
+  String? _dobProblem(String? value) {
+    final text = value?.trim() ?? '';
+    final key = dateOfBirthProblemKey(text);
+    if (key == null) return null;
+    final shown = RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(text)
+        ? key
+        : 'member.dobFormat';
+    return '${context.tr(shown)} ${context.tr('member.dobNoPersonalisation')}';
+  }
+
+  /// A stored value that is not valid is flagged as soon as the page opens.
+  /// The date of birth as it was when the page opened.
+  late final String _initialDob;
+  bool get _dobChanged => _dateOfBirth.text.trim() != _initialDob;
+
+  late final bool _storedDobInvalid =
+      dateOfBirthProblemKey(_dateOfBirth.text) != null;
+
+  Future<void> _pickDateOfBirth() async {
+    final picked = await showDateOfBirthPicker(
+      context,
+      current: parseDateOfBirth(_dateOfBirth.text.trim()),
+      helpText: context.tr('member.dateOfBirth'),
+      // Calendar only: the picker's own typed entry follows the device
+      // locale (M/D/YYYY in US English). Typing is done in the field
+      // itself, always as YYYY-MM-DD.
+      entryMode: DatePickerEntryMode.calendarOnly,
+      builder: (context, child) {
+        final theme = Theme.of(context);
+        const buttons = Size(64, 48);
+        return Theme(
+          data: theme.copyWith(
+            datePickerTheme: theme.datePickerTheme.copyWith(
+              // Smaller than the default so a Swahili date fits the header.
+              headerHeadlineStyle: theme.textTheme.titleLarge,
+              cancelButtonStyle: TextButton.styleFrom(minimumSize: buttons),
+              confirmButtonStyle: TextButton.styleFrom(minimumSize: buttons),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _dateOfBirth.text = formatDateOfBirth(picked);
+      _dobError = null;
+    });
+  }
+
+  Widget _dateOfBirthField(BuildContext context) {
+    final hasValue = _dateOfBirth.text.trim().isNotEmpty;
+    return FFTextField(
+      key: const Key('edit-profile-dob'),
+      controller: _dateOfBirth,
+      enabled: !_busy,
+      // Typed as YYYY-MM-DD only (digits and dashes, 10 characters).
+      keyboardType: TextInputType.datetime,
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r'[0-9-]')),
+        LengthLimitingTextInputFormatter(10),
+      ],
+      label: context.tr('member.dateOfBirth'),
+      hint: context.tr('member.dobFormatHint'),
+      helperText: _dobError == null ? context.tr('member.dobFormatHint') : null,
+      errorText: _dobError,
+      validator: _dobProblem,
+      autovalidateMode: _storedDobInvalid
+          ? AutovalidateMode.always
+          : AutovalidateMode.onUserInteraction,
+      onChanged: (_) {
+        if (_dobError != null) setState(() => _dobError = null);
+      },
+      suffixIcon: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (hasValue)
+            IconButton(
+              key: const Key('edit-profile-dob-clear'),
+              tooltip: context.tr('member.dobClear'),
+              style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
+              icon: const Icon(Icons.clear),
+              onPressed: _busy
+                  ? null
+                  : () => setState(() {
+                      _dateOfBirth.clear();
+                      _dobError = null;
+                    }),
+            ),
+          IconButton(
+            key: const Key('edit-profile-dob-pick'),
+            tooltip: context.tr('member.dobPick'),
+            style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
+            icon: const Icon(Icons.calendar_today_outlined),
+            onPressed: _busy ? null : _pickDateOfBirth,
+          ),
+        ],
+      ),
+    );
+  }
+
   // ── Save ──
 
   Future<void> _save() async {
@@ -209,6 +326,7 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
       _busy = true;
       _error = null;
       _usernameError = null;
+      _dobError = null;
     });
     final api = AppScope.of(context).api;
     var savedAnything = false;
@@ -222,9 +340,11 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
         'weightKg': _weight.text.trim().isEmpty
             ? null
             : num.tryParse(_weight.text.trim()),
-        'dateOfBirth': _dateOfBirth.text.trim().isEmpty
-            ? null
-            : _dateOfBirth.text.trim(),
+        // POST /me/profile: "" clears the date of birth; leaving it out
+        // keeps the stored one (functions#239). Sent only when changed, so
+        // a stored date the server now refuses (a Trainer or gym owner
+        // under 18, functions#253) never stops the other fields saving.
+        if (_dobChanged) 'dateOfBirth': _dateOfBirth.text.trim(),
         'gender': _gender.isEmpty ? null : _gender,
         'fitnessGoals': _goals.toList(),
         'fitnessLevel': _level,
@@ -246,7 +366,13 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        if (savedAnything) {
+        if (!savedAnything && isPartnerUnder18Error(e)) {
+          _dobError = context.tr('error.reason.partnerUnder18');
+        } else if (!savedAnything && isDateOfBirthError(e)) {
+          _dobError =
+              '${context.tr('member.dobInvalid')} '
+              '${context.tr('member.dobNoPersonalisation')}';
+        } else if (savedAnything) {
           // Profile went through; only the username was refused.
           _usernameError = _usernameApiError(e);
         } else {
@@ -271,12 +397,16 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
       appBar: AppBar(
         title: Text(context.tr('member.editProfile')),
         leading: IconButton(
+          key: const Key('edit-profile-close'),
+          tooltip: context.tr('common.close'),
           icon: const Icon(Icons.close),
           onPressed: _busy ? null : () => Navigator.of(context).pop(),
         ),
         actions: [
           TextButton(
             key: const Key('edit-profile-save'),
+            // 48dp tall on every platform (web/desktop default to 40).
+            style: TextButton.styleFrom(minimumSize: const Size(64, 48)),
             onPressed: _busy ? null : _save,
             child: _busy
                 ? const SizedBox(
@@ -296,6 +426,7 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
             children: [
               Center(
                 child: FFPhotoPickerField(
+                  semanticLabel: context.tr('member.photoPick'),
                   value: _photoUrl,
                   onChanged: (value) => setState(() => _photoUrl = value),
                 ),
@@ -337,12 +468,7 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
                 onChanged: (value) => setState(() => _gender = value ?? ''),
               ),
               const SizedBox(height: FFTokens.spacingSm),
-              FFTextField(
-                controller: _dateOfBirth,
-                keyboardType: TextInputType.datetime,
-                label: context.tr('member.dateOfBirth'),
-                hint: 'YYYY-MM-DD',
-              ),
+              _dateOfBirthField(context),
               const SizedBox(height: FFTokens.spacingSm),
               Row(
                 children: [

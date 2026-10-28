@@ -27,6 +27,12 @@ jobs:
       # Shop home V2 (on/off). Set repo variable SHOP_HOME_V2=true to switch it on;
       # the server also needs SHOP_HOME_V2=1, otherwise the app falls back to today's shop.
       SHOP_HOME_V2: ${{ vars.SHOP_HOME_V2 || 'false' }}
+      # PHOTO_HERO_UI is not passed here, so the web build keeps the photo
+      # heroes off. Before any user build turns it on, run
+      #   flutter test test/photo_hero_release_guard_test.dart --dart-define=PHOTO_HERO_UI=true --dart-define=PHOTO_HERO_RELEASE=true
+      # It fails while test-only hero photos (collected from the internet,
+      # not cleared for release; owner 2026-10-22) are still bundled; see
+      # kTestOnlyHeroAssets and assets/photos/hero/LICENSES.md.
 
     steps:
       - name: Checkout repository

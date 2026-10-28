@@ -20,9 +20,11 @@ import '../promotion_events.dart';
 import '../root_back_navigation.dart';
 import '../shop_checkout.dart';
 import '../shop_home.dart';
+import '../shop_near_you.dart';
 import '../../screens/vendor/documents/document_view.dart'
     show buyerInvoiceRoute, documentIdPattern;
 import 'shop_home/shop_home_page.dart';
+import 'shop_home/shop_near_you_ui.dart' show ShopDeliversBadge;
 import 'shop_home/shop_product_card.dart'
     show ShopOutOfStockBadge, shopOnSale, shopDiscountPercent;
 
@@ -60,7 +62,40 @@ class ShopProduct {
     this.similarProducts = const [],
     this.promotion,
     this.variants = const [],
+    this.deliversToViewerArea = false,
   });
+
+  /// Phase 2 S3: the seller delivers to the area this phone worked out
+  /// (sent on Shop home rows only, and only while near-you is on). Shows
+  /// "Delivers to your area"; never blocks checkout.
+  final bool deliversToViewerArea;
+
+  /// The same product with [deliversToViewerArea] set (the details
+  /// request does not carry it; the home row it was opened from does).
+  ShopProduct withDeliversToViewerArea() => ShopProduct(
+    id: id,
+    vendorId: vendorId,
+    name: name,
+    vendorName: vendorName,
+    description: description,
+    category: category,
+    brand: brand,
+    priceTzs: priceTzs,
+    discountPriceTzs: discountPriceTzs,
+    stock: stock,
+    images: images,
+    rating: rating,
+    reviewCount: reviewCount,
+    soldCount: soldCount,
+    deliveryAvailable: deliveryAvailable,
+    distanceKm: distanceKm,
+    vendor: vendor,
+    reviews: reviews,
+    similarProducts: similarProducts,
+    promotion: promotion,
+    variants: variants,
+    deliversToViewerArea: true,
+  );
 
   final String id;
   final String vendorId;
@@ -132,6 +167,7 @@ class ShopProduct {
         .map((value) => ShopVariant.fromJson(Map<String, dynamic>.from(value)))
         .where((value) => value.name.isNotEmpty)
         .toList(),
+    deliversToViewerArea: json['deliversToViewerArea'] == true,
   );
 
   bool get inStock => stock > 0;
@@ -324,10 +360,16 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
     }
     return '';
   }
+
   num? _minPrice;
   num? _maxPrice;
   num? _minRating;
   num? _maxDistanceKm;
+
+  /// Phase 2 S3 (spec Q-10, §7.3): GET /shop/areas returned areas, so the
+  /// vendor-typed distance is not used: no "Maximum distance" filter, any
+  /// `maxDistanceKm` is ignored, and no "{n} km" text shows.
+  bool _areasExist = false;
   int _section = 0;
   Timer? _trackingTimer;
   bool _trackingRequest = false;
@@ -391,7 +433,12 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
   void initState() {
     super.initState();
     addRootBackHandler(_onRootBack);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+    ShopNearYouStore.changes.addListener(_nearChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _load();
+      _loadAreas();
+      _probeNearYou();
+    });
     _trackingTimer = Timer.periodic(
       const Duration(seconds: 10),
       (_) => _refreshTracking(),
@@ -402,6 +449,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
   void dispose() {
     _heroFocus.dispose();
     removeRootBackHandler(_onRootBack);
+    ShopNearYouStore.changes.removeListener(_nearChanged);
     // "Added to cart" belongs to the shop: it does not follow to other tabs.
     // After this frame, and only if the app (and its messenger) is still
     // there: on a full teardown the messenger goes too.
@@ -519,7 +567,9 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
     final messenger = FFSnack.of(context);
     final gone = context.tr('shop.home.productGone');
     try {
-      final json = await AppScope.of(context).api.shopProduct(id);
+      final json = await AppScope.of(
+        context,
+      ).api.shopProduct(id, areaId: _areaToSend);
       if (!mounted) return;
       await _openProduct(ShopProduct.fromJson(json));
     } catch (_) {
@@ -574,7 +624,9 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
       _minPrice = num.tryParse(query['minPrice'] ?? '');
       _maxPrice = num.tryParse(query['maxPrice'] ?? '');
       _minRating = num.tryParse(query['minRating'] ?? '');
-      _maxDistanceKm = num.tryParse(query['maxDistanceKm'] ?? '');
+      _maxDistanceKm = _areasExist
+          ? null
+          : num.tryParse(query['maxDistanceKm'] ?? '');
       _deliveryOnly = query['delivery'] == 'true';
       _promotionsOnly = query['promotions'] == 'true';
       const sorts = {
@@ -654,12 +706,76 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
     }
   }
 
+  /// The near-you area to send with product requests (QA #4), or null.
+  String? get _areaToSend => ShopNearYouStore.areaToSend(
+    AppScope.of(context).auth.user?['id']?.toString(),
+  );
+
+  /// The area changed or went (S3): the product list asks again, so
+  /// "Delivers to your area" follows it.
+  void _nearChanged() {
+    if (!mounted) return;
+    if (_catalogueLoaded) unawaited(_load());
+    // An open product sheet asks again too, for its badge (QA2 #1).
+    final open = _sheetProduct;
+    if (open != null) unawaited(_refetchOpenProduct(open));
+  }
+
+  /// The product shown in the open details sheet (null when closed).
+  ValueNotifier<ShopProduct>? _sheetProduct;
+
+  Future<void> _refetchOpenProduct(ValueNotifier<ShopProduct> open) async {
+    final id = open.value.id;
+    try {
+      final fresh = ShopProduct.fromJson(
+        await AppScope.of(context).api.shopProduct(id, areaId: _areaToSend),
+      );
+      if (!mounted || _sheetProduct != open || open.value.id != id) return;
+      open.value =
+          open.value.deliversToViewerArea &&
+              !fresh.deliversToViewerArea &&
+              _areaToSend != null
+          ? fresh.withDeliversToViewerArea()
+          : fresh;
+    } catch (_) {
+      // Keep what is shown.
+    }
+  }
+
+  /// Cold Results or a `?product=` link (no Shop home on screen): learn
+  /// once whether near-you is available, so the area can be sent (QA2 #1).
+  /// The answer bumps the store's `changes`, which refetches.
+  void _probeNearYou() {
+    if (!mounted || _showHome) return;
+    final scope = AppScope.of(context);
+    unawaited(
+      ShopNearYouStore.probe(
+        scope.api,
+        scope.auth.user?['id']?.toString(),
+        mode: widget.mode.wire,
+      ),
+    );
+  }
+
+  /// Whether the shop has areas (S3). A backend without them (404) keeps
+  /// the distance filter.
+  Future<void> _loadAreas() async {
+    if (!mounted) return;
+    final areas = await ShopAreas.load(AppScope.of(context).api);
+    if (!mounted || areas.isEmpty == !_areasExist) return;
+    setState(() {
+      _areasExist = areas.isNotEmpty;
+      if (_areasExist) _maxDistanceKm = null;
+    });
+  }
+
   Future<void> _load() async {
     setState(() => _loading = true);
     final catalogue = _needsCatalogue;
     try {
       final results = await Future.wait([
-        if (catalogue) AppScope.of(context).api.listShopProducts(),
+        if (catalogue)
+          AppScope.of(context).api.listShopProducts(areaId: _areaToSend),
         AppScope.of(context).api.myShopOrders(),
       ]);
       if (!mounted) return;
@@ -742,6 +858,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
           (_maxPrice == null || product.effectivePrice <= _maxPrice!) &&
           (_minRating == null || product.rating >= _minRating!) &&
           (_maxDistanceKm == null ||
+              _areasExist ||
               (product.distanceKm != null &&
                   product.distanceKm! <= _maxDistanceKm!));
     }
@@ -929,12 +1046,19 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
       );
     }
     var detailedProduct = product;
+    final sentArea = _areaToSend;
     try {
       detailedProduct = ShopProduct.fromJson(
-        await AppScope.of(context).api.shopProduct(product.id),
+        await AppScope.of(
+          context,
+        ).api.shopProduct(product.id, areaId: sentArea),
       );
     } on ApiException {
       // The cached catalogue record still supports cart actions offline.
+    }
+    // The details request has no area: keep the home row's badge (S3).
+    if (product.deliversToViewerArea && !detailedProduct.deliversToViewerArea) {
+      detailedProduct = detailedProduct.withDeliversToViewerArea();
     }
     if (!mounted) return;
     PromotionEvents.instance.recordForTouched(
@@ -944,18 +1068,34 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
     );
     _openProductId = product.id;
     _pushUrl();
+    final shown = _sheetProduct = ValueNotifier(detailedProduct);
+    // The area became sendable while it loaded (a link opened before the
+    // Shop home answered): ask again for the badge (QA2 #1).
+    if (_areaToSend != sentArea) unawaited(_refetchOpenProduct(shown));
     final buyNow = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      showDragHandle: true,
+      // The handle is drawn by the sheet and kept out of semantics: the
+      // framework's handle is read as an untranslated "Dismiss" (QA2 #3).
+      // Swiping down and the sheet's own Close button still close it.
+      showDragHandle: false,
+      // Read as "Close", not the framework's "Scrim" (QA2 #3).
+      barrierLabel: context.tr('common.close'),
       builder: (sheet) {
         _sheetContext = sheet;
-        return _ProductDetailsSheet(
-          product: detailedProduct,
-          onAdd: () => _addToCart(detailedProduct),
+        // Follows a refetch (the area became sendable after it opened).
+        return ValueListenableBuilder<ShopProduct>(
+          valueListenable: shown,
+          builder: (_, product, _) => _ProductDetailsSheet(
+            product: product,
+            showDistance: !_areasExist,
+            onAdd: () => _addToCart(product),
+          ),
         );
       },
     );
+    if (_sheetProduct == shown) _sheetProduct = null;
+    shown.dispose();
     _sheetContext = null;
     _openProductId = null;
     if (!mounted) return;
@@ -972,6 +1112,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
       isScrollControlled: true,
       showDragHandle: true,
       builder: (_) => _MarketplaceFiltersSheet(
+        showDistance: !_areasExist,
         initial: _MarketplaceFilterValues(
           brand: _brand,
           vendorId: _vendorId,
@@ -1030,7 +1171,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
   Future<void> _openInvoice(Map<String, dynamic> order) async {
     final id = order['id']?.toString() ?? '';
     if (_sellerInvoices != false &&
-        shopOrderPayment(order) == ShopOrderPayment.paid &&
+        shopOrderPayment(order) != ShopOrderPayment.awaitingConfirmation &&
         documentIdPattern.hasMatch(id)) {
       try {
         final res = await AppScope.of(context).api.myShopOrderInvoices(
@@ -1577,13 +1718,20 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
                       variant: FFButtonVariant.ghost,
                       size: FFButtonSize.sm,
                     ),
-                  FFButton(
-                    key: Key('shop-invoice-${order['id']}'),
-                    label: context.tr('shop.invoice'),
-                    onPressed: () => _openInvoice(order),
-                    variant: FFButtonVariant.ghost,
-                    size: FFButtonSize.sm,
-                  ),
+                  // UAT D2 (AC-28): only once the order is paid (also
+                  // after a refund was asked for or made).
+                  if (const {
+                    ShopOrderPayment.paid,
+                    ShopOrderPayment.refundPending,
+                    ShopOrderPayment.refunded,
+                  }.contains(shopOrderPayment(order)))
+                    FFButton(
+                      key: Key('shop-invoice-${order['id']}'),
+                      label: context.tr('shop.invoice'),
+                      onPressed: () => _openInvoice(order),
+                      variant: FFButtonVariant.ghost,
+                      size: FFButtonSize.sm,
+                    ),
                   FFButton(
                     key: Key('shop-reorder-${order['id']}'),
                     label: context.tr('shop.reorder'),
@@ -1687,8 +1835,14 @@ class _MarketplaceFilterValues {
 }
 
 class _MarketplaceFiltersSheet extends StatefulWidget {
-  const _MarketplaceFiltersSheet({required this.initial});
+  const _MarketplaceFiltersSheet({
+    required this.initial,
+    this.showDistance = true,
+  });
   final _MarketplaceFilterValues initial;
+
+  /// False once the shop has areas (S3): the field is not rendered.
+  final bool showDistance;
 
   @override
   State<_MarketplaceFiltersSheet> createState() =>
@@ -1793,12 +1947,13 @@ class _MarketplaceFiltersSheetState extends State<_MarketplaceFiltersSheet> {
                 keyboardType: TextInputType.number,
                 label: context.tr('shop.minimumRating'),
               ),
-              FFTextField(
-                key: const Key('shop-filter-distance'),
-                controller: _distance,
-                keyboardType: TextInputType.number,
-                label: context.tr('shop.maximumDistance'),
-              ),
+              if (widget.showDistance)
+                FFTextField(
+                  key: const Key('shop-filter-distance'),
+                  controller: _distance,
+                  keyboardType: TextInputType.number,
+                  label: context.tr('shop.maximumDistance'),
+                ),
               const SizedBox(height: FFTokens.spacingLg),
               Row(
                 children: [
@@ -1824,7 +1979,9 @@ class _MarketplaceFiltersSheetState extends State<_MarketplaceFiltersSheet> {
                         minPrice: _number(_minPrice),
                         maxPrice: _number(_maxPrice),
                         minRating: _number(_rating),
-                        maxDistanceKm: _number(_distance),
+                        maxDistanceKm: widget.showDistance
+                            ? _number(_distance)
+                            : null,
                       ),
                     ),
                   ),
@@ -2024,6 +2181,13 @@ class _ProductTile extends StatelessWidget {
                         key: Key('shop-oos-${product.id}'),
                         label: context.tr('shop.outOfStock'),
                       ),
+                    ),
+                  // S3 (QA #4): the seller delivers to the shopper's area.
+                  if (product.deliversToViewerArea)
+                    Padding(
+                      key: Key('shop-delivers-${product.id}'),
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: const ShopDeliversBadge(),
                     ),
                   if (shopOnSale(product)) ...[
                     // Sale price in Fuel, the original struck through below;
@@ -2415,8 +2579,15 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
 }
 
 class _ProductDetailsSheet extends StatelessWidget {
-  const _ProductDetailsSheet({required this.product, required this.onAdd});
+  const _ProductDetailsSheet({
+    required this.product,
+    required this.onAdd,
+    this.showDistance = true,
+  });
   final ShopProduct product;
+
+  /// False once the shop has areas (S3): no vendor-typed "{n} km".
+  final bool showDistance;
   final Future<bool> Function() onAdd;
 
   Future<void> _chat(BuildContext context) async {
@@ -2475,6 +2646,23 @@ class _ProductDetailsSheet extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.all(FFTokens.spacingLg),
           children: [
+            // Decorative handle (QA2 #3): the same look as the framework's,
+            // not announced.
+            ExcludeSemantics(
+              child: Center(
+                child: Container(
+                  key: const Key('shop-product-handle'),
+                  width: 32,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(FFTokens.radiusFull),
+                  ),
+                ),
+              ),
+            ),
             Align(
               alignment: Alignment.centerRight,
               child: IconButton(
@@ -2504,7 +2692,9 @@ class _ProductDetailsSheet extends StatelessWidget {
               formatCurrency(product.effectivePrice),
               style: Theme.of(context).textTheme.titleLarge,
             ),
-            if (product.discountPriceTzs != null)
+            // Same rule as the cards: a real reduction only (0 < discount
+            // < price); a 0 or higher "discount" is not a sale.
+            if (product.effectivePrice < product.priceTzs)
               Text(
                 formatCurrency(product.priceTzs),
                 style: const TextStyle(decoration: TextDecoration.lineThrough),
@@ -2521,7 +2711,7 @@ class _ProductDetailsSheet extends StatelessWidget {
                   Text(_inStock(context, product)),
               ],
             ),
-            if (product.distanceKm != null)
+            if (showDistance && product.distanceKm != null)
               Text('${product.distanceKm} km · ${context.tr('shop.delivery')}'),
             const SizedBox(height: FFTokens.spacingMd),
             Text(product.description ?? ''),
@@ -2530,6 +2720,14 @@ class _ProductDetailsSheet extends StatelessWidget {
               Text(
                 '${context.tr('shop.vendor')}: ${product.vendor['businessName'] ?? product.vendorId}',
                 style: Theme.of(context).textTheme.titleSmall,
+              ),
+            ],
+            // S3: under the seller line. Never a "doesn't deliver" message.
+            if (product.deliversToViewerArea) ...[
+              const SizedBox(height: FFTokens.spacingXs),
+              const Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: ShopDeliversBadge(),
               ),
             ],
             const SizedBox(height: FFTokens.spacingMd),

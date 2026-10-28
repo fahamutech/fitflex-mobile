@@ -36,13 +36,55 @@ MomoStage momoStageFor(String? state) => switch (state) {
   _ => MomoStage.waiting,
 };
 
+/// Product kinds a payment request can be for (`productType` on the server).
+abstract final class MomoProduct {
+  static const fitflexPass = 'FITFLEX_PASS';
+  static const gymPlan = 'GYM_SUBSCRIPTION';
+  static const trainerSession = 'TRAINER_SERVICE';
+  static const trainerGymPass = 'TRAINER_GYM_PASS';
+}
+
+/// What a server without the `mobileMoney` key pays by mobile money: members
+/// pay passes and gym plans, everyone else nothing (fitflex-functions#240).
+const _legacyMemberProducts = {MomoProduct.fitflexPass, MomoProduct.gymPlan};
+
+/// Whether "Pay now" may be offered for a [productType] request paid by
+/// someone signed in as [role], given `GET /payments/options`.
+///
+/// Mobile money must be `enabled`, and the product must be in
+/// `mobileMoney.products`. Without that key (an older server, or the
+/// trainer-products flag off) the old rule applies.
+bool momoOffers(
+  Map<String, dynamic> options,
+  String? productType, {
+  required String role,
+}) {
+  if (options['enabled'] != true || productType == null) return false;
+  // The server's role rule: a trainer pays only their trainer gym pass, and
+  // a member never pays one (403 not_payable_by_role otherwise).
+  if ((role == 'trainer') != (productType == MomoProduct.trainerGymPass)) {
+    return false;
+  }
+  final block = options['mobileMoney'];
+  if (block is Map && block['products'] is List) {
+    return (block['products'] as List).contains(productType);
+  }
+  return role == 'member' && _legacyMemberProducts.contains(productType);
+}
+
 /// Offers mobile-money payment for a request that was just created, when the
-/// server has it switched on. Resolves true when the payment completed.
-/// Safe to call anywhere: with it off (or unreachable) it does nothing.
+/// server has it switched on for this [productType] and [role]. Resolves true
+/// when the payment completed. Safe to call anywhere: with it off (or
+/// unreachable) it does nothing. [onCompleted] runs as soon as the server says
+/// the payment completed, so the list behind the sheet can be re-fetched.
 Future<bool> offerMobileMoney(
   BuildContext context, {
   required String? paymentRequestId,
   required num amountTzs,
+  required String productType,
+  String role = 'member',
+  String? defaultPhone,
+  VoidCallback? onCompleted,
 }) async {
   if (paymentRequestId == null || paymentRequestId.isEmpty) return false;
   final api = AppScope.of(context).api;
@@ -52,13 +94,18 @@ Future<bool> offerMobileMoney(
   } catch (_) {
     return false;
   }
-  if (options['enabled'] != true || !context.mounted) return false;
-  final phone = context
-      .dependOnInheritedWidgetOfExactType<MemberDataScope>()
-      ?.notifier
-      ?.me
-      ?.user
-      .phone;
+  if (!momoOffers(options, productType, role: role) || !context.mounted) {
+    return false;
+  }
+  final phone =
+      defaultPhone ??
+      context
+          .dependOnInheritedWidgetOfExactType<MemberDataScope>()
+          ?.notifier
+          ?.me
+          ?.user
+          .phone ??
+      AppScope.of(context).auth.user?['phone']?.toString();
   final done = await showFFSheet<bool>(
     context,
     title: context.tr('momo.title'),
@@ -68,10 +115,31 @@ Future<bool> offerMobileMoney(
       amountTzs: amountTzs,
       defaultPhone: phone,
       testMode: options['environment'] == 'sandbox',
+      productType: productType,
+      onCompleted: onCompleted,
     ),
   );
   return done == true;
 }
+
+/// Held reasons the server names on `/refresh` that get their own wording.
+const momoHeldReasons = {
+  'group_slot_rebooked': 'momo.held.groupSlotRebooked',
+  'reference_already_used': 'momo.held.referenceAlreadyUsed',
+  'amount_mismatch': 'momo.held.amountMismatch',
+  'transaction_mismatch': 'momo.held.transactionMismatch',
+};
+
+/// The body text key for a completed payment of [productType].
+String momoSuccessBodyKey(String? productType) => switch (productType) {
+  MomoProduct.trainerSession => 'momo.successBody.session',
+  MomoProduct.trainerGymPass => 'momo.successBody.trainerPass',
+  _ => 'momo.successBody',
+};
+
+/// The body text key for a held payment: the reason's own, or the general one.
+String momoHeldBodyKey(String? reason) =>
+    momoHeldReasons[reason] ?? 'momo.heldBody';
 
 /// Collects the number, asks the phone to approve, then follows the payment
 /// until it completes, fails or takes too long.
@@ -84,6 +152,8 @@ class MobileMoneyPayPanel extends StatefulWidget {
     this.testMode = false,
     this.pollEvery = const Duration(seconds: 4),
     this.giveUpAfter = const Duration(minutes: 2),
+    this.onCompleted,
+    this.productType,
   });
 
   final String paymentRequestId;
@@ -92,6 +162,12 @@ class MobileMoneyPayPanel extends StatefulWidget {
   final bool testMode;
   final Duration pollEvery;
   final Duration giveUpAfter;
+
+  /// Runs once when the server says the payment completed.
+  final VoidCallback? onCompleted;
+
+  /// What is being paid for, so "payment received" says what happens next.
+  final String? productType;
 
   @override
   State<MobileMoneyPayPanel> createState() => _MobileMoneyPayPanelState();
@@ -106,6 +182,7 @@ class _MobileMoneyPayPanelState extends State<MobileMoneyPayPanel> {
   Timer? _timer;
   int _polls = 0;
   bool _checking = false;
+  String? _heldReason;
 
   @override
   void dispose() {
@@ -153,12 +230,16 @@ class _MobileMoneyPayPanelState extends State<MobileMoneyPayPanel> {
       final stage = momoStageFor(out['state'] as String?);
       if (stage != MomoStage.waiting) {
         _timer?.cancel();
-        setState(() => _stage = stage);
+        setState(() {
+          _stage = stage;
+          _heldReason = out['reason']?.toString();
+        });
         if (stage == MomoStage.success) {
           // Pick up the activated plan (QR, status) behind the sheet.
           final shell = context.findAncestorStateOfType<MemberShellState>();
           unawaited(shell?.refreshQr());
           unawaited(shell?.refreshMe());
+          widget.onCompleted?.call();
         }
         return;
       }
@@ -274,7 +355,11 @@ class _MobileMoneyPayPanelState extends State<MobileMoneyPayPanel> {
           ),
           const SizedBox(height: 4),
           Text(
-            context.tr('momo.${key}Body'),
+            context.tr(switch (_stage) {
+              MomoStage.held => momoHeldBodyKey(_heldReason),
+              MomoStage.success => momoSuccessBodyKey(widget.productType),
+              _ => 'momo.${key}Body',
+            }),
             style: theme.textTheme.bodyMedium,
             textAlign: TextAlign.center,
           ),
@@ -307,11 +392,27 @@ class _MobileMoneyPayPanelState extends State<MobileMoneyPayPanel> {
 }
 
 /// "Pay now" under a pending payment, shown only while mobile money is on and
-/// the payment is one it can settle (a pass, an upgrade or a gym plan).
+/// the server takes this payment's product from this [role] (see [momoOffers]).
 class PayNowButton extends StatefulWidget {
-  const PayNowButton({super.key, required this.request});
+  const PayNowButton({
+    super.key,
+    required this.request,
+    this.role = 'member',
+    this.onPaid,
+    this.options,
+  });
 
   final PaymentRequest request;
+
+  /// Who is paying: 'member' or 'trainer' (the signed-in role).
+  final String role;
+
+  /// Runs when the payment completed, to re-fetch what it paid for.
+  final VoidCallback? onPaid;
+
+  /// `GET /payments/options`, when the page already asked (one call for
+  /// many buttons). Asked here otherwise.
+  final Future<Map<String, dynamic>>? options;
 
   @override
   State<PayNowButton> createState() => _PayNowButtonState();
@@ -320,27 +421,26 @@ class PayNowButton extends StatefulWidget {
 class _PayNowButtonState extends State<PayNowButton> {
   Future<bool>? _available;
 
-  static const _payable = {'FITFLEX_PASS', 'GYM_SUBSCRIPTION'};
+  /// The product kind; an older server sends none, and a tier means a pass.
+  String? get _product =>
+      widget.request.productType ??
+      (widget.request.tier.isNotEmpty ? MomoProduct.fitflexPass : null);
 
   @override
   void initState() {
     super.initState();
-    final type = widget.request.productType;
-    // An older server sends no product type: a tier means a pass.
     // Paid by hand with a transaction ID: the server refuses a second
     // payment (409 manual_payment_submitted), so "Pay now" is not offered.
-    final isPayable =
-        widget.request.memberReference == null &&
-        (type != null
-            ? _payable.contains(type)
-            : widget.request.tier.isNotEmpty);
-    if (isPayable) {
+    if (widget.request.memberReference == null && _product != null) {
       // Read without depending on it: initState may not register dependencies.
-      _available = context
-          .getInheritedWidgetOfExactType<AppScope>()!
-          .api
-          .paymentOptions()
-          .then((o) => o['enabled'] == true)
+      final options =
+          widget.options ??
+          context
+              .getInheritedWidgetOfExactType<AppScope>()!
+              .api
+              .paymentOptions();
+      _available = options
+          .then((o) => momoOffers(o, _product, role: widget.role))
           .catchError((_) => false);
     }
   }
@@ -350,6 +450,10 @@ class _PayNowButtonState extends State<PayNowButton> {
       context,
       paymentRequestId: widget.request.id,
       amountTzs: widget.request.amountTzs,
+      productType: _product!,
+      role: widget.role,
+      // The completed payment is re-fetched behind the sheet.
+      onCompleted: widget.onPaid,
     );
     if (done && mounted) {
       final shell = context.findAncestorStateOfType<MemberShellState>();
@@ -370,6 +474,7 @@ class _PayNowButtonState extends State<PayNowButton> {
           child: SizedBox(
             width: double.infinity,
             child: FFButton(
+              key: Key('pay-now-${widget.request.id}'),
               label: context.tr('momo.payNow'),
               icon: Icons.phone_android,
               onPressed: _pay,
