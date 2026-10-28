@@ -1615,6 +1615,28 @@ class ApiClient {
   Future<Map<String, dynamic>> myWellnessBenefits() async =>
       await _request('GET', '/b2b/me/benefits') as Map<String, dynamic>;
 
+  /// Organisations waiting for the member to accept being added by user id
+  /// (fitflex-functions#241): `{ items: [...] }`. Each item says who is
+  /// asking, what they will see (A-02) and what the member would get.
+  Future<Map<String, dynamic>> myMemberRequests() async =>
+      await _request('GET', '/b2b/me/member-requests') as Map<String, dynamic>;
+
+  /// Accept an organisation's request: the add happens now. Single use.
+  Future<Map<String, dynamic>> acceptMemberRequest(String requestId) async =>
+      await _request(
+            'POST',
+            '/b2b/me/member-requests/${Uri.encodeComponent(requestId)}/accept',
+          )
+          as Map<String, dynamic>;
+
+  /// Decline an organisation's request. Nothing is added.
+  Future<Map<String, dynamic>> declineMemberRequest(String requestId) async =>
+      await _request(
+            'POST',
+            '/b2b/me/member-requests/${Uri.encodeComponent(requestId)}/decline',
+          )
+          as Map<String, dynamic>;
+
   /// Ask to pay the member's share of a sponsored pass for this month.
   Future<Map<String, dynamic>> unlockSponsoredPass(
     String entitlementId,
