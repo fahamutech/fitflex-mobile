@@ -48,7 +48,7 @@ Map<String, dynamic> _request({
           'sw': '$org itaona jina lako na barua pepe yako (SW).',
         }
       : {
-          'shown': ['gym_visits', 'trainer_sessions', 'steps'],
+          'shown': ['gym_visits', 'trainer_sessions', 'steps', 'past_activity'],
           'notShown': ['weight', 'routes'],
           'en': '$org will see your FitFlex activity (EN).',
           'sw': '$org itaona shughuli zako za FitFlex (SW).',
@@ -272,7 +272,8 @@ void main() {
       );
       expect(
         find.text(
-          'Litaona: kuingia gym, vipindi vya trainer, hatua\n'
+          'Litaona: kuingia gym, vipindi vya trainer, hatua, '
+          'shughuli zako za kabla hujajiunga\n'
           'Halitaona: uzito, njia zako',
         ),
         findsOneWidget,
@@ -333,7 +334,8 @@ void main() {
         find.descendant(
           of: dialog,
           matching: find.text(
-            'Will see: gym visits, trainer sessions, steps\n'
+            'Will see: gym visits, trainer sessions, steps, '
+            'your activity from before you joined\n'
             'Won\'t see: weight, routes',
           ),
         ),
@@ -435,6 +437,37 @@ void main() {
       );
     });
 
+    testWidgets('an unknown visibility key: the server sentence, no raw key', (
+      tester,
+    ) async {
+      final item = _request();
+      (item['visibility'] as Map)['shown'] = [
+        'gym_visits',
+        'past_activity',
+        'heart_rate_zones',
+      ];
+      final api = _Api([item]);
+      await tester.pumpWidget(_app(api));
+      await _settle(tester);
+      await tester.tap(find.byKey(_accept));
+      await _settle(tester);
+
+      final dialog = find.byKey(const Key('member-request-confirm-dialog'));
+      expect(
+        find.descendant(
+          of: dialog,
+          matching: find.text(
+            'ABC Insurance will see your FitFlex activity (EN).',
+          ),
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('heart_rate_zones'), findsNothing);
+      expect(find.textContaining('memberRequests.item'), findsNothing);
+      expect(find.textContaining('Will see:'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
     test('error codes map to their messages', () {
       String? key(int status, Object body) =>
           memberRequestErrorKey(ApiException(status, body));
@@ -522,20 +555,39 @@ void main() {
       expect(AppRoutes.memberRequests, '/organisation-requests');
     });
 
+    const requestMessage = InboxMessage(
+      id: 'n1',
+      type: 'b2b_member_request',
+      title: 'ABC Insurance wants to add you',
+      body: 'Open to accept or decline.',
+      data: {'requestId': 'b2bmr_1', 'open': 'b2b_member_requests'},
+    );
+
+    InboxMessage adminAdded(String kind) => InboxMessage(
+      id: 'n2',
+      type: 'b2b_admin_added',
+      title: 'ABC Insurance added you',
+      body: 'You were added by FitFlex.',
+      data: {
+        'kind': kind,
+        'organizationId': 'b2borg_1',
+        'open': 'b2b_benefits',
+        'locale': 'en',
+        'titleEn': 'ABC Insurance added you',
+        'bodyEn': 'You were added by FitFlex.',
+        'titleSw': 'ABC Insurance imekuongeza',
+        'bodySw': 'Umeongezwa na FitFlex.',
+      },
+    );
+
     Future<(String?, String)> forRole(
       WidgetTester tester,
-      String userType,
-    ) async {
+      String userType, {
+      InboxMessage message = requestMessage,
+    }) async {
       final api = _Api([]);
       final auth = AuthState(api);
       await auth.signIn('jwt', {'id': 'u1', 'userType': userType});
-      const message = InboxMessage(
-        id: 'n1',
-        type: 'b2b_member_request',
-        title: 'ABC Insurance wants to add you',
-        body: 'Open to accept or decline.',
-        data: {'requestId': 'b2bmr_1', 'open': 'b2b_member_requests'},
-      );
       late (String?, String) out;
       await tester.pumpWidget(
         AppScope(
@@ -569,6 +621,103 @@ void main() {
         expect(route, b2bMemberRequestsRoute, reason: role);
         expect(label, 'Review request', reason: role);
       }
+    });
+
+    test('a request push opens the requests screen on any side', () {
+      for (final role in ['member', 'trainer', 'gym_operator', 'vendor']) {
+        final target = pushTargetFor(
+          role: role,
+          data: {...requestMessage.data, 'type': 'b2b_member_request'},
+          message: requestMessage,
+        );
+        expect(target.location, b2bMemberRequestsRoute, reason: role);
+        expect(target.go, isTrue, reason: role);
+      }
+    });
+
+    test('an admin add push: a member\'s benefits, else the message', () {
+      Map<String, dynamic> push(String kind) => {
+        ...adminAdded(kind).data,
+        'type': 'b2b_admin_added',
+      };
+      expect(memberBenefitsRoute, AppRoutes.memberBenefits);
+      for (final kind in ['beneficiary', 'employee_link']) {
+        final t = pushTargetFor(
+          role: 'member',
+          data: push(kind),
+          message: adminAdded(kind),
+        );
+        expect(t.location, '/member/benefits', reason: kind);
+        expect(t.go, isTrue);
+      }
+      // A portal role: the message itself, not Benefits.
+      final orgUser = pushTargetFor(
+        role: 'member',
+        data: push('org_user'),
+        message: adminAdded('org_user'),
+      );
+      expect(orgUser.location, '/inbox/n2');
+      // Not signed in as a member: the message, or the inbox without one.
+      for (final role in ['trainer', 'gym_operator', 'vendor']) {
+        expect(
+          pushTargetFor(
+            role: role,
+            data: push('beneficiary'),
+            message: adminAdded('beneficiary'),
+          ).location,
+          '/inbox/n2',
+          reason: role,
+        );
+      }
+      expect(
+        pushTargetFor(role: 'trainer', data: push('beneficiary')).location,
+        '/inbox',
+      );
+    });
+
+    testWidgets('an admin add in the inbox: Benefits button for members', (
+      tester,
+    ) async {
+      var (route, label) = await forRole(
+        tester,
+        'member',
+        message: adminAdded('beneficiary'),
+      );
+      expect(route, '/member/benefits');
+      expect(label, 'View my benefits');
+
+      (route, label) = await forRole(
+        tester,
+        'member',
+        message: adminAdded('org_user'),
+      );
+      expect(route, isNull, reason: 'a portal role shows the message itself');
+
+      (route, label) = await forRole(
+        tester,
+        'trainer',
+        message: adminAdded('employee_link'),
+      );
+      expect(route, isNull);
+    });
+
+    test('an admin add reads in the app language', () {
+      final m = adminAdded('beneficiary');
+      final sw = localisedNoticeText(
+        lang: 'sw',
+        data: m.data,
+        title: m.title,
+        body: m.body,
+      );
+      expect(sw.title, 'ABC Insurance imekuongeza');
+      expect(sw.body, 'Umeongezwa na FitFlex.');
+      final en = localisedNoticeText(
+        lang: 'en',
+        data: m.data,
+        title: m.title,
+        body: m.body,
+      );
+      expect(en.title, 'ABC Insurance added you');
     });
 
     testWidgets('the route opens the requests screen', (tester) async {
@@ -654,6 +803,15 @@ void main() {
       'visibility': {'shown': keys, 'notShown': const []},
     };
     expect(visibilityLists(locale, item), isNotNull);
+    expect(
+      visibilityLists(locale, {
+        'visibility': {
+          'shown': ['gym_visits', 'past_activity'],
+          'notShown': const [],
+        },
+      }),
+      'Will see: gym visits, your activity from before you joined',
+    );
     // An unknown key falls back to the server's sentence.
     expect(
       visibilityLists(locale, {
