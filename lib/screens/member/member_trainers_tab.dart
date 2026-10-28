@@ -14,6 +14,13 @@ import 'member_shell.dart';
 import 'widgets/directory_states.dart';
 import 'widgets/trainer_card.dart';
 
+/// PHOTO_HERO_UI (owner 2026-10-22, bands "too dark"): the band grows for
+/// [FFTokens.heroBandClearPhoto] of clear photo above its text, but no taller
+/// than this on a 390x844 screen, so search (16px under it) starts
+/// above 55% of the screen
+/// (FFHeroBand.maxHeightAt844).
+const double trainersBandMaxHeight = 321;
+
 class MemberTrainersTab extends StatefulWidget {
   const MemberTrainersTab({super.key});
 
@@ -182,6 +189,8 @@ class _MemberTrainersTabState extends State<MemberTrainersTab> {
                         photo: FFHeroPhoto.trainers,
                         headingFocusNode: _heroFocus,
                         minHeight: 160,
+                        clearPhoto: FFTokens.heroBandClearPhoto,
+                        maxHeightAt844: trainersBandMaxHeight,
                         wideHeight: 200,
                         eyebrow: context.tr('member.trainers'),
                         headlineLead: context.tr('hero.trainers.lead'),

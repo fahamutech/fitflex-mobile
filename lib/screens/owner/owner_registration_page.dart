@@ -10,11 +10,13 @@ import 'package:image_picker/image_picker.dart';
 import '../../app_scope.dart';
 import '../../router.dart';
 import '../../shared/api_client.dart';
-import '../../shared/api_error_message.dart';
+import '../../shared/date_of_birth.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
+import '../../shared/partner_details.dart';
 import '../../shared/widgets/location_picker.dart';
+import '../../shared/widgets/partner_details_widgets.dart';
 import '../../shared/widgets/persona_switcher.dart';
 import '../../shared/widgets/terms_agreement.dart';
 
@@ -34,6 +36,16 @@ class _OwnerRegistrationPageState extends State<OwnerRegistrationPage> {
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
 
+  // Partner date of birth (fitflex-functions#253): asked, with an optional
+  // gender, only when GET /me/personal-details says so. Off, failed or
+  // already known: the form is as before.
+  bool _loadingDetails = true;
+  bool _askDob = false;
+  final _dobCtrl = TextEditingController();
+  String? _dobError;
+  String? _gender;
+  String? _genderError;
+
   // Step 1 — Gym list
   final List<_GymDraft> _gyms = [_GymDraft()];
 
@@ -44,7 +56,26 @@ class _OwnerRegistrationPageState extends State<OwnerRegistrationPage> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadTrainers());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadTrainers();
+      _loadDetails();
+    });
+  }
+
+  Future<void> _loadDetails() async {
+    final details = await loadPersonalDetails(AppScope.of(context).api);
+    if (!mounted) return;
+    setState(() {
+      _askDob = details?.ask == true;
+      _loadingDetails = false;
+    });
+  }
+
+  /// The date of birth is required and 18+ when asked; else null.
+  String? _dobProblem() {
+    if (!_askDob) return null;
+    final key = partnerDobProblemKey(_dobCtrl.text);
+    return key == null ? null : context.tr(key);
   }
 
   Future<void> _loadTrainers() async {
@@ -65,6 +96,7 @@ class _OwnerRegistrationPageState extends State<OwnerRegistrationPage> {
 
   @override
   void dispose() {
+    _dobCtrl.dispose();
     _nameCtrl.dispose();
     _phoneCtrl.dispose();
     for (final g in _gyms) {
@@ -139,6 +171,14 @@ class _OwnerRegistrationPageState extends State<OwnerRegistrationPage> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    final dobProblem = _dobProblem();
+    if (dobProblem != null) {
+      setState(() {
+        _step = 0;
+        _dobError = dobProblem;
+      });
+      return;
+    }
     // Terms: the role's terms must be agreed to, and put on record, first.
     final terms = _termsKey.currentState;
     if (terms == null || !terms.agreed) {
@@ -175,6 +215,8 @@ class _OwnerRegistrationPageState extends State<OwnerRegistrationPage> {
             ? _phoneCtrl.text.trim()
             : null,
         'gyms': gymPayloads,
+        if (_askDob) 'dateOfBirth': _dobCtrl.text.trim(),
+        if (_askDob && _gender != null) 'gender': partnerGenderToSend(_gender!),
       });
       if (!mounted) return;
       // Re-hydrate auth
@@ -188,7 +230,21 @@ class _OwnerRegistrationPageState extends State<OwnerRegistrationPage> {
       context.go(AppRoutes.pending);
     } on ApiException catch (e) {
       if (!mounted) return;
-      FFSnack.error(context, apiErrorMessage(FFLocaleScope.of(context), e));
+      // partner_under_18 and the date-of-birth/gender refusals say so plainly.
+      final message = partnerDetailsErrorMessage(FFLocaleScope.of(context), e);
+      // Back to the step with the field the server refused.
+      if (_askDob && (isPartnerUnder18Error(e) || isDateOfBirthError(e))) {
+        setState(() {
+          _step = 0;
+          _dobError = message;
+        });
+      } else if (_askDob && isGenderFieldError(e)) {
+        setState(() {
+          _step = 0;
+          _genderError = message;
+        });
+      }
+      FFSnack.error(context, message);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -196,7 +252,9 @@ class _OwnerRegistrationPageState extends State<OwnerRegistrationPage> {
 
   void _next() {
     if (_step == 0) {
-      if (!_formKey.currentState!.validate()) return;
+      final dobProblem = _dobProblem();
+      if (dobProblem != null) setState(() => _dobError = dobProblem);
+      if (!_formKey.currentState!.validate() || dobProblem != null) return;
       setState(() => _step++);
     } else {
       _submit();
@@ -273,7 +331,9 @@ class _OwnerRegistrationPageState extends State<OwnerRegistrationPage> {
                 ),
                 const SizedBox(height: 24),
                 Expanded(
-                  child: SingleChildScrollView(child: _buildStep(context)),
+                  child: _loadingDetails
+                      ? const Center(child: FFSpinner())
+                      : SingleChildScrollView(child: _buildStep(context)),
                 ),
                 const SizedBox(height: 16),
                 Row(
@@ -292,7 +352,7 @@ class _OwnerRegistrationPageState extends State<OwnerRegistrationPage> {
                         label: _step < 1
                             ? context.tr('onboarding.next')
                             : context.tr('ownerReg.submit'),
-                        onPressed: _busy ? null : _next,
+                        onPressed: _busy || _loadingDetails ? null : _next,
                         loading: _busy,
                       ),
                     ),
@@ -347,6 +407,24 @@ class _OwnerRegistrationPageState extends State<OwnerRegistrationPage> {
           label: context.tr('ownerReg.phone'),
           hint: '+255...',
         ),
+        if (_askDob) ...[
+          const SizedBox(height: FFTokens.spacingSm),
+          PartnerDobField(
+            key: const Key('owner-reg-dob'),
+            controller: _dobCtrl,
+            errorText: _dobError,
+            onChanged: () => setState(() => _dobError = _dobProblem()),
+          ),
+          const SizedBox(height: FFTokens.spacingMd),
+          PartnerGenderField(
+            value: _gender,
+            errorText: _genderError,
+            onChanged: (v) => setState(() {
+              _gender = v;
+              _genderError = null;
+            }),
+          ),
+        ],
       ],
     );
   }

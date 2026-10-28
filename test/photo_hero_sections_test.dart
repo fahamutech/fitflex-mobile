@@ -313,15 +313,20 @@ void main() {
         tester,
         api,
       ) async {
+        // Owner 2026-10-22: the bands grow for clear photo above their text,
+        // but search starts above 55% of the screen in the app. This phone
+        // has no status bar and the page starts at y=0, not under the 56px
+        // app bar.
+        const searchTopMax = 844 * 0.55 - 56 + 0.01;
         await _host(tester, _gyms(), lang: lang);
         expect(
-          tester.getBottomLeft(_key('gym-search')).dy,
-          lessThanOrEqualTo(420),
+          tester.getTopLeft(_key('gym-search')).dy,
+          lessThanOrEqualTo(searchTopMax),
         );
         await _host(tester, _trainers(), lang: lang);
         expect(
-          tester.getBottomLeft(_key('trainer-search')).dy,
-          lessThanOrEqualTo(380),
+          tester.getTopLeft(_key('trainer-search')).dy,
+          lessThanOrEqualTo(searchTopMax),
         );
         _seedShop(api);
         await _host(tester, const MemberShopTab(), lang: lang);

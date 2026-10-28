@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import 'shared/auth_state.dart';
 import 'shared/held_nav_extras.dart';
+import 'shared/inbox/inbox_controller.dart' show b2bMemberRequestsRoute;
 import 'screens/splash_screen.dart';
 import 'screens/route_status_pages.dart';
 import 'screens/language_screen.dart';
@@ -29,8 +30,15 @@ import 'screens/member/member_person_page.dart';
 import 'screens/member/member_shared_activity_page.dart';
 import 'screens/member/member_record_run_page.dart';
 import 'screens/member/member_run_detail_page.dart';
+import 'screens/member/events/event_claim_page.dart';
+import 'screens/member/events/event_team_page.dart';
 import 'screens/member/events/member_event_detail_page.dart';
+import 'screens/member/events/member_event_order_page.dart';
+import 'screens/member/events/member_event_orders_page.dart';
+import 'screens/member/events/member_event_registration_page.dart';
 import 'screens/member/events/member_events_page.dart';
+import 'screens/member/events/register/member_event_register_page.dart';
+import 'shared/events/event_claim_link.dart';
 import 'shared/events_flag.dart';
 import 'screens/trainer/trainer_registration_page.dart';
 import 'screens/trainer/trainer_home_page.dart';
@@ -49,6 +57,7 @@ import 'screens/owner/communications/template_pages.dart';
 import 'screens/owner/communications/history_pages.dart';
 import 'screens/owner/communications/automation_pages.dart';
 import 'screens/member/member_benefits_page.dart';
+import 'screens/member/member_requests_page.dart';
 import 'screens/member/member_sessions_page.dart';
 import 'screens/member/member_message_settings_page.dart';
 import 'shared/friend_invites.dart';
@@ -138,6 +147,9 @@ abstract class AppRoutes {
   static const inboxMessage = '/inbox/:messageId';
   static const memberMessageSettings = '/member/message-settings';
   static const memberBenefits = '/member/benefits';
+
+  /// Organisations asking to add the user by account id (accept / decline).
+  static const memberRequests = b2bMemberRequestsRoute;
   static const memberSessions = '/member/sessions';
   static const ownerCommunications = '/owner/communications';
   static const ownerCampaignNew = '/owner/communications/new';
@@ -184,6 +196,36 @@ abstract class AppRoutes {
   /// `EVENTS_DISCOVERY` build flag on; off, they fall through to Not found.
   static const memberEvents = '/member/events';
   static const memberEventDetail = '/member/events/:eventId';
+
+  /// Events S3 (spec §4): registration, orders, registrations, claims and
+  /// teams. The static segments sit before `:eventId` so they never read as
+  /// an event id.
+  static const memberEventRegister = '/member/events/:eventId/register';
+  static const memberEventOrders = '/member/events/orders';
+  static const memberEventOrderDetail = '/member/events/orders/:orderId';
+  static const memberEventRegistration =
+      '/member/events/registrations/:registrationId';
+  static const memberEventClaim = '/member/events/claim/:registrationId';
+  static const memberEventTeam = '/member/events/teams/:teamId';
+
+  /// The claim-link page (`/event-claim/#<token>`); the token is kept on
+  /// the device, never in the location. Sits beside [friendInvite].
+  static const eventClaim = '/event-claim';
+  static const eventClaimLegacy = '/event-claim/:token';
+
+  static String memberEventDetailPath(String eventId) =>
+      '/member/events/${Uri.encodeComponent(eventId)}';
+  static String memberEventRegisterPath(String eventId, {String? ticket}) =>
+      '/member/events/${Uri.encodeComponent(eventId)}/register'
+      '${ticket == null ? '' : '?ticket=${Uri.encodeQueryComponent(ticket)}'}';
+  static String memberEventOrder(String orderId) =>
+      '/member/events/orders/${Uri.encodeComponent(orderId)}';
+  static String memberEventRegistrationPath(String id) =>
+      '/member/events/registrations/${Uri.encodeComponent(id)}';
+  static String memberEventClaimPath(String id) =>
+      '/member/events/claim/${Uri.encodeComponent(id)}';
+  static String memberEventTeamPath(String id) =>
+      '/member/events/teams/${Uri.encodeComponent(id)}';
   static const memberTrainers = '/member/trainers';
   static const memberTrainerDetail = '/member/trainers/:trainerId';
   static const memberQr = '/member/qr';
@@ -250,6 +292,10 @@ final _vendorMerchPath = RegExp(
 final _vendorCustomersPath = RegExp(
   r'^/vendor/customers/(new|[A-Za-z0-9._:-]{1,100}(/edit|/statement|/sales/[A-Za-z0-9._:-]{1,100})?)$',
 );
+
+/// The inbox and one message (a tapped bell or push). Pending vendors get
+/// FitFlex's messages too, and can choose which offers they get.
+final _inboxPath = RegExp(r'^/inbox(/[A-Za-z0-9._:-]{1,100})?$');
 
 String routeForSignedInUser(AuthState auth) {
   final route = _landingFor(auth);
@@ -493,6 +539,22 @@ GoRouter buildRouter(AuthState auth) {
         return null;
       }
 
+      // An event claim link (events S3 §3.7, §5.11): the same pattern as a
+      // friend invitation. The token is kept even while registration is
+      // off, so a link opened before the flag flips still works (§4).
+      final claimLink = eventClaimLinkFrom(state.uri);
+      if (claimLink != null) {
+        showEventClaimWithoutToken();
+        final token = claimLink.token;
+        return (token == null
+                ? PendingEventClaim.clear()
+                : PendingEventClaim.save(token))
+            .then((_) => AppRoutes.eventClaim);
+      }
+      if (loc == AppRoutes.eventClaim || loc.startsWith('/event-claim/')) {
+        return null;
+      }
+
       // An organisation invitation link: keep its token on the device and
       // drop it from the address (and history), then route as usual.
       if (loc == AppRoutes.invitations) {
@@ -549,7 +611,9 @@ GoRouter buildRouter(AuthState auth) {
               _vendorStockPath.hasMatch(loc) ||
               _vendorSalesPath.hasMatch(loc) ||
               _vendorCustomersPath.hasMatch(loc) ||
-              _vendorDocumentsPath.hasMatch(loc)) {
+              _vendorDocumentsPath.hasMatch(loc) ||
+              _inboxPath.hasMatch(loc) ||
+              loc == AppRoutes.memberMessageSettings) {
             return null;
           }
           return AppRoutes.vendorHome;
@@ -990,6 +1054,18 @@ GoRouter buildRouter(AuthState auth) {
         path: AppRoutes.friendInviteLegacy,
         builder: (context, state) => const FriendInvitePage(),
       ),
+      // Events S3: a claim link's page (pre-sign-in capable, like
+      // /friend-invite). Registered regardless of the build flag so a kept
+      // token is honoured once the feature is on.
+      GoRoute(
+        path: AppRoutes.eventClaim,
+        name: 'eventClaim',
+        builder: (context, state) => const EventClaimPage.link(),
+      ),
+      GoRoute(
+        path: AppRoutes.eventClaimLegacy,
+        builder: (context, state) => const EventClaimPage.link(),
+      ),
       GoRoute(
         path: AppRoutes.inbox,
         name: 'inbox',
@@ -1010,6 +1086,11 @@ GoRouter buildRouter(AuthState auth) {
         path: AppRoutes.memberBenefits,
         name: 'memberBenefits',
         builder: (context, state) => const MemberBenefitsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.memberRequests,
+        name: 'memberRequests',
+        builder: (context, state) => const MemberRequestsPage(),
       ),
       GoRoute(
         path: AppRoutes.memberSessions,
@@ -1213,6 +1294,67 @@ GoRouter buildRouter(AuthState auth) {
               name: 'memberEvents',
               builder: (context, state) => const MemberEventsPage(),
               routes: [
+                // Events S3 (spec §4). Static segments first.
+                GoRoute(
+                  path: 'orders',
+                  name: 'memberEventOrders',
+                  builder: (context, state) => MemberEventOrdersPage(
+                    initialTab: state.uri.queryParameters['tab'] ?? '',
+                  ),
+                  routes: [
+                    GoRoute(
+                      path: ':orderId',
+                      name: 'memberEventOrder',
+                      redirect: (context, state) =>
+                          _safeEventId.hasMatch(
+                            state.pathParameters['orderId'] ?? '',
+                          )
+                          ? null
+                          : AppRoutes.memberEventOrders,
+                      builder: (context, state) => MemberEventOrderPage(
+                        orderId: state.pathParameters['orderId']!,
+                      ),
+                    ),
+                  ],
+                ),
+                GoRoute(
+                  path: 'registrations/:registrationId',
+                  name: 'memberEventRegistration',
+                  redirect: (context, state) =>
+                      _safeEventId.hasMatch(
+                        state.pathParameters['registrationId'] ?? '',
+                      )
+                      ? null
+                      : AppRoutes.memberEventOrders,
+                  builder: (context, state) => MemberEventRegistrationPage(
+                    registrationId: state.pathParameters['registrationId']!,
+                  ),
+                ),
+                GoRoute(
+                  path: 'claim/:registrationId',
+                  name: 'memberEventClaim',
+                  redirect: (context, state) =>
+                      _safeEventId.hasMatch(
+                        state.pathParameters['registrationId'] ?? '',
+                      )
+                      ? null
+                      : AppRoutes.memberEventOrders,
+                  builder: (context, state) => EventClaimPage.inApp(
+                    registrationId: state.pathParameters['registrationId']!,
+                  ),
+                ),
+                GoRoute(
+                  path: 'teams/:teamId',
+                  name: 'memberEventTeam',
+                  redirect: (context, state) =>
+                      _safeEventId.hasMatch(
+                        state.pathParameters['teamId'] ?? '',
+                      )
+                      ? null
+                      : AppRoutes.memberEventOrders,
+                  builder: (context, state) =>
+                      EventTeamPage(teamId: state.pathParameters['teamId']!),
+                ),
                 GoRoute(
                   path: ':eventId',
                   name: 'memberEventDetail',
@@ -1225,6 +1367,19 @@ GoRouter buildRouter(AuthState auth) {
                   builder: (context, state) => MemberEventDetailPage(
                     eventId: state.pathParameters['eventId']!,
                   ),
+                  routes: [
+                    GoRoute(
+                      path: 'register',
+                      name: 'memberEventRegister',
+                      builder: (context, state) => MemberEventRegisterPage(
+                        eventId: state.pathParameters['eventId']!,
+                        preselectTicketId: state.uri.queryParameters['ticket'],
+                        source: state.uri.queryParameters['ticket'] == null
+                            ? 'cta'
+                            : 'ticket_row',
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

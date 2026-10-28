@@ -12,6 +12,7 @@ import '../../shared/design_tokens.dart';
 import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
 import '../../shared/widgets/verify_identifier.dart';
+import 'member_requests_page.dart';
 
 class MemberBenefitsPage extends StatefulWidget {
   const MemberBenefitsPage({super.key});
@@ -22,6 +23,10 @@ class MemberBenefitsPage extends StatefulWidget {
 
 class _MemberBenefitsPageState extends State<MemberBenefitsPage> {
   List<Map<String, dynamic>>? _benefits;
+
+  /// Organisations waiting for the member to accept being added
+  /// (fitflex-functions#241). Empty on a backend without them.
+  List<Map<String, dynamic>> _requests = const [];
   Object? _error;
   String? _unlocking;
   bool _started = false;
@@ -42,12 +47,31 @@ class _MemberBenefitsPageState extends State<MemberBenefitsPage> {
         _benefits = ((res['benefits'] as List?) ?? const [])
             .map((b) => (b as Map).cast<String, dynamic>())
             .toList();
+        _requests = pendingMemberRequests(res['memberRequests']);
         _error = null;
       });
     } catch (e) {
       if (mounted) setState(() => _error = e);
     }
   }
+
+  /// Answer organisations' requests, then show what changed.
+  Future<void> _openRequests() async {
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => const MemberRequestsPage()));
+    if (mounted) await _load();
+  }
+
+  Widget _requestsCard() => _requests.isEmpty
+      ? const SizedBox.shrink()
+      : Padding(
+          padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
+          child: MemberRequestsCard(
+            count: _requests.length,
+            onOpen: _openRequests,
+          ),
+        );
 
   /// Ask to pay the member's share of a sponsored pass. The pass starts when
   /// FitFlex confirms the payment.
@@ -87,6 +111,7 @@ class _MemberBenefitsPageState extends State<MemberBenefitsPage> {
           ? ListView(
               padding: const EdgeInsets.all(FFTokens.spacingLg),
               children: [
+                _requestsCard(),
                 FFEmptyState(
                   title: context.tr('benefits.empty.title'),
                   body: context.tr('benefits.empty.body'),
@@ -97,6 +122,7 @@ class _MemberBenefitsPageState extends State<MemberBenefitsPage> {
           : ListView(
               padding: const EdgeInsets.all(FFTokens.spacingLg),
               children: [
+                _requestsCard(),
                 Text(
                   context.tr('benefits.intro'),
                   style: Theme.of(context).textTheme.bodyMedium,

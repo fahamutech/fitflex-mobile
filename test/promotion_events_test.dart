@@ -992,6 +992,7 @@ class _ShopApi extends ApiClient {
     bool? delivery,
     bool? promotions,
     String? sort,
+    String? areaId,
   }) async => catalogue;
   @override
   Future<List<dynamic>> myShopOrders() async => [];
@@ -1001,6 +1002,6 @@ class _ShopApi extends ApiClient {
     DiscoverQuery query,
   ) async => discovery;
   @override
-  Future<Map<String, dynamic>> shopProduct(String id) async =>
+  Future<Map<String, dynamic>> shopProduct(String id, {String? areaId}) async =>
       catalogue.firstWhere((p) => p['id'] == id);
 }
