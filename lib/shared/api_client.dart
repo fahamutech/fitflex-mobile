@@ -3089,15 +3089,19 @@ class ApiClient {
             as Map,
       );
 
-  /// Cancels an unpaid order; [reason] from the closed set (§3.8).
+  /// Cancels an order; [reason] from the closed set (§3.8). For a paid
+  /// order (events S4 §3.12.2) [expectedRefundTzs] is the refund the member
+  /// was shown: the server only compares it with a fresh evaluation (409
+  /// `refund_changed`), it never sets the amount.
   Future<Map<String, dynamic>> cancelEventOrder(
     String orderId, {
     required String reason,
+    int? expectedRefundTzs,
   }) async => Map<String, dynamic>.from(
     await _request(
           'POST',
           '/me/event-orders/${Uri.encodeComponent(orderId)}/cancel',
-          body: {'reason': reason},
+          body: {'reason': reason, 'expectedRefundTzs': ?expectedRefundTzs},
         )
         as Map,
   );
@@ -3126,15 +3130,17 @@ class ApiClient {
             as Map,
       );
 
-  /// Removes one place from an unpaid order (§3.8, D17).
+  /// Removes one place from an unpaid order (§3.8, D17), or cancels a paid
+  /// place (S4 §3.12.2; then [expectedRefundTzs] is required by the server).
   Future<Map<String, dynamic>> cancelEventRegistration(
     String id, {
     required String reason,
+    int? expectedRefundTzs,
   }) async => Map<String, dynamic>.from(
     await _request(
           'POST',
           '/me/event-registrations/${Uri.encodeComponent(id)}/cancel',
-          body: {'reason': reason},
+          body: {'reason': reason, 'expectedRefundTzs': ?expectedRefundTzs},
         )
         as Map,
   );
@@ -3175,6 +3181,114 @@ class ApiClient {
           'POST',
           '/me/event-registrations/claim',
           body: {'token': token},
+        )
+        as Map,
+  );
+
+  // ── Events S4: payments, tickets, refunds ────────────────────────────────
+  // docs/design/events-s4-payments-and-tickets.md §3.4–§3.12. Payment intake
+  // needs the server's payment flags; tickets, cancel and refunds need only
+  // EVENTS_REGISTRATION so a member who paid is never stranded.
+
+  /// Starts a payment for an awaiting order (§3.4.1). The body depends on
+  /// the server's mode and never carries an amount, currency or provider:
+  /// `{reference, payerPhone}` for `manual`, `{}` for `provider`.
+  /// [idempotencyKey] is required; a replay returns the first payment.
+  Future<Map<String, dynamic>> payEventOrder(
+    String orderId, {
+    required Map<String, dynamic> body,
+    required String idempotencyKey,
+  }) async => Map<String, dynamic>.from(
+    await _request(
+          'POST',
+          '/me/event-orders/${Uri.encodeComponent(orderId)}/payment',
+          extraHeaders: {'Idempotency-Key': idempotencyKey},
+          body: body,
+        )
+        as Map,
+  );
+
+  /// The order's payment and refund state, cheap enough to poll (§3.5).
+  Future<Map<String, dynamic>> eventPaymentStatus(String orderId) async =>
+      Map<String, dynamic>.from(
+        await _request(
+              'GET',
+              '/me/event-orders/${Uri.encodeComponent(orderId)}/payment-status',
+            )
+            as Map,
+      );
+
+  /// My tickets, soonest event first: `{items, nextCursor}` (§3.8.4). No
+  /// token is in the list.
+  Future<Map<String, dynamic>> listEventTickets({
+    String? cursor,
+    int limit = 20,
+  }) async => Map<String, dynamic>.from(
+    await _request(
+          'GET',
+          _withQuery('/me/event-tickets', {
+            if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+            'limit': '$limit',
+          }),
+        )
+        as Map,
+  );
+
+  /// One ticket with its QR payload (§3.8.4). 404 `registration_not_found`
+  /// when the caller has no right to see it; 409 `ticket_revoked {reason}`.
+  Future<Map<String, dynamic>> getEventTicket(
+    String registrationId,
+  ) async => Map<String, dynamic>.from(
+    await _request(
+          'GET',
+          '/me/event-registrations/${Uri.encodeComponent(registrationId)}/ticket',
+        )
+        as Map,
+  );
+
+  /// Replaces the ticket code; the old one stops working (§3.8.3).
+  Future<Map<String, dynamic>> rotateEventTicket(
+    String registrationId,
+  ) async => Map<String, dynamic>.from(
+    await _request(
+          'POST',
+          '/me/event-registrations/${Uri.encodeComponent(registrationId)}/ticket/rotate',
+          body: const <String, dynamic>{},
+        )
+        as Map,
+  );
+
+  /// What cancelling one paid place would refund (§3.12.2). Read-only.
+  Future<Map<String, dynamic>> eventRegistrationCancelPreview(
+    String registrationId,
+  ) async => Map<String, dynamic>.from(
+    await _request(
+          'GET',
+          '/me/event-registrations/${Uri.encodeComponent(registrationId)}/cancel-preview',
+        )
+        as Map,
+  );
+
+  /// What cancelling a whole paid order would refund (§3.12.2). Read-only.
+  Future<Map<String, dynamic>> eventOrderCancelPreview(String orderId) async =>
+      Map<String, dynamic>.from(
+        await _request(
+              'GET',
+              '/me/event-orders/${Uri.encodeComponent(orderId)}/cancel-preview',
+            )
+            as Map,
+      );
+
+  /// Sends the claim invitation for an unclaimed place again (§3.10); this
+  /// makes a new link and the old one stops working.
+  Future<Map<String, dynamic>> resendEventClaimInvitation(
+    String orderId, {
+    required String registrationId,
+  }) async => Map<String, dynamic>.from(
+    await _request(
+          'POST',
+          '/me/event-orders/${Uri.encodeComponent(orderId)}/claim-invitations',
+          body: {'registrationId': registrationId},
         )
         as Map,
   );

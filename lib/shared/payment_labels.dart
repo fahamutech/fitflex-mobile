@@ -37,6 +37,14 @@ String paymentProductLabel(BuildContext context, PaymentRequest p) {
       return '${context.tr('pay.product.trainerPass')} · $gym';
     case 'SHOP_ORDER':
       return context.tr('pay.product.shopOrder');
+    case 'EVENT_ORDER':
+      // Events S4: "Event tickets · Dar Half Marathon" (the order reference
+      // when the server named no event).
+      final what = (p.eventTitle ?? '').trim().isNotEmpty
+          ? p.eventTitle!.trim()
+          : (p.eventOrderReference ?? '').trim();
+      final label = context.tr('pay.product.eventOrder');
+      return what.isEmpty ? label : '$label · $what';
   }
   // Server without product types: the old tier/plan codes are all there is.
   if (p.tier.isNotEmpty) return context.tr('pass.${p.tier}');

@@ -81,4 +81,41 @@ class EventsAnalytics {
     'registrationId': registrationId,
     'via': via,
   });
+
+  // ── Payments, tickets, cancel and refund (S4 spec §5.13) ──────────────
+  // No personal data, no payment references, no amounts below order level.
+
+  static void paymentStarted({
+    required String orderId,
+    required String mode,
+    required bool late,
+  }) => _record('payment_started', {
+    'orderId': orderId,
+    'mode': mode,
+    'late': late,
+  });
+
+  static void paymentSubmitted({required String orderId, required bool late}) =>
+      _record('payment_submitted', {'orderId': orderId, 'late': late});
+
+  /// Once per state per order and session.
+  static void paymentStateSeen({
+    required String orderId,
+    required String state,
+  }) => _record('payment_state_seen', {'orderId': orderId, 'state': state});
+
+  static void ticketOpened({required String registrationId}) =>
+      _record('ticket_opened', {'registrationId': registrationId});
+
+  static void ticketRotated() => _record('ticket_rotated', {});
+
+  static void cancelPreviewViewed({
+    required String scope,
+    required String mode,
+  }) => _record('cancel_preview_viewed', {'scope': scope, 'mode': mode});
+
+  static void cancelConfirmed({required String scope, required String mode}) =>
+      _record('cancel_confirmed', {'scope': scope, 'mode': mode});
+
+  static void invitationResent() => _record('invitation_resent', {});
 }

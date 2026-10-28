@@ -253,6 +253,9 @@ EventsOptions optsS3({
   int maxParticipantsPerOrder = 10,
   bool smsCodes = true,
   bool emailCodes = false,
+  String payment = 'none',
+  bool ticketsQr = false,
+  bool scanning = false,
 }) => EventsOptions.fromJson({
   ...optionsS3,
   'registration': registration,
@@ -260,6 +263,19 @@ EventsOptions optsS3({
   'corporate': corporate,
   'maxParticipantsPerOrder': maxParticipantsPerOrder,
   'claim': {'smsCodes': smsCodes, 'emailCodes': emailCodes},
+  'payment': payment,
+  // Events S4 (spec §3.1): only present when payment is on.
+  if (payment != 'none') ...{
+    'manualConfirmHours': 24,
+    'refundDays': 5,
+    'hold': {
+      'manualExtendHours': 24,
+      'manualMaxHours': 48,
+      'providerExtendMinutes': 10,
+      'lateGraceHours': 24,
+    },
+  },
+  'tickets': {'qr': ticketsQr, 'scanning': scanning},
 });
 
 const consentTextJson = {
@@ -379,6 +395,10 @@ Map<String, dynamic> registrationJson({
   Map<String, dynamic>? team,
   Map<String, dynamic>? purchaser,
   Map<String, dynamic>? event,
+  Map<String, dynamic>? ticket,
+  List<Map<String, dynamic>>? refunds,
+  String? claimInvitedAt,
+  int claimInviteCount = 0,
 }) => {
   'id': id,
   'ticketTypeId': ticketTypeId,
@@ -404,6 +424,10 @@ Map<String, dynamic> registrationJson({
   'kitSize': kitSize,
   'emergencyContact': emergencyContact,
   'allowedActions': allowedActions,
+  'ticket': ticket,
+  'refunds': ?refunds,
+  'claimInvitedAt': claimInvitedAt,
+  'claimInviteCount': claimInviteCount,
   'team': team,
   'purchaser': purchaser,
   'createdAt': '2027-03-10T11:57:00Z',
@@ -433,6 +457,10 @@ Map<String, dynamic> orderJson({
   Map<String, dynamic>? team,
   Map<String, dynamic>? event,
   bool replayed = false,
+  Map<String, dynamic>? paymentView,
+  Map<String, dynamic>? instructions,
+  String? paymentRequestId,
+  List<Map<String, dynamic>>? refunds,
 }) => {
   'order': {
     'id': id,
@@ -454,7 +482,13 @@ Map<String, dynamic> orderJson({
   'lines': lines ?? [quoteLine()],
   'registrations': registrations ?? [registrationJson(orderStatus: status)],
   'holdExpiresAt': holdExpiresAt,
-  'next': {'payment': payment, 'instructions': null},
+  'next': {
+    'payment': payment,
+    'instructions': instructions,
+    'paymentRequestId': paymentRequestId,
+  },
+  'payment': paymentView,
+  'refunds': ?refunds,
   'event': event ?? detail('evt_1', registration: true),
   'team': team,
   'allowedActions':
@@ -548,4 +582,228 @@ Map<String, dynamic> teamJson({
           'status': 'reserved',
         },
       ],
+};
+
+// ── Events S4 fixtures (spec §3.5, §3.8, §3.12) ──────────────────────────
+
+/// `next.instructions` for a manual order: Lipa Namba plus the order's own
+/// amount and reference.
+Map<String, dynamic> manualInstructions({
+  int amountTzs = 25000,
+  bool payerPhoneRequired = true,
+  String lipaNamba = '5123456',
+  String accountName = 'FitFlex Africa',
+  String? network = 'Vodacom',
+}) => {
+  'lipaNamba': lipaNamba,
+  'accountName': accountName,
+  'network': network,
+  'instructions': {
+    'en': 'Pay from M-Pesa, Tigo Pesa or Airtel Money.',
+    'sw': 'Lipa kwa M-Pesa, Tigo Pesa au Airtel Money.',
+  },
+  'amountTzs': amountTzs,
+  'reference': 'EV-3F9A2B7C1D',
+  'referenceRequired': true,
+  'payerPhoneRequired': payerPhoneRequired,
+};
+
+/// A `PaymentView`.
+Map<String, dynamic> paymentView({
+  String state = 'submitted',
+  String method = 'manual',
+  int amountTzs = 25000,
+  String? reference = 'QGH7XK2L9P',
+  String? payerPhoneMasked = '+255 7•• ••• 678',
+  String? submittedAt = '2027-03-10T12:00:00Z',
+  String? confirmTargetAt = '2027-03-11T12:00:00Z',
+  String? rejectCode,
+  String? memberNote,
+  bool late = false,
+  bool canRetry = false,
+  String? refundId,
+}) => {
+  'id': 'evp_1',
+  'state': state,
+  'method': method,
+  'amountTzs': amountTzs,
+  'currency': 'TZS',
+  'reference': reference,
+  'payerPhoneMasked': payerPhoneMasked,
+  'submittedAt': submittedAt,
+  'decidedAt': null,
+  'confirmTargetAt': confirmTargetAt,
+  'rejectCode': rejectCode,
+  'memberNote': memberNote,
+  'late': late,
+  'canRetry': canRetry,
+  'refundId': refundId,
+};
+
+Map<String, dynamic> refundView({
+  String id = 'rf_1',
+  String status = 'requested',
+  String scope = 'registration',
+  int amountTzs = 25000,
+  String? paidTo,
+  String? paymentReference,
+  String? rejectionNote,
+}) => {
+  'id': id,
+  'status': status,
+  'scope': scope,
+  'amountTzs': amountTzs,
+  'currency': 'TZS',
+  'requestedAt': '2027-03-10T13:00:00Z',
+  'decidedAt': null,
+  'paidAt': status == 'paid' ? '2027-03-12T09:00:00Z' : null,
+  'paidTo': paidTo,
+  'paymentReference': paymentReference,
+  'rejectionNote': rejectionNote,
+};
+
+/// An order awaiting payment in manual mode, with the instructions.
+Map<String, dynamic> manualOrderJson({
+  Map<String, dynamic>? paymentView,
+  int total = 25000,
+  String status = 'awaiting_payment',
+  String? closeReason,
+  String? closedAt,
+  String? holdExpiresAt = '2027-03-10T12:27:00Z',
+  List<Map<String, dynamic>>? refunds,
+  List<Map<String, dynamic>>? registrations,
+  List<String>? allowedActions,
+}) => orderJson(
+  payment: 'manual',
+  total: total,
+  status: status,
+  closeReason: closeReason,
+  closedAt: closedAt,
+  holdExpiresAt: holdExpiresAt,
+  instructions: manualInstructions(amountTzs: total),
+  paymentView: paymentView,
+  refunds: refunds,
+  registrations: registrations,
+  allowedActions: allowedActions,
+);
+
+/// The server's answer to `POST …/payment`.
+Map<String, dynamic> paymentAccepted({
+  String mode = 'manual',
+  bool replayed = false,
+  bool late = false,
+  String? paymentRequestId = 'pr_1',
+}) => {
+  'payment': paymentView(),
+  'order': {
+    'id': 'ord_1',
+    'reference': 'EV-3F9A2B7C1D',
+    'status': 'awaiting_payment',
+    'totalTzs': 25000,
+    'currency': 'TZS',
+    'holdExpiresAt': '2027-03-11T12:00:00Z',
+  },
+  'next': {'payment': mode, 'paymentRequestId': paymentRequestId},
+  'late': late,
+  'replayed': replayed,
+};
+
+/// One ticket wallet item.
+Map<String, dynamic> ticketRow({
+  String registrationId = 'reg_1',
+  String state = 'active',
+  String displayCode = 'T-3F9A2B',
+  String relation = 'self',
+  String eventId = 'evt_1',
+  String title = 'Dar Half Marathon',
+  String availability = 'open',
+  String startsAt = '2027-03-14T03:30:00Z',
+  String first = 'Asha',
+  String last = 'Mollel',
+}) => {
+  'registrationId': registrationId,
+  'ticketId': 'etk_$registrationId',
+  'displayCode': displayCode,
+  'state': state,
+  'event': summary(
+    eventId,
+    title: title,
+    availability: availability,
+    startsAt: startsAt,
+  ),
+  'category': {
+    'name': '21K Half Marathon',
+    'distanceM': 21097,
+    'startsAt': startsAt,
+  },
+  'ticketType': {'name': 'Standard'},
+  'participant': {'firstName': first, 'lastName': last},
+  'relation': relation,
+  'orderReference': 'EV-3F9A2B7C1D',
+  'issuedAt': '2027-03-10T12:30:00Z',
+  'kit': null,
+};
+
+/// `GET /me/event-registrations/:id/ticket`.
+Map<String, dynamic> ticketPayload({
+  String registrationId = 'reg_1',
+  String token = 'ev1.k1.etk_reg_1.1.AAAAAAAAAAAAAAAAAAAAAA',
+  String displayCode = 'T-3F9A2B',
+  bool scanning = false,
+  String relation = 'self',
+  String first = 'Asha',
+}) => {
+  'ticket': {
+    'id': 'etk_$registrationId',
+    'displayCode': displayCode,
+    'state': 'active',
+    'issuedAt': '2027-03-10T12:30:00Z',
+    'rotatedAt': '2027-03-10T12:30:00Z',
+  },
+  'token': token,
+  'qrPayload': 'FFEV1:$token',
+  'event': summary('evt_1'),
+  'category': {'name': '21K Half Marathon', 'distanceM': 21097},
+  'ticketType': {'name': 'Standard'},
+  'participant': {'firstName': first, 'lastName': 'Mollel'},
+  'relation': relation,
+  'scanning': scanning,
+  'kit': null,
+};
+
+/// `cancel-preview`.
+Map<String, dynamic> cancelPreview({
+  String mode = 'auto',
+  int percent = 100,
+  int paidTzs = 25000,
+  int? refundTzs,
+  String? deadlineAt = '2027-03-12T20:59:00Z',
+  String preset = 'refund_until_close',
+  String? blocked,
+  bool eligible = true,
+}) => {
+  'eligible': eligible,
+  'mode': mode,
+  'percent': percent,
+  'paidTzs': paidTzs,
+  'refundTzs': refundTzs ?? (paidTzs * percent ~/ 100),
+  'currency': 'TZS',
+  'deadlineAt': deadlineAt,
+  'policy': {
+    'preset': preset,
+    'text': {
+      'en': 'Refunds until registration closes.',
+      'sw': 'Marejesho hadi usajili ufungwe.',
+    },
+  },
+  'places': [
+    {
+      'registrationId': 'reg_1',
+      'name': 'Asha Mollel',
+      'paidTzs': paidTzs,
+      'refundTzs': refundTzs ?? (paidTzs * percent ~/ 100),
+    },
+  ],
+  'releaseInventory': true,
+  'blocked': blocked,
 };

@@ -126,6 +126,22 @@ String memberLinkFor({required String deepLink, required String type}) =>
         'event_order_cancelled' => 'eventOrder',
         'event_claim_available' => 'eventClaim',
         'event_place_claimed' || 'event_place_cancelled' => 'eventRegistration',
+        // Events S4 (spec §3.16): payment and refund notices open the
+        // order; a rejection opens the pay page to try again; confirmed
+        // opens the tickets; a ticket for a participant opens the ticket;
+        // a cancelled place opens the registrations list.
+        'event_payment_submitted' ||
+        'event_payment_refund_due' ||
+        'event_payment_late_received' ||
+        'event_cancelled_refund' ||
+        'event_refund_requested' ||
+        'event_refund_approved' ||
+        'event_refund_paid' ||
+        'event_refund_rejected' => 'eventOrder',
+        'event_payment_confirmed' => 'eventTickets',
+        'event_payment_rejected' => 'eventPay',
+        'event_ticket_ready' => 'eventTicket',
+        'event_place_cancelled_by_purchaser' => 'eventRegistrations',
         _ => '',
       };
 
@@ -205,6 +221,15 @@ String? memberRouteFor({
         when registrationId != null && _safeId.hasMatch(registrationId) =>
       '/member/events/registrations/$registrationId',
     'eventRegistration' => '/member/events/orders',
+    'eventTickets' => '/member/events/tickets',
+    'eventPay' when orderId != null && _safeId.hasMatch(orderId) =>
+      '/member/events/orders/$orderId/pay',
+    'eventPay' => '/member/events/orders',
+    'eventTicket'
+        when registrationId != null && _safeId.hasMatch(registrationId) =>
+      '/member/events/registrations/$registrationId/ticket',
+    'eventTicket' => '/member/events/tickets',
+    'eventRegistrations' => '/member/events/orders?tab=registrations',
     _ => null,
   };
 }

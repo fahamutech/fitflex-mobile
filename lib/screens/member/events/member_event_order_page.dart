@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
@@ -11,21 +12,28 @@ import '../../../shared/api_error_message.dart';
 import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
 import '../../../shared/events/event_order.dart';
+import '../../../shared/events/event_payment.dart';
+import '../../../shared/events/event_payment_rules.dart';
 import '../../../shared/events/event_summary.dart';
 import '../../../shared/events/event_time.dart';
 import '../../../shared/events/events_analytics.dart';
 import '../../../shared/events/events_checkout.dart';
 import '../../../shared/events/events_options.dart';
 import '../../../shared/events/registration_draft.dart';
+import '../../../shared/formatters.dart';
 import '../../../shared/i18n.dart';
+import '../../../shared/shop_checkout.dart';
 import 'event_cancel_reason_dialog.dart';
 import 'event_status.dart';
 import 'events_registration_gate.dart';
+import 'pay/event_payment_cards.dart';
 import 'register/quote_summary.dart';
 
-/// `/member/events/orders/:orderId` (events S3 spec §5.7): awaiting
-/// payment with the hold countdown and the labelled S4 payment slot,
-/// expired, cancelled; per-place removal (D17) and whole-order cancel.
+/// `/member/events/orders/:orderId` (events S3 spec §5.7, S4 spec §5.1):
+/// awaiting payment with the hold countdown and the payment status card
+/// (the labelled "payment isn't open yet" slot while the server's payment
+/// mode is `none`), expired, cancelled, paid with its tickets and refunds;
+/// per-place removal (D17) and whole-order cancel.
 class MemberEventOrderPage extends StatefulWidget {
   const MemberEventOrderPage({
     super.key,
@@ -33,12 +41,18 @@ class MemberEventOrderPage extends StatefulWidget {
     this.options,
     this.now,
     this.pollEvery = const Duration(seconds: 60),
+    this.livePollEvery = const Duration(seconds: 30),
   });
 
   final String orderId;
   final EventsOptions? options;
   final DateTime? now;
+
+  /// How often an order awaiting payment with nothing sent is re-read.
   final Duration pollEvery;
+
+  /// How often the payment is re-read while one is live (S4 spec §5.1).
+  final Duration livePollEvery;
 
   @override
   State<MemberEventOrderPage> createState() => _MemberEventOrderPageState();
@@ -53,9 +67,12 @@ class _MemberEventOrderPageState extends State<MemberEventOrderPage>
   bool _busy = false;
   Timer? _poll;
   final _heading = FocusNode(debugLabel: 'order-heading');
+  CheckoutAttempt? _freeAttempt;
+  final _seenStates = <String>{};
 
   ApiClient get _api => AppScope.of(context).api;
   EventsOptions get _options => eventsOptionsOf(context, widget.options);
+  DateTime get _clock => widget.now ?? DateTime.now();
 
   @override
   void initState() {
@@ -74,8 +91,10 @@ class _MemberEventOrderPageState extends State<MemberEventOrderPage>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    final d = _detail;
     if (state == AppLifecycleState.resumed &&
-        (_detail?.order.isAwaitingPayment ?? false)) {
+        d != null &&
+        (d.order.isAwaitingPayment || (d.paymentView?.state.isLive ?? false))) {
       _load(quiet: true);
     }
   }
@@ -96,10 +115,13 @@ class _MemberEventOrderPageState extends State<MemberEventOrderPage>
     try {
       final json = await _api.getEventOrder(widget.orderId);
       if (!mounted) return;
+      final next = EventOrderDetail.fromJson(json);
+      final before = _detail;
       setState(() {
-        _detail = EventOrderDetail.fromJson(json);
+        _detail = next;
         _loading = false;
       });
+      _noteStateChange(before, next);
       _schedulePoll();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _heading.requestFocus();
@@ -118,10 +140,140 @@ class _MemberEventOrderPageState extends State<MemberEventOrderPage>
     }
   }
 
+  /// Records each payment state once (analytics) and announces a change to
+  /// confirmed once (screen readers); the card itself is a live region.
+  void _noteStateChange(EventOrderDetail? before, EventOrderDetail next) {
+    final state = next.paymentView?.state;
+    if (state != null && _seenStates.add('${next.order.id}:${state.wire}')) {
+      EventsAnalytics.paymentStateSeen(
+        orderId: next.order.id,
+        state: state.wire,
+      );
+    }
+    if (before != null &&
+        before.order.status != EventOrderStatus.confirmed &&
+        next.order.status == EventOrderStatus.confirmed) {
+      final n = next.registrations
+          .where((r) => r.ticket?.isActive ?? false)
+          .length;
+      SemanticsService.sendAnnouncement(
+        View.of(context),
+        context.tr('events.pay.announce.confirmed').replaceFirst('{n}', '$n'),
+        Directionality.of(context),
+      );
+    }
+  }
+
+  /// A payment that is live is re-read often through the cheap
+  /// payment-status route (spec §3.5); the full order is read again only
+  /// when something changed. An order awaiting payment with nothing sent
+  /// is re-read slowly, as in S3.
   void _schedulePoll() {
     _poll?.cancel();
-    if (_detail?.order.isAwaitingPayment ?? false) {
+    final d = _detail;
+    if (d == null) return;
+    if (d.paymentView?.state.isLive ?? false) {
+      _poll = Timer(widget.livePollEvery, _pollPayment);
+    } else if (d.order.isAwaitingPayment) {
       _poll = Timer(widget.pollEvery, () => _load(quiet: true));
+    }
+  }
+
+  Future<void> _pollPayment() async {
+    final d = _detail;
+    if (d == null || !mounted) return;
+    try {
+      final st = EventPaymentStatus.fromJson(
+        await _api.eventPaymentStatus(widget.orderId),
+      );
+      if (!mounted) return;
+      final changed =
+          st.orderStatus != d.order.statusWire ||
+          st.payment?.state != d.paymentView?.state ||
+          st.holdExpiresAt != d.order.holdExpiresAt ||
+          st.refund != null;
+      if (changed) {
+        await _load(quiet: true);
+        return;
+      }
+    } catch (_) {
+      // A dropped connection while waiting is not a failed payment.
+    }
+    if (mounted) _schedulePoll();
+  }
+
+  // ── pay ─────────────────────────────────────────────────────────────────
+
+  Future<void> _openPay() async {
+    await context.push<bool>(AppRoutes.memberEventOrderPayPath(widget.orderId));
+    if (mounted) await _load(quiet: true);
+  }
+
+  /// A free order (total 0) is confirmed by the server on one tap; the
+  /// "registered" note shows only once the server says it is confirmed.
+  Future<void> _confirmFree() async {
+    final d = _detail;
+    if (d == null || _busy) return;
+    _freeAttempt = CheckoutAttempt.forPurchase(
+      _freeAttempt,
+      'free|${d.order.id}',
+    );
+    final snack = FFSnack.of(context);
+    final locale = FFLocaleScope.of(context);
+    final done = context.tr('events.pay.free.done');
+    setState(() => _busy = true);
+    try {
+      await _api.payEventOrder(
+        d.order.id,
+        body: const <String, dynamic>{},
+        idempotencyKey: _freeAttempt!.key,
+      );
+      if (!mounted) return;
+      setState(() => _busy = false);
+      await _load(quiet: true);
+      if (mounted && _detail?.order.status == EventOrderStatus.confirmed) {
+        snack.success(done);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      if (e is ApiException && !eventOrderOutcomeUnknown(e)) {
+        _freeAttempt = null;
+        snack.error(eventsErrorMessage(locale, e));
+      } else {
+        // The answer was lost: the server may have confirmed it already.
+        await _load(quiet: true);
+      }
+    }
+  }
+
+  Future<void> _resendInvite(EventRegistration r) async {
+    final d = _detail;
+    if (d == null || _busy) return;
+    final yes = await showFFConfirmDialog(
+      context,
+      title: context.tr('events.invite.resend'),
+      message: context.tr('events.invite.resend.body'),
+      confirmLabel: context.tr('events.invite.resend'),
+      cancelLabel: context.tr('common.cancel'),
+      confirmKey: const Key('invite-confirm'),
+    );
+    if (!yes || !mounted) return;
+    final snack = FFSnack.of(context);
+    final locale = FFLocaleScope.of(context);
+    final sent = context.tr('events.invite.resent');
+    setState(() => _busy = true);
+    try {
+      await _api.resendEventClaimInvitation(d.order.id, registrationId: r.id);
+      if (!mounted) return;
+      EventsAnalytics.invitationResent();
+      setState(() => _busy = false);
+      snack.success(sent);
+      await _load(quiet: true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      snack.error(eventsErrorMessage(locale, e));
     }
   }
 
@@ -151,9 +303,8 @@ class _MemberEventOrderPageState extends State<MemberEventOrderPage>
       setState(() {
         _busy = false;
         if (order != null) {
-          _detail = EventOrderDetail(
+          _detail = d.copyWith(
             order: order,
-            lines: d.lines,
             registrations: res['registrations'] is List
                 ? [
                     for (final r in res['registrations'] as List)
@@ -161,10 +312,6 @@ class _MemberEventOrderPageState extends State<MemberEventOrderPage>
                         EventRegistration.fromJson(r).withNamesFrom(d.lines),
                   ]
                 : d.registrations,
-            event: d.event,
-            team: d.team,
-            payment: d.payment,
-            paymentInstructions: d.paymentInstructions,
             allowedActions: const [],
           );
         }
@@ -290,6 +437,7 @@ class _MemberEventOrderPageState extends State<MemberEventOrderPage>
                     .replaceFirst('{ref}', d.order.reference),
         ),
       ),
+      bottomNavigationBar: d == null ? null : _payBar(context, d),
       body: _gone
           ? Center(
               child: FFEmptyState(
@@ -345,11 +493,10 @@ class _MemberEventOrderPageState extends State<MemberEventOrderPage>
     final off = e?.utcOffsetMinutes ?? 0;
     final abbr = e?.timezoneAbbr ?? '';
     final status = context.tr(eventOrderStatusKey(o.status));
-    final tone = switch (o.status) {
-      EventOrderStatus.awaitingPayment => FFBadgeTone.warning,
-      EventOrderStatus.confirmed => FFBadgeTone.success,
-      _ => FFBadgeTone.gray,
-    };
+    final tone = eventOrderStatusTone(o.status);
+    final pv = d.paymentView;
+    final slot = eventPaymentSlotFor(o, pv, d.refunds);
+    final paymentLive = pv?.state.isLive ?? false;
     final eventOpen =
         e != null &&
         (e.availability == EventAvailability.open ||
@@ -475,38 +622,8 @@ class _MemberEventOrderPageState extends State<MemberEventOrderPage>
             onPressed: eventOpen ? _registerAgain : null,
           ),
         ),
-      // ── payment slot (S4 fills it from next.payment) ──────────────────
-      if (o.isAwaitingPayment) ...[
-        FFSectionTitle(context.tr('events.order.payment.title')),
-        FFCard(
-          key: const Key('order-payment-slot'),
-          child: d.payment == 'none'
-              ? Column(
-                  key: const Key('order-payment-placeholder'),
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      context.tr('events.order.payment.soon.title'),
-                      style: tt.titleSmall,
-                    ),
-                    const SizedBox(height: FFTokens.spacingXs),
-                    FFAlert(
-                      tone: FFAlertTone.info,
-                      message: context.tr('events.order.payment.soon.body'),
-                    ),
-                  ],
-                )
-              // S4: `manual` → ManualPaymentSteps from next.instructions;
-              // `provider` → the provider button. Until then the same
-              // placeholder, so an early server answer never renders a
-              // payment UI this release cannot complete.
-              : Text(
-                  context.tr('events.order.payment.soon.title'),
-                  key: const Key('order-payment-unsupported'),
-                  style: tt.titleSmall,
-                ),
-        ),
-      ],
+      // ── payment slot (S4 spec §5.1) ───────────────────────────────────
+      ..._paymentSlot(context, d, slot),
       // ── quote ─────────────────────────────────────────────────────────
       FFSectionTitle(context.tr('events.review.tickets')),
       FFCard(
@@ -557,7 +674,10 @@ class _MemberEventOrderPageState extends State<MemberEventOrderPage>
           ),
         ),
       ],
-      if (o.isAwaitingPayment && d.canCancel) ...[
+      // ── refunds (S4 spec §5.7) ────────────────────────────────────────
+      for (final rf in d.refunds)
+        EventRefundCard(refund: rf, options: _options, utcOffsetMinutes: off),
+      if (o.isAwaitingPayment && d.canCancel && !paymentLive) ...[
         const SizedBox(height: FFTokens.spacingMd),
         FFButton(
           key: const Key('order-cancel'),
@@ -565,6 +685,16 @@ class _MemberEventOrderPageState extends State<MemberEventOrderPage>
           variant: FFButtonVariant.destructive,
           loading: _busy,
           onPressed: _cancelOrder,
+        ),
+      ],
+      if (d.canCancelRefund) ...[
+        const SizedBox(height: FFTokens.spacingMd),
+        FFButton(
+          key: const Key('order-cancel-refund'),
+          label: context.tr('events.cancelpaid.title'),
+          variant: FFButtonVariant.destructive,
+          onPressed: () =>
+              context.push(AppRoutes.memberEventOrderCancelPath(o.id)),
         ),
       ],
       const SizedBox(height: FFTokens.spacingLg),
@@ -575,6 +705,148 @@ class _MemberEventOrderPageState extends State<MemberEventOrderPage>
         style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
       ),
     ];
+  }
+
+  // ── payment slot ────────────────────────────────────────────────────────
+
+  /// Which way the server takes payment: the order's own `next.payment`
+  /// when it names one, else the options'.
+  String _modeOf(EventOrderDetail d) =>
+      d.payment != 'none' ? d.payment : _options.payment;
+
+  List<Widget> _paymentSlot(
+    BuildContext context,
+    EventOrderDetail d,
+    EventPaymentSlot slot,
+  ) {
+    final o = d.order;
+    final tt = Theme.of(context).textTheme;
+    final mode = _modeOf(d);
+    final e = d.event?.summary ?? o.event;
+
+    // Payment is not open (server mode `none`) and nothing was sent: the
+    // S3 slot, with corrected wording.
+    if (o.isAwaitingPayment && d.paymentView == null && mode == 'none') {
+      return [
+        FFSectionTitle(context.tr('events.order.payment.title')),
+        FFCard(
+          key: const Key('order-payment-slot'),
+          child: Column(
+            key: const Key('order-payment-placeholder'),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                context.tr('events.order.payment.soon.title'),
+                style: tt.titleSmall,
+              ),
+              const SizedBox(height: FFTokens.spacingXs),
+              FFAlert(
+                tone: FFAlertTone.info,
+                message: context.tr('events.order.payment.soon.body'),
+              ),
+            ],
+          ),
+        ),
+      ];
+    }
+    // A mode this release does not know: say nothing it cannot complete.
+    if (o.isAwaitingPayment &&
+        d.paymentView == null &&
+        mode != 'manual' &&
+        mode != 'provider') {
+      return [
+        FFCard(
+          child: Text(
+            context.tr('events.order.payment.soon.title'),
+            key: const Key('order-payment-unsupported'),
+            style: tt.titleSmall,
+          ),
+        ),
+      ];
+    }
+    final late = eventOrderLatePayable(o, _options, _clock);
+    return [
+      if (slot != EventPaymentSlot.none)
+        EventPaymentStatusCard(
+          key: const Key('order-payment-card'),
+          slot: slot,
+          order: o,
+          options: _options,
+          payment: d.paymentView,
+          refunds: d.refunds,
+          ticketCount: d.registrations
+              .where((r) => r.ticket?.isActive ?? false)
+              .length,
+          eventTitle: e?.title ?? '',
+          utcOffsetMinutes: e?.utcOffsetMinutes ?? 0,
+          timezoneAbbr: e?.timezoneAbbr ?? '',
+          now: widget.now,
+          onTryAgain: _openPay,
+          onCheck: () => _load(quiet: true),
+          onOpenTickets: () => context.push(AppRoutes.memberEventTickets),
+        ),
+      // Expired a moment ago: the member who already paid may still send
+      // the transaction ID (spec §3.4.1, D26).
+      if (late && !(d.paymentView?.state.isLive ?? false))
+        Align(
+          alignment: Alignment.centerLeft,
+          child: FFButton(
+            key: const Key('order-already-paid'),
+            label: context.tr('events.pay.alreadyPaid'),
+            variant: FFButtonVariant.ghost,
+            onPressed: _openPay,
+          ),
+        ),
+    ];
+  }
+
+  /// The sticky "Pay · TSh …" bar: awaiting payment, nothing sent, and the
+  /// server takes payment. Hidden while payment is not open.
+  Widget? _payBar(BuildContext context, EventOrderDetail d) {
+    final o = d.order;
+    final mode = _modeOf(d);
+    if (!o.isAwaitingPayment ||
+        d.paymentView != null ||
+        (mode != 'manual' && mode != 'provider')) {
+      return null;
+    }
+    final amount = formatCurrency(o.totalTzs, currency: o.currency);
+    final free = o.totalTzs == 0;
+    final cs = Theme.of(context).colorScheme;
+    return Material(
+      color: cs.surface,
+      elevation: 8,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.all(FFTokens.spacingSm),
+          child: Center(
+            heightFactor: 1,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 640),
+              child: FFButton(
+                key: const Key('order-pay'),
+                label: free
+                    ? context.tr('events.pay.free.cta')
+                    : context
+                          .tr('events.pay.cta')
+                          .replaceFirst('{amount}', amount),
+                semanticLabel: free
+                    ? null
+                    : context
+                          .tr('events.pay.cta.a11y')
+                          .replaceFirst('{amount}', amount)
+                          .replaceFirst('{ref}', o.reference),
+                fullWidth: true,
+                maxLines: 2,
+                loading: _busy,
+                onPressed: _busy ? null : (free ? _confirmFree : _openPay),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _participantRow(
@@ -602,63 +874,119 @@ class _MemberEventOrderPageState extends State<MemberEventOrderPage>
     final canRemove =
         d.order.isAwaitingPayment &&
         d.canCancel &&
+        !(d.paymentView?.state.isLive ?? false) &&
         live &&
         d.registrations
                 .where((x) => x.status != EventRegistrationStatus.cancelled)
                 .length >
             1;
+    final lang = FFLocaleScope.of(context).locale.languageCode;
+    // The purchaser loses the ticket when the participant claims the place
+    // (spec §3.8.5): then the S3 masked view shows no ticket button.
+    final claimedAway = r.claimState == ClaimState.claimed && !r.isSelf;
+    final showTicket =
+        d.order.status.wasPaid && (r.ticket?.isActive ?? false) && !claimedAway;
+    final inviteLine = r.canResendInvite && d.order.status.wasPaid;
+    final statusTone = r.status == EventRegistrationStatus.confirmed
+        ? FFBadgeTone.success
+        : (live ? FFBadgeTone.warning : FFBadgeTone.gray);
     return FFCard(
       key: Key('order-participant-${r.id}'),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: InkWell(
-              onTap: () =>
-                  context.push(AppRoutes.memberEventRegistrationPath(r.id)),
-              borderRadius: BorderRadius.circular(FFTokens.radiusLg),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(minHeight: 48),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(r.fullName, style: tt.titleSmall),
-                    Text(
-                      [
-                        r.categoryName,
-                        r.ticketTypeName,
-                      ].where((s) => s.isNotEmpty).join(' · '),
-                      style: tt.bodySmall,
-                    ),
-                    const SizedBox(height: FFTokens.spacingXs),
-                    Wrap(
-                      spacing: FFTokens.spacingXs,
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () =>
+                      context.push(AppRoutes.memberEventRegistrationPath(r.id)),
+                  borderRadius: BorderRadius.circular(FFTokens.radiusLg),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 48),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        FFBadge(
-                          label: context.tr(statusKey),
-                          tone: live ? FFBadgeTone.warning : FFBadgeTone.gray,
+                        Text(r.fullName, style: tt.titleSmall),
+                        Text(
+                          [
+                            r.categoryName,
+                            r.ticketTypeName,
+                          ].where((s) => s.isNotEmpty).join(' · '),
+                          style: tt.bodySmall,
                         ),
-                        FFBadge(label: chip.$1, tone: chip.$2),
+                        const SizedBox(height: FFTokens.spacingXs),
+                        Wrap(
+                          spacing: FFTokens.spacingXs,
+                          runSpacing: FFTokens.spacingXs,
+                          children: [
+                            FFBadge(
+                              label: context.tr(statusKey),
+                              tone: statusTone,
+                            ),
+                            FFBadge(label: chip.$1, tone: chip.$2),
+                          ],
+                        ),
                       ],
+                    ),
+                  ),
+                ),
+              ),
+              if (canRemove)
+                PopupMenuButton<String>(
+                  key: Key('order-participant-menu-${r.id}'),
+                  tooltip: context.tr('events.order.remove'),
+                  onSelected: (_) => _removePlace(r),
+                  itemBuilder: (_) => [
+                    PopupMenuItem(
+                      key: Key('order-participant-remove-${r.id}'),
+                      value: 'remove',
+                      child: Text(context.tr('events.reg.remove')),
                     ),
                   ],
                 ),
+            ],
+          ),
+          if (showTicket) ...[
+            const SizedBox(height: FFTokens.spacingSm),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: FFButton(
+                key: Key('order-ticket-${r.id}'),
+                label: context.tr('events.ticket.show'),
+                variant: FFButtonVariant.secondary,
+                size: FFButtonSize.sm,
+                onPressed: () =>
+                    context.push(AppRoutes.memberEventTicketPath(r.id)),
               ),
             ),
-          ),
-          if (canRemove)
-            PopupMenuButton<String>(
-              key: Key('order-participant-menu-${r.id}'),
-              tooltip: context.tr('events.order.remove'),
-              onSelected: (_) => _removePlace(r),
-              itemBuilder: (_) => [
-                PopupMenuItem(
-                  key: Key('order-participant-remove-${r.id}'),
-                  value: 'remove',
-                  child: Text(context.tr('events.reg.remove')),
-                ),
-              ],
+          ],
+          if (inviteLine) ...[
+            const SizedBox(height: FFTokens.spacingSm),
+            Text(
+              r.invitedAt == null
+                  ? context.tr('events.invite.notSent')
+                  : context
+                        .tr('events.invite.sent')
+                        .replaceFirst(
+                          '{date}',
+                          formatDate(r.invitedAt, locale: lang),
+                        ),
+              key: Key('order-invite-status-${r.id}'),
+              style: tt.bodySmall,
             ),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: FFButton(
+                key: Key('order-invite-${r.id}'),
+                label: context.tr('events.invite.resend'),
+                variant: FFButtonVariant.ghost,
+                size: FFButtonSize.sm,
+                onPressed: _busy ? null : () => _resendInvite(r),
+              ),
+            ),
+          ],
         ],
       ),
     );

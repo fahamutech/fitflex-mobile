@@ -164,7 +164,18 @@ class _EventClaimPageState extends State<EventClaimPage> {
       if (!mounted) return;
       snack.success(done);
       if (id.isNotEmpty) {
-        context.pushReplacement(AppRoutes.memberEventRegistrationPath(id));
+        // A paid place has its ticket now (events S4 spec §5.9): open it.
+        // A ticket the server did not describe is tried too; the ticket
+        // page hands over to the registration if none is issued yet.
+        final ticketReady =
+            reg != null &&
+            reg.status == EventRegistrationStatus.confirmed &&
+            (reg.ticket == null || reg.ticket!.isActive);
+        context.pushReplacement(
+          ticketReady
+              ? AppRoutes.memberEventTicketPath(id)
+              : AppRoutes.memberEventRegistrationPath(id),
+        );
       } else {
         context.go(AppRoutes.memberEventOrders);
       }
@@ -321,6 +332,15 @@ class _EventClaimPageState extends State<EventClaimPage> {
           ),
         ),
       );
+      if (p.status == 'confirmed') {
+        out.add(
+          Text(
+            context.tr('events.claim.paid'),
+            key: const Key('claim-paid'),
+            style: tt.bodyMedium,
+          ),
+        );
+      }
       out.add(const SizedBox(height: FFTokens.spacingMd));
     }
 
@@ -330,11 +350,23 @@ class _EventClaimPageState extends State<EventClaimPage> {
         'registration_not_found' => 'error.reason.registrationNotFound',
         _ => errorReasonKeyFor(_refusal!),
       };
+      // An expired link can be replaced: the purchaser sends it again.
+      final ask = _refusal == 'claim_token_expired'
+          ? context
+                .tr('events.invite.expiredAsk')
+                .replaceFirst(
+                  '{name}',
+                  (p?.purchaserMasked ?? '').trim().isEmpty
+                      ? context.tr('events.cancelpaid.purchaserFallback')
+                      : p!.purchaserMasked.split(' ').first,
+                )
+          : null;
       out.add(
         FFEmptyState(
           key: Key('claim-refused-$_refusal'),
           icon: Icons.link_off,
           title: context.tr(key),
+          body: ask,
         ),
       );
       return out;

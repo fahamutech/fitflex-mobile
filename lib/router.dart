@@ -33,7 +33,10 @@ import 'screens/member/member_run_detail_page.dart';
 import 'screens/member/events/event_claim_page.dart';
 import 'screens/member/events/event_team_page.dart';
 import 'screens/member/events/member_event_detail_page.dart';
+import 'screens/member/events/cancel/member_event_cancel_page.dart';
 import 'screens/member/events/member_event_order_page.dart';
+import 'screens/member/events/pay/member_event_payment_page.dart';
+import 'screens/member/events/tickets/member_event_ticket_page.dart';
 import 'screens/member/events/member_event_orders_page.dart';
 import 'screens/member/events/member_event_registration_page.dart';
 import 'screens/member/events/member_events_page.dart';
@@ -206,6 +209,15 @@ abstract class AppRoutes {
   static const memberEventRegistration =
       '/member/events/registrations/:registrationId';
   static const memberEventClaim = '/member/events/claim/:registrationId';
+
+  /// Events S4 (spec §4): pay, tickets, ticket, cancel and refund.
+  static const memberEventTickets = '/member/events/tickets';
+  static const memberEventOrderPay = '/member/events/orders/:orderId/pay';
+  static const memberEventOrderCancel = '/member/events/orders/:orderId/cancel';
+  static const memberEventTicket =
+      '/member/events/registrations/:registrationId/ticket';
+  static const memberEventRegistrationCancel =
+      '/member/events/registrations/:registrationId/cancel';
   static const memberEventTeam = '/member/events/teams/:teamId';
 
   /// The claim-link page (`/event-claim/#<token>`); the token is kept on
@@ -222,6 +234,18 @@ abstract class AppRoutes {
       '/member/events/orders/${Uri.encodeComponent(orderId)}';
   static String memberEventRegistrationPath(String id) =>
       '/member/events/registrations/${Uri.encodeComponent(id)}';
+  static String memberEventOrderPayPath(String orderId) =>
+      '/member/events/orders/${Uri.encodeComponent(orderId)}/pay';
+  static String memberEventOrderCancelPath(String orderId) =>
+      '/member/events/orders/${Uri.encodeComponent(orderId)}/cancel';
+  static String memberEventTicketPath(String registrationId) =>
+      '/member/events/registrations/${Uri.encodeComponent(registrationId)}/ticket';
+  static String memberEventRegistrationCancelPath(
+    String registrationId, {
+    String? orderId,
+  }) =>
+      '/member/events/registrations/${Uri.encodeComponent(registrationId)}/cancel'
+      '${orderId == null || orderId.isEmpty ? '' : '?order=${Uri.encodeQueryComponent(orderId)}'}';
   static String memberEventClaimPath(String id) =>
       '/member/events/claim/${Uri.encodeComponent(id)}';
   static String memberEventTeamPath(String id) =>
@@ -1314,8 +1338,33 @@ GoRouter buildRouter(AuthState auth) {
                       builder: (context, state) => MemberEventOrderPage(
                         orderId: state.pathParameters['orderId']!,
                       ),
+                      routes: [
+                        // Events S4 (spec §4).
+                        GoRoute(
+                          path: 'pay',
+                          name: 'memberEventOrderPay',
+                          builder: (context, state) => MemberEventPaymentPage(
+                            orderId: state.pathParameters['orderId']!,
+                          ),
+                        ),
+                        GoRoute(
+                          path: 'cancel',
+                          name: 'memberEventOrderCancel',
+                          builder: (context, state) =>
+                              MemberEventCancelPage.order(
+                                orderId: state.pathParameters['orderId']!,
+                              ),
+                        ),
+                      ],
                     ),
                   ],
+                ),
+                // The ticket wallet is a segment of the same page.
+                GoRoute(
+                  path: 'tickets',
+                  name: 'memberEventTickets',
+                  builder: (context, state) =>
+                      const MemberEventOrdersPage(initialTab: 'tickets'),
                 ),
                 GoRoute(
                   path: 'registrations/:registrationId',
@@ -1329,6 +1378,25 @@ GoRouter buildRouter(AuthState auth) {
                   builder: (context, state) => MemberEventRegistrationPage(
                     registrationId: state.pathParameters['registrationId']!,
                   ),
+                  routes: [
+                    GoRoute(
+                      path: 'ticket',
+                      name: 'memberEventTicket',
+                      builder: (context, state) => MemberEventTicketPage(
+                        registrationId: state.pathParameters['registrationId']!,
+                      ),
+                    ),
+                    GoRoute(
+                      path: 'cancel',
+                      name: 'memberEventRegistrationCancel',
+                      builder: (context, state) =>
+                          MemberEventCancelPage.registration(
+                            registrationId:
+                                state.pathParameters['registrationId']!,
+                            orderId: state.uri.queryParameters['order'],
+                          ),
+                    ),
+                  ],
                 ),
                 GoRoute(
                   path: 'claim/:registrationId',

@@ -48,6 +48,51 @@ class EventsClaimOptions {
   }
 }
 
+/// Hold rules the server quotes (events S4 spec §3.1 `hold`). The app only
+/// uses them for wording; the server owns every time.
+class EventsHoldOptions {
+  const EventsHoldOptions({
+    this.manualExtendHours = 24,
+    this.manualMaxHours = 48,
+    this.providerExtendMinutes = 10,
+    this.lateGraceHours = 24,
+  });
+
+  final int manualExtendHours;
+  final int manualMaxHours;
+  final int providerExtendMinutes;
+  final int lateGraceHours;
+
+  static EventsHoldOptions fromJson(Object? json) {
+    if (json is! Map) return const EventsHoldOptions();
+    int n(Object? v, int d) => v is num ? v.toInt() : d;
+    return EventsHoldOptions(
+      manualExtendHours: n(json['manualExtendHours'], 24),
+      manualMaxHours: n(json['manualMaxHours'], 48),
+      providerExtendMinutes: n(json['providerExtendMinutes'], 10),
+      lateGraceHours: n(json['lateGraceHours'], 24),
+    );
+  }
+}
+
+/// `tickets` of the options (events S4 spec §3.1): whether tickets carry a
+/// QR, and whether kit scanning is live (S5 flips it; the ticket page
+/// wording depends on it).
+class EventsTicketOptions {
+  const EventsTicketOptions({this.qr = false, this.scanning = false});
+
+  final bool qr;
+  final bool scanning;
+
+  static EventsTicketOptions fromJson(Object? json) {
+    if (json is! Map) return const EventsTicketOptions();
+    return EventsTicketOptions(
+      qr: json['qr'] == true,
+      scanning: json['scanning'] == true,
+    );
+  }
+}
+
 class EventsOptions {
   const EventsOptions({
     this.discovery = false,
@@ -64,6 +109,10 @@ class EventsOptions {
     this.corporate = false,
     this.claim = const EventsClaimOptions(),
     this.consentTextVersion = '',
+    this.manualConfirmHours = 24,
+    this.refundDays = 5,
+    this.hold = const EventsHoldOptions(),
+    this.tickets = const EventsTicketOptions(),
   });
 
   /// Everything off: the probe failed or the module is off.
@@ -85,8 +134,9 @@ class EventsOptions {
   /// Most people in one member order (`EVENTS_MAX_PARTICIPANTS_PER_ORDER`).
   final int maxParticipantsPerOrder;
 
-  /// `none` (S3) | `manual` | `provider` (S4). The order page keeps a slot
-  /// for the two S4 values and renders the placeholder for `none`.
+  /// `none` | `manual` | `provider` (S4 spec §3.1): the one way the server
+  /// takes payment right now. `none` keeps the "payment isn't open yet"
+  /// slot on the order page.
   final String payment;
   final bool teams;
   final bool corporate;
@@ -94,6 +144,21 @@ class EventsOptions {
 
   /// `EVENTS_CONSENT_TEXT_VERSION`; the quote carries the authoritative one.
   final String consentTextVersion;
+
+  // ── Payments and tickets (S4 spec §3.1) ──
+
+  /// The target hours the app quotes for a manual confirmation (a target,
+  /// never a promise). Present when `payment` is `manual`.
+  final int manualConfirmHours;
+
+  /// Working days FitFlex quotes for sending a refund.
+  final int refundDays;
+  final EventsHoldOptions hold;
+  final EventsTicketOptions tickets;
+
+  /// Whether a payment can be started in the app at all (`manual` or
+  /// `provider`). `none` keeps the S3 "payment isn't open yet" slot.
+  bool get paymentsOn => payment == 'manual' || payment == 'provider';
 
   static EventsOptions fromJson(Object? json) {
     if (json is! Map) return off;
@@ -111,6 +176,10 @@ class EventsOptions {
       corporate: json['corporate'] == true,
       claim: EventsClaimOptions.fromJson(json['claim']),
       consentTextVersion: json['consentTextVersion']?.toString() ?? '',
+      manualConfirmHours: intOf(json['manualConfirmHours'], 24),
+      refundDays: intOf(json['refundDays'], 5),
+      hold: EventsHoldOptions.fromJson(json['hold']),
+      tickets: EventsTicketOptions.fromJson(json['tickets']),
       currency: (json['currency']?.toString() ?? '').isEmpty
           ? 'TZS'
           : json['currency'].toString(),
