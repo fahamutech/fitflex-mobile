@@ -57,6 +57,12 @@ jobs:
       # Shop home V2 (on/off). Set repo variable SHOP_HOME_V2=true to switch it on;
       # the server also needs SHOP_HOME_V2=1, otherwise the app falls back to today's shop.
       SHOP_HOME_V2: ${{ vars.SHOP_HOME_V2 || 'false' }}
+      # Photo heroes (PHOTO_HERO_UI) and the photo footer (PHOTO_FOOTER_UI),
+      # on/off. Off unless the repository variable is set to true; the app
+      # ignores PHOTO_FOOTER_UI unless PHOTO_HERO_UI is on as well.
+      PHOTO_HERO_UI: ${{ vars.PHOTO_HERO_UI || 'false' }}
+      PHOTO_FOOTER_UI: ${{ vars.PHOTO_FOOTER_UI || 'false' }}
+      # With PHOTO_HERO_UI on, the release guard runs before the build.
 
     steps:
       - name: Checkout repository
@@ -186,12 +192,19 @@ jobs:
       - name: Get Flutter dependencies
         run: flutter pub get
 
+      # Photo heroes (PHOTO_HERO_UI) shown to users: no test-only hero photo
+      # may ship (kTestOnlyHeroAssets, assets/photos/hero/LICENSES.md). This
+      # fails the job, before anything is built, if one is still bundled.
+      - name: Photo hero release guard
+        if: env.PHOTO_HERO_UI == 'true'
+        run: flutter test test/photo_hero_release_guard_test.dart --dart-define=PHOTO_HERO_UI=true --dart-define=PHOTO_HERO_RELEASE=true
+
       - name: Build release app bundle
         run: |
           flutter build appbundle --release \
             --build-name="${{ steps.ver.outputs.name }}" \
             --build-number="${{ steps.ver.outputs.code }}" \
-            --dart-define=API_BASE="$API_BASE" --dart-define=SHOP_HOME_V2="$SHOP_HOME_V2"
+            --dart-define=API_BASE="$API_BASE" --dart-define=SHOP_HOME_V2="$SHOP_HOME_V2" --dart-define=PHOTO_HERO_UI="$PHOTO_HERO_UI" --dart-define=PHOTO_FOOTER_UI="$PHOTO_FOOTER_UI"
 
       - name: Write release notes
         env:

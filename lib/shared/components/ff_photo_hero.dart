@@ -10,9 +10,9 @@ import '../i18n.dart';
 import 'ff_skeleton.dart';
 
 /// Bundled hero photos: FitFlex Africa's own AI-generated scenes (Figma AI,
-/// 2026-10-22, no people) and four photos the owner collected from the
-/// internet (people seen from behind or none): testing only, not cleared
-/// for release ([kTestOnlyHeroAssets], owner 2026-10-22). See
+/// 2026-10-22 and 2026-10-28, no people). The four test-only photos the
+/// owner collected from the internet were replaced on 2026-10-28 (owner
+/// approval in chat), so [kTestOnlyHeroAssets] is empty. See
 /// assets/photos/hero/LICENSES.md. Never
 /// fetched from a network. With `HERO_IMAGES_REMOTE` on, an admin-published
 /// photo for the same slot (hero_images/hero_slots.dart) may replace one
@@ -86,11 +86,13 @@ enum FFHeroPhoto {
     'fitflex-gen-11-premium-zone',
     Alignment(0, -0.2),
   ),
+  // Today: the bottle printed "FitFlex Africa" sits in the clear photo
+  // above the text; the crop stops short of the right shoe's maker mark.
   activityToday(
     'hero_activity_today',
-    732 / 488,
-    'owner-16-dumbbells-palms',
-    Alignment(0, 0.5),
+    810 / 540,
+    'fitflex-gen-23-activity-today-sunrise',
+    Alignment(0, -0.3),
   ),
   activityTraining(
     'hero_activity_training',
@@ -98,11 +100,13 @@ enum FFHeroPhoto {
     'fitflex-gen-12-cable-zone',
     Alignment(0, -0.2),
   ),
+  // Challenges: below the wall sign (wider than the phone crop shows, so
+  // it would be cut at both edges).
   activityChallenges(
     'hero_activity_challenges',
-    736 / 490,
-    'owner-02-hooded-bench-back',
-    Alignment(0, -0.3),
+    864 / 576,
+    'fitflex-gen-24-activity-challenges-zone',
+    Alignment(0, -0.2),
   ),
   activityProgress(
     'hero_activity_progress',
@@ -133,19 +137,21 @@ enum FFHeroPhoto {
   ),
 
   // Section bands (photo-hero spec §32, §34.1): member Gyms, Trainers and
-  // Shop home. Owner photos: Gyms keeps the window row; Trainers keeps the
-  // bar and the hands (the person is seen from behind).
+  // Shop home. Gyms: the window row below the wall sign (the sign is as
+  // wide as the phone crop, so it would touch both edges). Trainers: the
+  // polo printed "FitFlex Africa" in the clear photo, focal right so the
+  // print stays in frame on a phone band.
   gyms(
     'hero_gyms',
-    736 / 415,
-    'owner-15-empty-gym-windows',
+    864 / 487,
+    'fitflex-gen-21-gyms-bright-floor',
     Alignment(0, -0.3),
   ),
   trainers(
     'hero_trainers',
-    736 / 440,
-    'owner-01-lat-pulldown-back',
-    Alignment(0, -0.5),
+    864 / 516,
+    'fitflex-gen-22-trainers-station',
+    Alignment(0.5, -0.5),
   ),
   // Shop (owner 2026-10-22): the whole FitFlex Africa sign above the
   // band's text. A 4:5 crop from the top of the source, focal top: a phone
@@ -200,17 +206,14 @@ enum FFHeroPhoto {
   String get asset => 'assets/photos/hero/$file.webp';
 }
 
-/// Bundled hero photos the owner collected from the internet: OK for
-/// testing now, NOT cleared for release (owner 2026-10-22). Replace each
-/// with a cleared photo, and take it off this list, before PHOTO_HERO_UI
-/// goes on for users. `test/photo_hero_release_guard_test.dart` fails a run
-/// with `--dart-define=PHOTO_HERO_RELEASE=true` while this is not empty.
-const Set<FFHeroPhoto> kTestOnlyHeroAssets = {
-  FFHeroPhoto.trainers, // owner-01 lat pulldown
-  FFHeroPhoto.activityChallenges, // owner-02 hooded bench
-  FFHeroPhoto.gyms, // owner-15 empty gym
-  FFHeroPhoto.activityToday, // owner-16 dumbbells and palms
-};
+/// Bundled hero photos that are OK for testing but NOT cleared for release.
+/// Empty since 2026-10-28: the four owner-collected photos (owner
+/// 2026-10-22) were replaced by FitFlex Africa scenes. Any photo added here
+/// must be replaced, and taken off this list, before PHOTO_HERO_UI goes on
+/// for users: `test/photo_hero_release_guard_test.dart` fails a run with
+/// `--dart-define=PHOTO_HERO_RELEASE=true` while this is not empty, and the
+/// user builds run that guard whenever PHOTO_HERO_UI is on.
+const Set<FFHeroPhoto> kTestOnlyHeroAssets = {};
 
 /// A photo fetched from the network for a hero (Shop home banners, Phase 2
 /// S1): the same scrim, focal alignment and navy placeholder as a bundled
