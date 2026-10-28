@@ -82,6 +82,23 @@ class _EventsDiscoveryViewState extends State<EventsDiscoveryView> {
 
   ApiClient get _api => AppScope.of(context).api;
 
+  /// Events S3 §4: the "My registrations" chip shows once the member has a
+  /// registration or order (one cheap `GET /me/event-registrations?limit=1`,
+  /// only with the server's `registration` option on).
+  bool _hasMine = false;
+
+  Future<void> _probeMine() async {
+    if (!_options.registration) return;
+    try {
+      final page = await _api.listEventRegistrations(limit: 1);
+      if (!mounted) return;
+      final items = page['items'];
+      setState(() => _hasMine = items is List && items.isNotEmpty);
+    } catch (_) {
+      // Chip stays hidden; Profile still has the row.
+    }
+  }
+
   EventsOptions get _options =>
       widget.options ??
       context
@@ -96,6 +113,7 @@ class _EventsDiscoveryViewState extends State<EventsDiscoveryView> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _request(immediate: true);
+      _probeMine();
       if (widget.inline) {
         _parentPosition = Scrollable.maybeOf(context)?.position
           ?..addListener(_onParentScroll);
@@ -412,6 +430,16 @@ class _EventsDiscoveryViewState extends State<EventsDiscoveryView> {
                 selected: count > 0,
                 onSelected: _openSheet,
               ),
+              if (options.registration && _hasMine) ...[
+                const SizedBox(width: FFTokens.spacingSm),
+                FFFilterChip(
+                  key: const Key('events-chip-mine'),
+                  label: context.tr('events.mine.title'),
+                  icon: Icons.confirmation_number_outlined,
+                  selected: false,
+                  onSelected: () => context.push(AppRoutes.memberEventOrders),
+                ),
+              ],
             ],
           ),
         ),

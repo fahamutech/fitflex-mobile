@@ -33,4 +33,52 @@ class EventsAnalytics {
 
   static void saved({required String eventId, required bool saved}) =>
       _record('event_saved', {'eventId': eventId, 'saved': saved});
+
+  // ── Registration (S3 spec §7.2) ────────────────────────────────────────
+
+  static void registrationStarted({
+    required String eventId,
+    required String source,
+  }) => _record('registration_started', {'eventId': eventId, 'source': source});
+
+  static void quoteCreated({
+    required String eventId,
+    required int placesCount,
+    required int totalTzs,
+    required String mode,
+  }) => _record('checkout_quote_created', {
+    'eventId': eventId,
+    'placesCount': placesCount,
+    'totalTzs': totalTzs,
+    'mode': mode,
+  });
+
+  static void orderCreated({
+    required String orderId,
+    required String eventId,
+    required int placesCount,
+    required int totalTzs,
+    required String mode,
+    required bool team,
+  }) => _record('order_created', {
+    'orderId': orderId,
+    'eventId': eventId,
+    'placesCount': placesCount,
+    'totalTzs': totalTzs,
+    'mode': mode,
+    'team': team,
+  });
+
+  static void orderCancelled({
+    required String orderId,
+    required String reason,
+  }) => _record('order_cancelled', {'orderId': orderId, 'reason': reason});
+
+  static void registrationClaimed({
+    required String registrationId,
+    required String via,
+  }) => _record('registration_claimed', {
+    'registrationId': registrationId,
+    'via': via,
+  });
 }

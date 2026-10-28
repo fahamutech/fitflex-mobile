@@ -50,7 +50,13 @@ String apiErrorMessage(
   if (isVendorStaffDisabled(exception, vendorStaff: vendorStaff)) {
     return locale.t('error.reason.vendorStaffInactive');
   }
-  final reason = _firstReason(exception.body);
+  // Events S3: `hold_limit_reached` carries a second field (`limit`, e.g.
+  // 'unpaid_order_exists'); its `error` code is what names the refusal,
+  // whatever other reason-like key sits beside it.
+  final body = exception.body;
+  final reason = body is Map && body['error'] == 'hold_limit_reached'
+      ? 'hold_limit_reached'
+      : _firstReason(body);
   if (reason != null && reason.isNotEmpty) {
     final translated =
         _timedReason(locale, reason, exception.body) ??
@@ -70,6 +76,20 @@ String apiErrorMessage(
     _ => 'error.requestFailed',
   };
   return locale.t(key);
+}
+
+/// The translated reason for one server code (no "request declined"
+/// wrapper), for banners that list several problems (the quote's
+/// `problems[]`, §3.4). [extra] holds numbers such as `min` / `max`.
+String errorReasonText(
+  FFLocale locale,
+  String code, [
+  Map<String, dynamic>? extra,
+]) {
+  final body = <String, dynamic>{...?extra, 'error': code};
+  return _detailedReason(locale, code, body) ??
+      _knownReason(locale, code) ??
+      _humanize(code);
 }
 
 /// Vendor staff whose access the business owner turned off (vendor tools
@@ -138,6 +158,25 @@ String? _timedReason(FFLocale locale, String reason, dynamic body) {
 String? _detailedReason(FFLocale locale, String reason, dynamic body) {
   if (body is! Map) return null;
   switch (reason.trim().toLowerCase()) {
+    // Events S3 (spec §3.17): refusals that carry numbers, and the order /
+    // registration state machines' `invalid_transition { kind }`.
+    case 'quantity_out_of_range':
+      if (body['min'] is! num || body['max'] is! num) return null;
+      return locale
+          .t('error.reason.quantityOutOfRange')
+          .replaceFirst('{min}', '${body['min']}')
+          .replaceFirst('{max}', '${body['max']}');
+    case 'too_many_participants':
+      if (body['max'] is! num) return null;
+      return locale
+          .t('error.reason.tooManyParticipants')
+          .replaceFirst('{max}', '${body['max']}');
+    case 'invalid_transition':
+      final kind = body['kind']?.toString();
+      if (kind == 'order' || kind == 'registration') {
+        return locale.t('error.reason.invalidTransition.events');
+      }
+      return null;
     // Which field the server refused (fitflex-functions#253, #239).
     case 'invalid_field':
       return switch (body['field']?.toString()) {
@@ -293,6 +332,50 @@ String? _knownReason(FFLocale locale, String reason) {
     'cannot_invite_self': 'error.reason.cannotInviteSelf',
     'cannot_remove_owner': 'error.reason.cannotRemoveOwner',
     'kyc_incomplete': 'error.reason.kycIncomplete',
+    // Events S3: registration, orders, claims, teams (spec §3.17).
+    'capacity_unavailable': 'error.reason.capacityUnavailable',
+    'event_not_open': 'error.reason.eventNotOpen',
+    'registration_closed': 'error.reason.registrationClosed',
+    'sale_closed': 'error.reason.saleClosed',
+    'sale_not_open': 'error.reason.saleNotOpen',
+    'ticket_type_inactive': 'error.reason.ticketUnavailable',
+    'ticket_type_not_found': 'error.reason.ticketUnavailable',
+    'category_inactive': 'error.reason.ticketUnavailable',
+    'quantity_out_of_range': 'error.reason.quantityOutOfRange',
+    'too_many_participants': 'error.reason.tooManyParticipants',
+    'terms_not_accepted': 'error.reason.termsNotAccepted',
+    'consent_version_stale': 'error.reason.consentVersionStale',
+    'participant_invalid': 'error.reason.participantInvalid',
+    'invalid_participant': 'error.reason.participantInvalid',
+    'participants_mismatch': 'error.reason.participantInvalid',
+    'multiple_self_participants': 'error.reason.multipleSelf',
+    'invalid_text': 'error.reason.invalidText',
+    'field_too_long': 'error.reason.fieldTooLong',
+    'team_name_invalid': 'error.reason.teamNameInvalid',
+    'team_type_invalid': 'error.reason.teamTypeInvalid',
+    'raw_text_too_long': 'error.reason.rawTextTooLong',
+    'capacity_short': 'error.reason.capacityUnavailable',
+    'price_changed': 'error.reason.priceChanged',
+    'order_not_found': 'error.reason.orderNotFound',
+    'registration_not_found': 'error.reason.registrationNotFound',
+    'invalid_reason': 'error.reason.invalidReason',
+    'remove_whole_line': 'error.reason.removeWholeLine',
+    'team_not_found': 'error.reason.teamNotFound',
+    'team_full': 'error.reason.teamFull',
+    'team_disbanded': 'error.reason.teamDisbanded',
+    'team_name_taken': 'error.reason.teamNameTaken',
+    'claim_token_invalid': 'error.reason.claimTokenInvalid',
+    'claim_token_expired': 'error.reason.claimTokenExpired',
+    'claim_not_verified': 'error.reason.claimNotVerified',
+    'already_claimed': 'error.reason.alreadyClaimed',
+    'claim_own_contact': 'error.reason.claimOwnContact',
+    'registration_closed_state': 'error.reason.registrationClosedState',
+    'idempotency_key_reused': 'error.reason.idempotencyKeyReused',
+    'idempotency_key_required': 'error.reason.idempotencyKeyReused',
+    'organization_not_allowed': 'error.reason.organizationNotAllowed',
+    'hold_limit_reached': 'error.reason.holdLimitReached',
+    // Always sent by the app; only a stale client would see it.
+    'expected_total_required': 'error.reason.priceChanged',
     // Partner date of birth (fitflex-functions#253).
     'partner_under_18': 'error.reason.partnerUnder18',
     'personal_details_unavailable': 'error.reason.personalDetailsUnavailable',

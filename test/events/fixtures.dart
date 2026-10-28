@@ -231,3 +231,321 @@ Map<String, dynamic> page(List<Map<String, dynamic>> items, {String? next}) => {
   'nextCursor': next,
   'total': items.length,
 };
+
+// ── Events S3 (registration, orders, claims, teams; spec §3) ─────────────
+
+final optionsS3 = <String, dynamic>{
+  ...optionsOn,
+  'registration': true,
+  'holdTtlMinutes': 30,
+  'maxParticipantsPerOrder': 10,
+  'payment': 'none',
+  'teams': true,
+  'corporate': true,
+  'claim': {'smsCodes': true, 'emailCodes': false},
+  'consentTextVersion': '2026-10-draft',
+};
+
+EventsOptions optsS3({
+  bool registration = true,
+  bool teams = true,
+  bool corporate = true,
+  int maxParticipantsPerOrder = 10,
+  bool smsCodes = true,
+  bool emailCodes = false,
+}) => EventsOptions.fromJson({
+  ...optionsS3,
+  'registration': registration,
+  'teams': teams,
+  'corporate': corporate,
+  'maxParticipantsPerOrder': maxParticipantsPerOrder,
+  'claim': {'smsCodes': smsCodes, 'emailCodes': emailCodes},
+});
+
+const consentTextJson = {
+  'version': '2026-10-draft',
+  'self': {
+    'en': 'I agree to the event terms (self).',
+    'sw': 'Nakubali (self).',
+  },
+  'purchaser_authorised': {
+    'en': 'I confirm I have each listed person\'s permission.',
+    'sw': 'Nathibitisha nina ruhusa.',
+  },
+  'organisation': {'en': 'We confirm.', 'sw': 'Tunathibitisha.'},
+};
+
+const fieldsDefault = {
+  'phone': 'required',
+  'email': 'optional',
+  'dateOfBirth': 'required',
+  'gender': 'off',
+  'emergencyContact': 'optional',
+  'kitSize': 'optional',
+};
+
+Map<String, dynamic> quoteLine({
+  String ticketTypeId = 'tt_std',
+  String name = 'Standard',
+  String categoryId = 'cat_21',
+  String categoryName = '21K Half Marathon',
+  int quantity = 1,
+  int unit = 25000,
+  int fees = 0,
+  int discount = 0,
+}) => {
+  'ticketTypeId': ticketTypeId,
+  'ticketTypeName': name,
+  'categoryId': categoryId,
+  'categoryName': categoryName,
+  'quantity': quantity,
+  'unitPriceTzs': unit,
+  'discountTzs': discount,
+  'feesTzs': fees,
+  'lineTotalTzs': unit * quantity - discount + fees,
+};
+
+Map<String, dynamic> quoteJson({
+  List<Map<String, dynamic>>? lines,
+  int? total,
+  int fees = 0,
+  int discount = 0,
+  Map<String, String>? feeLabel,
+  Map<String, dynamic> fields = fieldsDefault,
+  List<Map<String, dynamic>> participants = const [],
+  List<Map<String, dynamic>> problems = const [],
+  Map<String, dynamic>? availability,
+  Map<String, dynamic>? team,
+  bool valid = true,
+}) {
+  final l = lines ?? [quoteLine()];
+  final subtotal = l.fold<int>(0, (a, m) => a + (m['lineTotalTzs'] as int));
+  return {
+    'valid': valid,
+    'quote': {
+      'currency': 'TZS',
+      'lines': l,
+      'subtotalTzs': subtotal,
+      'discountTzs': discount,
+      'feesTzs': fees,
+      'totalTzs': total ?? (subtotal - discount + fees),
+      'feeLabel': feeLabel,
+    },
+    'quoteExpiresAt': '2027-03-10T12:05:00Z',
+    'holdTtlMinutes': 30,
+    'availability':
+        availability ??
+        {
+          for (final m in l)
+            m['ticketTypeId']: {'availability': 'open', 'remaining': null},
+        },
+    'participants': participants,
+    'problems': problems,
+    'team': team,
+    'fields': fields,
+    'refundPolicy': {
+      'preset': 'refund_until_close',
+      'text': {'en': '', 'sw': ''},
+    },
+    'termsVersion': 3,
+    'consentText': consentTextJson,
+  };
+}
+
+Map<String, dynamic> registrationJson({
+  String id = 'reg_1',
+  String ticketTypeId = 'tt_std',
+  String ticketTypeName = 'Standard',
+  String categoryId = 'cat_21',
+  String categoryName = '21K Half Marathon',
+  String firstName = 'Asha',
+  String lastName = 'Mollel',
+  String status = 'reserved',
+  String consentBasis = 'self',
+  bool isSelf = true,
+  String claimState = 'self',
+  String relation = 'self',
+  String orderId = 'ord_1',
+  String orderReference = 'EV-3F9A2B7C1D',
+  String orderStatus = 'awaiting_payment',
+  String? holdExpiresAt = '2027-03-10T12:27:00Z',
+  String? phone = '+255712345678',
+  String? email,
+  String? dateOfBirth = '1990-05-09',
+  String? gender,
+  String? kitSize = 'm',
+  Map<String, String>? emergencyContact,
+  List<String> allowedActions = const ['cancel'],
+  Map<String, dynamic>? team,
+  Map<String, dynamic>? purchaser,
+  Map<String, dynamic>? event,
+}) => {
+  'id': id,
+  'ticketTypeId': ticketTypeId,
+  'ticketTypeName': ticketTypeName,
+  'categoryId': categoryId,
+  'categoryName': categoryName,
+  'firstName': firstName,
+  'lastName': lastName,
+  'status': status,
+  'consentBasis': consentBasis,
+  'consentAt': '2027-03-10T11:57:00Z',
+  'isSelf': isSelf,
+  'claimState': claimState,
+  'relation': relation,
+  'orderId': orderId,
+  'orderReference': orderReference,
+  'orderStatus': orderStatus,
+  'holdExpiresAt': holdExpiresAt,
+  'phone': phone,
+  'email': email,
+  'dateOfBirth': dateOfBirth,
+  'gender': gender,
+  'kitSize': kitSize,
+  'emergencyContact': emergencyContact,
+  'allowedActions': allowedActions,
+  'team': team,
+  'purchaser': purchaser,
+  'createdAt': '2027-03-10T11:57:00Z',
+  'event': event ?? summary('evt_1'),
+  'category': {
+    'id': categoryId,
+    'name': categoryName,
+    'distanceM': 21097,
+    'startsAt': '2027-03-14T03:30:00Z',
+  },
+  'ticketType': {'name': ticketTypeName},
+  'participant': {'firstName': firstName, 'lastName': lastName},
+};
+
+Map<String, dynamic> orderJson({
+  String id = 'ord_1',
+  String reference = 'EV-3F9A2B7C1D',
+  String status = 'awaiting_payment',
+  String? holdExpiresAt = '2027-03-10T12:27:00Z',
+  String? closeReason,
+  String? closedAt,
+  int total = 25000,
+  List<Map<String, dynamic>>? lines,
+  List<Map<String, dynamic>>? registrations,
+  String payment = 'none',
+  List<String>? allowedActions,
+  Map<String, dynamic>? team,
+  Map<String, dynamic>? event,
+  bool replayed = false,
+}) => {
+  'order': {
+    'id': id,
+    'reference': reference,
+    'eventId': 'evt_1',
+    'status': status,
+    'currency': 'TZS',
+    'subtotalTzs': total,
+    'discountTzs': 0,
+    'feesTzs': 0,
+    'totalTzs': total,
+    'holdExpiresAt': holdExpiresAt,
+    'holdCycle': 1,
+    'createdAt': '2027-03-10T11:57:00Z',
+    'closedAt': closedAt,
+    'closeReason': closeReason,
+    'teamId': team?['id'],
+  },
+  'lines': lines ?? [quoteLine()],
+  'registrations': registrations ?? [registrationJson(orderStatus: status)],
+  'holdExpiresAt': holdExpiresAt,
+  'next': {'payment': payment, 'instructions': null},
+  'event': event ?? detail('evt_1', registration: true),
+  'team': team,
+  'allowedActions':
+      allowedActions ?? (status == 'awaiting_payment' ? ['cancel'] : []),
+  'replayed': replayed,
+};
+
+Map<String, dynamic> orderRow({
+  String id = 'ord_1',
+  String reference = 'EV-3F9A2B7C1D',
+  String status = 'awaiting_payment',
+  String? holdExpiresAt = '2027-03-10T12:27:00Z',
+  int placesCount = 1,
+  int total = 25000,
+}) => {
+  'id': id,
+  'reference': reference,
+  'status': status,
+  'event': summary('evt_1'),
+  'placesCount': placesCount,
+  'totalTzs': total,
+  'currency': 'TZS',
+  'holdExpiresAt': holdExpiresAt,
+  'createdAt': '2027-03-10T11:57:00Z',
+  'closedAt': null,
+  'closeReason': null,
+};
+
+Map<String, dynamic> claimableJson({
+  String id = 'reg_9',
+  String purchaser = 'N**** A*******',
+  String type = 'phone',
+  String masked = '••• 678',
+  String status = 'reserved',
+}) => {
+  'id': id,
+  'event': summary('evt_1'),
+  'category': {'name': '10K'},
+  'participant': {'firstNameMasked': 'A***', 'lastInitial': 'M'},
+  'purchaser': {'nameMasked': purchaser},
+  'matchedContact': {'type': type, 'masked': masked},
+  'status': status,
+};
+
+Map<String, dynamic> claimPreviewJson({
+  String status = 'reserved',
+  String claimState = 'unclaimed',
+  String type = 'phone',
+}) => {
+  'event': summary('evt_1'),
+  'category': {'name': '10K'},
+  'participant': {'firstNameMasked': 'A***', 'lastInitial': 'M'},
+  'purchaser': {'nameMasked': 'N**** A*******'},
+  'contact': {'type': type, 'masked': '••• 678'},
+  'status': status,
+  'claimState': claimState,
+};
+
+Map<String, dynamic> teamJson({
+  String id = 'team_1',
+  String name = 'Coco Runners',
+  String teamType = 'community',
+  String? joinCode = 'AB12CD34',
+  int memberCount = 2,
+  int maxMembers = 50,
+  bool isCaptain = true,
+  List<Map<String, dynamic>>? members,
+}) => {
+  'id': id,
+  'eventId': 'evt_1',
+  'name': name,
+  'teamType': teamType,
+  'joinCode': joinCode,
+  'memberCount': memberCount,
+  'maxMembers': maxMembers,
+  'isCaptain': isCaptain,
+  'captain': {'firstName': 'Asha', 'lastInitial': 'M'},
+  'members':
+      members ??
+      [
+        {
+          'registrationId': 'reg_1',
+          'participant': {'firstName': 'Asha', 'lastInitial': 'M'},
+          'role': 'captain',
+          'status': 'reserved',
+        },
+        {
+          'registrationId': 'reg_2',
+          'participant': {'firstName': 'Juma', 'lastInitial': 'K'},
+          'role': 'member',
+          'status': 'reserved',
+        },
+      ],
+};
