@@ -90,11 +90,7 @@ class EventTicketsController extends ChangeNotifier {
 /// The "Tickets" segment of `MemberEventOrdersPage`: upcoming tickets first,
 /// then past and cancelled ones. Rendered inside the page's scroll view.
 class MemberEventTicketsView extends StatelessWidget {
-  const MemberEventTicketsView({
-    super.key,
-    required this.controller,
-    this.now,
-  });
+  const MemberEventTicketsView({super.key, required this.controller, this.now});
 
   final EventTicketsController controller;
   final DateTime? now;
@@ -241,9 +237,8 @@ class _TicketCard extends StatelessWidget {
         key: Key('ticket-card-${t.registrationId}'),
         padding: EdgeInsets.zero,
         child: InkWell(
-          onTap: () => context.push(
-            AppRoutes.memberEventTicketPath(t.registrationId),
-          ),
+          onTap: () =>
+              context.push(AppRoutes.memberEventTicketPath(t.registrationId)),
           child: ConstrainedBox(
             constraints: const BoxConstraints(minHeight: 56),
             child: Padding(
@@ -265,7 +260,8 @@ class _TicketCard extends StatelessWidget {
                           color: cs.onSurfaceVariant,
                         ),
                       ),
-                    if (category.isNotEmpty) Text(category, style: tt.bodyMedium),
+                    if (category.isNotEmpty)
+                      Text(category, style: tt.bodyMedium),
                     Text(t.participantName, style: tt.bodyMedium),
                     const SizedBox(height: FFTokens.spacingXs),
                     Wrap(

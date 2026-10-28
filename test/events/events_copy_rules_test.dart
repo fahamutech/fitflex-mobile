@@ -118,10 +118,7 @@ void main() {
   });
 
   test('the sheet never calls the plan or pass active for an event order', () {
-    expect(
-      _text('en', 'momo.successBody.eventOrder'),
-      isNot(contains('plan')),
-    );
+    expect(_text('en', 'momo.successBody.eventOrder'), isNot(contains('plan')));
   });
 
   test('every events.pay.* key is in both maps, and says the same thing '
@@ -144,14 +141,8 @@ void main() {
       final banner = _text(lang, 'events.pay.manual.banner.body');
       expect(banner, contains('{hours}'));
     }
-    expect(
-      _text('en', 'events.pay.manual.badge'),
-      'Manual confirmation',
-    );
-    expect(
-      _text('sw', 'events.pay.manual.badge'),
-      'Uthibitisho wa mkono',
-    );
+    expect(_text('en', 'events.pay.manual.badge'), 'Manual confirmation');
+    expect(_text('sw', 'events.pay.manual.badge'), 'Uthibitisho wa mkono');
     expect(
       _text('en', 'events.pay.manual.banner.body'),
       contains('FitFlex staff'),
@@ -164,9 +155,6 @@ void main() {
       'Payment sent for checking',
     );
     expect(_text('en', 'events.pay.sent.snack'), 'Sent for checking');
-    expect(
-      _text('en', 'events.payment.status.submitted'),
-      'Under review',
-    );
+    expect(_text('en', 'events.payment.status.submitted'), 'Under review');
   });
 }

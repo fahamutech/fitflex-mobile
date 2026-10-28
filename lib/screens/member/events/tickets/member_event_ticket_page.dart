@@ -229,7 +229,7 @@ class _MemberEventTicketPageState extends State<MemberEventTicketPage> {
           onPressed: _back,
           icon: const Icon(Icons.arrow_back),
         ),
-        title: Text(context.tr('events.ticket.show')),
+        title: Text(context.tr('events.reg.ticket')),
       ),
       body: switch (_phase) {
         _Phase.loading => FFSkeletonList(

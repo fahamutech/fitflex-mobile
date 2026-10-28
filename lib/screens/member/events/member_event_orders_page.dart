@@ -316,7 +316,10 @@ class _MemberEventOrdersPageState extends State<MemberEventOrdersPage> {
                   ),
                   const SizedBox(height: FFTokens.spacingMd),
                   if (_tab == 'tickets' && _qr)
-                    MemberEventTicketsView(controller: _tickets, now: widget.now)
+                    MemberEventTicketsView(
+                      controller: _tickets,
+                      now: widget.now,
+                    )
                   else if (_tab == 'registrations' || _tab == 'tickets')
                     ..._registrationsTab(context)
                   else

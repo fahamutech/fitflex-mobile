@@ -461,7 +461,10 @@ void main() {
         find.byKey(const Key('claim-refused-registration_closed_state')),
         findsOneWidget,
       );
-      expect(find.text('This registration is no longer active'), findsOneWidget);
+      expect(
+        find.text('This registration is no longer active'),
+        findsOneWidget,
+      );
     });
   });
 }

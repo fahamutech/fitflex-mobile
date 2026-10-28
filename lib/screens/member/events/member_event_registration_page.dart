@@ -309,11 +309,7 @@ class _MemberEventRegistrationPageState
       FFSectionTitle(context.tr('events.reg.ticket')),
       _ticketCard(context, r),
       for (final rf in r.refunds)
-        EventRefundCard(
-          refund: rf,
-          options: _options,
-          utcOffsetMinutes: off,
-        ),
+        EventRefundCard(refund: rf, options: _options, utcOffsetMinutes: off),
       // ── participant ───────────────────────────────────────────────────
       if (r.hasParticipantDetails) ...[
         FFSectionTitle(context.tr('events.reg.participant')),
@@ -411,7 +407,10 @@ class _MemberEventRegistrationPageState
               ? context.tr('events.invite.notSent')
               : context
                     .tr('events.invite.sent')
-                    .replaceFirst('{date}', formatDate(r.invitedAt, locale: lang)),
+                    .replaceFirst(
+                      '{date}',
+                      formatDate(r.invitedAt, locale: lang),
+                    ),
           key: const Key('reg-invite-status'),
           style: tt.bodySmall,
         ),
