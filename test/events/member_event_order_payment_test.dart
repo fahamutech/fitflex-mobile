@@ -231,7 +231,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Payment confirmed'), findsOneWidget);
       expect(
-        find.text('1 ticket(s) for Dar Half Marathon are ready.'),
+        find.text('1 ticket for Dar Half Marathon is ready.'),
         findsOneWidget,
       );
       expect(find.byKey(const Key('pay-open-tickets')), findsOneWidget);

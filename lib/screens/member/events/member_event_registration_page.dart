@@ -9,6 +9,7 @@ import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
 import '../../../shared/events/event_order.dart';
 import '../../../shared/events/event_summary.dart' show EventAvailability;
+import '../../../shared/events/event_payment.dart' show EventRefundView;
 import '../../../shared/events/event_time.dart';
 import '../../../shared/events/events_analytics.dart';
 import '../../../shared/events/events_options.dart';
@@ -41,6 +42,9 @@ class MemberEventRegistrationPage extends StatefulWidget {
 class _MemberEventRegistrationPageState
     extends State<MemberEventRegistrationPage> {
   EventRegistration? _reg;
+
+  /// Refunds read from the order when the registration carries none.
+  List<EventRefundView> _orderRefunds = const [];
   bool _loading = true;
   Object? _error;
   bool _gone = false;
@@ -69,10 +73,12 @@ class _MemberEventRegistrationPageState
     try {
       final json = await _api.getEventRegistration(widget.registrationId);
       if (!mounted) return;
+      final reg = EventRegistration.fromJson(json);
       setState(() {
-        _reg = EventRegistration.fromJson(json);
+        _reg = reg;
         _loading = false;
       });
+      await _loadOrderRefunds(reg);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -83,6 +89,35 @@ class _MemberEventRegistrationPageState
           _error = e;
         }
       });
+    }
+  }
+
+  /// The registration read carries its own `refunds`; when it has none for
+  /// a paid place, the order's refunds that cover this place are used.
+  Future<void> _loadOrderRefunds(EventRegistration reg) async {
+    if (reg.refunds.isNotEmpty ||
+        !reg.viewerIsPurchaser ||
+        reg.orderId.isEmpty ||
+        !(reg.orderStatus.wasPaid ||
+            reg.status == EventRegistrationStatus.cancelled ||
+            reg.status == EventRegistrationStatus.refunded)) {
+      return;
+    }
+    try {
+      final d = EventOrderDetail.fromJson(
+        await _api.getEventOrder(reg.orderId),
+      );
+      if (!mounted) return;
+      setState(
+        () => _orderRefunds = [
+          for (final rf in d.refunds)
+            if (rf.registrationId == reg.id ||
+                (rf.registrationId == null && rf.scope != 'registration'))
+              rf,
+        ],
+      );
+    } catch (_) {
+      // The page already shows what it has.
     }
   }
 
@@ -308,7 +343,7 @@ class _MemberEventRegistrationPageState
       // ── ticket (S4 spec §5.6) ─────────────────────────────────────────
       FFSectionTitle(context.tr('events.reg.ticket')),
       _ticketCard(context, r),
-      for (final rf in r.refunds)
+      for (final rf in (r.refunds.isNotEmpty ? r.refunds : _orderRefunds))
         EventRefundCard(refund: rf, options: _options, utcOffsetMinutes: off),
       // ── participant ───────────────────────────────────────────────────
       if (r.hasParticipantDetails) ...[

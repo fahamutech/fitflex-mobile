@@ -388,7 +388,7 @@ void main() {
     expect(find.text('Namba ya tiketi T-3F9A2B'), findsOneWidget);
     expect(find.text('Tiketi iko tayari'), findsOneWidget);
     expect(
-      find.textContaining('Uskanaji wa kuchukua vifaa vya mbio'),
+      find.textContaining('Skani ya kuchukua vifaa vya mbio'),
       findsOneWidget,
     );
     expect(find.text('Pata msimbo mpya'), findsOneWidget);

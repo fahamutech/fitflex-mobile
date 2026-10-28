@@ -70,6 +70,7 @@ class CancelPreview {
     this.deadlineAt,
     this.policyPreset = '',
     this.policyText = const EventText(),
+    this.policyGenerated = const EventText(),
     this.places = const [],
     this.releaseInventory = false,
     this.blocked,
@@ -84,6 +85,9 @@ class CancelPreview {
   final DateTime? deadlineAt;
   final String policyPreset;
   final EventText policyText;
+
+  /// The server's plain policy line: the single source (never built here).
+  final EventText policyGenerated;
   final List<CancelPlace> places;
   final bool releaseInventory;
 
@@ -107,6 +111,9 @@ class CancelPreview {
       policyPreset: _str(policy['preset']),
       policyText: policy['text'] is Map
           ? EventText.fromJson(policy['text'])
+          : const EventText(),
+      policyGenerated: policy['generated'] is Map
+          ? EventText.fromJson(policy['generated'])
           : const EventText(),
       places: json['places'] is List
           ? [

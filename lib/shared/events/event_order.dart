@@ -733,8 +733,22 @@ class EventRegistration {
       event: json['event'] is Map ? eventSummaryOf(json['event']) : null,
       ticket: RegistrationTicket.fromJson(json['ticket']),
       refunds: EventRefundView.listFrom(json['refunds']),
-      invitedAt: parseInstant(json['claimInvitedAt'] ?? json['invitedAt']),
-      inviteCount: _int(json['claimInviteCount'] ?? json['inviteCount']),
+      // Flat fields first; the nested `invitation {sentAt, count}` is kept
+      // as a fallback.
+      invitedAt: parseInstant(
+        json['claimInvitedAt'] ??
+            json['invitedAt'] ??
+            (json['invitation'] is Map
+                ? (json['invitation'] as Map)['sentAt']
+                : null),
+      ),
+      inviteCount: _int(
+        json['claimInviteCount'] ??
+            json['inviteCount'] ??
+            (json['invitation'] is Map
+                ? (json['invitation'] as Map)['count']
+                : null),
+      ),
     );
   }
 }
@@ -921,6 +935,10 @@ class EventOrderDetail {
 
   /// Paid places can be cancelled with a refund (S4).
   bool get canCancelRefund => allowedActions.contains('cancel_refund');
+
+  /// A real payment exists (the server's `state: none` means "not yet paid").
+  bool get hasPayment =>
+      paymentView != null && paymentView!.state != EventPaymentState.none;
 
   /// The manual-payment block of `next.instructions`, when it is usable.
   EventManualInstructions? get manualInstructions =>

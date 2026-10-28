@@ -90,6 +90,7 @@ Map<String, dynamic> detail(
   String? registrationClosesAt = '2027-03-12T20:59:00Z',
   String? registrationOpensAt = '2027-01-01T00:00:00Z',
   int? fromPriceTzs = 25000,
+  Map<String, dynamic>? refundPolicy,
 }) => {
   ...summary(
     id,
@@ -215,10 +216,16 @@ Map<String, dynamic> detail(
     'en': 'Participants run at their own risk. ' * 6,
     'sw': 'Washiriki hukimbia kwa hatari yao wenyewe. ' * 6,
   },
-  'refundPolicy': {
-    'preset': 'refund_until_close',
-    'text': {'en': '', 'sw': ''},
-  },
+  'refundPolicy':
+      refundPolicy ??
+      {
+        'preset': 'refund_until_close',
+        'text': {'en': '', 'sw': ''},
+        'generated': {
+          'en': 'Full refund until registration closes',
+          'sw': 'Marejesho kamili hadi usajili ufungwe',
+        },
+      },
   'cancellation': cancellation,
   'shareUrl': 'https://fitflex.africa/member/events/$id',
   'publishedAt': '2027-02-01T10:00:00Z',
@@ -781,6 +788,8 @@ Map<String, dynamic> cancelPreview({
   String preset = 'refund_until_close',
   String? blocked,
   bool eligible = true,
+  String generatedEn = 'Full refund until registration closes',
+  String generatedSw = 'Marejesho kamili hadi usajili ufungwe',
 }) => {
   'eligible': eligible,
   'mode': mode,
@@ -795,6 +804,7 @@ Map<String, dynamic> cancelPreview({
       'en': 'Refunds until registration closes.',
       'sw': 'Marejesho hadi usajili ufungwe.',
     },
+    'generated': {'en': generatedEn, 'sw': generatedSw},
   },
   'places': [
     {

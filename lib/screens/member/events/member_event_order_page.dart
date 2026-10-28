@@ -70,6 +70,10 @@ class _MemberEventOrderPageState extends State<MemberEventOrderPage>
   CheckoutAttempt? _freeAttempt;
   final _seenStates = <String>{};
 
+  /// The payment-status route said 429: look every 60 s instead of 30 s,
+  /// without telling the member.
+  bool _backOff = false;
+
   ApiClient get _api => AppScope.of(context).api;
   EventsOptions get _options => eventsOptionsOf(context, widget.options);
   DateTime get _clock => widget.now ?? DateTime.now();
@@ -158,7 +162,13 @@ class _MemberEventOrderPageState extends State<MemberEventOrderPage>
           .length;
       SemanticsService.sendAnnouncement(
         View.of(context),
-        context.tr('events.pay.announce.confirmed').replaceFirst('{n}', '$n'),
+        context
+            .tr(
+              n == 1
+                  ? 'events.pay.announce.confirmed.one'
+                  : 'events.pay.announce.confirmed',
+            )
+            .replaceFirst('{n}', '$n'),
         Directionality.of(context),
       );
     }
@@ -173,7 +183,10 @@ class _MemberEventOrderPageState extends State<MemberEventOrderPage>
     final d = _detail;
     if (d == null) return;
     if (d.paymentView?.state.isLive ?? false) {
-      _poll = Timer(widget.livePollEvery, _pollPayment);
+      _poll = Timer(
+        _backOff ? widget.pollEvery : widget.livePollEvery,
+        _pollPayment,
+      );
     } else if (d.order.isAwaitingPayment) {
       _poll = Timer(widget.pollEvery, () => _load(quiet: true));
     }
@@ -187,6 +200,7 @@ class _MemberEventOrderPageState extends State<MemberEventOrderPage>
         await _api.eventPaymentStatus(widget.orderId),
       );
       if (!mounted) return;
+      _backOff = false;
       final changed =
           st.orderStatus != d.order.statusWire ||
           st.payment?.state != d.paymentView?.state ||
@@ -196,6 +210,9 @@ class _MemberEventOrderPageState extends State<MemberEventOrderPage>
         await _load(quiet: true);
         return;
       }
+    } on ApiException catch (e) {
+      // Rate limited: slow down quietly (no banner).
+      if (e.status == 429 || e.code == 'rate_limited') _backOff = true;
     } catch (_) {
       // A dropped connection while waiting is not a failed payment.
     }
@@ -660,14 +677,9 @@ class _MemberEventOrderPageState extends State<MemberEventOrderPage>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (d.event!.refundPolicy.preset == 'no_refund' ||
-                  d.event!.refundPolicy.preset == 'refund_until_close')
-                Text(
-                  context.tr(
-                    'events.detail.policy.${d.event!.refundPolicy.preset}',
-                  ),
-                  style: tt.titleSmall,
-                ),
+              if (refundPolicyLine(context, d.event!.refundPolicy)
+                  case final line?)
+                Text(line, style: tt.titleSmall),
               if (d.event!.refundPolicy.text.isNotEmpty)
                 Text(d.event!.refundPolicy.text.of(lang), style: tt.bodySmall),
             ],
@@ -726,7 +738,7 @@ class _MemberEventOrderPageState extends State<MemberEventOrderPage>
 
     // Payment is not open (server mode `none`) and nothing was sent: the
     // S3 slot, with corrected wording.
-    if (o.isAwaitingPayment && d.paymentView == null && mode == 'none') {
+    if (o.isAwaitingPayment && !d.hasPayment && mode == 'none') {
       return [
         FFSectionTitle(context.tr('events.order.payment.title')),
         FFCard(
@@ -751,7 +763,7 @@ class _MemberEventOrderPageState extends State<MemberEventOrderPage>
     }
     // A mode this release does not know: say nothing it cannot complete.
     if (o.isAwaitingPayment &&
-        d.paymentView == null &&
+        !d.hasPayment &&
         mode != 'manual' &&
         mode != 'provider') {
       return [
@@ -806,7 +818,7 @@ class _MemberEventOrderPageState extends State<MemberEventOrderPage>
     final o = d.order;
     final mode = _modeOf(d);
     if (!o.isAwaitingPayment ||
-        d.paymentView != null ||
+        d.hasPayment ||
         (mode != 'manual' && mode != 'provider')) {
       return null;
     }

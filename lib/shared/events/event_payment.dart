@@ -19,6 +19,8 @@ String? _opt(Object? v) {
 /// `payment.state` (spec §3.3). The server derives it; the app never infers
 /// money state from anything else.
 enum EventPaymentState {
+  /// `none`: no payment has been made for the order yet ("not yet paid").
+  none,
   submitted,
   processing,
   confirmed,
@@ -29,6 +31,7 @@ enum EventPaymentState {
   other;
 
   static EventPaymentState parse(Object? v) => switch (v?.toString()) {
+    'none' => none,
     'submitted' => submitted,
     'processing' => processing,
     'confirmed' => confirmed,
@@ -77,6 +80,9 @@ class EventPaymentView {
     this.late = false,
     this.canRetry = false,
     this.refundId,
+    this.memberNoteSw,
+    this.payerMethod,
+    this.paidOn,
   });
 
   final String id;
@@ -99,6 +105,13 @@ class EventPaymentView {
 
   /// The admin's note written for the member (<= 140 characters).
   final String? memberNote;
+
+  /// The same note in Swahili, when the admin wrote one.
+  final String? memberNoteSw;
+
+  /// Organisation payments: `bank_transfer` | `mobile_money`, and the day.
+  final String? payerMethod;
+  final DateTime? paidOn;
   final bool late;
 
   /// Order awaiting payment, hold not over, no live payment.
@@ -122,6 +135,9 @@ class EventPaymentView {
       confirmTargetAt: parseInstant(json['confirmTargetAt']),
       rejectCode: _opt(json['rejectCode']),
       memberNote: _opt(json['memberNote']),
+      memberNoteSw: _opt(json['memberNoteSw']),
+      payerMethod: _opt(json['payerMethod']),
+      paidOn: parseInstant(json['paidOn']),
       late: json['late'] == true,
       canRetry: json['canRetry'] == true,
       refundId: _opt(json['refundId']),
@@ -177,6 +193,7 @@ class EventRefundView {
     this.decidedAt,
     this.paidAt,
     this.paidTo,
+    this.registrationId,
     this.paymentReference,
     this.rejectionNote,
   });
@@ -194,6 +211,9 @@ class EventRefundView {
   final DateTime? decidedAt;
   final DateTime? paidAt;
   final String? paidTo;
+
+  /// The place a `registration`-scope refund covers, when the server says.
+  final String? registrationId;
 
   /// The payout reference, only once paid.
   final String? paymentReference;
@@ -216,6 +236,9 @@ class EventRefundView {
       decidedAt: parseInstant(json['decidedAt']),
       paidAt: parseInstant(json['paidAt']),
       paidTo: _opt(json['paidTo']),
+      registrationId: _opt(
+        json['registrationId'] ?? json['eventRegistrationId'],
+      ),
       paymentReference: _opt(json['paymentReference']),
       rejectionNote: _opt(json['rejectionNote']),
     );

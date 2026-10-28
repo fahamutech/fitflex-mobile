@@ -50,6 +50,7 @@ const _allowedPaid = [
   'who paid',
   'paid and confirmed',
   'have paid',
+  'not yet paid',
 ];
 
 final _forbiddenEn = [

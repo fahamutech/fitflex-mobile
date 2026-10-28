@@ -148,7 +148,6 @@ class EventTicketPayload {
     this.scanning = false,
     this.kitState,
     this.relation = '',
-    this.purchaserFirstName,
   });
 
   final String ticketId;
@@ -171,7 +170,6 @@ class EventTicketPayload {
 
   /// `self` | `purchased` | `claimed` when the server says (informational).
   final String relation;
-  final String? purchaserFirstName;
 
   bool get isActive => state == 'active';
 
@@ -212,7 +210,6 @@ class EventTicketPayload {
       scanning: json['scanning'] == true,
       kitState: kitStateOf(json['kit']),
       relation: _str(json['relation']),
-      purchaserFirstName: _opt(json['purchaserFirstName']),
     );
   }
 }

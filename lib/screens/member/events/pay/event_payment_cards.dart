@@ -69,7 +69,7 @@ EventPaymentSlot eventPaymentSlotFor(
     return EventPaymentSlot.none;
   }
   return switch (state) {
-    null => EventPaymentSlot.due,
+    null || EventPaymentState.none => EventPaymentSlot.due,
     EventPaymentState.submitted => EventPaymentSlot.submitted,
     EventPaymentState.processing => EventPaymentSlot.processing,
     EventPaymentState.rejected => EventPaymentSlot.rejected,
@@ -116,6 +116,9 @@ class EventPaymentStatusCard extends StatelessWidget {
   /// "Check status" for a provider prompt.
   final VoidCallback? onCheck;
   final VoidCallback? onOpenTickets;
+
+  String _lang(BuildContext context) =>
+      FFLocaleScope.of(context).locale.languageCode;
 
   String _time(BuildContext context, DateTime? at) {
     if (at == null) return '—';
@@ -169,6 +172,14 @@ class EventPaymentStatusCard extends StatelessWidget {
     switch (slot) {
       case EventPaymentSlot.due:
         title = context.tr('events.pay.exact').replaceFirst('{amount}', amount);
+        if (p?.state == EventPaymentState.none) {
+          children.add(
+            small(
+              context.tr('events.payment.status.none'),
+              key: const Key('pay-not-yet-paid'),
+            ),
+          );
+        }
         if (manual) {
           pill = context.tr('events.pay.manual.badge');
           pillTone = FFBadgeTone.defaultTone;
@@ -194,6 +205,27 @@ class EventPaymentStatusCard extends StatelessWidget {
             key: const Key('pay-submitted-body'),
           ),
         );
+        if (p?.payerMethod != null && p?.paidOn != null) {
+          // Organisation payments: how and on which day it was recorded.
+          final mk = 'events.pay.method.${p!.payerMethod}';
+          final m = context.tr(mk);
+          children.add(
+            small(
+              context
+                  .tr('events.pay.submitted.via')
+                  .replaceFirst('{method}', m == mk ? p.payerMethod! : m)
+                  .replaceFirst(
+                    '{date}',
+                    eventDate(
+                      p.paidOn!,
+                      utcOffsetMinutes,
+                      locale: _lang(context),
+                    ),
+                  ),
+              key: const Key('pay-submitted-via'),
+            ),
+          );
+        }
         children.add(
           small(
             context
@@ -271,12 +303,29 @@ class EventPaymentStatusCard extends StatelessWidget {
             key: const Key('pay-rejected-reason'),
           ),
         );
-        if ((p?.memberNote ?? '').isNotEmpty) {
+        final isSw = _lang(context) == 'sw';
+        final noteSw = p?.memberNoteSw ?? '';
+        final noteEn = p?.memberNote ?? '';
+        if (isSw && noteSw.isNotEmpty) {
           children.add(
             small(
               context
                   .tr('events.pay.rejected.note')
-                  .replaceFirst('{note}', p!.memberNote!),
+                  .replaceFirst('{note}', noteSw),
+              key: const Key('pay-rejected-note'),
+            ),
+          );
+        } else if (noteEn.isNotEmpty) {
+          // No Swahili note: the English one, labelled as such in Swahili.
+          children.add(
+            small(
+              context
+                  .tr(
+                    isSw
+                        ? 'events.pay.rejected.noteEn'
+                        : 'events.pay.rejected.note',
+                  )
+                  .replaceFirst('{note}', noteEn),
               key: const Key('pay-rejected-note'),
             ),
           );
@@ -361,7 +410,11 @@ class EventPaymentStatusCard extends StatelessWidget {
         children.add(
           body(
             context
-                .tr('events.pay.confirmed.body')
+                .tr(
+                  ticketCount == 1
+                      ? 'events.pay.confirmed.body.one'
+                      : 'events.pay.confirmed.body',
+                )
                 .replaceFirst('{n}', '$ticketCount')
                 .replaceFirst('{event}', eventTitle),
             key: const Key('pay-confirmed-body'),

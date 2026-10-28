@@ -327,25 +327,10 @@ class _MemberEventCancelPageState extends State<MemberEventCancelPage> {
     final lang = FFLocaleScope.of(context).locale.languageCode;
     final blocked = _blockedCode(p);
 
-    final policyLine = switch (p.policyPreset) {
-      'no_refund' || 'refund_until_close' => context.tr(
-        'events.detail.policy.${p.policyPreset}',
-      ),
-      _ =>
-        p.deadlineAt == null || p.percent <= 0
-            ? null
-            : context
-                  .tr(
-                    p.percent >= 100
-                        ? 'events.cancelpaid.policy.line.full'
-                        : 'events.cancelpaid.policy.line.partial',
-                  )
-                  .replaceFirst(
-                    '{date}',
-                    formatDate(p.deadlineAt, locale: lang),
-                  )
-                  .replaceFirst('{percent}', '${p.percent}'),
-    };
+    // The server's line is the only one shown (all five presets).
+    final policyLine = p.policyGenerated.of(lang).trim().isEmpty
+        ? null
+        : p.policyGenerated.of(lang).trim();
     final snapshot = p.policyText.of(lang);
 
     String refundText() {

@@ -90,7 +90,11 @@ void main() {
     ) async {
       api.on(
         _previewReg,
-        cancelPreview(percent: 50, preset: 'full_until_days'),
+        cancelPreview(
+          percent: 50,
+          preset: 'full_until_days',
+          generatedEn: '50% refund until 12 Mar 2027',
+        ),
       );
       await _pumpReg(tester, api);
       expect(
