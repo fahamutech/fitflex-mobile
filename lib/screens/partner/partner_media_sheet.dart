@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
@@ -93,6 +94,9 @@ String partnerMediaErrorText(
       'rate_limited_attempts',
     // 40 a day per person, or 20 successful uploads a day per partner.
     'rate_limited' when values['limit'] == 'day' => 'rate_limited_day',
+    // 413 file_too_large names the limit it broke: pixels, a side, or bytes.
+    'file_too_large' when values['maxPixels'] != null => 'too_many_pixels',
+    'file_too_large' when values['maxSide'] != null => 'too_large_side',
     _ => code,
   };
   String fill(String s) {
@@ -107,6 +111,14 @@ String partnerMediaErrorText(
         )
         .replaceAll('{minSide}', '${values['minSide'] ?? limits.logoMinSide}')
         .replaceAll(
+          '{maxSide}',
+          '${values['maxSide'] ?? limits.logoMaxSide ?? ''}',
+        )
+        .replaceAll(
+          '{maxMp}',
+          '${values['maxMp'] ?? _megapixels(values['maxPixels'] ?? limits.heroMaxPixels)}',
+        )
+        .replaceAll(
           '{maxMb}',
           '${values['maxMb'] ?? (mb == mb.roundToDouble() ? mb.round() : mb.toStringAsFixed(1))}',
         );
@@ -118,6 +130,12 @@ String partnerMediaErrorText(
     return context.tr('partnerMedia.error.unknown').replaceAll('{code}', code);
   }
   return fill(text);
+}
+
+String _megapixels(Object? pixels) {
+  if (pixels is! num) return '';
+  final mp = pixels / 1000000;
+  return mp == mp.roundToDouble() ? '${mp.round()}' : mp.toStringAsFixed(1);
 }
 
 /// Opens the upload sheet (spec §42): full screen on phones, a centred
@@ -218,6 +236,10 @@ class _PartnerMediaUploadSheetState extends State<PartnerMediaUploadSheet> {
   bool _rights = false;
   bool _ownLogo = false;
   bool _wordingChanged = false;
+
+  /// The disabled primary button was activated (keyboard or screen
+  /// reader): each unticked box says "Tick this box to confirm."
+  bool _tickHint = false;
   String? _error;
   bool _retry = false;
   PartnerUploadProgress? _progress;
@@ -586,18 +608,20 @@ class _PartnerMediaUploadSheetState extends State<PartnerMediaUploadSheet> {
       if (_progress case final p?)
         _progressRow(context, p)
       else ...[
-        FFButton(
-          key: const Key('partner-media-use'),
-          label: _retry
-              ? context.tr('common.retry')
-              : context.tr(
-                  _logo
-                      ? 'partnerMedia.sheet.useLogo'
-                      : 'partnerMedia.sheet.useHero',
-                ),
-          fullWidth: true,
-          maxLines: 3,
-          onPressed: _ticked ? _send : null,
+        _keyboardHint(
+          FFButton(
+            key: const Key('partner-media-use'),
+            label: _retry
+                ? context.tr('common.retry')
+                : context.tr(
+                    _logo
+                        ? 'partnerMedia.sheet.useLogo'
+                        : 'partnerMedia.sheet.useHero',
+                  ),
+            fullWidth: true,
+            maxLines: 3,
+            onPressed: _ticked ? _send : null,
+          ),
         ),
         const SizedBox(height: FFTokens.spacingSm),
         FFButton(
@@ -612,6 +636,28 @@ class _PartnerMediaUploadSheetState extends State<PartnerMediaUploadSheet> {
     ];
   }
 
+  /// While a box is unticked the primary button is disabled, but it stays
+  /// a focus stop: Enter or Space on it (or a screen reader's activate)
+  /// shows "Tick this box to confirm." under each unticked box (spec §42.5).
+  Widget _keyboardHint(Widget button) {
+    if (_ticked || _busy) return button;
+    void show() => setState(() => _tickHint = true);
+    return Focus(
+      key: const Key('partner-media-use-focus'),
+      onKeyEvent: (node, e) {
+        if (e is KeyDownEvent &&
+            (e.logicalKey == LogicalKeyboardKey.enter ||
+                e.logicalKey == LogicalKeyboardKey.numpadEnter ||
+                e.logicalKey == LogicalKeyboardKey.space)) {
+          show();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: Semantics(onTap: show, child: button),
+    );
+  }
+
   Widget _box(
     Key key,
     String text,
@@ -624,6 +670,16 @@ class _PartnerMediaUploadSheetState extends State<PartnerMediaUploadSheet> {
     controlAffinity: ListTileControlAffinity.leading,
     // The server's words, as sent (no trimming or reformatting).
     title: Text(text),
+    subtitle: _tickHint && !value
+        ? Semantics(
+            liveRegion: true,
+            child: Text(
+              context.tr('merch.confirmRequired'),
+              key: Key('${(key as ValueKey).value}-hint'),
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          )
+        : null,
     onChanged: onChanged == null ? null : (v) => onChanged(v ?? false),
   );
 

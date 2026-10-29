@@ -190,6 +190,7 @@ class PartnerMediaLimits {
   const PartnerMediaLimits({
     this.heroMinWidth = 1080,
     this.heroMaxBytes = 15 * 1024 * 1024,
+    this.heroMaxPixels,
     this.heroTypes = const [
       'image/jpeg',
       'image/png',
@@ -205,11 +206,16 @@ class PartnerMediaLimits {
 
   final int heroMinWidth;
   final int heroMaxBytes;
+
+  /// The most pixels (width x height) a photo may have; null when the
+  /// server does not send it.
+  final int? heroMaxPixels;
   final List<String> heroTypes;
   final int logoMinSide;
   final int logoMaxBytes;
 
-  /// Sent by the server today though not in the API doc; null when absent.
+  /// The longest side a logo may have, in pixels (`limits.logo.maxSide`);
+  /// null when the server does not send it.
   final int? logoMaxSide;
   final List<String> logoTypes;
 
@@ -229,6 +235,9 @@ class PartnerMediaLimits {
     return PartnerMediaLimits(
       heroMinWidth: n(h, 'minWidth', d.heroMinWidth),
       heroMaxBytes: n(h, 'maxBytes', d.heroMaxBytes),
+      heroMaxPixels: h['maxPixels'] is num
+          ? (h['maxPixels'] as num).toInt()
+          : null,
       heroTypes: types(h, d.heroTypes),
       logoMinSide: n(l, 'minSide', d.logoMinSide),
       logoMaxBytes: n(l, 'maxBytes', d.logoMaxBytes),

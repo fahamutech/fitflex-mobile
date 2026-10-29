@@ -4,7 +4,6 @@
 // texts and ticks (AC-P25), the wording-changed reload (AC-P26), the
 // multipart upload (AC-P27), refusals before any request (AC-P23), the
 // plate choice (AC-P29) and the entry tiles (AC-P13).
-import 'dart:typed_data';
 
 import 'package:fitflexmobile/screens/partner/partner_media_entry_tile.dart';
 import 'package:fitflexmobile/screens/partner/partner_media_page.dart';
@@ -13,6 +12,7 @@ import 'package:fitflexmobile/shared/partner_media/partner_media_image_check.dar
 import 'package:fitflexmobile/shared/partner_media/partner_media_store.dart';
 import 'package:fitflexmobile/shared/photo_hero_flag.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
@@ -300,6 +300,42 @@ void main() {
       );
       expect(tester.takeException(), isNull);
     });
+
+    apiTest('the title fits and the entry tiles wrap', (tester, api) async {
+      api.on('GET /partner/media', overview());
+      await pumpPage(
+        tester,
+        api,
+        const Column(
+          children: [
+            PartnerMediaEntryTile(
+              side: 'gym',
+              gymName: 'Mazoezi Arena Kinondoni',
+            ),
+            PartnerMediaEntryTile(side: 'vendor'),
+          ],
+        ),
+        user: _owner,
+        lang: 'sw',
+        textScale: 1.3,
+        size: const Size(360, 800),
+      );
+      expect(tester.takeException(), isNull);
+      await pumpPage(
+        tester,
+        api,
+        const PartnerMediaPage(side: 'trainer'),
+        user: _trainer,
+        lang: 'sw',
+        textScale: 1.3,
+        size: const Size(360, 800),
+      );
+      expect(tester.takeException(), isNull);
+      final title = tester.getRect(
+        find.byKey(const Key('partner-media-title')),
+      );
+      expect(title.right, lessThanOrEqualTo(360));
+    });
   });
 
   group('owner gyms (AC-P19)', () {
@@ -337,6 +373,31 @@ void main() {
         find.byKey(const Key('partner-media-remove-confirm')),
       );
       expect(api.only('DELETE', '/partner/media/pmd_hero1'), isNotNull);
+      expect(h.snack(h.tr('partnerMedia.removed')), findsOneWidget);
+      expect(find.text(h.tr('partnerMedia.default')), findsOneWidget);
+    });
+  });
+
+  group('Remove when it is already gone', () {
+    apiTest('media_not_found: no error, reloaded, Removed.', (
+      tester,
+      api,
+    ) async {
+      api.on('GET /partner/media', overview(hero: heroItem()));
+      final h = await _open(tester, api);
+      api.fail('DELETE /partner/media/pmd_hero1', 404, {
+        'error': 'media_not_found',
+      });
+      api.on('GET /partner/media', overview());
+      await tapVisible(
+        tester,
+        find.byKey(const Key('partner-media-hero-remove')),
+      );
+      await tapVisible(
+        tester,
+        find.byKey(const Key('partner-media-remove-confirm')),
+      );
+      expect(find.byKey(const Key('partner-media-hero-error')), findsNothing);
       expect(h.snack(h.tr('partnerMedia.removed')), findsOneWidget);
       expect(find.text(h.tr('partnerMedia.default')), findsOneWidget);
     });
@@ -411,6 +472,32 @@ void main() {
       expect(post.headers['authorization'], 'Bearer token');
       expect(h.snack(h.tr('partnerMedia.liveNowHero')), findsOneWidget);
       expect(find.text(h.tr('partnerMedia.live')), findsOneWidget);
+    });
+
+    apiTest('Enter on the disabled button asks to tick the box (§42.5)', (
+      tester,
+      api,
+    ) async {
+      final h = await openSheet(tester, api);
+      expect(find.text(h.tr('merch.confirmRequired')), findsNothing);
+      Focus.of(
+        tester.element(find.byKey(const Key('partner-media-use'))),
+      ).requestFocus();
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      expect(find.text(h.tr('merch.confirmRequired')), findsOneWidget);
+      expect(api.sent('POST', '/partner/media/hero'), isFalse);
+      // Ticking the box removes the ask and enables the button.
+      await tapVisible(
+        tester,
+        find.byKey(const Key('partner-media-confirm-rights')),
+      );
+      expect(find.text(h.tr('merch.confirmRequired')), findsNothing);
+      expect(
+        isEnabled(tester, find.byKey(const Key('partner-media-use'))),
+        isTrue,
+      );
     });
 
     apiTest('wording changed: texts reloaded, boxes unticked (AC-P26)', (

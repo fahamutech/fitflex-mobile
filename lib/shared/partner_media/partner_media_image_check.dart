@@ -117,19 +117,35 @@ PartnerMediaProblem? partnerMediaProblem(
   final h = picked.height;
   if (w == null || h == null) return null;
   if (logo) {
-    // Over the largest side (logoMaxSide) is left to the server: the app has
-    // no message that names a pixel limit.
+    final maxSide = limits.logoMaxSide;
+    if (maxSide != null && (w > maxSide || h > maxSide)) {
+      return PartnerMediaProblem('too_large_side', {'maxSide': maxSide});
+    }
     if (math.min(w, h) < limits.logoMinSide) {
       return PartnerMediaProblem('image_too_small_logo', {
         'minSide': limits.logoMinSide,
       });
     }
-  } else if (w < limits.heroMinWidth) {
-    return PartnerMediaProblem('image_too_small', {
-      'minWidth': limits.heroMinWidth,
-    });
+  } else {
+    final maxPixels = limits.heroMaxPixels;
+    if (maxPixels != null && w * h > maxPixels) {
+      return PartnerMediaProblem('too_many_pixels', {'maxMp': _mp(maxPixels)});
+    }
+    if (w < limits.heroMinWidth) {
+      return PartnerMediaProblem('image_too_small', {
+        'minWidth': limits.heroMinWidth,
+      });
+    }
   }
   return null;
+}
+
+/// Megapixels as people write them: "50", or "12.5".
+String _mp(int pixels) {
+  final mp = pixels / 1000000;
+  return mp == mp.roundToDouble()
+      ? mp.round().toString()
+      : mp.toStringAsFixed(1);
 }
 
 String _mb(int bytes) {

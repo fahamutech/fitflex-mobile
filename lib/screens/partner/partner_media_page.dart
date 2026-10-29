@@ -363,8 +363,17 @@ class _PartnerMediaPageState extends State<PartnerMediaPage> {
       final code = e.code ?? 'unknown';
       if (code == 'not_your_gym' || code == 'acl_forbidden') {
         setState(() => _phase = _Phase.noAccess);
+      } else if (code == 'media_not_found') {
+        // Already gone (removed by a teammate, replaced, taken down): the
+        // outcome the person asked for, so no error; show what is true now.
+        await _load(quiet: true);
+        if (mounted) {
+          FFSnack.success(context, context.tr('partnerMedia.removed'));
+        }
+      } else if (e.status == 404 && code == 'feature_disabled') {
+        setState(() => _phase = _Phase.off);
       } else {
-        if (code == 'not_editable' || code == 'media_not_found') {
+        if (code == 'not_editable') {
           await _load(quiet: true);
         }
         if (mounted) {
@@ -459,9 +468,25 @@ class _PartnerMediaPageState extends State<PartnerMediaPage> {
           icon: const Icon(Icons.arrow_back),
           onPressed: _back,
         ),
+        // Long in Swahili at 1.3x ("Picha ya mwanzo na nembo"): up to two
+        // lines, shrunk to fit the bar rather than cut.
         title: Semantics(
           header: true,
-          child: Text(context.tr('partnerMedia.title')),
+          child: FittedBox(
+            key: const Key('partner-media-title'),
+            fit: BoxFit.scaleDown,
+            alignment: AlignmentDirectional.centerStart,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.sizeOf(context).width - 120,
+              ),
+              child: Text(
+                context.tr('partnerMedia.title'),
+                maxLines: 2,
+                softWrap: true,
+              ),
+            ),
+          ),
         ),
       ),
       body: SafeArea(

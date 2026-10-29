@@ -176,6 +176,41 @@ void main() {
       );
     });
 
+    test('maxPixels (photo) and maxSide (logo) from the server are checked '
+        'on the phone', () {
+      final l = PartnerMediaLimits.parse({
+        'hero': {'minWidth': 1080, 'maxPixels': 50000000},
+        'logo': {'minSide': 256, 'maxSide': 4000},
+      });
+      expect(l.heroMaxPixels, 50000000);
+      expect(l.logoMaxSide, 4000);
+      expect(
+        partnerMediaProblem('hero', _picked(width: 10000, height: 6000), l),
+        const PartnerMediaProblem('too_many_pixels', {'maxMp': '50'}),
+      );
+      expect(
+        partnerMediaProblem(
+          'logo',
+          _picked(type: 'image/png', width: 4500, height: 300),
+          l,
+        ),
+        const PartnerMediaProblem('too_large_side', {'maxSide': 4000}),
+      );
+      expect(
+        partnerMediaProblem('hero', _picked(width: 8000, height: 6000), l),
+        isNull,
+      );
+      // Not sent: not checked here (the server still checks).
+      expect(
+        partnerMediaProblem(
+          'hero',
+          _picked(width: 10000, height: 6000),
+          const PartnerMediaLimits(),
+        ),
+        isNull,
+      );
+    });
+
     test('the limits come from the server answer, not app constants', () {
       final stricter = PartnerMediaLimits.parse({
         'hero': {
@@ -260,6 +295,18 @@ void main() {
       'not_editable',
       'image_save_failed',
       'image_taken_down_before',
+      // functions#277 final round.
+      'media_not_found',
+      'feature_disabled',
+      'rights_confirmation_required',
+      'own_logo_confirmation_required',
+      'no_file_provided',
+      'invalid_plate',
+      'gym_id_required',
+      'invalid_multipart',
+      'unknown_field',
+      'image_service_busy',
+      'rate_limit_unavailable',
     ];
     for (final lang in ['en', 'sw']) {
       testWidgets(lang, (tester) async {
@@ -305,6 +352,31 @@ void main() {
             lang,
             'partnerMedia.error.image_too_small_logo',
           )!.replaceAll('{minSide}', '256'),
+        );
+        // 413 file_too_large names the limit it broke.
+        expect(
+          partnerMediaErrorText(
+            ctx,
+            'hero',
+            'file_too_large',
+            values: const {'maxPixels': 50000000},
+          ),
+          FFLocale.textOf(
+            lang,
+            'partnerMedia.error.too_many_pixels',
+          )!.replaceAll('{maxMp}', '50'),
+        );
+        expect(
+          partnerMediaErrorText(
+            ctx,
+            'logo',
+            'file_too_large',
+            values: const {'maxSide': 4000},
+          ),
+          FFLocale.textOf(
+            lang,
+            'partnerMedia.error.too_large_side',
+          )!.replaceAll('{maxSide}', '4000'),
         );
         // functions#277 at 5a6612b: the 429 scopes and the busy codes.
         String rl(Map<String, Object?> v) =>
@@ -373,6 +445,36 @@ void main() {
           }
         }
       }
+    });
+
+    test('Swahili glossary (native review pending)', () {
+      String sw(String k) => FFLocale.textOf('sw', 'partnerMedia.$k')!;
+      expect(sw('sheet.confirmChanged'), contains('chagua kisanduku tena'));
+      for (final k in FFLocale.keysOf(
+        'sw',
+      ).where((k) => k.startsWith('partnerMedia.'))) {
+        final t = FFLocale.textOf('sw', k)!;
+        expect(t, isNot(contains('weka alama')), reason: k);
+        expect(t, isNot(contains('Mwonekano')), reason: k);
+        expect(t.toLowerCase(), isNot(contains('hatukuweza')), reason: k);
+      }
+      expect(sw('preview'), startsWith('Hakiki'));
+      expect(sw('a11y.previewPhone'), startsWith('Hakiki'));
+      expect(sw('restrictedVendor'), contains('admin'));
+      expect(sw('vendorNote'), contains('Picha na nembo hizi zinaonekana'));
+      expect(sw('onlyYouTeam'), contains('mnaouona'));
+      expect(sw('onlyYouSelf'), contains('unayeuona'));
+      expect(sw('bright'), isNot(contains('nyeusi')));
+      expect(sw('bright'), contains('itafifishwa kidogo'));
+      expect(sw('error.rate_limited'), startsWith('Umepakia mara nyingi mno'));
+      expect(
+        sw('error.image_save_failed'),
+        'Imeshindikana kuhifadhi picha yako. Jaribu tena.',
+      );
+      expect(
+        FFLocale.textOf('en', 'partnerMedia.error.image_service_busy'),
+        contains('a few seconds'),
+      );
     });
 
     test('no people or faces confirmation exists (AC-P25)', () {
