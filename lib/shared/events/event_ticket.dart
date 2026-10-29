@@ -9,6 +9,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'event_detail.dart' show EventText;
 import 'event_order.dart';
 import 'event_summary.dart';
 
@@ -19,8 +20,115 @@ String? _opt(Object? v) {
   return s.isEmpty ? null : s;
 }
 
+/// The prefix of an event ticket's QR payload (the server's `qrPayload`).
+const eventTicketPrefix = 'FFEV1:';
+
+/// Events S5 (spec §4.7): whether a scanned value is an event ticket. The
+/// gym check-in scanners must never send one to the check-in API.
+bool isEventTicketPayload(String? code) =>
+    code != null && code.trim().startsWith(eventTicketPrefix);
+
 /// `kit.state` on a ticket (S5 fills it; null before then).
 String? kitStateOf(Object? json) => json is Map ? _opt(json['state']) : null;
+
+/// Events S5 (spec §4.6): the server's own kit state for a ticket. `state`
+/// is `not_ready` | `ready` | `collected` | `exception`; anything else the
+/// server might add later reads as `not_ready` (the safe, promise-nothing
+/// wording).
+class EventKit {
+  const EventKit({
+    this.state = 'not_ready',
+    this.collectedAt,
+    this.collectionPointName,
+  });
+
+  final String state;
+  final DateTime? collectedAt;
+  final String? collectionPointName;
+
+  bool get isCollected => state == 'collected';
+  bool get isReady => state == 'ready';
+  bool get isException => state == 'exception';
+
+  static const _known = {'not_ready', 'ready', 'collected', 'exception'};
+
+  static EventKit? fromJson(Object? json) {
+    if (json is! Map) return null;
+    final s = _opt(json['state']);
+    return EventKit(
+      state: s != null && _known.contains(s) ? s : 'not_ready',
+      collectedAt: parseInstant(json['collectedAt']),
+      collectionPointName: _opt(json['collectionPointName']),
+    );
+  }
+}
+
+/// One opening window of a collection point (instants, event timezone is
+/// applied when drawn).
+class KitWindow {
+  const KitWindow(this.opensAt, this.closesAt);
+  final DateTime opensAt;
+  final DateTime closesAt;
+}
+
+/// Public event data the ticket may carry (spec §4.6 `collectionPoints`).
+class KitCollectionPoint {
+  const KitCollectionPoint({
+    this.id = '',
+    this.name = '',
+    this.address = '',
+    this.lat,
+    this.lng,
+    this.windows = const [],
+    this.instructions = const EventText(),
+  });
+
+  final String id;
+  final String name;
+  final String address;
+  final double? lat;
+  final double? lng;
+  final List<KitWindow> windows;
+  final EventText instructions;
+
+  bool get hasLocation => lat != null && lng != null;
+
+  /// The window open now, else the next one to open; null when all passed.
+  KitWindow? nextWindow(DateTime now) {
+    final live = windows.where((w) => w.closesAt.isAfter(now)).toList()
+      ..sort((a, b) => a.opensAt.compareTo(b.opensAt));
+    return live.isEmpty ? null : live.first;
+  }
+
+  static List<KitCollectionPoint> listFrom(Object? json) => [
+    if (json is List)
+      for (final p in json)
+        if (p is Map) fromJson(p),
+  ];
+
+  static KitCollectionPoint fromJson(Map json) {
+    double? num_(Object? v) => v is num ? v.toDouble() : null;
+    return KitCollectionPoint(
+      id: _str(json['id']),
+      name: _str(json['name']),
+      address: _str(json['address']),
+      lat: num_(json['lat']),
+      lng: num_(json['lng']),
+      windows: [
+        if (json['windows'] is List)
+          for (final w in json['windows'] as List)
+            if (w is Map &&
+                parseInstant(w['opensAt']) != null &&
+                parseInstant(w['closesAt']) != null)
+              KitWindow(
+                parseInstant(w['opensAt'])!,
+                parseInstant(w['closesAt'])!,
+              ),
+      ],
+      instructions: EventText.fromJson(json['instructions']),
+    );
+  }
+}
 
 /// A ticket's state on an order's registration row (spec §3.5): no token.
 class RegistrationTicket {
@@ -61,6 +169,7 @@ class EventTicketRow {
     this.orderReference = '',
     this.issuedAt,
     this.kitState,
+    this.bibNumber,
   });
 
   final String registrationId;
@@ -82,6 +191,9 @@ class EventTicketRow {
   final String orderReference;
   final DateTime? issuedAt;
   final String? kitState;
+
+  /// Events S5: the organizer's bib number, once assigned.
+  final String? bibNumber;
 
   bool get isActive => state == 'active';
 
@@ -125,6 +237,7 @@ class EventTicketRow {
       orderReference: _str(json['orderReference']),
       issuedAt: parseInstant(json['issuedAt']),
       kitState: kitStateOf(json['kit']),
+      bibNumber: _opt(json['bibNumber']),
     );
   }
 }
@@ -146,7 +259,9 @@ class EventTicketPayload {
     this.firstName = '',
     this.lastName = '',
     this.scanning = false,
-    this.kitState,
+    this.kit,
+    this.bibNumber,
+    this.collectionPoints = const [],
     this.relation = '',
   });
 
@@ -166,7 +281,14 @@ class EventTicketPayload {
   /// Mirrors `options.tickets.scanning` so the wording is right even with a
   /// stale options cache.
   final bool scanning;
-  final String? kitState;
+
+  /// Events S5: null when the server sends none (kit operations off).
+  final EventKit? kit;
+  String? get kitState => kit?.state;
+
+  /// The organizer's bib number, once assigned.
+  final String? bibNumber;
+  final List<KitCollectionPoint> collectionPoints;
 
   /// `self` | `purchased` | `claimed` when the server says (informational).
   final String relation;
@@ -208,7 +330,9 @@ class EventTicketPayload {
       firstName: _str(participant['firstName']),
       lastName: _str(participant['lastName']),
       scanning: json['scanning'] == true,
-      kitState: kitStateOf(json['kit']),
+      kit: EventKit.fromJson(json['kit']),
+      bibNumber: _opt(json['bibNumber']),
+      collectionPoints: KitCollectionPoint.listFrom(json['collectionPoints']),
       relation: _str(json['relation']),
     );
   }

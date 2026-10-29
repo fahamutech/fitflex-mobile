@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
@@ -5,6 +7,7 @@ import '../../app_scope.dart';
 import '../../shared/api_error_message.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
+import '../../shared/events/event_ticket.dart';
 import '../../shared/i18n.dart';
 
 /// Member-scans-gym check-in (Tech Brief §5): the member scans the static QR
@@ -23,8 +26,13 @@ class _MemberScanGymPageState extends State<MemberScanGymPage> {
   Map<String, dynamic>? _result;
   String? _error;
 
+  /// An event ticket was scanned here (events S5 §4.7): refused locally.
+  bool _eventTicket = false;
+  Timer? _eventTicketTimer;
+
   @override
   void dispose() {
+    _eventTicketTimer?.cancel();
     _camera.dispose();
     super.dispose();
   }
@@ -33,6 +41,15 @@ class _MemberScanGymPageState extends State<MemberScanGymPage> {
     if (_busy || _result != null || _error != null) return;
     final code = capture.barcodes.firstOrNull?.rawValue;
     if (code == null || code.isEmpty) return;
+    if (isEventTicketPayload(code)) {
+      if (_eventTicket) return;
+      setState(() => _eventTicket = true);
+      _eventTicketTimer?.cancel();
+      _eventTicketTimer = Timer(const Duration(seconds: 2), () {
+        if (mounted) setState(() => _eventTicket = false);
+      });
+      return;
+    }
     setState(() => _busy = true);
     try {
       await _camera.stop();
@@ -86,6 +103,16 @@ class _MemberScanGymPageState extends State<MemberScanGymPage> {
                 ),
               ),
             ),
+            if (_eventTicket) ...[
+              const SizedBox(height: 16),
+              FFAlert(
+                key: const Key('member-gym-event-ticket'),
+                message:
+                    '${context.tr('ownerScan.eventTicket.title')}. '
+                    '${context.tr('ownerScan.eventTicket.body')}',
+                tone: FFAlertTone.warning,
+              ),
+            ],
             if (_busy) ...[
               const SizedBox(height: 16),
               const Center(child: FFSpinner(size: 32)),

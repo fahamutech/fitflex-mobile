@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -7,6 +9,7 @@ import '../../router.dart';
 import '../../shared/api_error_message.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
+import '../../shared/events/event_ticket.dart';
 import '../../shared/i18n.dart';
 import '../../shared/payment_labels.dart';
 
@@ -27,6 +30,11 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
   String? _error;
   int _scanCount = 0;
 
+  /// An event ticket was scanned here (events S5 §4.7): shown for 2 s, the
+  /// camera keeps running, and nothing is sent.
+  bool _eventTicket = false;
+  Timer? _eventTicketTimer;
+
   @override
   void initState() {
     super.initState();
@@ -35,6 +43,7 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
 
   @override
   void dispose() {
+    _eventTicketTimer?.cancel();
     _cameraCtrl.dispose();
     super.dispose();
   }
@@ -63,6 +72,10 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
     if (barcodes.isEmpty) return;
     final code = barcodes.first.rawValue;
     if (code == null || code.isEmpty) return;
+    if (isEventTicketPayload(code)) {
+      _refuseEventTicket();
+      return;
+    }
     _scannedToken = code;
     try {
       await _cameraCtrl.stop();
@@ -70,6 +83,15 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
       // The scanner may already be stopped while a frame is being processed.
     }
     await _verify(code);
+  }
+
+  void _refuseEventTicket() {
+    if (_eventTicket) return;
+    setState(() => _eventTicket = true);
+    _eventTicketTimer?.cancel();
+    _eventTicketTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _eventTicket = false);
+    });
   }
 
   Future<void> _verify(String qrToken) async {
@@ -192,6 +214,17 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
         ),
         if (_busy)
           const Padding(padding: EdgeInsets.all(16), child: FFSpinner()),
+        if (_eventTicket)
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: FFAlert(
+              key: const Key('owner-scan-event-ticket'),
+              message:
+                  '${context.tr('ownerScan.eventTicket.title')}. '
+                  '${context.tr('ownerScan.eventTicket.body')}',
+              tone: FFAlertTone.warning,
+            ),
+          ),
         if (_error != null)
           Padding(
             padding: const EdgeInsets.all(16),
