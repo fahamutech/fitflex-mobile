@@ -5,7 +5,6 @@
 // tickets (client only).
 import 'package:fitflexmobile/screens/member/events/member_event_registration_page.dart';
 import 'package:fitflexmobile/screens/member/events/tickets/member_event_ticket_page.dart';
-import 'package:fitflexmobile/shared/components/components.dart';
 import 'package:fitflexmobile/shared/events/event_ticket.dart';
 import 'package:fitflexmobile/shared/events/events_options.dart';
 import 'package:fitflexmobile/shared/events_flag.dart';
