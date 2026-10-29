@@ -7,6 +7,11 @@ import '../../shared/tone_theme.dart';
 import '../../shared/i18n.dart';
 import '../../shared/photo_footer_flag.dart';
 import '../../shared/photo_hero_flag.dart';
+import '../../app_scope.dart';
+import '../../shared/partner_media/partner_hero_builder.dart';
+import '../../shared/partner_media/partner_media_flag.dart';
+import '../../shared/partner_media/partner_media_models.dart';
+import '../../shared/partner_media/partner_media_store.dart';
 import 'owner_shell.dart';
 import '../../shared/widgets/challenge_manager_page.dart';
 import '../../shared/widgets/partner_details_widgets.dart';
@@ -122,6 +127,25 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
   }
 
   bool _precached = false;
+
+  /// The band, with the picked gym's saved photo and logo when
+  /// PARTNER_MEDIA_UI is on (spec §40.4): read when Home is built, on a gym
+  /// switch and when Home comes back into view, never swapped on screen.
+  Widget _partnerBand(
+    BuildContext context,
+    OwnerData data,
+    Widget Function(PartnerHeroMedia? media) band,
+  ) {
+    if (!partnerMediaUi) return band(null);
+    final account = AppScope.of(context).auth.user?['id']?.toString();
+    final gymId = data.activeGymId;
+    return PartnerHeroBuilder(
+      subject: account == null || gymId == null
+          ? null
+          : PartnerMediaSubject.gym(account, gymId),
+      builder: (context, media) => band(media),
+    );
+  }
 
   @override
   void didChangeDependencies() {
@@ -244,22 +268,30 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
         if (hero) ...[
           // PHOTO_HERO_UI (spec §25.3): the greeting and the daily job on a
           // band hero; numbers, chart and lists stay on solid ground.
-          FFHeroBand(
-            key: const Key('owner-hero'),
-            photo: FFHeroPhoto.owner,
-            clearPhoto: FFTokens.heroBandClearPhoto,
-            maxHeightAt844: ownerHomeBandMaxHeight,
-            eyebrow: greetingLine,
-            headlineLead: context.tr('hero.owner.lead'),
-            headlineAccent: context.tr('hero.owner.accent'),
-            actions: [
-              FFButton(
-                key: const Key('owner-checkin-primary'),
-                icon: Icons.qr_code_scanner,
-                label: context.tr('owner.checkin'),
-                onPressed: () => context.push('/owner/scan'),
-              ),
-            ],
+          _partnerBand(
+            context,
+            data,
+            (media) => FFHeroBand(
+              key: const Key('owner-hero'),
+              photo: FFHeroPhoto.owner,
+              // PARTNER_MEDIA_UI (spec §40): the picked gym's own photo and
+              // logo; null (bundled, no plate) without them.
+              ownPhoto: media?.photo,
+              logo: partnerLogoPlate(media?.logo),
+              clearPhoto: FFTokens.heroBandClearPhoto,
+              maxHeightAt844: ownerHomeBandMaxHeight,
+              eyebrow: greetingLine,
+              headlineLead: context.tr('hero.owner.lead'),
+              headlineAccent: context.tr('hero.owner.accent'),
+              actions: [
+                FFButton(
+                  key: const Key('owner-checkin-primary'),
+                  icon: Icons.qr_code_scanner,
+                  label: context.tr('owner.checkin'),
+                  onPressed: () => context.push('/owner/scan'),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: FFTokens.spacingMd),
         ],
