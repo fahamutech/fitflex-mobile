@@ -427,6 +427,7 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
               Center(
                 child: FFPhotoPickerField(
                   semanticLabel: context.tr('member.photoPick'),
+                  profilePhoto: true,
                   value: _photoUrl,
                   onChanged: (value) => setState(() => _photoUrl = value),
                 ),

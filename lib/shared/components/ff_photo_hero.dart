@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import '../design_tokens.dart';
 import '../hero_images/hero_image_store.dart';
 import '../i18n.dart';
+import '../media/media_src.dart';
 import 'ff_skeleton.dart';
 
 /// Bundled hero photos: FitFlex Africa's own AI-generated scenes (Figma AI,
@@ -262,17 +263,20 @@ ImageProvider heroImageProvider(FFHeroPhoto photo, Size box, double dpr) {
 /// The decode size for a network hero image drawn into [box]: its width at
 /// this pixel ratio, rounded up to a 128px step (the aspect is unknown until
 /// it loads, so only the width is capped).
-ImageProvider heroNetworkImageProvider(
+///
+/// Null when the address fails the image source check ([resolveMediaSrc]:
+/// our own storage paths and API host only, fitflex-functions#273); the hero
+/// then shows its bundled photo or the placeholder and makes no request.
+ImageProvider? heroNetworkImageProvider(
   FFHeroNetworkImage image,
   Size box,
-  double dpr,
-) {
+  double dpr, {
+  String? apiBase,
+}) {
+  final provider = mediaImageProvider(image.url, apiBase: apiBase);
+  if (provider == null) return null;
   final px = box.width.isFinite ? ((box.width * dpr) / 128).ceil() * 128 : 0;
-  return ResizeImage.resizeIfNeeded(
-    px <= 0 ? null : px,
-    null,
-    NetworkImage(image.url),
-  );
+  return ResizeImage.resizeIfNeeded(px <= 0 ? null : px, null, provider);
 }
 
 /// Decodes hero photos ahead of time so they appear without a placeholder.
@@ -1339,11 +1343,19 @@ class _HeroPhotoLayerState extends State<_HeroPhotoLayer> {
   @override
   Widget build(BuildContext context) {
     final photo = widget.photo;
-    final networkImage = widget.networkImage;
+    // A network address the source check refuses counts as none: the
+    // bundled photo shows when there is one, else the placeholder.
+    final requested = widget.networkImage;
+    final apiBase = mediaApiBaseOf(context);
+    final refused =
+        requested != null &&
+        requested.url.isNotEmpty &&
+        !isAllowedMediaSrc(requested.url, apiBase: apiBase);
+    final networkImage = refused && photo != null ? null : requested;
     // A network hero with no file to load shows the placeholder alone.
     final noPhoto =
         MediaQuery.highContrastOf(context) ||
-        (networkImage != null && networkImage.url.isEmpty);
+        (networkImage != null && (networkImage.url.isEmpty || refused));
     final instant = MediaQuery.disableAnimationsOf(context);
     final dpr = MediaQuery.devicePixelRatioOf(context);
     return ExcludeSemantics(
@@ -1369,7 +1381,12 @@ class _HeroPhotoLayerState extends State<_HeroPhotoLayer> {
                   final image = Image(
                     key: const Key('ff-hero-photo'),
                     image: networkImage != null
-                        ? heroNetworkImageProvider(networkImage, c.biggest, dpr)
+                        ? heroNetworkImageProvider(
+                            networkImage,
+                            c.biggest,
+                            dpr,
+                            apiBase: apiBase,
+                          )!
                         : saved != null
                         ? heroRemoteImageProvider(saved, c.biggest, dpr)
                         : heroImageProvider(photo!, c.biggest, dpr),

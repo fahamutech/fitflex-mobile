@@ -71,6 +71,7 @@ class TrainerGridCard extends StatelessWidget {
                 child: trainer.photoUrl != null && trainer.photoUrl!.isNotEmpty
                     ? FFRemoteImage(
                         src: trainer.photoUrl!,
+                        profilePhoto: true,
                         width: double.infinity,
                         height: double.infinity,
                         fit: BoxFit.cover,

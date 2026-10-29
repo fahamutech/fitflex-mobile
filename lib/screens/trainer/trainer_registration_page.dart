@@ -320,6 +320,7 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
         const SizedBox(height: 8),
         Center(
           child: FFPhotoPickerField(
+            profilePhoto: true,
             value: _photoUrl,
             onChanged: (url) => setState(() => _photoUrl = url),
             size: 100,

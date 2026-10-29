@@ -6357,8 +6357,7 @@ class FFLocale extends ChangeNotifier {
       'events.pay.rejected.note': 'Note from FitFlex: {note}',
       'events.pay.rejected.noteEn': 'Note from FitFlex: {note}',
       'events.pay.processing.check': 'Check status',
-      'events.pay.announce.confirmed':
-          'Payment confirmed. {n} tickets ready.',
+      'events.pay.announce.confirmed': 'Payment confirmed. {n} tickets ready.',
       'events.pay.announce.confirmed.one': 'Payment confirmed. 1 ticket ready.',
       'events.pay.attention.title': 'We\'re looking into your payment',
       'events.pay.attention.body':
@@ -6392,7 +6391,8 @@ class FFLocale extends ChangeNotifier {
       'error.reason.order_not_confirmed': 'This order isn\'t confirmed yet.',
       'error.reason.event_unavailable':
           'This event can\'t take payments or changes right now.',
-      'error.reason.rotate_required': 'This ticket\'s code needs to be replaced. Get a new code to continue.',
+      'error.reason.rotate_required':
+          'This ticket\'s code needs to be replaced. Get a new code to continue.',
       'error.reason.removeWholeLine':
           'Cancel the whole order to remove this place',
       'error.reason.invalidTransition.events':
@@ -6419,6 +6419,14 @@ class FFLocale extends ChangeNotifier {
       'error.reason.invalidGender': 'Choose a gender from the list.',
       'error.reason.rateLimitedSeconds':
           'Too many requests. Try again in {seconds} seconds.',
+      // Refused photos (fitflex-functions#273).
+      'error.reason.invalidMediaSrc':
+          "This photo can't be used. Choose a PNG, JPEG or WebP photo from your phone.",
+      'error.reason.mediaSrcTooLarge':
+          'This photo is too large. Choose a smaller photo (up to 1.4 MB).',
+      'error.reason.uploadForbidden': "Your account can't upload photos here.",
+      'error.reason.tooManyImages':
+          'Too many photos. Remove some and try again.',
     },
     'sw': {
       'app.title': 'FitFlex',
@@ -12839,7 +12847,8 @@ class FFLocale extends ChangeNotifier {
       'error.reason.order_not_confirmed': 'Oda hii bado haijathibitishwa.',
       'error.reason.event_unavailable':
           'Tukio hili haliwezi kupokea malipo au mabadiliko kwa sasa.',
-      'error.reason.rotate_required': 'Msimbo wa tiketi hii unahitaji kubadilishwa. Pata msimbo mpya ili uendelee.',
+      'error.reason.rotate_required':
+          'Msimbo wa tiketi hii unahitaji kubadilishwa. Pata msimbo mpya ili uendelee.',
       'error.reason.removeWholeLine': 'Ghairi oda yote ili uondoe tiketi hii',
       'error.reason.invalidTransition.events':
           'Oda hii haiwezi kubadilishwa tena',
@@ -12866,6 +12875,16 @@ class FFLocale extends ChangeNotifier {
       'error.reason.invalidGender': 'Chagua jinsia kutoka kwenye orodha.',
       'error.reason.rateLimitedSeconds':
           'Maombi mengi mno. Jaribu tena baada ya sekunde {seconds}.',
+      // Refused photos (fitflex-functions#273). Swahili for native review.
+      'error.reason.invalidMediaSrc':
+          'Picha hii haiwezi kutumika. Chagua picha ya PNG, JPEG au WebP kutoka kwenye simu yako.',
+      'error.reason.mediaSrcTooLarge':
+          'Picha hii ni kubwa mno. Chagua picha ndogo zaidi (hadi MB 1.4).',
+      'error.reason.uploadForbidden':
+          'Akaunti yako haiwezi kupakia picha hapa.',
+      // Swahili for native review (fitflex-functions#273).
+      'error.reason.tooManyImages':
+          'Picha ni nyingi mno. Ondoa baadhi kisha ujaribu tena.',
     },
   };
 }

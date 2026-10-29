@@ -43,6 +43,10 @@ class ApiClient {
     : baseUrl = baseUrl ?? _resolveBaseUrl(),
       _log = logger ?? RestLogger();
 
+  /// The API base a default [ApiClient] uses (API_BASE dart-define, then
+  /// `.env`, then the live server).
+  static String defaultBaseUrl() => _resolveBaseUrl();
+
   static String _resolveBaseUrl() {
     // 1. Compile-time --dart-define wins (CI/CD, prod builds).
     const compileTime = String.fromEnvironment('API_BASE', defaultValue: '');
