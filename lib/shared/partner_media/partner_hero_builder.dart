@@ -68,10 +68,16 @@ class PartnerRouteWatch extends NavigatorObserver with ChangeNotifier {
 /// Home / Products), [subject] changes (a gym switch), a full page pushed
 /// over the home closes ([PartnerRouteWatch]), or the app's location returns
 /// to where it was built. A photo saved while the band is on screen never
-/// replaces the one it shows, with one exception: the very first answer of
-/// the session for this partner (no saved copy yet: the web after a reload,
-/// a first sign-in, a staff member with one tab), which may bring the photo
-/// in once, fading in over the bundled one ([firstLoadWindow]).
+/// replaces the one it shows, with two exceptions:
+/// - the very first answer of the session for this partner (no saved copy
+///   yet: the web after a reload, a first sign-in, a staff member with one
+///   tab) may bring the photo in once, fading in over the bundled one
+///   ([firstLoadWindow]);
+/// - each time the home comes back into view (also when the app resumes) it
+///   re-checks with the server ([returnCheckEvery]); a photo or logo that is
+///   gone (removed, taken down by FitFlex, its file answering 404) then fades
+///   out to the bundled photo / no plate. That check never brings a new or
+///   different photo in: that waits for the next view.
 ///
 /// With `PARTNER_MEDIA_UI` off, or no [subject], [builder] gets null and
 /// nothing is asked.
@@ -91,11 +97,16 @@ class PartnerHeroBuilder extends StatefulWidget {
   /// was first built; later, it waits for the next view.
   static const Duration firstLoadWindow = Duration(seconds: 8);
 
+  /// A return to the home asks the server again if the last answer is at
+  /// least this old.
+  static const Duration returnCheckEvery = Duration(seconds: 10);
+
   @override
   State<PartnerHeroBuilder> createState() => _PartnerHeroBuilderState();
 }
 
-class _PartnerHeroBuilderState extends State<PartnerHeroBuilder> {
+class _PartnerHeroBuilderState extends State<PartnerHeroBuilder>
+    with WidgetsBindingObserver {
   PartnerHeroMedia? _media;
   GoRouter? _router;
   String? _homePath;
@@ -114,15 +125,18 @@ class _PartnerHeroBuilderState extends State<PartnerHeroBuilder> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _media = _store?.readyFor(widget.subject);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _firstLoad();
     });
   }
 
-  /// Asks the server; when this partner had no answer yet this session,
-  /// shows what it brings (once, within [PartnerHeroBuilder.firstLoadWindow]).
-  void _firstLoad({bool force = false}) {
+  /// Asks the server. When this partner had no answer yet this session it
+  /// shows what the answer brings (once, within
+  /// [PartnerHeroBuilder.firstLoadWindow]); otherwise it only lets go of a
+  /// photo or logo that is gone ([_onlyDrops]).
+  void _firstLoad({bool force = false, Duration? every}) {
     final s = widget.subject;
     final store = _store;
     if (s == null || store == null) return;
@@ -130,16 +144,30 @@ class _PartnerHeroBuilderState extends State<PartnerHeroBuilder> {
     final view = _view;
     final started = DateTime.now();
     unawaited(
-      store.refresh(s, force: force).then((_) {
-        if (!first || !mounted || view != _view) return;
-        if (DateTime.now().difference(started) >
-            PartnerHeroBuilder.firstLoadWindow) {
-          return;
-        }
+      store.refresh(s, force: force, every: every).then((_) {
+        if (!mounted || view != _view) return;
         final next = store.readyFor(widget.subject);
-        if (next != _media) setState(() => _media = next);
+        final late =
+            DateTime.now().difference(started) >
+            PartnerHeroBuilder.firstLoadWindow;
+        final shown = first && !late ? next : _onlyDrops(_media, next);
+        if (shown != _media) setState(() => _media = shown);
       }),
     );
+  }
+
+  /// [current] without whatever [next] no longer has; nothing is added or
+  /// changed (that waits for the next view).
+  static PartnerHeroMedia? _onlyDrops(
+    PartnerHeroMedia? current,
+    PartnerHeroMedia? next,
+  ) {
+    if (current == null) return null;
+    final out = PartnerHeroMedia(
+      photo: next?.photo == null ? null : current.photo,
+      logo: next?.logo == null ? null : current.logo,
+    );
+    return out.isEmpty ? null : out;
   }
 
   /// The home came into view: show what is saved now, then check again.
@@ -148,7 +176,15 @@ class _PartnerHeroBuilderState extends State<PartnerHeroBuilder> {
     _view++;
     final next = _store?.readyFor(widget.subject);
     if (next != _media) setState(() => _media = next);
-    _firstLoad();
+    _firstLoad(every: PartnerHeroBuilder.returnCheckEvery);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Back in the app with this home on screen: check, never add mid-view.
+    if (state != AppLifecycleState.resumed) return;
+    if (!mounted || !widget.visible || _covered) return;
+    _firstLoad(every: PartnerHeroBuilder.returnCheckEvery);
   }
 
   @override
@@ -161,7 +197,7 @@ class _PartnerHeroBuilderState extends State<PartnerHeroBuilder> {
     } else if (!old.visible && widget.visible) {
       _view++;
       _media = _store?.readyFor(widget.subject);
-      _firstLoad();
+      _firstLoad(every: PartnerHeroBuilder.returnCheckEvery);
     }
   }
 
@@ -223,6 +259,7 @@ class _PartnerHeroBuilderState extends State<PartnerHeroBuilder> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _watch?.removeListener(_onPages);
     _router?.routerDelegate.removeListener(_onLocation);
     super.dispose();
