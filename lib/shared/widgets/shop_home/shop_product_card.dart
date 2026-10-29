@@ -8,21 +8,45 @@ import '../../promotion_events.dart';
 import '../shop_browse_page.dart' show ShopProduct;
 import 'shop_focus_ring.dart';
 
-/// Whether [product] is on sale: a sale price above zero and below the price.
+/// Whether [product] is on sale: a live flash sale (Phase 2 S4), else the
+/// seller's own discount price above zero and below the price. A flash sale
+/// that has ended (and not been refreshed yet) is not a sale.
 bool shopOnSale(ShopProduct product) {
+  if (product.flashSaleLive) return true;
+  if (product.sale != null) return false;
   final sale = product.discountPriceTzs;
   return sale != null && sale > 0 && sale < product.priceTzs;
 }
 
+/// The price shown in Fuel while [shopOnSale]: the flash sale's, else the
+/// seller's discount price. (During a flash sale the seller's own discount
+/// is not shown, spec §8.4.)
+num shopSalePrice(ShopProduct product) => product.flashSaleLive
+    ? product.sale!.salePriceTzs
+    : product.discountPriceTzs!;
+
+/// The struck-through "was" price while [shopOnSale].
+num shopWasPrice(ShopProduct product) =>
+    product.flashSaleLive ? product.sale!.wasPriceTzs : product.priceTzs;
+
 /// The discount, rounded down so the claim is never overstated. 0 when the
 /// product is not on sale.
 int shopDiscountPercent(ShopProduct product) {
-  if (!shopOnSale(product) || product.priceTzs <= 0) return 0;
+  if (!shopOnSale(product)) return 0;
+  if (product.flashSaleLive) return product.sale!.percentOff;
+  if (product.priceTzs <= 0) return 0;
   return ((product.priceTzs - product.discountPriceTzs!) /
           product.priceTzs *
           100)
       .floor();
 }
+
+/// "Sale price {sale}, was {old}, {pct} percent off" for [product].
+String shopSalePriceLabel(BuildContext context, ShopProduct product) => context
+    .tr('shop.a11y.salePrice')
+    .replaceAll('{sale}', formatCurrency(shopSalePrice(product)))
+    .replaceAll('{old}', formatCurrency(shopWasPrice(product)))
+    .replaceAll('{pct}', '${shopDiscountPercent(product)}');
 
 /// "Only 3 left" / "Only 1 left" (Swahili: "Zimebaki 3 tu" / "Imebaki 1 tu").
 String shopOnlyLeft(BuildContext context, int n) => n == 1
@@ -44,11 +68,13 @@ String shopProductSemantics(
   final parts = <String>[
     if (promotionLabel != null && promotionLabel.isNotEmpty) promotionLabel,
     product.name,
-    if (shopOnSale(product))
-      tr('shop.a11y.salePrice')
-          .replaceAll('{sale}', formatCurrency(product.discountPriceTzs!))
-          .replaceAll('{old}', formatCurrency(product.priceTzs))
-          .replaceAll('{pct}', '${shopDiscountPercent(product)}')
+    if (product.flashSaleEnded)
+      // Ended on screen: the old sale price, until the refresh (P1 §7.2).
+      tr(
+        'shop.a11y.price',
+      ).replaceAll('{price}', formatCurrency(product.sale!.salePriceTzs))
+    else if (shopOnSale(product))
+      shopSalePriceLabel(context, product)
     else
       tr(
         'shop.a11y.price',
@@ -64,7 +90,11 @@ String shopProductSemantics(
     else if (product.stock <= 5)
       shopOnlyLeft(context, product.stock),
   ];
-  return parts.join('. ');
+  final label = parts.join('. ');
+  // "…Sale ended. Updating price." (P1 §7.2).
+  return product.flashSaleEnded
+      ? '$label. ${tr('shop.home.saleEndedUpdating')}'
+      : label;
 }
 
 /// A product on the shop home: image on a white well, name, rating (only
@@ -121,6 +151,7 @@ class ShopProductCard extends StatelessWidget {
         ? null
         : FFPromotionBadge(tag: tag).text(context);
     final onSale = shopOnSale(product);
+    final ended = product.flashSaleEnded;
     final percent = shopDiscountPercent(product);
     final fuel = dark ? FFTokens.fuelOnDark : FFTokens.fuel;
 
@@ -167,6 +198,14 @@ class ShopProductCard extends StatelessWidget {
                   ? ShopOutOfStockBadge(
                       key: Key('shop-home-oos-${product.id}'),
                       label: context.tr('shop.outOfStock'),
+                    )
+                  : ended
+                  // The sale ended while on screen: neutral, until the
+                  // home is fetched again (P1 §7.2, AC-22).
+                  ? FFBadge(
+                      key: Key('shop-home-sale-ended-${product.id}'),
+                      label: context.tr('shop.home.saleEnded'),
+                      tone: FFBadgeTone.gray,
                     )
                   : percent >= 1
                   ? FFBadge(
@@ -222,9 +261,18 @@ class ShopProductCard extends StatelessWidget {
             ),
           ),
         const SizedBox(height: FFTokens.spacingXs),
-        if (onSale) ...[
+        if (ended)
           Text(
-            formatCurrency(product.discountPriceTzs!),
+            formatCurrency(product.sale!.salePriceTzs),
+            key: Key('shop-home-price-${product.id}'),
+            style: theme.textTheme.titleSmall?.copyWith(
+              color: colors.onSurface,
+              fontWeight: FontWeight.w800,
+            ),
+          )
+        else if (onSale) ...[
+          Text(
+            formatCurrency(shopSalePrice(product)),
             key: Key('shop-home-sale-${product.id}'),
             style: theme.textTheme.titleSmall?.copyWith(
               color: fuel,
@@ -232,7 +280,7 @@ class ShopProductCard extends StatelessWidget {
             ),
           ),
           Text(
-            formatCurrency(product.priceTzs),
+            formatCurrency(shopWasPrice(product)),
             key: Key('shop-home-was-${product.id}'),
             style: theme.textTheme.labelSmall?.copyWith(
               color: FFTokens.mutedText(context),
@@ -286,7 +334,8 @@ class ShopProductCard extends StatelessWidget {
               ),
             ),
           ),
-          if (product.inStock)
+          // No adding while a sale that just ended is being re-priced.
+          if (product.inStock && !ended)
             Positioned(
               top: width - _hit - 2,
               right: 2,

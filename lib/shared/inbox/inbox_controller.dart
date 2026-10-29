@@ -6,6 +6,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../api_client.dart';
+import '../partner_media/partner_media_flag.dart';
 
 /// What kind of message this is, for filtering and labels.
 enum InboxCategory { membership, payments, offers, announcements, other }
@@ -140,7 +141,10 @@ String memberLinkFor({required String deepLink, required String type}) =>
         'event_refund_rejected' => 'eventOrder',
         'event_payment_confirmed' => 'eventTickets',
         'event_payment_rejected' => 'eventPay',
-        'event_ticket_ready' => 'eventTicket',
+        // Events S5 (spec §4.6): kit collected / bib assigned open the ticket.
+        'event_ticket_ready' ||
+        'event_kit_collected' ||
+        'event_bib_assigned' => 'eventTicket',
         'event_place_cancelled_by_purchaser' => 'eventRegistrations',
         _ => '',
       };
@@ -275,6 +279,7 @@ String? memberRouteFor({
       saleId: data['saleId']?.toString(),
       customerId: data['customerId']?.toString(),
       bannerId: (data['bannerId'] ?? data['item'])?.toString(),
+      flashSaleId: (data['saleId'] ?? data['item'])?.toString(),
     );
     if (direct != null) return (location: direct, go: true);
   }
@@ -323,6 +328,9 @@ final _safeId = RegExp(r'^[A-Za-z0-9_-]{1,64}$');
 
 // ── Trainers, vendors and gyms ──────────────────────────────────────────────
 
+/// The notice sent when FitFlex takes down a partner's home photo or logo.
+const partnerMediaTakenDownType = 'partner_media.taken_down';
+
 /// The side of FitFlex a signed-in partner works on, from their account
 /// type: `trainer`, `vendor` (and vendor staff) or `gym` (owner and staff).
 /// Null for members and anyone else.
@@ -348,6 +356,8 @@ String partnerLinkFor({required String side, required String type}) =>
         'trainer_booking_cancelled' => 'sessions',
         'trainer_enquiry' || 'trainer_interest' => 'enquiries',
         'trainer_payout_paid' => 'payouts',
+        // FitFlex took down a home photo or logo (spec §44.3).
+        partnerMediaTakenDownType when partnerMediaUi => 'brandMedia',
         _ => '',
       },
       'vendor' => switch (type) {
@@ -375,6 +385,14 @@ String partnerLinkFor({required String side, required String type}) =>
         'shop_banner_rejected' ||
         'shop_banner_expired' ||
         'shop_banner_ended' => 'merch',
+        // Phase 2 S4: a flash sale was approved, rejected, expired or ended
+        // by FitFlex (data `{saleId, open: merch, tab: sales, item}`).
+        'vendor_flash_sale_approved' ||
+        'vendor_flash_sale_rejected' ||
+        'vendor_flash_sale_expired' ||
+        'vendor_flash_sale_ended' => 'merchSale',
+        // FitFlex took down a home photo or logo (spec §44.3).
+        partnerMediaTakenDownType when partnerMediaUi => 'brandMedia',
         _ => '',
       },
       'gym' => switch (type) {
@@ -385,6 +403,8 @@ String partnerLinkFor({required String side, required String type}) =>
         'gym_trainer_request' => 'gymTrainers',
         'gym_review' => 'gyms',
         'gym_statement_approved' || 'gym_payout_paid' => 'earnings',
+        // FitFlex took down a home photo or logo (spec §44.3).
+        partnerMediaTakenDownType when partnerMediaUi => 'brandMedia',
         _ => '',
       },
       _ => '',
@@ -402,6 +422,7 @@ String? partnerRouteFor({
   String? saleId,
   String? customerId,
   String? bannerId,
+  String? flashSaleId,
 }) {
   bool ok(String? id) => id != null && _safeId.hasMatch(id);
   return switch (partnerLinkFor(side: side, type: type)) {
@@ -436,12 +457,21 @@ String? partnerRouteFor({
     // The Promotions page checks the tool and the `products` permission.
     'merch' when ok(bannerId) => '/vendor/merch?item=$bannerId',
     'merch' => '/vendor/merch',
+    'merchSale' when ok(flashSaleId) =>
+      '/vendor/merch?tab=sales&item=$flashSaleId',
+    'merchSale' => '/vendor/merch?tab=sales',
     'checkins' when ok(gymId) => '/owner/gyms/$gymId/checkins',
     'member' when ok(memberId) => '/owner/members/$memberId',
     'memberPayments' when ok(memberId) => '/owner/members/$memberId/payments',
     'gymTrainers' => '/owner/trainers',
     'gyms' => '/owner/gyms',
     'earnings' => '/owner/earnings',
+    // Never the server's own `route`: the app builds it, ids checked. A gym
+    // the person can't edit opens the page's "no access" state (§41.1).
+    'brandMedia' when side == 'gym' =>
+      ok(gymId) ? '/owner/brand-media?gymId=$gymId' : '/owner/brand-media',
+    'brandMedia' when side == 'trainer' => '/trainer/brand-media',
+    'brandMedia' => '/vendor/brand-media',
     _ => null,
   };
 }

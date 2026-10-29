@@ -30,6 +30,7 @@ class FFButton extends StatelessWidget {
     this.maxLines = 1,
     this.semanticLabel,
     this.focusNode,
+    this.foregroundColor,
   });
 
   final String label;
@@ -59,6 +60,11 @@ class FFButton extends StatelessWidget {
   /// The button's own focus node (a page that draws its own focus ring).
   final FocusNode? focusNode;
 
+  /// The label (and icon) colour while enabled, set on the button itself
+  /// so a themed button style can't override it (an error-tone "Remove").
+  /// Disabled keeps the theme's colours. Null: as before.
+  final Color? foregroundColor;
+
   double get _minHeight => switch (size) {
     FFButtonSize.sm => 40,
     FFButtonSize.md => 48,
@@ -80,6 +86,13 @@ class FFButton extends StatelessWidget {
       // Keeps a 48dp hit area around the smaller button.
       tapTargetSize: MaterialTapTargetSize.padded,
       visualDensity: visualDensity,
+      foregroundColor: foregroundColor == null
+          ? null
+          : WidgetStateProperty.resolveWith(
+              (states) => states.contains(WidgetState.disabled)
+                  ? null
+                  : foregroundColor,
+            ),
     );
     final destructiveStyle = variant == FFButtonVariant.destructive
         ? style.merge(

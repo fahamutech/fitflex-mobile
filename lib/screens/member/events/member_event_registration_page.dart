@@ -533,6 +533,23 @@ class _MemberEventRegistrationPageState
                   ),
               ],
             ),
+            if (r.bibNumber != null) ...[
+              const SizedBox(height: FFTokens.spacingSm),
+              Semantics(
+                label: context
+                    .tr('events.ticket.bib.a11y')
+                    .replaceFirst('{number}', r.bibNumber!),
+                child: ExcludeSemantics(
+                  child: Text(
+                    context
+                        .tr('events.ticket.bib')
+                        .replaceFirst('{number}', r.bibNumber!),
+                    key: const Key('reg-bib'),
+                    style: tt.titleMedium,
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: FFTokens.spacingSm),
             FFButton(
               key: const Key('reg-show-ticket'),

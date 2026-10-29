@@ -30,11 +30,14 @@ class VendorTools {
     this.walkInSales = false,
     this.customers = false,
     this.banners = false,
+    this.flashSales = false,
     this.productTargets = false,
     this.shopAreas = false,
     this.documents = false,
     this.vat = false,
     this.vatInForce,
+    this.reports = false,
+    this.canSeeOrderMoney = false,
     this.suspended = false,
     this.fromCache = false,
   });
@@ -73,6 +76,10 @@ class VendorTools {
   /// from `merch: {banners: true}`. Exactly `true`, else off.
   final bool banners;
 
+  /// Shop home Phase 2 S4: vendors propose flash sales (SHOP_FLASH_SALES),
+  /// from `merch: {flashSales: true}`. Exactly `true`, else off.
+  final bool flashSales;
+
   /// Shop home Phase 2 S2: products may carry "Made for" / "Age group"
   /// (SHOP_PERSONALISATION), from `merch: {productTargets: true}`. Exactly
   /// `true`, else off.
@@ -96,6 +103,15 @@ class VendorTools {
   /// it (older backend): screens then ask GET /vendor/tax-profile.
   final bool? vatInForce;
 
+  /// S6: vendor reports and their CSV / PDF downloads (VENDOR_REPORTS).
+  /// Exactly `true`, else the tab stays "Payments" with no Reports.
+  final bool reports;
+
+  /// S6: this person may see commission and payouts (the vendor, admin
+  /// staff, staff with `payments`): the "App sales after commission"
+  /// report. Exactly `true`, else hidden.
+  final bool canSeeOrderMoney;
+
   /// The answer is the one kept on this device (the server could not be
   /// reached): ask again once the connection is back.
   final bool fromCache;
@@ -110,6 +126,9 @@ class VendorTools {
         banners:
             options['merch'] is Map &&
             (options['merch'] as Map)['banners'] == true,
+        flashSales:
+            options['merch'] is Map &&
+            (options['merch'] as Map)['flashSales'] == true,
         productTargets:
             options['merch'] is Map &&
             (options['merch'] as Map)['productTargets'] == true,
@@ -121,6 +140,8 @@ class VendorTools {
         vatInForce: options['vatInForce'] is bool
             ? options['vatInForce'] as bool
             : null,
+        reports: options['reports'] == true,
+        canSeeOrderMoney: options['canSeeOrderMoney'] == true,
         fromCache: fromCache,
       );
 }

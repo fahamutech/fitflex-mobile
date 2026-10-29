@@ -531,6 +531,7 @@ class EventRegistration {
     this.dateOfBirth,
     this.gender,
     this.kitSize,
+    this.bibNumber,
     this.emergencyContact,
     this.cancelReason,
     this.orderId = '',
@@ -572,6 +573,9 @@ class EventRegistration {
   final String? dateOfBirth;
   final String? gender;
   final String? kitSize;
+
+  /// Events S5: the organizer's bib number, once assigned (null before).
+  final String? bibNumber;
   final EmergencyContact? emergencyContact;
   final String? cancelReason;
   final String orderId;
@@ -658,6 +662,7 @@ class EventRegistration {
       dateOfBirth: dateOfBirth,
       gender: gender,
       kitSize: kitSize,
+      bibNumber: bibNumber,
       emergencyContact: emergencyContact,
       cancelReason: cancelReason,
       orderId: orderId,
@@ -717,6 +722,7 @@ class EventRegistration {
       dateOfBirth: _opt(json['dateOfBirth']),
       gender: _opt(json['gender']),
       kitSize: _opt(json['kitSize']),
+      bibNumber: _opt(json['bibNumber']),
       emergencyContact: EmergencyContact.fromJson(json['emergencyContact']),
       cancelReason: _opt(json['cancelReason']),
       orderId: _str(json['orderId']),

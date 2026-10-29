@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../app_scope.dart';
 import '../../../../router.dart';
@@ -15,6 +16,9 @@ import '../../../../shared/events/events_options.dart';
 import '../../../../shared/formatters.dart';
 import '../../../../shared/i18n.dart';
 import '../events_registration_gate.dart';
+
+/// Two columns from here (Flutter web desktop; spec §9.1).
+const double _wideAt = 840;
 
 enum _Phase { loading, ready, revoked, claimedElsewhere, rotateRequired, error }
 
@@ -37,7 +41,8 @@ class MemberEventTicketPage extends StatefulWidget {
   State<MemberEventTicketPage> createState() => _MemberEventTicketPageState();
 }
 
-class _MemberEventTicketPageState extends State<MemberEventTicketPage> {
+class _MemberEventTicketPageState extends State<MemberEventTicketPage>
+    with WidgetsBindingObserver {
   _Phase _phase = _Phase.loading;
   EventTicketPayload? _ticket;
   DateTime? _savedAt;
@@ -54,13 +59,27 @@ class _MemberEventTicketPageState extends State<MemberEventTicketPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) => _start());
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _heading.dispose();
     super.dispose();
+  }
+
+  /// Back from the background: the kit may have been collected meanwhile
+  /// (spec §9.1), so read the ticket again.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed &&
+        mounted &&
+        _phase == _Phase.ready &&
+        !_busy) {
+      _load();
+    }
   }
 
   Future<void> _start() async {
@@ -274,7 +293,13 @@ class _MemberEventTicketPageState extends State<MemberEventTicketPage> {
       children: [
         Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 640),
+            constraints: BoxConstraints(
+              maxWidth:
+                  _phase == _Phase.ready &&
+                      MediaQuery.sizeOf(context).width >= _wideAt
+                  ? 960
+                  : 640,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: children,
@@ -422,6 +447,216 @@ class _MemberEventTicketPageState extends State<MemberEventTicketPage> {
     ),
   );
 
+  Future<void> _directions(KitCollectionPoint p) async {
+    final uri = Uri.https('www.google.com', '/maps/search/', {
+      'api': '1',
+      'query': '${p.lat},${p.lng}',
+    });
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {}
+  }
+
+  /// Bib number and kit status (events S5 spec §9.1). Both come from the
+  /// server; with kit operations off it sends neither, and nothing shows.
+  List<Widget> _bibAndKit(
+    BuildContext context,
+    EventTicketPayload t,
+    bool scanning,
+  ) {
+    final kit = t.kit;
+    if (!scanning && kit == null && t.bibNumber == null) return const [];
+    final tt = Theme.of(context).textTheme;
+    final cs = Theme.of(context).colorScheme;
+    final lang = FFLocaleScope.of(context).locale.languageCode;
+    final e = t.event;
+    final off = e?.utcOffsetMinutes ?? 0;
+    final abbr = e?.timezoneAbbr ?? '';
+    final bib = t.bibNumber;
+    final out = <Widget>[const SizedBox(height: FFTokens.spacingMd)];
+    if (bib != null) {
+      out.add(
+        Semantics(
+          container: true,
+          label: context
+              .tr('events.ticket.bib.a11y')
+              .replaceFirst('{number}', bib),
+          child: ExcludeSemantics(
+            child: Text(
+              context.tr('events.ticket.bib').replaceFirst('{number}', bib),
+              key: const Key('ticket-bib'),
+              style: tt.headlineMedium,
+            ),
+          ),
+        ),
+      );
+    } else if (scanning) {
+      out.add(
+        Text(
+          context.tr('events.ticket.bib.none'),
+          key: const Key('ticket-bib-none'),
+          style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+        ),
+      );
+    }
+    if (kit == null) return out;
+
+    final (chipKey, tone) = switch (kit.state) {
+      'ready' => ('events.ticket.kit.ready', FFBadgeTone.success),
+      'collected' => ('events.ticket.kit.collected', FFBadgeTone.success),
+      // An exception is internal to the organizer: the member sees "not
+      // ready" and is told to ask.
+      _ => ('events.ticket.kit.not_ready', FFBadgeTone.gray),
+    };
+    final collectedAt = kit.collectedAt;
+    final point = kit.collectionPointName;
+    out
+      ..add(const SizedBox(height: FFTokens.spacingMd))
+      ..add(
+        Semantics(
+          header: true,
+          child: Text(
+            context.tr('events.ticket.kit.title'),
+            style: tt.titleMedium,
+          ),
+        ),
+      )
+      ..add(const SizedBox(height: FFTokens.spacingXs))
+      ..add(
+        Align(
+          alignment: Alignment.centerLeft,
+          child: FFBadge(
+            key: const Key('ticket-kit-state'),
+            label: context.tr(chipKey),
+            tone: tone,
+            wrap: true,
+          ),
+        ),
+      );
+    if (kit.isException) {
+      out.add(
+        Padding(
+          padding: const EdgeInsets.only(top: FFTokens.spacingXs),
+          child: Text(
+            context.tr('events.ticket.kit.exception'),
+            key: const Key('ticket-kit-exception'),
+            style: tt.bodyMedium,
+          ),
+        ),
+      );
+    }
+    if (kit.isCollected) {
+      final date = collectedAt == null
+          ? ''
+          : eventDateTime(collectedAt, off, abbr, locale: lang);
+      final line = date.isEmpty
+          ? ''
+          : (point == null || point.isEmpty)
+          ? context
+                .tr('events.ticket.kit.collectedOn')
+                .replaceFirst('{date}', date)
+          : context
+                .tr('events.ticket.kit.collectedAt')
+                .replaceFirst('{date}', date)
+                .replaceFirst('{point}', point);
+      out.add(
+        Padding(
+          padding: const EdgeInsets.only(top: FFTokens.spacingXs),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (line.isNotEmpty)
+                Text(
+                  line,
+                  key: const Key('ticket-kit-collected'),
+                  style: tt.bodyMedium,
+                ),
+              Text(
+                context.tr('events.ticket.kit.noNeed'),
+                key: const Key('ticket-kit-noneed'),
+                style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    if (kit.isReady) {
+      final now = DateTime.now();
+      for (final p in t.collectionPoints) {
+        final w = p.nextWindow(now);
+        final how = p.instructions.of(lang).trim();
+        out.add(
+          Padding(
+            padding: const EdgeInsets.only(top: FFTokens.spacingSm),
+            child: FFCard(
+              key: Key('ticket-kit-point-${p.id}'),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    context.tr('events.ticket.kit.where'),
+                    style: tt.labelMedium?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                  Text(p.name, style: tt.titleSmall),
+                  if (p.address.isNotEmpty)
+                    Text(p.address, style: tt.bodyMedium),
+                  if (w != null) ...[
+                    const SizedBox(height: FFTokens.spacingXs),
+                    Text(
+                      context.tr('events.ticket.kit.when'),
+                      style: tt.labelMedium?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                    Text(
+                      eventWindowText(
+                        w.opensAt,
+                        w.closesAt,
+                        off,
+                        abbr,
+                        locale: lang,
+                      ),
+                      key: Key('ticket-kit-window-${p.id}'),
+                      style: tt.bodyMedium,
+                    ),
+                  ],
+                  if (how.isNotEmpty) ...[
+                    const SizedBox(height: FFTokens.spacingXs),
+                    Text(how, style: tt.bodyMedium),
+                  ],
+                  if (p.hasLocation)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: FFButton(
+                        key: Key('ticket-kit-directions-${p.id}'),
+                        label: context.tr('events.ticket.kit.directions'),
+                        variant: FFButtonVariant.ghost,
+                        onPressed: () => _directions(p),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+    }
+    if (_offline) {
+      out.add(
+        Padding(
+          padding: const EdgeInsets.only(top: FFTokens.spacingSm),
+          child: Text(
+            context.tr('events.ticket.kit.staleHint'),
+            key: const Key('ticket-kit-stale'),
+            style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+          ),
+        ),
+      );
+    }
+    return out;
+  }
+
   List<Widget> _ready(BuildContext context, EventTicketPayload t) {
     final tt = Theme.of(context).textTheme;
     final lang = FFLocaleScope.of(context).locale.languageCode;
@@ -437,7 +672,8 @@ class _MemberEventTicketPageState extends State<MemberEventTicketPage> {
         .replaceFirst('{name}', t.participantName)
         .replaceFirst('{category}', t.categoryName)
         .replaceFirst('{code}', t.displayCode);
-    return [
+    final wide = MediaQuery.sizeOf(context).width >= _wideAt;
+    final top = <Widget>[
       Focus(
         focusNode: _heading,
         child: Semantics(
@@ -457,6 +693,8 @@ class _MemberEventTicketPageState extends State<MemberEventTicketPage> {
             message: context.tr('events.ticket.offline'),
           ),
         ),
+    ];
+    final qrPart = <Widget>[
       // The code: fixed dark ink on white in both themes, with a quiet zone.
       FFCard(
         padding: EdgeInsets.zero,
@@ -555,6 +793,8 @@ class _MemberEventTicketPageState extends State<MemberEventTicketPage> {
             ),
         ],
       ),
+    ];
+    final restPart = <Widget>[
       const SizedBox(height: FFTokens.spacingSm),
       FFAlert(
         key: const Key('ticket-scan-note'),
@@ -563,6 +803,7 @@ class _MemberEventTicketPageState extends State<MemberEventTicketPage> {
           scanning ? 'events.ticket.scan.live' : 'events.ticket.scan.soon',
         ),
       ),
+      ..._bibAndKit(context, t, scanning),
       if (t.isHandover) ...[
         const SizedBox(height: FFTokens.spacingSm),
         FFAlert(
@@ -582,6 +823,29 @@ class _MemberEventTicketPageState extends State<MemberEventTicketPage> {
         onPressed: _offline ? null : _rotate,
       ),
       _viewRegistration(context),
+    ];
+    if (!wide) return [...top, ...qrPart, ...restPart];
+    return [
+      ...top,
+      Row(
+        key: const Key('ticket-columns'),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: qrPart,
+            ),
+          ),
+          const SizedBox(width: FFTokens.spacingLg),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: restPart,
+            ),
+          ),
+        ],
+      ),
     ];
   }
 }

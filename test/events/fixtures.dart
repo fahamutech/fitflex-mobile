@@ -406,6 +406,7 @@ Map<String, dynamic> registrationJson({
   List<Map<String, dynamic>>? refunds,
   String? claimInvitedAt,
   int claimInviteCount = 0,
+  String? bibNumber,
 }) => {
   'id': id,
   'ticketTypeId': ticketTypeId,
@@ -429,6 +430,7 @@ Map<String, dynamic> registrationJson({
   'dateOfBirth': dateOfBirth,
   'gender': gender,
   'kitSize': kitSize,
+  'bibNumber': bibNumber,
   'emergencyContact': emergencyContact,
   'allowedActions': allowedActions,
   'ticket': ticket,
@@ -727,6 +729,7 @@ Map<String, dynamic> ticketRow({
   String startsAt = '2027-03-14T03:30:00Z',
   String first = 'Asha',
   String last = 'Mollel',
+  String? bibNumber,
 }) => {
   'registrationId': registrationId,
   'ticketId': 'etk_$registrationId',
@@ -749,6 +752,7 @@ Map<String, dynamic> ticketRow({
   'orderReference': 'EV-3F9A2B7C1D',
   'issuedAt': '2027-03-10T12:30:00Z',
   'kit': null,
+  'bibNumber': bibNumber,
 };
 
 /// `GET /me/event-registrations/:id/ticket`.
@@ -759,6 +763,9 @@ Map<String, dynamic> ticketPayload({
   bool scanning = false,
   String relation = 'self',
   String first = 'Asha',
+  Map<String, dynamic>? kit,
+  String? bibNumber,
+  List<Map<String, dynamic>>? collectionPoints,
 }) => {
   'ticket': {
     'id': 'etk_$registrationId',
@@ -775,7 +782,9 @@ Map<String, dynamic> ticketPayload({
   'participant': {'firstName': first, 'lastName': 'Mollel'},
   'relation': relation,
   'scanning': scanning,
-  'kit': null,
+  'kit': kit,
+  'bibNumber': bibNumber,
+  'collectionPoints': ?collectionPoints,
 };
 
 /// `cancel-preview`.

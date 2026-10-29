@@ -11,6 +11,7 @@ import 'screens/route_status_pages.dart';
 import 'screens/language_screen.dart';
 import 'screens/role_screen.dart';
 import 'screens/auth_screen.dart';
+import 'screens/pin_flows.dart' show StaffPinChangeScreen;
 import 'screens/sign_up_screen.dart';
 import 'screens/email_auth_screen.dart';
 import 'screens/verify_email_screen.dart';
@@ -66,9 +67,13 @@ import 'screens/member/member_message_settings_page.dart';
 import 'shared/friend_invites.dart';
 import 'shared/inbox/inbox_pages.dart';
 import 'screens/vendor/vendor_home_page.dart';
+import 'screens/partner/partner_media_page.dart';
+import 'shared/partner_media/partner_hero_builder.dart' show PartnerRouteWatch;
+import 'shared/partner_media/partner_media_flag.dart';
 import 'screens/vendor/stock/stock_history_page.dart';
 import 'screens/vendor/merch/banner_form_route.dart';
-import 'screens/vendor/merch/vendor_banners_page.dart';
+import 'screens/vendor/merch/flash_sale_form_page.dart';
+import 'screens/vendor/merch/vendor_merch_page.dart';
 import 'screens/vendor/sales/pos_page.dart';
 import 'screens/vendor/sales/receipt_page.dart';
 import 'screens/vendor/sales/sale_detail_page.dart';
@@ -80,6 +85,9 @@ import 'screens/vendor/customers/statement_page.dart';
 import 'screens/vendor/customers/customers_widgets.dart' show customerIdPattern;
 import 'screens/vendor/documents/document_view.dart';
 import 'screens/vendor/settings/tax_details_page.dart';
+import 'screens/vendor/reports/report_models.dart'
+    show ReportSection, reportsHomeRoute;
+import 'screens/vendor/reports/report_section_page.dart';
 import 'screens/partner/verification/verification_center_page.dart';
 import 'shared/widgets/invitations.dart';
 import 'shared/pending_org_invite.dart';
@@ -107,6 +115,10 @@ abstract class AppRoutes {
   static const googleWebCallback = '/auth/google-web-callback';
   static const pending = '/pending';
 
+  /// Gym staff choose their own PIN before anything else (the owner chose
+  /// the one they signed in with; fitflex-functions#260).
+  static const staffPinChange = '/staff/choose-pin';
+
   /// Partner KYC / KYB — open to partners while they wait for approval.
   static const verification = '/verification';
   static const home = '/home';
@@ -124,6 +136,10 @@ abstract class AppRoutes {
   /// The banner form (its own address, so a refresh restores it).
   static const vendorMerchNew = '/vendor/merch/banner/new';
   static String vendorMerchEdit(String id) => '/vendor/merch/banner/$id/edit';
+
+  /// Phase 2 S4: the flash sale form (its own address too).
+  static const vendorMerchSaleNew = '/vendor/merch/sale/new';
+  static String vendorMerchSaleEdit(String id) => '/vendor/merch/sale/$id/edit';
 
   /// Vendor tools · S1: one product's stock history.
   static String vendorStockHistory(String productId) =>
@@ -176,6 +192,11 @@ abstract class AppRoutes {
   static const ownerEarnings = '/owner/earnings';
   static const ownerShop = '/owner/shop';
   static const ownerStaff = '/owner/staff';
+
+  /// Partner home photo and logo (PARTNER_MEDIA_UI, spec §41.1).
+  static const ownerBrandMedia = '/owner/brand-media';
+  static const trainerBrandMedia = '/trainer/brand-media';
+  static const vendorBrandMedia = '/vendor/brand-media';
 
   // Member sub-routes (shell)
   static const memberOnboarding = '/member/onboarding';
@@ -291,6 +312,9 @@ bool _isOnboarded(AuthState auth, String role) {
 /// An event id or slug as a path segment (events S2).
 final _safeEventId = RegExp(r'^[A-Za-z0-9_-]{1,64}$');
 
+/// A gym id in a `/owner/brand-media?gymId=` link.
+final _brandMediaGymId = RegExp(r'^[A-Za-z0-9_-]{1,64}$');
+
 final _vendorStockPath = RegExp(
   r'^/vendor/products/[A-Za-z0-9_-]{1,64}/stock$',
 );
@@ -309,8 +333,11 @@ final _vendorDocumentsPath = RegExp(
 /// Promotions and the banner form (Phase 2 S1). Pending vendors see why
 /// they cannot propose yet.
 final _vendorMerchPath = RegExp(
-  r'^/vendor/merch(/banner/(new|[A-Za-z0-9_-]{1,64}/edit))?$',
+  r'^/vendor/merch(/(banner|sale)/(new|[A-Za-z0-9_-]{1,64}/edit))?$',
 );
+
+/// Report pages (S6). Pending vendors see their own figures too (§11).
+final _vendorReportsPath = RegExp(r'^/vendor/reports/[a-z]{1,20}$');
 
 /// Customer pages (S4). Pending vendors keep their own records too.
 final _vendorCustomersPath = RegExp(
@@ -354,6 +381,8 @@ bool _waitForProfile(AuthState auth) {
 }
 
 String _landingFor(AuthState auth) {
+  // Held to the PIN change: nothing else until it is done.
+  if (auth.pinChangeRequired) return AppRoutes.staffPinChange;
   if (_waitForProfile(auth)) return AppRoutes.startupOffline;
   final role = auth.user?['userType']?.toString() ?? auth.role;
   final onboarded = _isOnboarded(auth, role);
@@ -518,8 +547,14 @@ class _BackToSignInState extends State<_BackToSignIn> {
 }
 
 GoRouter buildRouter(AuthState auth) {
+  // PARTNER_MEDIA_UI: lets partner homes know when a page over them closes
+  // (spec §40.1). Not registered with the flag off.
+  final partnerPages = partnerMediaUi
+      ? (PartnerRouteWatch.root = PartnerRouteWatch())
+      : null;
   return GoRouter(
     initialLocation: AppRoutes.splash,
+    observers: [?partnerPages],
     extraCodec: const EmailAuthExtraCodec(),
     debugLogDiagnostics: false,
     refreshListenable: auth,
@@ -557,6 +592,18 @@ GoRouter buildRouter(AuthState auth) {
                 : PendingFriendInvite.save(token))
             .then((_) => AppRoutes.friendInvite);
       }
+      // Gym staff held to choosing their own PIN (fitflex-functions#260):
+      // that screen only — no scanner, check-ins or anything else — until
+      // the PIN is changed or they sign out.
+      if (loggedIn && auth.pinChangeRequired) {
+        return loc == AppRoutes.staffPinChange
+            ? null
+            : AppRoutes.staffPinChange;
+      }
+      if (loc == AppRoutes.staffPinChange) {
+        return loggedIn ? routeForSignedInUser(auth) : AppRoutes.language;
+      }
+
       // The invitation page opens for anyone; the token is kept through
       // sign-in.
       if (loc == AppRoutes.friendInvite || loc.startsWith('/friend-invite/')) {
@@ -636,7 +683,11 @@ GoRouter buildRouter(AuthState auth) {
               _vendorSalesPath.hasMatch(loc) ||
               _vendorCustomersPath.hasMatch(loc) ||
               _vendorDocumentsPath.hasMatch(loc) ||
+              _vendorReportsPath.hasMatch(loc) ||
               _inboxPath.hasMatch(loc) ||
+              // Their own home photo and logo (spec §41.3: allowed while
+              // pending).
+              (partnerMediaUi && loc == AppRoutes.vendorBrandMedia) ||
               loc == AppRoutes.memberMessageSettings) {
             return null;
           }
@@ -790,6 +841,11 @@ GoRouter buildRouter(AuthState auth) {
         builder: (context, state) => const GoogleWebCallbackScreen(),
       ),
       GoRoute(
+        path: AppRoutes.staffPinChange,
+        name: 'staffPinChange',
+        builder: (context, state) => const StaffPinChangeScreen(),
+      ),
+      GoRoute(
         path: AppRoutes.pending,
         name: 'pending',
         builder: (context, state) => const PendingApprovalScreen(),
@@ -825,13 +881,64 @@ GoRouter buildRouter(AuthState auth) {
           view: state.uri.queryParameters['view'],
         ),
       ),
+      // Partner home photo and logo (spec §41.1). With the build flag off the
+      // routes do not exist.
+      if (partnerMediaUi) ...[
+        GoRoute(
+          path: AppRoutes.ownerBrandMedia,
+          name: 'ownerBrandMedia',
+          builder: (context, state) {
+            final gymId = state.uri.queryParameters['gymId'];
+            return PartnerMediaPage(
+              side: 'gym',
+              gymId: gymId != null && _brandMediaGymId.hasMatch(gymId)
+                  ? gymId
+                  : null,
+            );
+          },
+        ),
+        GoRoute(
+          path: AppRoutes.trainerBrandMedia,
+          name: 'trainerBrandMedia',
+          builder: (context, state) => const PartnerMediaPage(side: 'trainer'),
+        ),
+        GoRoute(
+          path: AppRoutes.vendorBrandMedia,
+          name: 'vendorBrandMedia',
+          builder: (context, state) => const PartnerMediaPage(side: 'vendor'),
+        ),
+      ],
       // Shop home Phase 2 S1: the page checks the tool (merch.banners) and
       // the `products` permission itself.
+      // Phase 2 S4: "Flash sales | Banners" (`?tab=sales|banners`); with
+      // flash sales off it is the banners page as before.
       GoRoute(
         path: AppRoutes.vendorMerch,
         name: 'vendorMerch',
+        builder: (context, state) => VendorMerchPage(
+          tab: state.uri.queryParameters['tab'],
+          item: state.uri.queryParameters['item'],
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.vendorMerchSaleNew,
+        name: 'vendorMerchSaleNew',
+        builder: (context, state) => VendorFlashSaleFormRoute(
+          copyId: state.uri.queryParameters['copy'],
+          productId: state.uri.queryParameters['productId'],
+        ),
+      ),
+      GoRoute(
+        path: '/vendor/merch/sale/:saleId/edit',
+        name: 'vendorMerchSaleEdit',
+        redirect: (context, state) =>
+            RegExp(
+              r'^[A-Za-z0-9_-]{1,64}$',
+            ).hasMatch(state.pathParameters['saleId'] ?? '')
+            ? null
+            : '${AppRoutes.vendorMerch}?tab=sales',
         builder: (context, state) =>
-            VendorBannersPage(item: state.uri.queryParameters['item']),
+            VendorFlashSaleFormRoute(saleId: state.pathParameters['saleId']),
       ),
       GoRoute(
         path: AppRoutes.vendorMerchNew,
@@ -920,6 +1027,26 @@ GoRouter buildRouter(AuthState auth) {
             productId: state.pathParameters['productId']!,
             variant: variant == null || variant.isEmpty ? null : variant,
             fromPush: state.uri.queryParameters['from'] == 'push',
+          );
+        },
+      ),
+      // Vendor reports (S6). The page checks the tool (`reports`) and the
+      // person's rights itself; an unknown section opens Reports home.
+      GoRoute(
+        path: '/vendor/reports/:section',
+        name: 'vendorReportSection',
+        redirect: (context, state) =>
+            ReportSection.ofRoute(state.pathParameters['section']) == null
+            ? reportsHomeRoute
+            : null,
+        builder: (context, state) {
+          final q = state.uri.queryParameters;
+          return ReportSectionPage(
+            key: ValueKey('report-${state.uri}'),
+            section: ReportSection.ofRoute(state.pathParameters['section'])!,
+            from: q['from'],
+            to: q['to'],
+            channel: q['channel'],
           );
         },
       ),

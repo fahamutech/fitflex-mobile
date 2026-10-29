@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import '../design_tokens.dart';
 import '../hero_images/hero_image_store.dart';
 import '../i18n.dart';
+import '../media/media_src.dart';
 import 'ff_skeleton.dart';
 
 /// Bundled hero photos: FitFlex Africa's own AI-generated scenes (Figma AI,
@@ -236,6 +237,39 @@ class FFHeroNetworkImage {
   int get hashCode => Object.hash(url, focal);
 }
 
+/// A partner's own photo for their home band (spec §40.1): saved on the
+/// phone (or loaded in this session on the web) and decoded before any band
+/// shows it. It leads; the bundled [FFHeroPhoto] (or an admin-published one)
+/// shows if it fails to load, and under high contrast there is no photo.
+@immutable
+class FFHeroOwnPhoto {
+  const FFHeroOwnPhoto({
+    required this.id,
+    required this.provider,
+    this.focal = Alignment.center,
+    this.aspect = 1.5,
+  });
+
+  final String id;
+  final ImageProvider provider;
+
+  /// Where `BoxFit.cover` keeps the subject.
+  final Alignment focal;
+
+  /// Width / height of the file.
+  final double aspect;
+
+  @override
+  bool operator ==(Object other) =>
+      other is FFHeroOwnPhoto &&
+      other.id == id &&
+      other.provider == provider &&
+      other.focal == focal;
+
+  @override
+  int get hashCode => Object.hash(id, provider, focal);
+}
+
 /// How the hero is laid out.
 /// [full] and [compact] stack the text over a vertical scrim (phones);
 /// [panel] puts it bottom-left over a horizontal scrim (desktop, wide
@@ -262,17 +296,20 @@ ImageProvider heroImageProvider(FFHeroPhoto photo, Size box, double dpr) {
 /// The decode size for a network hero image drawn into [box]: its width at
 /// this pixel ratio, rounded up to a 128px step (the aspect is unknown until
 /// it loads, so only the width is capped).
-ImageProvider heroNetworkImageProvider(
+///
+/// Null when the address fails the image source check ([resolveMediaSrc]:
+/// our own storage paths and API host only, fitflex-functions#273); the hero
+/// then shows its bundled photo or the placeholder and makes no request.
+ImageProvider? heroNetworkImageProvider(
   FFHeroNetworkImage image,
   Size box,
-  double dpr,
-) {
+  double dpr, {
+  String? apiBase,
+}) {
+  final provider = mediaImageProvider(image.url, apiBase: apiBase);
+  if (provider == null) return null;
   final px = box.width.isFinite ? ((box.width * dpr) / 128).ceil() * 128 : 0;
-  return ResizeImage.resizeIfNeeded(
-    px <= 0 ? null : px,
-    null,
-    NetworkImage(image.url),
-  );
+  return ResizeImage.resizeIfNeeded(px <= 0 ? null : px, null, provider);
 }
 
 /// Decodes hero photos ahead of time so they appear without a placeholder.
@@ -308,6 +345,16 @@ ImageProvider heroRemoteImageProvider(
   Size box,
   double dpr,
 ) {
+  final logical = box.width > box.height * image.aspect
+      ? box.width
+      : box.height * image.aspect;
+  final px = logical.isFinite ? ((logical * dpr) / 128).ceil() * 128 : 0;
+  return ResizeImage.resizeIfNeeded(px <= 0 ? null : px, null, image.provider);
+}
+
+/// The decode size for a partner's own photo drawn with `BoxFit.cover` into
+/// [box], as [heroRemoteImageProvider].
+ImageProvider heroOwnImageProvider(FFHeroOwnPhoto image, Size box, double dpr) {
   final logical = box.width > box.height * image.aspect
       ? box.width
       : box.height * image.aspect;
@@ -356,6 +403,8 @@ class FFPhotoHero extends StatelessWidget {
     this.excludeHeadingSemantics = false,
     this.fillHeight = false,
     this.panelSidePad,
+    this.ownPhoto,
+    this.plate,
   }) : assert(
          photo != null || networkImage != null,
          'Give a photo, a networkImage, or both (photo = fallback)',
@@ -450,6 +499,21 @@ class FFPhotoHero extends StatelessWidget {
   /// inside the photo's edges). Null: as before.
   final double? panelSidePad;
 
+  /// A partner's own photo (spec §40.1); [photo] is its fallback.
+  final FFHeroOwnPhoto? ownPhoto;
+
+  /// A partner's logo on its plate (`FFLogoPlate`, spec §40.2): top-left,
+  /// 16px in, on [FFHeroVariant.band]; top-right, 24px in, on the panel.
+  /// A band then keeps [FFTokens.logoPlateReserve] above its eyebrow. Null:
+  /// exactly as before.
+  final Widget? plate;
+
+  /// The least height of a vertical hero's photo-only zone with a [plate]:
+  /// the eyebrow sits [FFTokens.spacingLg] into the text zone below it.
+  double get _plateFade => plate != null && variant != FFHeroVariant.panel
+      ? FFTokens.logoPlateReserve - FFTokens.spacingLg
+      : 0;
+
   /// The accent colour for the current theme: Volt on dark, brand-500 on
   /// light (large text only).
   static Color accentFor(BuildContext context) =>
@@ -480,14 +544,19 @@ class FFPhotoHero extends StatelessWidget {
             alignment: Alignment.topCenter,
             child: _vertical(context),
           );
+    final clipped = rounded || variant == FFHeroVariant.band
+        ? ClipRRect(
+            borderRadius: BorderRadius.circular(FFTokens.radiusXl),
+            child: hero,
+          )
+        : hero;
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
-      child: rounded || variant == FFHeroVariant.band
-          ? ClipRRect(
-              borderRadius: BorderRadius.circular(FFTokens.radiusXl),
-              child: hero,
-            )
-          : hero,
+      // With a plate: it fades in once this layout's photo shows. A new
+      // layout (the band <-> the 840+ banner) waits for its own photo again.
+      child: plate == null
+          ? clipped
+          : _PhotoShownHost(key: ValueKey(variant), child: clipped),
     );
   }
 
@@ -550,7 +619,11 @@ class FFPhotoHero extends StatelessWidget {
       fit: fillHeight ? StackFit.passthrough : StackFit.loose,
       children: [
         Positioned.fill(
-          child: _HeroPhotoLayer(photo: photo, networkImage: networkImage),
+          child: _HeroPhotoLayer(
+            photo: photo,
+            networkImage: networkImage,
+            ownPhoto: ownPhoto,
+          ),
         ),
         // The status bar / app bar band, unless the page draws it.
         if (!hosted)
@@ -571,6 +644,7 @@ class FFPhotoHero extends StatelessWidget {
             clearPhoto: clearPhoto,
             minClearPhoto: minClearPhoto,
             barHosted: hosted,
+            minFade: _plateFade,
             children: [fadeZone(const SizedBox.shrink()), textZone],
           )
         else
@@ -582,11 +656,22 @@ class FFPhotoHero extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Photo only: clear, then the soft lead-in to the ramp.
-                  Expanded(child: fadeZone(SizedBox(height: topInset))),
+                  Expanded(
+                    child: fadeZone(
+                      SizedBox(height: math.max(topInset, _plateFade)),
+                    ),
+                  ),
                   textZone,
                 ],
               ),
             ),
+          ),
+        if (plate != null)
+          Positioned(
+            key: const Key('ff-hero-plate'),
+            left: FFTokens.spacingMd,
+            top: FFTokens.spacingMd,
+            child: _PlateGate(child: plate!),
           ),
       ],
     );
@@ -608,7 +693,11 @@ class FFPhotoHero extends StatelessWidget {
       fit: StackFit.passthrough,
       children: [
         Positioned.fill(
-          child: _HeroPhotoLayer(photo: photo, networkImage: networkImage),
+          child: _HeroPhotoLayer(
+            photo: photo,
+            networkImage: networkImage,
+            ownPhoto: ownPhoto,
+          ),
         ),
         // Left to right: the text column (and the logo above it) stays at
         // the text value or darker; past it the photo clears towards the
@@ -638,6 +727,13 @@ class FFPhotoHero extends StatelessWidget {
                       left: FFTokens.spacingLg,
                       top: FFTokens.spacingLg,
                       child: logo!,
+                    ),
+                  if (plate != null)
+                    Positioned(
+                      key: const Key('ff-hero-plate'),
+                      right: FFTokens.spacingLg,
+                      top: FFTokens.spacingLg,
+                      child: _PlateGate(child: plate!),
                     ),
                   Align(
                     alignment: Alignment.bottomLeft,
@@ -1141,8 +1237,12 @@ class _HeroTallBody extends MultiChildRenderObjectWidget {
     required this.barHosted,
     required super.children,
     this.minClearPhoto = 0,
+    this.minFade = 0,
   }) : assert(children.length == 2);
 
+  /// The photo-only zone is never shorter than this (a logo plate's room);
+  /// applied after the cap, as it is not clear photo.
+  final double minFade;
   final double minHeight;
   final double maxHeight;
   final double topInset;
@@ -1159,6 +1259,7 @@ class _HeroTallBody extends MultiChildRenderObjectWidget {
         clearPhoto: clearPhoto,
         minClearPhoto: minClearPhoto,
         barHosted: barHosted,
+        minFade: minFade,
       );
 
   @override
@@ -1172,7 +1273,8 @@ class _HeroTallBody extends MultiChildRenderObjectWidget {
       ..topInset = topInset
       ..clearPhoto = clearPhoto
       ..minClearPhoto = minClearPhoto
-      ..barHosted = barHosted;
+      ..barHosted = barHosted
+      ..minFade = minFade;
   }
 }
 
@@ -1189,12 +1291,21 @@ class _RenderHeroTallBody extends RenderBox
     required double clearPhoto,
     required double minClearPhoto,
     required bool barHosted,
-  }) : _minHeight = minHeight,
+    double minFade = 0,
+  }) : _minFade = minFade,
+       _minHeight = minHeight,
        _maxHeight = maxHeight,
        _topInset = topInset,
        _clearPhoto = clearPhoto,
        _minClearPhoto = minClearPhoto,
        _barHosted = barHosted;
+
+  double _minFade;
+  set minFade(double v) {
+    if (v == _minFade) return;
+    _minFade = v;
+    markNeedsLayout();
+  }
 
   double _minHeight;
   set minHeight(double v) {
@@ -1248,14 +1359,17 @@ class _RenderHeroTallBody extends RenderBox
     }
   }
 
-  double _fadeFor(double text, double minHeight) => heroTallFade(
-    text: text,
-    topInset: _topInset,
-    barHosted: _barHosted,
-    clearPhoto: _clearPhoto,
-    minHeight: math.max(minHeight, _minHeight),
-    maxHeight: _maxHeight,
-    minClearPhoto: _minClearPhoto,
+  double _fadeFor(double text, double minHeight) => math.max(
+    _minFade,
+    heroTallFade(
+      text: text,
+      topInset: _topInset,
+      barHosted: _barHosted,
+      clearPhoto: _clearPhoto,
+      minHeight: math.max(minHeight, _minHeight),
+      maxHeight: _maxHeight,
+      minClearPhoto: _minClearPhoto,
+    ),
   );
 
   @override
@@ -1317,10 +1431,13 @@ class _RenderHeroTallBody extends RenderBox
 /// built (never a swap mid-view). If a saved photo fails to load, the
 /// bundled one shows.
 class _HeroPhotoLayer extends StatefulWidget {
-  const _HeroPhotoLayer({this.photo, this.networkImage});
+  const _HeroPhotoLayer({this.photo, this.networkImage, this.ownPhoto});
 
   final FFHeroPhoto? photo;
   final FFHeroNetworkImage? networkImage;
+
+  /// A partner's own photo: it leads, and the usual photo is its fallback.
+  final FFHeroOwnPhoto? ownPhoto;
 
   @override
   State<_HeroPhotoLayer> createState() => _HeroPhotoLayerState();
@@ -1339,11 +1456,19 @@ class _HeroPhotoLayerState extends State<_HeroPhotoLayer> {
   @override
   Widget build(BuildContext context) {
     final photo = widget.photo;
-    final networkImage = widget.networkImage;
+    // A network address the source check refuses counts as none: the
+    // bundled photo shows when there is one, else the placeholder.
+    final requested = widget.networkImage;
+    final apiBase = mediaApiBaseOf(context);
+    final refused =
+        requested != null &&
+        requested.url.isNotEmpty &&
+        !isAllowedMediaSrc(requested.url, apiBase: apiBase);
+    final networkImage = refused && photo != null ? null : requested;
     // A network hero with no file to load shows the placeholder alone.
     final noPhoto =
         MediaQuery.highContrastOf(context) ||
-        (networkImage != null && networkImage.url.isEmpty);
+        (networkImage != null && (networkImage.url.isEmpty || refused));
     final instant = MediaQuery.disableAnimationsOf(context);
     final dpr = MediaQuery.devicePixelRatioOf(context);
     return ExcludeSemantics(
@@ -1351,7 +1476,7 @@ class _HeroPhotoLayerState extends State<_HeroPhotoLayer> {
         key: const Key('ff-hero-placeholder'),
         color: FFTokens.heroPlaceholder,
         child: noPhoto
-            ? const SizedBox.expand()
+            ? _ShownNow(shown: _HeroPhotoShown.maybeOf(context))
             : LayoutBuilder(
                 builder: (context, c) {
                   final saved = photo == null ? null : _remoteFor(photo);
@@ -1366,10 +1491,16 @@ class _HeroPhotoLayerState extends State<_HeroPhotoLayer> {
                     gaplessPlayback: true,
                     errorBuilder: (_, _, _) => const SizedBox.expand(),
                   );
-                  final image = Image(
+                  final own = widget.ownPhoto;
+                  final standard = Image(
                     key: const Key('ff-hero-photo'),
                     image: networkImage != null
-                        ? heroNetworkImageProvider(networkImage, c.biggest, dpr)
+                        ? heroNetworkImageProvider(
+                            networkImage,
+                            c.biggest,
+                            dpr,
+                            apiBase: apiBase,
+                          )!
                         : saved != null
                         ? heroRemoteImageProvider(saved, c.biggest, dpr)
                         : heroImageProvider(photo!, c.biggest, dpr),
@@ -1398,6 +1529,76 @@ class _HeroPhotoLayerState extends State<_HeroPhotoLayer> {
                       );
                     },
                   );
+                  final shown = _HeroPhotoShown.maybeOf(context);
+                  // The plate waits for the photo it sits on (spec §40.2).
+                  void markShown() {
+                    if (shown == null || shown.value) return;
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      shown.value = true;
+                    });
+                  }
+
+                  final image = own == null
+                      ? Image(
+                          key: standard.key,
+                          image: standard.image,
+                          fit: standard.fit,
+                          alignment: standard.alignment,
+                          width: standard.width,
+                          height: standard.height,
+                          excludeFromSemantics: true,
+                          gaplessPlayback: true,
+                          errorBuilder: (context, e, st) {
+                            markShown();
+                            return standard.errorBuilder!(context, e, st);
+                          },
+                          frameBuilder: (context, child, frame, sync) {
+                            if (sync || frame != null) markShown();
+                            return standard.frameBuilder!(
+                              context,
+                              child,
+                              frame,
+                              sync,
+                            );
+                          },
+                        )
+                      // The usual photo stays underneath while the partner's
+                      // own decodes, which then fades in over it (250ms;
+                      // instant under reduced motion), so the band never
+                      // shows the bare navy ground first. If it fails, the
+                      // usual photo is simply what stays.
+                      : Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            standard,
+                            Image(
+                              key: const Key('ff-hero-own-photo'),
+                              image: heroOwnImageProvider(own, c.biggest, dpr),
+                              fit: BoxFit.cover,
+                              alignment: own.focal,
+                              width: c.maxWidth,
+                              height: c.maxHeight,
+                              excludeFromSemantics: true,
+                              gaplessPlayback: true,
+                              errorBuilder: (_, _, _) {
+                                markShown();
+                                return const SizedBox.shrink();
+                              },
+                              frameBuilder: (context, child, frame, sync) {
+                                final ready = sync || frame != null;
+                                if (ready) markShown();
+                                return AnimatedOpacity(
+                                  opacity: ready ? 1 : 0,
+                                  duration: sync || instant
+                                      ? Duration.zero
+                                      : const Duration(milliseconds: 250),
+                                  curve: Curves.easeOut,
+                                  child: child,
+                                );
+                              },
+                            ),
+                          ],
+                        );
                   // Under reduced motion the new photo replaces the old one in
                   // the same frame; otherwise they cross-fade (C-4).
                   if (instant) return image;
@@ -1410,7 +1611,7 @@ class _HeroPhotoLayerState extends State<_HeroPhotoLayer> {
                       children: [...previous, ?current],
                     ),
                     child: KeyedSubtree(
-                      key: ValueKey<Object?>(networkImage ?? photo),
+                      key: ValueKey<Object?>(own ?? networkImage ?? photo),
                       child: image,
                     ),
                   );
@@ -1586,7 +1787,18 @@ class FFHeroBand extends StatelessWidget {
     this.clearPhoto = 0,
     this.clearPhotoEverywhere = false,
     this.maxHeightAt844 = double.infinity,
+    this.ownPhoto,
+    this.logo,
   });
+
+  /// A partner's own photo for their home (spec §40.1); [photo] is the
+  /// fallback. Null: as before.
+  final FFHeroOwnPhoto? ownPhoto;
+
+  /// A partner's logo on its plate (`FFLogoPlate`, spec §40.2): top-left on
+  /// phones (the band keeps 68px above its eyebrow), top-right on the 840+
+  /// banner (which keeps its height). Null: as before.
+  final Widget? logo;
 
   /// The bundled photo; with [networkImage] set it is only the fallback.
   final FFHeroPhoto photo;
@@ -1645,6 +1857,8 @@ class FFHeroBand extends StatelessWidget {
     return FFPhotoHero(
       photo: photo,
       networkImage: networkImage,
+      ownPhoto: ownPhoto,
+      plate: logo,
       variant: wide ? FFHeroVariant.panel : FFHeroVariant.band,
       rounded: wide,
       minHeight: wide ? wideHeight : minHeight,
@@ -1723,4 +1937,86 @@ String heroGreeting(BuildContext context, DateTime now, String? name) {
       !first.contains('@') &&
       !RegExp(r'^[+\d]').hasMatch(first);
   return usable ? '$greeting, $first' : greeting;
+}
+
+/// Whether a hero's photo (or its placeholder, when there is none) has
+/// shown, so its logo plate can fade in with it (spec §40.2).
+class _HeroPhotoShown extends InheritedNotifier<ValueNotifier<bool>> {
+  const _HeroPhotoShown({required super.notifier, required super.child});
+
+  static ValueNotifier<bool>? maybeOf(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<_HeroPhotoShown>()?.notifier;
+
+  static bool watch(BuildContext context) =>
+      context
+          .dependOnInheritedWidgetOfExactType<_HeroPhotoShown>()
+          ?.notifier
+          ?.value ??
+      true;
+}
+
+class _PhotoShownHost extends StatefulWidget {
+  const _PhotoShownHost({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  State<_PhotoShownHost> createState() => _PhotoShownHostState();
+}
+
+class _PhotoShownHostState extends State<_PhotoShownHost> {
+  final _shown = ValueNotifier<bool>(false);
+
+  @override
+  void dispose() {
+    _shown.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      _HeroPhotoShown(notifier: _shown, child: widget.child);
+}
+
+/// The plate, invisible until the photo under it shows, then faded in
+/// (250ms; instant under reduced motion).
+class _PlateGate extends StatelessWidget {
+  const _PlateGate({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => AnimatedOpacity(
+    key: const Key('ff-hero-plate-gate'),
+    opacity: _HeroPhotoShown.watch(context) ? 1 : 0,
+    duration: MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : const Duration(milliseconds: 250),
+    curve: Curves.easeOut,
+    child: child,
+  );
+}
+
+/// No photo at all (high contrast): the plate may show at once.
+class _ShownNow extends StatefulWidget {
+  const _ShownNow({required this.shown});
+
+  final ValueNotifier<bool>? shown;
+
+  @override
+  State<_ShownNow> createState() => _ShownNowState();
+}
+
+class _ShownNowState extends State<_ShownNow> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final s = widget.shown;
+      if (mounted && s != null) s.value = true;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.expand();
 }

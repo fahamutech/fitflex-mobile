@@ -23,7 +23,16 @@ import 'banner_models.dart';
 /// waiting for business approval sees why they cannot propose yet; staff
 /// need the `products` permission.
 class VendorBannersPage extends StatefulWidget {
-  const VendorBannersPage({super.key, this.now, this.item});
+  const VendorBannersPage({
+    super.key,
+    this.now,
+    this.item,
+    this.embedded = false,
+  });
+
+  /// Inside the Promotions page's "Flash sales | Banners" (Phase 2 S4): no
+  /// app bar of its own.
+  final bool embedded;
 
   /// The clock (tests).
   final DateTime Function()? now;
@@ -304,6 +313,12 @@ class _VendorBannersPageState extends State<VendorBannersPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.embedded) {
+      return RefreshIndicator(
+        onRefresh: () => _load(refresh: true),
+        child: _body(context),
+      );
+    }
     return Scaffold(
       appBar: AppBar(
         // Long Swahili at 130% wraps to a second line instead of "…".
@@ -565,7 +580,8 @@ class _VendorBannersPageState extends State<VendorBannersPage> {
 
   static FFBadgeTone _tone(String status) => switch (status) {
     'pending_approval' => FFBadgeTone.warning,
-    'approved' => FFBadgeTone.brand,
+    // Scheduled in info blue, Live in success green (QA S4 #10).
+    'approved' => FFBadgeTone.info,
     'live' => FFBadgeTone.success,
     'rejected' => FFBadgeTone.danger,
     'ended' => FFBadgeTone.defaultTone,

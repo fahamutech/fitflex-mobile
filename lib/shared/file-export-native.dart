@@ -15,3 +15,10 @@ Future<Uri?> saveTextExport({
   bytes: Uint8List.fromList(utf8.encode(content)),
   mimeType: mimeType,
 );
+
+/// Saves [bytes] as [filename] through the system save dialog.
+Future<Uri?> saveBytesExport({
+  required String filename,
+  required Uint8List bytes,
+  String mimeType = 'application/octet-stream',
+}) => FilePicker.saveFile(fileName: filename, bytes: bytes, mimeType: mimeType);

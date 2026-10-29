@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app_scope.dart';
 import '../../shared/api_client.dart';
+import '../../shared/api_error_message.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
@@ -21,6 +23,30 @@ String _staffApiErrorMessage(BuildContext context, ApiException e) {
       return context.tr('owner.errorGeneric');
   }
 }
+
+/// Message for a refused staff PIN reset (fitflex-functions#260).
+String staffPinResetErrorMessage(BuildContext context, Object error) {
+  final code = error is ApiException ? error.code : null;
+  final key = switch (code) {
+    'pin_must_be_4_digits' => 'auth.pinExactlyFour',
+    'staff_identity_shared' => 'staff.errIdentityShared',
+    'credentials_not_accepted' => 'staff.errCredentialsNotAccepted',
+    'feature_disabled' => 'staff.errResetOff',
+    'staff_not_at_your_gym' => 'staff.errNotYourStaff',
+    'staff_not_found' => 'staff.errStaffNotFound',
+    'firebase_update_failed' => 'staff.errResetNotSaved',
+    _ => null,
+  };
+  return key != null
+      ? context.tr(key)
+      : errorMessage(FFLocaleScope.of(context), error);
+}
+
+/// True when the server reports PIN holds on staff rows, which it does only
+/// while STAFF_PIN_CHANGE_REQUIRED is on (fitflex-functions#260). With the
+/// field absent the page stays as it was.
+bool staffPinResetAvailable(Map<String, dynamic> staff) =>
+    staff.containsKey('passwordChangeRequired');
 
 /// Owner — gym staff roster (receptionists etc.) with per-feature RBAC.
 /// Owner-only: staff cannot manage other staff.
@@ -41,7 +67,10 @@ class _OwnerStaffPageState extends State<OwnerStaffPage> {
   @override
   void initState() {
     super.initState();
-    _refresh();
+    // AppScope is read in _refresh: not from initState itself.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _refresh();
+    });
   }
 
   Future<void> _refresh() async {
@@ -131,6 +160,27 @@ class _OwnerStaffPageState extends State<OwnerStaffPage> {
       if (!mounted) return;
       FFSnack.error(context, _staffApiErrorMessage(context, e));
     }
+  }
+
+  /// The owner gives a staff member a new starting PIN; the staff member is
+  /// signed out and must choose their own at the next sign-in.
+  Future<void> _resetStaffPin(Map<String, dynamic> staff) async {
+    final updated = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (_) => _ResetStaffPinDialog(staff: staff),
+    );
+    if (updated == null || !mounted) return;
+    setState(() {
+      _staff = [
+        for (final s in _staff) s['id'] == staff['id'] ? {...s, ...updated} : s,
+      ];
+    });
+    FFSnack.success(
+      context,
+      context
+          .tr('staff.resetPinDone')
+          .replaceAll('{name}', staff['displayName']?.toString() ?? ''),
+    );
   }
 
   void _confirmRemoveStaff(Map<String, dynamic> staff) {
@@ -235,6 +285,10 @@ class _OwnerStaffPageState extends State<OwnerStaffPage> {
                       .map((e) => _scopeLabel(e.toString()))
                       .join(', ');
                   final suspended = staff['accountStatus'] == 'suspended';
+                  final mustChangePin = staff['passwordChangeRequired'] == true;
+                  final canResetPin =
+                      staffPinResetAvailable(staff) &&
+                      !AppScope.of(context).auth.invitesEnabled;
                   return FFCard(
                     child: Row(
                       children: [
@@ -242,7 +296,10 @@ class _OwnerStaffPageState extends State<OwnerStaffPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 4,
+                                crossAxisAlignment: WrapCrossAlignment.center,
                                 children: [
                                   Text(
                                     staff['displayName']?.toString() ?? '',
@@ -251,13 +308,20 @@ class _OwnerStaffPageState extends State<OwnerStaffPage> {
                                         .titleSmall
                                         ?.copyWith(fontWeight: FontWeight.w700),
                                   ),
-                                  if (suspended) ...[
-                                    const SizedBox(width: 6),
+                                  if (suspended)
                                     FFBadge(
                                       label: context.tr('staff.suspended'),
                                       tone: FFBadgeTone.warning,
                                     ),
-                                  ],
+                                  if (mustChangePin)
+                                    FFBadge(
+                                      key: Key(
+                                        'staff-must-change-pin-${staff['id']}',
+                                      ),
+                                      label: context.tr('staff.mustChangePin'),
+                                      tone: FFBadgeTone.brand,
+                                      wrap: true,
+                                    ),
                                 ],
                               ),
                               const SizedBox(height: 2),
@@ -277,6 +341,13 @@ class _OwnerStaffPageState extends State<OwnerStaffPage> {
                             ],
                           ),
                         ),
+                        if (canResetPin)
+                          IconButton(
+                            key: Key('staff-reset-pin-${staff['id']}'),
+                            icon: const Icon(Icons.lock_reset, size: 18),
+                            tooltip: context.tr('staff.resetPin'),
+                            onPressed: () => _resetStaffPin(staff),
+                          ),
                         IconButton(
                           icon: const Icon(Icons.edit, size: 18),
                           tooltip: context.tr('staff.editStaff'),
@@ -297,6 +368,125 @@ class _OwnerStaffPageState extends State<OwnerStaffPage> {
                 },
               ),
       ),
+    );
+  }
+}
+
+/// Owner sets a new starting PIN for a staff member (they forgot theirs).
+/// Says what happens next, takes the PIN twice and sends it; the dialog
+/// stays open with the reason when the server refuses.
+class _ResetStaffPinDialog extends StatefulWidget {
+  const _ResetStaffPinDialog({required this.staff});
+
+  final Map<String, dynamic> staff;
+
+  @override
+  State<_ResetStaffPinDialog> createState() => _ResetStaffPinDialogState();
+}
+
+class _ResetStaffPinDialogState extends State<_ResetStaffPinDialog> {
+  final _pin = TextEditingController();
+  final _again = TextEditingController();
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _pin.dispose();
+    _again.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!RegExp(r'^\d{4}$').hasMatch(_pin.text)) {
+      setState(() => _error = context.tr('auth.pinExactlyFour'));
+      return;
+    }
+    if (_pin.text != _again.text) {
+      setState(() => _error = context.tr('auth.pinMismatch'));
+      return;
+    }
+    final api = AppScope.of(context).api;
+    final navigator = Navigator.of(context);
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final row = await api.ownerResetStaffPin(
+        widget.staff['id'].toString(),
+        _pin.text,
+      );
+      navigator.pop(Map<String, dynamic>.from(row));
+    } catch (e) {
+      if (mounted) {
+        setState(() => _error = staffPinResetErrorMessage(context, e));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Widget _field(String key, TextEditingController c, String label) => TextField(
+    key: Key(key),
+    controller: c,
+    obscureText: true,
+    enabled: !_busy,
+    keyboardType: TextInputType.number,
+    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+    maxLength: 4,
+    decoration: InputDecoration(labelText: label, counterText: ''),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final name = widget.staff['displayName']?.toString() ?? '';
+    return AlertDialog(
+      key: const Key('staff-reset-pin-dialog'),
+      title: Text(context.tr('staff.resetPin')),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              context.tr('staff.resetPinBody').replaceAll('{name}', name),
+              key: const Key('staff-reset-pin-body'),
+            ),
+            const SizedBox(height: FFTokens.spacingMd),
+            _field(
+              'staff-reset-pin-new',
+              _pin,
+              context.tr('staff.newStartPin'),
+            ),
+            const SizedBox(height: FFTokens.spacingSm),
+            _field(
+              'staff-reset-pin-again',
+              _again,
+              context.tr('pin.confirmTitle'),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: FFTokens.spacingSm),
+              Text(
+                _error!,
+                key: const Key('staff-reset-pin-error'),
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _busy ? null : () => Navigator.of(context).pop(),
+          child: Text(context.tr('member.cancel')),
+        ),
+        FilledButton(
+          key: const Key('staff-reset-pin-save'),
+          onPressed: _busy ? null : _save,
+          child: Text(context.tr('staff.resetPin')),
+        ),
+      ],
     );
   }
 }

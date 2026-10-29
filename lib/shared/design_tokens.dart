@@ -310,6 +310,35 @@ class FFTokens {
   /// Shown before the photo decodes, under high contrast and on failure.
   static const Color heroPlaceholder = Color(0xFF0B192C);
 
+  /// Partner logo plate on a band (spec §40.2): 40 tall, at most 120 wide,
+  /// 6px side padding, the logo inside 108 x 28.
+  static const double logoPlateHeight = 40;
+  static const double logoPlateMaxWidth = 120;
+  static const double logoPlateMinWidth = 40;
+  static const double logoPlatePad = 6;
+  static const double logoPlateLogoMaxWidth = 108;
+  static const double logoPlateLogoMaxHeight = 28;
+
+  /// The focus-point crosshair (spec §42.2): a white ring and dot with a
+  /// slate-950 edge, readable on any photo.
+  static const Color focalRing = Color(0xFFFFFFFF);
+  static const Color focalRingEdge = darkBg;
+
+  /// The phone band keeps this much from its top edge to the top of the
+  /// eyebrow while a plate shows (16 + 40 + 12).
+  static const double logoPlateReserve = 68;
+
+  /// Light plate (dark or coloured logos): white with a 12% slate-950 edge.
+  static const Color logoPlateLight = Color(0xFFFFFFFF);
+  static Color get logoPlateLightBorder => darkBg.withValues(alpha: 0.12);
+
+  /// Dark plate (light or white logos): the navy ground with a 40% edge
+  /// (full opacity under high contrast).
+  static const Color logoPlateDark = heroPlaceholder;
+  static const Color logoPlateDarkBorderStrong = Color(0xFFF1F5F9);
+  static Color get logoPlateDarkBorder =>
+      logoPlateDarkBorderStrong.withValues(alpha: 0.4);
+
   /// Light theme: the content sheet overlaps the hero by this much.
   static const double heroSheetOverlap = 24;
   static const double heroSheetRadius = radiusXl;
