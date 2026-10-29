@@ -201,15 +201,17 @@ class _Crosshair extends StatelessWidget {
       height: 28,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: 2),
-        boxShadow: const [BoxShadow(color: Color(0xFF020617), spreadRadius: 2)],
+        border: Border.all(color: FFTokens.focalRing, width: 2),
+        boxShadow: const [
+          BoxShadow(color: FFTokens.focalRingEdge, spreadRadius: 2),
+        ],
       ),
       alignment: Alignment.center,
       child: Container(
         width: 6,
         height: 6,
         decoration: const BoxDecoration(
-          color: Colors.white,
+          color: FFTokens.focalRing,
           shape: BoxShape.circle,
         ),
       ),
