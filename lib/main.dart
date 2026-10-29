@@ -16,6 +16,7 @@ import 'shared/auth_state.dart';
 import 'shared/events/event_claim_link.dart';
 import 'shared/friend_invites.dart';
 import 'shared/hero_images/hero_image_store.dart';
+import 'shared/partner_media/partner_media_store.dart';
 import 'shared/inbox/inbox_controller.dart';
 import 'shared/pending_org_invite.dart';
 import 'shared/push_service.dart';
@@ -171,6 +172,7 @@ class _FitFlexAppState extends State<FitFlexApp> with WidgetsBindingObserver {
     // Admin-published photos (HERO_IMAGES_REMOTE): null with the flag off,
     // so no request is ever made. Bundled photos paint the first frame; the
     // list is read after it.
+    _partnerMedia = PartnerMediaStore.startIfEnabled(widget.api);
     _heroImages = HeroImageStore.startIfEnabled(apiBase: widget.api.baseUrl);
     if (_heroImages != null) {
       _syncHeroSession();
@@ -181,6 +183,10 @@ class _FitFlexAppState extends State<FitFlexApp> with WidgetsBindingObserver {
   }
 
   HeroImageStore? _heroImages;
+
+  /// Partner home photos and logos (PARTNER_MEDIA_UI): null with the flag
+  /// off. Started here so the saved copies are read before a home is built.
+  PartnerMediaStore? _partnerMedia;
 
   void _syncHeroSession() => _heroImages?.setSession(
     signedIn: widget.auth.isSignedIn,
@@ -245,6 +251,8 @@ class _FitFlexAppState extends State<FitFlexApp> with WidgetsBindingObserver {
     if (_lastToken != null && token == null) {
       _phoneSteps?.forget();
       _runs?.discard();
+      // A partner's saved home photo and logo are not the next person's.
+      _partnerMedia?.clearAll();
       _inbox.clear();
       _syncedLocale = null;
       // A kept invitation link is not the next person's.

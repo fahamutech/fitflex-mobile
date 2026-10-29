@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -2590,6 +2591,64 @@ class ApiClient {
   Future<Map<String, dynamic>> vendorTaxRates() async =>
       await _request('GET', '/vendor/tax-rates');
 
+  // ── Vendor reports (S6, fitflex-functions#275) ──────────────────────────
+
+  /// The report sections the server answers (GET /vendor/reports/{section}).
+  static const vendorReportSections = {
+    'summary',
+    'sales',
+    'products',
+    'stock-value',
+    'profit',
+    'marketplace-net',
+    'customers',
+    'payment-methods',
+  };
+
+  /// One report as JSON. [query] carries `from` / `to` (EAT dates, both or
+  /// neither), `channel` (all | app | walk_in), `groupBy`, `sort`, `q`,
+  /// `limit`, `cursor`; empty values are left out. Errors come back as
+  /// [ApiException]: 400 `invalid_range` {reason}, `too_many_buckets`,
+  /// 403 `cost_not_allowed` / `payout_not_allowed` /
+  /// `vendor_permission_forbidden`, 404 `feature_disabled`.
+  Future<Map<String, dynamic>> vendorReport(
+    String section, {
+    Map<String, String?> query = const {},
+  }) async {
+    assert(vendorReportSections.contains(section));
+    return Map<String, dynamic>.from(
+      await _request(
+            'GET',
+            _withQuery('/vendor/reports/${_seg(section)}', {
+              for (final e in query.entries)
+                if ((e.value ?? '').isNotEmpty) e.key: e.value!,
+              'format': 'json',
+            }),
+          )
+          as Map,
+    );
+  }
+
+  /// A report as a file: `csv` (every section but the summary) or `pdf`
+  /// (summary only), headers in [lang]. 413 `export_too_large`, 503
+  /// `pdf_unavailable`.
+  Future<({Uint8List bytes, String? fileName})> vendorReportFile(
+    String section, {
+    required String format,
+    required String lang,
+    Map<String, String?> query = const {},
+  }) {
+    assert(vendorReportSections.contains(section));
+    return _binary(
+      _withQuery('/vendor/reports/${_seg(section)}', {
+        for (final e in query.entries)
+          if ((e.value ?? '').isNotEmpty) e.key: e.value!,
+        'format': format,
+        'lang': lang,
+      }),
+    );
+  }
+
   /// A binary answer (a PDF) with its file name from Content-Disposition.
   Future<({Uint8List bytes, String? fileName})> _binary(String path) async {
     final uri = Uri.parse('$baseUrl$path');
@@ -3735,5 +3794,195 @@ class ApiClient {
       ),
       reviews: Review.listFrom(res['reviews']),
     );
+  }
+
+  // ── Partner home photo and logo (PARTNER_MEDIA, fitflex-functions#277) ──
+
+  /// `GET /partner/media` (gym roles pass [gymId]): the caller's own home
+  /// photo and logo, `canEdit`, the confirmation texts and the file rules.
+  Future<Map<String, dynamic>> partnerMedia({String? gymId}) async {
+    final q = gymId == null || gymId.isEmpty
+        ? ''
+        : '?gymId=${Uri.encodeQueryComponent(gymId)}';
+    final res = await _request('GET', '/partner/media$q');
+    return res is Map ? Map<String, dynamic>.from(res) : <String, dynamic>{};
+  }
+
+  /// The bytes of one live photo or logo, signed in, from the API host only
+  /// ([uri] comes from `partnerMediaFileUri`). Redirects are refused, and a
+  /// body over [maxBytes] (declared or while reading) answers null. The
+  /// files are `Cache-Control: private, no-cache` with `ETag: "<file id>"`
+  /// (functions#277 review M1): pass the saved copy's [etag] and a `304`
+  /// answers `(status: 304)` without bytes. A refusal from the server (404
+  /// `media_not_found` once it is removed, replaced or taken down) throws
+  /// [ApiException].
+  Future<({int status, Uint8List? bytes, String? etag})?> partnerMediaFile(
+    Uri uri, {
+    required int maxBytes,
+    String? etag,
+    Duration timeout = const Duration(seconds: 20),
+  }) async {
+    final base = Uri.parse(baseUrl);
+    if (uri.scheme != base.scheme ||
+        uri.host != base.host ||
+        uri.port != base.port ||
+        uri.userInfo.isNotEmpty) {
+      return null;
+    }
+    final abort = Completer<void>();
+    final client = http.Client();
+    try {
+      final req = http.AbortableRequest('GET', uri, abortTrigger: abort.future)
+        ..followRedirects = false
+        ..headers['x-fitflex-client'] = kIdentityV2Client;
+      if (_token != null) req.headers['authorization'] = 'Bearer $_token';
+      if (etag != null && etag.isNotEmpty) req.headers['if-none-match'] = etag;
+      Future<({int status, Uint8List? bytes, String? etag})?> run() async {
+        final res = await client.send(req);
+        if (res case http.BaseResponseWithUrl(:final url)) {
+          if (url.host != base.host || url.port != base.port) {
+            unawaited(res.stream.drain<void>().catchError((Object _) {}));
+            return null;
+          }
+        }
+        if (res.statusCode == 304) {
+          unawaited(res.stream.drain<void>().catchError((Object _) {}));
+          return (status: 304, bytes: null, etag: res.headers['etag'] ?? etag);
+        }
+        if (res.statusCode != 200) {
+          final body = await _readCapped(res.stream, 16 * 1024);
+          if (res.statusCode == 401 && onUnauthorized != null) {
+            onUnauthorized!();
+          }
+          if (res.statusCode >= 300 && res.statusCode < 400) return null;
+          throw ApiException(
+            res.statusCode,
+            body == null ? null : _decodeErrorBody(utf8.decode(body)),
+          );
+        }
+        final declared = res.contentLength;
+        if (declared != null && declared > maxBytes) {
+          unawaited(res.stream.drain<void>().catchError((Object _) {}));
+          return null;
+        }
+        final bytes = await _readCapped(res.stream, maxBytes);
+        return bytes == null
+            ? null
+            : (status: 200, bytes: bytes, etag: res.headers['etag']);
+      }
+
+      return await run().timeout(timeout);
+    } on TimeoutException {
+      if (!abort.isCompleted) abort.complete();
+      rethrow;
+    } finally {
+      client.close();
+    }
+  }
+
+  static Future<Uint8List?> _readCapped(Stream<List<int>> s, int limit) async {
+    final out = BytesBuilder(copy: false);
+    await for (final chunk in s) {
+      if (out.length + chunk.length > limit) return null;
+      out.add(chunk);
+    }
+    return out.takeBytes();
+  }
+
+  /// `POST /partner/media/hero` or `/logo` (multipart): the original
+  /// [bytes] as picked (never downscaled; the server cleans them) and the
+  /// text [fields]. [onProgress] follows the bytes as the connection takes
+  /// them (on the web the browser sends the body at once). Completing
+  /// [abortTrigger] cancels it. Answers `{item}`.
+  Future<Map<String, dynamic>> partnerMediaUpload(
+    String kind, {
+    required List<int> bytes,
+    required String filename,
+    required Map<String, String> fields,
+    void Function(int sent, int total)? onProgress,
+    Future<void>? abortTrigger,
+  }) async {
+    final uri = Uri.parse(
+      '$baseUrl/partner/media/${kind == 'logo' ? 'logo' : 'hero'}',
+    );
+    final form = http.MultipartRequest('POST', uri)
+      ..fields.addAll(fields)
+      ..files.add(
+        http.MultipartFile.fromBytes('file', bytes, filename: filename),
+      );
+    final body = await form.finalize().toBytes();
+    final req = _ProgressRequest('POST', uri, body, onProgress, abortTrigger)
+      ..headers.addAll(form.headers);
+    req.headers['x-fitflex-client'] = kIdentityV2Client;
+    if (_token != null) req.headers['authorization'] = 'Bearer $_token';
+    _log.multipart('POST', uri, bytes.length);
+    final client = http.Client();
+    try {
+      final streamed = await client
+          .send(req)
+          .timeout(const Duration(seconds: 120));
+      final res = await http.Response.fromStream(streamed);
+      _log.response('POST', uri, res.statusCode, res.body);
+      final ok = res.statusCode >= 200 && res.statusCode < 300;
+      final decoded = res.body.isEmpty
+          ? null
+          : ok
+          ? jsonDecode(res.body)
+          : _decodeErrorBody(res.body);
+      if (ok) {
+        return decoded is Map
+            ? Map<String, dynamic>.from(decoded)
+            : <String, dynamic>{};
+      }
+      if (res.statusCode == 401 && onUnauthorized != null) onUnauthorized!();
+      throw ApiException(res.statusCode, decoded);
+    } finally {
+      client.close();
+    }
+  }
+
+  /// `DELETE /partner/media/:id`: the partner removes their live photo or
+  /// logo. Answers `{item}`.
+  Future<Map<String, dynamic>> partnerMediaRemove(String id) async {
+    final res = await _request('DELETE', '/partner/media/${_seg(id)}');
+    return res is Map ? Map<String, dynamic>.from(res) : <String, dynamic>{};
+  }
+}
+
+/// A request whose body is handed over in 32 KB pieces, each counted once
+/// the connection takes it, for an upload's "Uploading… n%".
+class _ProgressRequest extends http.BaseRequest with http.Abortable {
+  _ProgressRequest(
+    super.method,
+    super.url,
+    this._body,
+    this._onProgress,
+    this.abortTrigger,
+  ) {
+    contentLength = _body.length;
+  }
+
+  final Uint8List _body;
+  final void Function(int sent, int total)? _onProgress;
+
+  @override
+  final Future<void>? abortTrigger;
+
+  @override
+  http.ByteStream finalize() {
+    super.finalize();
+    return http.ByteStream(_chunks());
+  }
+
+  Stream<List<int>> _chunks() async* {
+    const step = 32 * 1024;
+    var sent = 0;
+    _onProgress?.call(0, _body.length);
+    while (sent < _body.length) {
+      final end = sent + step < _body.length ? sent + step : _body.length;
+      yield Uint8List.sublistView(_body, sent, end);
+      sent = end;
+      _onProgress?.call(sent, _body.length);
+    }
   }
 }

@@ -38,6 +38,8 @@ Future<void> runPartnerAction(
   required KycOverview overview,
 }) async {
   final nav = Navigator.of(context);
+  // An under-review request has nothing to fix in the app: support it is.
+  if (partnerActionIsSupport(action)) return openPartnerSupport();
   switch (action.code) {
     case 'complete_kyc_items' || 'kyc_changes_requested' || 'submit_kyc':
       await nav.push<void>(
