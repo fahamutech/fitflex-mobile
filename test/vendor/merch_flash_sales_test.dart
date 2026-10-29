@@ -10,6 +10,7 @@
 //   409 too_many_open_proposals, 403 vendor_suspended, 404 feature_disabled.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
 import 'package:go_router/go_router.dart';
 
 import 'package:fitflexmobile/router.dart';
@@ -204,7 +205,18 @@ Future<void> _pickDates(WidgetTester tester) async {
     await tapVisible(tester, _key(k));
     await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('OK'));
+    // Swahili: the 12-hour time-of-day list (QA #12), opened at the
+    // suggestion; English: the Material picker's OK.
+    if (_key('merch-sw-time-picker').evaluate().isNotEmpty) {
+      await tester.tap(
+        find.descendant(
+          of: _key('merch-sw-time-picker'),
+          matching: find.byIcon(Icons.check),
+        ),
+      );
+    } else {
+      await tester.tap(find.text('OK'));
+    }
     await tester.pumpAndSettle();
   }
 }
@@ -1105,11 +1117,14 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    bool readOnly(WidgetTester tester, String key) => tester
-        .widget<TextField>(
-          find.descendant(of: _key(key), matching: find.byType(TextField)),
-        )
-        .readOnly;
+    // Locked = greyed (disabled) like the discount price (QA #6).
+    bool readOnly(WidgetTester tester, String key) =>
+        tester
+            .widget<TextField>(
+              find.descendant(of: _key(key), matching: find.byType(TextField)),
+            )
+            .enabled ==
+        false;
 
     apiTest('scheduled or live sale: price and discount read-only, View sale', (
       tester,
@@ -1152,6 +1167,244 @@ void main() {
       expect(_key('vendor-product-view-sale'), findsNothing);
       expect(_key('vendor-product-start-sale'), findsNothing);
     });
+  });
+
+  group('QA round 1 (vendor)', () {
+    apiTest('#5 offline: the last list stays, actions off, offline bar', (
+      tester,
+      api,
+    ) async {
+      _seed(api, sales: [_sale('s1', 'live'), _sale('s2', 'pending_approval')]);
+      final host = await _pumpAt(tester, api, '/vendor/merch?tab=sales');
+      expect(_key('merch-sale-s1'), findsOneWidget);
+      api.onCall(
+        'GET /vendor/flash-sales',
+        (_) => throw http.ClientException('XMLHttpRequest error.'),
+      );
+      // Pull to refresh with no connection.
+      await tester.fling(
+        find.byType(SingleChildScrollView).last,
+        const Offset(0, 400),
+        1000,
+      );
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pumpAndSettle();
+      expect(_key('merch-sales-offline-bar'), findsOneWidget);
+      expect(find.text(host.tr('offline.banner')), findsOneWidget);
+      expect(_key('merch-sale-s1'), findsOneWidget);
+      expect(_key('merch-sale-s2'), findsOneWidget);
+      expect(isEnabled(tester, _key('merch-sale-end-s1')), isFalse);
+      expect(isEnabled(tester, _key('merch-sale-withdraw-s2')), isFalse);
+      expect(isEnabled(tester, _key('merch-sale-propose')), isFalse);
+      expect(_key('merch-sale-needs-internet'), findsOneWidget);
+    });
+
+    apiTest('#5 offline with nothing loaded before: the offline state', (
+      tester,
+      api,
+    ) async {
+      _seed(api);
+      api.onCall(
+        'GET /vendor/flash-sales',
+        (_) => throw http.ClientException('XMLHttpRequest error.'),
+      );
+      await pumpPage(
+        tester,
+        api,
+        const SizedBox(),
+        user: const {'id': 'v-offline-only', 'userType': 'vendor'},
+        size: const Size(400, 900),
+        initialLocation: '/vendor/merch?tab=sales',
+        extraRoutes: _routes,
+        settle: false,
+      );
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pumpAndSettle();
+      expect(_key('merch-sales-offline'), findsOneWidget);
+    });
+
+    apiTest('#6 locked price at 375 px, Swahili 130%: greyed, reason in full', (
+      tester,
+      api,
+    ) async {
+      await pumpPage(
+        tester,
+        api,
+        Builder(
+          builder: (context) => ElevatedButton(
+            onPressed: () => showFFSheet<bool>(
+              context,
+              title: 'Hariri',
+              child: VendorProductForm(
+                product: {
+                  ...stockProduct('p1', 'Foam Roller'),
+                  'priceLock': {
+                    'saleId': 'fls_1',
+                    'startsAt': '2026-10-31T06:00:00Z',
+                    'endsAt': '2026-11-01T06:00:00Z',
+                  },
+                },
+                showFlashSale: true,
+              ),
+            ),
+            child: const Text('open'),
+          ),
+        ),
+        lang: 'sw',
+        textScale: 1.3,
+        size: const Size(375, 812),
+        extraRoutes: _routes,
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      final why = tester.widget<Text>(_key('vendor-product-price-locked'));
+      expect(why.maxLines, isNull);
+      expect(why.overflow, isNull);
+      expect(why.data, startsWith('Imefungwa wakati ofa yako inaendelea ('));
+      for (final k in [
+        'vendor-product-price',
+        'vendor-product-discount-price',
+      ]) {
+        final field = tester.widget<TextField>(
+          find.descendant(of: _key(k), matching: find.byType(TextField)),
+        );
+        expect(field.enabled, isFalse, reason: k);
+      }
+      expect(tester.takeException(), isNull);
+    });
+
+    apiTest('#10 Scheduled is info blue, Live success green', (
+      tester,
+      api,
+    ) async {
+      _seed(api, sales: [_sale('s1', 'live'), _sale('s2', 'approved')]);
+      await _pumpAt(tester, api, '/vendor/merch?tab=sales');
+      expect(
+        tester.widget<FFBadge>(_key('merch-sale-status-s2')).tone,
+        FFBadgeTone.info,
+      );
+      expect(
+        tester.widget<FFBadge>(_key('merch-sale-status-s1')).tone,
+        FFBadgeTone.success,
+      );
+    });
+
+    apiTest('#11 the product row menu: "Start a flash sale" / "View sale"', (
+      tester,
+      api,
+    ) async {
+      seedVendorHome(
+        api,
+        products: [
+          stockProduct('p1', 'Foam Roller'),
+          {
+            ...stockProduct('p2', 'Yoga Mat'),
+            'priceLock': {'saleId': 'fls_9'},
+          },
+        ],
+        tools: _salesOn,
+      );
+      api.on('GET /vendor/flash-sales', _list(const []));
+      api.on('GET /vendor/flash-sales/price-check', _checkOk);
+      api.on('GET /vendor/shop-banners', {'items': [], 'total': 0});
+      final host = await pumpPage(
+        tester,
+        api,
+        const VendorHomePage(),
+        user: vendorUser,
+        size: const Size(400, 900),
+        extraRoutes: _routes,
+      );
+      // Locked product: "View sale"; the other: "Start a flash sale".
+      await tester.tap(
+        find.descendant(
+          of: _key('vendor-product-p2'),
+          matching: find.byType(PopupMenuButton<String>),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text(host.tr('vendor.viewSale')), findsOneWidget);
+      expect(find.text(host.tr('merch.sale.start')), findsNothing);
+      await tester.tapAt(Offset.zero);
+      await tester.pumpAndSettle();
+      await productMenu(tester, 'p1', host.tr('merch.sale.start'));
+      expect(_key('merch-sale-form-title'), findsOneWidget);
+      expect(_text(tester, 'merch-sale-regular'), contains('85,000'));
+    });
+
+    apiTest('#11 no flash sales tool: no menu item', (tester, api) async {
+      seedVendorHome(
+        api,
+        products: [stockProduct('p1', 'Foam Roller')],
+        tools: _bannersOnly,
+      );
+      api.on('GET /vendor/shop-banners', {'items': [], 'total': 0});
+      final host = await pumpVendorHome(tester, api);
+      await tester.tap(
+        find.descendant(
+          of: _key('vendor-product-p1'),
+          matching: find.byType(PopupMenuButton<String>),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text(host.tr('merch.sale.start')), findsNothing);
+    });
+
+    apiTest('#12 Swahili time: a 12-hour time-of-day list, not AM/PM', (
+      tester,
+      api,
+    ) async {
+      _seed(api);
+      await _pumpAt(
+        tester,
+        api,
+        '${AppRoutes.vendorMerchSaleNew}?productId=p1',
+        lang: 'sw',
+        scale: 1.3,
+      );
+      // The title fits on two lines at 130% (descenders not clipped).
+      final bar = tester.widget<AppBar>(find.byType(AppBar));
+      expect(bar.toolbarHeight, greaterThan(kToolbarHeight));
+      await tapVisible(tester, _key('merch-sale-startsAt'));
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+      expect(_key('merch-sw-time-picker'), findsOneWidget);
+      expect(find.textContaining('AM'), findsNothing);
+      expect(find.textContaining('PM'), findsNothing);
+      // The suggestion (11:00 Tanzania time) is "11:00 asubuhi".
+      expect(find.text('11:00 asubuhi'), findsOneWidget);
+      await tester.tap(find.text('11:15 asubuhi'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('11:15 asubuhi'), findsWidgets);
+    });
+
+    for (final (tools, key) in [
+      (_bannersOnly, 'merch.banners.title'),
+      (_salesOnly, 'merch.sales.title'),
+      (_salesOn, 'merch.entry.title'),
+    ]) {
+      apiTest('#14 the home tile names the tools that are on ($key)', (
+        tester,
+        api,
+      ) async {
+        seedVendorHome(
+          api,
+          products: [stockProduct('p1', 'Roller')],
+          tools: tools,
+        );
+        api.on('GET /vendor/flash-sales', _list(const []));
+        api.on('GET /vendor/shop-banners', {'items': [], 'total': 0});
+        final host = await pumpVendorHome(tester, api);
+        expect(
+          find.descendant(
+            of: _key('vendor-merch-entry'),
+            matching: find.text(host.tr(key)),
+          ),
+          findsOneWidget,
+        );
+      });
+    }
   });
 
   group('notifications', () {

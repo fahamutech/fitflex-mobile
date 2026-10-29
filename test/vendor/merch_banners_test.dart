@@ -287,7 +287,8 @@ void main() {
           shown ? findsOneWidget : findsNothing,
         );
         if (shown) {
-          expect(find.text(host.tr('merch.entry.title')), findsOneWidget);
+          // Banners only (flash sales off): "Banners" (S4 QA #14).
+          expect(find.text(host.tr('merch.banners.title')), findsOneWidget);
         }
       });
     }

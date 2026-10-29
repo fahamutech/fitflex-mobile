@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
@@ -16,6 +17,7 @@ import '../../../shared/i18n.dart';
 import '../stock/stock_options.dart';
 import 'banner_models.dart' show fromEatWallClock, toEatWallClock;
 import 'flash_sale_models.dart';
+import 'merch_time_picker.dart';
 
 /// The flash sale form at its own address (spec §8.3):
 /// `/vendor/merch/sale/new` (`?productId=` from a product's "Start a flash
@@ -197,6 +199,7 @@ class _VendorFlashSaleFormRouteState extends State<VendorFlashSaleFormRoute> {
     }
     return Scaffold(
       appBar: AppBar(
+        toolbarHeight: _toolbarHeight(context),
         title: Text(
           context.tr(
             widget.saleId == null
@@ -213,6 +216,13 @@ class _VendorFlashSaleFormRouteState extends State<VendorFlashSaleFormRoute> {
     );
   }
 }
+
+/// Tall enough for a two-line title at 130% in Swahili (QA S4 #12: the
+/// descenders were clipped at the default height).
+double _toolbarHeight(BuildContext context) => math.max(
+  kToolbarHeight,
+  2 * MediaQuery.textScalerOf(context).scale(22) + 16,
+);
 
 /// Digits only, shown with thousands separators ("69,000").
 class _ThousandsFormatter extends TextInputFormatter {
@@ -587,9 +597,10 @@ class _VendorFlashSaleFormPageState extends State<VendorFlashSaleFormPage> {
       helpText: context.tr(start ? 'merch.sale.starts' : 'merch.sale.ends'),
     );
     if (day == null || !mounted) return;
-    final time = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay(hour: base.hour, minute: base.minute),
+    // QA S4 #12: Swahili gets its own 12-hour time-of-day list.
+    final time = await pickMerchTime(
+      context,
+      initial: TimeOfDay(hour: base.hour, minute: base.minute),
       helpText: context.tr('merch.dates.tzNote'),
     );
     if (time == null || !mounted) return;
@@ -1118,6 +1129,7 @@ class _VendorFlashSaleFormPageState extends State<VendorFlashSaleFormPage> {
       },
       child: Scaffold(
         appBar: AppBar(
+          toolbarHeight: _toolbarHeight(context),
           title: Text(
             context.tr(
               _editing ? 'merch.sale.editTitle' : 'merch.sale.newTitle',

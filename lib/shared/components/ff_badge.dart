@@ -14,6 +14,10 @@ enum FFBadgeTone {
   success,
   danger,
   warning,
+
+  /// Blue: scheduled / informational (distinct from the green of brand and
+  /// success).
+  info,
   fuel,
   onPhoto,
 }
@@ -51,6 +55,7 @@ class FFBadge extends StatelessWidget {
       FFBadgeTone.success => tones.success,
       FFBadgeTone.danger => tones.danger,
       FFBadgeTone.warning => tones.warning,
+      FFBadgeTone.info => tones.info,
       FFBadgeTone.fuel => const FFToneColors(
         bg: FFTokens.fuel,
         fg: Colors.white,

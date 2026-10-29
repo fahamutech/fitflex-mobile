@@ -274,7 +274,14 @@ class _VendorHomePageState extends State<VendorHomePage> {
     child: FFActionTile(
       key: const Key('vendor-merch-entry'),
       icon: Icons.campaign_outlined,
-      title: context.tr('merch.entry.title'),
+      // QA #14: the tools that are on: "Banners", "Flash sales", or both.
+      title: context.tr(
+        _tools.banners && _tools.flashSales
+            ? 'merch.entry.title'
+            : _tools.flashSales
+            ? 'merch.sales.title'
+            : 'merch.banners.title',
+      ),
       subtitle: (_merchWaiting ?? 0) > 0
           ? context
                 .tr('merch.entry.waiting')
@@ -710,6 +717,38 @@ class _VendorHomePageState extends State<VendorHomePage> {
       _tools = tools;
       _low = low;
     });
+  }
+
+  /// The row menu's flash sale item (Phase 2 S4): "Start a flash sale" on
+  /// an active, approved product, "View sale" while its price is locked;
+  /// null without the tool or the `products` permission.
+  String? _flashSaleFor(Map<String, dynamic> product) {
+    if (!_tools.flashSales || !_can('products')) return null;
+    if (product['priceLock'] is Map) return 'vendor.viewSale';
+    final status = product['status']?.toString() ?? 'active';
+    final approval = product['approvalStatus']?.toString() ?? 'approved';
+    return status == 'active' && approval == 'approved'
+        ? 'merch.sale.start'
+        : null;
+  }
+
+  Future<void> _openFlashSale(Map<String, dynamic> product) async {
+    final id = product['id']?.toString() ?? '';
+    if (id.isEmpty) return;
+    final lock = product['priceLock'];
+    final saleId = lock is Map ? lock['saleId']?.toString() ?? '' : '';
+    await context.push(
+      lock is Map
+          ? Uri(
+              path: AppRoutes.vendorMerch,
+              queryParameters: {
+                'tab': 'sales',
+                'item': ?(saleId.isEmpty ? null : saleId),
+              },
+            ).toString()
+          : '${AppRoutes.vendorMerchSaleNew}?productId=${Uri.encodeQueryComponent(id)}',
+    );
+    if (mounted) unawaited(_refresh());
   }
 
   Future<void> _editProduct([Map<String, dynamic>? product]) async {
@@ -1380,12 +1419,21 @@ class _VendorHomePageState extends State<VendorHomePage> {
                 if (value == 'archive') _archiveProduct(product);
                 if (value == 'duplicate') _duplicateProduct(product);
                 if (value == 'delete') _deleteProduct(product);
+                if (value == 'flashSale') _openFlashSale(product);
               },
               itemBuilder: (_) => [
                 PopupMenuItem(
                   value: 'edit',
                   child: Text(context.tr('vendor.edit')),
                 ),
+                // QA #11 (§8.3): from the row too; "View sale" while one
+                // is scheduled or live (the price is locked then).
+                if (_flashSaleFor(product) case final label?)
+                  PopupMenuItem(
+                    key: Key('vendor-product-flash-sale-${product['id']}'),
+                    value: 'flashSale',
+                    child: Text(context.tr(label)),
+                  ),
                 if (ledger) ...[
                   PopupMenuItem(
                     value: 'adjust',
@@ -2708,8 +2756,8 @@ class _VendorProductFormState extends State<VendorProductForm> {
       controller: _price,
       keyboardType: TextInputType.number,
       label: context.tr('vendor.price'),
-      readOnly: _priceLock != null,
-      helperText: _lockHelper(),
+      // Locked: greyed like the discount price, the reason under both.
+      enabled: _priceLock == null,
       errorText: _ledger ? _priceError : null,
       onChanged: _ledger ? (_) => _clearFieldError() : null,
     ),
@@ -2776,9 +2824,30 @@ class _VendorProductFormState extends State<VendorProductForm> {
       controller: _discountPrice,
       keyboardType: TextInputType.number,
       label: context.tr('vendor.discountPrice'),
-      readOnly: _priceLock != null,
-      helperText: _lockHelper(),
+      enabled: _priceLock == null,
     ),
+    // QA #6: its own line, wrapping fully at any width and text size.
+    if (_lockHelper() case final why?)
+      Padding(
+        padding: const EdgeInsets.only(top: FFTokens.spacingXs),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const ExcludeSemantics(
+              child: Icon(Icons.lock_outline, size: FFTokens.iconSm),
+            ),
+            const SizedBox(width: FFTokens.spacingXs),
+            Expanded(
+              child: Text(
+                why,
+                key: const Key('vendor-product-price-locked'),
+                softWrap: true,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
+          ],
+        ),
+      ),
     _flashSaleActions(),
     Row(
       children: [

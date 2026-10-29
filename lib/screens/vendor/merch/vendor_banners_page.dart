@@ -580,7 +580,8 @@ class _VendorBannersPageState extends State<VendorBannersPage> {
 
   static FFBadgeTone _tone(String status) => switch (status) {
     'pending_approval' => FFBadgeTone.warning,
-    'approved' => FFBadgeTone.brand,
+    // Scheduled in info blue, Live in success green (QA S4 #10).
+    'approved' => FFBadgeTone.info,
     'live' => FFBadgeTone.success,
     'rejected' => FFBadgeTone.danger,
     'ended' => FFBadgeTone.defaultTone,

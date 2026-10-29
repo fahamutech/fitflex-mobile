@@ -7005,6 +7005,8 @@ class FFLocale extends ChangeNotifier {
       'merch.sale.endConfirm': 'End now',
       // Shop home Phase 2 S4 revision 2: sale ended when the seller was suspended.
       'merch.sale.line.endedSuspended': 'Ended because your account was suspended',
+      // Shop Phase 2 S4 QA round 1.
+      'merch.sale.needsInternet': 'Needs internet',
     },
     'sw': {
       'app.title': 'FitFlex',
@@ -14046,6 +14048,8 @@ class FFLocale extends ChangeNotifier {
       'merch.sale.endConfirm': 'Sitisha sasa',
       // Shop home Phase 2 S4 revision 2: sale ended when the seller was suspended. [SW: native review]
       'merch.sale.line.endedSuspended': 'Imesitishwa kwa sababu akaunti yako ilisimamishwa',
+      // Shop Phase 2 S4 QA round 1. [SW: native review]
+      'merch.sale.needsInternet': 'Inahitaji intaneti',
     },
   };
 }
