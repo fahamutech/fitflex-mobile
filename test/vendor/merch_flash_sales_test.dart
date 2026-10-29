@@ -273,6 +273,44 @@ void main() {
       expect(p(start, start.add(const Duration(days: 7))), isNull);
     });
 
+    test('edit: the lead time counts only when the start moves', () {
+      final soon = _now.add(const Duration(minutes: 30));
+      expect(
+        flashSaleDatesProblem(
+          startsAt: soon,
+          endsAt: soon.add(const Duration(hours: 2)),
+          now: _now,
+          checkLead: false,
+        ),
+        isNull,
+      );
+    });
+
+    test('price check: the later of the raise and history rules wins', () {
+      final c = FlashSalePriceCheck.fromJson({
+        'ok': false,
+        'raisedAt': '2026-10-24T09:00:00Z',
+        'raisedOn': '2026-10-24',
+        'earliestStart': '2026-11-07T09:00:00Z',
+        'listedAt': '2026-10-26T09:00:00Z',
+        'historyEarliestStart': '2026-11-09T09:00:00Z',
+      });
+      expect(c.raiseFails, isTrue);
+      expect(c.historyFails, isTrue);
+      expect(c.earliestValidStart, DateTime.utc(2026, 11, 9, 9));
+      expect(c.historyShort, isTrue);
+      expect(c.listedOn, DateTime(2026, 10, 26));
+      final raiseLater = FlashSalePriceCheck.fromJson({
+        'ok': false,
+        'raisedOn': '2026-10-28',
+        'earliestStart': '2026-11-11T09:00:00Z',
+        'historyEarliestStart': '2026-11-09T09:00:00Z',
+      });
+      expect(raiseLater.earliestValidStart, DateTime.utc(2026, 11, 11, 9));
+      expect(raiseLater.historyShort, isFalse);
+      expect(FlashSalePriceCheck.fromJson(_checkOk).raised, isFalse);
+    });
+
     test('every error code has a place on the form', () {
       FlashSaleError e(String code, [Map<String, dynamic> extra = const {}]) =>
           flashSaleError(ApiException(422, {'error': code, ...extra}));
@@ -468,6 +506,29 @@ void main() {
       expect(_key('merch-sale-end-confirm'), findsOneWidget);
       await tapVisible(tester, _key('merch-sale-end-confirm'));
       expect(api.sent('POST', '/vendor/flash-sales/s9/end'), isTrue);
+    });
+
+    apiTest('ended because the account was suspended (EN + SW)', (
+      tester,
+      api,
+    ) async {
+      final ended = {
+        ..._sale('s7', 'ended', statusReason: 'vendor_suspended'),
+        'endedByFitflex': true,
+      };
+      _seed(api, sales: [ended]);
+      await _pumpAt(tester, api, '/vendor/merch?tab=sales');
+      expect(
+        _text(tester, 'merch-sale-line-s7'),
+        'Ended because your account was suspended',
+      );
+      await tester.pumpWidget(const SizedBox());
+      _seed(api, sales: [ended]);
+      await _pumpAt(tester, api, '/vendor/merch?tab=sales', lang: 'sw');
+      expect(
+        _text(tester, 'merch-sale-line-s7'),
+        'Imesitishwa kwa sababu akaunti yako ilisimamishwa',
+      );
     });
 
     test('FitFlex-made sales: End falls back to live or scheduled', () {
@@ -771,6 +832,59 @@ void main() {
       await tapVisible(tester, _key('merch-sale-check-retry'));
       expect(_key('merch-sale-check-failed'), findsNothing);
     });
+
+    apiTest('price check: history rule later → its message and its date', (
+      tester,
+      api,
+    ) async {
+      _seed(api);
+      api.on('GET /vendor/flash-sales/price-check', {
+        ..._checkOk,
+        'ok': false,
+        'raisedAt': '2026-10-24T09:00:00Z',
+        'raisedOn': '2026-10-24',
+        'earliestStart': '2026-11-07T09:00:00Z',
+        'listedAt': '2026-10-26T09:00:00Z',
+        'historyEarliestStart': '2026-11-09T09:00:00Z',
+      });
+      await _pumpAt(
+        tester,
+        api,
+        '${AppRoutes.vendorMerchSaleNew}?productId=p1',
+      );
+      expect(
+        find.textContaining('This product was listed on 26 Oct 2026'),
+        findsOneWidget,
+      );
+      // 9 Nov 09:00Z is 12:00 in Tanzania.
+      expect(find.textContaining('9 Nov 2026, 12:00'), findsWidgets);
+      expect(isEnabled(tester, _key('merch-sale-send')), isFalse);
+    });
+
+    apiTest(
+      'editing without moving a start under an hour away: no lead error',
+      (tester, api) async {
+        _seed(
+          api,
+          sales: [
+            _sale(
+              's1',
+              'pending_approval',
+              startsAt: '2026-10-29T08:30:00Z',
+              endsAt: '2026-10-29T12:00:00Z',
+            ),
+          ],
+        );
+        api.on('PATCH /vendor/flash-sales/s1', {
+          'sale': _sale('s1', 'pending_approval'),
+        });
+        await _pumpAt(tester, api, '/vendor/merch/sale/s1/edit');
+        await typeInto(tester, _key('merch-sale-price'), '68000');
+        await tapVisible(tester, _key('merch-sale-send'));
+        expect(_key('merch-sale-error-startsAt'), findsNothing);
+        expect(api.sent('PATCH', '/vendor/flash-sales/s1'), isTrue);
+      },
+    );
 
     apiTest('the notes are shown (seller pays, 14-day rule, review)', (
       tester,

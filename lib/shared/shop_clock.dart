@@ -28,14 +28,47 @@ class ShopClock {
     offset = serverNow.toUtc().difference(deviceNow());
   }
 
-  /// Syncs from a shop answer: its `serverNow` when the body has one, else
-  /// the HTTP `Date` header (whole seconds, so it never replaces a
-  /// `serverNow` taken from the same kind of answer).
-  static void syncFrom(Object? body, String? dateHeader) {
-    final fromBody = body is Map
-        ? DateTime.tryParse(body['serverNow']?.toString() ?? '')
-        : null;
-    sync(fromBody ?? parseHttpDate(dateHeader));
+  /// Syncs from a shop answer (docs/shop-flash-sales-api.md revision 2,
+  /// item 4), most exact first: a top-level `serverNow` (home, product,
+  /// store); the `X-FF-Server-Now` header (lists; Flutter web may not be
+  /// allowed to read it); the `serverNow` inside the first `sale` found
+  /// (rows on lists, the store's products); else the HTTP `Date` header
+  /// (whole seconds).
+  static void syncFrom(Object? body, Map<String, String>? headers) {
+    DateTime? parse(Object? v) => DateTime.tryParse(v?.toString() ?? '');
+    final h = {
+      for (final e in (headers ?? const <String, String>{}).entries)
+        e.key.toLowerCase(): e.value,
+    };
+    sync(
+      (body is Map ? parse(body['serverNow']) : null) ??
+          parse(h['x-ff-server-now']) ??
+          _saleServerNow(body) ??
+          parseHttpDate(h['date']),
+    );
+  }
+
+  /// `serverNow` of the first sale object in a list of rows, a row, or a
+  /// map of rows / a `products` list.
+  static DateTime? _saleServerNow(Object? body, [int depth = 0]) {
+    if (depth > 2) return null;
+    if (body is List) {
+      for (final row in body) {
+        final at = _saleServerNow(row, depth + 1);
+        if (at != null) return at;
+      }
+    } else if (body is Map) {
+      final sale = body['sale'];
+      if (sale is Map) {
+        final at = DateTime.tryParse(sale['serverNow']?.toString() ?? '');
+        if (at != null) return at;
+      }
+      for (final key in const ['products', 'items']) {
+        final at = _saleServerNow(body[key], depth + 1);
+        if (at != null) return at;
+      }
+    }
+    return null;
   }
 
   @visibleForTesting

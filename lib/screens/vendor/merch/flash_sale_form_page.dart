@@ -453,6 +453,7 @@ class _VendorFlashSaleFormPageState extends State<VendorFlashSaleFormPage> {
       endsAt: _endsAt,
       now: _now,
       rules: widget.rules,
+      checkLead: !_editing || _startsAt != widget.sale!.startsAt,
     );
     return problem;
   }
@@ -550,7 +551,7 @@ class _VendorFlashSaleFormPageState extends State<VendorFlashSaleFormPage> {
           '{date}',
           day == null ? '-' : formatDate(day, locale: _lang),
         )
-        .replaceAll('{earliest}', _when(c.earliestStart));
+        .replaceAll('{earliest}', _when(c.earliestValidStart));
   }
 
   /// The check says this sale may not go ahead as set. An edited sale's
@@ -562,7 +563,7 @@ class _VendorFlashSaleFormPageState extends State<VendorFlashSaleFormPage> {
     if (c == null) return _checking;
     if (c.raised) {
       final start = _startsAt;
-      return start == null || start.isBefore(c.earliestStart!);
+      return start == null || start.isBefore(c.earliestValidStart!);
     }
     return false;
   }
@@ -721,15 +722,22 @@ class _VendorFlashSaleFormPageState extends State<VendorFlashSaleFormPage> {
       }
       setState(() {
         if (err.target == 'raised') {
+          final earliest = DateTime.tryParse(
+            '${err.params['earliestStart'] ?? ''}',
+          )?.toUtc();
+          final history = err.key == 'merch.sale.historyShort';
           _check = FlashSalePriceCheck(
             ok: false,
             regularPriceTzs: _check?.regularPriceTzs,
             discountPriceTzs: _check?.discountPriceTzs,
-            raisedOn: FlashSalePriceCheck.day(err.params['raisedOn']),
-            listedOn: FlashSalePriceCheck.tanzaniaDay(err.params['listedAt']),
-            earliestStart: DateTime.tryParse(
-              '${err.params['earliestStart'] ?? ''}',
-            )?.toUtc(),
+            raisedOn: history
+                ? null
+                : FlashSalePriceCheck.day(err.params['raisedOn']),
+            earliestStart: history ? null : earliest,
+            listedOn: history
+                ? FlashSalePriceCheck.tanzaniaDay(err.params['listedAt'])
+                : null,
+            historyEarliestStart: history ? earliest : null,
           );
         } else {
           _serverErrors[err.target] = _fill(err);
@@ -1079,13 +1087,13 @@ class _VendorFlashSaleFormPageState extends State<VendorFlashSaleFormPage> {
                         key: const Key('merch-sale-start-on'),
                         label: context
                             .tr('merch.sale.startOn')
-                            .replaceAll('{date}', _when(c.earliestStart)),
+                            .replaceAll('{date}', _when(c.earliestValidStart)),
                         variant: FFButtonVariant.secondary,
                         visualDensity: VisualDensity.standard,
                         maxLines: 2,
                         onPressed: _busy
                             ? null
-                            : () => _startOnEarliest(c.earliestStart!),
+                            : () => _startOnEarliest(c.earliestValidStart!),
                       ),
                     ),
                   ),

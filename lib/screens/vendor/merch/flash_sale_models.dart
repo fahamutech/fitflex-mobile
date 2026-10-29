@@ -84,9 +84,13 @@ String? flashSaleDatesProblem({
   required DateTime? endsAt,
   required DateTime now,
   FlashSaleRules rules = const FlashSaleRules(),
+  bool checkLead = true,
 }) {
   if (startsAt == null || endsAt == null) return 'required';
-  if (startsAt.isBefore(now.add(rules.minLead))) return 'startSoon';
+  // On an edit the lead time counts only when the start moves (revision 2).
+  if (checkLead && startsAt.isBefore(now.add(rules.minLead))) {
+    return 'startSoon';
+  }
   if (!endsAt.isAfter(startsAt)) return 'endAfter';
   final length = endsAt.difference(startsAt);
   if (length < rules.minLength || length > rules.maxLength) return 'length';
@@ -106,7 +110,12 @@ class FlashSalePriceCheck {
     this.lockedStartsAt,
     this.lockedEndsAt,
     this.listedOn,
+    this.historyEarliestStart,
   });
+
+  /// The price-history rule's earliest start (`historyEarliestStart`;
+  /// for `422 price_history_too_short`, its `earliestStart`).
+  final DateTime? historyEarliestStart;
 
   final bool ok;
 
@@ -114,8 +123,27 @@ class FlashSalePriceCheck {
   /// and needs 14 days in the shop before a sale ([earliestStart]).
   final DateTime? listedOn;
 
-  /// The 14 days of price history are not there yet (a new product).
-  bool get historyShort => raised && listedOn != null;
+  /// The 14-day raise rule fails ([earliestStart] set).
+  bool get raiseFails => !ok && earliestStart != null;
+
+  /// The 14 days of price history are not there yet (a new or copied
+  /// product): [historyEarliestStart] set.
+  bool get historyFails => !ok && historyEarliestStart != null;
+
+  /// The earliest start both rules allow: the later of the two.
+  DateTime? get earliestValidStart {
+    final a = raiseFails ? earliestStart : null;
+    final b = historyFails ? historyEarliestStart : null;
+    if (a == null) return b;
+    if (b == null) return a;
+    return a.isAfter(b) ? a : b;
+  }
+
+  /// Say the history rule (not the raise rule): it is the one that sets the
+  /// earliest start.
+  bool get historyShort =>
+      historyFails &&
+      (!raiseFails || !historyEarliestStart!.isBefore(earliestStart!));
   final num? regularPriceTzs;
   final num? discountPriceTzs;
   final num? maxSalePriceTzs;
@@ -128,8 +156,8 @@ class FlashSalePriceCheck {
   final DateTime? lockedStartsAt;
   final DateTime? lockedEndsAt;
 
-  /// The 14-day rule failed.
-  bool get raised => !ok && earliestStart != null;
+  /// A rule fails: the sale can't start before [earliestValidStart].
+  bool get raised => earliestValidStart != null;
 
   /// Another sale holds the product at that time.
   bool get locked => !ok && lockedStartsAt != null;
@@ -170,6 +198,7 @@ class FlashSalePriceCheck {
       lockedStartsAt: _date(lock?['startsAt']),
       lockedEndsAt: _date(lock?['endsAt']),
       listedOn: tanzaniaDay(json['listedAt']),
+      historyEarliestStart: _date(json['historyEarliestStart']),
     );
   }
 }

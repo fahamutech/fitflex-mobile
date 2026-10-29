@@ -96,13 +96,13 @@ class ApiClient {
     String path, {
     Object? body,
     Map<String, String>? extraHeaders,
-    void Function(String? dateHeader)? onDate,
+    void Function(Map<String, String> headers)? onHeaders,
   }) => _doRequest(
     method,
     path,
     body: body,
     extraHeaders: extraHeaders,
-    onDate: onDate,
+    onHeaders: onHeaders,
     attempt: 0,
   );
 
@@ -111,7 +111,7 @@ class ApiClient {
     String path, {
     Object? body,
     Map<String, String>? extraHeaders,
-    void Function(String? dateHeader)? onDate,
+    void Function(Map<String, String> headers)? onHeaders,
     required int attempt,
   }) async {
     final uri = Uri.parse('$baseUrl$path');
@@ -172,7 +172,7 @@ class ApiClient {
           path,
           body: body,
           extraHeaders: extraHeaders,
-          onDate: onDate,
+          onHeaders: onHeaders,
           attempt: attempt + 1,
         );
       }
@@ -189,7 +189,7 @@ class ApiClient {
         // ApiException, with no body: its HTML never reaches the UI.
         : _decodeErrorBody(res.body);
     if (ok) {
-      onDate?.call(res.headers['date']);
+      onHeaders?.call(res.headers);
       for (final l in List.of(_successListeners)) {
         try {
           l(method, path);
@@ -739,10 +739,11 @@ class ApiClient {
     String kind,
     DiscoverQuery query,
   ) async {
-    final out = await _request(
-      'GET',
-      '/discover/$kind${query.toQueryString()}',
-    );
+    final path = '/discover/$kind${query.toQueryString()}';
+    // Products may carry flash sales (Phase 2 S4): say this build shows them.
+    final out = kind == 'products'
+        ? await _shopGet(path)
+        : await _request('GET', path);
     return Map<String, dynamic>.from(out as Map);
   }
 
@@ -1914,7 +1915,7 @@ class ApiClient {
     List<String> recent = const [],
     String? areaId,
   }) async {
-    String? date;
+    Map<String, String>? headers;
     final out = await _request(
       'GET',
       _withQuery('/shop/home', {
@@ -1927,9 +1928,9 @@ class ApiClient {
         if (areaId != null && areaId.isNotEmpty) kShopAreaHeader: areaId,
         ..._shopCaps,
       },
-      onDate: (d) => date = d,
+      onHeaders: (h) => headers = h,
     );
-    ShopClock.syncFrom(out, date);
+    ShopClock.syncFrom(out, headers);
     return Map<String, dynamic>.from(out as Map);
   }
 
@@ -1942,6 +1943,20 @@ class ApiClient {
   /// older builds never see prices they can't explain).
   static const kShopCapsHeader = 'X-FF-Shop-Caps';
   static const _shopCaps = {kShopCapsHeader: 'flash_sale'};
+
+  /// GET with the shop capability header, syncing [ShopClock] from the
+  /// answer (docs/shop-flash-sales-api.md revision 2, item 4).
+  Future<dynamic> _shopGet(String path, {Map<String, String>? headers}) async {
+    Map<String, String>? got;
+    final out = await _request(
+      'GET',
+      path,
+      extraHeaders: {...?headers, ..._shopCaps},
+      onHeaders: (h) => got = h,
+    );
+    ShopClock.syncFrom(out, got);
+    return out;
+  }
 
   /// The active shop areas (Phase 2 S3): `{areas: [{id, level, name, names,
   /// parentId, lat, lng, radiusKm}]}`. 404 `feature_disabled` when
@@ -2044,14 +2059,14 @@ class ApiClient {
     final path = query.isEmpty
         ? '/shop/products'
         : '/shop/products?${Uri(queryParameters: query).query}';
-    String? date;
+    Map<String, String>? headers;
     final out = await _request(
       'GET',
       path,
       extraHeaders: {...?_areaHeader(areaId), ..._shopCaps},
-      onDate: (d) => date = d,
+      onHeaders: (h) => headers = h,
     );
-    ShopClock.syncFrom(out, date);
+    ShopClock.syncFrom(out, headers);
     return out;
   }
 
@@ -2085,14 +2100,14 @@ class ApiClient {
   /// [areaId]: the near-you area in `X-FF-Area` (QA #4), for the
   /// "Delivers to your area" badge.
   Future<Map<String, dynamic>> shopProduct(String id, {String? areaId}) async {
-    String? date;
+    Map<String, String>? headers;
     final out = await _request(
       'GET',
       '/shop/products/$id',
       extraHeaders: {...?_areaHeader(areaId), ..._shopCaps},
-      onDate: (d) => date = d,
+      onHeaders: (h) => headers = h,
     );
-    ShopClock.syncFrom(out, date);
+    ShopClock.syncFrom(out, headers);
     return out;
   }
 
@@ -2100,7 +2115,7 @@ class ApiClient {
       areaId == null || areaId.isEmpty ? null : {kShopAreaHeader: areaId};
 
   Future<Map<String, dynamic>> vendorStore(String id) async =>
-      await _request('GET', '/shop/vendors/$id');
+      Map<String, dynamic>.from(await _shopGet('/shop/vendors/$id') as Map);
 
   Future<Map<String, dynamic>> sendMarketplaceEnquiry(
     String productId,

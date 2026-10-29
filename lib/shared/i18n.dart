@@ -7003,6 +7003,8 @@ class FFLocale extends ChangeNotifier {
       'merch.sale.suspended': 'Your account is suspended. Your flash sales are not shown in the shop.',
       'merch.sale.historyShort': 'This product was listed on {date}. New products need 14 days in the shop before a flash sale: it can start on {earliest} or later.',
       'merch.sale.endConfirm': 'End now',
+      // Shop home Phase 2 S4 revision 2: sale ended when the seller was suspended.
+      'merch.sale.line.endedSuspended': 'Ended because your account was suspended',
     },
     'sw': {
       'app.title': 'FitFlex',
@@ -14042,6 +14044,8 @@ class FFLocale extends ChangeNotifier {
       'merch.sale.suspended': 'Akaunti yako imesimamishwa. Ofa zako za muda mfupi hazionyeshwi dukani.',
       'merch.sale.historyShort': 'Bidhaa hii iliwekwa dukani tarehe {date}. Bidhaa mpya zinahitaji siku 14 dukani kabla ya ofa ya muda mfupi: inaweza kuanza {earliest} au baadaye.',
       'merch.sale.endConfirm': 'Sitisha sasa',
+      // Shop home Phase 2 S4 revision 2: sale ended when the seller was suspended. [SW: native review]
+      'merch.sale.line.endedSuspended': 'Imesitishwa kwa sababu akaunti yako ilisimamishwa',
     },
   };
 }

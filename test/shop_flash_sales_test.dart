@@ -22,6 +22,7 @@ import 'package:fitflexmobile/shared/api_client.dart';
 import 'package:fitflexmobile/shared/components/components.dart';
 import 'package:fitflexmobile/shared/formatters.dart';
 import 'package:fitflexmobile/shared/i18n.dart';
+import 'package:fitflexmobile/shared/promotion.dart' show DiscoverQuery;
 import 'package:fitflexmobile/shared/shop_home.dart';
 import 'package:fitflexmobile/shared/widgets/shop_browse_page.dart';
 import 'package:fitflexmobile/shared/widgets/shop_home/shop_flash_sale.dart';
@@ -750,12 +751,73 @@ void main() {
       expect(parseHttpDate('yesterday'), isNull);
       // A body serverNow wins over the header.
       ShopClock.debugDeviceNow = () => _serverNow;
-      ShopClock.syncFrom({
-        'serverNow': _serverNow
-            .add(const Duration(minutes: 5))
-            .toIso8601String(),
-      }, 'Thu, 29 Oct 2026 09:00:00 GMT');
+      ShopClock.syncFrom(
+        {
+          'serverNow': _serverNow
+              .add(const Duration(minutes: 5))
+              .toIso8601String(),
+        },
+        {'date': 'Thu, 29 Oct 2026 09:00:00 GMT'},
+      );
       expect(ShopClock.offset, const Duration(minutes: 5));
+      ShopClock.reset();
+    });
+
+    test("lists: X-FF-Server-Now, else a sale's serverNow, before Date", () {
+      ShopClock.debugDeviceNow = () => _serverNow;
+      String at(Duration d) => _serverNow.add(d).toIso8601String();
+      final rows = [
+        _p('p5', 'Rope'),
+        _p(
+          'p1',
+          'Whey',
+          sale: {..._sale('p1'), 'serverNow': at(const Duration(minutes: 2))},
+        ),
+      ];
+      // The header wins over the sale's own time.
+      ShopClock.syncFrom(rows, {
+        'X-FF-Server-Now': at(const Duration(minutes: 7)),
+        'date': 'Thu, 29 Oct 2026 09:00:00 GMT',
+      });
+      expect(ShopClock.offset, const Duration(minutes: 7));
+      // No header (Flutter web may not read it): the sale's serverNow.
+      ShopClock.syncFrom(rows, {'date': 'Thu, 29 Oct 2026 09:00:00 GMT'});
+      expect(ShopClock.offset, const Duration(minutes: 2));
+      // A store answer: its products list.
+      ShopClock.syncFrom({'products': rows}, const {});
+      expect(ShopClock.offset, const Duration(minutes: 2));
+      // Nothing else: Date.
+      ShopClock.syncFrom(
+        [_p('p5', 'Rope')],
+        {'date': 'Thu, 29 Oct 2026 09:00:00 GMT'},
+      );
+      expect(ShopClock.offset, const Duration(hours: 1));
+      ShopClock.reset();
+    });
+
+    test('caps header on the store and on /discover/products only', () async {
+      final api = RecordingApi()
+        ..on('GET /shop/vendors/v1', {'id': 'v1', 'products': []})
+        ..on('GET /discover/products', {'results': []})
+        ..on('GET /discover/gyms', {'results': []});
+      await api.run(() async {
+        final client = ApiClient(baseUrl: 'http://fixtures.local');
+        await client.vendorStore('v1');
+        await client.discover('products', const DiscoverQuery());
+        await client.discover('gyms', const DiscoverQuery());
+      });
+      expect(
+        api.only('GET', '/shop/vendors/v1').headers['x-ff-shop-caps'],
+        'flash_sale',
+      );
+      expect(
+        api.only('GET', '/discover/products').headers['x-ff-shop-caps'],
+        'flash_sale',
+      );
+      expect(
+        api.only('GET', '/discover/gyms').headers['x-ff-shop-caps'],
+        isNull,
+      );
       ShopClock.reset();
     });
   });

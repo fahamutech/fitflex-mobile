@@ -489,6 +489,11 @@ class _VendorFlashSalesPageState extends State<VendorFlashSalesPage> {
       case 'live':
         return fill('merch.sale.line.ends', _when(s.endsAt));
       case 'ended':
+        // Ended because the business was suspended (revision 2; also
+        // `endedByFitflex`, so said before the FitFlex line).
+        if (s.reasonCode == 'vendor_suspended') {
+          return context.tr('merch.sale.line.endedSuspended');
+        }
         if (s.endedByFitflex) {
           final note = s.reasonNote?.trim() ?? '';
           return context
