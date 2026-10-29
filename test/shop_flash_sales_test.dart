@@ -11,8 +11,12 @@
 // `endsAt`; POST /me/shop-orders items[].expectedPriceTzs → 409
 // price_changed {productId, currentPriceTzs, lines, expectedTotalTzs,
 // totalTzs}. With the flag off none of these fields exist.
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 
 import 'package:fitflexmobile/shared/api_client.dart';
 import 'package:fitflexmobile/shared/components/components.dart';
@@ -264,12 +268,12 @@ void main() {
         // Minute precision for screen readers, never per second.
         expect(
           tester.getSemantics(_key('ff-countdown')).label,
-          'Sale ends in 1 hours 59 minutes',
+          'Sale ends in 1 hour 59 minutes',
         );
         await tester.pump(const Duration(seconds: 20));
         expect(
           tester.getSemantics(_key('ff-countdown')).label,
-          'Sale ends in 1 hours 59 minutes',
+          'Sale ends in 1 hour 59 minutes',
         );
         expect(
           tester
@@ -610,6 +614,149 @@ void main() {
       expect(find.text('Rudi kwenye kikapu'), findsOneWidget);
       expect(find.text('Ofa imeisha'), findsWidgets);
       expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('countdown words (singular, no "0 minutes")', () {
+    testWidgets('English and Swahili', (tester) async {
+      final out = <String, List<String>>{};
+      for (final lang in ['en', 'sw']) {
+        await tester.pumpWidget(
+          FFLocaleScope(
+            notifier: FFLocale()..set(Locale(lang)),
+            child: MaterialApp(
+              home: Builder(
+                builder: (context) {
+                  out[lang] = [
+                    for (final d in const [
+                      Duration(hours: 24),
+                      Duration(hours: 2),
+                      Duration(hours: 1),
+                      Duration(hours: 1, minutes: 1),
+                      Duration(hours: 1, minutes: 30),
+                      Duration(hours: 2, minutes: 1),
+                      Duration(hours: 2, minutes: 14),
+                      Duration(minutes: 1),
+                      Duration(minutes: 9),
+                      Duration(seconds: 30),
+                    ])
+                      ffCountdownA11yLabel(context, d),
+                  ];
+                  return const SizedBox();
+                },
+              ),
+            ),
+          ),
+        );
+      }
+      expect(out['en'], [
+        'Sale ends in 24 hours',
+        'Sale ends in 2 hours',
+        'Sale ends in 1 hour',
+        'Sale ends in 1 hour 1 minute',
+        'Sale ends in 1 hour 30 minutes',
+        'Sale ends in 2 hours 1 minute',
+        'Sale ends in 2 hours 14 minutes',
+        'Sale ends in 1 minute',
+        'Sale ends in 9 minutes',
+        'Sale ends in less than a minute',
+      ]);
+      expect(out['sw'], [
+        'Ofa inaisha baada ya saa 24',
+        'Ofa inaisha baada ya saa 2',
+        'Ofa inaisha baada ya saa 1',
+        'Ofa inaisha baada ya saa 1 na dakika 1',
+        'Ofa inaisha baada ya saa 1 na dakika 30',
+        'Ofa inaisha baada ya saa 2 na dakika 1',
+        'Ofa inaisha baada ya saa 2 na dakika 14',
+        'Ofa inaisha baada ya dakika 1',
+        'Ofa inaisha baada ya dakika 9',
+        'Ofa inaisha kabla ya dakika moja',
+      ]);
+      for (final words in [...out['en']!, ...out['sw']!]) {
+        expect(words, isNot(contains(' 0 ')), reason: words);
+      }
+    });
+  });
+
+  group('capabilities and the server clock', () {
+    apiTest('X-FF-Shop-Caps: flash_sale on /shop/home, /shop/products and '
+        '/shop/products/:id', (tester, api) async {
+      _deviceClock(tester);
+      _seed(api, _home());
+      await _pump(tester, api);
+      // Results (GET /shop/products), then a product (GET /:id).
+      await tapVisible(tester, _key('shop-home-browse-all'));
+      await tapVisible(tester, find.text('Whey Protein').first);
+      for (final path in [
+        '/shop/home',
+        '/shop/products',
+        '/shop/products/p1',
+      ]) {
+        final calls = api.where('GET', path);
+        expect(calls, isNotEmpty, reason: path);
+        for (final c in calls) {
+          expect(c.headers['x-ff-shop-caps'], 'flash_sale', reason: path);
+        }
+      }
+      // Never on other calls (orders, gyms).
+      expect(
+        api.where('GET', '/me/shop-orders').first.headers['x-ff-shop-caps'],
+        isNull,
+      );
+    });
+
+    test('serverNow on /shop/products/:id syncs the clock', () async {
+      ShopClock.debugDeviceNow = () => _serverNow.add(const Duration(hours: 1));
+      final api = RecordingApi()
+        ..on('GET /shop/products/p1', {
+          ..._p('p1', 'Whey'),
+          'serverNow': _serverNow.toIso8601String(),
+        });
+      await api.run(
+        () => ApiClient(baseUrl: 'http://fixtures.local').shopProduct('p1'),
+      );
+      expect(ShopClock.offset, const Duration(hours: -1));
+      ShopClock.reset();
+    });
+
+    test('no serverNow: the HTTP Date header syncs the clock', () async {
+      ShopClock.debugDeviceNow = () =>
+          _serverNow.subtract(const Duration(hours: 1));
+      final client = MockClient(
+        (_) async => http.Response(
+          jsonEncode([_p('p1', 'Whey')]),
+          200,
+          headers: {
+            'content-type': 'application/json',
+            'date': 'Thu, 29 Oct 2026 08:00:00 GMT',
+          },
+        ),
+      );
+      await http.runWithClient(
+        () => ApiClient(baseUrl: 'http://fixtures.local').listShopProducts(),
+        () => client,
+      );
+      expect(ShopClock.offset, const Duration(hours: 1));
+      ShopClock.reset();
+    });
+
+    test('parseHttpDate', () {
+      expect(
+        parseHttpDate('Thu, 29 Oct 2026 08:00:00 GMT'),
+        DateTime.utc(2026, 10, 29, 8),
+      );
+      expect(parseHttpDate(null), isNull);
+      expect(parseHttpDate('yesterday'), isNull);
+      // A body serverNow wins over the header.
+      ShopClock.debugDeviceNow = () => _serverNow;
+      ShopClock.syncFrom({
+        'serverNow': _serverNow
+            .add(const Duration(minutes: 5))
+            .toIso8601String(),
+      }, 'Thu, 29 Oct 2026 09:00:00 GMT');
+      expect(ShopClock.offset, const Duration(minutes: 5));
+      ShopClock.reset();
     });
   });
 

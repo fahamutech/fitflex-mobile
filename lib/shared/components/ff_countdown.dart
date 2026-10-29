@@ -31,8 +31,9 @@ FFCountdownPhase ffCountdownPhase(Duration left) => left == Duration.zero
     : FFCountdownPhase.chips;
 
 /// The screen-reader label at minute precision (spec P1 §11.2): "Sale ends
-/// in 2 hours 14 minutes", "Sale ends in 9 minutes", under a minute "Sale
-/// ends in less than a minute". Changes at most once a minute.
+/// in 2 hours 14 minutes", "in 1 hour", "in 24 hours", "in 1 minute",
+/// under a minute "Sale ends in less than a minute". No "0 minutes", and
+/// singular forms for 1. Changes at most once a minute.
 String ffCountdownA11yLabel(BuildContext context, Duration left) {
   if (left == Duration.zero) return context.tr('shop.home.saleEnded');
   if (left > const Duration(hours: 24)) {
@@ -40,14 +41,30 @@ String ffCountdownA11yLabel(BuildContext context, Duration left) {
   }
   final h = left.inHours;
   final m = left.inMinutes % 60;
-  if (h == 0 && m == 0) return context.tr('shop.a11y.countdownUnderMinute');
+  String t(String key) =>
+      context.tr(key).replaceAll('{h}', '$h').replaceAll('{m}', '$m');
   if (h == 0) {
-    return context.tr('shop.a11y.countdownMinutes').replaceAll('{m}', '$m');
+    return switch (m) {
+      0 => t('shop.a11y.countdownUnderMinute'),
+      1 => t('shop.a11y.countdownOneMinute'),
+      _ => t('shop.a11y.countdownMinutes'),
+    };
   }
-  return context
-      .tr('shop.a11y.countdown')
-      .replaceAll('{h}', '$h')
-      .replaceAll('{m}', '$m');
+  if (m == 0) {
+    return t(
+      h == 1 ? 'shop.a11y.countdownOneHour' : 'shop.a11y.countdownHoursOnly',
+    );
+  }
+  if (h == 1) {
+    return t(
+      m == 1
+          ? 'shop.a11y.countdownOneHourOneMinute'
+          : 'shop.a11y.countdownOneHourMinutes',
+    );
+  }
+  return t(
+    m == 1 ? 'shop.a11y.countdownHoursOneMinute' : 'shop.a11y.countdown',
+  );
 }
 
 /// "Ends in 2 days" / "Ends in 1 day" (whole days, rounded down).

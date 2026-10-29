@@ -40,6 +40,10 @@ String shopSaleEndsText(
   final m = left.inMinutes % 60;
   if (h == 0 && m == 0) return context.tr('shop.sale.endsInUnderMin');
   if (h == 0) return context.tr('shop.sale.endsInMin').replaceAll('{m}', '$m');
+  // No "0 min".
+  if (m == 0) {
+    return context.tr('shop.sale.endsInHours').replaceAll('{h}', '$h');
+  }
   return context
       .tr('shop.sale.endsIn')
       .replaceAll('{h}', '$h')

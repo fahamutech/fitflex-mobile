@@ -72,7 +72,7 @@ class _VendorFlashSaleFormRouteState extends State<VendorFlashSaleFormRoute> {
     if (!mounted) return;
     String? blocked;
     if (tools.suspended) {
-      blocked = 'merch.suspended';
+      blocked = 'merch.sale.suspended';
     } else if (!tools.flashSales) {
       blocked = 'merch.unavailable';
     } else if (!canManageProducts(context)) {
@@ -129,7 +129,7 @@ class _VendorFlashSaleFormRouteState extends State<VendorFlashSaleFormRoute> {
           _blocked = 'merch.notYours';
         } else if (vendor['canPropose'] == false) {
           _blocked = vendor['reason'] == 'vendor_suspended'
-              ? 'merch.suspended'
+              ? 'merch.sale.suspended'
               : 'merch.pendingTitle';
         } else if (sale != null && !sale.canEdit) {
           _blocked = 'merch.sale.notEditable';
@@ -526,7 +526,7 @@ class _VendorFlashSaleFormPageState extends State<VendorFlashSaleFormPage> {
         // Announced once when it appears (polite).
         SemanticsService.sendAnnouncement(
           View.of(context),
-          _raisedText(_check!.raisedOn, _check!.earliestStart),
+          _ruleText(_check!),
           Directionality.of(context),
         );
       }
@@ -539,19 +539,27 @@ class _VendorFlashSaleFormPageState extends State<VendorFlashSaleFormPage> {
     }
   }
 
-  String _raisedText(DateTime? raisedOn, DateTime? earliest) => context
-      .tr('merch.sale.raised')
-      .replaceAll(
-        '{date}',
-        raisedOn == null ? '-' : formatDate(raisedOn, locale: _lang),
-      )
-      .replaceAll('{earliest}', _when(earliest));
+  /// "You raised this product's price on {date}…", or for a product
+  /// listed less than 14 days ago (`price_history_too_short`) "This product
+  /// was listed on {date}…". Both end with the earliest start.
+  String _ruleText(FlashSalePriceCheck c) {
+    final day = c.historyShort ? c.listedOn : c.raisedOn;
+    return context
+        .tr(c.historyShort ? 'merch.sale.historyShort' : 'merch.sale.raised')
+        .replaceAll(
+          '{date}',
+          day == null ? '-' : formatDate(day, locale: _lang),
+        )
+        .replaceAll('{earliest}', _when(c.earliestStart));
+  }
 
   /// The check says this sale may not go ahead as set. An edited sale's
-  /// own lock (`lockedBy` = itself) is not a clash.
+  /// own lock (`lockedBy` = itself) is not a clash. A check that could not
+  /// be made does not block: the server checks again on send (as the
+  /// portal says), and Try again is offered.
   bool get _checkBlocks {
     final c = _check;
-    if (c == null) return _checking || _checkFailed;
+    if (c == null) return _checking;
     if (c.raised) {
       final start = _startsAt;
       return start == null || start.isBefore(c.earliestStart!);
@@ -667,7 +675,7 @@ class _VendorFlashSaleFormPageState extends State<VendorFlashSaleFormPage> {
         title: context.tr('merch.sale.resend.title'),
         message: context.tr('merch.sale.resend.body'),
         confirmLabel: context.tr('merch.resend.confirm'),
-        cancelLabel: context.tr('merch.resend.keep'),
+        cancelLabel: context.tr('merch.sale.resend.keep'),
         confirmKey: const Key('merch-sale-resend-confirm'),
       );
       if (!ok || !mounted) return;
@@ -696,7 +704,7 @@ class _VendorFlashSaleFormPageState extends State<VendorFlashSaleFormPage> {
             'pending_approval';
       }
       if (!mounted) return;
-      messenger.success(locale.t('merch.sent'));
+      messenger.success(locale.t('merch.sale.sent'));
       _dirty = false;
       _leave(true);
     } on ApiException catch (e) {
@@ -718,6 +726,7 @@ class _VendorFlashSaleFormPageState extends State<VendorFlashSaleFormPage> {
             regularPriceTzs: _check?.regularPriceTzs,
             discountPriceTzs: _check?.discountPriceTzs,
             raisedOn: FlashSalePriceCheck.day(err.params['raisedOn']),
+            listedOn: FlashSalePriceCheck.tanzaniaDay(err.params['listedAt']),
             earliestStart: DateTime.tryParse(
               '${err.params['earliestStart'] ?? ''}',
             )?.toUtc(),
@@ -733,7 +742,7 @@ class _VendorFlashSaleFormPageState extends State<VendorFlashSaleFormPage> {
       messenger.error(
         locale.t(
           isNetworkError(e) || e is TimeoutException
-              ? 'merch.notSentOffline'
+              ? 'merch.sale.notSentOffline'
               : 'merch.saveFailed',
         ),
       );
@@ -1058,7 +1067,7 @@ class _VendorFlashSaleFormPageState extends State<VendorFlashSaleFormPage> {
                   FFAlert(
                     key: const Key('merch-sale-raised'),
                     tone: FFAlertTone.error,
-                    message: _raisedText(c.raisedOn, c.earliestStart),
+                    message: _ruleText(c),
                   ),
                   const SizedBox(height: FFTokens.spacingXs),
                   Align(

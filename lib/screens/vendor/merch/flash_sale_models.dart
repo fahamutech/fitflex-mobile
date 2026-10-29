@@ -105,9 +105,17 @@ class FlashSalePriceCheck {
     this.earliestStart,
     this.lockedStartsAt,
     this.lockedEndsAt,
+    this.listedOn,
   });
 
   final bool ok;
+
+  /// `price_history_too_short`: the product was listed on this Tanzania day
+  /// and needs 14 days in the shop before a sale ([earliestStart]).
+  final DateTime? listedOn;
+
+  /// The 14 days of price history are not there yet (a new product).
+  bool get historyShort => raised && listedOn != null;
   final num? regularPriceTzs;
   final num? discountPriceTzs;
   final num? maxSalePriceTzs;
@@ -128,6 +136,14 @@ class FlashSalePriceCheck {
 
   static DateTime? _date(Object? v) =>
       DateTime.tryParse(v?.toString() ?? '')?.toUtc();
+
+  /// An instant (`listedAt`) as the Tanzania calendar day it fell on.
+  static DateTime? tanzaniaDay(Object? v) {
+    final at = DateTime.tryParse(v?.toString() ?? '');
+    if (at == null) return null;
+    final e = at.toUtc().add(const Duration(hours: 3));
+    return DateTime(e.year, e.month, e.day);
+  }
 
   /// `raisedOn` is a date with no time: kept as that calendar day.
   static DateTime? day(Object? v) {
@@ -153,6 +169,7 @@ class FlashSalePriceCheck {
       earliestStart: _date(json['earliestStart']),
       lockedStartsAt: _date(lock?['startsAt']),
       lockedEndsAt: _date(lock?['endsAt']),
+      listedOn: tanzaniaDay(json['listedAt']),
     );
   }
 }
@@ -283,8 +300,15 @@ class VendorFlashSale {
   bool get canWithdraw =>
       _may('withdraw', const {'draft', 'pending_approval', 'approved'});
 
-  /// End now: the vendor's own live sale (a scheduled one is withdrawn).
-  bool get canEnd => _may('end', const {'live'});
+  /// End now: a live sale; also a scheduled one FitFlex made (the vendor
+  /// can't withdraw those, owner ruling 2026-10-29: vendors may end
+  /// FitFlex-made sales on their products). The server's allowedActions
+  /// decide when sent.
+  bool get canEnd =>
+      allowedActions?.contains('end') ??
+      (byFitflex
+          ? const {'live', 'approved'}.contains(status)
+          : status == 'live');
 
   bool get editResends => status == 'approved';
 }
@@ -376,6 +400,15 @@ FlashSaleError flashSaleError(ApiException e) {
           'earliestStart': body['earliestStart'],
         },
       );
+    case 'price_history_too_short':
+      return FlashSaleError(
+        'raised',
+        'merch.sale.historyShort',
+        params: {
+          'listedAt': body['listedAt'],
+          'earliestStart': body['earliestStart'],
+        },
+      );
     case 'sale_overlap':
       return FlashSaleError(
         'product',
@@ -387,7 +420,11 @@ FlashSaleError flashSaleError(ApiException e) {
     case 'not_your_product':
       return const FlashSaleError('product', 'merch.sale.notEligible');
     case 'vendor_suspended':
-      return const FlashSaleError('message', 'merch.suspended', closes: true);
+      return const FlashSaleError(
+        'message',
+        'merch.sale.suspended',
+        closes: true,
+      );
     case 'vendor_not_approved':
       return const FlashSaleError('message', 'merch.pendingBody', closes: true);
     case 'vendor_permission_forbidden':
@@ -405,6 +442,7 @@ FlashSaleError flashSaleError(ApiException e) {
         'merch.sale.notEditable',
         closes: true,
       );
+    case 'vendor_not_found':
     case 'sale_not_found':
       return const FlashSaleError('message', 'merch.notYours', closes: true);
     case 'feature_disabled':

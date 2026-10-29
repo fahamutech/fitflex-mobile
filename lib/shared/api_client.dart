@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'models.dart';
 import 'promotion.dart';
 import 'rest_log.dart';
+import 'shop_clock.dart';
 
 class ApiException implements Exception {
   final int status;
@@ -95,11 +96,13 @@ class ApiClient {
     String path, {
     Object? body,
     Map<String, String>? extraHeaders,
+    void Function(String? dateHeader)? onDate,
   }) => _doRequest(
     method,
     path,
     body: body,
     extraHeaders: extraHeaders,
+    onDate: onDate,
     attempt: 0,
   );
 
@@ -108,6 +111,7 @@ class ApiClient {
     String path, {
     Object? body,
     Map<String, String>? extraHeaders,
+    void Function(String? dateHeader)? onDate,
     required int attempt,
   }) async {
     final uri = Uri.parse('$baseUrl$path');
@@ -168,6 +172,7 @@ class ApiClient {
           path,
           body: body,
           extraHeaders: extraHeaders,
+          onDate: onDate,
           attempt: attempt + 1,
         );
       }
@@ -184,6 +189,7 @@ class ApiClient {
         // ApiException, with no body: its HTML never reaches the UI.
         : _decodeErrorBody(res.body);
     if (ok) {
+      onDate?.call(res.headers['date']);
       for (final l in List.of(_successListeners)) {
         try {
           l(method, path);
@@ -1908,6 +1914,7 @@ class ApiClient {
     List<String> recent = const [],
     String? areaId,
   }) async {
+    String? date;
     final out = await _request(
       'GET',
       _withQuery('/shop/home', {
@@ -1918,13 +1925,23 @@ class ApiClient {
       }),
       extraHeaders: {
         if (areaId != null && areaId.isNotEmpty) kShopAreaHeader: areaId,
+        ..._shopCaps,
       },
+      onDate: (d) => date = d,
     );
+    ShopClock.syncFrom(out, date);
     return Map<String, dynamic>.from(out as Map);
   }
 
   /// The header that carries the near-you area on GET /shop/home.
   static const kShopAreaHeader = 'X-FF-Area';
+
+  /// Phase 2 S4: what this build can show, on GET /shop/home,
+  /// /shop/products and /shop/products/:id. Without `flash_sale` the
+  /// server leaves out the flash_sale section and the `sale` fields (so
+  /// older builds never see prices they can't explain).
+  static const kShopCapsHeader = 'X-FF-Shop-Caps';
+  static const _shopCaps = {kShopCapsHeader: 'flash_sale'};
 
   /// The active shop areas (Phase 2 S3): `{areas: [{id, level, name, names,
   /// parentId, lat, lng, radiusKm}]}`. 404 `feature_disabled` when
@@ -2027,7 +2044,15 @@ class ApiClient {
     final path = query.isEmpty
         ? '/shop/products'
         : '/shop/products?${Uri(queryParameters: query).query}';
-    return await _request('GET', path, extraHeaders: _areaHeader(areaId));
+    String? date;
+    final out = await _request(
+      'GET',
+      path,
+      extraHeaders: {...?_areaHeader(areaId), ..._shopCaps},
+      onDate: (d) => date = d,
+    );
+    ShopClock.syncFrom(out, date);
+    return out;
   }
 
   Future<Map<String, dynamic>> createShopOrder(
@@ -2059,12 +2084,17 @@ class ApiClient {
 
   /// [areaId]: the near-you area in `X-FF-Area` (QA #4), for the
   /// "Delivers to your area" badge.
-  Future<Map<String, dynamic>> shopProduct(String id, {String? areaId}) async =>
-      await _request(
-        'GET',
-        '/shop/products/$id',
-        extraHeaders: _areaHeader(areaId),
-      );
+  Future<Map<String, dynamic>> shopProduct(String id, {String? areaId}) async {
+    String? date;
+    final out = await _request(
+      'GET',
+      '/shop/products/$id',
+      extraHeaders: {...?_areaHeader(areaId), ..._shopCaps},
+      onDate: (d) => date = d,
+    );
+    ShopClock.syncFrom(out, date);
+    return out;
+  }
 
   static Map<String, String>? _areaHeader(String? areaId) =>
       areaId == null || areaId.isEmpty ? null : {kShopAreaHeader: areaId};

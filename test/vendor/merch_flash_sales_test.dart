@@ -304,6 +304,15 @@ void main() {
       expect(e('not_editable').closes, isTrue);
       expect(e('feature_disabled').key, 'merch.unavailable');
       expect(e('sale_not_found').key, 'merch.notYours');
+      expect(e('vendor_not_found').key, 'merch.notYours');
+      expect(e('vendor_not_found').closes, isTrue);
+      expect(e('vendor_suspended').key, 'merch.sale.suspended');
+      final short = e('price_history_too_short', {
+        'listedAt': '2026-10-25T09:00:00Z',
+        'earliestStart': '2026-11-08T09:00:00Z',
+      });
+      expect(short.target, 'raised');
+      expect(short.key, 'merch.sale.historyShort');
       expect(e('something_new').key, 'merch.saveFailed');
     });
   });
@@ -438,6 +447,66 @@ void main() {
       );
       for (final a in ['edit', 'withdraw', 'end', 'submit']) {
         expect(_key('merch-sale-$a-s9'), findsNothing, reason: a);
+      }
+    });
+
+    apiTest('a FitFlex-made sale: End now when allowed, with a confirm', (
+      tester,
+      api,
+    ) async {
+      _seed(
+        api,
+        sales: [
+          _sale('s9', 'live', origin: 'staff', actions: const ['end']),
+        ],
+      );
+      await _pumpAt(tester, api, '/vendor/merch?tab=sales');
+      expect(_key('merch-sale-byfitflex-s9'), findsOneWidget);
+      expect(_key('merch-sale-edit-s9'), findsNothing);
+      expect(_key('merch-sale-withdraw-s9'), findsNothing);
+      await tapVisible(tester, _key('merch-sale-end-s9'));
+      expect(_key('merch-sale-end-confirm'), findsOneWidget);
+      await tapVisible(tester, _key('merch-sale-end-confirm'));
+      expect(api.sent('POST', '/vendor/flash-sales/s9/end'), isTrue);
+    });
+
+    test('FitFlex-made sales: End falls back to live or scheduled', () {
+      VendorFlashSale v(String status) => VendorFlashSale.fromJson({
+        ..._sale('s9', status, origin: 'staff'),
+        'allowedActions': null,
+      });
+      expect(v('live').canEnd, isTrue);
+      expect(v('approved').canEnd, isTrue);
+      expect(v('approved').canWithdraw, isFalse);
+      expect(v('approved').canEdit, isFalse);
+      expect(v('pending_approval').canEnd, isFalse);
+    });
+
+    apiTest('Swahili: ofa agreement in badges, groups and lines', (
+      tester,
+      api,
+    ) async {
+      _seed(
+        api,
+        sales: [
+          _sale('s1', 'draft'),
+          _sale('s2', 'pending_approval'),
+          _sale('s3', 'withdrawn'),
+        ],
+      );
+      await _pumpAt(tester, api, '/vendor/merch?tab=sales', lang: 'sw');
+      expect(
+        tester.widget<FFBadge>(_key('merch-sale-status-s1')).label,
+        'Haijatumwa',
+      );
+      expect(find.text('Zinasubiri idhini'), findsOneWidget);
+      expect(find.text('Bado hazijatumwa'), findsOneWidget);
+      expect(_text(tester, 'merch-sale-line-s1'), 'Bado haijatumwa kwa idhini');
+      expect(_text(tester, 'merch-sale-line-s2'), startsWith('Itaisha muda '));
+      expect(_text(tester, 'merch-sale-line-s3'), 'Uliiondoa');
+      // No banner (li-) agreement anywhere on the sales tab.
+      for (final banner in ['Halijatumwa', 'Yanasubiri idhini', 'Liache']) {
+        expect(find.textContaining(banner), findsNothing, reason: banner);
       }
     });
 
@@ -594,6 +663,113 @@ void main() {
       await tapVisible(tester, _key('merch-sale-start-on'));
       expect(_key('merch-sale-raised'), findsNothing);
       expect(isEnabled(tester, _key('merch-sale-send')), isTrue);
+    });
+
+    apiTest('a new product (price_history_too_short): the message and '
+        '"Start on {date}"', (tester, api) async {
+      _seed(api);
+      var refused = false;
+      api.fail('POST /vendor/flash-sales', 422);
+      api.onCall('fail:POST /vendor/flash-sales', (_) {
+        refused = true;
+        api.heal('POST /vendor/flash-sales');
+        return {
+          'error': 'price_history_too_short',
+          'listedAt': '2026-10-25T09:00:00Z',
+          'earliestStart': '2026-11-08T09:00:00Z',
+        };
+      });
+      api.on('POST /vendor/flash-sales', {'sale': _sale('fls_1', 'draft')});
+      await _pumpAt(
+        tester,
+        api,
+        '${AppRoutes.vendorMerchSaleNew}?productId=p1',
+      );
+      await typeInto(tester, _key('merch-sale-price'), '69000');
+      await _pickDates(tester);
+      await tapVisible(tester, _key('merch-sale-send'));
+      expect(refused, isTrue);
+      expect(_key('merch-sale-raised'), findsOneWidget);
+      expect(
+        find.textContaining('This product was listed on 25 Oct 2026'),
+        findsOneWidget,
+      );
+      expect(isEnabled(tester, _key('merch-sale-send')), isFalse);
+      await tapVisible(tester, _key('merch-sale-start-on'));
+      expect(isEnabled(tester, _key('merch-sale-send')), isTrue);
+      await tapVisible(tester, _key('merch-sale-send'));
+      final sent = api.where('POST', '/vendor/flash-sales').last.body as Map;
+      expect(
+        DateTime.parse(sent['startsAt'] as String),
+        DateTime.utc(2026, 11, 8, 9),
+      );
+    });
+
+    apiTest('Swahili: the new-product message', (tester, api) async {
+      _seed(api);
+      api.fail('POST /vendor/flash-sales', 422, {
+        'error': 'price_history_too_short',
+        'listedAt': '2026-10-25T09:00:00Z',
+        'earliestStart': '2026-11-08T09:00:00Z',
+      });
+      await _pumpAt(
+        tester,
+        api,
+        '${AppRoutes.vendorMerchSaleNew}?productId=p1',
+        lang: 'sw',
+      );
+      await typeInto(tester, _key('merch-sale-price'), '69000');
+      await _pickDates(tester);
+      await tapVisible(tester, _key('merch-sale-send'));
+      expect(
+        find.textContaining('Bidhaa hii iliwekwa dukani tarehe 25 Okt 2026'),
+        findsOneWidget,
+      );
+    });
+
+    apiTest('sale_overlap without dates → the general words', (
+      tester,
+      api,
+    ) async {
+      _seed(api);
+      api.fail('POST /vendor/flash-sales', 409, {'error': 'sale_overlap'});
+      final host = await _pumpAt(
+        tester,
+        api,
+        '${AppRoutes.vendorMerchSaleNew}?productId=p1',
+      );
+      await typeInto(tester, _key('merch-sale-price'), '69000');
+      await _pickDates(tester);
+      await tapVisible(tester, _key('merch-sale-send'));
+      expect(
+        _text(tester, 'merch-sale-error-product'),
+        host.tr('merch.sale.overlapNoDates'),
+      );
+    });
+
+    apiTest('the 14-day check fails: Try again offered, Send still on', (
+      tester,
+      api,
+    ) async {
+      _seed(api);
+      api.fail('GET /vendor/flash-sales/price-check', 500);
+      final host = await _pumpAt(
+        tester,
+        api,
+        '${AppRoutes.vendorMerchSaleNew}?productId=p1',
+      );
+      expect(_key('merch-sale-check-failed'), findsOneWidget);
+      expect(
+        tester.widget<FFAlert>(_key('merch-sale-check-failed')).message,
+        host.tr('merch.sale.checkFailed'),
+      );
+      expect(_key('merch-sale-check-retry'), findsOneWidget);
+      await typeInto(tester, _key('merch-sale-price'), '69000');
+      await _pickDates(tester);
+      expect(isEnabled(tester, _key('merch-sale-send')), isTrue);
+      api.heal('GET /vendor/flash-sales/price-check');
+      await tapVisible(tester, _key('merch-sale-check-retry'));
+      expect(_key('merch-sale-check-failed'), findsNothing);
     });
 
     apiTest('the notes are shown (seller pays, 14-day rule, review)', (
@@ -767,7 +943,7 @@ void main() {
       await typeInto(tester, _key('merch-sale-price'), '69000');
       await _pickDates(tester);
       await tapVisible(tester, _key('merch-sale-send'));
-      expect(host.snack(host.tr('merch.suspended')), findsOneWidget);
+      expect(host.snack(host.tr('merch.sale.suspended')), findsOneWidget);
       expect(_key('merch-sale-send'), findsNothing);
     });
 

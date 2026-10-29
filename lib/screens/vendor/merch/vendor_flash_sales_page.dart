@@ -185,9 +185,9 @@ class _VendorFlashSalesPageState extends State<VendorFlashSalesPage> {
     final ok = await showFFConfirmDialog(
       context,
       title: context.tr('merch.sale.withdraw.title'),
-      message: context.tr('merch.withdraw.body'),
+      message: context.tr('merch.sale.withdraw.body'),
       confirmLabel: context.tr('merch.withdraw.confirm'),
-      cancelLabel: context.tr('merch.withdraw.keep'),
+      cancelLabel: context.tr('merch.sale.keep'),
       destructive: true,
       confirmKey: const Key('merch-sale-withdraw-confirm'),
     );
@@ -204,8 +204,8 @@ class _VendorFlashSalesPageState extends State<VendorFlashSalesPage> {
       context,
       title: context.tr('merch.endSale.title'),
       message: context.tr('merch.endSale.body'),
-      confirmLabel: context.tr('merch.endBanner.confirm'),
-      cancelLabel: context.tr('merch.withdraw.keep'),
+      confirmLabel: context.tr('merch.sale.endConfirm'),
+      cancelLabel: context.tr('merch.sale.keep'),
       destructive: true,
       confirmKey: const Key('merch-sale-end-confirm'),
     );
@@ -220,7 +220,7 @@ class _VendorFlashSalesPageState extends State<VendorFlashSalesPage> {
   Future<void> _submit(VendorFlashSale sale) => _act(
     sale,
     () => AppScope.of(context).api.vendorSubmitFlashSale(sale.id),
-    'merch.sent',
+    'merch.sale.sent',
   );
 
   /// Runs a list action, then reloads. A refusal says why (a sale with a
@@ -246,7 +246,7 @@ class _VendorFlashSalesPageState extends State<VendorFlashSalesPage> {
     } catch (e) {
       messenger.error(
         locale.t(
-          isNetworkError(e) ? 'merch.notSentOffline' : 'merch.saveFailed',
+          isNetworkError(e) ? 'merch.sale.notSentOffline' : 'merch.saveFailed',
         ),
       );
     }
@@ -264,6 +264,32 @@ class _VendorFlashSalesPageState extends State<VendorFlashSalesPage> {
     }
 
     String money(Object? v) => v is num ? formatCurrency(v) : '-';
+    // An overlap without its dates: the general words.
+    if (err.key == 'merch.sale.overlap' &&
+        (DateTime.tryParse('${err.params['start'] ?? ''}') == null ||
+            DateTime.tryParse('${err.params['end'] ?? ''}') == null)) {
+      return locale.t('merch.sale.overlapNoDates');
+    }
+    if (err.key == 'merch.sale.historyShort') {
+      final listed = FlashSalePriceCheck.tanzaniaDay(err.params['listedAt']);
+      return locale
+          .t(err.key)
+          .replaceAll(
+            '{date}',
+            listed == null ? '-' : formatDate(listed, locale: lang),
+          )
+          .replaceAll('{earliest}', when(err.params['earliestStart']));
+    }
+    if (err.key == 'merch.sale.raised') {
+      final raised = FlashSalePriceCheck.day(err.params['raisedOn']);
+      return locale
+          .t(err.key)
+          .replaceAll(
+            '{date}',
+            raised == null ? '-' : formatDate(raised, locale: lang),
+          )
+          .replaceAll('{earliest}', when(err.params['earliestStart']));
+    }
     return locale
         .t(err.key)
         .replaceAll('{max}', money(err.params['max']))
@@ -308,7 +334,7 @@ class _VendorFlashSalesPageState extends State<VendorFlashSalesPage> {
         FFAlert(
           key: const Key('merch-sales-suspended'),
           tone: FFAlertTone.error,
-          message: context.tr('merch.suspended'),
+          message: context.tr('merch.sale.suspended'),
         ),
       ]);
     }
@@ -374,7 +400,7 @@ class _VendorFlashSalesPageState extends State<VendorFlashSalesPage> {
         ? FFAlert(
             key: const Key('merch-sales-suspended'),
             tone: FFAlertTone.error,
-            message: context.tr('merch.suspended'),
+            message: context.tr('merch.sale.suspended'),
           )
         : FFEmptyState(
             key: const Key('merch-sales-pending'),
@@ -426,7 +452,7 @@ class _VendorFlashSalesPageState extends State<VendorFlashSalesPage> {
           Semantics(
             header: true,
             child: Text(
-              context.tr('merch.group.$g'),
+              context.tr('merch.sale.group.$g'),
               key: Key('merch-sale-group-$g'),
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w700,
@@ -453,11 +479,11 @@ class _VendorFlashSalesPageState extends State<VendorFlashSalesPage> {
         context.tr(key).replaceAll('{date}', value);
     switch (s.status) {
       case 'draft':
-        return context.tr('merch.line.notSent');
+        return context.tr('merch.sale.line.notSent');
       case 'pending_approval':
         return s.expiresAt == null
             ? null
-            : fill('merch.line.expires', _when(s.expiresAt));
+            : fill('merch.sale.line.expires', _when(s.expiresAt));
       case 'approved':
         return fill('merch.sale.line.starts', _when(s.startsAt));
       case 'live':
@@ -468,8 +494,8 @@ class _VendorFlashSalesPageState extends State<VendorFlashSalesPage> {
           return context
               .tr(
                 note.isEmpty
-                    ? 'merch.line.endedByFitflexNoReason'
-                    : 'merch.line.endedByFitflex',
+                    ? 'merch.sale.line.endedByFitflexNoReason'
+                    : 'merch.sale.line.endedByFitflex',
               )
               .replaceAll('{date}', _when(s.endedAt ?? s.endsAt))
               .replaceAll('{reason}', note);
@@ -488,9 +514,9 @@ class _VendorFlashSalesPageState extends State<VendorFlashSalesPage> {
             ? null
             : context.tr('merch.line.reason').replaceAll('{reason}', reason);
       case 'expired':
-        return context.tr('merch.line.notReviewed');
+        return context.tr('merch.sale.line.notReviewed');
       case 'withdrawn':
-        return context.tr('merch.line.youWithdrew');
+        return context.tr('merch.sale.line.youWithdrew');
     }
     return null;
   }
@@ -511,9 +537,9 @@ class _VendorFlashSalesPageState extends State<VendorFlashSalesPage> {
     'ended' ||
     'rejected' ||
     'expired' ||
-    'withdrawn' ||
-    'draft' => 'merch.status.$status',
-    _ => 'merch.status.draft',
+    'withdrawn' => 'merch.status.$status',
+    // "Haijatumwa": ofa agreement, not the banner's "Halijatumwa".
+    _ => 'merch.sale.status.draft',
   };
 
   Widget _card(BuildContext context, VendorFlashSale s) {
