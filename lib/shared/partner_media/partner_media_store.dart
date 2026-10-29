@@ -244,16 +244,19 @@ class PartnerMediaStore {
   }
 
   /// Reads `GET /partner/media` for [subject] and saves what is live. At
-  /// most every [refreshEvery] per partner unless [force]. Returns the answer
+  /// most every [every] (default [refreshEvery]) per partner unless [force]. Returns the answer
   /// (null when it could not be read). Never throws.
   Future<PartnerMediaOverview?> refresh(
     PartnerMediaSubject subject, {
     bool force = false,
+    Duration? every,
   }) {
     final running = _inflight[subject.key];
     if (running != null) return running;
     final last = _asked[subject.key];
-    if (!force && last != null && _now().difference(last) < refreshEvery) {
+    if (!force &&
+        last != null &&
+        _now().difference(last) < (every ?? refreshEvery)) {
       return Future.value(null);
     }
     _asked[subject.key] = _now();

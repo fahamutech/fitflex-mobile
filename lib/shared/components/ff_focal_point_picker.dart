@@ -127,8 +127,11 @@ class FFFocalPointPicker extends StatelessWidget {
                         ),
                       ),
                       Positioned(
-                        left: (value.x + 1) / 2 * w - 14,
-                        top: (value.y + 1) / 2 * h - 14,
+                        // Kept wholly inside the photo (with its 2px edge),
+                        // so a corner position isn't clipped.
+                        key: const Key('ff-focal-ring'),
+                        left: _inset((value.x + 1) / 2 * w, w),
+                        top: _inset((value.y + 1) / 2 * h, h),
                         child: const _Crosshair(),
                       ),
                     ],
@@ -189,6 +192,16 @@ class FFFocalPointPicker extends StatelessWidget {
       ],
     );
   }
+}
+
+/// The ring's left (or top) edge for a centre at [at] in a box [extent]
+/// long: the 28px ring plus its 2px outline stays inside.
+double _inset(double at, double extent) {
+  const half = 14.0;
+  const edge = 2.0;
+  final lo = edge;
+  final hi = extent - 2 * half - edge;
+  return hi < lo ? (extent - 2 * half) / 2 : (at - half).clamp(lo, hi);
 }
 
 class _Crosshair extends StatelessWidget {

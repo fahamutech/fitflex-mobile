@@ -49,6 +49,7 @@ class _ScriptedStore extends PartnerMediaStore {
   Future<PartnerMediaOverview?> refresh(
     PartnerMediaSubject subject, {
     bool force = false,
+    Duration? every,
   }) async {
     asked++;
     final o = answers.isEmpty ? null : answers.removeAt(0);
@@ -201,6 +202,86 @@ void main() {
       router.pop();
       await tester.pumpAndSettle();
       expect(_shown(tester), 'photo:pmd_new');
+    });
+
+    Future<void> settle(WidgetTester tester) async {
+      for (var i = 0; i < 3; i++) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 30)),
+        );
+        await tester.pumpAndSettle();
+      }
+    }
+
+    testWidgets('taken down while away: Back re-checks and fades to the '
+        'bundled photo; a replacement still waits (post-fix UAT)', (
+      tester,
+    ) async {
+      final store = _ScriptedStore(FakeFiles());
+      await tester.runAsync(() => store.apply(subject, _o('pmd_live')));
+      PartnerMediaStore.debugInstance = store;
+      final watch = PartnerRouteWatch.root = PartnerRouteWatch();
+      final router = GoRouter(
+        initialLocation: '/owner/home',
+        observers: [watch],
+        routes: [
+          ShellRoute(
+            builder: (_, _, child) => Scaffold(body: child),
+            routes: [GoRoute(path: '/owner/home', builder: (_, _) => home())],
+          ),
+          GoRoute(
+            path: '/owner/scan',
+            builder: (_, _) => const Scaffold(body: Text('SCAN')),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(
+        FFLocaleScope(
+          notifier: FFLocale(),
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await settle(tester);
+      expect(_shown(tester), 'photo:pmd_live');
+
+      // Replaced by the partner elsewhere: Back keeps the photo on screen
+      // (no new photo mid-view); the next view shows the new one.
+      store.answers.add(_o('pmd_new'));
+      router.push('/owner/scan');
+      await tester.pumpAndSettle();
+      router.pop();
+      await settle(tester);
+      expect(_shown(tester), 'photo:pmd_live');
+
+      // FitFlex took it down: the next Back re-checks and lets it go.
+      store.answers.add(_o(null));
+      router.push('/owner/scan');
+      await tester.pumpAndSettle();
+      router.pop();
+      await settle(tester);
+      expect(_shown(tester), 'photo:bundled');
+    });
+
+    testWidgets('app resume re-checks; a takedown fades out, nothing is '
+        'added', (tester) async {
+      final store = _ScriptedStore(FakeFiles());
+      await tester.runAsync(() => store.apply(subject, _o('pmd_live')));
+      PartnerMediaStore.debugInstance = store;
+      await tester.pumpWidget(MaterialApp(home: home()));
+      await settle(tester);
+      expect(_shown(tester), 'photo:pmd_live');
+      store.answers.add(_o(null));
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await settle(tester);
+      expect(_shown(tester), 'photo:bundled');
+      // A photo that arrives on a later resume waits for the next view.
+      store.answers.add(_o('pmd_again'));
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await settle(tester);
+      expect(_shown(tester), 'photo:bundled');
     });
 
     testWidgets('first load of the session: the answer shows once; later '
@@ -492,6 +573,38 @@ void main() {
       expect(find.text(h.tr('partnerMedia.restrictedGym')), findsNothing);
       expect(FFLocale.textOf('sw', 'partnerMedia.restricted'), isNotNull);
     });
+  });
+
+  testWidgets('focus ring at Top left stays inside the photo (post-fix 21)', (
+    tester,
+  ) async {
+    for (final pos in [Alignment.topLeft, Alignment.bottomRight]) {
+      await tester.pumpWidget(
+        FFLocaleScope(
+          notifier: FFLocale(),
+          child: MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 342,
+                child: FFFocalPointPicker(
+                  image: MemoryImage(onePixelPng),
+                  aspect: 1.5,
+                  value: pos,
+                  onChanged: (_) {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      final photo = tester.getRect(find.byKey(const Key('ff-focal-image')));
+      final ring = tester.getRect(find.byKey(const Key('ff-focal-ring')));
+      // 2px outline outside the 28px ring still inside the photo.
+      expect(ring.inflate(2).left, greaterThanOrEqualTo(photo.left));
+      expect(ring.inflate(2).top, greaterThanOrEqualTo(photo.top));
+      expect(ring.inflate(2).right, lessThanOrEqualTo(photo.right));
+      expect(ring.inflate(2).bottom, lessThanOrEqualTo(photo.bottom));
+    }
   });
 
   group('plate waits for its photo (QA L4)', () {
