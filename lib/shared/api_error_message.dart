@@ -214,6 +214,12 @@ String? _detailedReason(FFLocale locale, String reason, dynamic body) {
         'too_large' || 'image_too_large' => 'error.reason.mediaSrcTooLarge',
         _ => 'error.reason.invalidMediaSrc',
       });
+    // Over a photo count cap (fitflex-functions#273): { field, max }.
+    case 'too_many_images':
+      final max = body['max'];
+      final n = max is num ? max.toInt() : int.tryParse(max?.toString() ?? '');
+      if (n == null || n <= 0) return null;
+      return locale.t('photos.max').replaceAll('{n}', '$n');
     // 429 with the wait the server gave.
     case 'rate_limited':
       final seconds = body['retryAfterSeconds'];
@@ -324,6 +330,7 @@ String? _knownReason(FFLocale locale, String reason) {
     // Photos (fitflex-functions#273).
     'invalid_media_src': 'error.reason.invalidMediaSrc',
     'upload_forbidden': 'error.reason.uploadForbidden',
+    'too_many_images': 'error.reason.tooManyImages',
     'active_subscription_required': 'error.reason.activeSubscriptionRequired',
     // Communications.
     'confirm_large_send': 'error.reason.confirmLargeSend',

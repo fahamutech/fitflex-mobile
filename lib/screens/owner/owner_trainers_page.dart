@@ -22,6 +22,8 @@ String _apiErrorMessage(BuildContext context, ApiException e) {
       return context.tr('owner.errorEmailAlreadyInUse');
     // A refused trainer photo (fitflex-functions#273).
     case 'invalid_media_src':
+    case 'too_many_images':
+    case 'rate_limited':
       return apiErrorMessage(FFLocaleScope.of(context), e);
     default:
       return context.tr('owner.errorGeneric');

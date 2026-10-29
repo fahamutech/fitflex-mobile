@@ -1,4 +1,4 @@
-// Image source check (security fix 2026-10-29, fitflex-functions#273):
+// Image source check (security fix 2026-10-28, fitflex-functions#273):
 // server-supplied photo strings are drawn only from checked data URIs, our
 // own /storage paths and API-host addresses, bundled assets, and (profile
 // photos only) the Google sign-in photo host. Anything else shows the
@@ -16,7 +16,11 @@ import 'package:fitflexmobile/shared/components/ff_photo_hero.dart';
 import 'package:fitflexmobile/shared/components/ff_remote_image.dart';
 import 'package:fitflexmobile/shared/i18n.dart';
 import 'package:fitflexmobile/shared/media/media_src.dart';
+import 'package:fitflexmobile/shared/components/ff_button.dart';
 import 'package:fitflexmobile/shared/widgets/ff_photo_gallery_field.dart';
+import 'package:fitflexmobile/shared/widgets/gym_form_page.dart';
+
+import 'support/recording_api.dart';
 
 const _api = 'https://api.fitflex.test';
 
@@ -71,7 +75,13 @@ void main() {
       }
     });
 
-    test('more than 2 MB decoded is refused before it is drawn', () {
+    test('the caps match the server (fitflex-functions#273)', () {
+      expect(kMediaSrcMaxBytes, 1400000);
+      expect(kGymMaxPhotos, 10);
+      expect(kTrainerMaxPhotos, 8);
+    });
+
+    test('more than 1.4 MB decoded is refused before it is drawn', () {
       final big = Uint8List(kMediaSrcMaxBytes + 1)
         ..setAll(0, base64Decode(_pngB64));
       expect(_r('data:image/png;base64,${base64Encode(big)}'), isNull);
@@ -175,21 +185,41 @@ void main() {
       expect(_r(null), isNull);
     });
 
-    test('Google sign-in photos only for profile photos, https only', () {
-      const google = 'https://lh3.googleusercontent.com/a/ACg8ocK=s96-c';
-      expect(_r(google), isNull);
-      expect(_url(google, profile: true), google);
-      expect(_r('http://lh3.googleusercontent.com/a/x', profile: true), isNull);
-      expect(
-        _r('https://lh4.googleusercontent.com/a/x', profile: true),
-        isNull,
-      );
-      expect(
-        _r('https://lh3.googleusercontent.com.evil.example/a', profile: true),
-        isNull,
-      );
-      expect(_r('https://evil.example/a.png', profile: true), isNull);
-    });
+    test(
+      'Google sign-in photos (lh3–lh6) only for profile photos, https:443 only',
+      () {
+        const google = 'https://lh3.googleusercontent.com/a/ACg8ocK=s96-c';
+        expect(_r(google), isNull);
+        expect(_url(google, profile: true), google);
+        for (final n in [4, 5, 6]) {
+          final other = 'https://lh$n.googleusercontent.com/a/x';
+          expect(_r(other), isNull);
+          expect(_url(other, profile: true), other);
+        }
+        expect(
+          _r('http://lh3.googleusercontent.com/a/x', profile: true),
+          isNull,
+        );
+        expect(
+          _r('https://lh3.googleusercontent.com:8443/a/x', profile: true),
+          isNull,
+        );
+        expect(
+          _r('https://lh2.googleusercontent.com/a/x', profile: true),
+          isNull,
+        );
+        expect(
+          _r('https://lh7.googleusercontent.com/a/x', profile: true),
+          isNull,
+        );
+        expect(_r('https://googleusercontent.com/a/x', profile: true), isNull);
+        expect(
+          _r('https://lh3.googleusercontent.com.evil.example/a', profile: true),
+          isNull,
+        );
+        expect(_r('https://evil.example/a.png', profile: true), isNull);
+      },
+    );
   });
 
   test('bundled assets are allowed; traversal is not', () {
@@ -410,6 +440,78 @@ void main() {
         ),
         contains('12 seconds'),
       );
+    });
+  });
+
+  group('photo count caps', () {
+    test('too_many_images says the limit, in English and Swahili', () {
+      final body = {'error': 'too_many_images', 'field': 'images', 'max': 10};
+      expect(
+        apiErrorMessage(FFLocale(), ApiException(400, body)),
+        contains('You can add up to 10 photos.'),
+      );
+      expect(
+        apiErrorMessage(
+          FFLocale()..set(const Locale('sw')),
+          ApiException(400, body),
+        ),
+        contains('Unaweza kuongeza hadi picha 10.'),
+      );
+      expect(
+        apiErrorMessage(
+          FFLocale(),
+          ApiException(400, {'error': 'too_many_images', 'field': 'images'}),
+        ),
+        contains('Too many photos'),
+      );
+      expect(
+        apiErrorMessage(
+          FFLocale()..set(const Locale('sw')),
+          ApiException(400, {'error': 'too_many_images'}),
+        ),
+        contains('Picha ni nyingi mno'),
+      );
+    });
+
+    Future<FFButton> addButton(WidgetTester tester) async {
+      final label = FFLocale().t('ownerReg.pickImage');
+      // The form is a lazy list: scroll the button into view first.
+      await tester.scrollUntilVisible(
+        find.text(label),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      return tester
+          .widgetList<FFButton>(find.byType(FFButton))
+          .firstWhere((b) => b.label == label);
+    }
+
+    Map<String, dynamic> gym(int photos) => {
+      'id': 'g1',
+      'name': 'Gym',
+      'images': [for (var i = 0; i < photos; i++) '/storage/bafy/g$i.webp'],
+    };
+
+    apiTest('the gym form stops adding photos at 10', (tester, api) async {
+      api.on('GET /owner/trainers', []);
+      await pumpPage(
+        tester,
+        api,
+        GymFormPage(initial: gym(kGymMaxPhotos)),
+        user: const {'id': 'o1', 'userType': 'gym_owner'},
+      );
+      expect((await addButton(tester)).onPressed, isNull);
+    });
+
+    apiTest('the gym form still adds below 10', (tester, api) async {
+      api.on('GET /owner/trainers', []);
+      await pumpPage(
+        tester,
+        api,
+        GymFormPage(initial: gym(kGymMaxPhotos - 1)),
+        user: const {'id': 'o1', 'userType': 'gym_owner'},
+      );
+      expect((await addButton(tester)).onPressed, isNotNull);
     });
   });
 }

@@ -289,6 +289,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
     'invalid_stock',
     // A refused logo, banner or product photo (fitflex-functions#273).
     'invalid_media_src',
+    'rate_limited',
   };
 
   /// Reasons the vendor can act on are shown; anything else stays generic.

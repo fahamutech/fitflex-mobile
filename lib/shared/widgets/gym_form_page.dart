@@ -10,6 +10,7 @@ import '../../app_scope.dart';
 import '../components/components.dart';
 import '../design_tokens.dart';
 import '../i18n.dart';
+import '../media/media_src.dart';
 import 'location_picker.dart';
 
 /// Fullscreen form for creating/editing a gym. Mirrors the fields used during
@@ -198,19 +199,30 @@ class _GymFormPageState extends State<GymFormPage> {
     }
   }
 
+  /// Room left under the server's cap (kGymMaxPhotos, too_many_images).
+  int get _photoRoom => kGymMaxPhotos - _images.length;
+
   Future<void> _pickImage() async {
-    final files = await _picker.pickMultiImage(
+    if (_photoRoom <= 0) return _sayPhotoMax();
+    final picked = await _picker.pickMultiImage(
       maxWidth: 1024,
       imageQuality: 80,
+      limit: _photoRoom > 1 ? _photoRoom : null,
     );
-    if (files.isNotEmpty) {
-      setState(() {
-        _images.addAll(files.map((file) => file.path));
-        _localPicks.addAll(files.map((file) => file.path));
-        _thumbnails.addAll(List<String?>.filled(files.length, null));
-      });
-    }
+    if (!mounted || picked.isEmpty) return;
+    final files = picked.take(_photoRoom).toList();
+    setState(() {
+      _images.addAll(files.map((file) => file.path));
+      _localPicks.addAll(files.map((file) => file.path));
+      _thumbnails.addAll(List<String?>.filled(files.length, null));
+    });
+    if (picked.length > files.length) _sayPhotoMax();
   }
+
+  void _sayPhotoMax() => FFSnack.info(
+    context,
+    context.tr('photos.max').replaceAll('{n}', '$kGymMaxPhotos'),
+  );
 
   /// Downscales+re-encodes a local image file as WebP. Returns `null` if the
   /// file can't be read or compressed (e.g. unsupported platform/format).
@@ -699,7 +711,7 @@ class _GymFormPageState extends State<GymFormPage> {
               const SizedBox(height: 8),
               FFButton(
                 label: context.tr('ownerReg.pickImage'),
-                onPressed: _pickImage,
+                onPressed: _photoRoom > 0 ? _pickImage : null,
                 variant: FFButtonVariant.secondary,
                 icon: Icons.add_a_photo,
               ),

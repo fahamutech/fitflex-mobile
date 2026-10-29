@@ -6423,8 +6423,10 @@ class FFLocale extends ChangeNotifier {
       'error.reason.invalidMediaSrc':
           "This photo can't be used. Choose a PNG, JPEG or WebP photo from your phone.",
       'error.reason.mediaSrcTooLarge':
-          'This photo is too large. Choose a smaller photo (up to 2 MB).',
+          'This photo is too large. Choose a smaller photo (up to 1.4 MB).',
       'error.reason.uploadForbidden': "Your account can't upload photos here.",
+      'error.reason.tooManyImages':
+          'Too many photos. Remove some and try again.',
     },
     'sw': {
       'app.title': 'FitFlex',
@@ -12877,9 +12879,12 @@ class FFLocale extends ChangeNotifier {
       'error.reason.invalidMediaSrc':
           'Picha hii haiwezi kutumika. Chagua picha ya PNG, JPEG au WebP kutoka kwenye simu yako.',
       'error.reason.mediaSrcTooLarge':
-          'Picha hii ni kubwa mno. Chagua picha ndogo zaidi (hadi MB 2).',
+          'Picha hii ni kubwa mno. Chagua picha ndogo zaidi (hadi MB 1.4).',
       'error.reason.uploadForbidden':
           'Akaunti yako haiwezi kupakia picha hapa.',
+      // Swahili for native review (fitflex-functions#273).
+      'error.reason.tooManyImages':
+          'Picha ni nyingi mno. Ondoa baadhi kisha ujaribu tena.',
     },
   };
 }

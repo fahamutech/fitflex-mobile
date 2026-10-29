@@ -6,7 +6,7 @@ import 'package:flutter/widgets.dart';
 import '../../app_scope.dart';
 import '../api_client.dart';
 
-/// Which image addresses the app may draw (security fix 2026-10-29,
+/// Which image addresses the app may draw (security fix 2026-10-28,
 /// fitflex-functions#273).
 ///
 /// Gym, trainer, vendor, product, event and profile photos are strings the
@@ -24,7 +24,7 @@ import '../api_client.dart';
 ///   private banner previews;
 /// - bundled `assets/…` images;
 /// - with `profilePhoto: true` only: Google sign-in photos on
-///   [kGoogleProfilePhotoHost] (https). The server copies the Google photo
+///   [kGoogleProfilePhotoHosts] (https, port 443). The server copies the Google photo
 ///   into the account's `photoUrl` at every Google sign-in, so without this
 ///   every Google user would lose their own avatar.
 ///
@@ -33,11 +33,26 @@ import '../api_client.dart';
 /// HERO_IMAGES_ALLOWED_HOSTS) keep their own rules and do not use this.
 
 /// The decoded size cap for an inline photo (the server's default
-/// MEDIA_SRC_MAX_BYTES, 2 MB).
-const int kMediaSrcMaxBytes = 2 * 1024 * 1024;
+/// MEDIA_SRC_MAX_BYTES, 1.4 MB = 1 400 000 bytes, so its base64 form fits a
+/// 2 MB request body).
+const int kMediaSrcMaxBytes = 1400000;
 
-/// The one outside host allowed, and only for people's profile photos.
-const String kGoogleProfilePhotoHost = 'lh3.googleusercontent.com';
+/// Most photos (and thumbnails) one gym may hold (server GYM_MAX_IMAGES;
+/// more → 400 too_many_images).
+const int kGymMaxPhotos = 10;
+
+/// Most photos (and thumbnails) on a trainer profile (server
+/// PROFILE_LIMITS.images; more → 400 too_many_images).
+const int kTrainerMaxPhotos = 8;
+
+/// The only outside hosts allowed, and only for people's profile photos:
+/// Google's sign-in photo hosts (the server's SIGNIN_PHOTO_HOSTS default).
+const Set<String> kGoogleProfilePhotoHosts = {
+  'lh3.googleusercontent.com',
+  'lh4.googleusercontent.com',
+  'lh5.googleusercontent.com',
+  'lh6.googleusercontent.com',
+};
 
 /// Where a permitted image comes from.
 @immutable
@@ -110,7 +125,7 @@ MediaSource? resolveMediaSrc(
   if (_sameOrigin(uri, base)) return MediaNetwork(uri);
   if (profilePhoto &&
       uri.isScheme('https') &&
-      uri.host.toLowerCase() == kGoogleProfilePhotoHost &&
+      kGoogleProfilePhotoHosts.contains(uri.host.toLowerCase()) &&
       uri.port == 443) {
     return MediaNetwork(uri);
   }
