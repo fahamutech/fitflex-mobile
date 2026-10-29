@@ -278,7 +278,7 @@ void main() {
         tester.view.devicePixelRatio = 1;
         await _pump(tester, api, lang: 'sw', size: const Size(320, 3200));
         expect(tester.takeException(), isNull);
-        expect(find.text('Namba 5K-1042'), findsOneWidget);
+        expect(find.text('Namba ya mbio 5K-1042'), findsOneWidget);
       });
     }
 
@@ -357,12 +357,10 @@ void main() {
         'events.ticket.bib',
         'events.ticket.bib.a11y',
         'events.ticket.bib.none',
-        'events.notify.kitCollected.title',
-        'events.notify.kitCollected.body',
-        'events.notify.bibAssigned.title',
-        'events.notify.bibAssigned.body',
         'ownerScan.eventTicket.title',
         'ownerScan.eventTicket.body',
+        'memberScan.eventTicket.title',
+        'memberScan.eventTicket.body',
       ];
       final en = FFLocale.keysOf('en');
       final sw = FFLocale.keysOf('sw');
@@ -370,7 +368,7 @@ void main() {
         expect(en, contains(k), reason: k);
         expect(sw, contains(k), reason: k);
       }
-      expect(keys.length, 21);
+      expect(keys.length, 19);
     });
   });
 }

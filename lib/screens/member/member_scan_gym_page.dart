@@ -108,8 +108,8 @@ class _MemberScanGymPageState extends State<MemberScanGymPage> {
               FFAlert(
                 key: const Key('member-gym-event-ticket'),
                 message:
-                    '${context.tr('ownerScan.eventTicket.title')}. '
-                    '${context.tr('ownerScan.eventTicket.body')}',
+                    '${context.tr('memberScan.eventTicket.title')}. '
+                    '${context.tr('memberScan.eventTicket.body')}',
                 tone: FFAlertTone.warning,
               ),
             ],

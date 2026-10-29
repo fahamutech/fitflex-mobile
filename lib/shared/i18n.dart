@@ -6473,18 +6473,14 @@ class FFLocale extends ChangeNotifier {
           'Bib number {number}',
       'events.ticket.bib.none':
           'Your bib number will appear here once the organizer assigns it.',
-      'events.notify.kitCollected.title':
-          'Kit collected',
-      'events.notify.kitCollected.body':
-          'You collected your kit for {event}.',
-      'events.notify.bibAssigned.title':
-          'Your bib number is ready',
-      'events.notify.bibAssigned.body':
-          'Your bib for {event} is {number}.',
       'ownerScan.eventTicket.title':
           'This is an event ticket',
       'ownerScan.eventTicket.body':
           'Event tickets are scanned at Kit collection in the organizer portal, not here.',
+      'memberScan.eventTicket.title':
+          'This is an event ticket',
+      'memberScan.eventTicket.body':
+          'Show it at the kit desk; it cannot be used to check in at a gym.',
       'events.ticket.cached': 'Saved on this phone · updated {time}',
       'events.ticket.offline': 'You\'re offline. Showing the saved code.',
       'events.ticket.handover':
@@ -13335,25 +13331,21 @@ class FFLocale extends ChangeNotifier {
       'events.ticket.kit.directions':
           'Maelekezo ya njia',
       'events.ticket.kit.staleHint':
-          'Hali ya vifaa vya mbio inaweza kuwa imebadilika. Unganisha mtandao kusasisha.',
+          'Hali ya vifaa vya mbio inaweza kuwa imebadilika. Unganisha intaneti kusasisha.',
       'events.ticket.bib':
-          'Namba {number}',
+          'Namba ya mbio {number}',
       'events.ticket.bib.a11y':
           'Namba ya mbio {number}',
       'events.ticket.bib.none':
           'Namba yako ya mbio itaonekana hapa mwandaaji akikupa.',
-      'events.notify.kitCollected.title':
-          'Vifaa vya mbio vimechukuliwa',
-      'events.notify.kitCollected.body':
-          'Umechukua vifaa vyako vya mbio vya {event}.',
-      'events.notify.bibAssigned.title':
-          'Namba yako ya mbio iko tayari',
-      'events.notify.bibAssigned.body':
-          'Namba yako ya {event} ni {number}.',
       'ownerScan.eventTicket.title':
           'Hii ni tiketi ya tukio',
       'ownerScan.eventTicket.body':
-          'Tiketi za matukio huskaniwa kwenye Uchukuaji wa vifaa kwenye tovuti ya mwandaaji, si hapa.',
+          'Tiketi za matukio huskaniwa kwenye Uchukuaji wa vifaa kwenye portal ya mwandaaji, si hapa.',
+      'memberScan.eventTicket.title':
+          'Hii ni tiketi ya tukio',
+      'memberScan.eventTicket.body':
+          'Ioneshe kwenye dawati la vifaa vya mbio; haiwezi kutumika kuingia gym.',
       'events.ticket.cached':
           'Imehifadhiwa kwenye simu hii · ilisasishwa {time}',
       'events.ticket.offline':
