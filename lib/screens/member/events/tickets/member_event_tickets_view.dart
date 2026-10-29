@@ -262,7 +262,17 @@ class _TicketCard extends StatelessWidget {
                       ),
                     if (category.isNotEmpty)
                       Text(category, style: tt.bodyMedium),
-                    Text(t.participantName, style: tt.bodyMedium),
+                    Text(
+                      [
+                        t.participantName,
+                        if (t.bibNumber != null)
+                          context
+                              .tr('events.ticket.bib')
+                              .replaceFirst('{number}', t.bibNumber!),
+                      ].join(' · '),
+                      key: Key('ticket-subtitle-${t.registrationId}'),
+                      style: tt.bodyMedium,
+                    ),
                     const SizedBox(height: FFTokens.spacingXs),
                     Wrap(
                       spacing: FFTokens.spacingSm,

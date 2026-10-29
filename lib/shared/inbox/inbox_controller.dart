@@ -141,7 +141,10 @@ String memberLinkFor({required String deepLink, required String type}) =>
         'event_refund_rejected' => 'eventOrder',
         'event_payment_confirmed' => 'eventTickets',
         'event_payment_rejected' => 'eventPay',
-        'event_ticket_ready' => 'eventTicket',
+        // Events S5 (spec §4.6): kit collected / bib assigned open the ticket.
+        'event_ticket_ready' ||
+        'event_kit_collected' ||
+        'event_bib_assigned' => 'eventTicket',
         'event_place_cancelled_by_purchaser' => 'eventRegistrations',
         _ => '',
       };

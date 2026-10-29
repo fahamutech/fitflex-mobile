@@ -6442,6 +6442,45 @@ class FFLocale extends ChangeNotifier {
       'events.ticket.scan.soon':
           'Kit collection scanning isn\'t live yet. Keep this code; the organizer will confirm where and when to collect your kit.',
       'events.ticket.scan.live': 'Show this code at the kit collection point.',
+      // Events S5 kit/bib copy (docs/design/events-s5 §10.2).
+      'events.ticket.kit.title':
+          'Your kit',
+      'events.ticket.kit.not_ready':
+          'Kit not ready yet',
+      'events.ticket.kit.ready':
+          'Kit ready to collect',
+      'events.ticket.kit.collected':
+          'Kit collected',
+      'events.ticket.kit.collectedAt':
+          'Collected {date} at {point}',
+      'events.ticket.kit.collectedOn':
+          'Collected {date}',
+      'events.ticket.kit.noNeed':
+          'You don\'t need to show this code again.',
+      'events.ticket.kit.exception':
+          'Please ask the organizer about your kit.',
+      'events.ticket.kit.where':
+          'Where to collect',
+      'events.ticket.kit.when':
+          'Opening hours',
+      'events.ticket.kit.directions':
+          'Directions',
+      'events.ticket.kit.staleHint':
+          'Kit status may have changed. Connect to refresh.',
+      'events.ticket.bib':
+          'Bib {number}',
+      'events.ticket.bib.a11y':
+          'Bib number {number}',
+      'events.ticket.bib.none':
+          'Your bib number will appear here once the organizer assigns it.',
+      'ownerScan.eventTicket.title':
+          'This is an event ticket',
+      'ownerScan.eventTicket.body':
+          'Event tickets are scanned at Kit collection in the organizer portal, not here.',
+      'memberScan.eventTicket.title':
+          'This is an event ticket',
+      'memberScan.eventTicket.body':
+          'Show it at the kit desk; it cannot be used to check in at a gym.',
       'events.ticket.cached': 'Saved on this phone · updated {time}',
       'events.ticket.offline': 'You\'re offline. Showing the saved code.',
       'events.ticket.handover':
@@ -13268,6 +13307,45 @@ class FFLocale extends ChangeNotifier {
           'Skani ya kuchukua vifaa vya mbio bado haijaanza. Hifadhi msimbo huu; mwandaaji atathibitisha wapi na lini utachukua vifaa vyako vya mbio.',
       'events.ticket.scan.live':
           'Onyesha msimbo huu mahali pa kuchukua vifaa vya mbio.',
+      // TODO(sw-review): events S5 kit/bib copy (docs/design/events-s5 §10.2).
+      'events.ticket.kit.title':
+          'Vifaa vyako vya mbio',
+      'events.ticket.kit.not_ready':
+          'Vifaa vya mbio bado havijawa tayari',
+      'events.ticket.kit.ready':
+          'Vifaa vya mbio viko tayari kuchukuliwa',
+      'events.ticket.kit.collected':
+          'Vifaa vya mbio vimechukuliwa',
+      'events.ticket.kit.collectedAt':
+          'Vilichukuliwa {date} katika {point}',
+      'events.ticket.kit.collectedOn':
+          'Vilichukuliwa {date}',
+      'events.ticket.kit.noNeed':
+          'Huhitaji kuonyesha msimbo huu tena.',
+      'events.ticket.kit.exception':
+          'Tafadhali muulize mwandaaji kuhusu vifaa vyako vya mbio.',
+      'events.ticket.kit.where':
+          'Mahali pa kuchukulia',
+      'events.ticket.kit.when':
+          'Saa za kufungua',
+      'events.ticket.kit.directions':
+          'Maelekezo ya njia',
+      'events.ticket.kit.staleHint':
+          'Hali ya vifaa vya mbio inaweza kuwa imebadilika. Unganisha intaneti kusasisha.',
+      'events.ticket.bib':
+          'Namba ya mbio {number}',
+      'events.ticket.bib.a11y':
+          'Namba ya mbio {number}',
+      'events.ticket.bib.none':
+          'Namba yako ya mbio itaonekana hapa mwandaaji akikupa.',
+      'ownerScan.eventTicket.title':
+          'Hii ni tiketi ya tukio',
+      'ownerScan.eventTicket.body':
+          'Tiketi za matukio huskaniwa kwenye Uchukuaji wa vifaa kwenye portal ya mwandaaji, si hapa.',
+      'memberScan.eventTicket.title':
+          'Hii ni tiketi ya tukio',
+      'memberScan.eventTicket.body':
+          'Ioneshe kwenye dawati la vifaa vya mbio; haiwezi kutumika kuingia gym.',
       'events.ticket.cached':
           'Imehifadhiwa kwenye simu hii · ilisasishwa {time}',
       'events.ticket.offline':
