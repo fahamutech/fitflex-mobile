@@ -30,6 +30,7 @@ import 'shop_home/shop_product_card.dart'
     show
         ShopOutOfStockBadge,
         shopOnSale,
+        shopDiscountPercent,
         shopSalePrice,
         shopSalePriceLabel,
         shopWasPrice;
@@ -282,11 +283,13 @@ class ShopCart {
   ];
 
   /// Puts a fresh copy of a product in the cart (after prices changed); the
-  /// quantity and option stay.
-  void refreshProduct(ShopProduct product) {
+  /// quantity and option stay. With [keepConfirmed] (a background refresh of
+  /// the home or the list) a price the buyer confirmed after a 409 stays
+  /// the line's price, so "Continue with {total}" sends what it showed.
+  void refreshProduct(ShopProduct product, {bool keepConfirmed = false}) {
     if (!_qty.containsKey(product.id)) return;
     _products[product.id] = product;
-    _confirmed.remove(product.id);
+    if (!keepConfirmed) _confirmed.remove(product.id);
   }
 
   /// The server's current unit price for a line, kept until the product is
@@ -497,6 +500,9 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
   String? _openProductId;
   BuildContext? _sheetContext;
   bool _closingFromUrl = false;
+
+  /// The product the address switched to while a sheet was open.
+  String? _replaceWith;
   ScaffoldMessengerState? _messenger;
 
   /// The selected category chip, scrolled into view when the list opens.
@@ -519,6 +525,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
   @override
   void initState() {
     super.initState();
+    _lifecycle;
     addRootBackHandler(_onRootBack);
     ShopNearYouStore.changes.addListener(_nearChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -534,6 +541,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
 
   @override
   void dispose() {
+    _lifecycle.dispose();
     _heroFocus.dispose();
     removeRootBackHandler(_onRootBack);
     ShopNearYouStore.changes.removeListener(_nearChanged);
@@ -555,7 +563,45 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _messenger = ScaffoldMessenger.maybeOf(context);
+    // QA #1: coming back to the Shop tab (a tab kept alive in an
+    // IndexedStack) fetches again, so a sale that started meanwhile shows.
+    final visible = Visibility.of(context);
+    if (visible && _shown == false) _refreshOnReturn();
+    _shown = visible;
     _syncFromUrl();
+  }
+
+  /// Whether the shop was visible last time (null before the first look).
+  bool? _shown;
+
+  /// When the shop last fetched what it shows (device time).
+  DateTime? _lastFetch;
+
+  /// Returning within this long of the last fetch keeps what is shown.
+  static const _refetchAfter = Duration(seconds: 30);
+
+  late final AppLifecycleListener _lifecycle = AppLifecycleListener(
+    onResume: () {
+      if (mounted && (_shown ?? true)) _refreshOnReturn();
+    },
+  );
+
+  /// Fetches the home (or the list) again when the shop is looked at again,
+  /// unless it was fetched in the last 30 s. What is on screen stays while
+  /// it loads (the home keeps its last answer; the list its rows).
+  void _refreshOnReturn() {
+    final last = _lastFetch;
+    if (last == null ||
+        ShopClock.deviceNow().difference(last) < _refetchAfter) {
+      return;
+    }
+    _lastFetch = ShopClock.deviceNow();
+    if (_catalogueLoaded) unawaited(_load());
+    if (_section == 0 && _showHome) {
+      unawaited(_homeKey.currentState?.reload());
+    } else if (!_catalogueLoaded) {
+      unawaited(_load());
+    }
   }
 
   /// Android Back (and the shells' root PopScope): from the product list,
@@ -636,9 +682,18 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
     }
     final product = q['product'];
     if (product != null && product != _openProductId) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _openProductById(product);
-      });
+      final open = _sheetContext;
+      if (open != null && open.mounted) {
+        // QA #13: another product while a sheet is open: close this one
+        // and open that one in its place (never two sheets stacked).
+        _replaceWith = product;
+        _closingFromUrl = true;
+        Navigator.of(open).maybePop();
+      } else {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _openProductById(product);
+        });
+      }
     } else if (product == null && _sheetContext != null) {
       _closingFromUrl = true;
       final sheet = _sheetContext!;
@@ -859,7 +914,18 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
     });
   }
 
+  /// Replaces the cart's copies of [fresh] products, so the cart bar and
+  /// the cart show the price the buyer will pay now, not the price when the
+  /// line was added (QA #2). Quantity and option stay.
+  void _refreshCart(Iterable<ShopProduct> fresh) {
+    if (_cart.isEmpty) return;
+    for (final p in fresh) {
+      if (_cart.qtyOf(p.id) > 0) _cart.refreshProduct(p, keepConfirmed: true);
+    }
+  }
+
   Future<void> _load() async {
+    _lastFetch = ShopClock.deviceNow();
     setState(() => _loading = true);
     final catalogue = _needsCatalogue;
     try {
@@ -876,6 +942,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
               .map(ShopProduct.fromJson)
               .toList();
           _catalogueLoaded = true;
+          _refreshCart(_products);
         }
         _orders = results.last.whereType<Map<String, dynamic>>().toList();
         _loading = false;
@@ -985,9 +1052,14 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) => _CheckoutSheet(
-        cart: shopHomeV2Enabled ? _cart : null,
-        initial: _lastCheckout,
+      builder: (sheet) => Semantics(
+        namesRoute: true,
+        explicitChildNodes: true,
+        label: sheet.tr('shop.checkout'),
+        child: _CheckoutSheet(
+          cart: shopHomeV2Enabled ? _cart : null,
+          initial: _lastCheckout,
+        ),
       ),
     );
     if (checkout == null || !mounted || _ordering) return;
@@ -1291,10 +1363,16 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
         // Follows a refetch (the area became sendable after it opened).
         return ValueListenableBuilder<ShopProduct>(
           valueListenable: shown,
-          builder: (_, product, _) => _ProductDetailsSheet(
-            product: product,
-            showDistance: !_areasExist,
-            onAdd: () => _addToCart(product),
+          // QA #15: the sheet's route is named by the product.
+          builder: (_, product, _) => Semantics(
+            namesRoute: true,
+            explicitChildNodes: true,
+            label: product.name,
+            child: _ProductDetailsSheet(
+              product: product,
+              showDistance: !_areasExist,
+              onAdd: () => _addToCart(product),
+            ),
           ),
         );
       },
@@ -1308,6 +1386,13 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
     if (!_closingFromUrl) _pushUrl();
     _closingFromUrl = false;
     setState(() {});
+    final next = _replaceWith;
+    _replaceWith = null;
+    if (next != null) {
+      // The address now names another product: open it in this one's place.
+      await _openProductById(next);
+      return;
+    }
     if (buyNow == true) await _checkout();
   }
 
@@ -1534,7 +1619,18 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
                   cart: _cart,
                   gutter: gutter,
                   initialData: _homeCache,
-                  onData: (data) => _homeCache = data,
+                  onData: (data) {
+                    _homeCache = data;
+                    _lastFetch = ShopClock.deviceNow();
+                    // QA #2: the cart follows the fresh rows (a sale that
+                    // started, ended or was ended early).
+                    setState(
+                      () => _refreshCart([
+                        for (final e in data.products.entries)
+                          ShopProduct.fromJson({'id': e.key, ...e.value}),
+                      ]),
+                    );
+                  },
                   catalogue: _catalogueLoaded ? _products : null,
                   catalogueFailed: !_catalogueLoaded && _loadError != null,
                   onNeedCatalogue: () => unawaited(_ensureCatalogue()),
@@ -1584,6 +1680,10 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
           child: ShopCartSaleNotice(
             key: const Key('shop-cartbar-sale-notice'),
             cart: _cart,
+            // A line's sale ended: the bar's total is the price paid now.
+            onChanged: () {
+              if (mounted) setState(() {});
+            },
           ),
         ),
         _cartBar(context),
@@ -2417,6 +2517,19 @@ class _ProductTile extends StatelessWidget {
                       child: const ShopDeliversBadge(),
                     ),
                   if (shopOnSale(product)) ...[
+                    // QA #7 (§8.1): the same "−N%" Fuel badge as the cards;
+                    // the % is already in the price's label.
+                    if (shopDiscountPercent(product) >= 1)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: ExcludeSemantics(
+                          child: FFBadge(
+                            key: Key('shop-discount-${product.id}'),
+                            label: '−${shopDiscountPercent(product)}%',
+                            tone: FFBadgeTone.fuel,
+                          ),
+                        ),
+                      ),
                     // Sale price in Fuel, the original struck through below;
                     // read once as "Sale price …, was …".
                     Text(
@@ -3087,10 +3200,59 @@ class _ProductDetailsSheet extends StatelessWidget {
               ),
               ...product.similarProducts.map(
                 (similar) => ListTile(
+                  key: Key('shop-similar-${similar.id}'),
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.shopping_bag_outlined),
                   title: Text(similar.name),
-                  trailing: Text(formatCurrency(similar.effectivePrice)),
+                  // QA #9: a product on sale says so here too: −N%, the
+                  // sale price and the struck "was" price (read once).
+                  subtitle:
+                      shopOnSale(similar) && shopDiscountPercent(similar) >= 1
+                      ? Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: ExcludeSemantics(
+                            child: FFBadge(
+                              key: Key('shop-similar-discount-${similar.id}'),
+                              label: '−${shopDiscountPercent(similar)}%',
+                              tone: FFBadgeTone.fuel,
+                            ),
+                          ),
+                        )
+                      : null,
+                  trailing: shopOnSale(similar)
+                      ? Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              formatCurrency(shopSalePrice(similar)),
+                              key: Key('shop-similar-sale-${similar.id}'),
+                              semanticsLabel: shopSalePriceLabel(
+                                context,
+                                similar,
+                              ),
+                              style: TextStyle(
+                                color:
+                                    Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? FFTokens.fuelOnDark
+                                    : FFTokens.fuel,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            ExcludeSemantics(
+                              child: Text(
+                                formatCurrency(shopWasPrice(similar)),
+                                style: TextStyle(
+                                  color: FFTokens.mutedText(context),
+                                  decoration: TextDecoration.lineThrough,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      : Text(formatCurrency(similar.effectivePrice)),
                 ),
               ),
             ],

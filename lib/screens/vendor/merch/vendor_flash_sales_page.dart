@@ -93,28 +93,12 @@ class _VendorFlashSalesPageState extends State<VendorFlashSalesPage> {
       setState(() => _loading = false);
       return;
     }
+    final key = _keptKey;
     try {
       final list = await _allSales(AppScope.of(context).api);
       if (!mounted) return;
-      final vendor = list['vendor'] is Map ? list['vendor'] as Map : const {};
-      final open = list['openProposals'] is Map
-          ? list['openProposals'] as Map
-          : const {};
-      setState(() {
-        _canPropose = vendor['canPropose'] != false && !_pendingVendor;
-        _cannotReason = _pendingVendor
-            ? 'vendor_not_approved'
-            : vendor['reason']?.toString();
-        _open = open['open'] is num ? (open['open'] as num).toInt() : null;
-        _maxOpen = open['max'] is num ? (open['max'] as num).toInt() : null;
-        _sales = (list['items'] is List ? list['items'] as List : const [])
-            .whereType<Map>()
-            .map((m) => VendorFlashSale.fromJson(Map<String, dynamic>.from(m)))
-            .where((s) => s.id.isNotEmpty)
-            .toList();
-        _unavailable = false;
-        _loading = false;
-      });
+      if (key != null) _kept[key] = list;
+      _apply(list, offline: false);
       _showItem();
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -126,11 +110,55 @@ class _VendorFlashSalesPageState extends State<VendorFlashSalesPage> {
       });
     } catch (e) {
       if (!mounted) return;
+      // QA #5: no connection, but a list was loaded before (here or earlier
+      // this session): keep showing it, actions off, with the offline bar.
+      final kept = key == null ? null : _kept[key];
+      if (isNetworkError(e) && kept != null) {
+        _apply(kept, offline: true);
+        return;
+      }
       setState(() {
         _error = e;
         _loading = false;
       });
     }
+  }
+
+  /// The last list loaded for each signed-in person this session.
+  static final Map<String, Map<String, dynamic>> _kept = {};
+
+  String? get _keptKey {
+    final user = AppScope.of(context).auth.user;
+    final id = user?['id']?.toString() ?? '';
+    return id.isEmpty ? null : 'flash-sales:$id';
+  }
+
+  /// Shown from the last list because there is no connection: actions and
+  /// Propose are off until a refresh works.
+  bool _offline = false;
+
+  void _apply(Map<String, dynamic> list, {required bool offline}) {
+    final vendor = list['vendor'] is Map ? list['vendor'] as Map : const {};
+    final open = list['openProposals'] is Map
+        ? list['openProposals'] as Map
+        : const {};
+    setState(() {
+      _offline = offline;
+      _error = null;
+      _canPropose = vendor['canPropose'] != false && !_pendingVendor;
+      _cannotReason = _pendingVendor
+          ? 'vendor_not_approved'
+          : vendor['reason']?.toString();
+      _open = open['open'] is num ? (open['open'] as num).toInt() : null;
+      _maxOpen = open['max'] is num ? (open['max'] as num).toInt() : null;
+      _sales = (list['items'] is List ? list['items'] as List : const [])
+          .whereType<Map>()
+          .map((m) => VendorFlashSale.fromJson(Map<String, dynamic>.from(m)))
+          .where((s) => s.id.isNotEmpty)
+          .toList();
+      _unavailable = false;
+      _loading = false;
+    });
   }
 
   /// Every page (limit 100, following nextCursor); the first page's
@@ -381,8 +409,16 @@ class _VendorFlashSalesPageState extends State<VendorFlashSalesPage> {
                 fullWidth: true,
                 visualDensity: VisualDensity.standard,
                 maxLines: 2,
-                onPressed: _atLimit ? null : () => _openForm(),
+                onPressed: _atLimit || _offline ? null : () => _openForm(),
               ),
+              if (_offline) ...[
+                const SizedBox(height: FFTokens.spacingXs),
+                Text(
+                  context.tr('merch.sale.needsInternet'),
+                  key: const Key('merch-sale-needs-internet'),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
               if (_open != null && _maxOpen != null) ...[
                 const SizedBox(height: FFTokens.spacingXs),
                 Text(
@@ -435,6 +471,13 @@ class _VendorFlashSalesPageState extends State<VendorFlashSalesPage> {
     };
     final theme = Theme.of(context);
     return _scroll([
+      if (_offline) ...[
+        FFAlert(
+          key: const Key('merch-sales-offline-bar'),
+          message: context.tr('offline.banner'),
+        ),
+        const SizedBox(height: FFTokens.spacingMd),
+      ],
       Semantics(
         header: true,
         child: Text(
@@ -528,7 +571,9 @@ class _VendorFlashSalesPageState extends State<VendorFlashSalesPage> {
 
   static FFBadgeTone _tone(String status) => switch (status) {
     'pending_approval' => FFBadgeTone.warning,
-    'approved' => FFBadgeTone.brand,
+    // QA #10: Scheduled in info blue, Live in success green (brand and
+    // success are both green, so they could not be told apart).
+    'approved' => FFBadgeTone.info,
     'live' => FFBadgeTone.success,
     'rejected' => FFBadgeTone.danger,
     'ended' => FFBadgeTone.defaultTone,
@@ -550,7 +595,8 @@ class _VendorFlashSalesPageState extends State<VendorFlashSalesPage> {
   Widget _card(BuildContext context, VendorFlashSale s) {
     final theme = Theme.of(context);
     final dark = theme.brightness == Brightness.dark;
-    final busy = _busy.contains(s.id);
+    // Offline (QA #5): the actions show but can't be used.
+    final busy = _busy.contains(s.id) || _offline;
     final name = s.productName.isEmpty ? '-' : s.productName;
     final extra = _extraLine(context, s);
     final sale = formatCurrency(s.salePriceTzs);

@@ -17,6 +17,7 @@ import '../../formatters.dart';
 import '../../i18n.dart';
 import '../../shop_home.dart';
 import '../shop_browse_page.dart' show ShopCart, ShopProduct;
+import 'shop_focus_ring.dart';
 
 /// A cart line counts as "about to end" this long before its sale ends.
 const shopSaleEndingSoon = Duration(minutes: 15);
@@ -34,7 +35,7 @@ String shopSaleEndsText(
     final lang = FFLocaleScope.of(context).locale.languageCode;
     return context
         .tr('shop.sale.endsOn')
-        .replaceAll('{when}', formatDayTime(sale.endsAt, locale: lang));
+        .replaceAll('{when}', shopSaleEndWhen(sale.endsAt, lang));
   }
   final h = left.inHours;
   final m = left.inMinutes % 60;
@@ -48,6 +49,27 @@ String shopSaleEndsText(
       .tr('shop.sale.endsIn')
       .replaceAll('{h}', '$h')
       .replaceAll('{m}', '$m');
+}
+
+const _weekdaysEn = [
+  'Monday', 'Tuesday', 'Wednesday', 'Thursday', //
+  'Friday', 'Saturday', 'Sunday',
+];
+const _weekdaysSw = [
+  'Jumatatu', 'Jumanne', 'Jumatano', 'Alhamisi', //
+  'Ijumaa', 'Jumamosi', 'Jumapili',
+];
+
+/// "Friday 6:00 pm" / "Ijumaa 6:00 jioni" (spec §8.1, QA #8): the weekday
+/// and a 12-hour time of day, on the member's clock.
+String shopSaleEndWhen(DateTime endsAt, String lang) {
+  final d = localDateTime(endsAt) ?? endsAt;
+  final sw = lang == 'sw';
+  final day = (sw ? _weekdaysSw : _weekdaysEn)[d.weekday - 1];
+  if (sw) return '$day ${formatTimeOfDay(d, locale: 'sw')}';
+  final h12 = d.hour % 12 == 0 ? 12 : d.hour % 12;
+  final mm = d.minute.toString().padLeft(2, '0');
+  return '$day $h12:$mm ${d.hour < 12 ? 'am' : 'pm'}';
 }
 
 /// The product sheet's line under the price (spec §8.1): Fuel text, no
@@ -107,6 +129,11 @@ class _ShopSaleEndsLineState extends State<ShopSaleEndsLine> {
     return Text(
       shopSaleEndsText(context, widget.sale, left),
       key: const Key('shop-sale-ends'),
+      // QA #8: read in words at minute precision ("Sale ends in 2 hours 14
+      // minutes"); over 24 h the visible "Sale ends Friday 6:00 pm".
+      semanticsLabel: left > const Duration(hours: 24)
+          ? null
+          : ffCountdownA11yLabel(context, left),
       style: theme.textTheme.bodyMedium?.copyWith(
         color: left == Duration.zero
             ? theme.colorScheme.onSurface
@@ -118,24 +145,58 @@ class _ShopSaleEndsLineState extends State<ShopSaleEndsLine> {
 }
 
 /// The warning about sale lines in the cart (P1 §9, AC-23): a sale that
-/// ended ("You'll pay the current price"), else one about to end. Checks
-/// again every 15 seconds while shown. Nothing when no line is on sale.
+/// ended ("You'll pay the current price"), else one about to end. Wakes
+/// exactly when something it says changes (QA #3): a line's sale end, the
+/// start of its last 15 minutes, and each minute inside them. [onChanged]
+/// tells the screen around it (the cart bar's total) at those moments.
+/// Nothing when no line is on sale.
 class ShopCartSaleNotice extends StatefulWidget {
-  const ShopCartSaleNotice({super.key, required this.cart});
+  const ShopCartSaleNotice({super.key, required this.cart, this.onChanged});
   final ShopCart cart;
+  final VoidCallback? onChanged;
 
   @override
   State<ShopCartSaleNotice> createState() => _ShopCartSaleNoticeState();
 }
 
+/// The next moment a cart line's sale state or its "ends in N min" changes
+/// (server clock), or null when no line is in a live sale.
+DateTime? shopCartNextSaleBoundary(ShopCart cart, DateTime now) {
+  DateTime? next;
+  void consider(DateTime at) {
+    if (!at.isAfter(now)) return;
+    if (next == null || at.isBefore(next!)) next = at;
+  }
+
+  for (final (product, _, _) in cart.lines) {
+    final sale = product.sale;
+    if (sale == null || !product.flashSaleLive) continue;
+    consider(sale.endsAt);
+    final soon = sale.endsAt.subtract(shopSaleEndingSoon);
+    if (now.isBefore(soon)) {
+      consider(soon);
+    } else {
+      // Inside the last 15 minutes: the next whole minute of the time left.
+      final ms = sale.endsAt.difference(now).inMilliseconds % 60000;
+      consider(now.add(Duration(milliseconds: ms == 0 ? 60000 : ms)));
+    }
+  }
+  return next;
+}
+
 class _ShopCartSaleNoticeState extends State<ShopCartSaleNotice> {
   Timer? _timer;
 
-  @override
-  void initState() {
-    super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 15), (_) {
-      if (mounted) setState(() {});
+  void _schedule() {
+    _timer?.cancel();
+    final now = ShopClock.now();
+    final next = shopCartNextSaleBoundary(widget.cart, now);
+    if (next == null) return;
+    // A moment after the boundary, so it reads as passed when it fires.
+    _timer = Timer(next.difference(now) + const Duration(milliseconds: 1), () {
+      if (!mounted) return;
+      setState(() {});
+      widget.onChanged?.call();
     });
   }
 
@@ -147,6 +208,7 @@ class _ShopCartSaleNoticeState extends State<ShopCartSaleNotice> {
 
   @override
   Widget build(BuildContext context) {
+    _schedule();
     final ended = widget.cart.saleEndedProducts;
     if (ended.isNotEmpty) {
       return Padding(
@@ -303,6 +365,10 @@ Future<bool?> showShopPriceChangedSheet(
   showClose: false,
   isDismissible: false,
   wideDialogWidth: 480,
+  // QA #4: focus opens on the title; title → rows → totals → Continue →
+  // Back to cart, and stays inside the sheet.
+  focusTitle: true,
+  trapFocus: true,
   child: ShopPriceChangedBody(
     change: change,
     product: product,
@@ -404,36 +470,38 @@ class _ShopPriceChangedBodyState extends State<ShopPriceChangedBody> {
           ...rows,
         const Divider(),
         if (hasTotals)
-          Semantics(
-            key: const Key('shop-price-changed-totals'),
-            container: true,
-            excludeSemantics: true,
-            label: context
-                .tr('shop.a11y.priceChangedTotal')
-                .replaceAll('{old}', oldTotal)
-                .replaceAll('{new}', newTotal),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (change.expectedTotalTzs != null)
+          _stop(
+            Semantics(
+              key: const Key('shop-price-changed-totals'),
+              container: true,
+              excludeSemantics: true,
+              label: context
+                  .tr('shop.a11y.priceChangedTotal')
+                  .replaceAll('{old}', oldTotal)
+                  .replaceAll('{new}', newTotal),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (change.expectedTotalTzs != null)
+                    Text(
+                      context
+                          .tr('shop.priceChanged.totalWas')
+                          .replaceAll('{total}', oldTotal),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: FFTokens.mutedText(context),
+                      ),
+                    ),
                   Text(
                     context
-                        .tr('shop.priceChanged.totalWas')
-                        .replaceAll('{total}', oldTotal),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: FFTokens.mutedText(context),
+                        .tr('shop.priceChanged.newTotal')
+                        .replaceAll('{total}', newTotal),
+                    key: const Key('shop-price-changed-new-total'),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                Text(
-                  context
-                      .tr('shop.priceChanged.newTotal')
-                      .replaceAll('{total}', newTotal),
-                  key: const Key('shop-price-changed-new-total'),
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         if (_offline) ...[
@@ -488,77 +556,85 @@ class _ShopPriceChangedBodyState extends State<ShopPriceChangedBody> {
     final now = formatCurrency(line.currentPriceTzs);
     final reason = context.tr(line.reasonKey);
     final image = product?.images.firstOrNull;
-    return Semantics(
-      key: Key(
-        'price-changed-${line.productId}'
-        '${line.variant == null ? '' : '-${line.variant}'}',
-      ),
-      container: true,
-      excludeSemantics: true,
-      label: context
-          .tr('shop.a11y.priceChangedRow')
-          .replaceAll('{name}', name)
-          .replaceAll('{old}', old ?? '-')
-          .replaceAll('{new}', now)
-          .replaceAll('{reason}', reason),
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(FFTokens.radiusSm),
-              child: Container(
-                width: 48,
-                height: 48,
-                color: Colors.white,
-                child: image == null
-                    ? const Icon(Icons.shopping_bag_outlined)
-                    : FFRemoteImage(
-                        src: image,
-                        width: 48,
-                        height: 48,
-                        fit: BoxFit.contain,
-                        fallback: const Icon(Icons.shopping_bag_outlined),
-                      ),
+    return _stop(
+      Semantics(
+        key: Key(
+          'price-changed-${line.productId}'
+          '${line.variant == null ? '' : '-${line.variant}'}',
+        ),
+        container: true,
+        excludeSemantics: true,
+        label: context
+            .tr('shop.a11y.priceChangedRow')
+            .replaceAll('{name}', name)
+            .replaceAll('{old}', old ?? '-')
+            .replaceAll('{new}', now)
+            .replaceAll('{reason}', reason),
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(FFTokens.radiusSm),
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  color: Colors.white,
+                  child: image == null
+                      ? const Icon(Icons.shopping_bag_outlined)
+                      : FFRemoteImage(
+                          src: image,
+                          width: 48,
+                          height: 48,
+                          fit: BoxFit.contain,
+                          fallback: const Icon(Icons.shopping_bag_outlined),
+                        ),
+                ),
               ),
-            ),
-            const SizedBox(width: FFTokens.spacingSm),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  if (old != null)
+              const SizedBox(width: FFTokens.spacingSm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text(
-                      old,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: FFTokens.mutedText(context),
-                        decoration: TextDecoration.lineThrough,
+                      name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                  Text(
-                    now,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurface,
-                      fontWeight: FontWeight.w700,
+                    if (old != null)
+                      Text(
+                        old,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: FFTokens.mutedText(context),
+                          decoration: TextDecoration.lineThrough,
+                        ),
+                      ),
+                    Text(
+                      now,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurface,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: FFTokens.spacing2xs),
-                  FFBadge(label: reason, tone: FFBadgeTone.gray, wrap: true),
-                ],
+                    const SizedBox(height: FFTokens.spacing2xs),
+                    FFBadge(label: reason, tone: FFBadgeTone.gray, wrap: true),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
+
+  /// A keyboard stop (with the shop's focus ring) for text the buyer
+  /// should be able to reach with Tab: the rows and the totals.
+  Widget _stop(Widget child) => ShopFocusRing(
+    builder: (node) => Focus(focusNode: node, child: child),
+  );
 }

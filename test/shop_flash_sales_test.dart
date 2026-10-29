@@ -14,7 +14,9 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
@@ -819,6 +821,257 @@ void main() {
         isNull,
       );
       ShopClock.reset();
+    });
+  });
+
+  group('QA round 1 (buyer)', () {
+    apiTest('#1 back on a kept-alive Shop tab after 30 s: fetched again', (
+      tester,
+      api,
+    ) async {
+      _deviceClock(tester);
+      _seed(api, _home());
+      var tab = 0;
+      late StateSetter setTab;
+      await pumpPage(
+        tester,
+        api,
+        StatefulBuilder(
+          builder: (context, set) {
+            setTab = set;
+            return IndexedStack(
+              index: tab,
+              children: const [ShopBrowseBody(), Text('OTHER TAB')],
+            );
+          },
+        ),
+        user: _member,
+        size: const Size(420, 900),
+        keepRequests: true,
+      );
+      final first = api.where('GET', '/shop/home').length;
+      // Away and back within 30 s: what is shown stays (cache respected).
+      setTab(() => tab = 1);
+      await tester.pumpAndSettle();
+      setTab(() => tab = 0);
+      await tester.pumpAndSettle();
+      expect(api.where('GET', '/shop/home').length, first);
+      // Away for a minute: fetched again on return, content kept meanwhile.
+      setTab(() => tab = 1);
+      await tester.pump(const Duration(seconds: 61));
+      setTab(() => tab = 0);
+      await tester.pump();
+      expect(_key('shop-home-section-flash_sale'), findsOneWidget);
+      await tester.pumpAndSettle();
+      expect(api.where('GET', '/shop/home').length, first + 1);
+    });
+
+    apiTest('#2 #3 the sale ends: notice at once, cart bar at the regular '
+        'price', (tester, api) async {
+      _deviceClock(tester);
+      _seed(api, _home(endsIn: const Duration(minutes: 1)));
+      final host = await _pump(tester, api);
+      await tapVisible(tester, _key('shop-home-add-p1'));
+      await host.dismissSnacks();
+      expect(_key('shop-cart-sale-ending'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: _key('shop-home-checkout'),
+          matching: find.textContaining(formatCurrency(69000)),
+        ),
+        findsOneWidget,
+      );
+      // The home after the end no longer has the sale (refetch).
+      api.on('GET /shop/home', _home(onSale: false));
+      // Right at the end, not up to 15 s later.
+      await tester.pump(const Duration(seconds: 60));
+      await tester.pump(const Duration(milliseconds: 5));
+      expect(_key('shop-cart-sale-ending'), findsNothing);
+      expect(_key('shop-cart-sale-ended'), findsOneWidget);
+      expect(find.text(host.tr('shop.home.saleEndedInCart')), findsOneWidget);
+      expect(
+        find.descendant(
+          of: _key('shop-home-checkout'),
+          matching: find.textContaining(formatCurrency(85000)),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    test(
+      '#3 the notice wakes at the end, the 15-minute mark and each minute',
+      () {
+        ShopClock.debugDeviceNow = () => _serverNow;
+        final cart = ShopCart()
+          ..add(
+            ShopProduct.fromJson(
+              _p(
+                'p1',
+                'Whey',
+                sale: _sale('p1', endsIn: const Duration(hours: 1)),
+              ),
+            ),
+          );
+        expect(
+          shopCartNextSaleBoundary(cart, _serverNow),
+          _serverNow.add(const Duration(minutes: 45)),
+        );
+        final inside = _serverNow.add(const Duration(minutes: 50, seconds: 20));
+        expect(
+          shopCartNextSaleBoundary(cart, inside),
+          _serverNow.add(const Duration(minutes: 51)),
+        );
+        expect(shopCartNextSaleBoundary(ShopCart(), _serverNow), isNull);
+        ShopClock.reset();
+      },
+    );
+
+    apiTest('#4 price-changed sheet: focus on the title, Tab walks rows → '
+        'totals → Continue → Back, and wraps', (tester, api) async {
+      _deviceClock(tester);
+      _seed(api, _home());
+      api.fail('POST /me/shop-orders', 409, _priceChanged());
+      final host = await _pump(tester, api);
+      await tapVisible(tester, _key('shop-home-add-p1'));
+      await _checkout(tester, host);
+      // Whether the focused control is, wraps, or sits inside [key].
+      bool inside(String key) {
+        final ctx = FocusManager.instance.primaryFocus?.context;
+        if (ctx == null) return false;
+        if (ctx.widget.key == Key(key)) return true;
+        var found = false;
+        ctx.visitAncestorElements((e) {
+          if (e.widget.key == Key(key)) found = true;
+          return !found;
+        });
+        if (found) return true;
+        void down(Element e) {
+          if (found) return;
+          if (e.widget.key == Key(key)) {
+            found = true;
+            return;
+          }
+          e.visitChildElements(down);
+        }
+
+        (ctx as Element).visitChildElements(down);
+        return found;
+      }
+
+      expect(inside('ff-sheet-title'), isTrue);
+      final order = [
+        'price-changed-p1',
+        'shop-price-changed-totals',
+        'shop-price-changed-continue',
+        'shop-price-changed-back',
+      ];
+      for (final k in order) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        await tester.pump();
+        expect(inside(k), isTrue, reason: k);
+      }
+      // Trapped: past Back to cart, back to the title.
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      expect(inside('ff-sheet-title'), isTrue);
+      // The route is named by its title.
+      expect(
+        find.bySemanticsLabel(host.tr('shop.priceChanged.title')),
+        findsWidgets,
+      );
+    });
+
+    apiTest('#7 Results tiles carry the Fuel −N% badge', (tester, api) async {
+      _deviceClock(tester);
+      _seed(api, _home());
+      await _pump(tester, api);
+      await tapVisible(tester, _key('shop-home-browse-all'));
+      final badge = tester.widget<FFBadge>(_key('shop-discount-p1'));
+      expect(badge.label, '−18%');
+      expect(badge.tone, FFBadgeTone.fuel);
+      expect(_key('shop-discount-p5'), findsNothing);
+    });
+
+    apiTest('#8 #9 product sheet: words for screen readers; similar rows on '
+        'sale', (tester, api) async {
+      _deviceClock(tester);
+      final home = _home(endsIn: const Duration(hours: 2, minutes: 14));
+      _seed(api, home);
+      api.on('GET /shop/products/p5', {
+        ...(home['products'] as Map)['p5'] as Map,
+        'similarProducts': [(home['products'] as Map)['p1']],
+      });
+      await _pump(tester, api);
+      await tapVisible(tester, _key('shop-home-card-p5'));
+      expect(_key('shop-similar-sale-p1'), findsOneWidget);
+      expect(
+        tester.widget<FFBadge>(_key('shop-similar-discount-p1')).label,
+        '−18%',
+      );
+      await tester.tap(_key('shop-product-close'));
+      await tester.pumpAndSettle();
+      await tapVisible(tester, _key('shop-home-card-p1'));
+      final line = tester.widget<Text>(_key('shop-sale-ends'));
+      expect(line.data, startsWith('Sale ends in 2 h 1'));
+      expect(line.semanticsLabel, startsWith('Sale ends in 2 hours 1'));
+      expect(line.semanticsLabel, endsWith('minutes'));
+    });
+
+    test('#8 over 24 h: "Friday 6:00 pm" / "Ijumaa 6:00 jioni"', () {
+      // Fri 30 Oct 2026 15:00Z = 18:00 in Tanzania.
+      debugLocalOffsetOverride = const Duration(hours: 3);
+      final at = DateTime.utc(2026, 10, 30, 15);
+      expect(shopSaleEndWhen(at, 'en'), 'Friday 6:00 pm');
+      expect(shopSaleEndWhen(at, 'sw'), 'Ijumaa 6:00 jioni');
+      expect(
+        shopSaleEndWhen(DateTime.utc(2026, 10, 30, 6, 5), 'en'),
+        'Friday 9:05 am',
+      );
+      debugLocalOffsetOverride = null;
+    });
+
+    apiTest('#13 a new ?product= replaces the open sheet (no stacking)', (
+      tester,
+      api,
+    ) async {
+      _deviceClock(tester);
+      _seed(api, _home());
+      await pumpPage(
+        tester,
+        api,
+        const ShopBrowseBody(routePath: '/'),
+        user: _member,
+        size: const Size(420, 900),
+        keepRequests: true,
+        initialLocation: '/?product=p1',
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('shop-product-close')), findsOneWidget);
+      GoRouter.of(
+        tester.element(find.byType(ShopBrowseBody)),
+      ).go('/?product=p2');
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('shop-product-close')), findsOneWidget);
+      expect(find.byKey(const Key('shop-detail-add-p2')), findsOneWidget);
+      expect(find.byKey(const Key('shop-detail-add-p1')), findsNothing);
+    });
+
+    apiTest('#15 add to cart with semantics on: no semantics errors', (
+      tester,
+      api,
+    ) async {
+      final handle = tester.ensureSemantics();
+      _deviceClock(tester);
+      _seed(api, _home());
+      await _pump(tester, api);
+      await tester.tap(_key('shop-home-add-p1'));
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      await tester.tap(_key('shop-home-add-p2'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      handle.dispose();
     });
   });
 
