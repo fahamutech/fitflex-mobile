@@ -5467,6 +5467,10 @@ class FFLocale extends ChangeNotifier {
       'merch.preview.light': 'Light',
       'merch.preview.dark': 'Dark',
       // Vendor tools · S6: reports and CSV / PDF downloads (fitflex-functions#275).
+      'vendor.reports.pdfUnavailable':
+          'The PDF can\'t be made right now. Try again later, or download a CSV.',
+      'vendor.reports.rateLimited':
+          'You\'ve downloaded too often. Try again in {n} minute(s).',
       'vendor.reports.tab': 'Reports',
       'vendor.reports.seg.reports': 'Reports',
       'vendor.reports.seg.payouts': 'Payouts',
@@ -5491,10 +5495,11 @@ class FFLocale extends ChangeNotifier {
       'vendor.reports.group.day': 'Day',
       'vendor.reports.group.week': 'Week',
       'vendor.reports.group.month': 'Month',
-      'vendor.reports.groupTooMany': 'Too many bars. Pick a longer grouping.',
+      'vendor.reports.groupTooMany': 'Too many bars. Show by week or month.',
       'vendor.reports.rangeTooLong': 'Choose up to 366 days.',
       'vendor.reports.rangeFuture': 'Choose dates up to today.',
-      'vendor.reports.rangeOrder': 'The end date must be after the start date.',
+      'vendor.reports.rangeOrder':
+          'The end date must be on or after the start date.',
       'vendor.reports.rangeInvalid':
           'These dates cannot be used. Choose other dates.',
       'vendor.reports.channel': 'Channel',
@@ -12071,6 +12076,10 @@ class FFLocale extends ChangeNotifier {
       'merch.preview.light': 'Mwanga',
       'merch.preview.dark': 'Giza',
       // Vendor tools · S6: ripoti (rasimu: kwa ukaguzi wa mzungumzaji asilia; draft for native review).
+      'vendor.reports.pdfUnavailable':
+          'PDF haiwezi kutengenezwa kwa sasa. Jaribu tena baadaye au pakua CSV.',
+      'vendor.reports.rateLimited':
+          'Umepakua mara nyingi mno. Jaribu tena baada ya dakika {n}.',
       'vendor.reports.tab': 'Ripoti',
       'vendor.reports.seg.reports': 'Ripoti',
       'vendor.reports.seg.payouts': 'Malipo yako',
@@ -12096,11 +12105,11 @@ class FFLocale extends ChangeNotifier {
       'vendor.reports.group.week': 'Wiki',
       'vendor.reports.group.month': 'Mwezi',
       'vendor.reports.groupTooMany':
-          'Ni nyingi mno. Chagua kipindi kirefu zaidi.',
+          'Pau ni nyingi mno. Onyesha kwa wiki au mwezi.',
       'vendor.reports.rangeTooLong': 'Chagua hadi siku 366.',
       'vendor.reports.rangeFuture': 'Chagua tarehe hadi leo.',
       'vendor.reports.rangeOrder':
-          'Tarehe ya mwisho iwe baada ya tarehe ya mwanzo.',
+          'Tarehe ya mwisho iwe sawa au baada ya tarehe ya kuanzia.',
       'vendor.reports.rangeInvalid':
           'Tarehe hizi haziwezi kutumika. Chagua tarehe nyingine.',
       'vendor.reports.channel': 'Njia ya mauzo',
@@ -12119,7 +12128,7 @@ class FFLocale extends ChangeNotifier {
       'vendor.reports.gross': 'Mauzo ya jumla',
       'vendor.reports.discounts': 'Punguzo',
       'vendor.reports.refunds': 'Marejesho',
-      'vendor.reports.net': 'Mauzo halisi',
+      'vendor.reports.net': 'Mauzo baada ya makato',
       'vendor.reports.vatIncluded': 'VAT iliyomo',
       'vendor.reports.salesCount': 'Idadi ya mauzo',
       'vendor.reports.itemsSold': 'Bidhaa zilizouzwa',
@@ -12135,11 +12144,11 @@ class FFLocale extends ChangeNotifier {
           '{figure} kwa {group}, {period}. Juu zaidi: {date}, {amount}. Jumla {total}. Jedwali liko chini.',
       'vendor.reports.chartTooMany':
           'Siku ni nyingi mno kwa chati. Angalia jedwali.',
-      'vendor.reports.barNet': '{when}: mauzo halisi {amount}',
+      'vendor.reports.barNet': '{when}: mauzo baada ya makato {amount}',
       'vendor.reports.barProfit': '{when}: faida {amount}',
       'vendor.reports.sales.table': 'Mauzo kwa kipindi',
-      'vendor.reports.appNet': 'Halisi ya app',
-      'vendor.reports.shopNet': 'Halisi ya dukani',
+      'vendor.reports.appNet': 'Mauzo ya app baada ya makato',
+      'vendor.reports.shopNet': 'Mauzo ya dukani baada ya makato',
       'vendor.reports.channelSplit': 'App na dukani',
       'vendor.reports.best': 'Zinazouzika zaidi',
       'vendor.reports.mostUnits': 'Idadi kubwa zaidi',
@@ -12150,7 +12159,7 @@ class FFLocale extends ChangeNotifier {
       'vendor.reports.noMatch': 'Hakuna bidhaa inayolingana.',
       'vendor.reports.loadMore': 'Onyesha zaidi',
       'vendor.reports.unitsSold': 'Idadi iliyouzwa',
-      'vendor.reports.revenue': 'Mapato halisi',
+      'vendor.reports.revenue': 'Mapato baada ya makato',
       'vendor.reports.lastSold': 'Iliuzwa mwisho',
       'vendor.reports.never': 'Haijawahi',
       'vendor.reports.inStock': 'Stock iliyopo',
@@ -12181,7 +12190,7 @@ class FFLocale extends ChangeNotifier {
       'vendor.reports.profitHint': 'Kwa bidhaa zenye bei ya kununua',
       'vendor.reports.margin': 'Asilimia ya faida',
       'vendor.reports.cogs': 'Gharama ya bidhaa',
-      'vendor.reports.netExVat': 'Mauzo halisi bila VAT',
+      'vendor.reports.netExVat': 'Mauzo baada ya makato bila VAT',
       'vendor.reports.uncostedSales': 'Mauzo bila bei ya kununua',
       'vendor.reports.profit.noVat': 'Faida imehesabiwa bila VAT.',
       'vendor.reports.profit.uncosted':
@@ -12197,9 +12206,10 @@ class FFLocale extends ChangeNotifier {
       'vendor.reports.payouts.basis':
           'Oda za app pekee. Zimehesabiwa kwa tarehe ya delivery, sawa na taarifa zako za malipo.',
       'vendor.reports.payouts.notDelivered': 'Zimelipiwa, bado delivery',
-      'vendor.reports.payouts.waiting': 'Zimefikishwa, zinasubiri malipo',
-      'vendor.reports.payouts.paidOut': 'Yamelipwa',
-      'vendor.reports.payouts.awaiting': 'Yanasubiri malipo',
+      'vendor.reports.payouts.waiting':
+          'Delivery imekamilika, inasubiri malipo',
+      'vendor.reports.payouts.paidOut': 'Imelipwa',
+      'vendor.reports.payouts.awaiting': 'Inasubiri malipo',
       'vendor.reports.payouts.noStatement': 'Bado haiko kwenye taarifa',
       'vendor.reports.payouts.byWeek': 'Kwa wiki ya taarifa',
       'vendor.reports.payouts.reconcile':
@@ -12217,14 +12227,14 @@ class FFLocale extends ChangeNotifier {
       'vendor.reports.cust.aging61': 'Siku 61–90 za kuchelewa',
       'vendor.reports.cust.aging90': 'Zaidi ya siku 90 za kuchelewa',
       'vendor.reports.cust.openOwed': 'Fungua Unachodai',
-      'vendor.reports.methods.byYou': 'Uliyopokea wewe',
+      'vendor.reports.methods.byYou': 'Uliyokusanya wewe',
       'vendor.reports.methods.viaFitFlex': 'Yaliyolipwa kupitia FitFlex',
       'vendor.reports.methods.netOfChange': 'Taslimu baada ya chenji',
-      'vendor.reports.methods.none': 'Hakuna kipindi hiki',
+      'vendor.reports.methods.none': 'Hakuna malipo kipindi hiki',
       'vendor.reports.loading': 'Inapakia ripoti',
-      'vendor.reports.empty': 'Hakuna mauzo {period}.',
+      'vendor.reports.empty': 'Hakuna mauzo katika {period}.',
       'vendor.reports.tryPeriod': 'Jaribu kipindi kingine',
-      'vendor.reports.failed': 'Ripoti hii imeshindwa kupakia.',
+      'vendor.reports.failed': 'Imeshindikana kupakia ripoti hii.',
       'vendor.reports.pendingSync':
           'Mauzo {n} kwenye simu hii yanasubiri kutumwa na hayamo kwenye takwimu hizi.',
       'vendor.reports.staffDisabled':
@@ -12236,7 +12246,7 @@ class FFLocale extends ChangeNotifier {
       'vendor.reports.preparing': 'Inaandaa…',
       'vendor.reports.exported': 'Ripoti imepakuliwa.',
       'vendor.reports.exportFailed':
-          'Ripoti imeshindwa kupakuliwa. Jaribu tena.',
+          'Imeshindikana kupakua ripoti. Jaribu tena.',
       'vendor.reports.exportTooLarge':
           'Ripoti hii ni kubwa mno kupakua. Chagua kipindi kifupi zaidi.',
       'vendor.reports.a11y.exportRow':

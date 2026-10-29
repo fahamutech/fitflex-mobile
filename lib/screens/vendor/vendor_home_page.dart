@@ -1505,6 +1505,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
             key: _reportsKey,
             access: _reportAccess,
             staffDisabled: _staffDisabled,
+            businessName: _profile['businessName']?.toString(),
           )
         : ListenableBuilder(
             listenable: _sales!,
@@ -1512,6 +1513,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
               key: _reportsKey,
               access: _reportAccess,
               staffDisabled: _staffDisabled,
+              businessName: _profile['businessName']?.toString(),
               pendingSales: _sales!.waiting.length,
             ),
           );

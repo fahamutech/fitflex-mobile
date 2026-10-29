@@ -50,7 +50,7 @@ Map<String, dynamic> head({bool walkIn = true, bool inProgress = true}) => {
   'to': '2026-10-29',
   'channel': 'all',
   'groupBy': 'day',
-  // 11:05 UTC = 2:05 pm EAT.
+  // 11:05 UTC = 14:05 EAT.
   'generatedAt': '2026-10-29T11:05:00.000Z',
   'timezone': 'Africa/Dar_es_Salaam',
   'inProgress': inProgress,
@@ -379,7 +379,7 @@ void main() {
         find.text('Voided (not counted): 1 sales · TSh 45,000'),
         findsOneWidget,
       );
-      expect(find.text('Updated 2:05 pm'), findsOneWidget);
+      expect(find.text('Updated 14:05'), findsOneWidget);
       expect(
         tester.widget<Text>(find.byKey(const Key('reports-header-line'))).data,
         contains('(so far) · All sales'),
@@ -797,7 +797,7 @@ void main() {
       });
       final host = await pumpSection(tester, api, ReportSection.stock);
       expect(
-        find.text('As of 2:05 pm today. The period you picked does not apply.'),
+        find.text('As of 14:05 today. The period you picked does not apply.'),
         findsOneWidget,
       );
       // The period does not apply: no controls are offered.
@@ -1128,7 +1128,7 @@ void main() {
       expect(queryOf(r)['format'], 'csv');
       expect(queryOf(r)['lang'], 'en');
       expect(files.shared.single.$2, 'text/csv');
-      expect(files.shared.single.$1, startsWith('report_sales_'));
+      expect(files.shared.single.$1, startsWith('store_sales_'));
       expect(host.snack(host.tr('vendor.reports.exported')), findsOneWidget);
     });
 
@@ -1168,7 +1168,7 @@ void main() {
       await openExport(tester);
       await tester.tap(find.byKey(const Key('reports-export-pdf')));
       await tester.pumpAndSettle();
-      expect(files.pdfs.single, startsWith('report_summary_'));
+      expect(files.pdfs.single, startsWith('store_report_'));
       final pdf = api.where('GET', '/vendor/reports/summary').last;
       expect(queryOf(pdf)['format'], 'pdf');
       expect(queryOf(pdf)['channel'], 'all');
@@ -1200,7 +1200,7 @@ void main() {
       expect(files.shared, isEmpty);
     });
 
-    apiTest('PDF not available (503): download failed', (tester, api) async {
+    apiTest('PDF not available (503): its own message', (tester, api) async {
       Files().install();
       seedHome(api);
       final host = await pumpHome(tester, api);
@@ -1215,9 +1215,74 @@ void main() {
       await tester.tap(find.byKey(const Key('reports-export-pdf')));
       await tester.pumpAndSettle();
       expect(
-        host.snack(host.tr('vendor.reports.exportFailed')),
+        host.snack(host.tr('vendor.reports.pdfUnavailable')),
         findsOneWidget,
       );
+    });
+
+    apiTest('too many downloads (429): wait n minutes', (tester, api) async {
+      Files().install();
+      seedHome(api);
+      api.fail('GET /vendor/reports/sales', 429, {
+        'error': 'rate_limited',
+        'retryAfterSeconds': 75,
+      });
+      final host = await pumpHome(tester, api);
+      await openExport(tester);
+      await tester.tap(find.byKey(const Key('reports-export-sales')));
+      await tester.pumpAndSettle();
+      expect(
+        host.snack("You've downloaded too often. Try again in 2 minute(s)."),
+        findsOneWidget,
+      );
+    });
+
+    apiTest('products CSV passes the search on screen', (tester, api) async {
+      final files = Files()..install();
+      api.onCall('GET /vendor/reports/products', (r) {
+        if (Uri.splitQueryString(r.query)['format'] == 'csv') return 'a\r\n';
+        return {
+          ...head(),
+          'sort': 'revenue',
+          'rows': [
+            {
+              'productId': 'p1',
+              'variant': null,
+              'name': 'Whey',
+              'removed': false,
+              'unitsSold': 1,
+              'appUnits': 0,
+              'walkInUnits': 1,
+              'netRevenueTzs': 45000,
+              'lastSoldAt': null,
+              'stock': 3,
+              'daysOfCover': 90,
+              'coverState': 'ok',
+              'noSalesInPeriod': false,
+            },
+          ],
+          'totals': {'unitsSold': 1, 'netRevenueTzs': 45000},
+          'slowCount': 0,
+          'nextCursor': null,
+        };
+      });
+      await pumpSection(tester, api, ReportSection.products);
+      await tester.enterText(
+        find.descendant(
+          of: find.byKey(const Key('reports-products-search')),
+          matching: find.byType(EditableText),
+        ),
+        'whey',
+      );
+      await tester.pump();
+      await tapVisible(tester, find.byKey(const Key('reports-section-export')));
+      await tester.tap(find.byKey(const Key('reports-export-products')));
+      await tester.pumpAndSettle();
+      final csv = api
+          .where('GET', '/vendor/reports/products')
+          .lastWhere((r) => queryOf(r)['format'] == 'csv');
+      expect(queryOf(csv)['q'], 'whey');
+      expect(files.shared, hasLength(1));
     });
 
     apiTest('section page: Download offers this section and the PDF', (

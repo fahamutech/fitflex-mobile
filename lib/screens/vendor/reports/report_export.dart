@@ -16,7 +16,7 @@ import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
 import '../../../shared/i18n.dart';
 import '../documents/document_share_sheet.dart' show DocumentActions;
-import '../stock/stock_options.dart' show fillIn;
+import '../stock/stock_options.dart' show eatDay, eatToday, fillIn;
 import 'report_models.dart';
 import 'report_period.dart';
 import 'report_widgets.dart';
@@ -28,6 +28,8 @@ class ReportExportRequest {
     this.channel = 'all',
     this.groupBy,
     this.sort,
+    this.q,
+    this.businessName,
   });
 
   final ReportPeriod period;
@@ -36,6 +38,13 @@ class ReportExportRequest {
 
   /// Products: revenue | units | slow.
   final String? sort;
+
+  /// Products: the search on screen, sent with the CSV (as the portal does).
+  final String? q;
+
+  /// The business name, for a file name the server did not give. Null:
+  /// asked from the profile, else the person's display name.
+  final String? businessName;
 
   /// The query for [section] (null: the PDF summary).
   Map<String, String?> queryFor(ReportSection? section) => {
@@ -46,8 +55,59 @@ class ReportExportRequest {
     if (section == null || section.usesChannel) 'channel': channel,
     if (section != null && section.usesGrouping && groupBy != null)
       'groupBy': groupByParam(groupBy!),
-    if (section == ReportSection.products) 'sort': sort,
+    if (section == ReportSection.products) ...{'sort': sort, 'q': _q},
   };
+
+  /// The server takes at most 80 characters.
+  String? get _q {
+    final v = q?.trim() ?? '';
+    if (v.isEmpty) return null;
+    return v.length > 80 ? v.substring(0, 80) : v;
+  }
+}
+
+/// The server's file-name slug (vendor-documents.mjs `slug`): letters,
+/// digits, `_` and `-` kept, spaces to `-`, lower case, at most 40
+/// characters. (The server first decomposes accents; here an accented
+/// letter is dropped. Only used when the server sent no name.)
+String reportSlug(String? text) {
+  final source = (text ?? '').trim().isEmpty ? 'vendor' : text!;
+  var s = source
+      .replaceAll(RegExp(r'[^A-Za-z0-9_\s-]'), '')
+      .trim()
+      .toLowerCase()
+      .replaceAll(RegExp(r'[\s_]+'), '-')
+      .replaceAll(RegExp(r'-+'), '-');
+  if (s.length > 40) s = s.substring(0, 40);
+  return s.isEmpty ? 'document' : s;
+}
+
+/// The server's rule (vendor-reports.mjs `reportFileName`):
+/// `{business-slug}_{section}_{from}_{to}.{ext}`, the end date left out when
+/// it is the start date. The PDF summary is `report`; stock value is dated
+/// today (it is "as of now").
+String reportFallbackFileName({
+  required String? businessName,
+  required ReportSection? section,
+  required ReportPeriod period,
+  DateTime? now,
+}) {
+  final name = section?.api ?? 'report';
+  final ext = section == null ? 'pdf' : 'csv';
+  final from = section == ReportSection.stock
+      ? eatDay(eatToday(now))
+      : period.fromParam;
+  final to = section == ReportSection.stock ? from : period.toParam;
+  return '${reportSlug(businessName)}_${name}_$from${to == from ? '' : '_$to'}.$ext';
+}
+
+/// Whole minutes to wait from a 429 `retryAfterSeconds`: rounded up, at
+/// least 1.
+int retryMinutes(Object? body) {
+  final s = body is Map ? body['retryAfterSeconds'] : null;
+  final secs = s is num ? s : num.tryParse('$s') ?? 0;
+  final m = (secs / 60).ceil();
+  return m < 1 ? 1 : m;
 }
 
 /// Opens the Download sheet. [sections] are the CSV rows (already filtered
@@ -126,10 +186,13 @@ class _ReportExportSheetState extends State<ReportExportSheet> {
         lang: lang,
         query: widget.request.queryFor(section),
       );
-      final p = widget.request.period;
       final name =
           out.fileName ??
-          'report_${section?.api ?? 'summary'}_${p.fromParam}_${p.toParam}.$format';
+          reportFallbackFileName(
+            businessName: await _businessName(),
+            section: section,
+            period: widget.request.period,
+          );
       final mime = format == 'pdf' ? 'application/pdf' : 'text/csv';
       if (DocumentActions.isWeb()) {
         if (format == 'pdf') {
@@ -153,12 +216,40 @@ class _ReportExportSheetState extends State<ReportExportSheet> {
         _closeWith(t('vendor.reports.noAccess'));
         return;
       }
+      if (e.status == 429 || e.code == 'rate_limited') {
+        _closeWith(
+          fillIn(t('vendor.reports.rateLimited'), {'n': retryMinutes(e.body)}),
+        );
+        return;
+      }
+      if (e.code == 'pdf_unavailable') {
+        _closeWith(t('vendor.reports.pdfUnavailable'));
+        return;
+      }
       _closeWith(t('vendor.reports.exportFailed'));
     } catch (_) {
       if (mounted) _closeWith(t('error.network'));
     } finally {
       if (mounted) setState(() => _busy = null);
     }
+  }
+
+  /// The business name for a fallback file name: the one the screen knows,
+  /// else the profile (quietly; staff may be refused it), else the
+  /// person's display name.
+  Future<String?> _businessName() async {
+    final known = widget.request.businessName?.trim() ?? '';
+    if (known.isNotEmpty) return known;
+    final scope = AppScope.of(context);
+    try {
+      final name = (await scope.api.vendorProfile())['businessName']
+          ?.toString()
+          .trim();
+      if (name != null && name.isNotEmpty) return name;
+    } catch (_) {
+      // Fall back to the display name.
+    }
+    return scope.auth.user?['displayName']?.toString();
   }
 
   Widget _row({

@@ -28,10 +28,14 @@ class VendorReportsView extends StatefulWidget {
     required this.access,
     this.pendingSales = 0,
     this.staffDisabled = false,
+    this.businessName,
     this.now,
   });
 
   final ReportAccess access;
+
+  /// For a download file name the server did not give.
+  final String? businessName;
 
   /// Walk-in sales on this device still waiting to sync (§9.3).
   final int pendingSales;
@@ -526,6 +530,7 @@ class VendorReportsViewState extends State<VendorReportsView> {
                     request: ReportExportRequest(
                       period: _period,
                       channel: _channel,
+                      businessName: widget.businessName,
                     ),
                     sections: widget.access.sections,
                     staffDisabled: widget.staffDisabled,

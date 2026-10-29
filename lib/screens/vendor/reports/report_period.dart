@@ -177,9 +177,9 @@ String periodInWords(DateTime from, DateTime to, String lang) {
 /// "12 Oct" (sw "12 Okt"): one day of a bucket or a row.
 String dayInWords(DateTime d, String lang) => formatDayMonth(d, locale: lang);
 
-/// The time an instant reads in EAT: a 12-hour clock with the part of the
-/// day in both languages (owner rule for S6): "2:05 pm" / "2:05 mchana",
-/// "12:30 am" / "12:30 usiku".
+/// The time an instant reads in EAT: English 24-hour "14:05" (as the rest
+/// of the app and the PDF); Swahili a 12-hour clock with the part of the day
+/// (glossary): "2:05 mchana", "12:30 usiku".
 String reportTime(DateTime instant, String lang) {
   final eat = instant.toUtc().add(const Duration(hours: 3));
   final h12 = eat.hour % 12 == 0 ? 12 : eat.hour % 12;
@@ -195,5 +195,5 @@ String reportTime(DateTime instant, String lang) {
         : 'usiku';
     return '$h12:$mm $part';
   }
-  return '$h12:$mm ${eat.hour < 12 ? 'am' : 'pm'}';
+  return '${eat.hour.toString().padLeft(2, '0')}:$mm';
 }

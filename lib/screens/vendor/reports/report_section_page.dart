@@ -294,6 +294,8 @@ class _ReportSectionPageState extends State<ReportSectionPage> {
           channel: _channel,
           groupBy: _groupBy,
           sort: _sort,
+          // What is searched on screen (or asked of the server).
+          q: _search.trim().isNotEmpty ? _search : _serverQ,
         ),
         sections: [_section],
         staffDisabled: _staffDisabled,

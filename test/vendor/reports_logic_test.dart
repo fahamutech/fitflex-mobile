@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:fitflexmobile/screens/vendor/reports/report_export.dart';
 import 'package:fitflexmobile/screens/vendor/reports/report_models.dart';
 import 'package:fitflexmobile/screens/vendor/reports/report_period.dart';
 import 'package:fitflexmobile/screens/vendor/reports/report_section_page.dart'
@@ -172,21 +173,24 @@ void main() {
       );
     });
 
-    test('report times: 12-hour clock with the part of the day, in EAT', () {
-      // 11:05 UTC = 14:05 EAT.
-      final t = DateTime.utc(2026, 10, 29, 11, 5);
-      expect(reportTime(t, 'en'), '2:05 pm');
-      expect(reportTime(t, 'sw'), '2:05 mchana');
-      // 21:30 UTC = 00:30 EAT.
-      final late = DateTime.utc(2026, 10, 14, 21, 30);
-      expect(reportTime(late, 'en'), '12:30 am');
-      expect(reportTime(late, 'sw'), '12:30 usiku');
-      expect(
-        reportTime(DateTime.utc(2026, 10, 14, 2, 30), 'sw'),
-        '5:30 asubuhi',
-      );
-      expect(reportTime(DateTime.utc(2026, 10, 14, 14), 'sw'), '5:00 jioni');
-    });
+    test(
+      'report times in EAT: English 24-hour, Swahili 12-hour + day part',
+      () {
+        // 11:05 UTC = 14:05 EAT.
+        final t = DateTime.utc(2026, 10, 29, 11, 5);
+        expect(reportTime(t, 'en'), '14:05');
+        expect(reportTime(t, 'sw'), '2:05 mchana');
+        // 21:30 UTC = 00:30 EAT.
+        final late = DateTime.utc(2026, 10, 14, 21, 30);
+        expect(reportTime(late, 'en'), '00:30');
+        expect(reportTime(late, 'sw'), '12:30 usiku');
+        expect(
+          reportTime(DateTime.utc(2026, 10, 14, 2, 30), 'sw'),
+          '5:30 asubuhi',
+        );
+        expect(reportTime(DateTime.utc(2026, 10, 14, 14), 'sw'), '5:00 jioni');
+      },
+    );
   });
 
   group('gating (fail closed)', () {
@@ -362,6 +366,76 @@ void main() {
       expect(
         rangeErrorKey(e(400, {'error': 'invalid_range', 'reason': 'x'})),
         'vendor.reports.rangeInvalid',
+      );
+    });
+  });
+
+  group('downloads', () {
+    test('rate limited: minutes rounded up, at least 1', () {
+      expect(retryMinutes({'retryAfterSeconds': 0}), 1);
+      expect(retryMinutes({'retryAfterSeconds': 12}), 1);
+      expect(retryMinutes({'retryAfterSeconds': 60}), 1);
+      expect(retryMinutes({'retryAfterSeconds': 61}), 2);
+      expect(retryMinutes({'retryAfterSeconds': 180}), 3);
+      expect(retryMinutes(null), 1);
+    });
+
+    test('fallback file names follow the server rule', () {
+      final oct = ReportPeriod.custom(d(2026, 10, 1), d(2026, 10, 29));
+      expect(
+        reportFallbackFileName(
+          businessName: 'Dar Fitness Gear!',
+          section: ReportSection.sales,
+          period: oct,
+        ),
+        'dar-fitness-gear_sales_2026-10-01_2026-10-29.csv',
+      );
+      expect(
+        reportFallbackFileName(
+          businessName: null,
+          section: null,
+          period: ReportPeriod.custom(d(2026, 10, 14), d(2026, 10, 14)),
+        ),
+        'vendor_report_2026-10-14.pdf',
+      );
+      expect(
+        reportFallbackFileName(
+          businessName: 'Gear',
+          section: ReportSection.payouts,
+          period: oct,
+        ),
+        'gear_marketplace-net_2026-10-01_2026-10-29.csv',
+      );
+      // Stock value is "as of now": dated today only.
+      expect(
+        reportFallbackFileName(
+          businessName: 'Gear',
+          section: ReportSection.stock,
+          period: oct,
+          now: now,
+        ),
+        'gear_stock-value_2026-10-29.csv',
+      );
+      expect(reportSlug('  Duka  la_Asha  '), 'duka-la-asha');
+      expect(reportSlug('A' * 60).length, 40);
+      expect(reportSlug('!!!'), 'document');
+    });
+
+    test('products CSV carries the search; other sections do not', () {
+      final r = ReportExportRequest(
+        period: ReportPeriod.custom(d(2026, 10, 1), d(2026, 10, 29)),
+        sort: 'units',
+        q: '  whey ',
+      );
+      expect(r.queryFor(ReportSection.products)['q'], 'whey');
+      expect(r.queryFor(ReportSection.products)['sort'], 'units');
+      expect(r.queryFor(ReportSection.sales).containsKey('q'), isFalse);
+      expect(
+        ReportExportRequest(
+          period: ReportPeriod.custom(d(2026, 10, 1), d(2026, 10, 29)),
+          q: 'x' * 90,
+        ).queryFor(ReportSection.products)['q']!.length,
+        80,
       );
     });
   });
