@@ -5,6 +5,7 @@ import '../../app_scope.dart';
 import '../../shared/api_client.dart';
 import '../../shared/components/components.dart';
 import '../../shared/i18n.dart';
+import '../../shared/partner_media/partner_media_flag.dart';
 import '../../shared/root_back_navigation.dart';
 
 export 'owner_checkins_page.dart';
@@ -243,6 +244,14 @@ class OwnerShellState extends State<OwnerShell> {
   Future<void> _restoreActiveGym() async {
     if (_data.ownerGyms.isEmpty) return;
     final ownedIds = _data.ownerGyms.map((g) => g['id']?.toString()).toSet();
+    // A notification that opened a gym's photo page, then Back from a cold
+    // start (`/owner/home?gymId=`, spec §41.1): that gym, if it is theirs.
+    final linked = partnerMediaUi
+        ? widget.state.uri.queryParameters['gymId']
+        : null;
+    if (_data.activeGymId == null && ownedIds.contains(linked)) {
+      _data.activeGymId = linked;
+    }
     if (_data.activeGymId == null || !ownedIds.contains(_data.activeGymId)) {
       _data.activeGymId = _data.ownerGyms.first['id']?.toString();
     }
@@ -354,7 +363,14 @@ class OwnerShellState extends State<OwnerShell> {
             ownerGyms: _data.ownerGyms,
             subtitleLabel: _title,
             onGymSelected: (gymId) => setActiveGym(gymId),
-            onAvatarTap: () => context.push('/owner/profile'),
+            onAvatarTap: () => context.push(
+              partnerMediaUi && _data.activeGymId != null
+                  ? Uri(
+                      path: '/owner/profile',
+                      queryParameters: {'gymId': _data.activeGymId!},
+                    ).toString()
+                  : '/owner/profile',
+            ),
           ),
           body: RefreshIndicator(onRefresh: refreshAll, child: widget.child),
           bottomNavigationBar: NavigationBar(

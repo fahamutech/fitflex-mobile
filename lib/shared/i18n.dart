@@ -6605,6 +6605,192 @@ class FFLocale extends ChangeNotifier {
       'error.reason.invalidGender': 'Choose a gender from the list.',
       'error.reason.rateLimitedSeconds':
           'Too many requests. Try again in {seconds} seconds.',
+      // Partner home photo and logo (spec §44.1, PARTNER_MEDIA_UI).
+      'partnerMedia.title': 'Home photo and logo',
+      'partnerMedia.entryHint': 'Shows at the top of your home',
+      'partnerMedia.entryHintVendor': 'Shows on your Products tab',
+      'partnerMedia.entryForGym': 'For {gym}',
+      'partnerMedia.gym': 'Gym: {gym}',
+      'partnerMedia.chooseGym': 'Choose a gym',
+      'partnerMedia.preview': 'Preview of your home',
+      'partnerMedia.onlyYouTeam': 'Only you and your team see this for now.',
+      'partnerMedia.onlyYouSelf': 'Only you see this for now.',
+      'partnerMedia.hero': 'Home photo',
+      'partnerMedia.logo': 'Logo',
+      'partnerMedia.default': 'Using the FitFlex photo',
+      'partnerMedia.noLogo': 'No logo yet',
+      'partnerMedia.live': 'Showing on your home',
+      'partnerMedia.addedOn': 'Added {date}',
+      'partnerMedia.addedByFitflex': 'Added by FitFlex on {date}',
+      'partnerMedia.bright':
+          'Bright photo: it looks a little darker behind your text.',
+      'partnerMedia.upload': 'Upload photo',
+      'partnerMedia.uploadLogo': 'Upload logo',
+      'partnerMedia.uploadNew': 'Upload a new photo',
+      'partnerMedia.uploadNewLogo': 'Upload a new logo',
+      'partnerMedia.replace': 'Replace',
+      'partnerMedia.remove': 'Remove',
+      'partnerMedia.removeHeroTitle': 'Remove your home photo?',
+      'partnerMedia.removeHeroBody':
+          'Your home will show the FitFlex photo again. The photo is deleted from FitFlex.',
+      'partnerMedia.removeLogoTitle': 'Remove your logo?',
+      'partnerMedia.removeLogoBody':
+          'Your logo is deleted from FitFlex and no longer shows on your home.',
+      'partnerMedia.removed': 'Removed.',
+      'partnerMedia.liveNowHero': 'Your new home photo is live.',
+      'partnerMedia.liveNowLogo': 'Your logo is live.',
+      'partnerMedia.replaceNote':
+          'The new one replaces the current one straight away, and the old one is deleted.',
+      'partnerMedia.reviewNote':
+          'It shows on your home straight away. FitFlex checks new photos and may take one down if it breaks the rules below. We\'ll tell you why.',
+      'partnerMedia.vendorNote':
+          'Members see your shop logo and banner from {editProfile}. This photo and logo show on your own home only.',
+      'partnerMedia.takenDownHero': 'FitFlex took down your home photo.',
+      'partnerMedia.takenDownLogo': 'FitFlex took down your logo.',
+      'partnerMedia.takenDownReason': 'Reason: {reason}',
+      'partnerMedia.takenDownNote': 'Note from FitFlex: {note}',
+      'partnerMedia.takenDownNext':
+          'Your home uses the FitFlex photo until you upload a new one.',
+      'partnerMedia.takenDownNextLogo':
+          'Your home shows no logo until you upload a new one.',
+      'partnerMedia.reason.inappropriate':
+          'It isn\'t suitable, for example nudity, violence or offensive content.',
+      'partnerMedia.reason.rights':
+          'It looks like you may not have the right to use it.',
+      'partnerMedia.reason.other_brand':
+          'It shows another brand\'s logo or sign.',
+      'partnerMedia.reason.not_own_logo':
+          'It doesn\'t look like your business\'s own logo.',
+      'partnerMedia.reason.person_request':
+          'Someone in the photo asked for it to be removed.',
+      'partnerMedia.reason.quality':
+          'It\'s blurred, stretched or hard to make out.',
+      'partnerMedia.reason.other': 'Another reason (see the note).',
+      'partnerMedia.rules.title': 'Photo rules',
+      'partnerMedia.rules.own':
+          'Use a photo you took or have the right to use.',
+      'partnerMedia.rules.people':
+          'People are fine. Ask anyone who can be recognised before you use their photo.',
+      'partnerMedia.rules.brands':
+          'No other brands\' logos or signs. Your own is fine.',
+      'partnerMedia.rules.text':
+          'Keep text out of the photo; your home already shows your name.',
+      'partnerMedia.rules.suitable':
+          'Nothing unsuitable: no nudity, violence or offensive content.',
+      'partnerMedia.rules.size':
+          'At least 1080 pixels wide. Landscape photos work best.',
+      'partnerMedia.rules.logo':
+          'PNG, JPEG or WebP, at least 256 pixels on the short side, up to 2 MB. Your own business\'s logo only.',
+      'partnerMedia.sheet.titleHero': 'New home photo',
+      'partnerMedia.sheet.titleLogo': 'New logo',
+      'partnerMedia.sheet.gallery': 'Choose from gallery',
+      'partnerMedia.sheet.camera': 'Take a photo',
+      'partnerMedia.sheet.file': 'Choose a file',
+      'partnerMedia.sheet.chooseAnother': 'Choose another',
+      'partnerMedia.sheet.onPhone': 'On a phone',
+      'partnerMedia.sheet.onWide': 'On a wide screen',
+      'partnerMedia.sheet.focal': 'Focus point',
+      'partnerMedia.sheet.focalHint':
+          'Tap the part of the photo that must stay in view.',
+      'partnerMedia.sheet.focalNow': 'Focus point: {position}',
+      'partnerMedia.sheet.pos.topLeft': 'Top left',
+      'partnerMedia.sheet.pos.top': 'Top',
+      'partnerMedia.sheet.pos.topRight': 'Top right',
+      'partnerMedia.sheet.pos.left': 'Left',
+      'partnerMedia.sheet.pos.centre': 'Centre',
+      'partnerMedia.sheet.pos.right': 'Right',
+      'partnerMedia.sheet.pos.bottomLeft': 'Bottom left',
+      'partnerMedia.sheet.pos.bottom': 'Bottom',
+      'partnerMedia.sheet.pos.bottomRight': 'Bottom right',
+      'partnerMedia.sheet.plate': 'Logo background',
+      'partnerMedia.sheet.plateAuto': 'Automatic',
+      'partnerMedia.sheet.plateAutoIs': 'Automatic ({tone})',
+      'partnerMedia.sheet.plateLight': 'Light',
+      'partnerMedia.sheet.plateDark': 'Dark',
+      'partnerMedia.sheet.useHero': 'Use this photo',
+      'partnerMedia.sheet.useLogo': 'Use this logo',
+      'partnerMedia.sheet.uploading': 'Uploading… {n}%',
+      'partnerMedia.sheet.preparing': 'Preparing your photo…',
+      'partnerMedia.sheet.confirmChanged':
+          'The wording below has changed. Please read it and tick again.',
+      'partnerMedia.a11y.preview': 'Preview of your home: {photo}, {logo}',
+      'partnerMedia.a11y.yourPhoto': 'your photo',
+      'partnerMedia.a11y.fitflexPhoto': 'FitFlex photo',
+      'partnerMedia.a11y.yourLogo': 'your logo',
+      'partnerMedia.a11y.noLogo': 'no logo',
+      'partnerMedia.a11y.currentPhoto': 'Your current home photo',
+      'partnerMedia.a11y.currentLogo': 'Your current logo',
+      'partnerMedia.a11y.previewPhone': 'Preview on a phone',
+      'partnerMedia.a11y.previewWide': 'Preview on a wide screen',
+      'partnerMedia.a11y.focalImage':
+          'Photo. Focus point: {position}. Tap to move it.',
+      'partnerMedia.restrictedGym':
+          'Only the gym owner, or staff allowed to edit the gym profile, can change this.',
+      'partnerMedia.restrictedVendor':
+          'Only the business owner or a staff admin can change this.',
+      'partnerMedia.noGym':
+          'Add a gym first. You can set its photo and logo here once it\'s approved.',
+      'partnerMedia.off': 'This isn\'t available yet.',
+      'partnerMedia.loadError': 'We couldn\'t load your photo and logo.',
+      'partnerMedia.offline':
+          'You\'re offline. You can change your photo when you\'re back online.',
+      'partnerMedia.error.not_your_gym':
+          'You can\'t change photos for this gym.',
+      'partnerMedia.error.acl_forbidden':
+          'You don\'t have permission to change this.',
+      'partnerMedia.error.subject_not_found':
+          'We couldn\'t find this profile. Go back and try again.',
+      'partnerMedia.error.rate_limited':
+          'Too many uploads. Wait a minute and try again.',
+      'partnerMedia.error.image_too_small':
+          'This photo is too small. Use one at least {minWidth} pixels wide.',
+      'partnerMedia.error.image_too_small_logo':
+          'This logo is too small. Use one at least {minSide} pixels on the short side.',
+      'partnerMedia.error.unsupported_file_type':
+          'This file type isn\'t supported. Use JPEG, PNG or WebP.',
+      'partnerMedia.error.svg_not_allowed':
+          'SVG files can\'t be used. Save your logo as PNG and try again.',
+      'partnerMedia.error.file_too_large':
+          'This file is too large. The limit is {maxMb} MB.',
+      'partnerMedia.error.variant_over_budget':
+          'We couldn\'t make this photo small enough. Try a different photo.',
+      'partnerMedia.error.invalid_focal':
+          'Something went wrong with the focus point. Set it again.',
+      'partnerMedia.error.not_editable':
+          'This was changed a moment ago. We\'ve reloaded it.',
+      'partnerMedia.error.image_save_failed':
+          'We couldn\'t save your photo. Try again.',
+      'partnerMedia.error.image_taken_down_before':
+          'FitFlex took this exact photo down before. Choose a different one.',
+      'partnerMedia.error.unknown': 'Something went wrong ({code}).',
+      'partnerMedia.error.rate_limited_day':
+          "You've reached today's upload limit. Try again tomorrow.",
+      'partnerMedia.error.rate_limited_attempts':
+          'Too many tries today for this home. Try again tomorrow.',
+      'partnerMedia.error.image_service_busy':
+          'FitFlex is busy preparing photos. Try again in a few seconds.',
+      'partnerMedia.error.rate_limit_unavailable':
+          "We couldn't check your uploads just now. Try again in a minute.",
+      'partnerMedia.error.too_many_pixels':
+          'This photo has too many pixels. Use one of up to {maxMp} megapixels.',
+      'partnerMedia.error.too_large_side':
+          'This logo is too big. Use one of up to {maxSide} pixels on each side.',
+      'partnerMedia.error.media_not_found': 'This was already removed.',
+      'partnerMedia.error.feature_disabled': 'This isn\'t available yet.',
+      'partnerMedia.error.rights_confirmation_required':
+          'Tick the box to confirm you may use this photo.',
+      'partnerMedia.error.own_logo_confirmation_required':
+          'Tick the box to confirm this is your own logo.',
+      'partnerMedia.error.no_file_provided':
+          'No file was sent. Choose a photo and try again.',
+      'partnerMedia.error.invalid_plate':
+          'Choose a logo background and try again.',
+      'partnerMedia.error.gym_id_required': 'Choose a gym and try again.',
+      'partnerMedia.error.invalid_multipart':
+          'The file didn\'t arrive in full. Try again.',
+      'partnerMedia.error.unknown_field':
+          'This version of the app sent something the server does not accept. Update the app and try again.',
+      'inbox.open.brandMedia': 'Open home photo and logo',
       // Refused photos (fitflex-functions#273).
       'error.reason.invalidMediaSrc':
           "This photo can't be used. Choose a PNG, JPEG or WebP photo from your phone.",
@@ -13249,6 +13435,192 @@ class FFLocale extends ChangeNotifier {
       'error.reason.invalidGender': 'Chagua jinsia kutoka kwenye orodha.',
       'error.reason.rateLimitedSeconds':
           'Maombi mengi mno. Jaribu tena baada ya sekunde {seconds}.',
+      // Partner home photo and logo (spec §44.1): DRAFT Swahili, for native review.
+      'partnerMedia.title': 'Picha ya mwanzo na nembo',
+      'partnerMedia.entryHint': 'Inaonekana juu ya ukurasa wako wa mwanzo',
+      'partnerMedia.entryHintVendor':
+          'Inaonekana kwenye kichupo chako cha Bidhaa',
+      'partnerMedia.entryForGym': 'Kwa {gym}',
+      'partnerMedia.gym': 'Gym: {gym}',
+      'partnerMedia.chooseGym': 'Chagua gym',
+      'partnerMedia.preview': 'Hakiki ya ukurasa wako wa mwanzo',
+      'partnerMedia.onlyYouTeam': 'Kwa sasa ni wewe na timu yako tu mnaouona.',
+      'partnerMedia.onlyYouSelf': 'Kwa sasa ni wewe tu unayeuona.',
+      'partnerMedia.hero': 'Picha ya mwanzo',
+      'partnerMedia.logo': 'Nembo',
+      'partnerMedia.default': 'Inatumia picha ya FitFlex',
+      'partnerMedia.noLogo': 'Bado hakuna nembo',
+      'partnerMedia.live': 'Inaonekana kwenye ukurasa wako wa mwanzo',
+      'partnerMedia.addedOn': 'Imeongezwa {date}',
+      'partnerMedia.addedByFitflex': 'Imeongezwa na FitFlex {date}',
+      'partnerMedia.bright':
+          'Picha ina mwanga mwingi: itafifishwa kidogo nyuma ya maandishi yako.',
+      'partnerMedia.upload': 'Pakia picha',
+      'partnerMedia.uploadLogo': 'Pakia nembo',
+      'partnerMedia.uploadNew': 'Pakia picha mpya',
+      'partnerMedia.uploadNewLogo': 'Pakia nembo mpya',
+      'partnerMedia.replace': 'Badilisha',
+      'partnerMedia.remove': 'Ondoa',
+      'partnerMedia.removeHeroTitle': 'Uondoe picha yako ya mwanzo?',
+      'partnerMedia.removeHeroBody':
+          'Ukurasa wako wa mwanzo utaonyesha tena picha ya FitFlex. Picha itafutwa kutoka FitFlex.',
+      'partnerMedia.removeLogoTitle': 'Uondoe nembo yako?',
+      'partnerMedia.removeLogoBody':
+          'Nembo yako itafutwa kutoka FitFlex na haitaonekana tena kwenye ukurasa wako wa mwanzo.',
+      'partnerMedia.removed': 'Imeondolewa.',
+      'partnerMedia.liveNowHero': 'Picha yako mpya ya mwanzo inaonekana sasa.',
+      'partnerMedia.liveNowLogo': 'Nembo yako inaonekana sasa.',
+      'partnerMedia.replaceNote':
+          'Mpya itachukua nafasi ya iliyopo mara moja, na ya zamani itafutwa.',
+      'partnerMedia.reviewNote':
+          'Inaonekana kwenye ukurasa wako wa mwanzo mara moja. FitFlex hukagua picha mpya na inaweza kuondoa picha inayovunja kanuni zilizo hapa chini. Tutakueleza sababu.',
+      'partnerMedia.vendorNote':
+          'Wanachama wanaona nembo na bango la duka lako kutoka {editProfile}. Picha na nembo hizi zinaonekana kwenye ukurasa wako wa mwanzo tu.',
+      'partnerMedia.takenDownHero': 'FitFlex imeondoa picha yako ya mwanzo.',
+      'partnerMedia.takenDownLogo': 'FitFlex imeondoa nembo yako.',
+      'partnerMedia.takenDownReason': 'Sababu: {reason}',
+      'partnerMedia.takenDownNote': 'Ujumbe kutoka FitFlex: {note}',
+      'partnerMedia.takenDownNext':
+          'Ukurasa wako wa mwanzo unatumia picha ya FitFlex hadi upakie mpya.',
+      'partnerMedia.takenDownNextLogo':
+          'Ukurasa wako wa mwanzo hautaonyesha nembo hadi upakie mpya.',
+      'partnerMedia.reason.inappropriate':
+          'Haifai, kwa mfano uchi, vurugu au maudhui ya kuudhi.',
+      'partnerMedia.reason.rights': 'Inaonekana huenda huna haki ya kuitumia.',
+      'partnerMedia.reason.other_brand':
+          'Inaonyesha nembo au bango la chapa nyingine.',
+      'partnerMedia.reason.not_own_logo':
+          'Haionekani kuwa nembo ya biashara yako.',
+      'partnerMedia.reason.person_request':
+          'Mtu aliye kwenye picha aliomba iondolewe.',
+      'partnerMedia.reason.quality':
+          'Haiko wazi, imenyooshwa au ni vigumu kuitambua.',
+      'partnerMedia.reason.other': 'Sababu nyingine (tazama ujumbe).',
+      'partnerMedia.rules.title': 'Kanuni za picha',
+      'partnerMedia.rules.own':
+          'Tumia picha uliyopiga au una haki ya kuitumia.',
+      'partnerMedia.rules.people':
+          'Watu wanaruhusiwa. Muulize kwanza mtu yeyote anayetambulika kabla ya kutumia picha yake.',
+      'partnerMedia.rules.brands':
+          'Hakuna nembo wala mabango ya chapa nyingine. Yako mwenyewe inaruhusiwa.',
+      'partnerMedia.rules.text':
+          'Usiweke maandishi kwenye picha; ukurasa wako tayari unaonyesha jina lako.',
+      'partnerMedia.rules.suitable':
+          'Hakuna kisichofaa: uchi, vurugu au maudhui ya kuudhi.',
+      'partnerMedia.rules.size':
+          'Upana wa angalau pikseli 1080. Picha za mlalo zinafaa zaidi.',
+      'partnerMedia.rules.logo':
+          'PNG, JPEG au WebP, angalau pikseli 256 upande mfupi, hadi MB 2. Nembo ya biashara yako tu.',
+      'partnerMedia.sheet.titleHero': 'Picha mpya ya mwanzo',
+      'partnerMedia.sheet.titleLogo': 'Nembo mpya',
+      'partnerMedia.sheet.gallery': 'Chagua kutoka kwenye picha zako',
+      'partnerMedia.sheet.camera': 'Piga picha',
+      'partnerMedia.sheet.file': 'Chagua faili',
+      'partnerMedia.sheet.chooseAnother': 'Chagua nyingine',
+      'partnerMedia.sheet.onPhone': 'Kwenye simu',
+      'partnerMedia.sheet.onWide': 'Kwenye skrini pana',
+      'partnerMedia.sheet.focal': 'Sehemu kuu',
+      'partnerMedia.sheet.focalHint':
+          'Gusa sehemu ya picha inayopaswa kubaki ikionekana.',
+      'partnerMedia.sheet.focalNow': 'Sehemu kuu: {position}',
+      'partnerMedia.sheet.pos.topLeft': 'Juu kushoto',
+      'partnerMedia.sheet.pos.top': 'Juu',
+      'partnerMedia.sheet.pos.topRight': 'Juu kulia',
+      'partnerMedia.sheet.pos.left': 'Kushoto',
+      'partnerMedia.sheet.pos.centre': 'Katikati',
+      'partnerMedia.sheet.pos.right': 'Kulia',
+      'partnerMedia.sheet.pos.bottomLeft': 'Chini kushoto',
+      'partnerMedia.sheet.pos.bottom': 'Chini',
+      'partnerMedia.sheet.pos.bottomRight': 'Chini kulia',
+      'partnerMedia.sheet.plate': 'Mandharinyuma ya nembo',
+      'partnerMedia.sheet.plateAuto': 'Otomatiki',
+      'partnerMedia.sheet.plateAutoIs': 'Otomatiki ({tone})',
+      'partnerMedia.sheet.plateLight': 'Nyeupe',
+      'partnerMedia.sheet.plateDark': 'Nyeusi',
+      'partnerMedia.sheet.useHero': 'Tumia picha hii',
+      'partnerMedia.sheet.useLogo': 'Tumia nembo hii',
+      'partnerMedia.sheet.uploading': 'Inapakia… {n}%',
+      'partnerMedia.sheet.preparing': 'Tunaandaa picha yako…',
+      'partnerMedia.sheet.confirmChanged':
+          'Maneno yaliyo hapa chini yamebadilika. Tafadhali yasome, kisha chagua kisanduku tena.',
+      'partnerMedia.a11y.preview':
+          'Hakiki ya ukurasa wako wa mwanzo: {photo}, {logo}',
+      'partnerMedia.a11y.yourPhoto': 'picha yako',
+      'partnerMedia.a11y.fitflexPhoto': 'picha ya FitFlex',
+      'partnerMedia.a11y.yourLogo': 'nembo yako',
+      'partnerMedia.a11y.noLogo': 'hakuna nembo',
+      'partnerMedia.a11y.currentPhoto': 'Picha yako ya sasa ya mwanzo',
+      'partnerMedia.a11y.currentLogo': 'Nembo yako ya sasa',
+      'partnerMedia.a11y.previewPhone': 'Hakiki kwenye simu',
+      'partnerMedia.a11y.previewWide': 'Hakiki kwenye skrini pana',
+      'partnerMedia.a11y.focalImage':
+          'Picha. Sehemu kuu: {position}. Gusa kuisogeza.',
+      'partnerMedia.restrictedGym':
+          'Ni mmiliki wa gym tu, au wafanyakazi wenye ruhusa ya kuhariri wasifu wa gym, wanaoweza kubadilisha hili.',
+      'partnerMedia.restrictedVendor':
+          'Ni mmiliki wa biashara au mfanyakazi mwenye haki za admin tu anayeweza kubadilisha hili.',
+      'partnerMedia.noGym':
+          'Ongeza gym kwanza. Utaweza kuweka picha na nembo yake hapa ikishaidhinishwa.',
+      'partnerMedia.off': 'Huduma hii bado haipatikani.',
+      'partnerMedia.loadError':
+          'Imeshindikana kupakia picha na nembo yako. Jaribu tena.',
+      'partnerMedia.offline':
+          'Huna mtandao. Utaweza kubadilisha picha yako ukirudi mtandaoni.',
+      'partnerMedia.error.not_your_gym': 'Huwezi kubadilisha picha za gym hii.',
+      'partnerMedia.error.acl_forbidden': 'Huna ruhusa ya kubadilisha hili.',
+      'partnerMedia.error.subject_not_found':
+          'Imeshindikana kupata wasifu huu. Rudi nyuma kisha ujaribu tena.',
+      'partnerMedia.error.rate_limited':
+          'Umepakia mara nyingi mno. Subiri dakika moja kisha ujaribu tena.',
+      'partnerMedia.error.image_too_small':
+          'Picha hii ni ndogo mno. Tumia yenye upana wa angalau pikseli {minWidth}.',
+      'partnerMedia.error.image_too_small_logo':
+          'Nembo hii ni ndogo mno. Tumia yenye angalau pikseli {minSide} upande mfupi.',
+      'partnerMedia.error.unsupported_file_type':
+          'Aina hii ya faili haikubaliki. Tumia JPEG, PNG au WebP.',
+      'partnerMedia.error.svg_not_allowed':
+          'Mafaili ya SVG hayawezi kutumika. Hifadhi nembo yako kama PNG kisha ujaribu tena.',
+      'partnerMedia.error.file_too_large':
+          'Faili hili ni kubwa mno. Kikomo ni MB {maxMb}.',
+      'partnerMedia.error.variant_over_budget':
+          'Imeshindikana kuifanya picha hii iwe ndogo vya kutosha. Jaribu picha nyingine.',
+      'partnerMedia.error.invalid_focal':
+          'Kuna hitilafu kwenye sehemu kuu. Iweke tena.',
+      'partnerMedia.error.not_editable':
+          'Hili limebadilishwa sasa hivi. Tumelipakia upya.',
+      'partnerMedia.error.image_save_failed':
+          'Imeshindikana kuhifadhi picha yako. Jaribu tena.',
+      'partnerMedia.error.image_taken_down_before':
+          'FitFlex iliondoa picha hii hii awali. Chagua nyingine.',
+      'partnerMedia.error.unknown': 'Imeshindikana ({code}). Jaribu tena.',
+      'partnerMedia.error.rate_limited_day':
+          'Umefikia kikomo cha upakiaji cha leo. Jaribu tena kesho.',
+      'partnerMedia.error.rate_limited_attempts':
+          'Majaribio mengi mno leo kwa ukurasa huu. Jaribu tena kesho.',
+      'partnerMedia.error.image_service_busy':
+          'FitFlex inaandaa picha nyingi kwa sasa. Jaribu tena baada ya sekunde chache.',
+      'partnerMedia.error.rate_limit_unavailable':
+          'Imeshindikana kukagua upakiaji wako sasa hivi. Jaribu tena baada ya dakika moja.',
+      'partnerMedia.error.too_many_pixels':
+          'Picha hii ina pikseli nyingi mno. Tumia yenye hadi megapikseli {maxMp}.',
+      'partnerMedia.error.too_large_side':
+          'Nembo hii ni kubwa mno. Tumia yenye hadi pikseli {maxSide} kila upande.',
+      'partnerMedia.error.media_not_found': 'Hii ilikuwa imeshaondolewa.',
+      'partnerMedia.error.feature_disabled': 'Huduma hii bado haipatikani.',
+      'partnerMedia.error.rights_confirmation_required':
+          'Chagua kisanduku kuthibitisha kwamba unaweza kutumia picha hii.',
+      'partnerMedia.error.own_logo_confirmation_required':
+          'Chagua kisanduku kuthibitisha kwamba hii ni nembo yako mwenyewe.',
+      'partnerMedia.error.no_file_provided':
+          'Hakuna faili lililotumwa. Chagua picha kisha ujaribu tena.',
+      'partnerMedia.error.invalid_plate':
+          'Chagua mandharinyuma ya nembo kisha ujaribu tena.',
+      'partnerMedia.error.gym_id_required': 'Chagua gym kisha ujaribu tena.',
+      'partnerMedia.error.invalid_multipart':
+          'Imeshindikana kupokea faili lote. Jaribu tena.',
+      'partnerMedia.error.unknown_field':
+          'Toleo hili la app limetuma kitu ambacho seva haikubali. Sasisha app kisha ujaribu tena.',
+      'inbox.open.brandMedia': 'Fungua picha ya mwanzo na nembo',
       // Refused photos (fitflex-functions#273). Swahili for native review.
       'error.reason.invalidMediaSrc':
           'Picha hii haiwezi kutumika. Chagua picha ya PNG, JPEG au WebP kutoka kwenye simu yako.',

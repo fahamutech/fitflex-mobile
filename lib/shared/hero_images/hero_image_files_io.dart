@@ -13,6 +13,14 @@ import 'hero_image_files.dart';
 /// up on both.)
 HeroFileStore createHeroFileStore() => IoHeroFileStore(heroCacheDirectory);
 
+/// Partner home photos and logos (spec §40.1): their own folder,
+/// `<app cache>/partner_media/`, private to the app and not backed up, so
+/// clearing one store never touches the other.
+HeroFileStore createPartnerMediaFileStore() => IoHeroFileStore(
+  () async =>
+      Directory('${(await getApplicationCacheDirectory()).path}/partner_media'),
+);
+
 /// The folder the saved photos live in.
 Future<Directory> heroCacheDirectory() async =>
     Directory('${(await getApplicationCacheDirectory()).path}/hero_images');
