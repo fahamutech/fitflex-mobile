@@ -21,11 +21,16 @@ class FFPhotoGalleryField extends StatefulWidget {
     required this.values,
     required this.onChanged,
     this.max = 6,
+    this.profilePhoto = false,
   });
 
   final List<String> values;
   final ValueChanged<List<String>> onChanged;
   final int max;
+
+  /// People's photos (a trainer's gallery): the stored Google sign-in photo
+  /// may show too (see [FFRemoteImage.profilePhoto]).
+  final bool profilePhoto;
 
   @override
   State<FFPhotoGalleryField> createState() => _FFPhotoGalleryFieldState();
@@ -135,27 +140,14 @@ class _FFPhotoGalleryFieldState extends State<FFPhotoGalleryField> {
     widget.onChanged(next);
   }
 
-  Widget _image(String v) {
-    const broken = Center(child: Icon(Icons.broken_image));
-    if (v.startsWith('data:')) {
-      // A damaged stored photo must not take the whole form down.
-      try {
-        return Image.memory(
-          base64Decode(v.split(',').last),
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stack) => broken,
-        );
-      } on FormatException {
-        return broken;
-      }
-    }
-    return Image.network(
-      v,
-      fit: BoxFit.cover,
-      errorBuilder: (context, error, stack) =>
-          const Center(child: Icon(Icons.broken_image)),
-    );
-  }
+  // A damaged or refused stored photo shows the broken icon and never
+  // takes the form down or reaches another host (fitflex-functions#273).
+  Widget _image(String v) => FFRemoteImage(
+    src: v,
+    fit: BoxFit.cover,
+    profilePhoto: widget.profilePhoto,
+    fallback: const Center(child: Icon(Icons.broken_image)),
+  );
 
   @override
   Widget build(BuildContext context) {

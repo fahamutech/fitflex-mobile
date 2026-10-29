@@ -55,6 +55,11 @@ class _GymFormPageState extends State<GymFormPage> {
   /// paths (converted to WebP + encoded to base64 on save).
   final List<String> _images = [];
 
+  /// Paths in [_images] picked on this device in this form. Only these are
+  /// read from local files; everything else came from the server and is
+  /// drawn (and sent back) as stored, through the image source check.
+  final Set<String> _localPicks = {};
+
   /// Small WebP thumbnail counterpart for each entry in [_images] (same
   /// index = same photo). `null` means "not generated yet" — filled in on
   /// save, either by compressing a new local file or reusing an existing
@@ -201,6 +206,7 @@ class _GymFormPageState extends State<GymFormPage> {
     if (files.isNotEmpty) {
       setState(() {
         _images.addAll(files.map((file) => file.path));
+        _localPicks.addAll(files.map((file) => file.path));
         _thumbnails.addAll(List<String?>.filled(files.length, null));
       });
     }
@@ -239,8 +245,9 @@ class _GymFormPageState extends State<GymFormPage> {
       final p = _images[i];
       final existingThumb = i < _thumbnails.length ? _thumbnails[i] : null;
 
-      // Pre-existing remote URL or data URI — keep as-is.
-      if (p.startsWith('http') || p.startsWith('data:')) {
+      // A stored photo (data URI, /storage path or URL): keep as-is. The
+      // server accepts stored values unchanged (fitflex-functions#273).
+      if (!_localPicks.contains(p)) {
         outImages.add(p);
         outThumbnails.add(existingThumb ?? p);
         continue;
@@ -631,23 +638,23 @@ class _GymFormPageState extends State<GymFormPage> {
                         const SizedBox(width: 8),
                     itemBuilder: (_, i) {
                       final src = _images[i];
-                      final widgetImg =
-                          (src.startsWith('http') || src.startsWith('data:'))
-                          ? Image.network(
-                              src.startsWith('data:')
-                                  ? src // data URI works in Image.network on most platforms
-                                  : src,
+                      // Only this form's own picks are read from files; a
+                      // stored photo goes through the source check.
+                      final widgetImg = _localPicks.contains(src)
+                          ? Image.file(
+                              File(src),
                               width: 80,
                               height: 80,
                               fit: BoxFit.cover,
                               errorBuilder: (_, error, stackTrace) =>
                                   const Icon(Icons.broken_image),
                             )
-                          : Image.file(
-                              File(src),
+                          : FFRemoteImage(
+                              src: src,
                               width: 80,
                               height: 80,
                               fit: BoxFit.cover,
+                              fallback: const Icon(Icons.broken_image),
                             );
                       return Stack(
                         children: [
@@ -662,7 +669,10 @@ class _GymFormPageState extends State<GymFormPage> {
                             right: 2,
                             child: GestureDetector(
                               onTap: () => setState(() {
-                                _images.removeAt(i);
+                                final removed = _images.removeAt(i);
+                                if (!_images.contains(removed)) {
+                                  _localPicks.remove(removed);
+                                }
                                 if (i < _thumbnails.length) {
                                   _thumbnails.removeAt(i);
                                 }

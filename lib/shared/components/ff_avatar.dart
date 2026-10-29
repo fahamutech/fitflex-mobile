@@ -43,6 +43,7 @@ class FFAvatar extends StatelessWidget {
         child: ClipOval(
           child: FFRemoteImage(
             src: src!,
+            profilePhoto: true,
             width: _radius * 2,
             height: _radius * 2,
             fit: BoxFit.cover,

@@ -73,8 +73,13 @@ String apiErrorMessage(
   // 'unpaid_order_exists'); its `error` code is what names the refusal,
   // whatever other reason-like key sits beside it.
   final body = exception.body;
-  final reason = body is Map && body['error'] == 'hold_limit_reached'
-      ? 'hold_limit_reached'
+  // invalid_media_src carries its own `reason` (too_large, …): the `error`
+  // code names the refusal, the reason only picks the wording.
+  final reason =
+      body is Map &&
+          (body['error'] == 'hold_limit_reached' ||
+              body['error'] == 'invalid_media_src')
+      ? body['error'] as String
       : _firstReason(body);
   if (reason != null && reason.isNotEmpty) {
     final translated =
@@ -203,6 +208,12 @@ String? _detailedReason(FFLocale locale, String reason, dynamic body) {
         'gender' => locale.t('error.reason.invalidGender'),
         _ => null,
       };
+    // A refused photo (fitflex-functions#273): { field, index?, reason }.
+    case 'invalid_media_src':
+      return locale.t(switch (body['reason']?.toString()) {
+        'too_large' || 'image_too_large' => 'error.reason.mediaSrcTooLarge',
+        _ => 'error.reason.invalidMediaSrc',
+      });
     // 429 with the wait the server gave.
     case 'rate_limited':
       final seconds = body['retryAfterSeconds'];
@@ -310,6 +321,9 @@ String? _knownReason(FFLocale locale, String reason) {
     'invalid_credentials': 'error.reason.invalidCredentials',
     'account_suspended': 'error.reason.accountSuspended',
     'acl_forbidden': 'error.reason.noPermission',
+    // Photos (fitflex-functions#273).
+    'invalid_media_src': 'error.reason.invalidMediaSrc',
+    'upload_forbidden': 'error.reason.uploadForbidden',
     'active_subscription_required': 'error.reason.activeSubscriptionRequired',
     // Communications.
     'confirm_large_send': 'error.reason.confirmLargeSend',

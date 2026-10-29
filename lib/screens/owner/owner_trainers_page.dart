@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app_scope.dart';
 import '../../shared/api_client.dart';
+import '../../shared/api_error_message.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/tone_theme.dart';
@@ -19,6 +20,9 @@ String _apiErrorMessage(BuildContext context, ApiException e) {
     case 'email_already_in_use':
     case 'email_already_used_for_trainer':
       return context.tr('owner.errorEmailAlreadyInUse');
+    // A refused trainer photo (fitflex-functions#273).
+    case 'invalid_media_src':
+      return apiErrorMessage(FFLocaleScope.of(context), e);
     default:
       return context.tr('owner.errorGeneric');
   }
@@ -288,6 +292,7 @@ class _OwnerTrainerGridCard extends StatelessWidget {
                       child: photoUrl != null && photoUrl.isNotEmpty
                           ? FFRemoteImage(
                               src: photoUrl,
+                              profilePhoto: true,
                               width: double.infinity,
                               height: double.infinity,
                               fit: BoxFit.cover,
