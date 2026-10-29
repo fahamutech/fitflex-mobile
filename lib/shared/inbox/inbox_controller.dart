@@ -6,6 +6,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../api_client.dart';
+import '../partner_media/partner_media_flag.dart';
 
 /// What kind of message this is, for filtering and labels.
 enum InboxCategory { membership, payments, offers, announcements, other }
@@ -323,6 +324,9 @@ final _safeId = RegExp(r'^[A-Za-z0-9_-]{1,64}$');
 
 // ── Trainers, vendors and gyms ──────────────────────────────────────────────
 
+/// The notice sent when FitFlex takes down a partner's home photo or logo.
+const partnerMediaTakenDownType = 'partner_media.taken_down';
+
 /// The side of FitFlex a signed-in partner works on, from their account
 /// type: `trainer`, `vendor` (and vendor staff) or `gym` (owner and staff).
 /// Null for members and anyone else.
@@ -348,6 +352,8 @@ String partnerLinkFor({required String side, required String type}) =>
         'trainer_booking_cancelled' => 'sessions',
         'trainer_enquiry' || 'trainer_interest' => 'enquiries',
         'trainer_payout_paid' => 'payouts',
+        // FitFlex took down a home photo or logo (spec §44.3).
+        partnerMediaTakenDownType when partnerMediaUi => 'brandMedia',
         _ => '',
       },
       'vendor' => switch (type) {
@@ -375,6 +381,8 @@ String partnerLinkFor({required String side, required String type}) =>
         'shop_banner_rejected' ||
         'shop_banner_expired' ||
         'shop_banner_ended' => 'merch',
+        // FitFlex took down a home photo or logo (spec §44.3).
+        partnerMediaTakenDownType when partnerMediaUi => 'brandMedia',
         _ => '',
       },
       'gym' => switch (type) {
@@ -385,6 +393,8 @@ String partnerLinkFor({required String side, required String type}) =>
         'gym_trainer_request' => 'gymTrainers',
         'gym_review' => 'gyms',
         'gym_statement_approved' || 'gym_payout_paid' => 'earnings',
+        // FitFlex took down a home photo or logo (spec §44.3).
+        partnerMediaTakenDownType when partnerMediaUi => 'brandMedia',
         _ => '',
       },
       _ => '',
@@ -442,6 +452,12 @@ String? partnerRouteFor({
     'gymTrainers' => '/owner/trainers',
     'gyms' => '/owner/gyms',
     'earnings' => '/owner/earnings',
+    // Never the server's own `route`: the app builds it, ids checked. A gym
+    // the person can't edit opens the page's "no access" state (§41.1).
+    'brandMedia' when side == 'gym' =>
+      ok(gymId) ? '/owner/brand-media?gymId=$gymId' : '/owner/brand-media',
+    'brandMedia' when side == 'trainer' => '/trainer/brand-media',
+    'brandMedia' => '/vendor/brand-media',
     _ => null,
   };
 }

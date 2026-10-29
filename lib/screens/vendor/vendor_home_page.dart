@@ -18,6 +18,11 @@ import '../../shared/design_tokens.dart';
 import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
 import '../../shared/photo_footer_flag.dart';
+import '../../shared/partner_media/partner_hero_builder.dart';
+import '../../shared/partner_media/partner_media_flag.dart';
+import '../../shared/partner_media/partner_media_models.dart';
+import '../../shared/partner_media/partner_media_store.dart';
+import '../partner/partner_media_entry_tile.dart';
 import '../../shared/photo_hero_flag.dart';
 import '../../shared/product_categories.dart';
 import '../../shared/shop_home.dart' show kTargetAgeBands, kTargetGenders;
@@ -158,34 +163,56 @@ class _VendorHomePageState extends State<VendorHomePage> {
       padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
       child: KeyedSubtree(
         key: _heroKey,
-        child: FFHeroBand(
-          key: const Key('vendor-hero'),
-          photo: FFHeroPhoto.vendor,
-          clearPhoto: FFTokens.heroBandClearPhoto,
-          maxHeightAt844: vendorHomeBandMaxHeight,
-          eyebrow: name.isEmpty ? context.tr('vendor.title') : name,
-          headlineLoading: loading,
-          headlineLead: loading
-              ? null
-              : context.tr(
-                  pending ? 'hero.vendor.pending.lead' : 'hero.vendor.lead',
+        child: _partnerBand(
+          (media) => FFHeroBand(
+            key: const Key('vendor-hero'),
+            photo: FFHeroPhoto.vendor,
+            // PARTNER_MEDIA_UI (spec §40): the vendor's own photo and logo;
+            // null (bundled, no plate) without them.
+            ownPhoto: media?.photo,
+            logo: partnerLogoPlate(media?.logo),
+            clearPhoto: FFTokens.heroBandClearPhoto,
+            maxHeightAt844: vendorHomeBandMaxHeight,
+            eyebrow: name.isEmpty ? context.tr('vendor.title') : name,
+            headlineLoading: loading,
+            headlineLead: loading
+                ? null
+                : context.tr(
+                    pending ? 'hero.vendor.pending.lead' : 'hero.vendor.lead',
+                  ),
+            headlineAccent: loading
+                ? null
+                : context.tr(
+                    pending
+                        ? 'hero.vendor.pending.accent'
+                        : 'hero.vendor.accent',
+                  ),
+            actions: [
+              if (!loading)
+                FFButton(
+                  key: const Key('vendor-add-product'),
+                  label: context.tr('vendor.addProduct'),
+                  icon: Icons.add,
+                  onPressed: _busy ? null : () => _editProduct(),
                 ),
-          headlineAccent: loading
-              ? null
-              : context.tr(
-                  pending ? 'hero.vendor.pending.accent' : 'hero.vendor.accent',
-                ),
-          actions: [
-            if (!loading)
-              FFButton(
-                key: const Key('vendor-add-product'),
-                label: context.tr('vendor.addProduct'),
-                icon: Icons.add,
-                onPressed: _busy ? null : () => _editProduct(),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  /// The Products band, with the vendor's saved photo and logo when
+  /// PARTNER_MEDIA_UI is on (spec §40.4), for the vendor and their staff:
+  /// read when the tab is built or comes back into view, never swapped on
+  /// screen.
+  Widget _partnerBand(Widget Function(PartnerHeroMedia? media) band) {
+    if (!partnerMediaUi) return band(null);
+    final account = AppScope.of(context).auth.user?['id']?.toString();
+    return PartnerHeroBuilder(
+      subject: account == null ? null : PartnerMediaSubject.vendor(account),
+      visible: _tab == 0,
+      builder: (context, media) => band(media),
     );
   }
 
@@ -1837,6 +1864,17 @@ class _VendorHomePageState extends State<VendorHomePage> {
             ],
           ),
         ),
+        // PARTNER_MEDIA_UI (spec §41.1): the vendor, and staff the server
+        // says may change it (vendorRole admin; `canEdit`).
+        if (partnerMediaUi)
+          Padding(
+            padding: const EdgeInsets.only(top: FFTokens.spacingMd),
+            child: PartnerMediaEntryTile(
+              side: 'vendor',
+              askServer:
+                  AppScope.of(context).auth.user?['userType'] == 'vendor_staff',
+            ),
+          ),
         // Shop S3: no "Based in" yet (or guessed by the server): say why it
         // matters. Their products still sell; they just miss near-you.
         if (_areasNudge != null)
