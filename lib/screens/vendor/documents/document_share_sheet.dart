@@ -25,6 +25,7 @@ import '../../../app_scope.dart';
 import '../../../shared/api_client.dart';
 import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
+import '../../../shared/file-export.dart';
 import '../../../shared/i18n.dart';
 import '../../../shared/network/browser_online.dart';
 import '../../../shared/pdf-open.dart';
@@ -61,6 +62,31 @@ class DocumentActions {
           ),
         );
       };
+
+  /// S6: hands any file (a report CSV) to the system share sheet.
+  static Future<void> Function(
+    Uint8List bytes,
+    String fileName,
+    String mimeType,
+  )
+  shareTypedFile = (bytes, fileName, mimeType) async {
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [XFile.fromData(bytes, mimeType: mimeType, name: fileName)],
+        fileNameOverrides: [fileName],
+      ),
+    );
+  };
+
+  /// S6, Flutter web: the browser downloads the file (a report CSV).
+  static Future<void> Function(
+    Uint8List bytes,
+    String fileName,
+    String mimeType,
+  )
+  download = (bytes, fileName, mimeType) async {
+    await saveBytesExport(filename: fileName, bytes: bytes, mimeType: mimeType);
+  };
 
   /// Flutter web: opens the PDF in a new tab.
   static Future<bool> Function(Uint8List bytes, String fileName) openPdf =
