@@ -21,6 +21,16 @@ import 'widgets/mobile_money_pay.dart';
 import 'widgets/pass_gyms_sheet.dart';
 import 'member_shell.dart';
 
+/// PHOTO_HERO_UI (owner 2026-10-22, bands "too dark"): no clear photo on
+/// the buy band. Any clear photo needs the band about 97px taller (the
+/// 48px lead-in and the top fade come first), which puts the first plan
+/// card (at 43% of a 390x844 screen today) below 55% of the screen...
+const double buyBandClearPhoto = 0;
+
+/// ...and none on Upgrade plan's band either: its first option already
+/// starts at 55% of a 390x844 screen.
+const double upgradeBandClearPhoto = 0;
+
 class MemberPassesPage extends StatelessWidget {
   const MemberPassesPage({super.key});
 
@@ -99,6 +109,7 @@ class MemberPassesPage extends StatelessWidget {
       photo: FFHeroPhoto.upgrade,
       minHeight: 180,
       wideHeight: 200,
+      clearPhoto: buyBandClearPhoto,
       eyebrow: context.tr(eyebrowKey ?? 'pay.product.fitflexPass'),
       headlineLead: !headline
           ? null
@@ -419,6 +430,7 @@ class _UpgradeGateState extends State<_UpgradeGate> {
       photo: FFHeroPhoto.upgrade,
       minHeight: 180,
       wideHeight: 200,
+      clearPhoto: upgradeBandClearPhoto,
       eyebrow: context.tr('member.upgradePlan'),
       headlineLead: key == null ? null : context.tr('$key.lead'),
       headlineAccent: key == null ? null : context.tr('$key.accent'),

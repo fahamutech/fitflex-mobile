@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../shared/inbox/inbox_pages.dart';
+import '../member/member_message_settings_page.dart';
 import '../../shared/file-export.dart';
 import 'package:go_router/go_router.dart';
 
@@ -16,6 +17,11 @@ import '../../shared/design_tokens.dart';
 import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
 import '../../shared/photo_footer_flag.dart';
+import '../../shared/partner_media/partner_hero_builder.dart';
+import '../../shared/partner_media/partner_media_flag.dart';
+import '../../shared/partner_media/partner_media_models.dart';
+import '../../shared/partner_media/partner_media_store.dart';
+import '../partner/partner_media_entry_tile.dart';
 import '../../shared/photo_hero_flag.dart';
 import '../../shared/product_categories.dart';
 import '../../shared/shop_home.dart' show kTargetAgeBands, kTargetGenders;
@@ -34,6 +40,10 @@ import 'documents/document_models.dart'
     show TaxProfile, VatCodeOption, ratePctText, vatCodesOf;
 import 'settings/tax_details_page.dart' show vendorTaxRoute;
 import 'orders/vendor_order_card.dart';
+import 'reports/report_models.dart';
+import 'reports/report_section_page.dart' show reportSectionLink;
+import 'reports/report_period.dart' show ReportPeriod;
+import 'reports/reports_view.dart';
 import 'stock/adjust_stock_sheet.dart';
 import 'stock/stock_history_page.dart';
 import 'stock/stock_options.dart';
@@ -47,11 +57,19 @@ import 'sales/sales_widgets.dart';
 /// Bottom padding for vendor lists: the extended FAB (56) plus margins.
 const vendorFabClearance = 96.0;
 
+/// PHOTO_HERO_UI (owner 2026-10-22, bands "too dark"): the band grows for
+/// [FFTokens.heroBandClearPhoto] of clear photo above its text, but no taller
+/// than this on a 390x844 screen, so Add product (in the band) starts
+/// above 55% of the screen
+/// (FFHeroBand.maxHeightAt844).
+const double vendorHomeBandMaxHeight = 409;
+
 class VendorHomePage extends StatefulWidget {
   const VendorHomePage({super.key, this.open, this.filter, this.view});
 
   /// The section to show first — where a notification leads: `orders`,
-  /// `enquiries`, `products`, `payments`, `sales` or `customers`.
+  /// `enquiries`, `products`, `payments`, `sales`, `customers` or (S6)
+  /// `reports`.
   final String? open;
 
   /// S4: with `open=customers`, which segment: `list`, `owed` or
@@ -89,6 +107,10 @@ class _VendorHomePageState extends State<VendorHomePage> {
   // Vendor tools · S4: the Customers tab's segment.
   String _customersView = 'list';
   final _customersListKey = GlobalKey<CustomersListViewState>();
+  // Vendor tools · S6: tab 2's segment while Reports is on: `reports` or
+  // `payouts` (today's Payments content).
+  String _tab2View = 'reports';
+  final _reportsKey = GlobalKey<VendorReportsViewState>();
   final _owedKey = GlobalKey<OwedViewState>();
 
   // PHOTO_HERO_UI (spec §25.2): a band hero on Products only.
@@ -108,12 +130,16 @@ class _VendorHomePageState extends State<VendorHomePage> {
     }
   }
 
-  /// The FAB comes back once at least half of the hero has scrolled away;
-  /// until then the hero's Add product is the one on screen.
+  /// The FAB comes back once the hero's own Add product, at the band's
+  /// foot, has scrolled at least half away; until then that one is on
+  /// screen. (The band is taller with clear photo above its text, owner
+  /// 2026-10-22, so half the band is no longer enough.) The list's top
+  /// padding and the band's bottom padding are both spacingLg, so the
+  /// button's centre sits half a button above the band's height.
   bool _onProductsScroll(ScrollNotification n) {
     if (n.depth != 0) return false;
     final h = _heroKey.currentContext?.size?.height ?? 0;
-    final visible = h == 0 || n.metrics.pixels < h / 2;
+    final visible = h == 0 || n.metrics.pixels < h - 24;
     if (visible != _heroVisible) setState(() => _heroVisible = visible);
     return false;
   }
@@ -125,32 +151,56 @@ class _VendorHomePageState extends State<VendorHomePage> {
       padding: const EdgeInsets.only(bottom: FFTokens.spacingMd),
       child: KeyedSubtree(
         key: _heroKey,
-        child: FFHeroBand(
-          key: const Key('vendor-hero'),
-          photo: FFHeroPhoto.vendor,
-          eyebrow: name.isEmpty ? context.tr('vendor.title') : name,
-          headlineLoading: loading,
-          headlineLead: loading
-              ? null
-              : context.tr(
-                  pending ? 'hero.vendor.pending.lead' : 'hero.vendor.lead',
+        child: _partnerBand(
+          (media) => FFHeroBand(
+            key: const Key('vendor-hero'),
+            photo: FFHeroPhoto.vendor,
+            // PARTNER_MEDIA_UI (spec §40): the vendor's own photo and logo;
+            // null (bundled, no plate) without them.
+            ownPhoto: media?.photo,
+            logo: partnerLogoPlate(media?.logo),
+            clearPhoto: FFTokens.heroBandClearPhoto,
+            maxHeightAt844: vendorHomeBandMaxHeight,
+            eyebrow: name.isEmpty ? context.tr('vendor.title') : name,
+            headlineLoading: loading,
+            headlineLead: loading
+                ? null
+                : context.tr(
+                    pending ? 'hero.vendor.pending.lead' : 'hero.vendor.lead',
+                  ),
+            headlineAccent: loading
+                ? null
+                : context.tr(
+                    pending
+                        ? 'hero.vendor.pending.accent'
+                        : 'hero.vendor.accent',
+                  ),
+            actions: [
+              if (!loading)
+                FFButton(
+                  key: const Key('vendor-add-product'),
+                  label: context.tr('vendor.addProduct'),
+                  icon: Icons.add,
+                  onPressed: _busy ? null : () => _editProduct(),
                 ),
-          headlineAccent: loading
-              ? null
-              : context.tr(
-                  pending ? 'hero.vendor.pending.accent' : 'hero.vendor.accent',
-                ),
-          actions: [
-            if (!loading)
-              FFButton(
-                key: const Key('vendor-add-product'),
-                label: context.tr('vendor.addProduct'),
-                icon: Icons.add,
-                onPressed: _busy ? null : () => _editProduct(),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  /// The Products band, with the vendor's saved photo and logo when
+  /// PARTNER_MEDIA_UI is on (spec §40.4), for the vendor and their staff:
+  /// read when the tab is built or comes back into view, never swapped on
+  /// screen.
+  Widget _partnerBand(Widget Function(PartnerHeroMedia? media) band) {
+    if (!partnerMediaUi) return band(null);
+    final account = AppScope.of(context).auth.user?['id']?.toString();
+    return PartnerHeroBuilder(
+      subject: account == null ? null : PartnerMediaSubject.vendor(account),
+      visible: _tab == 0,
+      builder: (context, media) => band(media),
     );
   }
 
@@ -273,6 +323,9 @@ class _VendorHomePageState extends State<VendorHomePage> {
     'name_required',
     'priceTzs_required',
     'invalid_stock',
+    // A refused logo, banner or product photo (fitflex-functions#273).
+    'invalid_media_src',
+    'rate_limited',
   };
 
   /// Reasons the vendor can act on are shown; anything else stays generic.
@@ -287,6 +340,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
     'products': 0,
     'orders': 1,
     'payments': 2,
+    'reports': 2,
     'enquiries': 3,
     'customers': 3,
     'sales': _salesSection,
@@ -294,6 +348,11 @@ class _VendorHomePageState extends State<VendorHomePage> {
 
   /// S4: the segment a request opens (`open=enquiries` → Messages).
   void _pickView(String? open, String? view) {
+    if (open == 'reports') {
+      _tab2View = 'reports';
+    } else if (open == 'payments') {
+      _tab2View = 'payouts';
+    }
     if (open == 'enquiries') {
       _customersView = 'messages';
     } else if (open == 'customers') {
@@ -302,6 +361,20 @@ class _VendorHomePageState extends State<VendorHomePage> {
           : 'list';
     }
   }
+
+  /// S6: what this person may see in Reports (all off unless the server
+  /// says `reports: true` and they have the `reports` permission).
+  ReportAccess get _reportAccess => ReportAccess.of(_tools, _can);
+
+  /// S6: tab 2 is "Reports" (Reports | Payouts) when reports are on.
+  bool get _reportsTab => _reportAccess.reports;
+
+  /// The segment tab 2 shows: Payouts needs `payments` (spec Q-1).
+  String get _tab2Shown => !_reportsTab
+      ? 'payouts'
+      : !_can('payments')
+      ? 'reports'
+      : _tab2View;
 
   /// S4: tab 3 is "Customers" (with segments) when the tool is on.
   bool get _customersTab => _tools.customers && _can('customers');
@@ -927,6 +1000,10 @@ class _VendorHomePageState extends State<VendorHomePage> {
                         unawaited(_customersListKey.currentState?.reload());
                         unawaited(_owedKey.currentState?.reload());
                       }
+                      // S6: the reports reload with the page.
+                      if (tab == 2 && _tab2Shown == 'reports') {
+                        unawaited(_reportsKey.currentState?.reload());
+                      }
                       await _refresh(askTools: true);
                     },
                     child: switch (tab) {
@@ -937,6 +1014,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
                         ),
                       0 => _productsTab(),
                       1 => _ordersTab(),
+                      2 when _reportsTab => _reportsAndPayoutsTab(),
                       2 => _paymentsTab(),
                       3 when _customersTab => VendorCustomersTab(
                         key: const Key('vendor-customers-tab'),
@@ -1034,12 +1112,23 @@ class _VendorHomePageState extends State<VendorHomePage> {
                     label: context.tr('vendor.sales.tab'),
                   ),
                 if (sections.contains(2))
-                  NavigationDestination(
-                    key: const Key('vendor-nav-payments'),
-                    icon: const Icon(Icons.account_balance_wallet_outlined),
-                    selectedIcon: const Icon(Icons.account_balance_wallet),
-                    label: context.tr('vendor.payments'),
-                  ),
+                  _reportsTab
+                      ? NavigationDestination(
+                          key: const Key('vendor-nav-reports'),
+                          icon: const Icon(Icons.bar_chart_outlined),
+                          selectedIcon: const Icon(Icons.bar_chart),
+                          label: context.tr('vendor.reports.tab'),
+                        )
+                      : NavigationDestination(
+                          key: const Key('vendor-nav-payments'),
+                          icon: const Icon(
+                            Icons.account_balance_wallet_outlined,
+                          ),
+                          selectedIcon: const Icon(
+                            Icons.account_balance_wallet,
+                          ),
+                          label: context.tr('vendor.payments'),
+                        ),
                 if (sections.contains(3))
                   _customersTab
                       ? NavigationDestination(
@@ -1432,7 +1521,72 @@ class _VendorHomePageState extends State<VendorHomePage> {
     );
   }
 
+  /// S6: tab 2 with Reports on — Reports | Payouts (Payouts only with
+  /// `payments`; it is the Payments content unchanged).
+  Widget _reportsAndPayoutsTab() {
+    final view = _tab2Shown;
+    final segments = <(String, String)>[
+      ('reports', context.tr('vendor.reports.seg.reports')),
+      if (_can('payments'))
+        ('payouts', context.tr('vendor.reports.seg.payouts')),
+    ];
+    final reports = _sales == null
+        ? VendorReportsView(
+            key: _reportsKey,
+            access: _reportAccess,
+            staffDisabled: _staffDisabled,
+            businessName: _profile['businessName']?.toString(),
+          )
+        : ListenableBuilder(
+            listenable: _sales!,
+            builder: (context, _) => VendorReportsView(
+              key: _reportsKey,
+              access: _reportAccess,
+              staffDisabled: _staffDisabled,
+              businessName: _profile['businessName']?.toString(),
+              pendingSales: _sales!.waiting.length,
+            ),
+          );
+    return Column(
+      children: [
+        if (segments.length > 1)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              FFTokens.spacingLg,
+              FFTokens.spacingMd,
+              FFTokens.spacingLg,
+              0,
+            ),
+            child: FFSegmented(
+              key: const Key('vendor-reports-segment'),
+              value: view,
+              options: segments,
+              onChanged: (v) => setState(() => _tab2View = v),
+            ),
+          ),
+        Expanded(child: view == 'reports' ? reports : _paymentsTab()),
+      ],
+    );
+  }
+
+  /// "You receive {amount}" under a Payments figure when the server sends
+  /// the after-commission value (S6, additive `…NetTzs` fields).
+  String? _youReceive(String key) {
+    final v = _payments[key];
+    if (v is! num) return null;
+    return fillIn(context.tr('vendor.reports.youReceiveLine'), {
+      'amount': formatCurrency(v),
+    });
+  }
+
   Widget _paymentsTab() {
+    final net = <String?>[
+      _youReceive('todayNetTzs'),
+      _youReceive('weeklyNetTzs'),
+      _youReceive('monthlyNetTzs'),
+      _youReceive('pendingSettlementNetTzs'),
+      _youReceive('settledNetTzs'),
+    ];
     final cards = <(String, num)>[
       (
         context.tr('vendor.todaySales'),
@@ -1462,12 +1616,13 @@ class _VendorHomePageState extends State<VendorHomePage> {
           _taxEntry(),
           const SizedBox(height: FFTokens.spacingSm),
         ],
-        for (final card in cards)
+        for (final (i, card) in cards.indexed)
           Padding(
             padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
             child: FFCard(
               child: ListTile(
                 title: Text(card.$1),
+                subtitle: net[i] == null ? null : Text(net[i]!),
                 trailing: Text(
                   formatCurrency(card.$2),
                   style: Theme.of(context).textTheme.titleMedium,
@@ -1485,6 +1640,23 @@ class _VendorHomePageState extends State<VendorHomePage> {
           icon: const Icon(Icons.account_balance_wallet_outlined),
           label: Text(context.tr('payouts.title')),
         ),
+        // S6: from Payouts to the App sales after commission report.
+        if (_reportAccess.payouts) ...[
+          const SizedBox(height: FFTokens.spacingSm),
+          FFButton(
+            key: const Key('vendor-payouts-report-link'),
+            label: context.tr('vendor.reports.payouts.link'),
+            variant: FFButtonVariant.ghost,
+            icon: Icons.bar_chart_outlined,
+            onPressed: () => context.push(
+              reportSectionLink(
+                ReportSection.payouts,
+                ReportPeriod.initial(),
+                'all',
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: FFTokens.spacingSm),
         FFButton(
           key: const Key('vendor-download-statement'),
@@ -1653,6 +1825,17 @@ class _VendorHomePageState extends State<VendorHomePage> {
             ],
           ),
         ),
+        // PARTNER_MEDIA_UI (spec §41.1): the vendor, and staff the server
+        // says may change it (vendorRole admin; `canEdit`).
+        if (partnerMediaUi)
+          Padding(
+            padding: const EdgeInsets.only(top: FFTokens.spacingMd),
+            child: PartnerMediaEntryTile(
+              side: 'vendor',
+              askServer:
+                  AppScope.of(context).auth.user?['userType'] == 'vendor_staff',
+            ),
+          ),
         // Shop S3: no "Based in" yet (or guessed by the server): say why it
         // matters. Their products still sell; they just miss near-you.
         if (_areasNudge != null)
@@ -1673,8 +1856,10 @@ class _VendorHomePageState extends State<VendorHomePage> {
                           : 'vendor.areas.nudgeCheckAction',
                     ),
                     variant: FFButtonVariant.secondary,
-                    size: FFButtonSize.sm,
-                    onPressed: _editProfile,
+                    // 48 tall at every width (QA2 #4).
+                    visualDensity: VisualDensity.standard,
+                    // Opens the form at "Where you sell" (QA #8).
+                    onPressed: () => _editProfile(toAreas: true),
                   ),
                 ],
               ),
@@ -1693,6 +1878,22 @@ class _VendorHomePageState extends State<VendorHomePage> {
                   ),
           ),
         if (_taxEntryShown) _taxEntry(),
+        // Which offers they get in the app and by push — the same page
+        // members and trainers use. Staff without this tab reach it from
+        // the inbox.
+        Padding(
+          padding: const EdgeInsets.only(top: FFTokens.spacingMd),
+          child: FFActionTile(
+            key: const Key('vendor-message-settings'),
+            icon: Icons.notifications_outlined,
+            title: context.tr('msgPrefs.title'),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const MemberMessageSettingsPage(),
+              ),
+            ),
+          ),
+        ),
         const SizedBox(height: FFTokens.spacingLg),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1775,7 +1976,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
     );
   }
 
-  Future<void> _editProfile() async {
+  Future<void> _editProfile({bool toAreas = false}) async {
     final api = AppScope.of(context).api;
     // The form saves itself and stays open on a refusal (S3: invalid_area
     // is shown next to "Where you sell"); it closes only once saved.
@@ -1786,6 +1987,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
       builder: (_) => VendorProfileForm(
         profile: _profile,
         shopAreas: _tools.shopAreas,
+        scrollToAreas: toAreas,
         onSave: api.vendorSaveProfile,
         describeError: _saveFailedText,
       ),
@@ -2723,9 +2925,14 @@ class VendorProfileForm extends StatefulWidget {
     this.shopAreas = false,
     this.onSave,
     this.describeError,
+    this.scrollToAreas = false,
   });
 
   final Map<String, dynamic> profile;
+
+  /// Opened from the "Add where you're based" nudge: scroll to "Where you
+  /// sell" once it is laid out (QA #8).
+  final bool scrollToAreas;
 
   /// Saves the profile (PUT /vendor/profile). Set: the form stays open on a
   /// failure and says why; it closes with the body once saved. Unset: the
@@ -2797,6 +3004,24 @@ class _VendorProfileFormState extends State<VendorProfileForm> {
 
   bool _saving = false;
   String? _saveError;
+  final _areasKey = GlobalKey(debugLabel: 'vendor-areas');
+  bool _revealed = false;
+
+  void _revealAreas() {
+    if (_revealed) return;
+    _revealed = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _areasKey.currentContext;
+      if (ctx == null || !ctx.mounted) return;
+      Scrollable.ensureVisible(
+        ctx,
+        alignment: 0.1,
+        duration: MediaQuery.disableAnimationsOf(ctx)
+            ? Duration.zero
+            : FFTokens.motionMedium,
+      );
+    });
+  }
 
   Future<void> _save(Map<String, dynamic> body) async {
     final save = widget.onSave;
@@ -2934,7 +3159,11 @@ class _VendorProfileFormState extends State<VendorProfileForm> {
                 ),
                 // S3: "Where you sell" right after "Address".
                 if (entry.key == 'address' && widget.shopAreas)
-                  VendorAreasSection(controller: _areas),
+                  VendorAreasSection(
+                    key: _areasKey,
+                    controller: _areas,
+                    onReady: widget.scrollToAreas ? _revealAreas : null,
+                  ),
               ],
               const SizedBox(height: FFTokens.spacingSm),
               ProductCategoryMultiSelect(

@@ -12,6 +12,7 @@ import '../../shared/date_of_birth.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
+import '../../shared/partner_details.dart';
 import '../../shared/tone_theme.dart';
 import '../../shared/widgets/ff_photo_picker_field.dart';
 import '../../shared/widgets/verify_identifier.dart';
@@ -112,6 +113,7 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
     _dateOfBirth = TextEditingController(
       text: normaliseDateOfBirth(_profile?.dateOfBirth ?? ''),
     );
+    _initialDob = _dateOfBirth.text.trim();
     _gender = _profile?.gender ?? '';
     _level = _profile?.fitnessLevel;
     _goals = {
@@ -218,6 +220,10 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
   }
 
   /// A stored value that is not valid is flagged as soon as the page opens.
+  /// The date of birth as it was when the page opened.
+  late final String _initialDob;
+  bool get _dobChanged => _dateOfBirth.text.trim() != _initialDob;
+
   late final bool _storedDobInvalid =
       dateOfBirthProblemKey(_dateOfBirth.text) != null;
 
@@ -266,8 +272,8 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
         LengthLimitingTextInputFormatter(10),
       ],
       label: context.tr('member.dateOfBirth'),
-      hint: 'YYYY-MM-DD',
-      helperText: _dobError == null ? 'YYYY-MM-DD' : null,
+      hint: context.tr('member.dobFormatHint'),
+      helperText: _dobError == null ? context.tr('member.dobFormatHint') : null,
       errorText: _dobError,
       validator: _dobProblem,
       autovalidateMode: _storedDobInvalid
@@ -334,9 +340,11 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
         'weightKg': _weight.text.trim().isEmpty
             ? null
             : num.tryParse(_weight.text.trim()),
-        // POST /me/profile: "" clears the date of birth; null would keep
-        // the stored one (functions#239).
-        'dateOfBirth': _dateOfBirth.text.trim(),
+        // POST /me/profile: "" clears the date of birth; leaving it out
+        // keeps the stored one (functions#239). Sent only when changed, so
+        // a stored date the server now refuses (a Trainer or gym owner
+        // under 18, functions#253) never stops the other fields saving.
+        if (_dobChanged) 'dateOfBirth': _dateOfBirth.text.trim(),
         'gender': _gender.isEmpty ? null : _gender,
         'fitnessGoals': _goals.toList(),
         'fitnessLevel': _level,
@@ -358,7 +366,9 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        if (!savedAnything && isDateOfBirthError(e)) {
+        if (!savedAnything && isPartnerUnder18Error(e)) {
+          _dobError = context.tr('error.reason.partnerUnder18');
+        } else if (!savedAnything && isDateOfBirthError(e)) {
           _dobError =
               '${context.tr('member.dobInvalid')} '
               '${context.tr('member.dobNoPersonalisation')}';
@@ -417,6 +427,7 @@ class _MemberEditProfilePageState extends State<MemberEditProfilePage> {
               Center(
                 child: FFPhotoPickerField(
                   semanticLabel: context.tr('member.photoPick'),
+                  profilePhoto: true,
                   value: _photoUrl,
                   onChanged: (value) => setState(() => _photoUrl = value),
                 ),

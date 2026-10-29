@@ -12,8 +12,14 @@ import '../../shared/i18n.dart';
 import '../../shared/inbox/inbox_pages.dart';
 import '../../shared/models.dart';
 import '../../shared/photo_footer_flag.dart';
+import '../../shared/partner_media/partner_hero_builder.dart';
+import '../partner/partner_media_entry_tile.dart';
+import '../../shared/partner_media/partner_media_flag.dart';
+import '../../shared/partner_media/partner_media_models.dart';
+import '../../shared/partner_media/partner_media_store.dart';
 import '../../shared/photo_hero_flag.dart';
 import '../../shared/root_back_navigation.dart';
+import '../../shared/widgets/partner_details_widgets.dart';
 import '../../shared/widgets/partner_not_verified.dart';
 import '../../router.dart';
 import '../../shared/shop_home.dart';
@@ -36,6 +42,13 @@ import '../../shared/widgets/persona_switcher.dart';
 import '../../shared/widgets/invitations.dart';
 import '../../shared/widgets/verify_identifier.dart';
 import '../pin_flows.dart';
+
+/// PHOTO_HERO_UI (owner 2026-10-22, bands "too dark"): the band grows for
+/// [FFTokens.heroBandClearPhoto] of clear photo above its text, but no taller
+/// than this on a 390x844 screen, so the check-in buttons (in the band)
+/// start above 55% of the screen
+/// (FFHeroBand.maxHeightAt844).
+const double trainerHomeBandMaxHeight = 469;
 
 /// Standalone trainer dashboard shown after trainer is onboarded.
 class TrainerHomePage extends StatefulWidget {
@@ -387,6 +400,19 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
     children: children,
   );
 
+  /// The Home band, with the trainer's saved photo and logo when
+  /// PARTNER_MEDIA_UI is on (spec §40.4): read when Home is built or comes
+  /// back into view (a tab switch, a page closing), never swapped on screen.
+  Widget _partnerBand(Widget Function(PartnerHeroMedia? media) band) {
+    if (!partnerMediaUi) return band(null);
+    final account = AppScope.of(context).auth.user?['id']?.toString();
+    return PartnerHeroBuilder(
+      subject: account == null ? null : PartnerMediaSubject.trainer(account),
+      visible: _tabIndex == 0,
+      builder: (context, media) => band(media),
+    );
+  }
+
   Widget _dashboardTab() {
     final trainer = _myProfile;
     final socials = SocialLinks.fromJson(trainer?['socialLinks']);
@@ -407,36 +433,46 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
         if (photoHeroUi) ...[
           // PHOTO_HERO_UI (spec §25.1): the hero carries the gym check-in; the
           // QR itself opens in its own solid sheet, never on the photo.
-          FFHeroBand(
-            key: const Key('trainer-hero'),
-            photo: FFHeroPhoto.trainer,
-            eyebrow: heroGreeting(
-              context,
-              DateTime.now(),
-              trainer?['displayName']?.toString() ?? _displayName,
+          _partnerBand(
+            (media) => FFHeroBand(
+              key: const Key('trainer-hero'),
+              photo: FFHeroPhoto.trainer,
+              // PARTNER_MEDIA_UI (spec §40): the trainer's own photo and
+              // logo; null (bundled, no plate) without them.
+              ownPhoto: media?.photo,
+              logo: partnerLogoPlate(media?.logo),
+              clearPhoto: FFTokens.heroBandClearPhoto,
+              maxHeightAt844: trainerHomeBandMaxHeight,
+              eyebrow: heroGreeting(
+                context,
+                DateTime.now(),
+                trainer?['displayName']?.toString() ?? _displayName,
+              ),
+              headlineLead: context.tr('hero.trainer.lead'),
+              headlineAccent: context.tr('hero.trainer.accent'),
+              subline: context.tr('checkin.body'),
+              actions: [
+                FFButton(
+                  key: const Key('trainer-checkin-scan'),
+                  label: context.tr('checkin.scan'),
+                  icon: Icons.qr_code_scanner,
+                  onPressed: _scanGymQr,
+                ),
+                FFButton(
+                  key: const Key('trainer-checkin-qr'),
+                  label: context.tr('checkin.showQr'),
+                  icon: Icons.qr_code_2,
+                  variant: FFButtonVariant.onPhoto,
+                  onPressed: _showMyQr,
+                ),
+              ],
             ),
-            headlineLead: context.tr('hero.trainer.lead'),
-            headlineAccent: context.tr('hero.trainer.accent'),
-            subline: context.tr('checkin.body'),
-            actions: [
-              FFButton(
-                key: const Key('trainer-checkin-scan'),
-                label: context.tr('checkin.scan'),
-                icon: Icons.qr_code_scanner,
-                onPressed: _scanGymQr,
-              ),
-              FFButton(
-                key: const Key('trainer-checkin-qr'),
-                label: context.tr('checkin.showQr'),
-                icon: Icons.qr_code_2,
-                variant: FFButtonVariant.onPhoto,
-                onPressed: _showMyQr,
-              ),
-            ],
           ),
           const SizedBox(height: FFTokens.spacingMd),
         ],
         const PartnerNotVerifiedNotice(),
+        // Partner date of birth: a dismissible ask, never blocking.
+        const PartnerDobPromptCard(canEditGender: false),
         // Quick gym access: show the check-in QR, or scan the gym's QR.
         if (!photoHeroUi)
           FFCard(
@@ -622,6 +658,8 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
       subtitle: context.tr('trainer.editProfessionalHint'),
       onTap: _editProfessionalProfile,
     ),
+    // PARTNER_MEDIA_UI (spec §41.1): nothing with the flag off.
+    if (partnerMediaUi) const PartnerMediaEntryTile(side: 'trainer'),
     // The trainer's social profiles, as members see them (tap to open).
     if (!SocialLinks.fromJson(_myProfile?['socialLinks']).isEmpty)
       Padding(
@@ -666,6 +704,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
     const InvitationsTile(),
     const ContactDetailsTile(),
     const ChangePinTile(),
+    const PartnerDetailsTile(canEditGender: false),
     const PersonaSwitcherTile(),
     const SizedBox(height: 16),
     FFButton(

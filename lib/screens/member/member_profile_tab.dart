@@ -363,6 +363,16 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
       subtitle: context.tr('sessions.tile'),
       onTap: () => context.push(AppRoutes.memberSessions),
     ),
+    // Events S3 §4: always when registration is on.
+    if (MemberDataScope.of(context).eventsDiscovery &&
+        MemberDataScope.of(context).eventsOptions.registration)
+      FFActionTile(
+        key: const Key('profile-event-registrations'),
+        icon: Icons.confirmation_number_outlined,
+        title: context.tr('events.mine.title'),
+        subtitle: context.tr('events.mine.empty.body'),
+        onTap: () => context.push(AppRoutes.memberEventOrders),
+      ),
     FFActionTile(
       key: const Key('profile-privacy'),
       icon: Icons.privacy_tip_outlined,

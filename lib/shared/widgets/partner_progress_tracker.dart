@@ -31,6 +31,34 @@ String? partnerItemLabel(
       : _fill(context.tr('progress.itemAtGym'), {'item': label, 'gym': gym});
 }
 
+/// The neutral KYC reason code a partner gets instead of a sensitive one
+/// (fitflex-functions#245). It is never paired with a reviewer note: the
+/// partner is told the case is under review and to contact FitFlex support.
+const partnerUnderReviewReason = 'under_review';
+
+/// "Under review — please contact FitFlex support." in the active language.
+String partnerUnderReviewMessage(BuildContext context) =>
+    context.tr('progress.reason.under_review');
+
+/// Whether a next action's button contacts FitFlex support rather than
+/// opening a screen in the app.
+bool partnerActionIsSupport(PartnerNextAction action) =>
+    action.code == 'contact_support' ||
+    action.code == 'payout_not_ready' ||
+    (action.code == 'kyc_changes_requested' &&
+        action.reasonCode == partnerUnderReviewReason);
+
+/// Why payouts aren't ready for a gym owner (fitflex-functions#247): the
+/// gym has several owners and none is named to be paid, or another owner is.
+String partnerPayoutNotReadyMessage(BuildContext context, String? reason) =>
+    switch (reason) {
+      'payout_owner_required' => context.tr(
+        'progress.payout.payout_owner_required',
+      ),
+      'not_payout_owner' => context.tr('progress.payout.not_payout_owner'),
+      _ => context.tr('progress.next.payout_not_ready'),
+    };
+
 /// The message for a next action, in the active language.
 String partnerActionMessage(
   BuildContext context,
@@ -68,6 +96,11 @@ String partnerActionMessage(
     case 'kyc_under_review':
       return context.tr('kyc.status.inReview');
     case 'kyc_changes_requested':
+      if (action.reasonCode == partnerUnderReviewReason) {
+        // No reason is given: say it is under review, nothing more.
+        final review = partnerUnderReviewMessage(context);
+        return action.missing.isEmpty ? review : '$review\n${stillNeeded()}';
+      }
       final reasonKey = 'progress.changeReason.${action.reasonCode}';
       final reason = context.tr(reasonKey);
       final asked = reason == reasonKey
@@ -94,7 +127,7 @@ String partnerActionMessage(
               'date': until,
             });
     case 'payout_not_ready':
-      return context.tr('progress.next.payout_not_ready');
+      return partnerPayoutNotReadyMessage(context, action.reason);
     case 'add_gym':
       return context.tr('progress.next.add_gym');
     case 'contact_support':
@@ -114,22 +147,23 @@ String partnerBlockedReason(BuildContext context, String? reason) =>
       'role_rejected' => context.tr('progress.blocked.role_rejected'),
       'kyc_rejected' => context.tr('kyc.status.rejected'),
       'kyc_suspended' => context.tr('kyc.status.suspended'),
+      partnerUnderReviewReason => partnerUnderReviewMessage(context),
       _ => context.tr('progress.blocked.other'),
     };
 
 /// The button label for a next action the partner can act on, or null when
 /// there is nothing to press (FitFlex is reviewing, or all done).
 String? partnerActionLabel(BuildContext context, PartnerNextAction action) =>
-    switch (action.code) {
-      'complete_kyc_items' => context.tr('kyc.pending.cta'),
-      'submit_kyc' => context.tr('kyc.submit.action'),
-      'kyc_changes_requested' => context.tr('progress.cta.changes'),
-      'add_payout_account' => context.tr('progress.cta.payout'),
-      'add_gym' => context.tr('progress.cta.addGym'),
-      'contact_support' ||
-      'payout_not_ready' => context.tr('member.contactSupport'),
-      _ => null,
-    };
+    partnerActionIsSupport(action)
+    ? context.tr('member.contactSupport')
+    : switch (action.code) {
+        'complete_kyc_items' => context.tr('kyc.pending.cta'),
+        'submit_kyc' => context.tr('kyc.submit.action'),
+        'kyc_changes_requested' => context.tr('progress.cta.changes'),
+        'add_payout_account' => context.tr('progress.cta.payout'),
+        'add_gym' => context.tr('progress.cta.addGym'),
+        _ => null,
+      };
 
 String _stepLabel(BuildContext context, String key) =>
     context.tr('progress.step.$key');
@@ -421,8 +455,7 @@ class _ActionLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final label = onAction == null ? null : partnerActionLabel(context, action);
-    final support =
-        action.code == 'contact_support' || action.code == 'payout_not_ready';
+    final support = partnerActionIsSupport(action);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

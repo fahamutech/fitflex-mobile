@@ -10,6 +10,7 @@ import '../../app_scope.dart';
 import '../components/components.dart';
 import '../design_tokens.dart';
 import '../i18n.dart';
+import '../media/media_src.dart';
 import 'location_picker.dart';
 
 /// Fullscreen form for creating/editing a gym. Mirrors the fields used during
@@ -54,6 +55,11 @@ class _GymFormPageState extends State<GymFormPage> {
   /// Mix of existing remote URLs/data-URIs (kept as-is) and new local file
   /// paths (converted to WebP + encoded to base64 on save).
   final List<String> _images = [];
+
+  /// Paths in [_images] picked on this device in this form. Only these are
+  /// read from local files; everything else came from the server and is
+  /// drawn (and sent back) as stored, through the image source check.
+  final Set<String> _localPicks = {};
 
   /// Small WebP thumbnail counterpart for each entry in [_images] (same
   /// index = same photo). `null` means "not generated yet" — filled in on
@@ -193,18 +199,30 @@ class _GymFormPageState extends State<GymFormPage> {
     }
   }
 
+  /// Room left under the server's cap (kGymMaxPhotos, too_many_images).
+  int get _photoRoom => kGymMaxPhotos - _images.length;
+
   Future<void> _pickImage() async {
-    final files = await _picker.pickMultiImage(
+    if (_photoRoom <= 0) return _sayPhotoMax();
+    final picked = await _picker.pickMultiImage(
       maxWidth: 1024,
       imageQuality: 80,
+      limit: _photoRoom > 1 ? _photoRoom : null,
     );
-    if (files.isNotEmpty) {
-      setState(() {
-        _images.addAll(files.map((file) => file.path));
-        _thumbnails.addAll(List<String?>.filled(files.length, null));
-      });
-    }
+    if (!mounted || picked.isEmpty) return;
+    final files = picked.take(_photoRoom).toList();
+    setState(() {
+      _images.addAll(files.map((file) => file.path));
+      _localPicks.addAll(files.map((file) => file.path));
+      _thumbnails.addAll(List<String?>.filled(files.length, null));
+    });
+    if (picked.length > files.length) _sayPhotoMax();
   }
+
+  void _sayPhotoMax() => FFSnack.info(
+    context,
+    context.tr('photos.max').replaceAll('{n}', '$kGymMaxPhotos'),
+  );
 
   /// Downscales+re-encodes a local image file as WebP. Returns `null` if the
   /// file can't be read or compressed (e.g. unsupported platform/format).
@@ -239,8 +257,9 @@ class _GymFormPageState extends State<GymFormPage> {
       final p = _images[i];
       final existingThumb = i < _thumbnails.length ? _thumbnails[i] : null;
 
-      // Pre-existing remote URL or data URI — keep as-is.
-      if (p.startsWith('http') || p.startsWith('data:')) {
+      // A stored photo (data URI, /storage path or URL): keep as-is. The
+      // server accepts stored values unchanged (fitflex-functions#273).
+      if (!_localPicks.contains(p)) {
         outImages.add(p);
         outThumbnails.add(existingThumb ?? p);
         continue;
@@ -631,23 +650,23 @@ class _GymFormPageState extends State<GymFormPage> {
                         const SizedBox(width: 8),
                     itemBuilder: (_, i) {
                       final src = _images[i];
-                      final widgetImg =
-                          (src.startsWith('http') || src.startsWith('data:'))
-                          ? Image.network(
-                              src.startsWith('data:')
-                                  ? src // data URI works in Image.network on most platforms
-                                  : src,
+                      // Only this form's own picks are read from files; a
+                      // stored photo goes through the source check.
+                      final widgetImg = _localPicks.contains(src)
+                          ? Image.file(
+                              File(src),
                               width: 80,
                               height: 80,
                               fit: BoxFit.cover,
                               errorBuilder: (_, error, stackTrace) =>
                                   const Icon(Icons.broken_image),
                             )
-                          : Image.file(
-                              File(src),
+                          : FFRemoteImage(
+                              src: src,
                               width: 80,
                               height: 80,
                               fit: BoxFit.cover,
+                              fallback: const Icon(Icons.broken_image),
                             );
                       return Stack(
                         children: [
@@ -662,7 +681,10 @@ class _GymFormPageState extends State<GymFormPage> {
                             right: 2,
                             child: GestureDetector(
                               onTap: () => setState(() {
-                                _images.removeAt(i);
+                                final removed = _images.removeAt(i);
+                                if (!_images.contains(removed)) {
+                                  _localPicks.remove(removed);
+                                }
                                 if (i < _thumbnails.length) {
                                   _thumbnails.removeAt(i);
                                 }
@@ -689,7 +711,7 @@ class _GymFormPageState extends State<GymFormPage> {
               const SizedBox(height: 8),
               FFButton(
                 label: context.tr('ownerReg.pickImage'),
-                onPressed: _pickImage,
+                onPressed: _photoRoom > 0 ? _pickImage : null,
                 variant: FFButtonVariant.secondary,
                 icon: Icons.add_a_photo,
               ),

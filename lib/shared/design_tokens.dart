@@ -255,6 +255,22 @@ class FFTokens {
   static const double heroTallClearMax = 200;
   static const double heroTallMinViewport = 760;
 
+  /// Band heroes (owner 2026-10-22, "too dark"): the clear photo a band
+  /// keeps above its text on phones from [heroTallMinViewport] tall, at
+  /// 1.0x text (divided by the text scale above it). A screen caps its band
+  /// so its first control stays above [heroBandControlShare] of the screen
+  /// (FFHeroBand.maxHeightAt844); the clear photo then gives way. The bar
+  /// band and the scrim under the text are unchanged.
+  static const double heroBandClearPhoto = 100;
+
+  /// How far down the screen a band screen's first control may sit (its top
+  /// edge, as a share of the viewport height).
+  static const double heroBandControlShare = 0.55;
+
+  /// The least clear photo a capped band grows for; with less it keeps
+  /// today's height.
+  static const double heroBandMinClearPhoto = 24;
+
   /// Horizontal (panel / wide banner) scrim: the text column's leading edge
   /// and the far edge. The text column itself stays at >= [heroScrimText].
   static const double heroScrimPanelLead = 0.92;
@@ -293,6 +309,31 @@ class FFTokens {
 
   /// Shown before the photo decodes, under high contrast and on failure.
   static const Color heroPlaceholder = Color(0xFF0B192C);
+
+  /// Partner logo plate on a band (spec §40.2): 40 tall, at most 120 wide,
+  /// 6px side padding, the logo inside 108 x 28.
+  static const double logoPlateHeight = 40;
+  static const double logoPlateMaxWidth = 120;
+  static const double logoPlateMinWidth = 40;
+  static const double logoPlatePad = 6;
+  static const double logoPlateLogoMaxWidth = 108;
+  static const double logoPlateLogoMaxHeight = 28;
+
+  /// The phone band keeps this much from its top edge to the top of the
+  /// eyebrow while a plate shows (16 + 40 + 12).
+  static const double logoPlateReserve = 68;
+
+  /// Light plate (dark or coloured logos): white with a 12% slate-950 edge.
+  static const Color logoPlateLight = Color(0xFFFFFFFF);
+  static Color get logoPlateLightBorder =>
+      const Color(0xFF020617).withValues(alpha: 0.12);
+
+  /// Dark plate (light or white logos): the navy ground with a 40% edge
+  /// (full opacity under high contrast).
+  static const Color logoPlateDark = heroPlaceholder;
+  static const Color logoPlateDarkBorderStrong = Color(0xFFF1F5F9);
+  static Color get logoPlateDarkBorder =>
+      logoPlateDarkBorderStrong.withValues(alpha: 0.4);
 
   /// Light theme: the content sheet overlaps the hero by this much.
   static const double heroSheetOverlap = 24;

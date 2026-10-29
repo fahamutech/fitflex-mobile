@@ -4,11 +4,13 @@ import 'package:go_router/go_router.dart';
 import '../../app_scope.dart';
 import '../../router.dart';
 import '../../shared/api_client.dart';
-import '../../shared/api_error_message.dart';
+import '../../shared/date_of_birth.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
+import '../../shared/partner_details.dart';
+import '../../shared/widgets/partner_details_widgets.dart';
 import '../../shared/widgets/persona_switcher.dart';
 import '../../shared/widgets/ff_photo_picker_field.dart';
 import '../../shared/widgets/social_links.dart';
@@ -36,6 +38,15 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
   String? _gender;
   final _bioCtrl = TextEditingController();
 
+  // Partner date of birth (fitflex-functions#253): asked only when
+  // GET /me/personal-details says so. Off, failed or already known: the
+  // form is as before. The gender above is the one used (no second
+  // question).
+  bool _loadingDetails = true;
+  bool _askDob = false;
+  final _dobCtrl = TextEditingController();
+  String? _dobError;
+
   // Step 1 — Professional
   final _sessionRateCtrl = TextEditingController();
   final List<String> _specialties = [];
@@ -53,7 +64,30 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadDetails());
+  }
+
+  Future<void> _loadDetails() async {
+    final details = await loadPersonalDetails(AppScope.of(context).api);
+    if (!mounted) return;
+    setState(() {
+      _askDob = details?.ask == true;
+      _loadingDetails = false;
+    });
+  }
+
+  /// The date of birth is required and 18+ when asked; else null.
+  String? _dobProblem() {
+    if (!_askDob) return null;
+    final key = partnerDobProblemKey(_dobCtrl.text);
+    return key == null ? null : context.tr(key);
+  }
+
+  @override
   void dispose() {
+    _dobCtrl.dispose();
     _nameCtrl.dispose();
     _nicknameCtrl.dispose();
     _bioCtrl.dispose();
@@ -68,6 +102,14 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    final dobProblem = _dobProblem();
+    if (dobProblem != null) {
+      setState(() {
+        _step = 0;
+        _dobError = dobProblem;
+      });
+      return;
+    }
     // Terms: the role's terms must be agreed to, and put on record, first.
     final terms = _termsKey.currentState;
     if (terms == null || !terms.agreed) {
@@ -97,6 +139,7 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
         'hourlyRateTzs': num.tryParse(_sessionRateCtrl.text) ?? 0,
         'specialties': _specialties,
         'socialLinks': SocialHandleFields.valuesOf(_socials),
+        if (_askDob) 'dateOfBirth': _dobCtrl.text.trim(),
       });
       if (!mounted) return;
       // Re-hydrate auth to reflect onboarding completion
@@ -111,7 +154,15 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
       context.go(routeForSignedInUser(AppScope.of(context).auth));
     } on ApiException catch (e) {
       if (!mounted) return;
-      FFSnack.error(context, apiErrorMessage(FFLocaleScope.of(context), e));
+      // partner_under_18 and the date-of-birth refusal say so plainly.
+      final message = partnerDetailsErrorMessage(FFLocaleScope.of(context), e);
+      if (_askDob && (isPartnerUnder18Error(e) || isDateOfBirthError(e))) {
+        setState(() {
+          _step = 0;
+          _dobError = message;
+        });
+      }
+      FFSnack.error(context, message);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -119,6 +170,11 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
 
   void _next() {
     if (_step < 1) {
+      final dobProblem = _dobProblem();
+      if (dobProblem != null) {
+        setState(() => _dobError = dobProblem);
+        return;
+      }
       setState(() => _step++);
     } else {
       _submit();
@@ -174,7 +230,9 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
                 ),
                 const SizedBox(height: 24),
                 Expanded(
-                  child: SingleChildScrollView(child: _buildStep(context)),
+                  child: _loadingDetails
+                      ? const Center(child: FFSpinner())
+                      : SingleChildScrollView(child: _buildStep(context)),
                 ),
                 const SizedBox(height: 16),
                 Row(
@@ -193,7 +251,7 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
                         label: _step < 1
                             ? context.tr('onboarding.next')
                             : context.tr('trainerReg.submit'),
-                        onPressed: _busy ? null : _next,
+                        onPressed: _busy || _loadingDetails ? null : _next,
                         loading: _busy,
                       ),
                     ),
@@ -262,6 +320,7 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
         const SizedBox(height: 8),
         Center(
           child: FFPhotoPickerField(
+            profilePhoto: true,
             value: _photoUrl,
             onChanged: (url) => setState(() => _photoUrl = url),
             size: 100,
@@ -286,6 +345,15 @@ class _TrainerRegistrationPageState extends State<TrainerRegistrationPage> {
           validator: (v) =>
               v == null ? context.tr('onboarding.required') : null,
         ),
+        if (_askDob) ...[
+          const SizedBox(height: 16),
+          PartnerDobField(
+            key: const Key('trainer-reg-dob'),
+            controller: _dobCtrl,
+            errorText: _dobError,
+            onChanged: () => setState(() => _dobError = _dobProblem()),
+          ),
+        ],
         const SizedBox(height: 16),
         TextFormField(
           controller: _bioCtrl,

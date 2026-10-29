@@ -4,6 +4,7 @@ import '../design_tokens.dart';
 import '../i18n.dart';
 import 'theme_toggle_button.dart';
 import '../inbox/inbox_pages.dart';
+import '../widgets/payout_owner_marker.dart';
 
 /// Shared top action bar for the owner dashboard home tab.
 ///
@@ -100,7 +101,22 @@ class FFOwnerDashboardBar extends StatelessWidget
                         .map(
                           (gym) => PopupMenuItem<String>(
                             value: gym['id']?.toString(),
-                            child: Text(gym['name']?.toString() ?? ''),
+                            child: Row(
+                              children: [
+                                Flexible(
+                                  child: Text(gym['name']?.toString() ?? ''),
+                                ),
+                                if (isPayoutOwnerGym(gym)) ...[
+                                  const SizedBox(width: FFTokens.spacingSm),
+                                  PayoutOwnerMarker(
+                                    key: Key(
+                                      'owner-gym-picker-payout-owner-'
+                                      '${gym['id']}',
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
                           ),
                         )
                         .toList(),

@@ -1832,6 +1832,7 @@ class FFLocale extends ChangeNotifier {
       'member.dobPick': 'Choose date of birth',
       'member.dobFormat':
           'Enter your date of birth as YYYY-MM-DD, for example 1990-05-21.',
+      'member.dobFormatHint': 'YYYY-MM-DD',
       'member.dobNoPersonalisation':
           "Until your date of birth is valid, the shop can't be personalised for you.",
       'member.photoPick': 'Change profile photo',
@@ -2757,6 +2758,24 @@ class FFLocale extends ChangeNotifier {
       'onboarding.gender_female': 'Female',
       'onboarding.gender_other': 'Other',
       'onboarding.dob': 'Date of birth',
+      // Partner date of birth (fitflex-functions#253).
+      'partnerDob.help':
+          'Used to suggest shop products for your age group. Not shown on your profile.',
+      'partnerDob.errRateLimited':
+          'Too many changes. Try again in {seconds} seconds.',
+      'partnerDob.promptTitle': 'Add your date of birth',
+      'partnerDob.promptBody':
+          "Get shop suggestions that suit you. It isn't shown on your profile.",
+      'partnerDob.add': 'Add',
+      'partnerDob.tapToChoose': 'Tap to choose',
+      'partnerDob.notNow': 'Not now',
+      'partnerDob.tileTitle': 'Date of birth and gender',
+      'partnerDob.tileSubtitle': 'Used only for shop suggestions',
+      'partnerDob.saved': 'Saved',
+      'partnerGender.optional': 'Gender (optional)',
+      'partnerGender.preferNot': 'Prefer not to say',
+      'partnerGender.fromTrainerProfile':
+          'This comes from your trainer profile. Change it there.',
       'onboarding.fitnessTitle': 'What are your fitness goals',
       'onboarding.fitnessSubtitle': 'Select all that apply',
       'onboarding.fitnessGoal': 'Fitness goal',
@@ -4327,6 +4346,17 @@ class FFLocale extends ChangeNotifier {
       'progress.blocked.role_rejected':
           'Your partner application was not approved.',
       'progress.blocked.other': 'This step is on hold.',
+      // fitflex-functions#245: the neutral code partners get in place of a
+      // sensitive KYC reason. No reason note is ever shown with it.
+      'progress.reason.under_review':
+          'Under review — please contact FitFlex support.',
+      // fitflex-functions#247: payout_not_ready reasons for a shared gym.
+      'progress.payout.payout_owner_required':
+          'This gym has more than one owner. FitFlex needs to name the payout owner before payouts can start.',
+      'progress.payout.not_payout_owner':
+          'Another owner receives payouts for this gym.',
+      'owner.payoutOwner': 'Payout owner',
+      'owner.payoutOwner.a11y': 'Payout owner: you receive this gym’s payouts',
       'progress.cta.changes': 'Make changes',
       'progress.cta.payout': 'Add payout account',
       'progress.cta.addGym': 'Add gym',
@@ -4510,7 +4540,8 @@ class FFLocale extends ChangeNotifier {
       'shop.near.sheetTitle': "Use your location in the shop?",
       'shop.near.point1':
           "Your phone works out your approximate area, such as your city or district.",
-      'shop.near.point2': "Only the area is sent to FitFlex, and it isn't stored. For the shop, your exact location never leaves your device.",
+      'shop.near.point2':
+          "Only the area is sent to FitFlex, and FitFlex doesn't keep it on its servers. For the shop, your exact location never leaves your device.",
       'shop.near.point3':
           "You can turn this off any time with \"Personalised shop\", in the shop or in Privacy & data.",
       'shop.near.alreadyAllowed':
@@ -4525,8 +4556,6 @@ class FFLocale extends ChangeNotifier {
           "Turn on location on your phone to see Popular near you.",
       'shop.near.badge': "Delivers to your area",
       'shop.near.finding': "Finding your area",
-      'shop.near.changeArea': "Change area",
-      'shop.near.pickArea': "Choose your area",
       'shop.why.nearOn': "Popular near you: On · {area}",
       'shop.why.nearOff': "Popular near you: Off",
       'shop.why.nearNoArea': "No sellers listed for your area yet",
@@ -4563,11 +4592,14 @@ class FFLocale extends ChangeNotifier {
       'vendor.areas.level.district': "district",
       'vendor.areas.none': "Areas aren't set up yet.",
       'vendor.areas.failed': "Couldn't load areas. Try again.",
-      'vendor.areas.invalid.gone': "{areas}: this area is no longer available. Pick another.",
+      'vendor.areas.invalid.gone':
+          "{areas}: this area is no longer available. Pick another.",
       'vendor.areas.invalid.wrongLevel': "Based in must be a city or district.",
-      'vendor.areas.invalid.notInRegion': "The city is not inside that region. Pick the city again.",
+      'vendor.areas.invalid.notInRegion':
+          "The city is not inside that region. Pick the city again.",
       'vendor.areas.invalid.tooMany': "Pick up to 50 delivery areas.",
-      'vendor.areas.invalid.other': "Some areas couldn't be saved. Check them and try again.",
+      'vendor.areas.invalid.other':
+          "Some areas couldn't be saved. Check them and try again.",
       'vendor.areas.nudge':
           "Add where you're based and where you deliver, so buyers nearby find you.",
       'vendor.areas.nudgeAction': "Add now",
@@ -4808,24 +4840,33 @@ class FFLocale extends ChangeNotifier {
       'vendor.costForbidden':
           'Only the shop owner and admin staff can set the cost price.',
       // Vendor tools · S3: walk-in sales (POS, receipts, history, sync).
-      'vendor.sales.err.voidNotAllowed': 'You don\'t have permission to void sales.',
-      'vendor.pos.err.clock': 'Check your phone\'s date and time, then try again.',
-      'vendor.pos.err.tooOld': 'This sale is more than 7 days old, so it can\'t keep its original date.',
+      'vendor.sales.err.voidNotAllowed':
+          'You don\'t have permission to void sales.',
+      'vendor.pos.err.clock':
+          'Check your phone\'s date and time, then try again.',
+      'vendor.pos.err.tooOld':
+          'This sale is more than 7 days old, so it can\'t keep its original date.',
       'vendor.sync.recordToday': 'Record with today\'s date',
       'vendor.sync.originally': 'originally {date}',
-      'vendor.sync.conflictStockGeneric': 'Not enough stock for an item in this sale.',
+      'vendor.sync.conflictStockGeneric':
+          'Not enough stock for an item in this sale.',
       'vendor.sync.bannerOne': '1 sale waiting to sync',
       'vendor.sync.conflictsOne': '1 sale needs fixing',
-      'vendor.sync.signOutWarnOne': '1 sale on this device is not synced yet. It stays here and syncs next time you sign in.',
+      'vendor.sync.signOutWarnOne':
+          '1 sale on this device is not synced yet. It stays here and syncs next time you sign in.',
       'vendor.pos.itemsOne': '1 item',
       'vendor.pos.cartBarLabelOne': '1 item, total {amount}. Open sale items.',
       'vendor.pos.savedLater': 'Saved. It will sync when possible.',
-      'vendor.sales.offline': 'No connection. Sales history needs the internet; you can still record new sales.',
-      'vendor.pos.err.changeTooLargeLocal': 'The change can\'t be more than {amount}. Check the amount received.',
-      'vendor.pos.err.paidTooLargeLocal': 'The amounts are too large. Check them.',
+      'vendor.sales.offline':
+          'No connection. Sales history needs the internet; you can still record new sales.',
+      'vendor.pos.err.changeTooLargeLocal':
+          'The change can\'t be more than {amount}. Check the amount received.',
+      'vendor.pos.err.paidTooLargeLocal':
+          'The amounts are too large. Check them.',
       'vendor.invite.staffTitle': 'Invite: shop staff',
       'vendor.offlineKept': 'No connection. Showing what this device saved.',
-      'vendor.sales.offlineToast': 'No connection. You can still record sales; they sync later.',
+      'vendor.sales.offlineToast':
+          'No connection. You can still record sales; they sync later.',
       'vendor.sales.offlineTitle': 'You\'re offline',
       'vendor.sales.tab': 'Sales',
       'vendor.permission.sales': 'Shop sales',
@@ -4947,7 +4988,8 @@ class FFLocale extends ChangeNotifier {
       'vendor.pos.notFiscal': 'This is not a TRA fiscal receipt.',
       'vendor.pos.receiptLanguage': 'Receipt language',
       'vendor.pos.share': 'Share receipt',
-      'vendor.pos.shareProvisional': 'Provisional receipt, number to follow (ref {ref})',
+      'vendor.pos.shareProvisional':
+          'Provisional receipt, number to follow (ref {ref})',
       'vendor.pos.done': 'Done',
       'vendor.sales.title': 'Sales',
       'vendor.sales.today': 'Today',
@@ -4981,8 +5023,10 @@ class FFLocale extends ChangeNotifier {
       'vendor.sales.alreadyVoided': 'This sale was already voided.',
       'vendor.sales.voidOffline':
           'Voiding needs a connection. Nothing was changed.',
-      'vendor.sales.voidNotOwn': 'You can only void sales you recorded yourself. Ask the business owner.',
-      'vendor.sales.voidTooOld': 'You can only void a sale on the day it was made. Ask the business owner.',
+      'vendor.sales.voidNotOwn':
+          'You can only void sales you recorded yourself. Ask the business owner.',
+      'vendor.sales.voidTooOld':
+          'You can only void a sale on the day it was made. Ask the business owner.',
       'vendor.sales.suspended':
           'This business is suspended. Shop sales are paused; sales saved on this device stay here.',
       'vendor.stock.reason.sale': 'Shop sale',
@@ -5030,7 +5074,8 @@ class FFLocale extends ChangeNotifier {
       'vendor.customers.seg.list': 'Customers',
       'vendor.customers.seg.owed': 'Owed to you',
       'vendor.customers.seg.messages': 'Messages',
-      'vendor.permission.customersHint': 'Customers, messages, money owed and payments',
+      'vendor.permission.customersHint':
+          'Customers, messages, money owed and payments',
       'vendor.customers.noAccess': 'You don\'t have access to customers.',
       'vendor.customers.search': 'Search customers',
       'vendor.customers.searchHint': 'Name or phone number',
@@ -5054,7 +5099,8 @@ class FFLocale extends ChangeNotifier {
       'vendor.customers.rowLabel': '{name}, {type}, owes {amount}, {status}',
       'vendor.customers.add': 'Add customer',
       'vendor.customers.loading': 'Loading customers',
-      'vendor.customers.emptyFirst': 'No customers yet. They appear after an app order, or add one yourself.',
+      'vendor.customers.emptyFirst':
+          'No customers yet. They appear after an app order, or add one yourself.',
       'vendor.customers.empty': 'No customers here.',
       'vendor.customers.noMatch': 'No customers match "{q}".',
       'vendor.customers.failed': 'Could not load customers.',
@@ -5062,9 +5108,11 @@ class FFLocale extends ChangeNotifier {
       'vendor.customers.noActivity': 'Nothing here yet.',
       'vendor.customers.deletedMember': 'Deleted member',
       'vendor.pay.invalidAllocation': 'Check the amount for each sale.',
-      'vendor.customers.fieldNotEditable': 'This detail can\'t be changed for an app customer.',
+      'vendor.customers.fieldNotEditable':
+          'This detail can\'t be changed for an app customer.',
       'vendor.customers.noteTooLong': 'Note can be at most {max} characters.',
-      'vendor.customers.addressTooLong': 'Address can be at most {max} characters.',
+      'vendor.customers.addressTooLong':
+          'Address can be at most {max} characters.',
       'vendor.customers.nameLength': 'Name must be 2–80 characters.',
       'vendor.customers.unnamed': 'Customer',
       'vendor.customers.rateLimited': 'Too many tries. Wait {n} seconds.',
@@ -5081,20 +5129,25 @@ class FFLocale extends ChangeNotifier {
       'vendor.customers.emailInvalid': 'Enter a valid email address.',
       'vendor.customers.phoneDuplicate': '{name} already has this number.',
       'vendor.customers.open': 'Open',
-      'vendor.customers.consent': 'Only save details the customer agreed to give you.',
+      'vendor.customers.consent':
+          'Only save details the customer agreed to give you.',
       'vendor.customers.save': 'Save',
       'vendor.customers.saved': 'Customer saved',
       'vendor.customers.saveOffline': 'No connection. Nothing was saved.',
-      'vendor.customers.changedElsewhere': 'Someone else changed this customer. Reload to see the latest.',
+      'vendor.customers.changedElsewhere':
+          'Someone else changed this customer. Reload to see the latest.',
       'vendor.customers.reload': 'Reload',
       'vendor.customers.discardTitle': 'Discard changes?',
       'vendor.customers.archive': 'Archive',
       'vendor.customers.restore': 'Restore',
       'vendor.customers.archiveTitle': 'Archive {name}?',
-      'vendor.customers.archiveBody': 'Their history stays. They won\'t appear when you pick a customer for a sale.',
-      'vendor.customers.archiveHasBalance': 'This customer still owes {amount}. Record the payment first.',
+      'vendor.customers.archiveBody':
+          'Their history stays. They won\'t appear when you pick a customer for a sale.',
+      'vendor.customers.archiveHasBalance':
+          'This customer still owes {amount}. Record the payment first.',
       'vendor.customers.appNameHint': 'Name from their FitFlex account.',
-      'vendor.customers.appContactHint': 'Contact details show on an order while you\'re delivering it.',
+      'vendor.customers.appContactHint':
+          'Contact details show on an order while you\'re delivering it.',
       'vendor.customers.call': 'Call {name}',
       'vendor.customers.owes': 'Owes you',
       'vendor.customers.overdueAmount': 'Overdue {amount}',
@@ -5121,7 +5174,8 @@ class FFLocale extends ChangeNotifier {
       'vendor.pos.customer.new': 'New customer',
       'vendor.pos.customer.selected': 'Customer selected',
       'vendor.pos.customer.offline': 'Choosing a customer needs a connection.',
-      'vendor.pos.customer.gone': 'That customer is no longer available. Choose again.',
+      'vendor.pos.customer.gone':
+          'That customer is no longer available. Choose again.',
       'vendor.pos.payLater': 'Pay later',
       'vendor.pos.credit.title': 'Pay later: {amount} owed',
       'vendor.pos.dueDate': 'Due date',
@@ -5133,16 +5187,23 @@ class FFLocale extends ChangeNotifier {
       'vendor.pos.credit.paidNow': 'Paid now',
       'vendor.pos.credit.balance': 'Balance due: {amount}',
       'vendor.pos.credit.alreadyOwes': '{name} already owes you {amount}.',
-      'vendor.pos.credit.notice': 'You give this credit yourself. FitFlex does not collect it.',
+      'vendor.pos.credit.notice':
+          'You give this credit yourself. FitFlex does not collect it.',
       'vendor.pos.credit.complete': 'Complete pay-later sale',
       'vendor.pos.credit.backToFull': 'Back to full payment',
       'vendor.pos.credit.needsConnection': 'Pay later needs a connection.',
-      'vendor.pos.credit.failed': 'Could not save. A pay-later sale is never saved offline. Try again or take full payment.',
-      'vendor.pos.credit.notAllowed': 'You don\'t have permission to sell on credit.',
-      'vendor.pos.credit.dueInvalid': 'Choose a date from the sale day up to one year ahead.',
-      'vendor.pos.credit.fullyPaid': 'This sale is fully paid, so it isn\'t pay later.',
-      'vendor.pos.credit.noChange': 'No change on a pay-later sale. Lower the cash amount.',
-      'vendor.pos.credit.customerRequired': 'Choose the customer who will pay later.',
+      'vendor.pos.credit.failed':
+          'Could not save. A pay-later sale is never saved offline. Try again or take full payment.',
+      'vendor.pos.credit.notAllowed':
+          'You don\'t have permission to sell on credit.',
+      'vendor.pos.credit.dueInvalid':
+          'Choose a date from the sale day up to one year ahead.',
+      'vendor.pos.credit.fullyPaid':
+          'This sale is fully paid, so it isn\'t pay later.',
+      'vendor.pos.credit.noChange':
+          'No change on a pay-later sale. Lower the cash amount.',
+      'vendor.pos.credit.customerRequired':
+          'Choose the customer who will pay later.',
       'vendor.pos.credit.saved': 'Pay-later sale saved: {number}',
       'vendor.receipt.customer': 'Customer: {name}',
       'vendor.receipt.customerAfterSync': 'Customer shown after sync',
@@ -5153,9 +5214,12 @@ class FFLocale extends ChangeNotifier {
       'vendor.sales.filter.credit': 'Pay later',
       'vendor.sales.owesBadge': 'Owes {amount}',
       'vendor.sales.paidOffBadge': 'Paid off',
-      'vendor.sales.voidCreditBody': 'The balance due is cancelled. Give back any money paid at the sale yourself.',
-      'vendor.sales.voidHasPayments': 'Payments are recorded against this sale. Void them first: {numbers}',
-      'vendor.sync.conflictCustomer': 'The customer on this sale is no longer available.',
+      'vendor.sales.voidCreditBody':
+          'The balance due is cancelled. Give back any money paid at the sale yourself.',
+      'vendor.sales.voidHasPayments':
+          'Payments are recorded against this sale. Void them first: {numbers}',
+      'vendor.sync.conflictCustomer':
+          'The customer on this sale is no longer available.',
       'vendor.sync.retryNoCustomer': 'Try again without customer',
       'vendor.pay.record': 'Record payment',
       'vendor.pay.title': 'Record payment from {name}',
@@ -5163,7 +5227,8 @@ class FFLocale extends ChangeNotifier {
       'vendor.pay.allOwed': 'All owed {amount}',
       'vendor.pay.oldest': 'Oldest sale {amount}',
       'vendor.pay.date': 'Date received',
-      'vendor.pay.dateInvalid': 'Choose a day from the last 30 days, not in the future.',
+      'vendor.pay.dateInvalid':
+          'Choose a day from the last 30 days, not in the future.',
       'vendor.pay.appliesTo': 'Applies to',
       'vendor.pay.paysOff': 'Pays off {number} ({amount})',
       'vendor.pay.paysPart': 'Pays {amount} of {number} ({left} left)',
@@ -5171,15 +5236,19 @@ class FFLocale extends ChangeNotifier {
       'vendor.pay.oldestFirst': 'Oldest due first',
       'vendor.pay.allocMismatch': 'Amounts must add up to {amount}.',
       'vendor.pay.allocOver': 'More than this sale owes ({amount}).',
-      'vendor.pay.overOwed': 'That\'s more than the {owed} owed. FitFlex can\'t keep extra as credit.',
-      'vendor.pay.notice': 'You received this money directly. FitFlex only keeps the record.',
+      'vendor.pay.overOwed':
+          'That\'s more than the {owed} owed. FitFlex can\'t keep extra as credit.',
+      'vendor.pay.notice':
+          'You received this money directly. FitFlex only keeps the record.',
       'vendor.pay.save': 'Save payment {amount}',
       'vendor.pay.saved': 'Payment saved: {number}',
-      'vendor.pay.failed': 'Could not save the payment. Nothing is recorded yet.',
+      'vendor.pay.failed':
+          'Could not save the payment. Nothing is recorded yet.',
       'vendor.pay.allocStale': 'Those sales changed. Check the new amounts.',
       'vendor.pay.offline': 'Recording a payment needs a connection.',
       'vendor.pay.archived': 'This customer is archived. Restore them first.',
-      'vendor.pay.refReused': 'A payment from this form may already be saved. Close it and check Payments before trying again.',
+      'vendor.pay.refReused':
+          'A payment from this form may already be saved. Close it and check Payments before trying again.',
       'vendor.pay.receiptTitle': 'Payment {number}',
       'vendor.pay.paidTowards': 'Paid towards',
       'vendor.pay.paidSales': 'Paid {numbers}',
@@ -5188,13 +5257,17 @@ class FFLocale extends ChangeNotifier {
       'vendor.pay.share': 'Share payment',
       'vendor.pay.void': 'Void payment',
       'vendor.pay.voidTitle': 'Void payment {number}?',
-      'vendor.pay.voidBody': 'The sales it paid will show as owed again. Give back the money yourself if needed.',
+      'vendor.pay.voidBody':
+          'The sales it paid will show as owed again. Give back the money yourself if needed.',
       'vendor.pay.voided': 'Payment {number} voided',
       'vendor.pay.voidedBy': 'Voided by {name}, {time}: {reason}',
-      'vendor.pay.voidOffline': 'Voiding needs a connection. Nothing was changed.',
+      'vendor.pay.voidOffline':
+          'Voiding needs a connection. Nothing was changed.',
       'vendor.pay.alreadyVoided': 'This payment was already voided.',
-      'vendor.pay.voidNotOwn': 'You can only void payments you recorded yourself. Ask the business owner.',
-      'vendor.pay.voidTooOld': 'You can only void a payment on the day it was received. Ask the business owner.',
+      'vendor.pay.voidNotOwn':
+          'You can only void payments you recorded yourself. Ask the business owner.',
+      'vendor.pay.voidTooOld':
+          'You can only void a payment on the day it was received. Ask the business owner.',
       'vendor.owed.title': 'Owed to you',
       'vendor.owed.total': 'Total owed',
       'vendor.owed.overdue': 'Overdue',
@@ -5224,30 +5297,38 @@ class FFLocale extends ChangeNotifier {
       'merch.banners.title': 'Banners',
       'merch.banners.propose': 'Propose a banner',
       'merch.banners.emptyTitle': 'No banners yet',
-      'merch.banners.emptyBody': 'Propose a banner to show your products at the top of the FitFlex shop.',
+      'merch.banners.emptyBody':
+          'Propose a banner to show your products at the top of the FitFlex shop.',
       'merch.banners.error': 'Banners didn\'t load',
       'merch.offlineTitle': 'No internet connection',
       'merch.offlineBody': 'Connect to see your banners.',
       'merch.pendingTitle': 'Available once your business is approved',
-      'merch.pendingBody': 'You can propose banners and flash sales after FitFlex approves your business.',
+      'merch.pendingBody':
+          'You can propose banners and flash sales after FitFlex approves your business.',
       'merch.unavailable': 'This tool isn\'t available yet',
       'merch.back': 'Back',
       'merch.line.endedByFitflexNoReason': 'Ended {date} by FitFlex',
-      'vendor.accountSuspended': 'Your business account is suspended. Your products and banners are not shown in the shop. Contact FitFlex support.',
+      'vendor.accountSuspended':
+          'Your business account is suspended. Your products and banners are not shown in the shop. Contact FitFlex support.',
       'shop.home.fallbackLead': 'Everything you need to',
       'shop.home.fallbackAccent': 'train',
-      'shop.home.fallbackSub': 'Equipment, apparel and nutrition from FitFlex sellers.',
+      'shop.home.fallbackSub':
+          'Equipment, apparel and nutrition from FitFlex sellers.',
       'merch.entry.waiting': '{n} waiting for approval',
       'merch.openVerification': 'Open Verification centre',
       'merch.banner.consentRef': 'Model release reference',
-      'merch.banner.consentRefHelp': 'The number or name of the signed consent from the people in the photo.',
+      'merch.banner.consentRefHelp':
+          'The number or name of the signed consent from the people in the photo.',
       'merch.banner.consentRequired': 'Add the model release reference.',
       'merch.banner.licenceRef': 'Licence reference (optional)',
-      'merch.banner.licenceRefHelp': 'For example "own photo" or a stock licence number.',
-      'merch.banner.confirmChanged': 'The wording changed. Read it and tick again.',
+      'merch.banner.licenceRefHelp':
+          'For example "own photo" or a stock licence number.',
+      'merch.banner.confirmChanged':
+          'The wording changed. Read it and tick again.',
       'merch.banner.confirmDraft': 'Draft wording, pending legal review.',
       'merch.openCount': '{open} of {max} open proposals',
-      'merch.openFull': '{open} of {max} open proposals. Withdraw one or wait for a decision before proposing another.',
+      'merch.openFull':
+          '{open} of {max} open proposals. Withdraw one or wait for a decision before proposing another.',
       'shop.banner.cta.viewAll': 'View all',
       'merch.banner.ctaTitle': 'Button',
       'merch.banner.ctaNotAllowed': 'Pick a button from the list.',
@@ -5257,9 +5338,12 @@ class FFLocale extends ChangeNotifier {
       'merch.reject.claim': 'Misleading claim',
       'merch.reject.link': 'Wrong link or product',
       'merch.reject.other': 'Other',
-      'merch.rateLimited': 'Too many changes at once. Wait a minute and try again.',
-      'merch.tooManyOpen': 'You have too many banners waiting. Withdraw one or wait for a decision.',
-      'merch.ineligible.productNotListed': 'This product isn\'t on sale in the shop. Pick another one.',
+      'merch.rateLimited':
+          'Too many changes at once. Wait a minute and try again.',
+      'merch.tooManyOpen':
+          'You have too many banners waiting. Withdraw one or wait for a decision.',
+      'merch.ineligible.productNotListed':
+          'This product isn\'t on sale in the shop. Pick another one.',
       'merch.ineligible.generic': 'This can\'t be shown in the shop right now.',
       'inbox.open.merch': 'View banner',
       'merch.group.live': 'Live',
@@ -5309,27 +5393,33 @@ class FFLocale extends ChangeNotifier {
       'merch.discard.title': 'Discard changes?',
       'merch.discard.confirm': 'Discard',
       'merch.discard.keep': 'Keep editing',
-      'merch.reviewNote': 'FitFlex reviews every banner. If it isn\'t reviewed within 14 days, or before it starts, it expires.',
+      'merch.reviewNote':
+          'FitFlex reviews every banner. If it isn\'t reviewed within 14 days, or before it starts, it expires.',
       'merch.send': 'Send for approval',
       'merch.banner.newTitle': 'Propose a banner',
       'merch.banner.editTitle': 'Edit banner',
       'merch.banner.image': 'Image',
-      'merch.banner.imageHelp': 'Show the product. No prices, phone numbers or text in the photo. JPG, PNG or WebP, at least 1600 × 1000 pixels, up to 5 MB.',
+      'merch.banner.imageHelp':
+          'Show the product. No prices, phone numbers or text in the photo. JPG, PNG or WebP, at least 1600 × 1000 pixels, up to 5 MB.',
       'merch.banner.chooseImage': 'Choose image',
       'merch.banner.changeImage': 'Change image',
       'merch.banner.imageRequired': 'Add an image.',
       'merch.banner.imageType': 'Use a JPG, PNG or WebP image.',
-      'merch.banner.imageSize': 'The image must be at least 1600 × 1000 pixels.',
+      'merch.banner.imageSize':
+          'The image must be at least 1600 × 1000 pixels.',
       'merch.banner.imageWeight': 'The image must be 5 MB or smaller.',
       'merch.banner.uploadFailed': 'Upload failed. Try again.',
       'merch.banner.imagePreview': 'Banner image',
       'merch.banner.imageAlt': 'Image description',
-      'merch.banner.imageAltHelp': 'Say what the photo shows, for people who can\'t see it.',
+      'merch.banner.imageAltHelp':
+          'Say what the photo shows, for people who can\'t see it.',
       'merch.banner.people': 'People in the photo',
       'merch.banner.peopleNone': 'No people',
       'merch.banner.peopleModels': 'Models showing the product',
-      'merch.banner.rights': 'I have the right to use this image, and FitFlex may show it in its apps and portal.',
-      'merch.banner.modelsConfirm': 'The people are models showing the product. The banner does not present them as FitFlex members, trainers or partners, and has no names or quotes from them.',
+      'merch.banner.rights':
+          'I have the right to use this image, and FitFlex may show it in its apps and portal.',
+      'merch.banner.modelsConfirm':
+          'The people are models showing the product. The banner does not present them as FitFlex members, trainers or partners, and has no names or quotes from them.',
       'merch.confirmRequired': 'Tick this box to confirm.',
       'merch.pickOne': 'Pick one.',
       'merch.banner.lead': 'Headline: first part',
@@ -5344,17 +5434,21 @@ class FFLocale extends ChangeNotifier {
       'merch.field.tooLong': 'Keep this to {n} characters.',
       'merch.banner.tooLong': 'Keep the headline to {n} characters.',
       'merch.banner.otherLanguage': 'Add the {language} text too.',
-      'merch.banner.noPrices': 'Banners can\'t show prices, discounts or numbers of 4 or more digits. Use a flash sale for a deal.',
+      'merch.banner.noPrices':
+          'Banners can\'t show prices, discounts or numbers of 4 or more digits. Use a flash sale for a deal.',
       'merch.banner.noLinks': 'Remove links, @handles and phone numbers.',
-      'merch.banner.textRule': 'No prices, discounts, amounts or numbers of 4 or more digits (years too), and no links, @handles or phone numbers, in any text.',
+      'merch.banner.textRule':
+          'No prices, discounts, amounts or numbers of 4 or more digits (years too), and no links, @handles or phone numbers, in any text.',
       'merch.banner.target': 'Links to',
       'merch.banner.pickAudience': 'Pick at least one.',
-      'merch.banner.reconfirm': 'Choose the photo again and confirm the rights.',
+      'merch.banner.reconfirm':
+          'Choose the photo again and confirm the rights.',
       'merch.banner.showTo': 'Show to',
       'merch.audience.member': 'Members',
       'merch.audience.trainer': 'Trainers',
       'merch.audience.owner': 'Gym owners',
-      'merch.suspended': 'Your account is suspended. Your banners are not shown in the shop.',
+      'merch.suspended':
+          'Your account is suspended. Your banners are not shown in the shop.',
       'merch.notYours': 'This item isn\'t available',
       'merch.action.endNow': 'End now',
       'merch.action.a11yEnd': 'End banner {headline} now',
@@ -5368,8 +5462,10 @@ class FFLocale extends ChangeNotifier {
       'merch.banner.targetStore': 'My store',
       'merch.banner.pickProduct': 'Product',
       'merch.banner.productRequired': 'Choose one of your products.',
-      'merch.banner.noProducts': 'You have no active products in stock to link to.',
-      'merch.banner.targetNotOwned': 'Pick one of your own products, or your store.',
+      'merch.banner.noProducts':
+          'You have no active products in stock to link to.',
+      'merch.banner.targetNotOwned':
+          'Pick one of your own products, or your store.',
       'merch.dates.starts': 'Starts',
       'merch.dates.ends': 'Ends',
       'merch.dates.tzNote': 'Tanzania time',
@@ -5381,10 +5477,187 @@ class FFLocale extends ChangeNotifier {
       'merch.banner.previewA11y': 'Preview of your banner',
       'merch.preview.light': 'Light',
       'merch.preview.dark': 'Dark',
+      // Vendor tools · S6: reports and CSV / PDF downloads (fitflex-functions#275).
+      'vendor.reports.pdfUnavailable':
+          'The PDF can\'t be made right now. Try again later, or download a CSV.',
+      'vendor.reports.rateLimited':
+          'You\'ve downloaded too often. Try again in {n} minute(s).',
+      'vendor.reports.tab': 'Reports',
+      'vendor.reports.seg.reports': 'Reports',
+      'vendor.reports.seg.payouts': 'Payouts',
+      'vendor.reports.noAccess': 'You don\'t have access to this report.',
+      'vendor.reports.view.overview': 'Overview',
+      'vendor.reports.view.sales': 'Sales',
+      'vendor.reports.view.products': 'Products',
+      'vendor.reports.view.stock': 'Stock value',
+      'vendor.reports.view.profit': 'Profit',
+      'vendor.reports.view.payouts': 'App sales after commission',
+      'vendor.reports.view.customers': 'Customers and money owed',
+      'vendor.reports.view.methods': 'Payment methods',
+      'vendor.reports.period': 'Period',
+      'vendor.reports.preset.today': 'Today',
+      'vendor.reports.preset.yesterday': 'Yesterday',
+      'vendor.reports.preset.thisWeek': 'This week',
+      'vendor.reports.preset.lastWeek': 'Last week',
+      'vendor.reports.preset.thisMonth': 'This month',
+      'vendor.reports.preset.lastMonth': 'Last month',
+      'vendor.reports.preset.custom': 'Choose dates',
+      'vendor.reports.group': 'Show by',
+      'vendor.reports.group.day': 'Day',
+      'vendor.reports.group.week': 'Week',
+      'vendor.reports.group.month': 'Month',
+      'vendor.reports.groupTooMany': 'Too many bars. Show by week or month.',
+      'vendor.reports.rangeTooLong': 'Choose up to 366 days.',
+      'vendor.reports.rangeFuture': 'Choose dates up to today.',
+      'vendor.reports.rangeOrder':
+          'The end date must be on or after the start date.',
+      'vendor.reports.rangeInvalid':
+          'These dates cannot be used. Choose other dates.',
+      'vendor.reports.channel': 'Channel',
+      'vendor.reports.channel.all': 'All',
+      'vendor.reports.channel.app': 'App',
+      'vendor.reports.channel.walkIn': 'Shop',
+      'vendor.reports.channel.allSales': 'All sales',
+      'vendor.reports.channel.appSales': 'App sales',
+      'vendor.reports.channel.shopSales': 'Shop sales',
+      'vendor.reports.channel.appOnly': 'App only',
+      'vendor.reports.channel.allChannels': 'All channels',
+      'vendor.reports.inProgress': '(so far)',
+      'vendor.reports.updated': 'Updated {time}',
+      'vendor.reports.refresh': 'Refresh reports',
+      'vendor.reports.weekOf': 'Week of {date}',
+      'vendor.reports.gross': 'Gross sales',
+      'vendor.reports.discounts': 'Discounts',
+      'vendor.reports.refunds': 'Refunds',
+      'vendor.reports.net': 'Net sales',
+      'vendor.reports.vatIncluded': 'VAT included',
+      'vendor.reports.salesCount': 'Sales',
+      'vendor.reports.itemsSold': 'Items sold',
+      'vendor.reports.grossLine': 'Gross {g} · Discounts {d} · Refunds {r}',
+      'vendor.reports.countLine': '{n} sales · {u} items',
+      'vendor.reports.salesN': '{n} sales',
+      'vendor.reports.unitsN': '{n} units',
+      'vendor.reports.ordersN': '{n} orders',
+      'vendor.reports.countTimes': '{n} times',
+      'vendor.reports.voided': 'Voided (not counted): {n} sales · {amount}',
+      'vendor.reports.chartSummary':
+          '{figure} by {group}, {period}. Highest: {date}, {amount}. Total {total}. Table below.',
+      'vendor.reports.chartTooMany':
+          'Too many days for a chart. See the table.',
+      'vendor.reports.barNet': '{when}: net sales {amount}',
+      'vendor.reports.barProfit': '{when}: profit {amount}',
+      'vendor.reports.sales.table': 'Sales by period',
+      'vendor.reports.appNet': 'App net',
+      'vendor.reports.shopNet': 'Shop net',
+      'vendor.reports.channelSplit': 'App and shop',
+      'vendor.reports.best': 'Best sellers',
+      'vendor.reports.mostUnits': 'Most units',
+      'vendor.reports.slow': 'Slow sellers',
+      'vendor.reports.slowCount': 'Slow sellers: {n}',
+      'vendor.reports.topProducts': 'Top products',
+      'vendor.reports.searchProducts': 'Search products',
+      'vendor.reports.noMatch': 'No products match.',
+      'vendor.reports.loadMore': 'Show more',
+      'vendor.reports.unitsSold': 'Units sold',
+      'vendor.reports.revenue': 'Net revenue',
+      'vendor.reports.lastSold': 'Last sold',
+      'vendor.reports.never': 'Never',
+      'vendor.reports.inStock': 'In stock',
+      'vendor.reports.coverDays': '{n} days',
+      'vendor.reports.coverUnderOne': 'Less than 1 day',
+      'vendor.reports.coverNoSales': 'No sales in 30 days',
+      'vendor.reports.coverUntracked': '—',
+      'vendor.reports.outOfStock': 'Out of stock',
+      'vendor.reports.reorderSoon': 'Reorder soon',
+      'vendor.reports.noSalesPeriod': 'No sales in this period',
+      'vendor.reports.removed': '(removed)',
+      'vendor.reports.stock.atRetail': 'At selling price',
+      'vendor.reports.stock.atCost': 'At cost',
+      'vendor.reports.stock.units': 'Units in stock',
+      'vendor.reports.stock.asOf':
+          'As of {time} today. The period you picked does not apply.',
+      'vendor.reports.stock.costUnknown':
+          '{n} products in stock have no cost price, so they are not in the cost value.',
+      'vendor.reports.stock.empty': 'No products in stock.',
+      'vendor.reports.addCost': 'Add cost prices',
+      'vendor.reports.sellingPrice': 'Selling price',
+      'vendor.reports.costPrice': 'Cost price',
+      'vendor.reports.costPriceUnknown': 'Cost price unknown',
+      'vendor.reports.sort.value': 'Value',
+      'vendor.reports.sort.stock': 'Stock',
+      'vendor.reports.sort.name': 'Name',
+      'vendor.reports.profit': 'Profit',
+      'vendor.reports.profitHint': 'On items with a cost price',
+      'vendor.reports.margin': 'Margin',
+      'vendor.reports.cogs': 'Cost of goods',
+      'vendor.reports.netExVat': 'Net sales without VAT',
+      'vendor.reports.uncostedSales': 'Uncosted sales',
+      'vendor.reports.profit.noVat': 'Profit is worked out without VAT.',
+      'vendor.reports.profit.uncosted':
+          'Sold without a cost price: {n} items · {amount}. Not in profit.',
+      'vendor.reports.profit.noCostHeading': 'No cost price',
+      'vendor.reports.profit.table': 'Profit by period',
+      'vendor.reports.profit.byProduct': 'Profit by product',
+      'vendor.reports.commission': 'Commission',
+      'vendor.reports.youReceive': 'You receive',
+      'vendor.reports.youReceiveLine': 'You receive {amount}',
+      'vendor.reports.appSales': 'App sales',
+      'vendor.reports.orders': 'Orders',
+      'vendor.reports.payouts.basis':
+          'App orders only. Counted by delivery date, the same as your payout statements.',
+      'vendor.reports.payouts.notDelivered': 'Paid, not delivered yet',
+      'vendor.reports.payouts.waiting': 'Delivered, waiting for payout',
+      'vendor.reports.payouts.paidOut': 'Paid out',
+      'vendor.reports.payouts.awaiting': 'Awaiting payout',
+      'vendor.reports.payouts.noStatement': 'Not on a statement yet',
+      'vendor.reports.payouts.byWeek': 'By statement week',
+      'vendor.reports.payouts.reconcile':
+          'A paid-out week matches its payout statement. Draft statements are not shown until FitFlex sends them for approval.',
+      'vendor.reports.payouts.link': 'See app sales after commission',
+      'vendor.reports.cust.owedNow': 'Owed to you now',
+      'vendor.reports.cust.overdueNow': 'Overdue now',
+      'vendor.reports.cust.creditSales': 'Pay-later sales',
+      'vendor.reports.cust.collected': 'Collected from customers',
+      'vendor.reports.cust.buyers': 'Customers who bought',
+      'vendor.reports.cust.aging': 'How old the money owed is',
+      'vendor.reports.cust.agingCurrent': 'Not due yet',
+      'vendor.reports.cust.aging1': '1–30 days overdue',
+      'vendor.reports.cust.aging31': '31–60 days overdue',
+      'vendor.reports.cust.aging61': '61–90 days overdue',
+      'vendor.reports.cust.aging90': 'Over 90 days overdue',
+      'vendor.reports.cust.openOwed': 'Open Owed to you',
+      'vendor.reports.methods.byYou': 'Collected by you',
+      'vendor.reports.methods.viaFitFlex': 'Paid through FitFlex',
+      'vendor.reports.methods.netOfChange': 'Cash after change',
+      'vendor.reports.methods.none': 'None in this period',
+      'vendor.reports.loading': 'Loading reports',
+      'vendor.reports.empty': 'No sales in {period}.',
+      'vendor.reports.tryPeriod': 'Try another period',
+      'vendor.reports.failed': 'This report could not load.',
+      'vendor.reports.pendingSync':
+          '{n} sales on this phone are waiting to sync and are not in these figures.',
+      'vendor.reports.staffDisabled':
+          'Your account is disabled, so you can\'t download reports.',
+      'vendor.reports.export': 'Download',
+      'vendor.reports.exportCsv': '{section} (CSV)',
+      'vendor.reports.exportPdf': 'Summary (PDF)',
+      'vendor.reports.exportLang': 'Downloads use {language}.',
+      'vendor.reports.preparing': 'Preparing…',
+      'vendor.reports.exported': 'Report downloaded.',
+      'vendor.reports.exportFailed':
+          'The report could not be downloaded. Try again.',
+      'vendor.reports.exportTooLarge':
+          'This report is too big to download. Choose a shorter period.',
+      'vendor.reports.a11y.exportRow':
+          'Download {section} as {format} for {period}',
+      'vendor.reports.a11y.card':
+          '{section} report card. {summary}. Open details',
       // Vendor tools · S5: documents, share links, VAT.
       'kyc.item.vat_certificate': 'VAT certificate',
-      'kyc.doc.intro.vat_certificate': 'Your TRA VAT registration certificate. Only if you are registered for VAT.',
-      'vendor.tax.kycTinInvalid': 'The TIN on your verification isn\'t a 9-digit TIN. Correct it in the Verification centre, then save again.',
+      'kyc.doc.intro.vat_certificate':
+          'Your TRA VAT registration certificate. Only if you are registered for VAT.',
+      'vendor.tax.kycTinInvalid':
+          'The TIN on your verification isn\'t a 9-digit TIN. Correct it in the Verification centre, then save again.',
       'vendor.documents.rateLimited': 'Too many tries. Wait {n} seconds.',
       'vendor.doc.orderCancelled': 'This order was cancelled.',
       'vendor.doc.orderCancelledOn': 'Cancelled on {date}',
@@ -5394,12 +5667,14 @@ class FFLocale extends ChangeNotifier {
       'vendor.documents.shareTitle': 'Share {title} {number}',
       'vendor.documents.share': 'Share',
       'vendor.documents.language': 'Document language',
-      'vendor.documents.privacyNote': 'Anyone with the link can see this document: customer name, items and amounts. Phone numbers are never shown.',
+      'vendor.documents.privacyNote':
+          'Anyone with the link can see this document: customer name, items and amounts. Phone numbers are never shown.',
       'vendor.documents.whatsapp': 'WhatsApp',
       'vendor.documents.sms': 'SMS',
       'vendor.documents.copyLink': 'Copy link',
       'vendor.documents.copied': 'Link copied',
-      'vendor.documents.linkReady': 'Link ready. You can copy it or turn it off here.',
+      'vendor.documents.linkReady':
+          'Link ready. You can copy it or turn it off here.',
       'vendor.documents.creating': 'Creating link…',
       'vendor.documents.sendPdf': 'Send PDF',
       'vendor.documents.openPdf': 'Open PDF',
@@ -5423,24 +5698,34 @@ class FFLocale extends ChangeNotifier {
       'vendor.documents.lang.sw': 'SW',
       'vendor.documents.revoke': 'Turn off',
       'vendor.documents.revokeAll': 'Turn off all links',
-      'vendor.documents.revokeConfirm': 'Turn off this link? Anyone who has it will no longer see the document. This can\'t be undone.',
-      'vendor.documents.revokeAllConfirm': 'Turn off all {n} links? Anyone who has them will no longer see the document. This can\'t be undone.',
+      'vendor.documents.revokeConfirm':
+          'Turn off this link? Anyone who has it will no longer see the document. This can\'t be undone.',
+      'vendor.documents.revokeAllConfirm':
+          'Turn off all {n} links? Anyone who has them will no longer see the document. This can\'t be undone.',
       'vendor.documents.revoked': 'Link turned off',
-      'vendor.documents.revokeFailed': 'Couldn\'t turn the link off. Try again.',
-      'vendor.documents.noLinks': 'No links yet. Links are made when you share by WhatsApp, SMS or Copy link.',
-      'vendor.documents.needsNumber': 'This sale has no receipt number yet. You can share it as text.',
+      'vendor.documents.revokeFailed':
+          'Couldn\'t turn the link off. Try again.',
+      'vendor.documents.noLinks':
+          'No links yet. Links are made when you share by WhatsApp, SMS or Copy link.',
+      'vendor.documents.needsNumber':
+          'This sale has no receipt number yet. You can share it as text.',
       'vendor.documents.offline': 'Links and PDFs need an internet connection.',
-      'vendor.documents.voidedNote': 'Cancelled documents can\'t be shared. Links already sent show it as cancelled.',
+      'vendor.documents.voidedNote':
+          'Cancelled documents can\'t be shared. Links already sent show it as cancelled.',
       'vendor.documents.createFailed': 'Couldn\'t create the link. Try again.',
-      'vendor.documents.unavailable': 'Links aren\'t available yet. Share as text for now.',
-      'vendor.documents.noWhatsApp': 'WhatsApp isn\'t on this device. The link was copied instead.',
-      'vendor.documents.noSms': 'SMS couldn\'t open on this device. The link was copied instead.',
+      'vendor.documents.unavailable':
+          'Links aren\'t available yet. Share as text for now.',
+      'vendor.documents.noWhatsApp':
+          'WhatsApp isn\'t on this device. The link was copied instead.',
+      'vendor.documents.noSms':
+          'SMS couldn\'t open on this device. The link was copied instead.',
       'vendor.documents.noAccess': 'You don\'t have access to this document.',
       'vendor.documents.viewTitle': 'Document',
       'vendor.documents.view': 'View document',
       'vendor.documents.downloadPdf': 'Download PDF',
       'vendor.documents.invoice': 'Invoice',
-      'vendor.documents.invoiceAfterPayment': 'The invoice is ready once the order is paid.',
+      'vendor.documents.invoiceAfterPayment':
+          'The invoice is ready once the order is paid.',
       'vendor.documents.notFound': 'Document not found.',
       'vendor.documents.loadFailed': 'Couldn\'t load the document.',
       'vendor.documents.a11y.whatsapp': 'Share {title} {number} on WhatsApp',
@@ -5483,14 +5768,16 @@ class FFLocale extends ChangeNotifier {
       'vendor.doc.statusPayLater': 'Pay later',
       'vendor.doc.statusPaidInFull': 'Paid in full',
       'vendor.doc.statusCancelled': 'Cancelled',
-      'vendor.doc.cancelled': 'Cancelled on {date}. {business} cancelled this document.',
+      'vendor.doc.cancelled':
+          'Cancelled on {date}. {business} cancelled this document.',
       'vendor.doc.receivedBy': 'Payment received by {business}.',
       'vendor.doc.notFiscal': 'This is not a TRA fiscal receipt.',
       'vendor.doc.tin': 'TIN {tin}',
       'vendor.doc.vrn': 'VRN {vrn}',
       'vendor.tax.title': 'Tax details',
       'vendor.tax.tile': 'Tax details (VAT)',
-      'vendor.tax.tileSubtitle': 'VAT registration, TIN and VRN on your documents',
+      'vendor.tax.tileSubtitle':
+          'VAT registration, TIN and VRN on your documents',
       'vendor.tax.registered': 'I\'m registered for VAT',
       'vendor.tax.tin': 'TIN',
       'vendor.tax.tinFromKyc': 'From your verification',
@@ -5501,22 +5788,32 @@ class FFLocale extends ChangeNotifier {
       'vendor.tax.vrnInvalid': 'Enter the VRN as shown on your certificate.',
       'vendor.tax.cert': 'VAT certificate',
       'vendor.tax.certRequired': 'Add your VAT certificate.',
-      'vendor.tax.certUploaded': 'Certificate added. Save to send it for review.',
+      'vendor.tax.certUploaded':
+          'Certificate added. Save to send it for review.',
       'vendor.tax.uploading': 'Uploading…',
       'vendor.tax.uploadFailed': 'Upload failed. Try again.',
-      'vendor.tax.caseLocked': 'Your verification is being reviewed. Add the certificate once the review is done.',
-      'vendor.tax.statusNone': 'Not registered for VAT. Your documents show no VAT.',
-      'vendor.tax.statusPending': 'Waiting for review. VAT and your TIN/VRN appear on documents once FitFlex checks your certificate.',
-      'vendor.tax.statusVerified': 'Verified on {date}. VAT, TIN and VRN show on your documents.',
+      'vendor.tax.caseLocked':
+          'Your verification is being reviewed. Add the certificate once the review is done.',
+      'vendor.tax.statusNone':
+          'Not registered for VAT. Your documents show no VAT.',
+      'vendor.tax.statusPending':
+          'Waiting for review. VAT and your TIN/VRN appear on documents once FitFlex checks your certificate.',
+      'vendor.tax.statusVerified':
+          'Verified on {date}. VAT, TIN and VRN show on your documents.',
       'vendor.tax.statusRejected': 'Not accepted: {reason}',
-      'vendor.tax.certNotStanding': 'Your VAT certificate is no longer accepted. VAT stops on new sales until you send a new one.',
+      'vendor.tax.certNotStanding':
+          'Your VAT certificate is no longer accepted. VAT stops on new sales until you send a new one.',
       'vendor.tax.sendAgain': 'Send again',
-      'vendor.tax.changePending': 'New details waiting for review. Your current details stay on documents until then.',
-      'vendor.tax.howItWorks': 'VAT is worked out on shop sales and documents from the day your details are verified.',
+      'vendor.tax.changePending':
+          'New details waiting for review. Your current details stay on documents until then.',
+      'vendor.tax.howItWorks':
+          'VAT is worked out on shop sales and documents from the day your details are verified.',
       'vendor.tax.pastUnchanged': 'Past sales and documents don\'t change.',
-      'vendor.tax.appUnchanged': 'App prices and FitFlex commission don\'t change.',
+      'vendor.tax.appUnchanged':
+          'App prices and FitFlex commission don\'t change.',
       'vendor.tax.pricesInclude': 'Your prices include VAT.',
-      'vendor.tax.stopConfirm': 'Stop showing VAT? New sales won\'t include VAT. Past documents don\'t change.',
+      'vendor.tax.stopConfirm':
+          'Stop showing VAT? New sales won\'t include VAT. Past documents don\'t change.',
       'vendor.tax.stop': 'Stop VAT',
       'vendor.tax.save': 'Save',
       'vendor.tax.saved': 'Saved. We\'ll review it soon.',
@@ -5524,12 +5821,15 @@ class FFLocale extends ChangeNotifier {
       'vendor.tax.failed': 'Couldn\'t load your tax details.',
       'vendor.tax.ownerOnly': 'Only the business owner can change tax details.',
       'vendor.tax.noAccess': 'You don\'t have access to tax details.',
-      'vendor.tax.changedElsewhere': 'These details changed on another device. We\'ve reloaded them.',
+      'vendor.tax.changedElsewhere':
+          'These details changed on another device. We\'ve reloaded them.',
       'vendor.tax.discardBody': 'Discard your changes to tax details?',
       'vendor.tax.discard': 'Discard',
       'vendor.tax.reason.unreadable': 'The certificate can\'t be read',
-      'vendor.tax.reason.number_mismatch': 'The VRN doesn\'t match the certificate',
-      'vendor.tax.reason.name_mismatch': 'The name doesn\'t match your business',
+      'vendor.tax.reason.number_mismatch':
+          'The VRN doesn\'t match the certificate',
+      'vendor.tax.reason.name_mismatch':
+          'The name doesn\'t match your business',
       'vendor.tax.reason.not_vat_certificate': 'This isn\'t a VAT certificate',
       'vendor.tax.reason.other': 'Other',
       'vendor.product.vatCode': 'VAT code',
@@ -5547,6 +5847,95 @@ class FFLocale extends ChangeNotifier {
       'shop.invoice.download': 'Download PDF',
       'shop.invoice.failed': 'Couldn\'t load the invoice.',
       'inbox.open.tax': 'Open tax details',
+      // Organisation requests to add the member by account id
+      // (fitflex-functions#241, privacy ruling A-02).
+      'memberRequests.title': 'Requests from organisations',
+      'memberRequests.intro':
+          'These organisations asked to add you on FitFlex. Nothing is shared and nothing changes until you accept.',
+      'memberRequests.empty.title': 'No requests waiting',
+      'memberRequests.empty.body':
+          'When an organisation asks to add you, it shows here for you to accept or decline.',
+      'memberRequests.loadFailed': 'Couldn\'t load requests',
+      'memberRequests.ask.beneficiary':
+          'Wants to add you to its wellness programme',
+      'memberRequests.ask.org_user':
+          'Wants to give you the {role} role in its FitFlex portal',
+      'memberRequests.ask.employee_link':
+          'Wants to link your FitFlex account to your staff record',
+      'memberRequests.group': 'Group: {group}',
+      'memberRequests.sees': 'What {org} will see',
+      'memberRequests.seesUnknown':
+          'We couldn\'t load what {org} will see. Check with them before you accept.',
+      'memberRequests.willSee': 'Will see: {items}',
+      'memberRequests.wontSee': 'Won\'t see: {items}',
+      'memberRequests.item.name': 'your name',
+      'memberRequests.item.email': 'your email',
+      'memberRequests.item.role': 'your role',
+      'memberRequests.item.activity': 'your activity',
+      'memberRequests.item.gym_visits': 'gym visits',
+      'memberRequests.item.trainer_sessions': 'trainer sessions',
+      'memberRequests.item.workouts': 'workouts',
+      'memberRequests.item.steps': 'steps',
+      'memberRequests.item.active_minutes': 'active minutes',
+      'memberRequests.item.challenge_progress': 'challenge progress',
+      'memberRequests.item.sponsored_benefit_use':
+          'how you use the benefits it pays for',
+      'memberRequests.item.weight': 'weight',
+      'memberRequests.item.height': 'height',
+      'memberRequests.item.calories': 'calories',
+      'memberRequests.item.notes': 'notes',
+      'memberRequests.item.routes': 'routes',
+      'memberRequests.item.other_sponsors': 'what other sponsors give you',
+      'memberRequests.gets': 'What you would get',
+      'memberRequests.noBenefits':
+          'No benefits to show yet. Some are added after you join.',
+      'memberRequests.upTo': 'Up to {limit} {period}',
+      'memberRequests.sponsorTier': '{tier} pass',
+      'memberRequests.funding.full': 'Your sponsor pays in full',
+      'memberRequests.funding.sponsor_fixed':
+          'Your sponsor pays up to a set amount; you pay the rest',
+      'memberRequests.funding.sponsor_percentage':
+          'Your sponsor pays a share; you pay the rest',
+      'memberRequests.funding.beneficiary_fixed':
+          'You pay a set amount; your sponsor pays the rest',
+      'memberRequests.funding.none': 'Nothing to pay',
+      'memberRequests.subsidy.fully_funded': 'Your employer pays in full',
+      'memberRequests.subsidy.copay_50_50':
+          'Your employer pays 50%, you pay 50%',
+      'memberRequests.subsidy.copay_70_30':
+          'Your employer pays 70%, you pay 30%',
+      'memberRequests.subsidy.employee_paid': 'You pay for the pass yourself',
+      'memberRequests.role.owner': 'owner',
+      'memberRequests.role.admin': 'admin',
+      'memberRequests.role.manager': 'manager',
+      'memberRequests.role.finance': 'finance',
+      'memberRequests.role.hr': 'HR',
+      'memberRequests.role.analyst': 'analyst',
+      'memberRequests.role.viewer': 'viewer',
+      'memberRequests.expires': 'Answer by {date}',
+      'memberRequests.accept': 'Accept',
+      'memberRequests.decline': 'Decline',
+      'memberRequests.confirm.title': 'Accept and share with {org}?',
+      'memberRequests.confirm.action': 'Accept and share',
+      'memberRequests.accepted': 'Done. You are now linked to {org}.',
+      'memberRequests.declined': 'Declined. Nothing was shared with {org}.',
+      'memberRequests.error.expired':
+          'This request has expired. Ask the organisation to send a new one.',
+      'memberRequests.error.notPending': 'This request was already answered.',
+      'memberRequests.error.gone': 'This request is no longer available.',
+      'memberRequests.error.noLongerValid':
+          'This request is no longer valid. Ask the organisation to send a new one.',
+      'memberRequests.error.alreadyLinked':
+          'You are already linked to this organisation.',
+      'memberRequests.card.one': 'An organisation wants to add you',
+      'memberRequests.card.many': '{n} organisations want to add you',
+      'memberRequests.card.body': 'Nothing is shared until you accept.',
+      'memberRequests.card.action': 'Review requests',
+      'memberRequests.backToBenefits': 'View my benefits',
+      'inbox.open.memberRequests': 'Review request',
+      'inbox.open.benefits': 'View my benefits',
+      'memberRequests.item.past_activity':
+          'your activity from before you joined',
       // ── Events: member discovery (Marathon & Running Events S2, spec §11.9)
       'a11y.clear': 'Clear',
       'common.share': 'Share',
@@ -5614,10 +6003,12 @@ class FFLocale extends ChangeNotifier {
       'events.empty.filtered.title': 'No events match',
       'events.empty.filtered.body': 'Try fewer filters or another date range.',
       'events.empty.filtered.action': 'Clear filters',
-      'events.offline.body': 'Showing what we have. Pull to refresh when you\'re back online.',
+      'events.offline.body':
+          'Showing what we have. Pull to refresh when you\'re back online.',
       'events.offline.savedCopy': 'Showing a saved copy from {time}',
       'events.unavailable.title': 'Events aren\'t available yet',
-      'events.unavailable.body': 'This part of FitFlex is switched off for now.',
+      'events.unavailable.body':
+          'This part of FitFlex is switched off for now.',
       'events.detail.starts': 'Starts',
       'events.detail.ends': 'Ends',
       'events.detail.regCloses': 'Registration closes',
@@ -5650,12 +6041,14 @@ class FFLocale extends ChangeNotifier {
       'events.detail.terms': 'Terms',
       'events.detail.refundPolicy': 'Refund policy',
       'events.detail.policy.no_refund': 'No refunds',
-      'events.detail.policy.refund_until_close': 'Full refund until registration closes',
+      'events.detail.policy.refund_until_close':
+          'Full refund until registration closes',
       'events.detail.showAll': 'Show all',
       'events.detail.updated': 'Updated {date}',
       'events.detail.report': 'Report a problem',
       'events.detail.gone.title': 'This event isn\'t available',
-      'events.detail.gone.body': 'It may have been removed or isn\'t published yet.',
+      'events.detail.gone.body':
+          'It may have been removed or isn\'t published yet.',
       'events.detail.back': 'Back to events',
       'events.detail.cancelledBanner': 'This event was cancelled.',
       'events.cta.register': 'Register',
@@ -5674,23 +6067,738 @@ class FFLocale extends ChangeNotifier {
       'events.share': 'Share event',
       'events.share.text': '{title} · {date} · {url}',
       'error.reason.eventNotFound': 'This event isn\'t available.',
-      'error.reason.featureDisabled': 'This part of FitFlex is switched off for now.',
-      'error.reason.rateLimited': 'Too many requests. Wait a moment and try again.',
-      'error.reason.notYourOrganizer': 'This event belongs to another organizer.',
+      'error.reason.featureDisabled':
+          'This part of FitFlex is switched off for now.',
+      'error.reason.rateLimited':
+          'Too many requests. Wait a moment and try again.',
+      'error.reason.notYourOrganizer':
+          'This event belongs to another organizer.',
       'error.reason.organizerNotActive': 'The organizer is not verified yet.',
       'error.reason.organizerSuspended': 'The organizer account is suspended.',
-      'error.reason.invalidTransition': 'This event has already moved on. Refresh and try again.',
-      'error.reason.versionConflict': 'This event was changed elsewhere. Reload to see the latest.',
+      'error.reason.invalidTransition':
+          'This event has already moved on. Refresh and try again.',
+      'error.reason.versionConflict':
+          'This event was changed elsewhere. Reload to see the latest.',
       'error.reason.eventInvalid': 'Some event details are missing or invalid.',
-      'error.reason.changeNoteRequired': 'A change note is needed for this edit.',
-      'error.reason.hasRegistrations': 'Participants are registered. Ask FitFlex to cancel this event.',
+      'error.reason.changeNoteRequired':
+          'A change note is needed for this edit.',
+      'error.reason.hasRegistrations':
+          'Participants are registered. Ask FitFlex to cancel this event.',
       'error.reason.organizerExists': 'This account already has an organizer.',
-      'error.reason.personaNotAllowed': 'This account can\'t become an organizer.',
+      'error.reason.personaNotAllowed':
+          'This account can\'t become an organizer.',
       'error.reason.alreadyStaff': 'This person is already on the staff.',
       'error.reason.invalidContact': 'Enter a valid phone number or email.',
       'error.reason.cannotInviteSelf': 'You can\'t invite yourself.',
       'error.reason.cannotRemoveOwner': 'The owner can\'t be removed.',
       'error.reason.kycIncomplete': 'Verification is not complete yet.',
+      // ── Events S3: registration, orders, claims, teams (spec §5.12).
+      // TODO(sw-review): Swahili drafts pending native review (D22).
+      'common.copy': 'Copy',
+      'inbox.open.eventOrder': 'View order',
+      'inbox.open.eventRegistration': 'View registration',
+      'inbox.open.eventClaim': 'Is this you?',
+      'inbox.open.eventTickets': 'View tickets',
+      'inbox.open.eventPay': 'Try again',
+      'inbox.open.eventTicket': 'Show ticket',
+      'inbox.open.eventRegistrations': 'View registrations',
+      'events.register.unavailable': 'Registration isn\'t available yet',
+      'events.register.title': 'Register',
+      'events.register.step': 'Step {n} of 4 · {name}',
+      'events.register.step.tickets': 'Tickets',
+      'events.register.step.who': 'Who is registering',
+      'events.register.step.participants': 'Participants',
+      'events.register.step.review': 'Review',
+      'events.register.continue': 'Continue',
+      'events.register.back': 'Back',
+      'events.register.review': 'Review order',
+      'events.register.place': 'Place order · {amount}',
+      'events.register.placeFree': 'Register · Free',
+      'events.register.minAge': 'Age {n}+',
+      'events.register.left': '{n} left',
+      'events.register.estimate': '{n} participant(s) · {amount} (estimate)',
+      'events.register.maxPerOrder':
+          'Up to {max} people per order. For more, use a corporate order.',
+      'events.register.qty': 'Quantity for {ticket}',
+      'events.register.qty.add': 'Add one',
+      'events.register.qty.remove': 'Remove one',
+      'events.register.mode.self': 'Myself',
+      'events.register.mode.self.hint': 'Prefilled from your profile',
+      'events.register.mode.selfOthers': 'Myself and others',
+      'events.register.mode.selfOthers.hint':
+          'You take one place; add the rest',
+      'events.register.mode.others': 'Other people',
+      'events.register.mode.others.hint': 'You\'re paying, not running',
+      'events.register.mode.team': 'Team',
+      'events.register.mode.team.hint': 'Create a team or join one with a code',
+      'events.register.mode.whoRuns': 'Who is running?',
+      'events.register.mode.corporate': 'Corporate / organisation',
+      'events.register.mode.corporate.body':
+          'Registering staff for a company or organisation? Use the FitFlex portal (org or HR login) to upload a list and pay as the organisation.',
+      'events.register.mode.corporate.copy': 'Copy portal link',
+      'events.team.create': 'Create a team',
+      'events.team.join': 'Join with a code',
+      'events.team.name': 'Team name',
+      'events.team.type': 'Team type',
+      'events.team.type.club': 'Club',
+      'events.team.type.community': 'Community / friends',
+      'events.team.type.corporate': 'Corporate',
+      'events.team.code': 'Team code',
+      'events.team.check': 'Check',
+      'events.team.found': '{name} · {n}/{max} members',
+      'events.team.members': 'Members',
+      'events.team.captain': 'Captain',
+      'events.team.shareCode': 'Share this code with your team',
+      'events.team.yourCode': 'Your team code',
+      'events.participant.title':
+          'Participant {i} of {n} · {category} · {ticket}',
+      'events.participant.toFix': '{n} to fix',
+      'events.participant.firstName': 'First name',
+      'events.participant.lastName': 'Last name',
+      'events.participant.phone': 'Mobile number',
+      'events.participant.email': 'Email',
+      'events.participant.dob': 'Date of birth',
+      'events.participant.dob.hint':
+          'Needed to check the age rule for {category}',
+      'events.participant.gender': 'Gender',
+      'events.participant.gender.none': 'Prefer not to say',
+      'events.participant.notSet': 'Not set',
+      'events.participant.emergency': 'Emergency contact',
+      'events.participant.emergency.name': 'Contact name',
+      'events.participant.emergency.phone': 'Contact number',
+      'events.participant.emergency.note':
+          'Only shared with the organizer for safety; never shown in lists',
+      'events.participant.emergency.copy': 'Use my emergency contact',
+      'events.participant.kitSize': 'T-shirt / kit size',
+      'events.participant.fromProfile': 'From your verified profile',
+      'events.participant.needVerified':
+          'Add a verified phone number to register yourself',
+      'events.participant.editProfile': 'Edit profile',
+      'events.participant.consent':
+          'I have this person\'s permission to register them and share their details with FitFlex and the organizer',
+      'events.participant.you': 'You',
+      'events.participant.willInvite': 'Will be invited to claim',
+      'events.participant.required': 'required',
+      'events.participant.complete': 'complete',
+      'events.draft.saved': 'Draft saved on this phone',
+      'events.draft.resume.title': 'Continue where you left off?',
+      'events.draft.resume.body':
+          'You started registering for {event} on {date}.',
+      'events.draft.resume.continue': 'Continue',
+      'events.draft.resume.discard': 'Start over',
+      'events.review.tickets': 'Tickets',
+      'events.review.discount': 'Discount',
+      'events.review.fee': 'Service fee',
+      'events.review.total': 'Total',
+      'events.review.participants': 'Participants',
+      'events.review.team': 'Team',
+      'events.review.refund': 'Refund policy',
+      'events.review.terms': 'Event terms',
+      'events.review.accept': 'I accept the event terms and refund policy',
+      'events.review.hold':
+          'Your places are held for {n} minutes after you place the order. Payment instructions arrive in the next app update; you won\'t be charged now.',
+      'events.review.fix': 'Some details need fixing',
+      'events.review.goBack': 'Go back',
+      'events.review.priceChanged':
+          'Prices were updated. Please review the new total.',
+      'events.review.onlyLeft': 'Only {n} left for {ticket}',
+      'events.review.changeTickets': 'Change tickets',
+      'events.review.uncertain.title': 'We couldn\'t confirm your order',
+      'events.review.uncertain.body':
+          'Check My registrations before trying again, so you don\'t register twice.',
+      'events.review.openMine': 'Open My registrations',
+      'events.review.tryAgain': 'Try again',
+      'events.order.title': 'Order {ref}',
+      'events.order.heldUntil': 'Held until {time}',
+      'events.order.left': '{n} min left',
+      'events.order.leftSeconds': '{n} s left',
+      'events.order.payment.title': 'Payment instructions',
+      'events.order.payment.soon.title': 'Payment isn\'t available yet',
+      'events.order.payment.soon.body':
+          'Your places are held for a short time. Payment isn\'t open yet, so you won\'t be charged now. Nothing is confirmed until you have paid and FitFlex has confirmed it.',
+      'events.order.places': '{n} places',
+      'events.order.cancel': 'Cancel order',
+      'events.order.cancel.title': 'Cancel this order?',
+      'events.order.cancel.body': 'Your held places go back on sale.',
+      'events.order.cancel.reason': 'Reason',
+      'events.order.cancel.reason.changed_mind': 'Changed my mind',
+      'events.order.cancel.reason.wrong_details': 'Wrong details',
+      'events.order.cancel.reason.duplicate': 'Registered twice',
+      'events.order.cancel.reason.other': 'Other',
+      'events.order.cancelled.snack': 'Order cancelled. Places released.',
+      'events.order.expired.body':
+          'The hold ended before payment. Places were released.',
+      'events.order.cancelled.body': 'You cancelled this order on {date}.',
+      'events.order.cancelledByAdmin': 'This order was cancelled by FitFlex.',
+      'events.order.again': 'Register again',
+      'events.order.gone.title': 'This order isn\'t available',
+      'events.order.remove': 'Remove',
+      'events.status.awaiting': 'Awaiting payment',
+      'events.status.order.awaiting': 'Awaiting payment',
+      'events.status.expired': 'Expired',
+      'events.status.cancelled': 'Cancelled',
+      'events.status.refunded': 'Refunded',
+      'events.status.order.cancelled': 'Cancelled',
+      'events.status.order.expired': 'Expired',
+      'events.status.confirmed': 'Confirmed',
+      'events.status.order.paid': 'Paid',
+      'events.claim.chip.claimed': 'Claimed',
+      'events.claim.chip.pending': 'Awaiting claim',
+      'events.mine.title': 'My registrations',
+      'events.mine.registrations': 'Registrations',
+      'events.mine.orders': 'Orders',
+      'events.mine.empty.title': 'No registrations yet',
+      'events.mine.empty.body': 'Events you register for appear here.',
+      'events.mine.empty.action': 'Browse events',
+      'events.mine.orders.empty': 'No orders yet',
+      'events.mine.byYou': 'Registered by you',
+      'events.mine.by': 'Registered by {name}',
+      'events.claim.isThisYou': 'Is this you?',
+      'events.claim.card':
+          '{purchaser} registered {name} for {event} · {category}',
+      'events.claim.matches': 'Matches your {type} ending {masked}',
+      'events.claim.type.phone': 'number',
+      'events.claim.type.email': 'email',
+      'events.claim.yes': 'That\'s me',
+      'events.claim.no': 'Not me',
+      'events.claim.title': 'Claim your place',
+      'events.claim.needVerified':
+          'To claim it, the {type} ending {masked} must be verified on your account.',
+      'events.claim.confirm': 'Yes, this is me — claim my place',
+      'events.claim.done': 'Place claimed',
+      'events.claim.verifyNow': 'Verify now',
+      'events.claim.verify': 'Verify {masked} to claim',
+      'events.claim.emailNotYet':
+          'Email verification isn\'t available in the app yet; ask {name} to use your phone number instead.',
+      'events.claim.signIn': 'Sign in to claim your place',
+      'events.reg.title': 'Registration',
+      'events.reg.ticket': 'Ticket',
+      'events.reg.ticketSoon':
+          'Your ticket appears here once your payment is confirmed',
+      'events.reg.awaiting': 'Awaiting payment · held until {time}',
+      'events.reg.openOrder': 'Open order {ref}',
+      'events.reg.participant': 'Participant',
+      'events.reg.event': 'Event',
+      'events.reg.order': 'Order',
+      'events.reg.consent': 'Registered by {name} on {date}',
+      'events.reg.consent.self': 'Registered by you on {date}',
+      'events.reg.remove': 'Remove this person from the order',
+      'events.reg.remove.title': 'Remove {name}?',
+      'events.reg.remove.body':
+          'Their place goes back on sale and the order total is reduced.',
+      'events.reg.remove.lastLine':
+          'This is the last {ticket} place in the order. Cancel the whole order and register again.',
+      'events.reg.askPurchaser':
+          'Ask {name} to change or cancel this registration',
+      'events.reg.gone.title': 'This registration isn\'t available',
+      'events.validation.required': 'Required',
+      'events.validation.name_invalid': 'Letters only, up to 80 characters',
+      'events.validation.phone_invalid':
+          'That mobile number doesn\'t look right',
+      'events.validation.email_invalid': 'That email doesn\'t look right',
+      'events.validation.contact_required': 'Add a mobile number or email',
+      'events.validation.dob_invalid': 'Enter a real date (YYYY-MM-DD)',
+      'events.validation.dob_required':
+          'Date of birth is needed for this category',
+      'events.validation.age_not_eligible':
+          'Must be {minAge}+ on event day (will be {age})',
+      'events.validation.duplicate_participant':
+          'Already registered in this category',
+      'events.validation.listed_twice': 'Listed twice',
+      'events.validation.self_contact_mismatch':
+          'Use your own verified contact for yourself',
+      'events.validation.emergency_contact_invalid':
+          'Add a name and a valid number',
+      'events.validation.kit_size_invalid': 'Choose a size',
+      'events.validation.gender_invalid': 'Choose an option',
+      'events.validation.not_collected': 'Not collected for this event',
+      'events.validation.consent_basis_invalid': 'Check who is registering',
+      'events.validation.unknown': 'Check this field',
+      'error.reason.capacityUnavailable':
+          'Not enough places left for that ticket',
+      'error.reason.eventNotOpen': 'This event isn\'t open for registration',
+      'error.reason.registrationClosed': 'Registration has closed',
+      'error.reason.saleClosed': 'That ticket is no longer on sale',
+      'error.reason.saleNotOpen': 'That ticket isn\'t on sale yet',
+      'error.reason.ticketUnavailable': 'That ticket isn\'t available',
+      'error.reason.quantityOutOfRange':
+          'Choose between {min} and {max} of that ticket',
+      'error.reason.tooManyParticipants': 'Up to {max} people per order',
+      'error.reason.termsNotAccepted': 'Accept the terms to continue',
+      'error.reason.consentVersionStale':
+          'The consent text changed. Review it and try again.',
+      'error.reason.participantInvalid': 'Some participant details need fixing',
+      'error.reason.priceChanged': 'Prices were updated. Review the new total.',
+      'error.reason.orderNotFound': 'We couldn\'t find that order',
+      'error.reason.registrationNotFound':
+          'We couldn\'t find that registration',
+      'error.reason.invalidReason': 'Choose a reason',
+      'error.reason.teamNotFound': 'No team with that code for this event',
+      'error.reason.teamFull': 'That team is full',
+      'error.reason.teamDisbanded': 'That team no longer exists',
+      'error.reason.teamNameTaken':
+          'A team with that name already exists for this event',
+      'error.reason.alreadyClaimed':
+          'This place was already claimed by another account. Contact support.',
+      'error.reason.claimTokenInvalid': 'This link isn\'t valid',
+      'error.reason.claimTokenExpired':
+          'This link has expired. Ask the person who registered you to send a new one.',
+      'error.reason.claimNotVerified':
+          'Verify that contact on your account to claim this place',
+      'error.reason.claimOwnContact':
+          'You registered this place for someone else with your own contact',
+      'error.reason.registrationClosedState':
+          'This registration is no longer active',
+      // Events S4: payments, tickets, cancel and refund (spec §5.12)
+      'events.pay.title': 'Pay for your tickets',
+      'events.pay.cta': 'Pay · {amount}',
+      'events.pay.cta.a11y': 'Pay {amount} for order {ref}',
+      'events.pay.manual.badge': 'Manual confirmation',
+      'events.pay.manual.banner.title':
+          'Manual confirmation: FitFlex checks your payment',
+      'events.pay.manual.banner.body':
+          'You pay the Lipa Namba from your phone, then send us the transaction ID. FitFlex staff check it against the till statement, within {hours} hours. Your tickets appear after FitFlex confirms it.',
+      'events.pay.recap.title': 'Your order',
+      'events.pay.exact': 'Pay exactly {amount}',
+      'events.pay.confirmCheck': 'I paid {amount} to {name} from this number',
+      'events.pay.submit': 'I have paid · Send for checking',
+      'events.pay.sending': 'Sending…',
+      'events.pay.sent.snack': 'Sent for checking',
+      'events.pay.late.banner.title': 'Your hold ended',
+      'events.pay.late.banner.body':
+          'Send your transaction ID only if you already paid. We\'ll try to re-reserve your places; if they are gone we\'ll refund you in full. Don\'t pay again.',
+      'events.pay.late.cta': 'Send my transaction ID',
+      'events.pay.alreadyPaid': 'I already paid',
+      'events.pay.uncertain.title': 'We couldn\'t tell if it was sent',
+      'events.pay.uncertain.body':
+          'Check your order before sending again. If it says "Payment sent for checking", you\'re done.',
+      'events.pay.uncertain.open': 'Open my order',
+      'events.pay.provider.cta': 'Pay with mobile money · {amount}',
+      'events.pay.provider.unavailable':
+          'Mobile money isn\'t available right now. Try again later.',
+      'events.pay.free.cta': 'Confirm free registration',
+      'events.pay.free.done': 'Registered. Your tickets are ready.',
+      'events.pay.submitted.title': 'Payment sent for checking',
+      'events.pay.submitted.body':
+          'We have your transaction ID {ref}. FitFlex confirms payments within {hours} hours. Your places are held until {time}.',
+      'events.pay.submitted.sent': 'Sent {time} from {phone}',
+      'events.pay.submitted.via': 'Sent as {method}, dated {date}',
+      'events.pay.method.bank_transfer': 'bank transfer',
+      'events.pay.method.mobile_money': 'mobile money',
+      'events.pay.submitted.noCancel':
+          'You can\'t cancel while we check your payment.',
+      'events.pay.processing.title': 'Approve the payment on your phone',
+      'events.pay.processing.body':
+          'We asked {phone} to approve {amount}. This page updates when the network answers.',
+      'events.pay.rejected.title': 'We couldn\'t confirm your payment',
+      'events.pay.rejected.reference_not_found':
+          'We couldn\'t find that transaction ID on our statement. Check it and send it again.',
+      'events.pay.rejected.amount_mismatch':
+          'The amount we received was different from {amount}.',
+      'events.pay.rejected.wrong_account':
+          'The payment went to a different number. Pay the Lipa Namba shown, then send the new ID.',
+      'events.pay.rejected.duplicate_reference':
+          'That transaction ID was already used for another payment.',
+      'events.pay.rejected.other':
+          'Please check the details and try again, or contact support.',
+      'events.pay.rejected.retry': 'Try again · held until {time}',
+      'events.pay.rejected.noHold':
+          'Your hold has ended, so these places were released.',
+      'events.pay.failed.title': 'The payment didn\'t go through',
+      'events.pay.failed.body':
+          'If money left your phone, contact support with {ref}.',
+      'events.pay.confirmed.title': 'Payment confirmed',
+      'events.pay.confirmed.body': '{n} tickets for {event} are ready.',
+      'events.pay.confirmed.body.one': '1 ticket for {event} is ready.',
+      'events.pay.confirmed.open': 'Open my tickets',
+      'events.pay.expiredPending.title':
+          'Your hold ended while we were checking',
+      'events.pay.expiredPending.body':
+          'If your payment checks out we\'ll try to re-reserve your places; if they are gone we\'ll refund you in full. Don\'t pay again.',
+      'events.pay.refundDue.title': 'Your places weren\'t available',
+      'events.pay.refundDue.body':
+          'We received your payment but couldn\'t keep your places. A full refund of {amount} is being prepared.',
+      'events.order.status.partiallyCancelled': 'Partly cancelled',
+      'events.order.status.refundPending': 'Refund pending',
+      'events.order.status.refunded': 'Refunded',
+      'events.payment.status.submitted': 'Under review',
+      'events.payment.status.processing': 'Waiting for your phone',
+      'events.payment.status.rejected': 'Not confirmed',
+      'events.payment.status.none': 'Not yet paid',
+      'events.payment.status.failed': 'Didn\'t go through',
+      'events.payment.status.needs_attention': 'Being checked',
+      'events.tickets.title': 'Tickets',
+      'events.tickets.section.upcoming': 'Upcoming',
+      'events.tickets.section.past': 'Past and cancelled',
+      'events.tickets.empty.title': 'No tickets yet',
+      'events.tickets.empty.body':
+          'Your tickets appear here once your payment is confirmed.',
+      'events.ticket.ready': 'Ticket ready',
+      'events.ticket.show': 'Show ticket',
+      'events.ticket.number': 'Ticket number {code}',
+      'events.ticket.copy': 'Copy ticket number',
+      'events.ticket.qr.a11y':
+          'Entry QR code for {name}, {category}. It cannot be read aloud; your ticket number is {code}.',
+      'events.ticket.scan.soon':
+          'Kit collection scanning isn\'t live yet. Keep this code; the organizer will confirm where and when to collect your kit.',
+      'events.ticket.scan.live': 'Show this code at the kit collection point.',
+      'events.ticket.cached': 'Saved on this phone · updated {time}',
+      'events.ticket.offline': 'You\'re offline. Showing the saved code.',
+      'events.ticket.handover':
+          'You can see this ticket until {name} claims it.',
+      'events.ticket.claimedElsewhere':
+          '{name} claimed this ticket. It is now in their app.',
+      'events.ticket.revoked.cancelled': 'Ticket cancelled',
+      'events.ticket.revoked.event_cancelled': 'Event cancelled',
+      'events.ticket.revoked.refunded': 'Ticket refunded',
+      'events.ticket.revoked.body': 'This code no longer works.',
+      'events.ticket.rotate': 'Get a new code',
+      'events.ticket.rotate.title': 'Get a new code?',
+      'events.ticket.rotate.body':
+          'The old code stops working, including any screenshot. Use this if you shared it by mistake.',
+      'events.ticket.rotate.done': 'New code ready',
+      'events.cancelpaid.title': 'Cancel and refund',
+      'events.cancelpaid.policy': 'The organizer\'s refund policy',
+      'events.cancelpaid.refund.full': 'You\'ll get back {amount}.',
+      'events.cancelpaid.refund.partial':
+          'You\'ll get back {amount} ({percent}% of {paid}).',
+      'events.cancelpaid.refund.until':
+          'This refund is available until {date}.',
+      'events.cancelpaid.refund.none':
+          'No refund. The organizer\'s policy gives no refund at this time.',
+      'events.cancelpaid.refund.review':
+          'The organizer\'s policy needs a person to review your request. We\'ll tell you what you can get back.',
+      'events.cancelpaid.ack': 'I understand I won\'t get money back',
+      'events.cancelpaid.reason': 'Why are you cancelling?',
+      'events.cancelpaid.cta.refund': 'Cancel · refund {amount}',
+      'events.cancelpaid.cta.none': 'Cancel ticket · no refund',
+      'events.cancelpaid.cta.review': 'Ask for a refund',
+      'events.cancelpaid.warn':
+          'This can\'t be undone. Your place may be given to someone else.',
+      'events.cancelpaid.changed':
+          'The refund amount changed. Check it and confirm again.',
+      'events.cancelpaid.done.refund':
+          'Ticket cancelled. Refund of {amount} requested.',
+      'events.cancelpaid.done.none': 'Ticket cancelled.',
+      'events.cancelpaid.done.review': 'Request sent. We\'ll reply soon.',
+      'events.cancelpaid.blocked.payment_submitted':
+          'We\'re still checking your payment. You can cancel once it\'s confirmed.',
+      'events.cancelpaid.blocked.refund_in_progress':
+          'A refund for this ticket is already in progress.',
+      'events.cancelpaid.blocked.cancellation_window_closed':
+          'Cancellations have closed for this event.',
+      'events.cancelpaid.blocked.event_cancelled':
+          'This event was cancelled. FitFlex will refund what you paid.',
+      'events.cancelpaid.blocked.purchaser_only':
+          'Only {name}, who paid, can cancel this ticket.',
+      'events.cancelpaid.blocked.kit_collected':
+          'The kit for this ticket has been collected.',
+      'events.refund.title': 'Refund',
+      'events.refund.status.requested': 'Requested',
+      'events.refund.status.approved': 'Approved',
+      'events.refund.status.paid': 'Sent',
+      'events.refund.status.rejected': 'Not approved',
+      'events.refund.eta':
+          'FitFlex sends refunds by hand, usually within {days} working days.',
+      'events.refund.sentTo': 'Sent to {phone} · reference {ref}',
+      'events.refund.rejected.help':
+          'Contact support if you think this is wrong.',
+      'events.refund.scope.registration': 'One ticket',
+      'events.refund.scope.order': 'Whole order',
+      'events.refund.scope.event_cancelled': 'Event cancelled',
+      'events.refund.scope.unfulfilled_payment': 'Payment returned',
+      'events.invite.sent': 'Invitation sent {date}',
+      'events.invite.notSent': 'No invitation sent yet',
+      'events.invite.resend': 'Send invitation again',
+      'events.invite.resend.body':
+          'This creates a new link. The old link stops working.',
+      'events.invite.resent': 'Invitation sent',
+      'events.invite.limit':
+          'You\'ve reached the limit for sending this invitation.',
+      'events.claim.paid':
+          'This place is paid and confirmed. Claim it to get your ticket.',
+      'error.reason.payment_in_progress':
+          'A payment for this order is already in progress.',
+      'error.reason.order_not_payable': 'This order can\'t be paid any more.',
+      'error.reason.hold_expired': 'The hold on these places has ended.',
+      'error.reason.payment_submitted': 'We\'re checking your payment.',
+      'error.reason.tickets_unavailable':
+          'Payments aren\'t available right now.',
+      'error.reason.unsupported_currency':
+          'This order can\'t be paid in the app.',
+      'error.reason.payment_mode_mismatch':
+          'The way to pay changed. We\'re refreshing.',
+      'error.reason.ticket_revoked': 'This ticket was cancelled.',
+      'error.reason.ticket_not_issued': 'Your ticket isn\'t ready yet.',
+      'error.reason.refund_changed': 'The refund amount changed.',
+      'error.reason.refund_in_progress': 'A refund is already in progress.',
+      'error.reason.cancellation_window_closed': 'Cancellations have closed.',
+      'error.reason.purchaser_only': 'Only the person who paid can do this.',
+      'error.reason.resend_limit_reached':
+          'You\'ve reached the limit for this invitation.',
+      'events.pay.back': 'Back to order',
+      'events.pay.offline':
+          'You\'re offline. Connect to send your payment details.',
+      'events.pay.unavailable': 'Payment isn\'t available right now',
+      'events.pay.rejected.note': 'Note from FitFlex: {note}',
+      'events.pay.rejected.noteEn': 'Note from FitFlex: {note}',
+      'events.pay.processing.check': 'Check status',
+      'events.pay.announce.confirmed': 'Payment confirmed. {n} tickets ready.',
+      'events.pay.announce.confirmed.one': 'Payment confirmed. 1 ticket ready.',
+      'events.pay.attention.title': 'We\'re looking into your payment',
+      'events.pay.attention.body':
+          'FitFlex is checking this payment. Don\'t pay again. If your places can\'t be kept, we\'ll refund you in full.',
+      'events.pay.hold.ended': 'Your hold has ended',
+      'events.pay.slowWait':
+          'Still waiting for the network. This page updates when it answers.',
+      'events.ticket.preparing': 'Your ticket is being prepared',
+      'events.ticket.view': 'View registration',
+      'events.ticket.claimedElsewhere.generic':
+          'Someone else claimed this ticket. It is now in their app.',
+      'events.ticket.copied': 'Ticket number copied',
+      'events.ticket.loading': 'Loading your ticket',
+      'events.cancelpaid.summary': 'You\'re cancelling',
+      'events.cancelpaid.paid': 'You paid {amount}',
+      'events.cancelpaid.confirm.title': 'Cancel this ticket?',
+      'events.cancelpaid.confirm.titleOrder': 'Cancel this whole order?',
+      'events.cancelpaid.keep': 'Keep my ticket',
+      'events.cancelpaid.purchaserFallback': 'the person who registered you',
+      'events.cancelpaid.loading': 'Checking your refund',
+      'events.cancelpaid.reasonHint': 'Choose a reason',
+      'events.refund.requestedOn': 'Requested {date}',
+      'events.refund.support': 'Contact support with reference {ref}.',
+      'events.invite.expiredAsk': 'Ask {name} to send the invitation again.',
+      'pay.product.eventOrder': 'Event tickets',
+      'momo.successBody.eventOrder':
+          'Thank you. Your registration is confirmed and your tickets are in My tickets.',
+      'error.reason.event_cancelled': 'This event was cancelled.',
+      'error.reason.kit_collected':
+          'The kit for this ticket has been collected.',
+      'error.reason.order_not_confirmed': 'This order isn\'t confirmed yet.',
+      'error.reason.event_unavailable':
+          'This event can\'t take payments or changes right now.',
+      'error.reason.rotate_required':
+          'This ticket\'s code needs to be replaced. Get a new code to continue.',
+      'error.reason.removeWholeLine':
+          'Cancel the whole order to remove this place',
+      'error.reason.invalidTransition.events':
+          'This order can\'t be changed any more',
+      'error.reason.idempotencyKeyReused':
+          'This order changed while it was being placed. Try again.',
+      'error.reason.organizationNotAllowed':
+          'Corporate orders are placed in the FitFlex portal',
+      'error.reason.holdLimitReached':
+          'You already have an unpaid registration for this event',
+      'error.reason.multipleSelf': 'Only one place in an order can be yours',
+      'error.reason.invalidText': 'Some text has characters we can\'t accept',
+      'error.reason.fieldTooLong': 'One of the entries is too long',
+      'error.reason.teamNameInvalid':
+          'Enter a team name of up to 120 characters',
+      'error.reason.teamTypeInvalid': 'Choose a team type',
+      'error.reason.rawTextTooLong': 'That text is too long',
+      'events.review.unavailable': 'That ticket is no longer available',
+      'events.review.problems': 'This order can\'t be placed yet',
+      'error.reason.partnerUnder18':
+          'You must be 18 or older to be a Trainer or gym owner.',
+      'error.reason.personalDetailsUnavailable':
+          "Personal details can't be saved right now. Try again later.",
+      'error.reason.invalidGender': 'Choose a gender from the list.',
+      'error.reason.rateLimitedSeconds':
+          'Too many requests. Try again in {seconds} seconds.',
+      // Partner home photo and logo (spec §44.1, PARTNER_MEDIA_UI).
+      'partnerMedia.title': 'Home photo and logo',
+      'partnerMedia.entryHint': 'Shows at the top of your home',
+      'partnerMedia.entryHintVendor': 'Shows on your Products tab',
+      'partnerMedia.entryForGym': 'For {gym}',
+      'partnerMedia.gym': 'Gym: {gym}',
+      'partnerMedia.chooseGym': 'Choose a gym',
+      'partnerMedia.preview': 'Preview of your home',
+      'partnerMedia.onlyYouTeam': 'Only you and your team see this for now.',
+      'partnerMedia.onlyYouSelf': 'Only you see this for now.',
+      'partnerMedia.hero': 'Home photo',
+      'partnerMedia.logo': 'Logo',
+      'partnerMedia.default': 'Using the FitFlex photo',
+      'partnerMedia.noLogo': 'No logo yet',
+      'partnerMedia.live': 'Showing on your home',
+      'partnerMedia.addedOn': 'Added {date}',
+      'partnerMedia.addedByFitflex': 'Added by FitFlex on {date}',
+      'partnerMedia.bright':
+          'Bright photo: it looks a little darker behind your text.',
+      'partnerMedia.upload': 'Upload photo',
+      'partnerMedia.uploadLogo': 'Upload logo',
+      'partnerMedia.uploadNew': 'Upload a new photo',
+      'partnerMedia.uploadNewLogo': 'Upload a new logo',
+      'partnerMedia.replace': 'Replace',
+      'partnerMedia.remove': 'Remove',
+      'partnerMedia.removeHeroTitle': 'Remove your home photo?',
+      'partnerMedia.removeHeroBody':
+          'Your home will show the FitFlex photo again. The photo is deleted from FitFlex.',
+      'partnerMedia.removeLogoTitle': 'Remove your logo?',
+      'partnerMedia.removeLogoBody':
+          'Your logo is deleted from FitFlex and no longer shows on your home.',
+      'partnerMedia.removed': 'Removed.',
+      'partnerMedia.liveNowHero': 'Your new home photo is live.',
+      'partnerMedia.liveNowLogo': 'Your logo is live.',
+      'partnerMedia.replaceNote':
+          'The new one replaces the current one straight away, and the old one is deleted.',
+      'partnerMedia.reviewNote':
+          'It shows on your home straight away. FitFlex checks new photos and may take one down if it breaks the rules below. We\'ll tell you why.',
+      'partnerMedia.vendorNote':
+          'Members see your shop logo and banner from {editProfile}. This photo and logo show on your own home only.',
+      'partnerMedia.takenDownHero': 'FitFlex took down your home photo.',
+      'partnerMedia.takenDownLogo': 'FitFlex took down your logo.',
+      'partnerMedia.takenDownReason': 'Reason: {reason}',
+      'partnerMedia.takenDownNote': 'Note from FitFlex: {note}',
+      'partnerMedia.takenDownNext':
+          'Your home uses the FitFlex photo until you upload a new one.',
+      'partnerMedia.takenDownNextLogo':
+          'Your home shows no logo until you upload a new one.',
+      'partnerMedia.reason.inappropriate':
+          'It isn\'t suitable, for example nudity, violence or offensive content.',
+      'partnerMedia.reason.rights':
+          'It looks like you may not have the right to use it.',
+      'partnerMedia.reason.other_brand':
+          'It shows another brand\'s logo or sign.',
+      'partnerMedia.reason.not_own_logo':
+          'It doesn\'t look like your business\'s own logo.',
+      'partnerMedia.reason.person_request':
+          'Someone in the photo asked for it to be removed.',
+      'partnerMedia.reason.quality':
+          'It\'s blurred, stretched or hard to make out.',
+      'partnerMedia.reason.other': 'Another reason (see the note).',
+      'partnerMedia.rules.title': 'Photo rules',
+      'partnerMedia.rules.own':
+          'Use a photo you took or have the right to use.',
+      'partnerMedia.rules.people':
+          'People are fine. Ask anyone who can be recognised before you use their photo.',
+      'partnerMedia.rules.brands':
+          'No other brands\' logos or signs. Your own is fine.',
+      'partnerMedia.rules.text':
+          'Keep text out of the photo; your home already shows your name.',
+      'partnerMedia.rules.suitable':
+          'Nothing unsuitable: no nudity, violence or offensive content.',
+      'partnerMedia.rules.size':
+          'At least 1080 pixels wide. Landscape photos work best.',
+      'partnerMedia.rules.logo':
+          'PNG, JPEG or WebP, at least 256 pixels on the short side, up to 2 MB. Your own business\'s logo only.',
+      'partnerMedia.sheet.titleHero': 'New home photo',
+      'partnerMedia.sheet.titleLogo': 'New logo',
+      'partnerMedia.sheet.gallery': 'Choose from gallery',
+      'partnerMedia.sheet.camera': 'Take a photo',
+      'partnerMedia.sheet.file': 'Choose a file',
+      'partnerMedia.sheet.chooseAnother': 'Choose another',
+      'partnerMedia.sheet.onPhone': 'On a phone',
+      'partnerMedia.sheet.onWide': 'On a wide screen',
+      'partnerMedia.sheet.focal': 'Focus point',
+      'partnerMedia.sheet.focalHint':
+          'Tap the part of the photo that must stay in view.',
+      'partnerMedia.sheet.focalNow': 'Focus point: {position}',
+      'partnerMedia.sheet.pos.topLeft': 'Top left',
+      'partnerMedia.sheet.pos.top': 'Top',
+      'partnerMedia.sheet.pos.topRight': 'Top right',
+      'partnerMedia.sheet.pos.left': 'Left',
+      'partnerMedia.sheet.pos.centre': 'Centre',
+      'partnerMedia.sheet.pos.right': 'Right',
+      'partnerMedia.sheet.pos.bottomLeft': 'Bottom left',
+      'partnerMedia.sheet.pos.bottom': 'Bottom',
+      'partnerMedia.sheet.pos.bottomRight': 'Bottom right',
+      'partnerMedia.sheet.plate': 'Logo background',
+      'partnerMedia.sheet.plateAuto': 'Automatic',
+      'partnerMedia.sheet.plateAutoIs': 'Automatic ({tone})',
+      'partnerMedia.sheet.plateLight': 'Light',
+      'partnerMedia.sheet.plateDark': 'Dark',
+      'partnerMedia.sheet.useHero': 'Use this photo',
+      'partnerMedia.sheet.useLogo': 'Use this logo',
+      'partnerMedia.sheet.uploading': 'Uploading… {n}%',
+      'partnerMedia.sheet.preparing': 'Preparing your photo…',
+      'partnerMedia.sheet.confirmChanged':
+          'The wording below has changed. Please read it and tick again.',
+      'partnerMedia.a11y.preview': 'Preview of your home: {photo}, {logo}',
+      'partnerMedia.a11y.yourPhoto': 'your photo',
+      'partnerMedia.a11y.fitflexPhoto': 'FitFlex photo',
+      'partnerMedia.a11y.yourLogo': 'your logo',
+      'partnerMedia.a11y.noLogo': 'no logo',
+      'partnerMedia.a11y.currentPhoto': 'Your current home photo',
+      'partnerMedia.a11y.currentLogo': 'Your current logo',
+      'partnerMedia.a11y.previewPhone': 'Preview on a phone',
+      'partnerMedia.a11y.previewWide': 'Preview on a wide screen',
+      'partnerMedia.a11y.focalImage':
+          'Photo. Focus point: {position}. Tap to move it.',
+      'partnerMedia.restrictedGym':
+          'Only the gym owner, or staff allowed to edit the gym profile, can change this.',
+      'partnerMedia.restrictedVendor':
+          'Only the business owner or a staff admin can change this.',
+      'partnerMedia.noGym':
+          'Add a gym first. You can set its photo and logo here once it\'s approved.',
+      'partnerMedia.off': 'This isn\'t available yet.',
+      'partnerMedia.loadError': 'We couldn\'t load your photo and logo.',
+      'partnerMedia.offline':
+          'You\'re offline. You can change your photo when you\'re back online.',
+      'partnerMedia.error.not_your_gym':
+          'You can\'t change photos for this gym.',
+      'partnerMedia.error.acl_forbidden':
+          'You don\'t have permission to change this.',
+      'partnerMedia.error.subject_not_found':
+          'We couldn\'t find this profile. Go back and try again.',
+      'partnerMedia.error.rate_limited':
+          'Too many uploads. Wait a minute and try again.',
+      'partnerMedia.error.image_too_small':
+          'This photo is too small. Use one at least {minWidth} pixels wide.',
+      'partnerMedia.error.image_too_small_logo':
+          'This logo is too small. Use one at least {minSide} pixels on the short side.',
+      'partnerMedia.error.unsupported_file_type':
+          'This file type isn\'t supported. Use JPEG, PNG or WebP.',
+      'partnerMedia.error.svg_not_allowed':
+          'SVG files can\'t be used. Save your logo as PNG and try again.',
+      'partnerMedia.error.file_too_large':
+          'This file is too large. The limit is {maxMb} MB.',
+      'partnerMedia.error.variant_over_budget':
+          'We couldn\'t make this photo small enough. Try a different photo.',
+      'partnerMedia.error.invalid_focal':
+          'Something went wrong with the focus point. Set it again.',
+      'partnerMedia.error.not_editable':
+          'This was changed a moment ago. We\'ve reloaded it.',
+      'partnerMedia.error.image_save_failed':
+          'We couldn\'t save your photo. Try again.',
+      'partnerMedia.error.image_taken_down_before':
+          'FitFlex took this exact photo down before. Choose a different one.',
+      'partnerMedia.error.unknown': 'Something went wrong ({code}).',
+      'partnerMedia.error.rate_limited_day':
+          "You've reached today's upload limit. Try again tomorrow.",
+      'partnerMedia.error.rate_limited_attempts':
+          'Too many tries today for this home. Try again tomorrow.',
+      'partnerMedia.error.image_service_busy':
+          'FitFlex is busy preparing photos. Try again in a few seconds.',
+      'partnerMedia.error.rate_limit_unavailable':
+          "We couldn't check your uploads just now. Try again in a minute.",
+      'partnerMedia.error.too_many_pixels':
+          'This photo has too many pixels. Use one of up to {maxMp} megapixels.',
+      'partnerMedia.error.too_large_side':
+          'This logo is too big. Use one of up to {maxSide} pixels on each side.',
+      'partnerMedia.error.media_not_found': 'This was already removed.',
+      'partnerMedia.error.feature_disabled': 'This isn\'t available yet.',
+      'partnerMedia.error.rights_confirmation_required':
+          'Tick the box to confirm you may use this photo.',
+      'partnerMedia.error.own_logo_confirmation_required':
+          'Tick the box to confirm this is your own logo.',
+      'partnerMedia.error.no_file_provided':
+          'No file was sent. Choose a photo and try again.',
+      'partnerMedia.error.invalid_plate':
+          'Choose a logo background and try again.',
+      'partnerMedia.error.gym_id_required': 'Choose a gym and try again.',
+      'partnerMedia.error.invalid_multipart':
+          'The file didn\'t arrive in full. Try again.',
+      'partnerMedia.error.unknown_field':
+          'This version of the app sent something the server does not accept. Update the app and try again.',
+      'inbox.open.brandMedia': 'Open home photo and logo',
+      // Refused photos (fitflex-functions#273).
+      'error.reason.invalidMediaSrc':
+          "This photo can't be used. Choose a PNG, JPEG or WebP photo from your phone.",
+      'error.reason.mediaSrcTooLarge':
+          'This photo is too large. Choose a smaller photo (up to 1.4 MB).',
+      'error.reason.uploadForbidden': "Your account can't upload photos here.",
+      'error.reason.tooManyImages':
+          'Too many photos. Remove some and try again.',
     },
     'sw': {
       'app.title': 'FitFlex',
@@ -7547,6 +8655,8 @@ class FFLocale extends ChangeNotifier {
       'member.dobPick': 'Chagua tarehe ya kuzaliwa',
       'member.dobFormat':
           'Andika tarehe yako ya kuzaliwa kama YYYY-MM-DD, kwa mfano 1990-05-21.',
+      // Same pattern as English: the field takes digits as YYYY-MM-DD.
+      'member.dobFormatHint': 'YYYY-MM-DD',
       'member.dobNoPersonalisation':
           'Hadi tarehe yako ya kuzaliwa iwe sahihi, duka haliwezi kupangwa kwa ajili yako.',
       'member.photoPick': 'Badilisha picha ya wasifu',
@@ -8497,6 +9607,24 @@ class FFLocale extends ChangeNotifier {
       'onboarding.gender_female': 'Mwanamke',
       'onboarding.gender_other': 'Nyingine',
       'onboarding.dob': 'Tarehe ya kuzaliwa',
+      // Partner date of birth (fitflex-functions#253). Draft: needs native review.
+      'partnerDob.help':
+          'Hutumika kupendekeza bidhaa za dukani zinazofaa kundi lako la umri. Haionyeshwi kwenye wasifu wako.',
+      'partnerDob.errRateLimited':
+          'Mabadiliko mengi mno. Jaribu tena baada ya sekunde {seconds}.',
+      'partnerDob.promptTitle': 'Ongeza tarehe yako ya kuzaliwa',
+      'partnerDob.promptBody':
+          'Pata mapendekezo ya dukani yanayokufaa. Haionyeshwi kwenye wasifu wako.',
+      'partnerDob.add': 'Ongeza',
+      'partnerDob.tapToChoose': 'Gusa kuchagua',
+      'partnerDob.notNow': 'Si sasa',
+      'partnerDob.tileTitle': 'Tarehe ya kuzaliwa na jinsia',
+      'partnerDob.tileSubtitle': 'Hutumika kwa mapendekezo ya dukani tu',
+      'partnerDob.saved': 'Imehifadhiwa',
+      'partnerGender.optional': 'Jinsia (si lazima)',
+      'partnerGender.preferNot': 'Sipendi kusema',
+      'partnerGender.fromTrainerProfile':
+          'Hii inatoka kwenye wasifu wako wa trainer. Ibadilishe huko.',
       'onboarding.fitnessTitle': 'Malengo yako ya mazoezi ni yapi',
       'onboarding.fitnessSubtitle': 'Chagua yote yanayofaa',
       'onboarding.fitnessGoal': 'Lengo la mazoezi',
@@ -10011,6 +11139,16 @@ class FFLocale extends ChangeNotifier {
       'progress.blocked.account_suspended': 'Akaunti yako imesimamishwa.',
       'progress.blocked.role_rejected': 'Ombi lako la ushirika halikukubaliwa.',
       'progress.blocked.other': 'Hatua hii imesitishwa kwa sasa.',
+      // fitflex-functions#245 / #247: Swahili DRAFT, needs native review.
+      'progress.reason.under_review':
+          'Inakaguliwa — tafadhali wasiliana na msaada wa FitFlex.',
+      'progress.payout.payout_owner_required':
+          'Gym hii ina mmiliki zaidi ya mmoja. FitFlex inahitaji kumtaja mmiliki atakayepokea malipo kabla malipo hayajaanza.',
+      'progress.payout.not_payout_owner':
+          'Mmiliki mwingine ndiye anayepokea malipo ya gym hii.',
+      'owner.payoutOwner': 'Mpokeaji wa malipo',
+      'owner.payoutOwner.a11y':
+          'Mpokeaji wa malipo: wewe ndiye unayepokea malipo ya gym hii',
       'progress.cta.changes': 'Fanya mabadiliko',
       'progress.cta.payout': 'Ongeza akaunti ya malipo',
       'progress.cta.addGym': 'Ongeza gym',
@@ -10073,7 +11211,8 @@ class FFLocale extends ChangeNotifier {
       'shop.why.boughtCategory': 'Uliwahi kununua {category}.',
       'shop.why.boughtProduct': 'Imependekezwa kwa sababu ulinunua {product}.',
       'shop.why.gender': 'Jinsia uliyoweka kwenye wasifu wako.',
-      'shop.why.deliversToArea': "Wauzaji hawa wana delivery hadi eneo ulipo sasa.",
+      'shop.why.deliversToArea':
+          "Wauzaji hawa wana delivery hadi eneo ulipo sasa.",
       'shop.why.featured':
           'Bidhaa zilizoangaziwa huchaguliwa na FitFlex au hulipiwa na wauzaji. Zilizolipiwa zimeandikwa "Iliyodhaminiwa".',
       'shop.why.flashSale': 'Muuzaji ameweka punguzo kwa muda maalum.',
@@ -10165,7 +11304,8 @@ class FFLocale extends ChangeNotifier {
       'privacy.shop.usesAge':
           'Umri kwenye wasifu wako, kuonyesha kwanza bidhaa zilizowekewa lebo (hautumiki kwa walio chini ya miaka 18)',
       'privacy.shop.usesGoal': 'Lengo la mazoezi kwenye wasifu wako',
-      'privacy.shop.usesSpecialty': 'Utaalamu ulio kwenye wasifu wako wa trainer',
+      'privacy.shop.usesSpecialty':
+          'Utaalamu ulio kwenye wasifu wako wa trainer',
       'privacy.shop.usesNone':
           'Hakuna chochote kutoka kwenye akaunti yako kinachotumika kupanga duka kwa sasa.',
       'privacy.shop.orderOnly':
@@ -10190,13 +11330,16 @@ class FFLocale extends ChangeNotifier {
       'vendor.target.a11yBandPlus': '{from} na zaidi',
       // Shop Phase 2 S3: near you (spec shop-home-phase2 §7, §10.5, §10.7). Swahili needs native review.
       'shop.near.inviteTitle': "Ona bidhaa maarufu karibu nawe",
-      'shop.near.inviteBody': "Pata bidhaa kutoka kwa wauzaji wenye delivery hadi eneo lako.",
+      'shop.near.inviteBody':
+          "Pata bidhaa kutoka kwa wauzaji wenye delivery hadi eneo lako.",
       'shop.near.use': "Tumia mahali nilipo",
       'shop.near.notNow': "Si sasa",
       'shop.near.offline': "Inahitaji intaneti",
       'shop.near.sheetTitle': "Tumia mahali ulipo dukani?",
-      'shop.near.point1': "Simu yako inakadiria eneo lako, kama jiji au wilaya yako.",
-      'shop.near.point2': "FitFlex inapokea eneo tu, na halihifadhiwi. Kwa ajili ya duka, mahali hasa ulipo hapatoki kwenye kifaa chako.",
+      'shop.near.point1':
+          "Simu yako inakadiria eneo lako, kama jiji au wilaya yako.",
+      'shop.near.point2':
+          "FitFlex inapokea eneo tu, na FitFlex haihifadhi kwenye seva zake. Kwa ajili ya duka, mahali hasa ulipo hapatoki kwenye kifaa chako.",
       'shop.near.point3':
           "Unaweza kuzima hili wakati wowote kwa \"Duka kwa ajili yako\", dukani au kwenye Faragha na data.",
       'shop.near.alreadyAllowed':
@@ -10205,7 +11348,8 @@ class FFLocale extends ChangeNotifier {
           "Bado hakuna wauzaji walioorodheshwa kwenye eneo lako.",
       'shop.near.failed':
           "Imeshindikana kupata eneo lako. Jaribu tena baadaye.",
-      'shop.near.denied': "Ruhusa ya mahali ulipo imezimwa, kwa hiyo \"Maarufu karibu nawe\" imefichwa.",
+      'shop.near.denied':
+          "Ruhusa ya mahali ulipo imezimwa, kwa hiyo \"Maarufu karibu nawe\" imefichwa.",
       'shop.near.openSettings': "Fungua mipangilio",
       'shop.near.browserBlocked':
           "Ruhusu mahali ulipo kwa tovuti hii kwenye mipangilio ya kivinjari.",
@@ -10213,8 +11357,6 @@ class FFLocale extends ChangeNotifier {
           "Washa mahali ulipo kwenye simu yako uone \"Maarufu karibu nawe\".",
       'shop.near.badge': "Ina delivery hadi eneo lako",
       'shop.near.finding': "Tunatafuta eneo lako",
-      'shop.near.changeArea': "Badilisha eneo",
-      'shop.near.pickArea': "Chagua eneo lako",
       'shop.why.nearOn': "Maarufu karibu nawe: Imewashwa · {area}",
       'shop.why.nearOff': "Maarufu karibu nawe: Imezimwa",
       'shop.why.nearNoArea': "Bado hakuna wauzaji kwenye eneo lako",
@@ -10235,7 +11377,8 @@ class FFLocale extends ChangeNotifier {
       'vendor.areas.deliversTo': "Ina delivery hadi",
       'vendor.areas.deliversRow': "Ina delivery hadi: {areas}",
       'vendor.areas.deliversMore': "(+{n})",
-      'vendor.areas.deliversEmpty': "Acha wazi kama huna delivery. Wanunuzi bado wanaweza kuagiza na kupanga jinsi ya kuchukua.",
+      'vendor.areas.deliversEmpty':
+          "Acha wazi kama huna delivery. Wanunuzi bado wanaweza kuagiza na kupanga jinsi ya kuchukua.",
       'vendor.areas.included': "Limo ndani ya {parent}",
       'vendor.areas.nationwide': "Nchi nzima ({area} yote)",
       'vendor.areas.search': "Tafuta maeneo",
@@ -10250,12 +11393,17 @@ class FFLocale extends ChangeNotifier {
       'vendor.areas.level.district': "wilaya",
       'vendor.areas.none': "Maeneo bado hayajawekwa.",
       'vendor.areas.failed': "Imeshindikana kupakia maeneo. Jaribu tena.",
-      'vendor.areas.invalid.gone': "{areas}: eneo hili halipatikani tena. Chagua lingine.",
-      'vendor.areas.invalid.wrongLevel': "Mahali ilipo lazima pawe jiji au wilaya.",
-      'vendor.areas.invalid.notInRegion': "Jiji haliko ndani ya mkoa huo. Chagua jiji tena.",
+      'vendor.areas.invalid.gone':
+          "{areas}: eneo hili halipatikani tena. Chagua lingine.",
+      'vendor.areas.invalid.wrongLevel':
+          "Mahali ilipo lazima pawe jiji au wilaya.",
+      'vendor.areas.invalid.notInRegion':
+          "Jiji haliko ndani ya mkoa huo. Chagua jiji tena.",
       'vendor.areas.invalid.tooMany': "Chagua hadi maeneo 50 ya delivery.",
-      'vendor.areas.invalid.other': "Baadhi ya maeneo hayakuweza kuhifadhiwa. Yaangalie kisha ujaribu tena.",
-      'vendor.areas.nudge': "Ongeza mahali biashara yako ilipo na unapopeleka delivery, ili wanunuzi walio karibu wakupate.",
+      'vendor.areas.invalid.other':
+          "Baadhi ya maeneo hayakuweza kuhifadhiwa. Yaangalie kisha ujaribu tena.",
+      'vendor.areas.nudge':
+          "Ongeza mahali biashara yako ilipo na unapopeleka delivery, ili wanunuzi walio karibu wakupate.",
       'vendor.areas.nudgeAction': "Ongeza sasa",
       'vendor.areas.nudgeCheck':
           "Tumejaza unapouzia kutokana na anwani yako. Hakiki kama ni sahihi.",
@@ -10500,23 +11648,32 @@ class FFLocale extends ChangeNotifier {
           'Mmiliki wa duka na wafanyakazi wa admin tu ndio wanaweza kuweka bei ya kununua.',
       // Vendor tools · S3 (rasimu: kwa ukaguzi wa mzawa wa Kiswahili).
       'vendor.sales.err.voidNotAllowed': 'Huna ruhusa ya kubatilisha mauzo.',
-      'vendor.pos.err.clock': 'Angalia tarehe na saa ya simu yako, kisha jaribu tena.',
-      'vendor.pos.err.tooOld': 'Mauzo haya yana zaidi ya siku 7, hivyo hayawezi kubaki na tarehe yake ya awali.',
+      'vendor.pos.err.clock':
+          'Angalia tarehe na saa ya simu yako, kisha jaribu tena.',
+      'vendor.pos.err.tooOld':
+          'Mauzo haya yana zaidi ya siku 7, hivyo hayawezi kubaki na tarehe yake ya awali.',
       'vendor.sync.recordToday': 'Rekodi kwa tarehe ya leo',
       'vendor.sync.originally': 'awali {date}',
-      'vendor.sync.conflictStockGeneric': 'Stock haitoshi kwa bidhaa moja kwenye mauzo haya.',
+      'vendor.sync.conflictStockGeneric':
+          'Stock haitoshi kwa bidhaa moja kwenye mauzo haya.',
       'vendor.sync.bannerOne': 'Mauzo 1 yanasubiri kutumwa',
       'vendor.sync.conflictsOne': 'Mauzo 1 yanahitaji kurekebishwa',
-      'vendor.sync.signOutWarnOne': 'Mauzo 1 kwenye kifaa hiki bado hayajatumwa. Yatabaki hapa na kutumwa utakapoingia tena.',
+      'vendor.sync.signOutWarnOne':
+          'Mauzo 1 kwenye kifaa hiki bado hayajatumwa. Yatabaki hapa na kutumwa utakapoingia tena.',
       'vendor.pos.itemsOne': 'Bidhaa 1',
-      'vendor.pos.cartBarLabelOne': 'Bidhaa 1, jumla {amount}. Fungua bidhaa za mauzo.',
+      'vendor.pos.cartBarLabelOne':
+          'Bidhaa 1, jumla {amount}. Fungua bidhaa za mauzo.',
       'vendor.pos.savedLater': 'Imehifadhiwa. Itatumwa itakapowezekana.',
-      'vendor.sales.offline': 'Hakuna mtandao. Historia ya mauzo inahitaji intaneti; bado unaweza kurekodi mauzo mapya.',
-      'vendor.pos.err.changeTooLargeLocal': 'Chenji haiwezi kuzidi {amount}. Angalia kiasi kilichopokelewa.',
+      'vendor.sales.offline':
+          'Hakuna mtandao. Historia ya mauzo inahitaji intaneti; bado unaweza kurekodi mauzo mapya.',
+      'vendor.pos.err.changeTooLargeLocal':
+          'Chenji haiwezi kuzidi {amount}. Angalia kiasi kilichopokelewa.',
       'vendor.pos.err.paidTooLargeLocal': 'Kiasi ni kikubwa mno. Kiangalie.',
       'vendor.invite.staffTitle': 'Alika: wafanyakazi wa duka',
-      'vendor.offlineKept': 'Hakuna mtandao. Inaonyesha kilichohifadhiwa kwenye kifaa hiki.',
-      'vendor.sales.offlineToast': 'Hakuna mtandao. Bado unaweza kurekodi mauzo; yatatumwa baadaye.',
+      'vendor.offlineKept':
+          'Hakuna mtandao. Inaonyesha kilichohifadhiwa kwenye kifaa hiki.',
+      'vendor.sales.offlineToast':
+          'Hakuna mtandao. Bado unaweza kurekodi mauzo; yatatumwa baadaye.',
       'vendor.sales.offlineTitle': 'Huna mtandao',
       'vendor.sales.tab': 'Mauzo',
       'vendor.permission.sales': 'Mauzo ya dukani',
@@ -10580,7 +11737,8 @@ class FFLocale extends ChangeNotifier {
       'vendor.pos.clearSale': 'Futa mauzo',
       'vendor.pos.clearConfirm': 'Uondoe bidhaa zote kwenye mauzo haya?',
       'vendor.pos.draftKept': 'Mauzo yako ambayo hayajakamilika yamehifadhiwa.',
-      'vendor.pos.offlineBanner': 'Huna mtandao. Stock inayoonyeshwa ni ya {time} na huenda si sahihi.',
+      'vendor.pos.offlineBanner':
+          'Huna mtandao. Stock inayoonyeshwa ni ya {time} na huenda si sahihi.',
       'vendor.pos.noCache':
           'Unganisha mtandao mara moja ili kupakia bidhaa zako.',
       'vendor.pos.payTitle': 'Malipo',
@@ -10637,7 +11795,8 @@ class FFLocale extends ChangeNotifier {
       'vendor.pos.notFiscal': 'Hii si risiti ya kodi ya TRA.',
       'vendor.pos.receiptLanguage': 'Lugha ya risiti',
       'vendor.pos.share': 'Tuma risiti',
-      'vendor.pos.shareProvisional': 'Risiti ya muda, namba itafuata (kumb. {ref})',
+      'vendor.pos.shareProvisional':
+          'Risiti ya muda, namba itafuata (kumb. {ref})',
       'vendor.pos.done': 'Maliza',
       'vendor.sales.title': 'Mauzo',
       'vendor.sales.today': 'Leo',
@@ -10674,9 +11833,12 @@ class FFLocale extends ChangeNotifier {
       'vendor.sales.alreadyVoided': 'Mauzo haya yalishabatilishwa.',
       'vendor.sales.voidOffline':
           'Kubatilisha kunahitaji mtandao. Hakuna kilichobadilishwa.',
-      'vendor.sales.voidNotOwn': 'Unaweza kubatilisha mauzo uliyoyarekodi wewe mwenyewe tu. Muombe mmiliki wa biashara.',
-      'vendor.sales.voidTooOld': 'Unaweza kubatilisha mauzo siku yalipofanyika tu. Muombe mmiliki wa biashara.',
-      'vendor.sales.suspended': 'Biashara hii imesimamishwa. Mauzo ya dukani yamesitishwa; mauzo yaliyohifadhiwa kwenye kifaa hiki yanabaki hapa.',
+      'vendor.sales.voidNotOwn':
+          'Unaweza kubatilisha mauzo uliyoyarekodi wewe mwenyewe tu. Muombe mmiliki wa biashara.',
+      'vendor.sales.voidTooOld':
+          'Unaweza kubatilisha mauzo siku yalipofanyika tu. Muombe mmiliki wa biashara.',
+      'vendor.sales.suspended':
+          'Biashara hii imesimamishwa. Mauzo ya dukani yamesitishwa; mauzo yaliyohifadhiwa kwenye kifaa hiki yanabaki hapa.',
       'vendor.stock.reason.sale': 'Mauzo ya dukani',
       'vendor.stock.reason.sale_void':
           'Mauzo yamebatilishwa, imerudi kwenye Stock',
@@ -10695,7 +11857,8 @@ class FFLocale extends ChangeNotifier {
       'vendor.sync.waiting': 'Yanasubiri',
       'vendor.sync.conflictStock':
           'Stock haitoshi kwa {name}: zimebaki {available}, mauzo haya yana {qty}.',
-      'vendor.sync.conflictOther': 'Imeshindikana kurekodi mauzo haya: {reason}',
+      'vendor.sync.conflictOther':
+          'Imeshindikana kurekodi mauzo haya: {reason}',
       'vendor.sync.conflictNotAllowed': 'Huna tena ruhusa ya kurekodi mauzo.',
       'vendor.sync.conflictTooOld': 'Mauzo haya ni ya zamani mno kurekodiwa.',
       'vendor.sync.howToFix':
@@ -10743,18 +11906,22 @@ class FFLocale extends ChangeNotifier {
       'vendor.customers.overdueBadge': 'Imechelewa',
       'vendor.customers.lastBought': 'Alinunua mwisho {date}',
       'vendor.customers.lastBoughtLabel': 'Alinunua mwisho',
-      'vendor.customers.rowLabel': '{name}, {type}, anadaiwa {amount}, {status}',
+      'vendor.customers.rowLabel':
+          '{name}, {type}, anadaiwa {amount}, {status}',
       'vendor.customers.add': 'Ongeza mteja',
       'vendor.customers.loading': 'Inapakia wateja',
-      'vendor.customers.emptyFirst': 'Bado hakuna wateja. Wataonekana baada ya oda ya app, au ongeza mwenyewe.',
+      'vendor.customers.emptyFirst':
+          'Bado hakuna wateja. Wataonekana baada ya oda ya app, au ongeza mwenyewe.',
       'vendor.customers.empty': 'Hakuna wateja hapa.',
       'vendor.customers.noMatch': 'Hakuna mteja anayelingana na "{q}".',
       'vendor.customers.failed': 'Imeshindikana kupakia wateja.',
-      'vendor.customers.activityFailed': 'Imeshindikana kupakia orodha hii. Jaribu tena.',
+      'vendor.customers.activityFailed':
+          'Imeshindikana kupakia orodha hii. Jaribu tena.',
       'vendor.customers.noActivity': 'Bado hakuna kitu hapa.',
       'vendor.customers.deletedMember': 'Mwanachama aliyefutwa',
       'vendor.pay.invalidAllocation': 'Angalia kiasi cha kila mauzo.',
-      'vendor.customers.fieldNotEditable': 'Taarifa hii haiwezi kubadilishwa kwa mteja wa app.',
+      'vendor.customers.fieldNotEditable':
+          'Taarifa hii haiwezi kubadilishwa kwa mteja wa app.',
       'vendor.customers.noteTooLong': 'Maelezo yasizidi herufi {max}.',
       'vendor.customers.addressTooLong': 'Anwani isizidi herufi {max}.',
       'vendor.customers.nameLength': 'Jina liwe na herufi 2 hadi 80.',
@@ -10767,26 +11934,33 @@ class FFLocale extends ChangeNotifier {
       'vendor.customers.email': 'Barua pepe (si lazima)',
       'vendor.customers.address': 'Anwani (si lazima)',
       'vendor.customers.note': 'Maelezo (si lazima)',
-      'vendor.customers.noteHint': 'Ni wewe na wafanyakazi wako tu mnaoona hili.',
+      'vendor.customers.noteHint':
+          'Ni wewe na wafanyakazi wako tu mnaoona hili.',
       'vendor.customers.nameRequired': 'Weka jina la mteja.',
       'vendor.customers.phoneInvalid': 'Weka namba sahihi ya simu ya Tanzania.',
       'vendor.customers.emailInvalid': 'Weka barua pepe sahihi.',
       'vendor.customers.phoneDuplicate': '{name} tayari ana namba hii.',
       'vendor.customers.open': 'Fungua',
-      'vendor.customers.consent': 'Hifadhi taarifa ambazo mteja amekubali kukupa tu.',
+      'vendor.customers.consent':
+          'Hifadhi taarifa ambazo mteja amekubali kukupa tu.',
       'vendor.customers.save': 'Hifadhi',
       'vendor.customers.saved': 'Mteja amehifadhiwa',
-      'vendor.customers.saveOffline': 'Hakuna intaneti. Hakuna kilichohifadhiwa.',
-      'vendor.customers.changedElsewhere': 'Mtu mwingine amebadilisha mteja huyu. Pakia upya uone ya sasa.',
+      'vendor.customers.saveOffline':
+          'Hakuna intaneti. Hakuna kilichohifadhiwa.',
+      'vendor.customers.changedElsewhere':
+          'Mtu mwingine amebadilisha mteja huyu. Pakia upya uone ya sasa.',
       'vendor.customers.reload': 'Pakia upya',
       'vendor.customers.discardTitle': 'Uachane na mabadiliko?',
       'vendor.customers.archive': 'Weka kando',
       'vendor.customers.restore': 'Rudisha',
       'vendor.customers.archiveTitle': 'Umweke kando {name}?',
-      'vendor.customers.archiveBody': 'Historia yake itabaki. Hataonekana unapochagua mteja wa mauzo.',
-      'vendor.customers.archiveHasBalance': 'Mteja huyu bado anadaiwa {amount}. Rekodi malipo kwanza.',
+      'vendor.customers.archiveBody':
+          'Historia yake itabaki. Hataonekana unapochagua mteja wa mauzo.',
+      'vendor.customers.archiveHasBalance':
+          'Mteja huyu bado anadaiwa {amount}. Rekodi malipo kwanza.',
       'vendor.customers.appNameHint': 'Jina kutoka akaunti yake ya FitFlex.',
-      'vendor.customers.appContactHint': 'Taarifa za mawasiliano huonekana kwenye oda wakati unaiwasilisha.',
+      'vendor.customers.appContactHint':
+          'Taarifa za mawasiliano huonekana kwenye oda wakati unaiwasilisha.',
       'vendor.customers.call': 'Mpigie {name}',
       'vendor.customers.owes': 'Anadaiwa',
       'vendor.customers.overdueAmount': 'Imechelewa {amount}',
@@ -10825,28 +11999,36 @@ class FFLocale extends ChangeNotifier {
       'vendor.pos.credit.paidNow': 'Amelipa sasa',
       'vendor.pos.credit.balance': 'Kiasi kinachodaiwa: {amount}',
       'vendor.pos.credit.alreadyOwes': '{name} tayari anadaiwa {amount}.',
-      'vendor.pos.credit.notice': 'Mkopo huu unautoa wewe mwenyewe. FitFlex haiukusanyi.',
+      'vendor.pos.credit.notice':
+          'Mkopo huu unautoa wewe mwenyewe. FitFlex haiukusanyi.',
       'vendor.pos.credit.complete': 'Kamilisha mauzo ya mkopo',
       'vendor.pos.credit.backToFull': 'Rudi kwenye malipo kamili',
-      'vendor.pos.credit.needsConnection': 'Kulipa baadaye kunahitaji intaneti.',
-      'vendor.pos.credit.failed': 'Imeshindikana kuhifadhi. Mauzo ya mkopo hayahifadhiwi bila intaneti. Jaribu tena au pokea malipo kamili.',
+      'vendor.pos.credit.needsConnection':
+          'Kulipa baadaye kunahitaji intaneti.',
+      'vendor.pos.credit.failed':
+          'Imeshindikana kuhifadhi. Mauzo ya mkopo hayahifadhiwi bila intaneti. Jaribu tena au pokea malipo kamili.',
       'vendor.pos.credit.notAllowed': 'Huna ruhusa ya kuuza kwa mkopo.',
-      'vendor.pos.credit.dueInvalid': 'Chagua tarehe kuanzia siku ya mauzo hadi mwaka mmoja mbele.',
+      'vendor.pos.credit.dueInvalid':
+          'Chagua tarehe kuanzia siku ya mauzo hadi mwaka mmoja mbele.',
       'vendor.pos.credit.fullyPaid': 'Mauzo haya yamelipwa yote, si ya mkopo.',
-      'vendor.pos.credit.noChange': 'Hakuna chenji kwenye mauzo ya mkopo. Punguza kiasi cha taslimu.',
+      'vendor.pos.credit.noChange':
+          'Hakuna chenji kwenye mauzo ya mkopo. Punguza kiasi cha taslimu.',
       'vendor.pos.credit.customerRequired': 'Chagua mteja atakayelipa baadaye.',
       'vendor.pos.credit.saved': 'Mauzo ya mkopo yamehifadhiwa: {number}',
       'vendor.receipt.customer': 'Mteja: {name}',
       'vendor.receipt.customerAfterSync': 'Mteja ataonekana baada ya kutumwa',
       'vendor.receipt.balanceAtSale': 'Kiasi kilichobaki wakati wa mauzo',
       'vendor.receipt.dueBy': 'Mwisho wa kulipa',
-      'vendor.receipt.closingCredit': '{business} imerekodi kiasi kinachodaiwa.',
+      'vendor.receipt.closingCredit':
+          '{business} imerekodi kiasi kinachodaiwa.',
       'vendor.sales.payLaterBadge': 'Mkopo',
       'vendor.sales.filter.credit': 'Mkopo',
       'vendor.sales.owesBadge': 'Anadaiwa {amount}',
       'vendor.sales.paidOffBadge': 'Imelipwa',
-      'vendor.sales.voidCreditBody': 'Kiasi kinachodaiwa kitafutwa. Rudisha mwenyewe pesa yoyote iliyolipwa wakati wa mauzo.',
-      'vendor.sales.voidHasPayments': 'Kuna malipo yaliyorekodiwa kwa mauzo haya. Yabatilishe kwanza: {numbers}',
+      'vendor.sales.voidCreditBody':
+          'Kiasi kinachodaiwa kitafutwa. Rudisha mwenyewe pesa yoyote iliyolipwa wakati wa mauzo.',
+      'vendor.sales.voidHasPayments':
+          'Kuna malipo yaliyorekodiwa kwa mauzo haya. Yabatilishe kwanza: {numbers}',
       'vendor.sync.conflictCustomer': 'Mteja wa mauzo haya hapatikani tena.',
       'vendor.sync.retryNoCustomer': 'Jaribu tena bila mteja',
       'vendor.pay.record': 'Rekodi malipo',
@@ -10855,23 +12037,29 @@ class FFLocale extends ChangeNotifier {
       'vendor.pay.allOwed': 'Deni lote {amount}',
       'vendor.pay.oldest': 'Mauzo ya zamani zaidi {amount}',
       'vendor.pay.date': 'Tarehe ya kupokea',
-      'vendor.pay.dateInvalid': 'Chagua siku ndani ya siku 30 zilizopita, si ya baadaye.',
+      'vendor.pay.dateInvalid':
+          'Chagua siku ndani ya siku 30 zilizopita, si ya baadaye.',
       'vendor.pay.appliesTo': 'Inalipia',
       'vendor.pay.paysOff': 'Inamaliza {number} ({amount})',
       'vendor.pay.paysPart': 'Inalipa {amount} ya {number} (zimebaki {left})',
       'vendor.pay.chooseSales': 'Chagua mauzo',
       'vendor.pay.oldestFirst': 'Lililochelewa zaidi kwanza',
-      'vendor.pay.allocMismatch': 'Jumla ya kiasi cha mauzo lazima iwe {amount}.',
+      'vendor.pay.allocMismatch':
+          'Jumla ya kiasi cha mauzo lazima iwe {amount}.',
       'vendor.pay.allocOver': 'Zaidi ya deni la mauzo haya ({amount}).',
-      'vendor.pay.overOwed': 'Hicho ni zaidi ya deni la {owed}. FitFlex haiwezi kuhifadhi ziada kama salio.',
-      'vendor.pay.notice': 'Umepokea pesa hii moja kwa moja. FitFlex inahifadhi kumbukumbu tu.',
+      'vendor.pay.overOwed':
+          'Hicho ni zaidi ya deni la {owed}. FitFlex haiwezi kuhifadhi ziada kama salio.',
+      'vendor.pay.notice':
+          'Umepokea pesa hii moja kwa moja. FitFlex inahifadhi kumbukumbu tu.',
       'vendor.pay.save': 'Hifadhi malipo {amount}',
       'vendor.pay.saved': 'Malipo yamehifadhiwa: {number}',
-      'vendor.pay.failed': 'Imeshindikana kuhifadhi malipo. Hakuna kilichorekodiwa bado.',
+      'vendor.pay.failed':
+          'Imeshindikana kuhifadhi malipo. Hakuna kilichorekodiwa bado.',
       'vendor.pay.allocStale': 'Mauzo hayo yamebadilika. Angalia kiasi kipya.',
       'vendor.pay.offline': 'Kurekodi malipo kunahitaji intaneti.',
       'vendor.pay.archived': 'Mteja huyu amewekwa kando. Mrudishe kwanza.',
-      'vendor.pay.refReused': 'Huenda malipo ya fomu hii yameshahifadhiwa. Ifunge na uangalie Malipo kabla ya kujaribu tena.',
+      'vendor.pay.refReused':
+          'Huenda malipo ya fomu hii yameshahifadhiwa. Ifunge na uangalie Malipo kabla ya kujaribu tena.',
       'vendor.pay.receiptTitle': 'Malipo {number}',
       'vendor.pay.paidTowards': 'Imelipia',
       'vendor.pay.paidSales': 'Imelipia {numbers}',
@@ -10880,13 +12068,17 @@ class FFLocale extends ChangeNotifier {
       'vendor.pay.share': 'Tuma risiti ya malipo',
       'vendor.pay.void': 'Batilisha malipo',
       'vendor.pay.voidTitle': 'Ubatilishe malipo {number}?',
-      'vendor.pay.voidBody': 'Mauzo iliyolipia yataonekana kudaiwa tena. Rudisha pesa mwenyewe ikihitajika.',
+      'vendor.pay.voidBody':
+          'Mauzo iliyolipia yataonekana kudaiwa tena. Rudisha pesa mwenyewe ikihitajika.',
       'vendor.pay.voided': 'Malipo {number} yamebatilishwa',
       'vendor.pay.voidedBy': 'Yamebatilishwa na {name}, {time}: {reason}',
-      'vendor.pay.voidOffline': 'Kubatilisha kunahitaji intaneti. Hakuna kilichobadilishwa.',
+      'vendor.pay.voidOffline':
+          'Kubatilisha kunahitaji intaneti. Hakuna kilichobadilishwa.',
       'vendor.pay.alreadyVoided': 'Malipo haya yalishabatilishwa.',
-      'vendor.pay.voidNotOwn': 'Unaweza kubatilisha malipo uliyoyarekodi wewe mwenyewe tu. Muombe mmiliki wa biashara.',
-      'vendor.pay.voidTooOld': 'Unaweza kubatilisha malipo siku yalipopokelewa tu. Muombe mmiliki wa biashara.',
+      'vendor.pay.voidNotOwn':
+          'Unaweza kubatilisha malipo uliyoyarekodi wewe mwenyewe tu. Muombe mmiliki wa biashara.',
+      'vendor.pay.voidTooOld':
+          'Unaweza kubatilisha malipo siku yalipopokelewa tu. Muombe mmiliki wa biashara.',
       'vendor.owed.title': 'Unachodai',
       'vendor.owed.total': 'Jumla ya madeni',
       'vendor.owed.overdue': 'Yaliyochelewa',
@@ -10915,42 +12107,56 @@ class FFLocale extends ChangeNotifier {
       'merch.banners.title': 'Mabango',
       'merch.banners.propose': 'Pendekeza bango',
       'merch.banners.emptyTitle': 'Bado hakuna mabango',
-      'merch.banners.emptyBody': 'Pendekeza bango ili bidhaa zako zionekane juu kwenye duka la FitFlex.',
+      'merch.banners.emptyBody':
+          'Pendekeza bango ili bidhaa zako zionekane juu kwenye duka la FitFlex.',
       'merch.banners.error': 'Mabango hayakupakia',
       'merch.offlineTitle': 'Hakuna intaneti',
       'merch.offlineBody': 'Unganisha intaneti uone mabango yako.',
       'merch.pendingTitle': 'Itapatikana biashara yako ikiidhinishwa',
-      'merch.pendingBody': 'Utaweza kupendekeza mabango na ofa za muda mfupi baada ya FitFlex kuidhinisha biashara yako.',
+      'merch.pendingBody':
+          'Utaweza kupendekeza mabango na ofa za muda mfupi baada ya FitFlex kuidhinisha biashara yako.',
       'merch.unavailable': 'Huduma hii bado haipatikani',
       'merch.back': 'Rudi',
       'merch.line.endedByFitflexNoReason': 'Limesitishwa {date} na FitFlex',
-      'vendor.accountSuspended': 'Akaunti ya biashara yako imesimamishwa. Bidhaa na mabango yako hayaonyeshwi dukani. Wasiliana na huduma kwa wateja ya FitFlex.',
+      'vendor.accountSuspended':
+          'Akaunti ya biashara yako imesimamishwa. Bidhaa na mabango yako hayaonyeshwi dukani. Wasiliana na huduma kwa wateja ya FitFlex.',
       'shop.home.fallbackLead': 'Kila unachohitaji ili',
       'shop.home.fallbackAccent': 'ufanye mazoezi',
-      'shop.home.fallbackSub': 'Vifaa, mavazi na lishe kutoka kwa wauzaji wa FitFlex.',
+      'shop.home.fallbackSub':
+          'Vifaa, mavazi na lishe kutoka kwa wauzaji wa FitFlex.',
       'merch.entry.waiting': '{n} yanasubiri idhini',
       'merch.openVerification': 'Fungua kituo cha uthibitisho',
       'merch.banner.consentRef': 'Kumbukumbu ya ridhaa ya wanamitindo',
-      'merch.banner.consentRefHelp': 'Namba au jina la ridhaa iliyosainiwa na watu walio kwenye picha.',
-      'merch.banner.consentRequired': 'Weka kumbukumbu ya ridhaa ya wanamitindo.',
+      'merch.banner.consentRefHelp':
+          'Namba au jina la ridhaa iliyosainiwa na watu walio kwenye picha.',
+      'merch.banner.consentRequired':
+          'Weka kumbukumbu ya ridhaa ya wanamitindo.',
       'merch.banner.licenceRef': 'Kumbukumbu ya leseni (si lazima)',
-      'merch.banner.licenceRefHelp': 'Kwa mfano "picha yangu mwenyewe" au namba ya leseni ya picha.',
-      'merch.banner.confirmChanged': 'Maneno yamebadilika. Yasome kisha chagua kisanduku tena.',
-      'merch.banner.confirmDraft': 'Maneno ya awali, yanasubiri ukaguzi wa kisheria.',
+      'merch.banner.licenceRefHelp':
+          'Kwa mfano "picha yangu mwenyewe" au namba ya leseni ya picha.',
+      'merch.banner.confirmChanged':
+          'Maneno yamebadilika. Yasome kisha chagua kisanduku tena.',
+      'merch.banner.confirmDraft':
+          'Maneno ya awali, yanasubiri ukaguzi wa kisheria.',
       'merch.openCount': 'Mapendekezo {open} kati ya {max} yaliyo wazi',
-      'merch.openFull': 'Mapendekezo {open} kati ya {max} yaliyo wazi. Ondoa moja au subiri uamuzi kabla ya kupendekeza jingine.',
+      'merch.openFull':
+          'Mapendekezo {open} kati ya {max} yaliyo wazi. Ondoa moja au subiri uamuzi kabla ya kupendekeza jingine.',
       'shop.banner.cta.viewAll': 'Tazama zote',
       'merch.banner.ctaTitle': 'Kitufe',
       'merch.banner.ctaNotAllowed': 'Chagua kitufe kwenye orodha.',
       'merch.reject.image': 'Ubora wa picha',
-      'merch.reject.people': 'Watu wameonyeshwa kama wanachama au washirika wa FitFlex',
+      'merch.reject.people':
+          'Watu wameonyeshwa kama wanachama au washirika wa FitFlex',
       'merch.reject.text': 'Maandishi au bei kwenye picha',
       'merch.reject.claim': 'Dai linalopotosha',
       'merch.reject.link': 'Kiungo au bidhaa isiyo sahihi',
       'merch.reject.other': 'Nyingine',
-      'merch.rateLimited': 'Mabadiliko mengi kwa wakati mmoja. Subiri dakika moja kisha ujaribu tena.',
-      'merch.tooManyOpen': 'Una mabango mengi yanayosubiri. Ondoa moja au subiri uamuzi.',
-      'merch.ineligible.productNotListed': 'Bidhaa hii haiuzwi dukani. Chagua nyingine.',
+      'merch.rateLimited':
+          'Mabadiliko mengi kwa wakati mmoja. Subiri dakika moja kisha ujaribu tena.',
+      'merch.tooManyOpen':
+          'Una mabango mengi yanayosubiri. Ondoa moja au subiri uamuzi.',
+      'merch.ineligible.productNotListed':
+          'Bidhaa hii haiuzwi dukani. Chagua nyingine.',
       'merch.ineligible.generic': 'Hili haliwezi kuonyeshwa dukani kwa sasa.',
       'inbox.open.merch': 'Tazama bango',
       'merch.group.live': 'Yanaendelea',
@@ -11000,12 +12206,14 @@ class FFLocale extends ChangeNotifier {
       'merch.discard.title': 'Uache mabadiliko?',
       'merch.discard.confirm': 'Acha',
       'merch.discard.keep': 'Endelea kuhariri',
-      'merch.reviewNote': 'FitFlex hukagua kila bango. Lisipokaguliwa ndani ya siku 14, au kabla ya kuanza, litaisha muda.',
+      'merch.reviewNote':
+          'FitFlex hukagua kila bango. Lisipokaguliwa ndani ya siku 14, au kabla ya kuanza, litaisha muda.',
       'merch.send': 'Tuma kwa idhini',
       'merch.banner.newTitle': 'Pendekeza bango',
       'merch.banner.editTitle': 'Hariri bango',
       'merch.banner.image': 'Picha',
-      'merch.banner.imageHelp': 'Onyesha bidhaa. Usiweke bei, namba za simu wala maandishi kwenye picha. JPG, PNG au WebP, angalau pikseli 1600 × 1000, hadi MB 5.',
+      'merch.banner.imageHelp':
+          'Onyesha bidhaa. Usiweke bei, namba za simu wala maandishi kwenye picha. JPG, PNG au WebP, angalau pikseli 1600 × 1000, hadi MB 5.',
       'merch.banner.chooseImage': 'Chagua picha',
       'merch.banner.changeImage': 'Badilisha picha',
       'merch.banner.imageRequired': 'Weka picha.',
@@ -11015,17 +12223,21 @@ class FFLocale extends ChangeNotifier {
       'merch.banner.uploadFailed': 'Imeshindikana kupakia. Jaribu tena.',
       'merch.banner.imagePreview': 'Picha ya bango',
       'merch.banner.imageAlt': 'Maelezo ya picha',
-      'merch.banner.imageAltHelp': 'Eleza picha inaonyesha nini, kwa watu wasioweza kuiona.',
+      'merch.banner.imageAltHelp':
+          'Eleza picha inaonyesha nini, kwa watu wasioweza kuiona.',
       'merch.banner.people': 'Watu kwenye picha',
       'merch.banner.peopleNone': 'Hakuna watu',
       'merch.banner.peopleModels': 'Wanamitindo wanaoonyesha bidhaa',
-      'merch.banner.rights': 'Nina haki ya kutumia picha hii, na FitFlex inaweza kuionyesha kwenye app na portal zake.',
-      'merch.banner.modelsConfirm': 'Watu hawa ni wanamitindo wanaoonyesha bidhaa. Bango haliwaonyeshi kama wanachama, ma-trainer au washirika wa FitFlex, na halina majina wala maneno yao.',
+      'merch.banner.rights':
+          'Nina haki ya kutumia picha hii, na FitFlex inaweza kuionyesha kwenye app na portal zake.',
+      'merch.banner.modelsConfirm':
+          'Watu hawa ni wanamitindo wanaoonyesha bidhaa. Bango haliwaonyeshi kama wanachama, ma-trainer au washirika wa FitFlex, na halina majina wala maneno yao.',
       'merch.confirmRequired': 'Chagua kisanduku hiki kuthibitisha.',
       'merch.pickOne': 'Chagua kimoja.',
       'merch.banner.lead': 'Kichwa: sehemu ya kwanza',
       'merch.banner.accent': 'Kichwa: maneno ya kuangaziwa',
-      'merch.banner.accentHelp': 'Yanaonyeshwa kwa rangi maalum. Maneno 1 hadi 3.',
+      'merch.banner.accentHelp':
+          'Yanaonyeshwa kwa rangi maalum. Maneno 1 hadi 3.',
       'merch.banner.subline': 'Maelezo mafupi (si lazima)',
       'merch.field.en': 'Kiingereza',
       'merch.field.sw': 'Kiswahili',
@@ -11035,9 +12247,11 @@ class FFLocale extends ChangeNotifier {
       'merch.field.tooLong': 'Isizidi herufi {n}.',
       'merch.banner.tooLong': 'Kichwa kisizidi herufi {n}.',
       'merch.banner.otherLanguage': 'Ongeza maandishi ya {language} pia.',
-      'merch.banner.noPrices': 'Mabango hayawezi kuonyesha bei, punguzo wala namba za tarakimu 4 au zaidi. Tumia ofa ya muda mfupi kwa punguzo.',
+      'merch.banner.noPrices':
+          'Mabango hayawezi kuonyesha bei, punguzo wala namba za tarakimu 4 au zaidi. Tumia ofa ya muda mfupi kwa punguzo.',
       'merch.banner.noLinks': 'Ondoa viungo, @majina na namba za simu.',
-      'merch.banner.textRule': 'Usiweke bei, punguzo, kiasi wala namba za tarakimu 4 au zaidi (hata miaka), wala viungo, @majina au namba za simu, kwenye maandishi yoyote.',
+      'merch.banner.textRule':
+          'Usiweke bei, punguzo, kiasi wala namba za tarakimu 4 au zaidi (hata miaka), wala viungo, @majina au namba za simu, kwenye maandishi yoyote.',
       'merch.banner.target': 'Linaelekeza',
       'merch.banner.pickAudience': 'Chagua angalau mmoja.',
       'merch.banner.reconfirm': 'Chagua picha tena na uthibitishe haki zake.',
@@ -11045,7 +12259,8 @@ class FFLocale extends ChangeNotifier {
       'merch.audience.member': 'Wanachama',
       'merch.audience.trainer': 'Ma-trainer',
       'merch.audience.owner': 'Wamiliki wa gym',
-      'merch.suspended': 'Akaunti yako imesimamishwa. Mabango yako hayaonyeshwi dukani.',
+      'merch.suspended':
+          'Akaunti yako imesimamishwa. Mabango yako hayaonyeshwi dukani.',
       'merch.notYours': 'Kipengele hiki hakipatikani',
       'merch.action.endNow': 'Sitisha sasa',
       'merch.action.a11yEnd': 'Sitisha bango {headline} sasa',
@@ -11059,38 +12274,225 @@ class FFLocale extends ChangeNotifier {
       'merch.banner.targetStore': 'Duka langu',
       'merch.banner.pickProduct': 'Bidhaa',
       'merch.banner.productRequired': 'Chagua moja ya bidhaa zako.',
-      'merch.banner.noProducts': 'Huna bidhaa inayouzwa na yenye Stock ya kuunganisha na bango.',
-      'merch.banner.targetNotOwned': 'Chagua bidhaa yako mwenyewe, au duka lako.',
+      'merch.banner.noProducts':
+          'Huna bidhaa inayouzwa na yenye Stock ya kuunganisha na bango.',
+      'merch.banner.targetNotOwned':
+          'Chagua bidhaa yako mwenyewe, au duka lako.',
       'merch.dates.starts': 'Linaanza',
       'merch.dates.ends': 'Linaisha',
       'merch.dates.tzNote': 'Saa za Tanzania',
       'merch.dates.pick': 'Chagua tarehe na saa',
       'merch.dates.required': 'Chagua tarehe na saa.',
-      'merch.dates.startSoon': 'Chagua muda wa kuanza angalau saa moja kuanzia sasa.',
+      'merch.dates.startSoon':
+          'Chagua muda wa kuanza angalau saa moja kuanzia sasa.',
       'merch.dates.endAfter': 'Mwisho uwe baada ya mwanzo.',
       'merch.banner.preview': 'Hakiki',
       'merch.banner.previewA11y': 'Hakiki ya bango lako',
       'merch.preview.light': 'Mwanga',
       'merch.preview.dark': 'Giza',
+      // Vendor tools · S6: ripoti (rasimu: kwa ukaguzi wa mzungumzaji asilia; draft for native review).
+      'vendor.reports.pdfUnavailable':
+          'PDF haiwezi kutengenezwa kwa sasa. Jaribu tena baadaye au pakua CSV.',
+      'vendor.reports.rateLimited':
+          'Umepakua mara nyingi mno. Jaribu tena baada ya dakika {n}.',
+      'vendor.reports.tab': 'Ripoti',
+      'vendor.reports.seg.reports': 'Ripoti',
+      'vendor.reports.seg.payouts': 'Malipo yako',
+      'vendor.reports.noAccess': 'Huna ruhusa ya kuona ripoti hii.',
+      'vendor.reports.view.overview': 'Muhtasari',
+      'vendor.reports.view.sales': 'Mauzo',
+      'vendor.reports.view.products': 'Bidhaa',
+      'vendor.reports.view.stock': 'Thamani ya Stock',
+      'vendor.reports.view.profit': 'Faida',
+      'vendor.reports.view.payouts': 'Mauzo ya app baada ya kamisheni',
+      'vendor.reports.view.customers': 'Wateja na madeni',
+      'vendor.reports.view.methods': 'Njia za malipo',
+      'vendor.reports.period': 'Kipindi',
+      'vendor.reports.preset.today': 'Leo',
+      'vendor.reports.preset.yesterday': 'Jana',
+      'vendor.reports.preset.thisWeek': 'Wiki hii',
+      'vendor.reports.preset.lastWeek': 'Wiki iliyopita',
+      'vendor.reports.preset.thisMonth': 'Mwezi huu',
+      'vendor.reports.preset.lastMonth': 'Mwezi uliopita',
+      'vendor.reports.preset.custom': 'Chagua tarehe',
+      'vendor.reports.group': 'Onyesha kwa',
+      'vendor.reports.group.day': 'Siku',
+      'vendor.reports.group.week': 'Wiki',
+      'vendor.reports.group.month': 'Mwezi',
+      'vendor.reports.groupTooMany':
+          'Pau ni nyingi mno. Onyesha kwa wiki au mwezi.',
+      'vendor.reports.rangeTooLong': 'Chagua hadi siku 366.',
+      'vendor.reports.rangeFuture': 'Chagua tarehe hadi leo.',
+      'vendor.reports.rangeOrder':
+          'Tarehe ya mwisho iwe sawa au baada ya tarehe ya kuanzia.',
+      'vendor.reports.rangeInvalid':
+          'Tarehe hizi haziwezi kutumika. Chagua tarehe nyingine.',
+      'vendor.reports.channel': 'Njia ya mauzo',
+      'vendor.reports.channel.all': 'Yote',
+      'vendor.reports.channel.app': 'App',
+      'vendor.reports.channel.walkIn': 'Dukani',
+      'vendor.reports.channel.allSales': 'Mauzo yote',
+      'vendor.reports.channel.appSales': 'Mauzo ya app',
+      'vendor.reports.channel.shopSales': 'Mauzo ya dukani',
+      'vendor.reports.channel.appOnly': 'App pekee',
+      'vendor.reports.channel.allChannels': 'Njia zote za mauzo',
+      'vendor.reports.inProgress': '(hadi sasa)',
+      'vendor.reports.updated': 'Imesasishwa {time}',
+      'vendor.reports.refresh': 'Sasisha ripoti',
+      'vendor.reports.weekOf': 'Wiki ya {date}',
+      'vendor.reports.gross': 'Mauzo ya jumla',
+      'vendor.reports.discounts': 'Punguzo',
+      'vendor.reports.refunds': 'Marejesho',
+      'vendor.reports.net': 'Mauzo baada ya makato',
+      'vendor.reports.vatIncluded': 'VAT iliyomo',
+      'vendor.reports.salesCount': 'Idadi ya mauzo',
+      'vendor.reports.itemsSold': 'Bidhaa zilizouzwa',
+      'vendor.reports.grossLine': 'Jumla {g} · Punguzo {d} · Marejesho {r}',
+      'vendor.reports.countLine': 'Mauzo {n} · bidhaa {u}',
+      'vendor.reports.salesN': 'Mauzo {n}',
+      'vendor.reports.unitsN': 'Idadi {n}',
+      'vendor.reports.ordersN': 'Oda {n}',
+      'vendor.reports.countTimes': 'Mara {n}',
+      'vendor.reports.voided':
+          'Yamebatilishwa (hayahesabiwi): mauzo {n} · {amount}',
+      'vendor.reports.chartSummary':
+          '{figure} kwa {group}, {period}. Juu zaidi: {date}, {amount}. Jumla {total}. Jedwali liko chini.',
+      'vendor.reports.chartTooMany':
+          'Siku ni nyingi mno kwa chati. Angalia jedwali.',
+      'vendor.reports.barNet': '{when}: mauzo baada ya makato {amount}',
+      'vendor.reports.barProfit': '{when}: faida {amount}',
+      'vendor.reports.sales.table': 'Mauzo kwa kipindi',
+      'vendor.reports.appNet': 'Mauzo ya app baada ya makato',
+      'vendor.reports.shopNet': 'Mauzo ya dukani baada ya makato',
+      'vendor.reports.channelSplit': 'App na dukani',
+      'vendor.reports.best': 'Zinazouzika zaidi',
+      'vendor.reports.mostUnits': 'Idadi kubwa zaidi',
+      'vendor.reports.slow': 'Zinazouzika polepole',
+      'vendor.reports.slowCount': 'Zinazouzika polepole: {n}',
+      'vendor.reports.topProducts': 'Bidhaa zinazouzika zaidi',
+      'vendor.reports.searchProducts': 'Tafuta bidhaa',
+      'vendor.reports.noMatch': 'Hakuna bidhaa inayolingana.',
+      'vendor.reports.loadMore': 'Onyesha zaidi',
+      'vendor.reports.unitsSold': 'Idadi iliyouzwa',
+      'vendor.reports.revenue': 'Mapato baada ya makato',
+      'vendor.reports.lastSold': 'Iliuzwa mwisho',
+      'vendor.reports.never': 'Haijawahi',
+      'vendor.reports.inStock': 'Stock iliyopo',
+      'vendor.reports.coverDays': 'Siku {n}',
+      'vendor.reports.coverUnderOne': 'Chini ya siku 1',
+      'vendor.reports.coverNoSales': 'Hakuna mauzo siku 30',
+      'vendor.reports.coverUntracked': '—',
+      'vendor.reports.outOfStock': 'Imeisha',
+      'vendor.reports.reorderSoon': 'Agiza tena karibuni',
+      'vendor.reports.noSalesPeriod': 'Hakuna mauzo kipindi hiki',
+      'vendor.reports.removed': '(imeondolewa)',
+      'vendor.reports.stock.atRetail': 'Kwa bei ya kuuza',
+      'vendor.reports.stock.atCost': 'Kwa bei ya kununua',
+      'vendor.reports.stock.units': 'Idadi ya Stock',
+      'vendor.reports.stock.asOf':
+          'Kufikia {time} leo. Kipindi ulichochagua hakitumiki hapa.',
+      'vendor.reports.stock.costUnknown':
+          'Bidhaa {n} zilizopo kwenye Stock hazina bei ya kununua, kwa hiyo hazimo kwenye thamani kwa bei ya kununua.',
+      'vendor.reports.stock.empty': 'Hakuna bidhaa kwenye Stock.',
+      'vendor.reports.addCost': 'Weka bei za kununua',
+      'vendor.reports.sellingPrice': 'Bei ya kuuza',
+      'vendor.reports.costPrice': 'Bei ya kununua',
+      'vendor.reports.costPriceUnknown': 'Bei ya kununua haijulikani',
+      'vendor.reports.sort.value': 'Thamani',
+      'vendor.reports.sort.stock': 'Stock',
+      'vendor.reports.sort.name': 'Jina',
+      'vendor.reports.profit': 'Faida',
+      'vendor.reports.profitHint': 'Kwa bidhaa zenye bei ya kununua',
+      'vendor.reports.margin': 'Asilimia ya faida',
+      'vendor.reports.cogs': 'Gharama ya bidhaa',
+      'vendor.reports.netExVat': 'Mauzo baada ya makato bila VAT',
+      'vendor.reports.uncostedSales': 'Mauzo bila bei ya kununua',
+      'vendor.reports.profit.noVat': 'Faida imehesabiwa bila VAT.',
+      'vendor.reports.profit.uncosted':
+          'Zimeuzwa bila bei ya kununua: bidhaa {n} · {amount}. Hazimo kwenye faida.',
+      'vendor.reports.profit.noCostHeading': 'Hakuna bei ya kununua',
+      'vendor.reports.profit.table': 'Faida kwa kipindi',
+      'vendor.reports.profit.byProduct': 'Faida kwa bidhaa',
+      'vendor.reports.commission': 'Kamisheni',
+      'vendor.reports.youReceive': 'Unapokea',
+      'vendor.reports.youReceiveLine': 'Unapokea {amount}',
+      'vendor.reports.appSales': 'Mauzo ya app',
+      'vendor.reports.orders': 'Oda',
+      'vendor.reports.payouts.basis':
+          'Oda za app pekee. Zimehesabiwa kwa tarehe ya delivery, sawa na taarifa zako za malipo.',
+      'vendor.reports.payouts.notDelivered': 'Zimelipiwa, bado delivery',
+      'vendor.reports.payouts.waiting':
+          'Delivery imekamilika, inasubiri malipo',
+      'vendor.reports.payouts.paidOut': 'Imelipwa',
+      'vendor.reports.payouts.awaiting': 'Inasubiri malipo',
+      'vendor.reports.payouts.noStatement': 'Bado haiko kwenye taarifa',
+      'vendor.reports.payouts.byWeek': 'Kwa wiki ya taarifa',
+      'vendor.reports.payouts.reconcile':
+          'Wiki iliyolipwa inalingana na taarifa yake ya malipo. Taarifa za rasimu hazionyeshwi hadi FitFlex izitume kwa idhini.',
+      'vendor.reports.payouts.link': 'Angalia mauzo ya app baada ya kamisheni',
+      'vendor.reports.cust.owedNow': 'Unachodai sasa',
+      'vendor.reports.cust.overdueNow': 'Yaliyochelewa sasa',
+      'vendor.reports.cust.creditSales': 'Mauzo ya mkopo',
+      'vendor.reports.cust.collected': 'Yaliyokusanywa kutoka kwa wateja',
+      'vendor.reports.cust.buyers': 'Wateja walionunua',
+      'vendor.reports.cust.aging': 'Umri wa madeni',
+      'vendor.reports.cust.agingCurrent': 'Bado muda haujafika',
+      'vendor.reports.cust.aging1': 'Siku 1–30 za kuchelewa',
+      'vendor.reports.cust.aging31': 'Siku 31–60 za kuchelewa',
+      'vendor.reports.cust.aging61': 'Siku 61–90 za kuchelewa',
+      'vendor.reports.cust.aging90': 'Zaidi ya siku 90 za kuchelewa',
+      'vendor.reports.cust.openOwed': 'Fungua Unachodai',
+      'vendor.reports.methods.byYou': 'Uliyokusanya wewe',
+      'vendor.reports.methods.viaFitFlex': 'Yaliyolipwa kupitia FitFlex',
+      'vendor.reports.methods.netOfChange': 'Taslimu baada ya chenji',
+      'vendor.reports.methods.none': 'Hakuna malipo kipindi hiki',
+      'vendor.reports.loading': 'Inapakia ripoti',
+      'vendor.reports.empty': 'Hakuna mauzo katika {period}.',
+      'vendor.reports.tryPeriod': 'Jaribu kipindi kingine',
+      'vendor.reports.failed': 'Imeshindikana kupakia ripoti hii.',
+      'vendor.reports.pendingSync':
+          'Mauzo {n} kwenye simu hii yanasubiri kutumwa na hayamo kwenye takwimu hizi.',
+      'vendor.reports.staffDisabled':
+          'Akaunti yako imezuiwa, huwezi kupakua ripoti.',
+      'vendor.reports.export': 'Pakua',
+      'vendor.reports.exportCsv': '{section} (CSV)',
+      'vendor.reports.exportPdf': 'Muhtasari (PDF)',
+      'vendor.reports.exportLang': 'Upakuaji unatumia {language}.',
+      'vendor.reports.preparing': 'Inaandaa…',
+      'vendor.reports.exported': 'Ripoti imepakuliwa.',
+      'vendor.reports.exportFailed':
+          'Imeshindikana kupakua ripoti. Jaribu tena.',
+      'vendor.reports.exportTooLarge':
+          'Ripoti hii ni kubwa mno kupakua. Chagua kipindi kifupi zaidi.',
+      'vendor.reports.a11y.exportRow':
+          'Pakua {section} kama {format} kwa {period}',
+      'vendor.reports.a11y.card':
+          'Kadi ya ripoti ya {section}. {summary}. Fungua maelezo',
       // Vendor tools · S5 (rasimu: kwa ukaguzi wa mzungumzaji asilia).
       'kyc.item.vat_certificate': 'Cheti cha VAT',
-      'kyc.doc.intro.vat_certificate': 'Cheti chako cha usajili wa VAT kutoka TRA. Ikiwa tu umesajiliwa kwa VAT.',
-      'vendor.tax.kycTinInvalid': 'TIN iliyo kwenye uthibitisho wako si TIN ya tarakimu 9. Irekebishe kwenye kituo cha uthibitisho, kisha uhifadhi tena.',
-      'vendor.documents.rateLimited': 'Majaribio ni mengi mno. Subiri sekunde {n}.',
+      'kyc.doc.intro.vat_certificate':
+          'Cheti chako cha usajili wa VAT kutoka TRA. Ikiwa tu umesajiliwa kwa VAT.',
+      'vendor.tax.kycTinInvalid':
+          'TIN iliyo kwenye uthibitisho wako si TIN ya tarakimu 9. Irekebishe kwenye kituo cha uthibitisho, kisha uhifadhi tena.',
+      'vendor.documents.rateLimited':
+          'Majaribio ni mengi mno. Subiri sekunde {n}.',
       'vendor.doc.orderCancelled': 'Oda hii imeghairiwa.',
       'vendor.doc.orderCancelledOn': 'Imeghairiwa tarehe {date}',
       'vendor.doc.orderCancelledBadge': 'Imeghairiwa',
       'vendor.documents.a11y.openPdf': 'Fungua PDF ya {title} {number}',
-      'vendor.tax.tinReadOnlyA11y': 'TIN, haiwezi kubadilishwa, kutoka kwenye uthibitisho wako',
+      'vendor.tax.tinReadOnlyA11y':
+          'TIN, haiwezi kubadilishwa, kutoka kwenye uthibitisho wako',
       'vendor.documents.shareTitle': 'Tuma {title} {number}',
       'vendor.documents.share': 'Tuma',
       'vendor.documents.language': 'Lugha ya hati',
-      'vendor.documents.privacyNote': 'Yeyote mwenye kiungo ataweza kuona hati hii: jina la mteja, bidhaa na kiasi. Namba za simu hazionyeshwi kamwe.',
+      'vendor.documents.privacyNote':
+          'Yeyote mwenye kiungo ataweza kuona hati hii: jina la mteja, bidhaa na kiasi. Namba za simu hazionyeshwi kamwe.',
       'vendor.documents.whatsapp': 'WhatsApp',
       'vendor.documents.sms': 'SMS',
       'vendor.documents.copyLink': 'Nakili kiungo',
       'vendor.documents.copied': 'Kiungo kimenakiliwa',
-      'vendor.documents.linkReady': 'Kiungo kiko tayari. Unaweza kukinakili au kukizima hapa.',
+      'vendor.documents.linkReady':
+          'Kiungo kiko tayari. Unaweza kukinakili au kukizima hapa.',
       'vendor.documents.creating': 'Inatengeneza kiungo…',
       'vendor.documents.sendPdf': 'Tuma PDF',
       'vendor.documents.openPdf': 'Fungua PDF',
@@ -11114,24 +12516,35 @@ class FFLocale extends ChangeNotifier {
       'vendor.documents.lang.sw': 'SW',
       'vendor.documents.revoke': 'Zima',
       'vendor.documents.revokeAll': 'Zima viungo vyote',
-      'vendor.documents.revokeConfirm': 'Zima kiungo hiki? Yeyote mwenye kiungo hiki hataweza tena kuona hati. Huwezi kurudisha.',
-      'vendor.documents.revokeAllConfirm': 'Zima viungo vyote {n}? Walio navyo hawataweza tena kuona hati. Huwezi kurudisha.',
+      'vendor.documents.revokeConfirm':
+          'Zima kiungo hiki? Yeyote mwenye kiungo hiki hataweza tena kuona hati. Huwezi kurudisha.',
+      'vendor.documents.revokeAllConfirm':
+          'Zima viungo vyote {n}? Walio navyo hawataweza tena kuona hati. Huwezi kurudisha.',
       'vendor.documents.revoked': 'Kiungo kimezimwa',
-      'vendor.documents.revokeFailed': 'Imeshindikana kuzima kiungo. Jaribu tena.',
-      'vendor.documents.noLinks': 'Bado hakuna viungo. Viungo hutengenezwa unapotuma kwa WhatsApp, SMS au Nakili kiungo.',
-      'vendor.documents.needsNumber': 'Mauzo haya bado hayana namba ya risiti. Unaweza kuyatuma kama maandishi.',
+      'vendor.documents.revokeFailed':
+          'Imeshindikana kuzima kiungo. Jaribu tena.',
+      'vendor.documents.noLinks':
+          'Bado hakuna viungo. Viungo hutengenezwa unapotuma kwa WhatsApp, SMS au Nakili kiungo.',
+      'vendor.documents.needsNumber':
+          'Mauzo haya bado hayana namba ya risiti. Unaweza kuyatuma kama maandishi.',
       'vendor.documents.offline': 'Viungo na PDF vinahitaji intaneti.',
-      'vendor.documents.voidedNote': 'Hati zilizobatilishwa haziwezi kutumwa. Viungo vilivyokwisha kutumwa vinaonyesha kuwa imebatilishwa.',
-      'vendor.documents.createFailed': 'Imeshindikana kutengeneza kiungo. Jaribu tena.',
-      'vendor.documents.unavailable': 'Viungo bado havipatikani. Kwa sasa tuma kama maandishi.',
-      'vendor.documents.noWhatsApp': 'WhatsApp haipo kwenye kifaa hiki. Kiungo kimenakiliwa badala yake.',
-      'vendor.documents.noSms': 'SMS haikuweza kufunguka kwenye kifaa hiki. Kiungo kimenakiliwa badala yake.',
+      'vendor.documents.voidedNote':
+          'Hati zilizobatilishwa haziwezi kutumwa. Viungo vilivyokwisha kutumwa vinaonyesha kuwa imebatilishwa.',
+      'vendor.documents.createFailed':
+          'Imeshindikana kutengeneza kiungo. Jaribu tena.',
+      'vendor.documents.unavailable':
+          'Viungo bado havipatikani. Kwa sasa tuma kama maandishi.',
+      'vendor.documents.noWhatsApp':
+          'WhatsApp haipo kwenye kifaa hiki. Kiungo kimenakiliwa badala yake.',
+      'vendor.documents.noSms':
+          'SMS haikuweza kufunguka kwenye kifaa hiki. Kiungo kimenakiliwa badala yake.',
       'vendor.documents.noAccess': 'Huna ruhusa ya kuona hati hii.',
       'vendor.documents.viewTitle': 'Hati',
       'vendor.documents.view': 'Tazama hati',
       'vendor.documents.downloadPdf': 'Pakua PDF',
       'vendor.documents.invoice': 'Ankara',
-      'vendor.documents.invoiceAfterPayment': 'Ankara itapatikana baada ya oda kulipwa.',
+      'vendor.documents.invoiceAfterPayment':
+          'Ankara itapatikana baada ya oda kulipwa.',
       'vendor.documents.notFound': 'Hati haikupatikana.',
       'vendor.documents.loadFailed': 'Imeshindikana kupakia hati.',
       'vendor.documents.a11y.whatsapp': 'Tuma {title} {number} kwa WhatsApp',
@@ -11174,7 +12587,8 @@ class FFLocale extends ChangeNotifier {
       'vendor.doc.statusPayLater': 'Mkopo',
       'vendor.doc.statusPaidInFull': 'Imelipwa yote',
       'vendor.doc.statusCancelled': 'Imebatilishwa',
-      'vendor.doc.cancelled': 'Imebatilishwa tarehe {date}. {business} imebatilisha hati hii.',
+      'vendor.doc.cancelled':
+          'Imebatilishwa tarehe {date}. {business} imebatilisha hati hii.',
       'vendor.doc.receivedBy': 'Malipo yamepokelewa na {business}.',
       'vendor.doc.notFiscal': 'Hii si risiti ya kodi ya TRA.',
       'vendor.doc.tin': 'TIN {tin}',
@@ -11195,27 +12609,38 @@ class FFLocale extends ChangeNotifier {
       'vendor.tax.certUploaded': 'Cheti kimeongezwa. Hifadhi ili kikaguliwe.',
       'vendor.tax.uploading': 'Inapakia…',
       'vendor.tax.uploadFailed': 'Imeshindikana kupakia. Jaribu tena.',
-      'vendor.tax.caseLocked': 'Uthibitisho wako unakaguliwa. Ongeza cheti baada ya ukaguzi kukamilika.',
-      'vendor.tax.statusNone': 'Hujasajiliwa kwa VAT. Hati zako hazionyeshi VAT.',
-      'vendor.tax.statusPending': 'Inasubiri ukaguzi. VAT na TIN/VRN yako zitaonekana kwenye hati baada ya FitFlex kukagua cheti chako.',
-      'vendor.tax.statusVerified': 'Imethibitishwa tarehe {date}. VAT, TIN na VRN zinaonekana kwenye hati zako.',
+      'vendor.tax.caseLocked':
+          'Uthibitisho wako unakaguliwa. Ongeza cheti baada ya ukaguzi kukamilika.',
+      'vendor.tax.statusNone':
+          'Hujasajiliwa kwa VAT. Hati zako hazionyeshi VAT.',
+      'vendor.tax.statusPending':
+          'Inasubiri ukaguzi. VAT na TIN/VRN yako zitaonekana kwenye hati baada ya FitFlex kukagua cheti chako.',
+      'vendor.tax.statusVerified':
+          'Imethibitishwa tarehe {date}. VAT, TIN na VRN zinaonekana kwenye hati zako.',
       'vendor.tax.statusRejected': 'Haikukubaliwa: {reason}',
-      'vendor.tax.certNotStanding': 'Cheti chako cha VAT hakikubaliki tena. VAT inasimama kwenye mauzo mapya hadi utume kipya.',
+      'vendor.tax.certNotStanding':
+          'Cheti chako cha VAT hakikubaliki tena. VAT inasimama kwenye mauzo mapya hadi utume kipya.',
       'vendor.tax.sendAgain': 'Tuma tena',
-      'vendor.tax.changePending': 'Taarifa mpya zinasubiri ukaguzi. Taarifa zako za sasa zitaendelea kuonekana kwenye hati hadi hapo.',
-      'vendor.tax.howItWorks': 'VAT itahesabiwa kwenye mauzo ya dukani na hati kuanzia siku taarifa zako zitakapothibitishwa.',
+      'vendor.tax.changePending':
+          'Taarifa mpya zinasubiri ukaguzi. Taarifa zako za sasa zitaendelea kuonekana kwenye hati hadi hapo.',
+      'vendor.tax.howItWorks':
+          'VAT itahesabiwa kwenye mauzo ya dukani na hati kuanzia siku taarifa zako zitakapothibitishwa.',
       'vendor.tax.pastUnchanged': 'Mauzo na hati za zamani hazibadiliki.',
-      'vendor.tax.appUnchanged': 'Bei za app na kamisheni ya FitFlex hazibadiliki.',
+      'vendor.tax.appUnchanged':
+          'Bei za app na kamisheni ya FitFlex hazibadiliki.',
       'vendor.tax.pricesInclude': 'Bei zako zinajumuisha VAT.',
-      'vendor.tax.stopConfirm': 'Acha kuonyesha VAT? Mauzo mapya hayatakuwa na VAT. Hati za zamani hazibadiliki.',
+      'vendor.tax.stopConfirm':
+          'Acha kuonyesha VAT? Mauzo mapya hayatakuwa na VAT. Hati za zamani hazibadiliki.',
       'vendor.tax.stop': 'Zima VAT',
       'vendor.tax.save': 'Hifadhi',
       'vendor.tax.saved': 'Imehifadhiwa. Tutaikagua hivi karibuni.',
       'vendor.tax.saveFailed': 'Imeshindikana kuhifadhi. Jaribu tena.',
       'vendor.tax.failed': 'Imeshindikana kupakia taarifa zako za kodi.',
-      'vendor.tax.ownerOnly': 'Mmiliki wa biashara pekee ndiye anaweza kubadilisha taarifa za kodi.',
+      'vendor.tax.ownerOnly':
+          'Mmiliki wa biashara pekee ndiye anaweza kubadilisha taarifa za kodi.',
       'vendor.tax.noAccess': 'Huna ruhusa ya kuona taarifa za kodi.',
-      'vendor.tax.changedElsewhere': 'Taarifa hizi zimebadilishwa kwenye kifaa kingine. Tumezipakia upya.',
+      'vendor.tax.changedElsewhere':
+          'Taarifa hizi zimebadilishwa kwenye kifaa kingine. Tumezipakia upya.',
       'vendor.tax.discardBody': 'Acha mabadiliko yako ya taarifa za kodi?',
       'vendor.tax.discard': 'Acha',
       'vendor.tax.reason.unreadable': 'Cheti hakisomeki',
@@ -11224,7 +12649,8 @@ class FFLocale extends ChangeNotifier {
       'vendor.tax.reason.not_vat_certificate': 'Hiki si cheti cha VAT',
       'vendor.tax.reason.other': 'Nyingine',
       'vendor.product.vatCode': 'Msimbo wa VAT',
-      'vendor.product.vatHint': 'Inatumika kwenye mauzo ya dukani na hati pekee.',
+      'vendor.product.vatHint':
+          'Inatumika kwenye mauzo ya dukani na hati pekee.',
       'vendor.product.vatA11y': 'Msimbo wa VAT wa {product}',
       'vendor.product.vatInvalid': 'Chagua msimbo wa VAT kwenye orodha.',
       'vendor.vat.A': 'A · Kiwango cha kawaida {rate}',
@@ -11238,6 +12664,95 @@ class FFLocale extends ChangeNotifier {
       'shop.invoice.download': 'Pakua PDF',
       'shop.invoice.failed': 'Imeshindikana kupakia ankara.',
       'inbox.open.tax': 'Fungua taarifa za kodi',
+      // Maombi ya mashirika kukuongeza kwa namba ya akaunti
+      // (fitflex-functions#241). Swahili drafts for native review.
+      'memberRequests.title': 'Maombi kutoka kwa mashirika',
+      'memberRequests.intro':
+          'Mashirika haya yameomba kukuongeza kwenye FitFlex. Hakuna kinachoshirikiwa wala kubadilika hadi ukubali.',
+      'memberRequests.empty.title': 'Hakuna maombi yanayosubiri',
+      'memberRequests.empty.body':
+          'Shirika likiomba kukuongeza, ombi litaonekana hapa ili ukubali au ukatae.',
+      'memberRequests.loadFailed': 'Imeshindikana kupakia maombi',
+      'memberRequests.ask.beneficiary':
+          'Linataka kukuongeza kwenye mpango wake wa afya',
+      'memberRequests.ask.org_user':
+          'Linataka kukupa nafasi ya {role} kwenye portal yake ya FitFlex',
+      'memberRequests.ask.employee_link':
+          'Linataka kuunganisha akaunti yako ya FitFlex na taarifa zako za mfanyakazi',
+      'memberRequests.group': 'Kundi: {group}',
+      'memberRequests.sees': '{org} litaona nini',
+      'memberRequests.seesUnknown':
+          'Hatukuweza kupakia kile {org} litaona. Wasiliana nao kabla ya kukubali.',
+      'memberRequests.willSee': 'Litaona: {items}',
+      'memberRequests.wontSee': 'Halitaona: {items}',
+      'memberRequests.item.name': 'jina lako',
+      'memberRequests.item.email': 'barua pepe yako',
+      'memberRequests.item.role': 'nafasi yako',
+      'memberRequests.item.activity': 'shughuli zako',
+      'memberRequests.item.gym_visits': 'kuingia gym',
+      'memberRequests.item.trainer_sessions': 'vipindi vya trainer',
+      'memberRequests.item.workouts': 'mazoezi',
+      'memberRequests.item.steps': 'hatua',
+      'memberRequests.item.active_minutes': 'dakika za mazoezi',
+      'memberRequests.item.challenge_progress': 'maendeleo kwenye challenge',
+      'memberRequests.item.sponsored_benefit_use':
+          'jinsi unavyotumia benefits linazolipia',
+      'memberRequests.item.weight': 'uzito',
+      'memberRequests.item.height': 'urefu',
+      'memberRequests.item.calories': 'kalori',
+      'memberRequests.item.notes': 'maelezo',
+      'memberRequests.item.routes': 'njia zako',
+      'memberRequests.item.other_sponsors': 'unachopewa na wadhamini wengine',
+      'memberRequests.gets': 'Utakachopata',
+      'memberRequests.noBenefits':
+          'Bado hakuna benefits za kuonyesha. Baadhi huongezwa baada ya kujiunga.',
+      'memberRequests.upTo': 'Hadi {limit} {period}',
+      'memberRequests.sponsorTier': 'Pasi ya {tier}',
+      'memberRequests.funding.full': 'Mdhamini wako analipa yote',
+      'memberRequests.funding.sponsor_fixed':
+          'Mdhamini wako analipa hadi kiasi fulani; wewe unalipa kilichobaki',
+      'memberRequests.funding.sponsor_percentage':
+          'Mdhamini wako analipa sehemu; wewe unalipa kilichobaki',
+      'memberRequests.funding.beneficiary_fixed':
+          'Unalipa kiasi fulani; mdhamini wako analipa kilichobaki',
+      'memberRequests.funding.none': 'Hakuna cha kulipa',
+      'memberRequests.subsidy.fully_funded': 'Mwajiri wako analipa yote',
+      'memberRequests.subsidy.copay_50_50':
+          'Mwajiri wako analipa 50%, wewe unalipa 50%',
+      'memberRequests.subsidy.copay_70_30':
+          'Mwajiri wako analipa 70%, wewe unalipa 30%',
+      'memberRequests.subsidy.employee_paid': 'Unalipia pasi mwenyewe',
+      'memberRequests.role.owner': 'mmiliki',
+      'memberRequests.role.admin': 'msimamizi',
+      'memberRequests.role.manager': 'meneja',
+      'memberRequests.role.finance': 'fedha',
+      'memberRequests.role.hr': 'rasilimali watu',
+      'memberRequests.role.analyst': 'mchambuzi',
+      'memberRequests.role.viewer': 'mtazamaji',
+      'memberRequests.expires': 'Jibu kabla ya {date}',
+      'memberRequests.accept': 'Kubali',
+      'memberRequests.decline': 'Kataa',
+      'memberRequests.confirm.title': 'Ukubali na kushiriki na {org}?',
+      'memberRequests.confirm.action': 'Kubali na shiriki',
+      'memberRequests.accepted': 'Tayari. Sasa umeunganishwa na {org}.',
+      'memberRequests.declined': 'Umekataa. Hakuna kilichoshirikiwa na {org}.',
+      'memberRequests.error.expired':
+          'Muda wa ombi hili umeisha. Omba shirika likutumie jipya.',
+      'memberRequests.error.notPending': 'Ombi hili tayari limejibiwa.',
+      'memberRequests.error.gone': 'Ombi hili halipatikani tena.',
+      'memberRequests.error.noLongerValid':
+          'Ombi hili halitumiki tena. Omba shirika likutumie jipya.',
+      'memberRequests.error.alreadyLinked':
+          'Tayari umeunganishwa na shirika hili.',
+      'memberRequests.card.one': 'Shirika linataka kukuongeza',
+      'memberRequests.card.many': 'Mashirika {n} yanataka kukuongeza',
+      'memberRequests.card.body': 'Hakuna kinachoshirikiwa hadi ukubali.',
+      'memberRequests.card.action': 'Angalia maombi',
+      'memberRequests.backToBenefits': 'Angalia benefits zangu',
+      'inbox.open.memberRequests': 'Angalia ombi',
+      'inbox.open.benefits': 'Angalia benefits zangu',
+      // Draft for native review.
+      'memberRequests.item.past_activity': 'shughuli zako za kabla hujajiunga',
       // ── Events: member discovery (Marathon & Running Events S2, spec §11.9)
       // TODO(sw-review): every line in this block is a draft pending native review.
       'a11y.clear': 'Futa',
@@ -11291,23 +12806,31 @@ class FFLocale extends ChangeNotifier {
       'events.card.free': 'Bure',
       'events.card.verifiedOrganizer': 'Mwandaaji aliyethibitishwa',
       'events.availability.open': 'Wazi', // TODO(sw-review): noun class
-      'events.availability.closing_soon': 'Inafungwa karibuni', // TODO(sw-review): noun class
+      'events.availability.closing_soon':
+          'Inafungwa karibuni', // TODO(sw-review): noun class
       'events.availability.sold_out': 'Zimeisha', // TODO(sw-review): noun class
       'events.availability.closed': 'Umefungwa', // TODO(sw-review): noun class
-      'events.availability.not_yet_open': 'Hufunguliwa {date}', // TODO(sw-review): noun class
-      'events.availability.cancelled': 'Limeghairiwa', // TODO(sw-review): noun class
-      'events.availability.in_progress': 'Linaendelea', // TODO(sw-review): noun class
-      'events.availability.completed': 'Limekamilika', // TODO(sw-review): noun class
+      'events.availability.not_yet_open':
+          'Hufunguliwa {date}', // TODO(sw-review): noun class
+      'events.availability.cancelled':
+          'Limeghairiwa', // TODO(sw-review): noun class
+      'events.availability.in_progress':
+          'Linaendelea', // TODO(sw-review): noun class
+      'events.availability.completed':
+          'Limekamilika', // TODO(sw-review): noun class
       'events.loadMore': 'Pakia zaidi',
       'events.loadMoreFailed': 'Imeshindikana kupakia zaidi.',
       'events.loadingMore': 'Inapakia zaidi',
       'events.empty.title': 'Hakuna matukio bado',
       'events.empty.body': 'Matukio yajayo ya kukimbia yataonekana hapa.',
       'events.empty.filtered.title': 'Hakuna tukio linalolingana',
-      'events.empty.filtered.body': 'Jaribu vichujio vichache au tarehe nyingine.',
+      'events.empty.filtered.body':
+          'Jaribu vichujio vichache au tarehe nyingine.',
       'events.empty.filtered.action': 'Futa vichujio',
-      'events.offline.body': 'Tunaonyesha tulichonacho. Vuta kuonyesha upya ukirudi mtandaoni.',
-      'events.offline.savedCopy': 'Tunaonyesha nakala iliyohifadhiwa saa {time}',
+      'events.offline.body':
+          'Tunaonyesha tulichonacho. Vuta kuonyesha upya ukirudi mtandaoni.',
+      'events.offline.savedCopy':
+          'Tunaonyesha nakala iliyohifadhiwa saa {time}',
       'events.unavailable.title': 'Matukio bado hayapatikani',
       'events.unavailable.body': 'Sehemu hii ya FitFlex imezimwa kwa sasa.',
       'events.detail.starts': 'Huanza',
@@ -11335,14 +12858,16 @@ class FFLocale extends ChangeNotifier {
       'events.detail.eligibility': 'Masharti ya kustahiki',
       'events.detail.minAge': 'Umri wa chini: miaka {n}',
       'events.detail.accessibility': 'Ufikivu',
-      'events.detail.kit': 'Kuchukua vifaa vya mbio', // TODO(sw-review): kit term
+      'events.detail.kit':
+          'Kuchukua vifaa vya mbio', // TODO(sw-review): kit term
       'events.detail.schedule': 'Ratiba',
       'events.detail.sponsors': 'Wadhamini',
       'events.detail.contact': 'Mawasiliano',
       'events.detail.terms': 'Masharti',
       'events.detail.refundPolicy': 'Sera ya marejesho',
       'events.detail.policy.no_refund': 'Hakuna marejesho',
-      'events.detail.policy.refund_until_close': 'Marejesho kamili hadi usajili ufungwe',
+      'events.detail.policy.refund_until_close':
+          'Marejesho kamili hadi usajili ufungwe',
       'events.detail.showAll': 'Onyesha yote',
       'events.detail.updated': 'Imesasishwa {date}',
       'events.detail.report': 'Ripoti tatizo',
@@ -11366,16 +12891,23 @@ class FFLocale extends ChangeNotifier {
       'events.share': 'Shiriki tukio',
       'events.share.text': '{title} · {date} · {url}',
       'error.reason.eventNotFound': 'Tukio hili halipatikani.',
-      'error.reason.featureDisabled': 'Sehemu hii ya FitFlex imezimwa kwa sasa.',
-      'error.reason.rateLimited': 'Maombi mengi mno. Subiri kidogo kisha ujaribu tena.',
+      'error.reason.featureDisabled':
+          'Sehemu hii ya FitFlex imezimwa kwa sasa.',
+      'error.reason.rateLimited':
+          'Maombi mengi mno. Subiri kidogo kisha ujaribu tena.',
       'error.reason.notYourOrganizer': 'Tukio hili ni la mwandaaji mwingine.',
       'error.reason.organizerNotActive': 'Mwandaaji bado hajathibitishwa.',
       'error.reason.organizerSuspended': 'Akaunti ya mwandaaji imesimamishwa.',
-      'error.reason.invalidTransition': 'Tukio limebadilika. Onyesha upya kisha ujaribu tena.',
-      'error.reason.versionConflict': 'Tukio hili limebadilishwa mahali pengine. Pakia upya kuona la sasa.',
-      'error.reason.eventInvalid': 'Baadhi ya maelezo ya tukio hayapo au si sahihi.',
-      'error.reason.changeNoteRequired': 'Ujumbe wa mabadiliko unahitajika kwa hariri hii.',
-      'error.reason.hasRegistrations': 'Washiriki wameshasajiliwa. Omba FitFlex ighairi tukio hili.',
+      'error.reason.invalidTransition':
+          'Tukio limebadilika. Onyesha upya kisha ujaribu tena.',
+      'error.reason.versionConflict':
+          'Tukio hili limebadilishwa mahali pengine. Pakia upya kuona la sasa.',
+      'error.reason.eventInvalid':
+          'Baadhi ya maelezo ya tukio hayapo au si sahihi.',
+      'error.reason.changeNoteRequired':
+          'Ujumbe wa mabadiliko unahitajika kwa hariri hii.',
+      'error.reason.hasRegistrations':
+          'Washiriki wameshasajiliwa. Omba FitFlex ighairi tukio hili.',
       'error.reason.organizerExists': 'Akaunti hii tayari ina mwandaaji.',
       'error.reason.personaNotAllowed': 'Akaunti hii haiwezi kuwa mwandaaji.',
       'error.reason.alreadyStaff': 'Mtu huyu tayari yuko kwenye wafanyakazi.',
@@ -11383,6 +12915,722 @@ class FFLocale extends ChangeNotifier {
       'error.reason.cannotInviteSelf': 'Huwezi kujialika mwenyewe.',
       'error.reason.cannotRemoveOwner': 'Mmiliki hawezi kuondolewa.',
       'error.reason.kycIncomplete': 'Uthibitisho bado haujakamilika.',
+      // ── Events S3 (spec §5.12). TODO(sw-review): native review pending.
+      'common.copy': 'Nakili',
+      'inbox.open.eventOrder': 'Ona oda',
+      'inbox.open.eventRegistration': 'Ona usajili',
+      'inbox.open.eventClaim': 'Ni wewe?',
+      'inbox.open.eventTickets': 'Ona tiketi',
+      'inbox.open.eventPay': 'Jaribu tena',
+      'inbox.open.eventTicket': 'Onyesha tiketi',
+      'inbox.open.eventRegistrations': 'Ona usajili',
+      'events.register.unavailable': 'Usajili bado haupatikani',
+      'events.register.title': 'Jisajili',
+      'events.register.step': 'Hatua {n} kati ya 4 · {name}',
+      'events.register.step.tickets': 'Tiketi',
+      'events.register.step.who': 'Nani anajisajili',
+      'events.register.step.participants': 'Washiriki',
+      'events.register.step.review': 'Kagua',
+      'events.register.continue': 'Endelea',
+      'events.register.back': 'Rudi',
+      'events.register.review': 'Kagua oda',
+      'events.register.place': 'Weka oda · {amount}',
+      'events.register.placeFree': 'Jisajili · Bure',
+      'events.register.minAge': 'Umri {n}+',
+      'events.register.left': 'zimebaki {n}',
+      'events.register.estimate': 'Washiriki {n} · {amount} (makadirio)',
+      'events.register.maxPerOrder':
+          'Hadi watu {max} kwa oda moja. Kwa zaidi, tumia oda ya shirika.',
+      'events.register.qty': 'Idadi ya {ticket}',
+      'events.register.qty.add': 'Ongeza moja',
+      'events.register.qty.remove': 'Punguza moja',
+      'events.register.mode.self': 'Mimi mwenyewe',
+      'events.register.mode.self.hint': 'Imejazwa kutoka wasifu wako',
+      'events.register.mode.selfOthers': 'Mimi na wengine',
+      'events.register.mode.selfOthers.hint':
+          'Wewe unachukua tiketi moja; ongeza wengine',
+      'events.register.mode.others': 'Watu wengine',
+      'events.register.mode.others.hint': 'Unalipa, huukimbii',
+      'events.register.mode.team': 'Timu',
+      'events.register.mode.team.hint':
+          'Unda timu au jiunge kwa kutumia msimbo',
+      'events.register.mode.whoRuns': 'Nani anakimbia?',
+      'events.register.mode.corporate': 'Kampuni / shirika',
+      'events.register.mode.corporate.body':
+          'Unasajili wafanyakazi wa kampuni au shirika? Tumia tovuti ya FitFlex (kuingia kwa shirika au HR) kupakia orodha na kulipa kama shirika.',
+      'events.register.mode.corporate.copy': 'Nakili kiungo cha tovuti',
+      'events.team.create': 'Unda timu',
+      'events.team.join': 'Jiunge kwa msimbo',
+      'events.team.name': 'Jina la timu',
+      'events.team.type': 'Aina ya timu',
+      'events.team.type.club': 'Klabu',
+      'events.team.type.community': 'Jumuiya / marafiki',
+      'events.team.type.corporate': 'Shirika',
+      'events.team.code': 'Msimbo wa timu',
+      'events.team.check': 'Angalia',
+      'events.team.found': '{name} · wanachama {n}/{max}',
+      'events.team.members': 'Wanachama',
+      'events.team.captain': 'Kapteni',
+      'events.team.shareCode': 'Shiriki msimbo huu na timu yako',
+      'events.team.yourCode': 'Msimbo wa timu yako',
+      'events.participant.title':
+          'Mshiriki {i} kati ya {n} · {category} · {ticket}',
+      'events.participant.toFix': '{n} za kurekebisha',
+      'events.participant.firstName': 'Jina la kwanza',
+      'events.participant.lastName': 'Jina la ukoo',
+      'events.participant.phone': 'Namba ya simu',
+      'events.participant.email': 'Barua pepe',
+      'events.participant.dob': 'Tarehe ya kuzaliwa',
+      'events.participant.dob.hint':
+          'Inahitajika kuthibitisha sharti la umri la {category}',
+      'events.participant.gender': 'Jinsia',
+      'events.participant.gender.none': 'Sipendi kusema',
+      'events.participant.notSet': 'Haijawekwa',
+      'events.participant.emergency': 'Mtu wa kuwasiliana naye dharura',
+      'events.participant.emergency.name': 'Jina la mtu',
+      'events.participant.emergency.phone': 'Namba ya mtu',
+      'events.participant.emergency.note':
+          'Hushirikiwa na mwandaaji kwa usalama tu; haionyeshwi kwenye orodha',
+      'events.participant.emergency.copy': 'Tumia mtu wangu wa dharura',
+      'events.participant.kitSize': 'Saizi ya fulana / vifaa vya mbio',
+      'events.participant.fromProfile':
+          'Kutoka kwenye wasifu wako uliothibitishwa',
+      'events.participant.needVerified':
+          'Ongeza namba ya simu iliyothibitishwa ili ujisajili',
+      'events.participant.editProfile': 'Hariri wasifu',
+      'events.participant.consent':
+          'Nina ruhusa ya mtu huyu kumsajili na kushiriki taarifa zake na FitFlex na mwandaaji',
+      'events.participant.you': 'Wewe',
+      'events.participant.willInvite': 'Ataalikwa kuchukua tiketi',
+      'events.participant.required': 'inahitajika',
+      'events.participant.complete': 'imekamilika',
+      'events.draft.saved': 'Rasimu imehifadhiwa kwenye simu hii',
+      'events.draft.resume.title': 'Uendelee pale ulipoishia?',
+      'events.draft.resume.body':
+          'Ulianza kujisajili kwa {event} tarehe {date}.',
+      'events.draft.resume.continue': 'Endelea',
+      'events.draft.resume.discard': 'Anza upya',
+      'events.review.tickets': 'Tiketi',
+      'events.review.discount': 'Punguzo',
+      'events.review.fee': 'Ada ya huduma',
+      'events.review.total': 'Jumla',
+      'events.review.participants': 'Washiriki',
+      'events.review.team': 'Timu',
+      'events.review.refund': 'Sera ya marejesho',
+      'events.review.terms': 'Masharti ya tukio',
+      'events.review.accept': 'Nakubali masharti ya tukio na sera ya marejesho',
+      'events.review.hold':
+          'Tiketi zako zitashikiliwa kwa dakika {n} baada ya kuweka oda. Maelekezo ya malipo yatakuja kwenye toleo lijalo la app; hutatozwa sasa.',
+      'events.review.fix': 'Baadhi ya taarifa zinahitaji kurekebishwa',
+      'events.review.goBack': 'Rudi nyuma',
+      'events.review.priceChanged':
+          'Bei zimebadilishwa. Tafadhali kagua jumla mpya.',
+      'events.review.onlyLeft': 'Zimebaki {n} tu za {ticket}',
+      'events.review.changeTickets': 'Badilisha tiketi',
+      'events.review.uncertain.title': 'Hatukuweza kuthibitisha oda yako',
+      'events.review.uncertain.body':
+          'Angalia Usajili wangu kabla ya kujaribu tena, ili usijisajili mara mbili.',
+      'events.review.openMine': 'Fungua Usajili wangu',
+      'events.review.tryAgain': 'Jaribu tena',
+      'events.order.title': 'Oda {ref}',
+      'events.order.heldUntil': 'Zimeshikiliwa hadi {time}',
+      'events.order.left': 'zimebaki dakika {n}',
+      'events.order.leftSeconds': 'zimebaki sekunde {n}',
+      'events.order.payment.title': 'Maelekezo ya malipo',
+      'events.order.payment.soon.title': 'Malipo bado hayapatikani',
+      'events.order.payment.soon.body':
+          'Tiketi zako zimeshikiliwa kwa muda mfupi. Malipo bado hayajafunguliwa, kwa hiyo hutatozwa sasa. Hakuna kinachothibitishwa hadi ulipe na FitFlex ithibitishe.',
+      'events.order.places': 'tiketi {n}',
+      'events.order.cancel': 'Ghairi oda',
+      'events.order.cancel.title': 'Ughairi oda hii?',
+      'events.order.cancel.body': 'Tiketi zilizoshikiliwa zitarudi sokoni.',
+      'events.order.cancel.reason': 'Sababu',
+      'events.order.cancel.reason.changed_mind': 'Nimebadili nia',
+      'events.order.cancel.reason.wrong_details': 'Taarifa si sahihi',
+      'events.order.cancel.reason.duplicate': 'Nimesajili mara mbili',
+      'events.order.cancel.reason.other': 'Nyingine',
+      'events.order.cancelled.snack': 'Oda imeghairiwa. Tiketi zimeachiliwa.',
+      'events.order.expired.body':
+          'Muda wa kushikilia umeisha kabla ya malipo. Tiketi zimeachiliwa.',
+      'events.order.cancelled.body': 'Uliighairi oda hii tarehe {date}.',
+      'events.order.cancelledByAdmin': 'Oda hii imeghairiwa na FitFlex.',
+      'events.order.again': 'Jisajili tena',
+      'events.order.gone.title': 'Oda hii haipatikani',
+      'events.order.remove': 'Ondoa',
+      'events.status.awaiting': 'Inasubiri malipo',
+      'events.status.order.awaiting': 'Inasubiri malipo',
+      'events.status.expired': 'Muda umeisha',
+      'events.status.cancelled': 'Imeghairiwa',
+      'events.status.refunded': 'Imerejeshwa',
+      'events.status.order.cancelled': 'Imeghairiwa',
+      'events.status.order.expired': 'Imeisha muda',
+      'events.status.confirmed': 'Imethibitishwa',
+      'events.status.order.paid': 'Imelipwa',
+      'events.claim.chip.claimed': 'Imechukuliwa',
+      'events.claim.chip.pending': 'Inasubiri kuchukuliwa',
+      'events.mine.title': 'Usajili wangu',
+      'events.mine.registrations': 'Usajili',
+      'events.mine.orders': 'Oda',
+      'events.mine.empty.title': 'Bado hakuna usajili',
+      'events.mine.empty.body': 'Matukio unayojisajili yataonekana hapa.',
+      'events.mine.empty.action': 'Angalia matukio',
+      'events.mine.orders.empty': 'Bado hakuna oda',
+      'events.mine.byYou': 'Umesajiliwa na wewe',
+      'events.mine.by': 'Umesajiliwa na {name}',
+      'events.claim.isThisYou': 'Ni wewe?',
+      'events.claim.card':
+          '{purchaser} amemsajili {name} kwa {event} · {category}',
+      'events.claim.matches': 'Inalingana na {type} yako inayoishia {masked}',
+      'events.claim.type.phone': 'namba',
+      'events.claim.type.email': 'barua pepe',
+      'events.claim.yes': 'Ni mimi',
+      'events.claim.no': 'Si mimi',
+      'events.claim.title': 'Chukua tiketi yako',
+      'events.claim.needVerified':
+          'Ili kuichukua, {type} inayoishia {masked} lazima iwe imethibitishwa kwenye akaunti yako.',
+      'events.claim.confirm': 'Ndiyo, ni mimi — chukua tiketi yangu',
+      'events.claim.done': 'Tiketi imechukuliwa',
+      'events.claim.verifyNow': 'Thibitisha sasa',
+      'events.claim.verify': 'Thibitisha {masked} ili uchukue',
+      'events.claim.emailNotYet':
+          'Uthibitisho wa barua pepe bado haupatikani kwenye app; muombe {name} atumie namba yako ya simu badala yake.',
+      'events.claim.signIn': 'Ingia ili uchukue tiketi yako',
+      'events.reg.title': 'Usajili',
+      'events.reg.ticket': 'Tiketi',
+      'events.reg.ticketSoon':
+          'Tiketi yako itaonekana hapa baada ya malipo yako kuthibitishwa',
+      'events.reg.awaiting': 'Inasubiri malipo · imeshikiliwa hadi {time}',
+      'events.reg.openOrder': 'Fungua oda {ref}',
+      'events.reg.participant': 'Mshiriki',
+      'events.reg.event': 'Tukio',
+      'events.reg.order': 'Oda',
+      'events.reg.consent': 'Umesajiliwa na {name} tarehe {date}',
+      'events.reg.consent.self': 'Umejisajili tarehe {date}',
+      'events.reg.remove': 'Mwondoe mtu huyu kwenye oda',
+      'events.reg.remove.title': 'Umwondoe {name}?',
+      'events.reg.remove.body':
+          'Tiketi yake itarudi sokoni na jumla ya oda itapungua.',
+      'events.reg.remove.lastLine':
+          'Hii ndiyo tiketi ya mwisho ya {ticket} kwenye oda. Ghairi oda yote na ujisajili tena.',
+      'events.reg.askPurchaser':
+          'Muombe {name} abadilishe au aghairi usajili huu',
+      'events.reg.gone.title': 'Usajili huu haupatikani',
+      'events.validation.required': 'Inahitajika',
+      'events.validation.name_invalid': 'Herufi tu, hadi herufi 80',
+      'events.validation.phone_invalid': 'Namba hiyo ya simu si sahihi',
+      'events.validation.email_invalid': 'Barua pepe hiyo si sahihi',
+      'events.validation.contact_required':
+          'Ongeza namba ya simu au barua pepe',
+      'events.validation.dob_invalid': 'Weka tarehe halisi (MWAKA-MM-SS)',
+      'events.validation.dob_required':
+          'Tarehe ya kuzaliwa inahitajika kwa kundi hili',
+      'events.validation.age_not_eligible':
+          'Lazima awe na miaka {minAge}+ siku ya tukio (atakuwa na {age})',
+      'events.validation.duplicate_participant':
+          'Tayari amesajiliwa kwenye kundi hili',
+      'events.validation.listed_twice': 'Ameorodheshwa mara mbili',
+      'events.validation.self_contact_mismatch':
+          'Tumia mawasiliano yako uliyothibitisha kwa ajili yako mwenyewe',
+      'events.validation.emergency_contact_invalid':
+          'Weka jina na namba sahihi',
+      'events.validation.kit_size_invalid': 'Chagua saizi',
+      'events.validation.gender_invalid': 'Chagua chaguo',
+      'events.validation.not_collected': 'Haikusanywi kwa tukio hili',
+      'events.validation.consent_basis_invalid': 'Angalia nani anajisajili',
+      'events.validation.unknown': 'Angalia sehemu hii',
+      'error.reason.capacityUnavailable': 'Hakuna tiketi za kutosha zilizobaki',
+      'error.reason.eventNotOpen': 'Tukio hili halijafunguliwa kwa usajili',
+      'error.reason.registrationClosed': 'Usajili umefungwa',
+      'error.reason.saleClosed': 'Tiketi hiyo haiuzwi tena',
+      'error.reason.saleNotOpen': 'Tiketi hiyo bado haijaanza kuuzwa',
+      'error.reason.ticketUnavailable': 'Tiketi hiyo haipatikani',
+      'error.reason.quantityOutOfRange':
+          'Chagua kati ya {min} na {max} za tiketi hiyo',
+      'error.reason.tooManyParticipants': 'Hadi watu {max} kwa oda moja',
+      'error.reason.termsNotAccepted': 'Kubali masharti ili uendelee',
+      'error.reason.consentVersionStale':
+          'Maandishi ya ridhaa yamebadilika. Yakague kisha ujaribu tena.',
+      'error.reason.participantInvalid':
+          'Baadhi ya taarifa za washiriki zinahitaji kurekebishwa',
+      'error.reason.priceChanged': 'Bei zimebadilishwa. Kagua jumla mpya.',
+      'error.reason.orderNotFound': 'Hatukupata oda hiyo',
+      'error.reason.registrationNotFound': 'Hatukupata usajili huo',
+      'error.reason.invalidReason': 'Chagua sababu',
+      'error.reason.teamNotFound':
+          'Hakuna timu yenye msimbo huo kwa tukio hili',
+      'error.reason.teamFull': 'Timu hiyo imejaa',
+      'error.reason.teamDisbanded': 'Timu hiyo haipo tena',
+      'error.reason.teamNameTaken':
+          'Timu yenye jina hilo tayari ipo kwa tukio hili',
+      'error.reason.alreadyClaimed':
+          'Tiketi hii tayari imechukuliwa na akaunti nyingine. Wasiliana na msaada.',
+      'error.reason.claimTokenInvalid': 'Kiungo hiki si sahihi',
+      'error.reason.claimTokenExpired':
+          'Kiungo hiki kimeisha muda. Muombe aliyekusajili akutumie kipya.',
+      'error.reason.claimNotVerified':
+          'Thibitisha mawasiliano hayo kwenye akaunti yako ili uchukue tiketi hii',
+      'error.reason.claimOwnContact':
+          'Ulisajili tiketi hii kwa mtu mwingine ukitumia mawasiliano yako',
+      'error.reason.registrationClosedState': 'Usajili huu haupo tena',
+      // Events S4: payments, tickets, cancel and refund (spec §5.12)
+      // TODO(sw-review): Swahili drafts pending native review (D22, D23).
+      'events.pay.title': 'Lipia tiketi zako',
+      'events.pay.cta': 'Lipa · {amount}',
+      'events.pay.cta.a11y': 'Lipa {amount} kwa oda {ref}',
+      'events.pay.manual.badge': 'Uthibitisho wa mkono',
+      'events.pay.manual.banner.title':
+          'Uthibitisho wa mkono: FitFlex inakagua malipo yako',
+      'events.pay.manual.banner.body':
+          'Unalipa Lipa Namba kwa simu yako, kisha unatutumia namba ya muamala. Wafanyakazi wa FitFlex wanaikagua kwenye taarifa ya Lipa Namba, ndani ya saa {hours}. Tiketi zako zitaonekana baada ya FitFlex kuthibitisha.',
+      'events.pay.recap.title': 'Oda yako',
+      'events.pay.exact': 'Lipa kiasi kamili: {amount}',
+      'events.pay.confirmCheck':
+          'Nimelipa {amount} kwa {name} kutoka namba hii',
+      'events.pay.submit': 'Nimelipa · Tuma ikaguliwe',
+      'events.pay.sending': 'Inatuma…',
+      'events.pay.sent.snack': 'Imetumwa ikaguliwe',
+      'events.pay.late.banner.title': 'Muda wa kushikilia umeisha',
+      'events.pay.late.banner.body':
+          'Tuma namba ya muamala ikiwa tayari umelipa tu. Tutajaribu kukuwekea tiketi tena; zikiwa zimeisha tutakurejeshea pesa zote. Usilipe tena.',
+      'events.pay.late.cta': 'Tuma namba yangu ya muamala',
+      'events.pay.alreadyPaid': 'Nimeshalipa',
+      'events.pay.uncertain.title': 'Hatukuweza kujua kama imetumwa',
+      'events.pay.uncertain.body':
+          'Angalia oda yako kabla ya kutuma tena. Ikisema "Malipo yametumwa kukaguliwa", umemaliza.',
+      'events.pay.uncertain.open': 'Fungua oda yangu',
+      'events.pay.provider.cta': 'Lipa kwa mtandao wa simu · {amount}',
+      'events.pay.provider.unavailable':
+          'Malipo kwa mtandao wa simu hayapatikani kwa sasa. Jaribu tena baadaye.',
+      'events.pay.free.cta': 'Thibitisha usajili wa bure',
+      'events.pay.free.done': 'Umesajiliwa. Tiketi zako ziko tayari.',
+      'events.pay.submitted.title': 'Malipo yametumwa kukaguliwa',
+      'events.pay.submitted.body':
+          'Tumepokea namba yako ya muamala {ref}. FitFlex huthibitisha malipo ndani ya saa {hours}. Tiketi zako zimeshikiliwa hadi {time}.',
+      'events.pay.submitted.sent': 'Imetumwa {time} kutoka {phone}',
+      'events.pay.submitted.via': 'Imetumwa kwa {method}, tarehe {date}',
+      'events.pay.method.bank_transfer': 'uhamisho wa benki',
+      'events.pay.method.mobile_money': 'mtandao wa simu',
+      'events.pay.submitted.noCancel':
+          'Huwezi kughairi tunapokagua malipo yako.',
+      'events.pay.processing.title': 'Idhinisha malipo kwenye simu yako',
+      'events.pay.processing.body':
+          'Tumeomba {phone} kuthibitisha {amount}. Ukurasa huu utasasishwa mtandao ukijibu.',
+      'events.pay.rejected.title': 'Hatukuweza kuthibitisha malipo yako',
+      'events.pay.rejected.reference_not_found':
+          'Hatukupata namba hiyo ya muamala kwenye taarifa yetu. Iangalie na uitume tena.',
+      'events.pay.rejected.amount_mismatch':
+          'Kiasi tulichopokea kilikuwa tofauti na {amount}.',
+      'events.pay.rejected.wrong_account':
+          'Malipo yalikwenda namba nyingine. Lipa kwa Lipa Namba iliyoonyeshwa, kisha tuma namba mpya ya muamala.',
+      'events.pay.rejected.duplicate_reference':
+          'Namba hiyo ya muamala ilishatumika kwa malipo mengine.',
+      'events.pay.rejected.other':
+          'Tafadhali angalia taarifa na ujaribu tena, au wasiliana na msaada.',
+      'events.pay.rejected.retry': 'Jaribu tena · zimeshikiliwa hadi {time}',
+      'events.pay.rejected.noHold':
+          'Muda wa kushikilia umeisha, kwa hiyo tiketi zimeachiliwa.',
+      'events.pay.failed.title': 'Malipo yameshindikana',
+      'events.pay.failed.body':
+          'Ikiwa pesa zilitoka kwenye simu yako, wasiliana na msaada ukiwa na {ref}.',
+      'events.pay.confirmed.title': 'Malipo yamethibitishwa',
+      'events.pay.confirmed.body': 'Tiketi {n} za {event} ziko tayari.',
+      'events.pay.confirmed.body.one': 'Tiketi 1 ya {event} iko tayari.',
+      'events.pay.confirmed.open': 'Fungua tiketi zangu',
+      'events.pay.expiredPending.title':
+          'Muda wa kushikilia uliisha tulipokuwa tukikagua',
+      'events.pay.expiredPending.body':
+          'Malipo yako yakithibitishwa tutajaribu kukuwekea tiketi tena; zikiwa zimeisha tutakurejeshea pesa zote. Usilipe tena.',
+      'events.pay.refundDue.title': 'Tiketi hazikuwepo',
+      'events.pay.refundDue.body':
+          'Tumepokea malipo yako lakini hatukuweza kuhifadhi tiketi zako. Marejesho kamili ya {amount} yanaandaliwa.',
+      'events.order.status.partiallyCancelled': 'Imeghairiwa kwa sehemu',
+      'events.order.status.refundPending': 'Inasubiri marejesho',
+      'events.order.status.refunded': 'Imerejeshwa',
+      'events.payment.status.submitted': 'Inakaguliwa',
+      'events.payment.status.processing': 'Inasubiri simu yako',
+      'events.payment.status.rejected': 'Imekataliwa',
+      'events.payment.status.none': 'Bado haijalipwa',
+      'events.payment.status.failed': 'Imeshindikana',
+      'events.payment.status.needs_attention': 'Inakaguliwa',
+      'events.tickets.title': 'Tiketi',
+      'events.tickets.section.upcoming': 'Zijazo',
+      'events.tickets.section.past': 'Zilizopita na zilizoghairiwa',
+      'events.tickets.empty.title': 'Bado hakuna tiketi',
+      'events.tickets.empty.body':
+          'Tiketi zako zitaonekana hapa malipo yako yakithibitishwa.',
+      'events.ticket.ready': 'Tiketi iko tayari',
+      'events.ticket.show': 'Onyesha tiketi',
+      'events.ticket.number': 'Namba ya tiketi {code}',
+      'events.ticket.copy': 'Nakili namba ya tiketi',
+      'events.ticket.qr.a11y':
+          'Msimbo wa QR wa kuingia wa {name}, {category}. Hauwezi kusomwa kwa sauti; namba ya tiketi yako ni {code}.',
+      'events.ticket.scan.soon':
+          'Skani ya kuchukua vifaa vya mbio bado haijaanza. Hifadhi msimbo huu; mwandaaji atathibitisha wapi na lini utachukua vifaa vyako vya mbio.',
+      'events.ticket.scan.live':
+          'Onyesha msimbo huu mahali pa kuchukua vifaa vya mbio.',
+      'events.ticket.cached':
+          'Imehifadhiwa kwenye simu hii · ilisasishwa {time}',
+      'events.ticket.offline':
+          'Hakuna intaneti. Inaonyesha msimbo uliohifadhiwa.',
+      'events.ticket.handover':
+          'Unaweza kuona tiketi hii hadi {name} aichukue.',
+      'events.ticket.claimedElsewhere':
+          '{name} ameichukua tiketi hii. Sasa iko kwenye app yake.',
+      'events.ticket.revoked.cancelled': 'Tiketi imeghairiwa',
+      'events.ticket.revoked.event_cancelled': 'Tukio limeghairiwa',
+      'events.ticket.revoked.refunded': 'Tiketi imerejeshewa',
+      'events.ticket.revoked.body': 'Msimbo huu hautumiki tena.',
+      'events.ticket.rotate': 'Pata msimbo mpya',
+      'events.ticket.rotate.title': 'Pata msimbo mpya?',
+      'events.ticket.rotate.body':
+          'Msimbo wa zamani utaacha kufanya kazi, pamoja na picha za skrini. Tumia hii ukiwa umeushiriki kimakosa.',
+      'events.ticket.rotate.done': 'Msimbo mpya uko tayari',
+      'events.cancelpaid.title': 'Ghairi na rejesha',
+      'events.cancelpaid.policy': 'Sera ya marejesho ya mwandaaji',
+      'events.cancelpaid.refund.full': 'Utarejeshewa {amount}.',
+      'events.cancelpaid.refund.partial':
+          'Utarejeshewa {amount} ({percent}% ya {paid}).',
+      'events.cancelpaid.refund.until':
+          'Marejesho haya yanapatikana hadi {date}.',
+      'events.cancelpaid.refund.none':
+          'Hakuna marejesho. Sera ya mwandaaji haitoi marejesho kwa wakati huu.',
+      'events.cancelpaid.refund.review':
+          'Sera ya mwandaaji inahitaji mtu akague ombi lako. Tutakuambia kiasi utakachorejeshewa.',
+      'events.cancelpaid.ack': 'Naelewa sitarejeshewa pesa',
+      'events.cancelpaid.reason': 'Kwa nini unaghairi?',
+      'events.cancelpaid.cta.refund': 'Ghairi · rejesha {amount}',
+      'events.cancelpaid.cta.none': 'Ghairi tiketi · bila marejesho',
+      'events.cancelpaid.cta.review': 'Omba marejesho',
+      'events.cancelpaid.warn':
+          'Hili haliwezi kutenduliwa. Tiketi yako inaweza kupewa mtu mwingine.',
+      'events.cancelpaid.changed':
+          'Kiasi cha marejesho kimebadilika. Kiangalie na uthibitishe tena.',
+      'events.cancelpaid.done.refund':
+          'Tiketi imeghairiwa. Marejesho ya {amount} yameombwa.',
+      'events.cancelpaid.done.none': 'Tiketi imeghairiwa.',
+      'events.cancelpaid.done.review':
+          'Ombi limetumwa. Tutajibu hivi karibuni.',
+      'events.cancelpaid.blocked.payment_submitted':
+          'Bado tunakagua malipo yako. Unaweza kughairi yakishathibitishwa.',
+      'events.cancelpaid.blocked.refund_in_progress':
+          'Marejesho ya tiketi hii tayari yanaendelea.',
+      'events.cancelpaid.blocked.cancellation_window_closed':
+          'Kughairi kumefungwa kwa tukio hili.',
+      'events.cancelpaid.blocked.event_cancelled':
+          'Tukio hili limeghairiwa. FitFlex itarejesha ulicholipa.',
+      'events.cancelpaid.blocked.purchaser_only':
+          '{name} aliyelipa pekee ndiye anaweza kughairi tiketi hii.',
+      'events.cancelpaid.blocked.kit_collected':
+          'Vifaa vya mbio vya tiketi hii vimeshachukuliwa.',
+      'events.refund.title': 'Marejesho',
+      'events.refund.status.requested': 'Imeombwa',
+      'events.refund.status.approved': 'Imeidhinishwa',
+      'events.refund.status.paid': 'Imetumwa',
+      'events.refund.status.rejected': 'Hayajaidhinishwa',
+      'events.refund.eta':
+          'FitFlex hutuma marejesho kwa mkono, kwa kawaida ndani ya siku {days} za kazi.',
+      'events.refund.sentTo': 'Imetumwa kwa {phone} · namba ya muamala {ref}',
+      'events.refund.rejected.help':
+          'Wasiliana na msaada ikiwa unadhani si sahihi.',
+      'events.refund.scope.registration': 'Tiketi moja',
+      'events.refund.scope.order': 'Oda nzima',
+      'events.refund.scope.event_cancelled': 'Tukio limeghairiwa',
+      'events.refund.scope.unfulfilled_payment': 'Malipo yatarejeshwa',
+      'events.invite.sent': 'Mwaliko ulitumwa {date}',
+      'events.invite.notSent': 'Hakuna mwaliko uliotumwa bado',
+      'events.invite.resend': 'Tuma mwaliko tena',
+      'events.invite.resend.body':
+          'Hii inatengeneza kiungo kipya. Kiungo cha zamani kitaacha kufanya kazi.',
+      'events.invite.resent': 'Mwaliko umetumwa',
+      'events.invite.limit': 'Umefikia kikomo cha kutuma mwaliko huu.',
+      'events.claim.paid':
+          'Tiketi hii imelipiwa na kuthibitishwa. Ichukue upate tiketi yako.',
+      'error.reason.payment_in_progress':
+          'Malipo ya oda hii tayari yanaendelea.',
+      'error.reason.order_not_payable': 'Oda hii haiwezi kulipiwa tena.',
+      'error.reason.hold_expired': 'Muda wa kushikilia tiketi hizi umeisha.',
+      'error.reason.payment_submitted': 'Tunakagua malipo yako.',
+      'error.reason.tickets_unavailable': 'Malipo hayapatikani kwa sasa.',
+      'error.reason.unsupported_currency':
+          'Oda hii haiwezi kulipiwa kwenye app.',
+      'error.reason.payment_mode_mismatch':
+          'Njia ya kulipa imebadilika. Tunasasisha.',
+      'error.reason.ticket_revoked': 'Tiketi hii imeghairiwa.',
+      'error.reason.ticket_not_issued': 'Tiketi yako bado haijawa tayari.',
+      'error.reason.refund_changed': 'Kiasi cha marejesho kimebadilika.',
+      'error.reason.refund_in_progress': 'Marejesho yanaendelea tayari.',
+      'error.reason.cancellation_window_closed': 'Kughairi kumefungwa.',
+      'error.reason.purchaser_only':
+          'Aliyelipa pekee ndiye anaweza kufanya hili.',
+      'error.reason.resend_limit_reached': 'Umefikia kikomo cha mwaliko huu.',
+      'events.pay.back': 'Rudi kwenye oda',
+      'events.pay.offline':
+          'Hakuna intaneti. Unganisha ili kutuma taarifa za malipo.',
+      'events.pay.unavailable': 'Malipo hayapatikani kwa sasa',
+      'events.pay.rejected.note': 'Maelezo kutoka FitFlex: {note}',
+      'events.pay.rejected.noteEn':
+          'Maelezo kutoka FitFlex (kwa Kiingereza): {note}',
+      'events.pay.processing.check': 'Angalia hali',
+      'events.pay.announce.confirmed':
+          'Malipo yamethibitishwa. Tiketi {n} ziko tayari.',
+      'events.pay.announce.confirmed.one':
+          'Malipo yamethibitishwa. Tiketi 1 iko tayari.',
+      'events.pay.attention.title': 'Tunachunguza malipo yako',
+      'events.pay.attention.body':
+          'FitFlex inakagua malipo haya. Usilipe tena. Tiketi zako zisipoweza kuhifadhiwa, tutakurejeshea pesa zote.',
+      'events.pay.hold.ended': 'Muda wa kushikilia umeisha',
+      'events.pay.slowWait':
+          'Bado tunasubiri intaneti. Ukurasa huu utasasishwa ukijibu.',
+      'events.ticket.preparing': 'Tiketi yako inaandaliwa',
+      'events.ticket.view': 'Angalia usajili',
+      'events.ticket.claimedElsewhere.generic':
+          'Mtu mwingine ameichukua tiketi hii. Sasa iko kwenye app yake.',
+      'events.ticket.copied': 'Namba ya tiketi imenakiliwa',
+      'events.ticket.loading': 'Inapakia tiketi yako',
+      'events.cancelpaid.summary': 'Unaghairi',
+      'events.cancelpaid.paid': 'Ulilipa {amount}',
+      'events.cancelpaid.confirm.title': 'Ghairi tiketi hii?',
+      'events.cancelpaid.confirm.titleOrder': 'Ghairi oda hii yote?',
+      'events.cancelpaid.keep': 'Weka tiketi yangu',
+      'events.cancelpaid.purchaserFallback': 'mtu aliyekusajili',
+      'events.cancelpaid.loading': 'Tunakagua marejesho yako',
+      'events.cancelpaid.reasonHint': 'Chagua sababu',
+      'events.refund.requestedOn': 'Imeombwa {date}',
+      'events.refund.support': 'Wasiliana na msaada ukiwa na kumbukumbu {ref}.',
+      'events.invite.expiredAsk': 'Mwombe {name} atume mwaliko tena.',
+      'pay.product.eventOrder': 'Tiketi za tukio',
+      'momo.successBody.eventOrder':
+          'Asante. Usajili wako umethibitishwa na tiketi zako ziko kwenye Tiketi zangu.',
+      'error.reason.event_cancelled': 'Tukio hili limeghairiwa.',
+      'error.reason.kit_collected':
+          'Vifaa vya mbio vya tiketi hii vimeshachukuliwa.',
+      'error.reason.order_not_confirmed': 'Oda hii bado haijathibitishwa.',
+      'error.reason.event_unavailable':
+          'Tukio hili haliwezi kupokea malipo au mabadiliko kwa sasa.',
+      'error.reason.rotate_required':
+          'Msimbo wa tiketi hii unahitaji kubadilishwa. Pata msimbo mpya ili uendelee.',
+      'error.reason.removeWholeLine': 'Ghairi oda yote ili uondoe tiketi hii',
+      'error.reason.invalidTransition.events':
+          'Oda hii haiwezi kubadilishwa tena',
+      'error.reason.idempotencyKeyReused':
+          'Oda hii imebadilika wakati inawekwa. Jaribu tena.',
+      'error.reason.organizationNotAllowed':
+          'Oda za shirika huwekwa kwenye tovuti ya FitFlex',
+      'error.reason.holdLimitReached':
+          'Tayari una usajili ambao haujalipwa kwa tukio hili',
+      'error.reason.multipleSelf':
+          'Tiketi moja tu kwenye oda inaweza kuwa yako',
+      'error.reason.invalidText':
+          'Baadhi ya maandishi yana herufi ambazo hatuwezi kukubali',
+      'error.reason.fieldTooLong': 'Moja ya maingizo ni marefu mno',
+      'error.reason.teamNameInvalid': 'Weka jina la timu lisilozidi herufi 120',
+      'error.reason.teamTypeInvalid': 'Chagua aina ya timu',
+      'error.reason.rawTextTooLong': 'Maandishi hayo ni marefu mno',
+      'events.review.unavailable': 'Tiketi hiyo haipatikani tena',
+      'events.review.problems': 'Oda hii haiwezi kuwekwa bado',
+      'error.reason.partnerUnder18':
+          'Lazima uwe na miaka 18 au zaidi kuwa trainer au mmiliki wa gym.',
+      'error.reason.personalDetailsUnavailable':
+          'Imeshindikana kuhifadhi taarifa binafsi kwa sasa. Jaribu tena baadaye.',
+      'error.reason.invalidGender': 'Chagua jinsia kutoka kwenye orodha.',
+      'error.reason.rateLimitedSeconds':
+          'Maombi mengi mno. Jaribu tena baada ya sekunde {seconds}.',
+      // Partner home photo and logo (spec §44.1): DRAFT Swahili, for native review.
+      'partnerMedia.title': 'Picha ya mwanzo na nembo',
+      'partnerMedia.entryHint': 'Inaonekana juu ya ukurasa wako wa mwanzo',
+      'partnerMedia.entryHintVendor':
+          'Inaonekana kwenye kichupo chako cha Bidhaa',
+      'partnerMedia.entryForGym': 'Kwa {gym}',
+      'partnerMedia.gym': 'Gym: {gym}',
+      'partnerMedia.chooseGym': 'Chagua gym',
+      'partnerMedia.preview': 'Hakiki ya ukurasa wako wa mwanzo',
+      'partnerMedia.onlyYouTeam': 'Kwa sasa ni wewe na timu yako tu mnaouona.',
+      'partnerMedia.onlyYouSelf': 'Kwa sasa ni wewe tu unayeuona.',
+      'partnerMedia.hero': 'Picha ya mwanzo',
+      'partnerMedia.logo': 'Nembo',
+      'partnerMedia.default': 'Inatumia picha ya FitFlex',
+      'partnerMedia.noLogo': 'Bado hakuna nembo',
+      'partnerMedia.live': 'Inaonekana kwenye ukurasa wako wa mwanzo',
+      'partnerMedia.addedOn': 'Imeongezwa {date}',
+      'partnerMedia.addedByFitflex': 'Imeongezwa na FitFlex {date}',
+      'partnerMedia.bright':
+          'Picha ina mwanga mwingi: itafifishwa kidogo nyuma ya maandishi yako.',
+      'partnerMedia.upload': 'Pakia picha',
+      'partnerMedia.uploadLogo': 'Pakia nembo',
+      'partnerMedia.uploadNew': 'Pakia picha mpya',
+      'partnerMedia.uploadNewLogo': 'Pakia nembo mpya',
+      'partnerMedia.replace': 'Badilisha',
+      'partnerMedia.remove': 'Ondoa',
+      'partnerMedia.removeHeroTitle': 'Uondoe picha yako ya mwanzo?',
+      'partnerMedia.removeHeroBody':
+          'Ukurasa wako wa mwanzo utaonyesha tena picha ya FitFlex. Picha itafutwa kutoka FitFlex.',
+      'partnerMedia.removeLogoTitle': 'Uondoe nembo yako?',
+      'partnerMedia.removeLogoBody':
+          'Nembo yako itafutwa kutoka FitFlex na haitaonekana tena kwenye ukurasa wako wa mwanzo.',
+      'partnerMedia.removed': 'Imeondolewa.',
+      'partnerMedia.liveNowHero': 'Picha yako mpya ya mwanzo inaonekana sasa.',
+      'partnerMedia.liveNowLogo': 'Nembo yako inaonekana sasa.',
+      'partnerMedia.replaceNote':
+          'Mpya itachukua nafasi ya iliyopo mara moja, na ya zamani itafutwa.',
+      'partnerMedia.reviewNote':
+          'Inaonekana kwenye ukurasa wako wa mwanzo mara moja. FitFlex hukagua picha mpya na inaweza kuondoa picha inayovunja kanuni zilizo hapa chini. Tutakueleza sababu.',
+      'partnerMedia.vendorNote':
+          'Wanachama wanaona nembo na bango la duka lako kutoka {editProfile}. Picha na nembo hizi zinaonekana kwenye ukurasa wako wa mwanzo tu.',
+      'partnerMedia.takenDownHero': 'FitFlex imeondoa picha yako ya mwanzo.',
+      'partnerMedia.takenDownLogo': 'FitFlex imeondoa nembo yako.',
+      'partnerMedia.takenDownReason': 'Sababu: {reason}',
+      'partnerMedia.takenDownNote': 'Ujumbe kutoka FitFlex: {note}',
+      'partnerMedia.takenDownNext':
+          'Ukurasa wako wa mwanzo unatumia picha ya FitFlex hadi upakie mpya.',
+      'partnerMedia.takenDownNextLogo':
+          'Ukurasa wako wa mwanzo hautaonyesha nembo hadi upakie mpya.',
+      'partnerMedia.reason.inappropriate':
+          'Haifai, kwa mfano uchi, vurugu au maudhui ya kuudhi.',
+      'partnerMedia.reason.rights': 'Inaonekana huenda huna haki ya kuitumia.',
+      'partnerMedia.reason.other_brand':
+          'Inaonyesha nembo au bango la chapa nyingine.',
+      'partnerMedia.reason.not_own_logo':
+          'Haionekani kuwa nembo ya biashara yako.',
+      'partnerMedia.reason.person_request':
+          'Mtu aliye kwenye picha aliomba iondolewe.',
+      'partnerMedia.reason.quality':
+          'Haiko wazi, imenyooshwa au ni vigumu kuitambua.',
+      'partnerMedia.reason.other': 'Sababu nyingine (tazama ujumbe).',
+      'partnerMedia.rules.title': 'Kanuni za picha',
+      'partnerMedia.rules.own':
+          'Tumia picha uliyopiga au una haki ya kuitumia.',
+      'partnerMedia.rules.people':
+          'Watu wanaruhusiwa. Muulize kwanza mtu yeyote anayetambulika kabla ya kutumia picha yake.',
+      'partnerMedia.rules.brands':
+          'Hakuna nembo wala mabango ya chapa nyingine. Yako mwenyewe inaruhusiwa.',
+      'partnerMedia.rules.text':
+          'Usiweke maandishi kwenye picha; ukurasa wako tayari unaonyesha jina lako.',
+      'partnerMedia.rules.suitable':
+          'Hakuna kisichofaa: uchi, vurugu au maudhui ya kuudhi.',
+      'partnerMedia.rules.size':
+          'Upana wa angalau pikseli 1080. Picha za mlalo zinafaa zaidi.',
+      'partnerMedia.rules.logo':
+          'PNG, JPEG au WebP, angalau pikseli 256 upande mfupi, hadi MB 2. Nembo ya biashara yako tu.',
+      'partnerMedia.sheet.titleHero': 'Picha mpya ya mwanzo',
+      'partnerMedia.sheet.titleLogo': 'Nembo mpya',
+      'partnerMedia.sheet.gallery': 'Chagua kutoka kwenye picha zako',
+      'partnerMedia.sheet.camera': 'Piga picha',
+      'partnerMedia.sheet.file': 'Chagua faili',
+      'partnerMedia.sheet.chooseAnother': 'Chagua nyingine',
+      'partnerMedia.sheet.onPhone': 'Kwenye simu',
+      'partnerMedia.sheet.onWide': 'Kwenye skrini pana',
+      'partnerMedia.sheet.focal': 'Sehemu kuu',
+      'partnerMedia.sheet.focalHint':
+          'Gusa sehemu ya picha inayopaswa kubaki ikionekana.',
+      'partnerMedia.sheet.focalNow': 'Sehemu kuu: {position}',
+      'partnerMedia.sheet.pos.topLeft': 'Juu kushoto',
+      'partnerMedia.sheet.pos.top': 'Juu',
+      'partnerMedia.sheet.pos.topRight': 'Juu kulia',
+      'partnerMedia.sheet.pos.left': 'Kushoto',
+      'partnerMedia.sheet.pos.centre': 'Katikati',
+      'partnerMedia.sheet.pos.right': 'Kulia',
+      'partnerMedia.sheet.pos.bottomLeft': 'Chini kushoto',
+      'partnerMedia.sheet.pos.bottom': 'Chini',
+      'partnerMedia.sheet.pos.bottomRight': 'Chini kulia',
+      'partnerMedia.sheet.plate': 'Mandharinyuma ya nembo',
+      'partnerMedia.sheet.plateAuto': 'Otomatiki',
+      'partnerMedia.sheet.plateAutoIs': 'Otomatiki ({tone})',
+      'partnerMedia.sheet.plateLight': 'Nyeupe',
+      'partnerMedia.sheet.plateDark': 'Nyeusi',
+      'partnerMedia.sheet.useHero': 'Tumia picha hii',
+      'partnerMedia.sheet.useLogo': 'Tumia nembo hii',
+      'partnerMedia.sheet.uploading': 'Inapakia… {n}%',
+      'partnerMedia.sheet.preparing': 'Tunaandaa picha yako…',
+      'partnerMedia.sheet.confirmChanged':
+          'Maneno yaliyo hapa chini yamebadilika. Tafadhali yasome, kisha chagua kisanduku tena.',
+      'partnerMedia.a11y.preview':
+          'Hakiki ya ukurasa wako wa mwanzo: {photo}, {logo}',
+      'partnerMedia.a11y.yourPhoto': 'picha yako',
+      'partnerMedia.a11y.fitflexPhoto': 'picha ya FitFlex',
+      'partnerMedia.a11y.yourLogo': 'nembo yako',
+      'partnerMedia.a11y.noLogo': 'hakuna nembo',
+      'partnerMedia.a11y.currentPhoto': 'Picha yako ya sasa ya mwanzo',
+      'partnerMedia.a11y.currentLogo': 'Nembo yako ya sasa',
+      'partnerMedia.a11y.previewPhone': 'Hakiki kwenye simu',
+      'partnerMedia.a11y.previewWide': 'Hakiki kwenye skrini pana',
+      'partnerMedia.a11y.focalImage':
+          'Picha. Sehemu kuu: {position}. Gusa kuisogeza.',
+      'partnerMedia.restrictedGym':
+          'Ni mmiliki wa gym tu, au wafanyakazi wenye ruhusa ya kuhariri wasifu wa gym, wanaoweza kubadilisha hili.',
+      'partnerMedia.restrictedVendor':
+          'Ni mmiliki wa biashara au mfanyakazi mwenye haki za admin tu anayeweza kubadilisha hili.',
+      'partnerMedia.noGym':
+          'Ongeza gym kwanza. Utaweza kuweka picha na nembo yake hapa ikishaidhinishwa.',
+      'partnerMedia.off': 'Huduma hii bado haipatikani.',
+      'partnerMedia.loadError':
+          'Imeshindikana kupakia picha na nembo yako. Jaribu tena.',
+      'partnerMedia.offline':
+          'Huna mtandao. Utaweza kubadilisha picha yako ukirudi mtandaoni.',
+      'partnerMedia.error.not_your_gym': 'Huwezi kubadilisha picha za gym hii.',
+      'partnerMedia.error.acl_forbidden': 'Huna ruhusa ya kubadilisha hili.',
+      'partnerMedia.error.subject_not_found':
+          'Imeshindikana kupata wasifu huu. Rudi nyuma kisha ujaribu tena.',
+      'partnerMedia.error.rate_limited':
+          'Umepakia mara nyingi mno. Subiri dakika moja kisha ujaribu tena.',
+      'partnerMedia.error.image_too_small':
+          'Picha hii ni ndogo mno. Tumia yenye upana wa angalau pikseli {minWidth}.',
+      'partnerMedia.error.image_too_small_logo':
+          'Nembo hii ni ndogo mno. Tumia yenye angalau pikseli {minSide} upande mfupi.',
+      'partnerMedia.error.unsupported_file_type':
+          'Aina hii ya faili haikubaliki. Tumia JPEG, PNG au WebP.',
+      'partnerMedia.error.svg_not_allowed':
+          'Mafaili ya SVG hayawezi kutumika. Hifadhi nembo yako kama PNG kisha ujaribu tena.',
+      'partnerMedia.error.file_too_large':
+          'Faili hili ni kubwa mno. Kikomo ni MB {maxMb}.',
+      'partnerMedia.error.variant_over_budget':
+          'Imeshindikana kuifanya picha hii iwe ndogo vya kutosha. Jaribu picha nyingine.',
+      'partnerMedia.error.invalid_focal':
+          'Kuna hitilafu kwenye sehemu kuu. Iweke tena.',
+      'partnerMedia.error.not_editable':
+          'Hili limebadilishwa sasa hivi. Tumelipakia upya.',
+      'partnerMedia.error.image_save_failed':
+          'Imeshindikana kuhifadhi picha yako. Jaribu tena.',
+      'partnerMedia.error.image_taken_down_before':
+          'FitFlex iliondoa picha hii hii awali. Chagua nyingine.',
+      'partnerMedia.error.unknown': 'Imeshindikana ({code}). Jaribu tena.',
+      'partnerMedia.error.rate_limited_day':
+          'Umefikia kikomo cha upakiaji cha leo. Jaribu tena kesho.',
+      'partnerMedia.error.rate_limited_attempts':
+          'Majaribio mengi mno leo kwa ukurasa huu. Jaribu tena kesho.',
+      'partnerMedia.error.image_service_busy':
+          'FitFlex inaandaa picha nyingi kwa sasa. Jaribu tena baada ya sekunde chache.',
+      'partnerMedia.error.rate_limit_unavailable':
+          'Imeshindikana kukagua upakiaji wako sasa hivi. Jaribu tena baada ya dakika moja.',
+      'partnerMedia.error.too_many_pixels':
+          'Picha hii ina pikseli nyingi mno. Tumia yenye hadi megapikseli {maxMp}.',
+      'partnerMedia.error.too_large_side':
+          'Nembo hii ni kubwa mno. Tumia yenye hadi pikseli {maxSide} kila upande.',
+      'partnerMedia.error.media_not_found': 'Hii ilikuwa imeshaondolewa.',
+      'partnerMedia.error.feature_disabled': 'Huduma hii bado haipatikani.',
+      'partnerMedia.error.rights_confirmation_required':
+          'Chagua kisanduku kuthibitisha kwamba unaweza kutumia picha hii.',
+      'partnerMedia.error.own_logo_confirmation_required':
+          'Chagua kisanduku kuthibitisha kwamba hii ni nembo yako mwenyewe.',
+      'partnerMedia.error.no_file_provided':
+          'Hakuna faili lililotumwa. Chagua picha kisha ujaribu tena.',
+      'partnerMedia.error.invalid_plate':
+          'Chagua mandharinyuma ya nembo kisha ujaribu tena.',
+      'partnerMedia.error.gym_id_required': 'Chagua gym kisha ujaribu tena.',
+      'partnerMedia.error.invalid_multipart':
+          'Imeshindikana kupokea faili lote. Jaribu tena.',
+      'partnerMedia.error.unknown_field':
+          'Toleo hili la app limetuma kitu ambacho seva haikubali. Sasisha app kisha ujaribu tena.',
+      'inbox.open.brandMedia': 'Fungua picha ya mwanzo na nembo',
+      // Refused photos (fitflex-functions#273). Swahili for native review.
+      'error.reason.invalidMediaSrc':
+          'Picha hii haiwezi kutumika. Chagua picha ya PNG, JPEG au WebP kutoka kwenye simu yako.',
+      'error.reason.mediaSrcTooLarge':
+          'Picha hii ni kubwa mno. Chagua picha ndogo zaidi (hadi MB 1.4).',
+      'error.reason.uploadForbidden':
+          'Akaunti yako haiwezi kupakia picha hapa.',
+      // Swahili for native review (fitflex-functions#273).
+      'error.reason.tooManyImages':
+          'Picha ni nyingi mno. Ondoa baadhi kisha ujaribu tena.',
     },
   };
 }

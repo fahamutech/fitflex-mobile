@@ -3,8 +3,9 @@
 //
 // Privacy rules this file keeps (owner decision O-7, DD-P2-9):
 // - The phone works out the area itself, from GET /shop/areas. Only the
-//   area's id is ever sent: in the `X-FF-Area` header of GET /shop/home,
-//   and only while the last answer said near-you is available. It is
+//   area's id is ever sent: in the `X-FF-Area` header of GET /shop/home and
+//   the product list / details, and only while the last home answer said
+//   near-you is available. It is
 //   redacted from the app's own debug log (rest_log.dart).
 // - The position is read with low accuracy, used once to pick the area and
 //   then dropped. It is never stored, logged or sent anywhere.
@@ -188,30 +189,37 @@ enum ShopNearYouChoice {
 }
 
 /// The device's record for one account. Never holds coordinates.
+///
+/// The area only ever comes from [detectShopArea] (GPS matched on the phone
+/// against GET /shop/areas). There is no way to pick one by hand (owner
+/// decision 2026-10-28: "Change area" dropped).
 class ShopNearYouState {
   const ShopNearYouState({
     this.choice = ShopNearYouChoice.notAsked,
     this.areaId,
     this.areaName,
-    this.manual = false,
   });
 
   final ShopNearYouChoice choice;
 
-  /// The area last worked out (or picked), sent in `X-FF-Area`.
+  /// The area last worked out on the device, sent in `X-FF-Area`.
   final String? areaId;
 
   /// For display this session only; never stored.
   final String? areaName;
 
-  /// The area was picked by hand ("Change area") this session: the position
-  /// is not read again this session. Never stored.
-  final bool manual;
-
   static const empty = ShopNearYouState();
 
+  /// Marks a stored area as worked out on the device. A stored area without
+  /// it (kept by an older build, which also let people pick one by hand) is
+  /// dropped on read and worked out again.
+  static const _deviceSource = 'device';
+
   /// What is stored on the device: the choice and the area id only.
-  Map<String, dynamic> toJson() => {'choice': choice.name, 'areaId': ?areaId};
+  Map<String, dynamic> toJson() => {
+    'choice': choice.name,
+    if (areaId != null) ...{'areaId': areaId, 'areaSource': _deviceSource},
+  };
 
   static ShopNearYouState fromJson(Object? json) {
     if (json is! Map) return empty;
@@ -220,10 +228,14 @@ class ShopNearYouState {
       orElse: () => ShopNearYouChoice.notAsked,
     );
     final id = json['areaId']?.toString() ?? '';
+    final fromDevice = json['areaSource'] == _deviceSource;
     return ShopNearYouState(
       choice: choice,
-      // An area only means something while the choice is on.
-      areaId: choice == ShopNearYouChoice.on && id.isNotEmpty ? id : null,
+      // An area only means something while the choice is on, and only one
+      // worked out on the device counts.
+      areaId: choice == ShopNearYouChoice.on && fromDevice && id.isNotEmpty
+          ? id
+          : null,
     );
   }
 }
@@ -244,10 +256,62 @@ class ShopNearYouStore {
   /// is available (L1): the area is sent only then. Memory only.
   static final Map<String, bool> _lastAvailable = {};
 
+  /// The area to send for [userId] right now, or null: near-you on, an
+  /// area kept, and the last Shop home answer said available (L1). Used for
+  /// GET /shop/home, /shop/products and /shop/products/:id.
+  static String? areaToSend(String? userId) {
+    final state = _memory[_id(userId)];
+    if (state == null || state.choice != ShopNearYouChoice.on) return null;
+    return lastAvailable(userId) ? state.areaId : null;
+  }
+
   static bool lastAvailable(String? userId) =>
       _lastAvailable[_id(userId)] == true;
-  static void setLastAvailable(String? userId, bool available) =>
-      _lastAvailable[_id(userId)] = available;
+
+  /// Records the last Shop home answer. Flipping to available while an
+  /// area is kept bumps [changes], so screens that loaded first (Results, a
+  /// product sheet opened from a link) ask again with the area (QA2 #1).
+  static void setLastAvailable(String? userId, bool available) {
+    final was = _lastAvailable[_id(userId)] == true;
+    _lastAvailable[_id(userId)] = available;
+    if (available && !was && areaToSend(userId) != null) changes.value++;
+  }
+
+  /// Whether a Shop home answer was seen for [userId] this session.
+  static bool availabilityKnown(String? userId) =>
+      _lastAvailable.containsKey(_id(userId));
+
+  static final Map<String, Future<void>> _probes = {};
+
+  /// For a screen that loads without the Shop home (cold Results, a
+  /// `?product=` link): once a session, and only when near-you is on with a
+  /// kept area, ask GET /shop/home (without the area) whether near-you is
+  /// available. Nothing location-derived is sent. Failures are ignored.
+  static Future<void> probe(
+    ApiClient api,
+    String? userId, {
+    String? mode,
+  }) async {
+    final state = await load(userId);
+    if (state.choice != ShopNearYouChoice.on || state.areaId == null) return;
+    if (availabilityKnown(userId)) return;
+    final id = _id(userId);
+    return _probes[id] ??= () async {
+      try {
+        final json = await api.shopHome(mode: mode);
+        final near = ShopNearYou.fromJson(json['nearYou']);
+        final p = json['personalisation'];
+        if (near?.available == false || (p is Map && p['enabled'] == false)) {
+          setLastAvailable(userId, false);
+          await clear(userId);
+        } else {
+          setLastAvailable(userId, near?.available == true);
+        }
+      } catch (_) {
+        // Unknown: nothing is sent until the Shop home answers.
+      }
+    }();
+  }
 
   /// Bumped whenever an account's choice or area changes, so a Shop home
   /// kept alive in another tab reloads with the new area (or without one).
@@ -314,6 +378,7 @@ class ShopNearYouStore {
     _memory.clear();
     _readThisSession.clear();
     _lastAvailable.clear();
+    _probes.clear();
   }
 }
 
@@ -367,7 +432,8 @@ class ShopAreas {
   /// The areas already loaded for [api] this session, else null.
   static List<ShopArea>? peek(ApiClient api) => _cache[api];
 
-  /// Like [load] but throws on failure (the vendor pickers say so).
+  /// Like [load] but throws on failure (the vendor pickers say so). Vendor
+  /// "Where you sell" only: shoppers never pick an area.
   static Future<List<ShopArea>> loadOrThrow(ApiClient api) async {
     final cached = _cache[api];
     if (cached != null && cached.isNotEmpty) return cached;

@@ -433,9 +433,11 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
   void initState() {
     super.initState();
     addRootBackHandler(_onRootBack);
+    ShopNearYouStore.changes.addListener(_nearChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _load();
       _loadAreas();
+      _probeNearYou();
     });
     _trackingTimer = Timer.periodic(
       const Duration(seconds: 10),
@@ -447,6 +449,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
   void dispose() {
     _heroFocus.dispose();
     removeRootBackHandler(_onRootBack);
+    ShopNearYouStore.changes.removeListener(_nearChanged);
     // "Added to cart" belongs to the shop: it does not follow to other tabs.
     // After this frame, and only if the app (and its messenger) is still
     // there: on a full teardown the messenger goes too.
@@ -564,7 +567,9 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
     final messenger = FFSnack.of(context);
     final gone = context.tr('shop.home.productGone');
     try {
-      final json = await AppScope.of(context).api.shopProduct(id);
+      final json = await AppScope.of(
+        context,
+      ).api.shopProduct(id, areaId: _areaToSend);
       if (!mounted) return;
       await _openProduct(ShopProduct.fromJson(json));
     } catch (_) {
@@ -701,6 +706,57 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
     }
   }
 
+  /// The near-you area to send with product requests (QA #4), or null.
+  String? get _areaToSend => ShopNearYouStore.areaToSend(
+    AppScope.of(context).auth.user?['id']?.toString(),
+  );
+
+  /// The area changed or went (S3): the product list asks again, so
+  /// "Delivers to your area" follows it.
+  void _nearChanged() {
+    if (!mounted) return;
+    if (_catalogueLoaded) unawaited(_load());
+    // An open product sheet asks again too, for its badge (QA2 #1).
+    final open = _sheetProduct;
+    if (open != null) unawaited(_refetchOpenProduct(open));
+  }
+
+  /// The product shown in the open details sheet (null when closed).
+  ValueNotifier<ShopProduct>? _sheetProduct;
+
+  Future<void> _refetchOpenProduct(ValueNotifier<ShopProduct> open) async {
+    final id = open.value.id;
+    try {
+      final fresh = ShopProduct.fromJson(
+        await AppScope.of(context).api.shopProduct(id, areaId: _areaToSend),
+      );
+      if (!mounted || _sheetProduct != open || open.value.id != id) return;
+      open.value =
+          open.value.deliversToViewerArea &&
+              !fresh.deliversToViewerArea &&
+              _areaToSend != null
+          ? fresh.withDeliversToViewerArea()
+          : fresh;
+    } catch (_) {
+      // Keep what is shown.
+    }
+  }
+
+  /// Cold Results or a `?product=` link (no Shop home on screen): learn
+  /// once whether near-you is available, so the area can be sent (QA2 #1).
+  /// The answer bumps the store's `changes`, which refetches.
+  void _probeNearYou() {
+    if (!mounted || _showHome) return;
+    final scope = AppScope.of(context);
+    unawaited(
+      ShopNearYouStore.probe(
+        scope.api,
+        scope.auth.user?['id']?.toString(),
+        mode: widget.mode.wire,
+      ),
+    );
+  }
+
   /// Whether the shop has areas (S3). A backend without them (404) keeps
   /// the distance filter.
   Future<void> _loadAreas() async {
@@ -718,7 +774,8 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
     final catalogue = _needsCatalogue;
     try {
       final results = await Future.wait([
-        if (catalogue) AppScope.of(context).api.listShopProducts(),
+        if (catalogue)
+          AppScope.of(context).api.listShopProducts(areaId: _areaToSend),
         AppScope.of(context).api.myShopOrders(),
       ]);
       if (!mounted) return;
@@ -989,9 +1046,12 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
       );
     }
     var detailedProduct = product;
+    final sentArea = _areaToSend;
     try {
       detailedProduct = ShopProduct.fromJson(
-        await AppScope.of(context).api.shopProduct(product.id),
+        await AppScope.of(
+          context,
+        ).api.shopProduct(product.id, areaId: sentArea),
       );
     } on ApiException {
       // The cached catalogue record still supports cart actions offline.
@@ -1008,19 +1068,34 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
     );
     _openProductId = product.id;
     _pushUrl();
+    final shown = _sheetProduct = ValueNotifier(detailedProduct);
+    // The area became sendable while it loaded (a link opened before the
+    // Shop home answered): ask again for the badge (QA2 #1).
+    if (_areaToSend != sentArea) unawaited(_refetchOpenProduct(shown));
     final buyNow = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      showDragHandle: true,
+      // The handle is drawn by the sheet and kept out of semantics: the
+      // framework's handle is read as an untranslated "Dismiss" (QA2 #3).
+      // Swiping down and the sheet's own Close button still close it.
+      showDragHandle: false,
+      // Read as "Close", not the framework's "Scrim" (QA2 #3).
+      barrierLabel: context.tr('common.close'),
       builder: (sheet) {
         _sheetContext = sheet;
-        return _ProductDetailsSheet(
-          product: detailedProduct,
-          showDistance: !_areasExist,
-          onAdd: () => _addToCart(detailedProduct),
+        // Follows a refetch (the area became sendable after it opened).
+        return ValueListenableBuilder<ShopProduct>(
+          valueListenable: shown,
+          builder: (_, product, _) => _ProductDetailsSheet(
+            product: product,
+            showDistance: !_areasExist,
+            onAdd: () => _addToCart(product),
+          ),
         );
       },
     );
+    if (_sheetProduct == shown) _sheetProduct = null;
+    shown.dispose();
     _sheetContext = null;
     _openProductId = null;
     if (!mounted) return;
@@ -2107,6 +2182,13 @@ class _ProductTile extends StatelessWidget {
                         label: context.tr('shop.outOfStock'),
                       ),
                     ),
+                  // S3 (QA #4): the seller delivers to the shopper's area.
+                  if (product.deliversToViewerArea)
+                    Padding(
+                      key: Key('shop-delivers-${product.id}'),
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: const ShopDeliversBadge(),
+                    ),
                   if (shopOnSale(product)) ...[
                     // Sale price in Fuel, the original struck through below;
                     // read once as "Sale price …, was …".
@@ -2564,6 +2646,23 @@ class _ProductDetailsSheet extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.all(FFTokens.spacingLg),
           children: [
+            // Decorative handle (QA2 #3): the same look as the framework's,
+            // not announced.
+            ExcludeSemantics(
+              child: Center(
+                child: Container(
+                  key: const Key('shop-product-handle'),
+                  width: 32,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(FFTokens.radiusFull),
+                  ),
+                ),
+              ),
+            ),
             Align(
               alignment: Alignment.centerRight,
               child: IconButton(

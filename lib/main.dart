@@ -13,13 +13,16 @@ import 'router.dart';
 import 'screens/account_recovery.dart';
 import 'shared/api_client.dart';
 import 'shared/auth_state.dart';
+import 'shared/events/event_claim_link.dart';
 import 'shared/friend_invites.dart';
 import 'shared/hero_images/hero_image_store.dart';
+import 'shared/partner_media/partner_media_store.dart';
 import 'shared/inbox/inbox_controller.dart';
 import 'shared/pending_org_invite.dart';
 import 'shared/push_service.dart';
 import 'shared/design_tokens.dart';
 import 'shared/i18n.dart';
+import 'shared/media/media_src.dart';
 import 'shared/promotion_events.dart';
 import 'shared/push_banner.dart';
 import 'shared/splash/kinetic_splash.dart';
@@ -38,6 +41,11 @@ Future<void> main() async {
       ? friendInviteLinkFrom(Uri.base)
       : null;
   if (friendLink != null) showFriendInviteWithoutToken();
+  // Likewise an event claim link (`/event-claim/#tok`, events S3 §5.11).
+  final claimLink = kIsWeb && linkToken == null && friendLink == null
+      ? eventClaimLinkFrom(Uri.base)
+      : null;
+  if (claimLink != null) showEventClaimWithoutToken();
 
   WidgetsFlutterBinding.ensureInitialized();
   if (linkToken != null) {
@@ -53,6 +61,14 @@ Future<void> main() async {
     await PendingFriendInvite.clear();
   } else {
     await PendingFriendInvite.load();
+  }
+  final claimToken = claimLink?.token;
+  if (claimToken != null) {
+    await PendingEventClaim.save(claimToken);
+  } else if (claimLink != null) {
+    await PendingEventClaim.clear();
+  } else {
+    await PendingEventClaim.load();
   }
   const mockAuth = bool.fromEnvironment('MOCK_AUTH');
 
@@ -80,6 +96,8 @@ Future<void> main() async {
     await initPhoneStepsBackground();
   }
   final api = ApiClient();
+  // Partner photos are drawn only from this host (fitflex-functions#273).
+  MediaSrcPolicy.configure(api.baseUrl);
   PromotionEvents.install(api);
   final auth = AuthState(api, push: mockAuth ? null : PushService(api));
   await auth.hydrate();
@@ -154,6 +172,7 @@ class _FitFlexAppState extends State<FitFlexApp> with WidgetsBindingObserver {
     // Admin-published photos (HERO_IMAGES_REMOTE): null with the flag off,
     // so no request is ever made. Bundled photos paint the first frame; the
     // list is read after it.
+    _partnerMedia = PartnerMediaStore.startIfEnabled(widget.api);
     _heroImages = HeroImageStore.startIfEnabled(apiBase: widget.api.baseUrl);
     if (_heroImages != null) {
       _syncHeroSession();
@@ -164,6 +183,10 @@ class _FitFlexAppState extends State<FitFlexApp> with WidgetsBindingObserver {
   }
 
   HeroImageStore? _heroImages;
+
+  /// Partner home photos and logos (PARTNER_MEDIA_UI): null with the flag
+  /// off. Started here so the saved copies are read before a home is built.
+  PartnerMediaStore? _partnerMedia;
 
   void _syncHeroSession() => _heroImages?.setSession(
     signedIn: widget.auth.isSignedIn,
@@ -213,59 +236,11 @@ class _FitFlexAppState extends State<FitFlexApp> with WidgetsBindingObserver {
   Future<void> _openFromPush(Map<String, dynamic> data) async {
     final message = await _inbox.openFromPush(data);
     final role = widget.auth.user?['userType']?.toString() ?? widget.auth.role;
-    // A plan from their trainer opens on the plan itself, where they answer.
-    if (role == 'member' &&
-        opensScreenDirectly(data['type']?.toString() ?? '')) {
-      final direct = memberRouteFor(
-        deepLink: '',
-        type: data['type']?.toString() ?? '',
-        planId: data['planId']?.toString(),
-      );
-      if (direct != null) {
-        _router.go(direct);
-        return;
-      }
-    }
-    // Trainers, vendors and gyms go straight to the screen the news is about.
-    if (partnerSide(role) case final side?) {
-      final direct = partnerRouteFor(
-        side: side,
-        type: data['type']?.toString() ?? '',
-        gymId: data['gymId']?.toString(),
-        memberId: data['memberId']?.toString(),
-        productId: data['productId']?.toString(),
-        variant: data['variant']?.toString(),
-        saleId: data['saleId']?.toString(),
-        customerId: data['customerId']?.toString(),
-        bannerId: (data['bannerId'] ?? data['item'])?.toString(),
-      );
-      if (direct != null) {
-        _router.go(direct);
-        return;
-      }
-    }
-    if (message != null) {
-      // A friend request is answered on its card in the list.
-      _router.push(
-        message.isFriendInvitation ? '/inbox' : '/inbox/${message.id}',
-      );
-      return;
-    }
-    final route = role == 'member'
-        ? memberRouteFor(
-            deepLink: data['deepLink']?.toString() ?? '',
-            type: data['type']?.toString() ?? '',
-            gymId: data['gymId']?.toString(),
-            trainerId: data['trainerId']?.toString(),
-            planId: data['planId']?.toString(),
-            bookingId: data['bookingId']?.toString(),
-            eventId: data['eventId']?.toString(),
-          )
-        : null;
-    if (route != null) {
-      _router.go(route);
+    final target = pushTargetFor(role: role, data: data, message: message);
+    if (target.go) {
+      _router.go(target.location);
     } else {
-      _router.push('/inbox');
+      _router.push(target.location);
     }
   }
 
@@ -276,18 +251,24 @@ class _FitFlexAppState extends State<FitFlexApp> with WidgetsBindingObserver {
     if (_lastToken != null && token == null) {
       _phoneSteps?.forget();
       _runs?.discard();
+      // A partner's saved home photo and logo are not the next person's.
+      _partnerMedia?.clearAll();
       _inbox.clear();
       _syncedLocale = null;
       // A kept invitation link is not the next person's.
       PendingOrgInvite.clear();
       PendingFriendInvite.clear();
+      PendingEventClaim.clear();
     }
     if (token != null && token != _lastToken) {
       _inbox.load();
       _syncLocale();
       _claimKeptInvite();
       // Only on signing in, not on a persona switch or token refresh.
-      if (_lastToken == null) _openKeptOrgInvite();
+      if (_lastToken == null) {
+        _openKeptOrgInvite();
+        _openKeptEventClaim();
+      }
     }
     _lastToken = token;
   }
@@ -316,6 +297,15 @@ class _FitFlexAppState extends State<FitFlexApp> with WidgetsBindingObserver {
     if (await PendingOrgInvite.peek() == null) return;
     if (widget.auth.token == null) return;
     _router.go(AppRoutes.invitations);
+  }
+
+  /// Someone opened an event claim link before signing in: back to the
+  /// claim page now that they have (events S3 §5.11). The page asks "Is
+  /// this you?" and claims; nothing is claimed silently.
+  Future<void> _openKeptEventClaim() async {
+    if (await PendingEventClaim.peek() == null) return;
+    if (widget.auth.token == null) return;
+    _router.go(AppRoutes.eventClaim);
   }
 
   @override

@@ -6,6 +6,7 @@ import '../../app_scope.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
+import '../../shared/widgets/partner_details_widgets.dart';
 import '../../shared/widgets/profile_form_page.dart';
 import '../language_screen.dart';
 import 'owner_shell.dart';
@@ -14,6 +15,8 @@ import '../../shared/widgets/persona_switcher.dart';
 import '../../shared/widgets/invitations.dart';
 import '../../shared/widgets/verify_identifier.dart';
 import '../pin_flows.dart';
+import '../partner/partner_media_entry_tile.dart';
+import '../../shared/partner_media/partner_media_flag.dart';
 
 /// Owner — profile view with account settings and sign-out.
 /// B9: this route lives OUTSIDE the owner shell, so [OwnerDataScope] is
@@ -27,6 +30,9 @@ class OwnerProfilePage extends StatefulWidget {
 
 class _OwnerProfilePageState extends State<OwnerProfilePage> {
   int? _gymCount;
+
+  /// The owner's gyms (id, name), for the photo entry's gym.
+  List<Map<String, dynamic>> _gyms = const [];
   int? _trainerCount;
   bool _started = false;
 
@@ -42,7 +48,15 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
     final api = AppScope.of(context).api;
     try {
       final gyms = await api.ownerGyms();
-      if (mounted) setState(() => _gymCount = gyms.length);
+      if (mounted) {
+        setState(() {
+          _gymCount = gyms.length;
+          _gyms = [
+            for (final g in gyms)
+              if (g is Map) Map<String, dynamic>.from(g),
+          ];
+        });
+      }
     } catch (_) {}
     if (!mounted) return;
     try {
@@ -153,6 +167,8 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
             title: context.tr('member.editDetails'),
             onTap: () => _showEditProfileDialog(context),
           ),
+          // PARTNER_MEDIA_UI (spec §41.1): the gym's home photo and logo.
+          if (partnerMediaUi) _brandMediaTile(context, ownerData, user),
           if (ownerData?.isStaff != true)
             FFActionTile(
               key: const Key('owner-verification'),
@@ -177,6 +193,8 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
           const InvitationsTile(),
           const ContactDetailsTile(),
           const ChangePinTile(),
+          if (ownerData?.isStaff != true)
+            const PartnerDetailsTile(canEditGender: true),
           GymInvitationsTile(
             gymId: OwnerDataScope.maybeOf(context)?.activeGymId,
           ),
@@ -196,6 +214,41 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
           ),
         ],
       ),
+    );
+  }
+
+  /// Owners with a gym; gym staff with `gyms` whose `canEdit` the server
+  /// confirms. The gym is the one picked in the app bar (`?gymId=` from the
+  /// avatar), else the first.
+  Widget _brandMediaTile(
+    BuildContext context,
+    OwnerData? ownerData,
+    Map<dynamic, dynamic> user,
+  ) {
+    final gyms = ownerData?.ownerGyms.isNotEmpty == true
+        ? ownerData!.ownerGyms
+        : _gyms;
+    if (gyms.isEmpty) return const SizedBox.shrink();
+    final staff = ownerData?.isStaff ?? user['userType'] == 'gym_staff';
+    final acl = (user['aclPermissions'] as List?) ?? const [];
+    if (staff && !acl.contains('gyms')) return const SizedBox.shrink();
+    String? linked;
+    try {
+      linked = GoRouterState.of(context).uri.queryParameters['gymId'];
+    } catch (_) {
+      linked = null; // Opened outside the router (tests, old pushes).
+    }
+    final wanted = ownerData?.activeGymId ?? linked;
+    final gym = gyms.firstWhere(
+      (g) => g['id']?.toString() == wanted,
+      orElse: () => gyms.first,
+    );
+    final gymId = gym['id']?.toString();
+    return PartnerMediaEntryTile(
+      side: 'gym',
+      gymId: gymId,
+      gymName: gyms.length > 1 ? gym['name']?.toString() : null,
+      askServer: staff,
     );
   }
 

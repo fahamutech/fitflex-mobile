@@ -1330,4 +1330,21 @@ void main() {
       expect(find.text('Vendor marketplace'), findsOneWidget);
     });
   });
+
+  apiTest('shop near-you: the "Where you sell" alert action is 48 tall '
+      '(QA2 #4)', (tester, api) async {
+    _seed(api);
+    api.on('GET /vendor/tools/options', {
+      'merch': {'shopAreas': true},
+    });
+    await _pump(tester, api);
+    await _tab(tester, 'business');
+    final action = find.byKey(const Key('vendor-areas-nudge-action'));
+    expect(action, findsOneWidget);
+    // The visible button, not just its padded hit area.
+    final visible = find
+        .descendant(of: action, matching: find.byType(Material))
+        .first;
+    expect(tester.getSize(visible).height, greaterThanOrEqualTo(48));
+  });
 }
