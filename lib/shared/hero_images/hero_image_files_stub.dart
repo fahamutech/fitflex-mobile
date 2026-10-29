@@ -6,6 +6,9 @@ import 'hero_image_files.dart';
 /// after they decode in this session (hero_image_store.dart).
 HeroFileStore createHeroFileStore() => const _NoDiskStore();
 
+/// The web: partner photos are not kept on disk either.
+HeroFileStore createPartnerMediaFileStore() => const _NoDiskStore();
+
 class _NoDiskStore implements HeroFileStore {
   const _NoDiskStore();
 

@@ -9,7 +9,6 @@ import '../../shared/activity/workout.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
-import '../member/widgets/activity_bar_chart.dart';
 import '../member/widgets/activity_widgets.dart' show formatSteps, formatKm;
 import '../member/widgets/goal_widgets.dart' show goalTitle;
 import '../member/widgets/trainer_sharing.dart' show permissionLabel;

@@ -4385,6 +4385,17 @@ class FFLocale extends ChangeNotifier {
       'progress.blocked.role_rejected':
           'Your partner application was not approved.',
       'progress.blocked.other': 'This step is on hold.',
+      // fitflex-functions#245: the neutral code partners get in place of a
+      // sensitive KYC reason. No reason note is ever shown with it.
+      'progress.reason.under_review':
+          'Under review — please contact FitFlex support.',
+      // fitflex-functions#247: payout_not_ready reasons for a shared gym.
+      'progress.payout.payout_owner_required':
+          'This gym has more than one owner. FitFlex needs to name the payout owner before payouts can start.',
+      'progress.payout.not_payout_owner':
+          'Another owner receives payouts for this gym.',
+      'owner.payoutOwner': 'Payout owner',
+      'owner.payoutOwner.a11y': 'Payout owner: you receive this gym’s payouts',
       'progress.cta.changes': 'Make changes',
       'progress.cta.payout': 'Add payout account',
       'progress.cta.addGym': 'Add gym',
@@ -5505,6 +5516,181 @@ class FFLocale extends ChangeNotifier {
       'merch.banner.previewA11y': 'Preview of your banner',
       'merch.preview.light': 'Light',
       'merch.preview.dark': 'Dark',
+      // Vendor tools · S6: reports and CSV / PDF downloads (fitflex-functions#275).
+      'vendor.reports.pdfUnavailable':
+          'The PDF can\'t be made right now. Try again later, or download a CSV.',
+      'vendor.reports.rateLimited':
+          'You\'ve downloaded too often. Try again in {n} minute(s).',
+      'vendor.reports.tab': 'Reports',
+      'vendor.reports.seg.reports': 'Reports',
+      'vendor.reports.seg.payouts': 'Payouts',
+      'vendor.reports.noAccess': 'You don\'t have access to this report.',
+      'vendor.reports.view.overview': 'Overview',
+      'vendor.reports.view.sales': 'Sales',
+      'vendor.reports.view.products': 'Products',
+      'vendor.reports.view.stock': 'Stock value',
+      'vendor.reports.view.profit': 'Profit',
+      'vendor.reports.view.payouts': 'App sales after commission',
+      'vendor.reports.view.customers': 'Customers and money owed',
+      'vendor.reports.view.methods': 'Payment methods',
+      'vendor.reports.period': 'Period',
+      'vendor.reports.preset.today': 'Today',
+      'vendor.reports.preset.yesterday': 'Yesterday',
+      'vendor.reports.preset.thisWeek': 'This week',
+      'vendor.reports.preset.lastWeek': 'Last week',
+      'vendor.reports.preset.thisMonth': 'This month',
+      'vendor.reports.preset.lastMonth': 'Last month',
+      'vendor.reports.preset.custom': 'Choose dates',
+      'vendor.reports.group': 'Show by',
+      'vendor.reports.group.day': 'Day',
+      'vendor.reports.group.week': 'Week',
+      'vendor.reports.group.month': 'Month',
+      'vendor.reports.groupTooMany': 'Too many bars. Show by week or month.',
+      'vendor.reports.rangeTooLong': 'Choose up to 366 days.',
+      'vendor.reports.rangeFuture': 'Choose dates up to today.',
+      'vendor.reports.rangeOrder':
+          'The end date must be on or after the start date.',
+      'vendor.reports.rangeInvalid':
+          'These dates cannot be used. Choose other dates.',
+      'vendor.reports.channel': 'Channel',
+      'vendor.reports.channel.all': 'All',
+      'vendor.reports.channel.app': 'App',
+      'vendor.reports.channel.walkIn': 'Shop',
+      'vendor.reports.channel.allSales': 'All sales',
+      'vendor.reports.channel.appSales': 'App sales',
+      'vendor.reports.channel.shopSales': 'Shop sales',
+      'vendor.reports.channel.appOnly': 'App only',
+      'vendor.reports.channel.allChannels': 'All channels',
+      'vendor.reports.inProgress': '(so far)',
+      'vendor.reports.updated': 'Updated {time}',
+      'vendor.reports.refresh': 'Refresh reports',
+      'vendor.reports.weekOf': 'Week of {date}',
+      'vendor.reports.gross': 'Gross sales',
+      'vendor.reports.discounts': 'Discounts',
+      'vendor.reports.refunds': 'Refunds',
+      'vendor.reports.net': 'Net sales',
+      'vendor.reports.vatIncluded': 'VAT included',
+      'vendor.reports.salesCount': 'Sales',
+      'vendor.reports.itemsSold': 'Items sold',
+      'vendor.reports.grossLine': 'Gross {g} · Discounts {d} · Refunds {r}',
+      'vendor.reports.countLine': '{n} sales · {u} items',
+      'vendor.reports.salesN': '{n} sales',
+      'vendor.reports.unitsN': '{n} units',
+      'vendor.reports.ordersN': '{n} orders',
+      'vendor.reports.countTimes': '{n} times',
+      'vendor.reports.voided': 'Voided (not counted): {n} sales · {amount}',
+      'vendor.reports.chartSummary':
+          '{figure} by {group}, {period}. Highest: {date}, {amount}. Total {total}. Table below.',
+      'vendor.reports.chartTooMany':
+          'Too many days for a chart. See the table.',
+      'vendor.reports.barNet': '{when}: net sales {amount}',
+      'vendor.reports.barProfit': '{when}: profit {amount}',
+      'vendor.reports.sales.table': 'Sales by period',
+      'vendor.reports.appNet': 'App net',
+      'vendor.reports.shopNet': 'Shop net',
+      'vendor.reports.channelSplit': 'App and shop',
+      'vendor.reports.best': 'Best sellers',
+      'vendor.reports.mostUnits': 'Most units',
+      'vendor.reports.slow': 'Slow sellers',
+      'vendor.reports.slowCount': 'Slow sellers: {n}',
+      'vendor.reports.topProducts': 'Top products',
+      'vendor.reports.searchProducts': 'Search products',
+      'vendor.reports.noMatch': 'No products match.',
+      'vendor.reports.loadMore': 'Show more',
+      'vendor.reports.unitsSold': 'Units sold',
+      'vendor.reports.revenue': 'Net revenue',
+      'vendor.reports.lastSold': 'Last sold',
+      'vendor.reports.never': 'Never',
+      'vendor.reports.inStock': 'In stock',
+      'vendor.reports.coverDays': '{n} days',
+      'vendor.reports.coverUnderOne': 'Less than 1 day',
+      'vendor.reports.coverNoSales': 'No sales in 30 days',
+      'vendor.reports.coverUntracked': '—',
+      'vendor.reports.outOfStock': 'Out of stock',
+      'vendor.reports.reorderSoon': 'Reorder soon',
+      'vendor.reports.noSalesPeriod': 'No sales in this period',
+      'vendor.reports.removed': '(removed)',
+      'vendor.reports.stock.atRetail': 'At selling price',
+      'vendor.reports.stock.atCost': 'At cost',
+      'vendor.reports.stock.units': 'Units in stock',
+      'vendor.reports.stock.asOf':
+          'As of {time} today. The period you picked does not apply.',
+      'vendor.reports.stock.costUnknown':
+          '{n} products in stock have no cost price, so they are not in the cost value.',
+      'vendor.reports.stock.empty': 'No products in stock.',
+      'vendor.reports.addCost': 'Add cost prices',
+      'vendor.reports.sellingPrice': 'Selling price',
+      'vendor.reports.costPrice': 'Cost price',
+      'vendor.reports.costPriceUnknown': 'Cost price unknown',
+      'vendor.reports.sort.value': 'Value',
+      'vendor.reports.sort.stock': 'Stock',
+      'vendor.reports.sort.name': 'Name',
+      'vendor.reports.profit': 'Profit',
+      'vendor.reports.profitHint': 'On items with a cost price',
+      'vendor.reports.margin': 'Margin',
+      'vendor.reports.cogs': 'Cost of goods',
+      'vendor.reports.netExVat': 'Net sales without VAT',
+      'vendor.reports.uncostedSales': 'Uncosted sales',
+      'vendor.reports.profit.noVat': 'Profit is worked out without VAT.',
+      'vendor.reports.profit.uncosted':
+          'Sold without a cost price: {n} items · {amount}. Not in profit.',
+      'vendor.reports.profit.noCostHeading': 'No cost price',
+      'vendor.reports.profit.table': 'Profit by period',
+      'vendor.reports.profit.byProduct': 'Profit by product',
+      'vendor.reports.commission': 'Commission',
+      'vendor.reports.youReceive': 'You receive',
+      'vendor.reports.youReceiveLine': 'You receive {amount}',
+      'vendor.reports.appSales': 'App sales',
+      'vendor.reports.orders': 'Orders',
+      'vendor.reports.payouts.basis':
+          'App orders only. Counted by delivery date, the same as your payout statements.',
+      'vendor.reports.payouts.notDelivered': 'Paid, not delivered yet',
+      'vendor.reports.payouts.waiting': 'Delivered, waiting for payout',
+      'vendor.reports.payouts.paidOut': 'Paid out',
+      'vendor.reports.payouts.awaiting': 'Awaiting payout',
+      'vendor.reports.payouts.noStatement': 'Not on a statement yet',
+      'vendor.reports.payouts.byWeek': 'By statement week',
+      'vendor.reports.payouts.reconcile':
+          'A paid-out week matches its payout statement. Draft statements are not shown until FitFlex sends them for approval.',
+      'vendor.reports.payouts.link': 'See app sales after commission',
+      'vendor.reports.cust.owedNow': 'Owed to you now',
+      'vendor.reports.cust.overdueNow': 'Overdue now',
+      'vendor.reports.cust.creditSales': 'Pay-later sales',
+      'vendor.reports.cust.collected': 'Collected from customers',
+      'vendor.reports.cust.buyers': 'Customers who bought',
+      'vendor.reports.cust.aging': 'How old the money owed is',
+      'vendor.reports.cust.agingCurrent': 'Not due yet',
+      'vendor.reports.cust.aging1': '1–30 days overdue',
+      'vendor.reports.cust.aging31': '31–60 days overdue',
+      'vendor.reports.cust.aging61': '61–90 days overdue',
+      'vendor.reports.cust.aging90': 'Over 90 days overdue',
+      'vendor.reports.cust.openOwed': 'Open Owed to you',
+      'vendor.reports.methods.byYou': 'Collected by you',
+      'vendor.reports.methods.viaFitFlex': 'Paid through FitFlex',
+      'vendor.reports.methods.netOfChange': 'Cash after change',
+      'vendor.reports.methods.none': 'None in this period',
+      'vendor.reports.loading': 'Loading reports',
+      'vendor.reports.empty': 'No sales in {period}.',
+      'vendor.reports.tryPeriod': 'Try another period',
+      'vendor.reports.failed': 'This report could not load.',
+      'vendor.reports.pendingSync':
+          '{n} sales on this phone are waiting to sync and are not in these figures.',
+      'vendor.reports.staffDisabled':
+          'Your account is disabled, so you can\'t download reports.',
+      'vendor.reports.export': 'Download',
+      'vendor.reports.exportCsv': '{section} (CSV)',
+      'vendor.reports.exportPdf': 'Summary (PDF)',
+      'vendor.reports.exportLang': 'Downloads use {language}.',
+      'vendor.reports.preparing': 'Preparing…',
+      'vendor.reports.exported': 'Report downloaded.',
+      'vendor.reports.exportFailed':
+          'The report could not be downloaded. Try again.',
+      'vendor.reports.exportTooLarge':
+          'This report is too big to download. Choose a shorter period.',
+      'vendor.reports.a11y.exportRow':
+          'Download {section} as {format} for {period}',
+      'vendor.reports.a11y.card':
+          '{section} report card. {summary}. Open details',
       // Vendor tools · S5: documents, share links, VAT.
       'kyc.item.vat_certificate': 'VAT certificate',
       'kyc.doc.intro.vat_certificate':
@@ -6295,6 +6481,45 @@ class FFLocale extends ChangeNotifier {
       'events.ticket.scan.soon':
           'Kit collection scanning isn\'t live yet. Keep this code; the organizer will confirm where and when to collect your kit.',
       'events.ticket.scan.live': 'Show this code at the kit collection point.',
+      // Events S5 kit/bib copy (docs/design/events-s5 §10.2).
+      'events.ticket.kit.title':
+          'Your kit',
+      'events.ticket.kit.not_ready':
+          'Kit not ready yet',
+      'events.ticket.kit.ready':
+          'Kit ready to collect',
+      'events.ticket.kit.collected':
+          'Kit collected',
+      'events.ticket.kit.collectedAt':
+          'Collected {date} at {point}',
+      'events.ticket.kit.collectedOn':
+          'Collected {date}',
+      'events.ticket.kit.noNeed':
+          'You don\'t need to show this code again.',
+      'events.ticket.kit.exception':
+          'Please ask the organizer about your kit.',
+      'events.ticket.kit.where':
+          'Where to collect',
+      'events.ticket.kit.when':
+          'Opening hours',
+      'events.ticket.kit.directions':
+          'Directions',
+      'events.ticket.kit.staleHint':
+          'Kit status may have changed. Connect to refresh.',
+      'events.ticket.bib':
+          'Bib {number}',
+      'events.ticket.bib.a11y':
+          'Bib number {number}',
+      'events.ticket.bib.none':
+          'Your bib number will appear here once the organizer assigns it.',
+      'ownerScan.eventTicket.title':
+          'This is an event ticket',
+      'ownerScan.eventTicket.body':
+          'Event tickets are scanned at Kit collection in the organizer portal, not here.',
+      'memberScan.eventTicket.title':
+          'This is an event ticket',
+      'memberScan.eventTicket.body':
+          'Show it at the kit desk; it cannot be used to check in at a gym.',
       'events.ticket.cached': 'Saved on this phone · updated {time}',
       'events.ticket.offline': 'You\'re offline. Showing the saved code.',
       'events.ticket.handover':
@@ -6396,8 +6621,7 @@ class FFLocale extends ChangeNotifier {
       'events.pay.rejected.note': 'Note from FitFlex: {note}',
       'events.pay.rejected.noteEn': 'Note from FitFlex: {note}',
       'events.pay.processing.check': 'Check status',
-      'events.pay.announce.confirmed':
-          'Payment confirmed. {n} tickets ready.',
+      'events.pay.announce.confirmed': 'Payment confirmed. {n} tickets ready.',
       'events.pay.announce.confirmed.one': 'Payment confirmed. 1 ticket ready.',
       'events.pay.attention.title': 'We\'re looking into your payment',
       'events.pay.attention.body':
@@ -6431,7 +6655,8 @@ class FFLocale extends ChangeNotifier {
       'error.reason.order_not_confirmed': 'This order isn\'t confirmed yet.',
       'error.reason.event_unavailable':
           'This event can\'t take payments or changes right now.',
-      'error.reason.rotate_required': 'This ticket\'s code needs to be replaced. Get a new code to continue.',
+      'error.reason.rotate_required':
+          'This ticket\'s code needs to be replaced. Get a new code to continue.',
       'error.reason.removeWholeLine':
           'Cancel the whole order to remove this place',
       'error.reason.invalidTransition.events':
@@ -6458,6 +6683,200 @@ class FFLocale extends ChangeNotifier {
       'error.reason.invalidGender': 'Choose a gender from the list.',
       'error.reason.rateLimitedSeconds':
           'Too many requests. Try again in {seconds} seconds.',
+      // Partner home photo and logo (spec §44.1, PARTNER_MEDIA_UI).
+      'partnerMedia.title': 'Home photo and logo',
+      'partnerMedia.entryHint': 'Shows at the top of your home',
+      'partnerMedia.entryHintVendor': 'Shows on your Products tab',
+      'partnerMedia.entryForGym': 'For {gym}',
+      'partnerMedia.gym': 'Gym: {gym}',
+      'partnerMedia.chooseGym': 'Choose a gym',
+      'partnerMedia.preview': 'Preview of your home',
+      'partnerMedia.onlyYouTeam': 'Only you and your team see this for now.',
+      'partnerMedia.onlyYouSelf': 'Only you see this for now.',
+      'partnerMedia.hero': 'Home photo',
+      'partnerMedia.logo': 'Logo',
+      'partnerMedia.default': 'Using the FitFlex photo',
+      'partnerMedia.noLogo': 'No logo yet',
+      'partnerMedia.live': 'Showing on your home',
+      'partnerMedia.addedOn': 'Added {date}',
+      'partnerMedia.addedByFitflex': 'Added by FitFlex on {date}',
+      'partnerMedia.bright':
+          'Bright photo: it looks a little darker behind your text.',
+      'partnerMedia.upload': 'Upload photo',
+      'partnerMedia.uploadLogo': 'Upload logo',
+      'partnerMedia.uploadNew': 'Upload a new photo',
+      'partnerMedia.uploadNewLogo': 'Upload a new logo',
+      'partnerMedia.replace': 'Replace',
+      'partnerMedia.remove': 'Remove',
+      'partnerMedia.removeHeroTitle': 'Remove your home photo?',
+      'partnerMedia.removeHeroBody':
+          'Your home will show the FitFlex photo again. The photo is deleted from FitFlex.',
+      'partnerMedia.removeLogoTitle': 'Remove your logo?',
+      'partnerMedia.removeLogoBody':
+          'Your logo is deleted from FitFlex and no longer shows on your home.',
+      'partnerMedia.removed': 'Removed.',
+      'partnerMedia.liveNowHero': 'Your new home photo is live.',
+      'partnerMedia.liveNowLogo': 'Your logo is live.',
+      'partnerMedia.replaceNote':
+          'The new one replaces the current one straight away, and the old one is deleted.',
+      'partnerMedia.reviewNote':
+          'It shows on your home straight away. FitFlex checks new photos and may take one down if it breaks the rules below. We\'ll tell you why.',
+      'partnerMedia.vendorNote':
+          'Members see your shop logo and banner from {editProfile}. This photo and logo show on your own home only.',
+      'partnerMedia.takenDownHero': 'FitFlex took down your home photo.',
+      'partnerMedia.takenDownLogo': 'FitFlex took down your logo.',
+      'partnerMedia.takenDownReason': 'Reason: {reason}',
+      'partnerMedia.takenDownNote': 'Note from FitFlex: {note}',
+      'partnerMedia.takenDownNext':
+          'Your home uses the FitFlex photo until you upload a new one.',
+      'partnerMedia.takenDownNextLogo':
+          'Your home shows no logo until you upload a new one.',
+      'partnerMedia.reason.inappropriate':
+          'It isn\'t suitable, for example nudity, violence or offensive content.',
+      'partnerMedia.reason.rights':
+          'It looks like you may not have the right to use it.',
+      'partnerMedia.reason.other_brand':
+          'It shows another brand\'s logo or sign.',
+      'partnerMedia.reason.not_own_logo':
+          'It doesn\'t look like your business\'s own logo.',
+      'partnerMedia.reason.person_request':
+          'Someone in the photo asked for it to be removed.',
+      'partnerMedia.reason.quality':
+          'It\'s blurred, stretched or hard to make out.',
+      'partnerMedia.reason.other': 'Another reason (see the note).',
+      'partnerMedia.rules.title': 'Photo rules',
+      'partnerMedia.rules.own':
+          'Use a photo you took or have the right to use.',
+      'partnerMedia.rules.people':
+          'People are fine. Ask anyone who can be recognised before you use their photo.',
+      'partnerMedia.rules.brands':
+          'No other brands\' logos or signs. Your own is fine.',
+      'partnerMedia.rules.text':
+          'Keep text out of the photo; your home already shows your name.',
+      'partnerMedia.rules.suitable':
+          'Nothing unsuitable: no nudity, violence or offensive content.',
+      'partnerMedia.rules.size':
+          'At least 1080 pixels wide. Landscape photos work best.',
+      'partnerMedia.rules.logo':
+          'PNG, JPEG or WebP, at least 256 pixels on the short side, up to 2 MB. Your own business\'s logo only.',
+      'partnerMedia.sheet.titleHero': 'New home photo',
+      'partnerMedia.sheet.titleLogo': 'New logo',
+      'partnerMedia.sheet.gallery': 'Choose from gallery',
+      'partnerMedia.sheet.camera': 'Take a photo',
+      'partnerMedia.sheet.file': 'Choose a file',
+      'partnerMedia.sheet.chooseAnother': 'Choose another',
+      'partnerMedia.sheet.onPhone': 'On a phone',
+      'partnerMedia.sheet.onWide': 'On a wide screen',
+      'partnerMedia.sheet.focal': 'Focus point',
+      'partnerMedia.sheet.focalHint':
+          'Tap the part of the photo that must stay in view.',
+      'partnerMedia.sheet.focalNow': 'Focus point: {position}',
+      'partnerMedia.sheet.pos.topLeft': 'Top left',
+      'partnerMedia.sheet.pos.top': 'Top',
+      'partnerMedia.sheet.pos.topRight': 'Top right',
+      'partnerMedia.sheet.pos.left': 'Left',
+      'partnerMedia.sheet.pos.centre': 'Centre',
+      'partnerMedia.sheet.pos.right': 'Right',
+      'partnerMedia.sheet.pos.bottomLeft': 'Bottom left',
+      'partnerMedia.sheet.pos.bottom': 'Bottom',
+      'partnerMedia.sheet.pos.bottomRight': 'Bottom right',
+      'partnerMedia.sheet.plate': 'Logo background',
+      'partnerMedia.sheet.plateAuto': 'Automatic',
+      'partnerMedia.sheet.plateAutoIs': 'Automatic ({tone})',
+      'partnerMedia.sheet.plateLight': 'Light',
+      'partnerMedia.sheet.plateDark': 'Dark',
+      'partnerMedia.sheet.useHero': 'Use this photo',
+      'partnerMedia.sheet.useLogo': 'Use this logo',
+      'partnerMedia.sheet.uploading': 'Uploading… {n}%',
+      'partnerMedia.sheet.preparing': 'Preparing your photo…',
+      'partnerMedia.sheet.confirmChanged':
+          'The wording below has changed. Please read it and tick again.',
+      'partnerMedia.a11y.preview': 'Preview of your home: {photo}, {logo}',
+      'partnerMedia.a11y.yourPhoto': 'your photo',
+      'partnerMedia.a11y.fitflexPhoto': 'FitFlex photo',
+      'partnerMedia.a11y.yourLogo': 'your logo',
+      'partnerMedia.a11y.noLogo': 'no logo',
+      'partnerMedia.a11y.currentPhoto': 'Your current home photo',
+      'partnerMedia.a11y.currentLogo': 'Your current logo',
+      'partnerMedia.a11y.previewPhone': 'Preview on a phone',
+      'partnerMedia.a11y.previewWide': 'Preview on a wide screen',
+      'partnerMedia.a11y.focalImage':
+          'Photo. Focus point: {position}. Tap to move it.',
+      'partnerMedia.restrictedGym':
+          'Only the gym owner, or staff allowed to edit the gym profile, can change this.',
+      'partnerMedia.restrictedVendor':
+          'Only the business owner or a staff admin can change this.',
+      'partnerMedia.noGym':
+          'Add a gym first. You can set its photo and logo here once it\'s approved.',
+      'partnerMedia.off': 'This isn\'t available yet.',
+      'partnerMedia.loadError': 'We couldn\'t load your photo and logo.',
+      'partnerMedia.offline':
+          'You\'re offline. You can change your photo when you\'re back online.',
+      'partnerMedia.error.not_your_gym':
+          'You can\'t change photos for this gym.',
+      'partnerMedia.error.acl_forbidden':
+          'You don\'t have permission to change this.',
+      'partnerMedia.error.subject_not_found':
+          'We couldn\'t find this profile. Go back and try again.',
+      'partnerMedia.error.rate_limited':
+          'Too many uploads. Wait a minute and try again.',
+      'partnerMedia.error.image_too_small':
+          'This photo is too small. Use one at least {minWidth} pixels wide.',
+      'partnerMedia.error.image_too_small_logo':
+          'This logo is too small. Use one at least {minSide} pixels on the short side.',
+      'partnerMedia.error.unsupported_file_type':
+          'This file type isn\'t supported. Use JPEG, PNG or WebP.',
+      'partnerMedia.error.svg_not_allowed':
+          'SVG files can\'t be used. Save your logo as PNG and try again.',
+      'partnerMedia.error.file_too_large':
+          'This file is too large. The limit is {maxMb} MB.',
+      'partnerMedia.error.variant_over_budget':
+          'We couldn\'t make this photo small enough. Try a different photo.',
+      'partnerMedia.error.invalid_focal':
+          'Something went wrong with the focus point. Set it again.',
+      'partnerMedia.error.not_editable':
+          'This was changed a moment ago. We\'ve reloaded it.',
+      'partnerMedia.error.image_save_failed':
+          'We couldn\'t save your photo. Try again.',
+      'partnerMedia.error.image_taken_down_before':
+          'FitFlex took this exact photo down before. Choose a different one.',
+      'partnerMedia.error.unknown': 'Something went wrong ({code}).',
+      'partnerMedia.error.rate_limited_day':
+          "You've reached today's upload limit. Try again tomorrow.",
+      'partnerMedia.error.rate_limited_attempts':
+          'Too many tries today for this home. Try again tomorrow.',
+      'partnerMedia.error.image_service_busy':
+          'FitFlex is busy preparing photos. Try again in a few seconds.',
+      'partnerMedia.error.rate_limit_unavailable':
+          "We couldn't check your uploads just now. Try again in a minute.",
+      'partnerMedia.error.too_many_pixels':
+          'This photo has too many pixels. Use one of up to {maxMp} megapixels.',
+      'partnerMedia.error.too_large_side':
+          'This logo is too big. Use one of up to {maxSide} pixels on each side.',
+      'partnerMedia.error.media_not_found': 'This was already removed.',
+      'partnerMedia.error.feature_disabled': 'This isn\'t available yet.',
+      'partnerMedia.error.rights_confirmation_required':
+          'Tick the box to confirm you may use this photo.',
+      'partnerMedia.error.own_logo_confirmation_required':
+          'Tick the box to confirm this is your own logo.',
+      'partnerMedia.error.no_file_provided':
+          'No file was sent. Choose a photo and try again.',
+      'partnerMedia.error.invalid_plate':
+          'Choose a logo background and try again.',
+      'partnerMedia.error.gym_id_required': 'Choose a gym and try again.',
+      'partnerMedia.error.invalid_multipart':
+          'The file didn\'t arrive in full. Try again.',
+      'partnerMedia.error.unknown_field':
+          'This version of the app sent something the server does not accept. Update the app and try again.',
+      'inbox.open.brandMedia': 'Open home photo and logo',
+      // Refused photos (fitflex-functions#273).
+      'error.reason.invalidMediaSrc':
+          "This photo can't be used. Choose a PNG, JPEG or WebP photo from your phone.",
+      'error.reason.mediaSrcTooLarge':
+          'This photo is too large. Choose a smaller photo (up to 1.4 MB).',
+      'error.reason.uploadForbidden': "Your account can't upload photos here.",
+      'error.reason.tooManyImages':
+          'Too many photos. Remove some and try again.',
     },
     'sw': {
       'app.title': 'FitFlex',
@@ -10841,6 +11260,16 @@ class FFLocale extends ChangeNotifier {
       'progress.blocked.account_suspended': 'Akaunti yako imesimamishwa.',
       'progress.blocked.role_rejected': 'Ombi lako la ushirika halikukubaliwa.',
       'progress.blocked.other': 'Hatua hii imesitishwa kwa sasa.',
+      // fitflex-functions#245 / #247: Swahili DRAFT, needs native review.
+      'progress.reason.under_review':
+          'Inakaguliwa — tafadhali wasiliana na msaada wa FitFlex.',
+      'progress.payout.payout_owner_required':
+          'Gym hii ina mmiliki zaidi ya mmoja. FitFlex inahitaji kumtaja mmiliki atakayepokea malipo kabla malipo hayajaanza.',
+      'progress.payout.not_payout_owner':
+          'Mmiliki mwingine ndiye anayepokea malipo ya gym hii.',
+      'owner.payoutOwner': 'Mpokeaji wa malipo',
+      'owner.payoutOwner.a11y':
+          'Mpokeaji wa malipo: wewe ndiye unayepokea malipo ya gym hii',
       'progress.cta.changes': 'Fanya mabadiliko',
       'progress.cta.payout': 'Ongeza akaunti ya malipo',
       'progress.cta.addGym': 'Ongeza gym',
@@ -11982,6 +12411,184 @@ class FFLocale extends ChangeNotifier {
       'merch.banner.previewA11y': 'Hakiki ya bango lako',
       'merch.preview.light': 'Mwanga',
       'merch.preview.dark': 'Giza',
+      // Vendor tools · S6: ripoti (rasimu: kwa ukaguzi wa mzungumzaji asilia; draft for native review).
+      'vendor.reports.pdfUnavailable':
+          'PDF haiwezi kutengenezwa kwa sasa. Jaribu tena baadaye au pakua CSV.',
+      'vendor.reports.rateLimited':
+          'Umepakua mara nyingi mno. Jaribu tena baada ya dakika {n}.',
+      'vendor.reports.tab': 'Ripoti',
+      'vendor.reports.seg.reports': 'Ripoti',
+      'vendor.reports.seg.payouts': 'Malipo yako',
+      'vendor.reports.noAccess': 'Huna ruhusa ya kuona ripoti hii.',
+      'vendor.reports.view.overview': 'Muhtasari',
+      'vendor.reports.view.sales': 'Mauzo',
+      'vendor.reports.view.products': 'Bidhaa',
+      'vendor.reports.view.stock': 'Thamani ya Stock',
+      'vendor.reports.view.profit': 'Faida',
+      'vendor.reports.view.payouts': 'Mauzo ya app baada ya kamisheni',
+      'vendor.reports.view.customers': 'Wateja na madeni',
+      'vendor.reports.view.methods': 'Njia za malipo',
+      'vendor.reports.period': 'Kipindi',
+      'vendor.reports.preset.today': 'Leo',
+      'vendor.reports.preset.yesterday': 'Jana',
+      'vendor.reports.preset.thisWeek': 'Wiki hii',
+      'vendor.reports.preset.lastWeek': 'Wiki iliyopita',
+      'vendor.reports.preset.thisMonth': 'Mwezi huu',
+      'vendor.reports.preset.lastMonth': 'Mwezi uliopita',
+      'vendor.reports.preset.custom': 'Chagua tarehe',
+      'vendor.reports.group': 'Onyesha kwa',
+      'vendor.reports.group.day': 'Siku',
+      'vendor.reports.group.week': 'Wiki',
+      'vendor.reports.group.month': 'Mwezi',
+      'vendor.reports.groupTooMany':
+          'Pau ni nyingi mno. Onyesha kwa wiki au mwezi.',
+      'vendor.reports.rangeTooLong': 'Chagua hadi siku 366.',
+      'vendor.reports.rangeFuture': 'Chagua tarehe hadi leo.',
+      'vendor.reports.rangeOrder':
+          'Tarehe ya mwisho iwe sawa au baada ya tarehe ya kuanzia.',
+      'vendor.reports.rangeInvalid':
+          'Tarehe hizi haziwezi kutumika. Chagua tarehe nyingine.',
+      'vendor.reports.channel': 'Njia ya mauzo',
+      'vendor.reports.channel.all': 'Yote',
+      'vendor.reports.channel.app': 'App',
+      'vendor.reports.channel.walkIn': 'Dukani',
+      'vendor.reports.channel.allSales': 'Mauzo yote',
+      'vendor.reports.channel.appSales': 'Mauzo ya app',
+      'vendor.reports.channel.shopSales': 'Mauzo ya dukani',
+      'vendor.reports.channel.appOnly': 'App pekee',
+      'vendor.reports.channel.allChannels': 'Njia zote za mauzo',
+      'vendor.reports.inProgress': '(hadi sasa)',
+      'vendor.reports.updated': 'Imesasishwa {time}',
+      'vendor.reports.refresh': 'Sasisha ripoti',
+      'vendor.reports.weekOf': 'Wiki ya {date}',
+      'vendor.reports.gross': 'Mauzo ya jumla',
+      'vendor.reports.discounts': 'Punguzo',
+      'vendor.reports.refunds': 'Marejesho',
+      'vendor.reports.net': 'Mauzo baada ya makato',
+      'vendor.reports.vatIncluded': 'VAT iliyomo',
+      'vendor.reports.salesCount': 'Idadi ya mauzo',
+      'vendor.reports.itemsSold': 'Bidhaa zilizouzwa',
+      'vendor.reports.grossLine': 'Jumla {g} · Punguzo {d} · Marejesho {r}',
+      'vendor.reports.countLine': 'Mauzo {n} · bidhaa {u}',
+      'vendor.reports.salesN': 'Mauzo {n}',
+      'vendor.reports.unitsN': 'Idadi {n}',
+      'vendor.reports.ordersN': 'Oda {n}',
+      'vendor.reports.countTimes': 'Mara {n}',
+      'vendor.reports.voided':
+          'Yamebatilishwa (hayahesabiwi): mauzo {n} · {amount}',
+      'vendor.reports.chartSummary':
+          '{figure} kwa {group}, {period}. Juu zaidi: {date}, {amount}. Jumla {total}. Jedwali liko chini.',
+      'vendor.reports.chartTooMany':
+          'Siku ni nyingi mno kwa chati. Angalia jedwali.',
+      'vendor.reports.barNet': '{when}: mauzo baada ya makato {amount}',
+      'vendor.reports.barProfit': '{when}: faida {amount}',
+      'vendor.reports.sales.table': 'Mauzo kwa kipindi',
+      'vendor.reports.appNet': 'Mauzo ya app baada ya makato',
+      'vendor.reports.shopNet': 'Mauzo ya dukani baada ya makato',
+      'vendor.reports.channelSplit': 'App na dukani',
+      'vendor.reports.best': 'Zinazouzika zaidi',
+      'vendor.reports.mostUnits': 'Idadi kubwa zaidi',
+      'vendor.reports.slow': 'Zinazouzika polepole',
+      'vendor.reports.slowCount': 'Zinazouzika polepole: {n}',
+      'vendor.reports.topProducts': 'Bidhaa zinazouzika zaidi',
+      'vendor.reports.searchProducts': 'Tafuta bidhaa',
+      'vendor.reports.noMatch': 'Hakuna bidhaa inayolingana.',
+      'vendor.reports.loadMore': 'Onyesha zaidi',
+      'vendor.reports.unitsSold': 'Idadi iliyouzwa',
+      'vendor.reports.revenue': 'Mapato baada ya makato',
+      'vendor.reports.lastSold': 'Iliuzwa mwisho',
+      'vendor.reports.never': 'Haijawahi',
+      'vendor.reports.inStock': 'Stock iliyopo',
+      'vendor.reports.coverDays': 'Siku {n}',
+      'vendor.reports.coverUnderOne': 'Chini ya siku 1',
+      'vendor.reports.coverNoSales': 'Hakuna mauzo siku 30',
+      'vendor.reports.coverUntracked': '—',
+      'vendor.reports.outOfStock': 'Imeisha',
+      'vendor.reports.reorderSoon': 'Agiza tena karibuni',
+      'vendor.reports.noSalesPeriod': 'Hakuna mauzo kipindi hiki',
+      'vendor.reports.removed': '(imeondolewa)',
+      'vendor.reports.stock.atRetail': 'Kwa bei ya kuuza',
+      'vendor.reports.stock.atCost': 'Kwa bei ya kununua',
+      'vendor.reports.stock.units': 'Idadi ya Stock',
+      'vendor.reports.stock.asOf':
+          'Kufikia {time} leo. Kipindi ulichochagua hakitumiki hapa.',
+      'vendor.reports.stock.costUnknown':
+          'Bidhaa {n} zilizopo kwenye Stock hazina bei ya kununua, kwa hiyo hazimo kwenye thamani kwa bei ya kununua.',
+      'vendor.reports.stock.empty': 'Hakuna bidhaa kwenye Stock.',
+      'vendor.reports.addCost': 'Weka bei za kununua',
+      'vendor.reports.sellingPrice': 'Bei ya kuuza',
+      'vendor.reports.costPrice': 'Bei ya kununua',
+      'vendor.reports.costPriceUnknown': 'Bei ya kununua haijulikani',
+      'vendor.reports.sort.value': 'Thamani',
+      'vendor.reports.sort.stock': 'Stock',
+      'vendor.reports.sort.name': 'Jina',
+      'vendor.reports.profit': 'Faida',
+      'vendor.reports.profitHint': 'Kwa bidhaa zenye bei ya kununua',
+      'vendor.reports.margin': 'Asilimia ya faida',
+      'vendor.reports.cogs': 'Gharama ya bidhaa',
+      'vendor.reports.netExVat': 'Mauzo baada ya makato bila VAT',
+      'vendor.reports.uncostedSales': 'Mauzo bila bei ya kununua',
+      'vendor.reports.profit.noVat': 'Faida imehesabiwa bila VAT.',
+      'vendor.reports.profit.uncosted':
+          'Zimeuzwa bila bei ya kununua: bidhaa {n} · {amount}. Hazimo kwenye faida.',
+      'vendor.reports.profit.noCostHeading': 'Hakuna bei ya kununua',
+      'vendor.reports.profit.table': 'Faida kwa kipindi',
+      'vendor.reports.profit.byProduct': 'Faida kwa bidhaa',
+      'vendor.reports.commission': 'Kamisheni',
+      'vendor.reports.youReceive': 'Unapokea',
+      'vendor.reports.youReceiveLine': 'Unapokea {amount}',
+      'vendor.reports.appSales': 'Mauzo ya app',
+      'vendor.reports.orders': 'Oda',
+      'vendor.reports.payouts.basis':
+          'Oda za app pekee. Zimehesabiwa kwa tarehe ya delivery, sawa na taarifa zako za malipo.',
+      'vendor.reports.payouts.notDelivered': 'Zimelipiwa, bado delivery',
+      'vendor.reports.payouts.waiting':
+          'Delivery imekamilika, inasubiri malipo',
+      'vendor.reports.payouts.paidOut': 'Imelipwa',
+      'vendor.reports.payouts.awaiting': 'Inasubiri malipo',
+      'vendor.reports.payouts.noStatement': 'Bado haiko kwenye taarifa',
+      'vendor.reports.payouts.byWeek': 'Kwa wiki ya taarifa',
+      'vendor.reports.payouts.reconcile':
+          'Wiki iliyolipwa inalingana na taarifa yake ya malipo. Taarifa za rasimu hazionyeshwi hadi FitFlex izitume kwa idhini.',
+      'vendor.reports.payouts.link': 'Angalia mauzo ya app baada ya kamisheni',
+      'vendor.reports.cust.owedNow': 'Unachodai sasa',
+      'vendor.reports.cust.overdueNow': 'Yaliyochelewa sasa',
+      'vendor.reports.cust.creditSales': 'Mauzo ya mkopo',
+      'vendor.reports.cust.collected': 'Yaliyokusanywa kutoka kwa wateja',
+      'vendor.reports.cust.buyers': 'Wateja walionunua',
+      'vendor.reports.cust.aging': 'Umri wa madeni',
+      'vendor.reports.cust.agingCurrent': 'Bado muda haujafika',
+      'vendor.reports.cust.aging1': 'Siku 1–30 za kuchelewa',
+      'vendor.reports.cust.aging31': 'Siku 31–60 za kuchelewa',
+      'vendor.reports.cust.aging61': 'Siku 61–90 za kuchelewa',
+      'vendor.reports.cust.aging90': 'Zaidi ya siku 90 za kuchelewa',
+      'vendor.reports.cust.openOwed': 'Fungua Unachodai',
+      'vendor.reports.methods.byYou': 'Uliyokusanya wewe',
+      'vendor.reports.methods.viaFitFlex': 'Yaliyolipwa kupitia FitFlex',
+      'vendor.reports.methods.netOfChange': 'Taslimu baada ya chenji',
+      'vendor.reports.methods.none': 'Hakuna malipo kipindi hiki',
+      'vendor.reports.loading': 'Inapakia ripoti',
+      'vendor.reports.empty': 'Hakuna mauzo katika {period}.',
+      'vendor.reports.tryPeriod': 'Jaribu kipindi kingine',
+      'vendor.reports.failed': 'Imeshindikana kupakia ripoti hii.',
+      'vendor.reports.pendingSync':
+          'Mauzo {n} kwenye simu hii yanasubiri kutumwa na hayamo kwenye takwimu hizi.',
+      'vendor.reports.staffDisabled':
+          'Akaunti yako imezuiwa, huwezi kupakua ripoti.',
+      'vendor.reports.export': 'Pakua',
+      'vendor.reports.exportCsv': '{section} (CSV)',
+      'vendor.reports.exportPdf': 'Muhtasari (PDF)',
+      'vendor.reports.exportLang': 'Upakuaji unatumia {language}.',
+      'vendor.reports.preparing': 'Inaandaa…',
+      'vendor.reports.exported': 'Ripoti imepakuliwa.',
+      'vendor.reports.exportFailed':
+          'Imeshindikana kupakua ripoti. Jaribu tena.',
+      'vendor.reports.exportTooLarge':
+          'Ripoti hii ni kubwa mno kupakua. Chagua kipindi kifupi zaidi.',
+      'vendor.reports.a11y.exportRow':
+          'Pakua {section} kama {format} kwa {period}',
+      'vendor.reports.a11y.card':
+          'Kadi ya ripoti ya {section}. {summary}. Fungua maelezo',
       // Vendor tools · S5 (rasimu: kwa ukaguzi wa mzungumzaji asilia).
       'kyc.item.vat_certificate': 'Cheti cha VAT',
       'kyc.doc.intro.vat_certificate':
@@ -12782,6 +13389,45 @@ class FFLocale extends ChangeNotifier {
           'Skani ya kuchukua vifaa vya mbio bado haijaanza. Hifadhi msimbo huu; mwandaaji atathibitisha wapi na lini utachukua vifaa vyako vya mbio.',
       'events.ticket.scan.live':
           'Onyesha msimbo huu mahali pa kuchukua vifaa vya mbio.',
+      // TODO(sw-review): events S5 kit/bib copy (docs/design/events-s5 §10.2).
+      'events.ticket.kit.title':
+          'Vifaa vyako vya mbio',
+      'events.ticket.kit.not_ready':
+          'Vifaa vya mbio bado havijawa tayari',
+      'events.ticket.kit.ready':
+          'Vifaa vya mbio viko tayari kuchukuliwa',
+      'events.ticket.kit.collected':
+          'Vifaa vya mbio vimechukuliwa',
+      'events.ticket.kit.collectedAt':
+          'Vilichukuliwa {date} katika {point}',
+      'events.ticket.kit.collectedOn':
+          'Vilichukuliwa {date}',
+      'events.ticket.kit.noNeed':
+          'Huhitaji kuonyesha msimbo huu tena.',
+      'events.ticket.kit.exception':
+          'Tafadhali muulize mwandaaji kuhusu vifaa vyako vya mbio.',
+      'events.ticket.kit.where':
+          'Mahali pa kuchukulia',
+      'events.ticket.kit.when':
+          'Saa za kufungua',
+      'events.ticket.kit.directions':
+          'Maelekezo ya njia',
+      'events.ticket.kit.staleHint':
+          'Hali ya vifaa vya mbio inaweza kuwa imebadilika. Unganisha intaneti kusasisha.',
+      'events.ticket.bib':
+          'Namba ya mbio {number}',
+      'events.ticket.bib.a11y':
+          'Namba ya mbio {number}',
+      'events.ticket.bib.none':
+          'Namba yako ya mbio itaonekana hapa mwandaaji akikupa.',
+      'ownerScan.eventTicket.title':
+          'Hii ni tiketi ya tukio',
+      'ownerScan.eventTicket.body':
+          'Tiketi za matukio huskaniwa kwenye Uchukuaji wa vifaa kwenye portal ya mwandaaji, si hapa.',
+      'memberScan.eventTicket.title':
+          'Hii ni tiketi ya tukio',
+      'memberScan.eventTicket.body':
+          'Ioneshe kwenye dawati la vifaa vya mbio; haiwezi kutumika kuingia gym.',
       'events.ticket.cached':
           'Imehifadhiwa kwenye simu hii · ilisasishwa {time}',
       'events.ticket.offline':
@@ -12921,7 +13567,8 @@ class FFLocale extends ChangeNotifier {
       'error.reason.order_not_confirmed': 'Oda hii bado haijathibitishwa.',
       'error.reason.event_unavailable':
           'Tukio hili haliwezi kupokea malipo au mabadiliko kwa sasa.',
-      'error.reason.rotate_required': 'Msimbo wa tiketi hii unahitaji kubadilishwa. Pata msimbo mpya ili uendelee.',
+      'error.reason.rotate_required':
+          'Msimbo wa tiketi hii unahitaji kubadilishwa. Pata msimbo mpya ili uendelee.',
       'error.reason.removeWholeLine': 'Ghairi oda yote ili uondoe tiketi hii',
       'error.reason.invalidTransition.events':
           'Oda hii haiwezi kubadilishwa tena',
@@ -12948,6 +13595,202 @@ class FFLocale extends ChangeNotifier {
       'error.reason.invalidGender': 'Chagua jinsia kutoka kwenye orodha.',
       'error.reason.rateLimitedSeconds':
           'Maombi mengi mno. Jaribu tena baada ya sekunde {seconds}.',
+      // Partner home photo and logo (spec §44.1): DRAFT Swahili, for native review.
+      'partnerMedia.title': 'Picha ya mwanzo na nembo',
+      'partnerMedia.entryHint': 'Inaonekana juu ya ukurasa wako wa mwanzo',
+      'partnerMedia.entryHintVendor':
+          'Inaonekana kwenye kichupo chako cha Bidhaa',
+      'partnerMedia.entryForGym': 'Kwa {gym}',
+      'partnerMedia.gym': 'Gym: {gym}',
+      'partnerMedia.chooseGym': 'Chagua gym',
+      'partnerMedia.preview': 'Hakiki ya ukurasa wako wa mwanzo',
+      'partnerMedia.onlyYouTeam': 'Kwa sasa ni wewe na timu yako tu mnaouona.',
+      'partnerMedia.onlyYouSelf': 'Kwa sasa ni wewe tu unayeuona.',
+      'partnerMedia.hero': 'Picha ya mwanzo',
+      'partnerMedia.logo': 'Nembo',
+      'partnerMedia.default': 'Inatumia picha ya FitFlex',
+      'partnerMedia.noLogo': 'Bado hakuna nembo',
+      'partnerMedia.live': 'Inaonekana kwenye ukurasa wako wa mwanzo',
+      'partnerMedia.addedOn': 'Imeongezwa {date}',
+      'partnerMedia.addedByFitflex': 'Imeongezwa na FitFlex {date}',
+      'partnerMedia.bright':
+          'Picha ina mwanga mwingi: itafifishwa kidogo nyuma ya maandishi yako.',
+      'partnerMedia.upload': 'Pakia picha',
+      'partnerMedia.uploadLogo': 'Pakia nembo',
+      'partnerMedia.uploadNew': 'Pakia picha mpya',
+      'partnerMedia.uploadNewLogo': 'Pakia nembo mpya',
+      'partnerMedia.replace': 'Badilisha',
+      'partnerMedia.remove': 'Ondoa',
+      'partnerMedia.removeHeroTitle': 'Uondoe picha yako ya mwanzo?',
+      'partnerMedia.removeHeroBody':
+          'Ukurasa wako wa mwanzo utaonyesha tena picha ya FitFlex. Picha itafutwa kutoka FitFlex.',
+      'partnerMedia.removeLogoTitle': 'Uondoe nembo yako?',
+      'partnerMedia.removeLogoBody':
+          'Nembo yako itafutwa kutoka FitFlex na haitaonekana tena kwenye ukurasa wako wa mwanzo.',
+      'partnerMedia.removed': 'Imeondolewa.',
+      'partnerMedia.liveNowHero': 'Picha yako mpya ya mwanzo inaonekana sasa.',
+      'partnerMedia.liveNowLogo': 'Nembo yako inaonekana sasa.',
+      'partnerMedia.replaceNote':
+          'Mpya itachukua nafasi ya iliyopo mara moja, na ya zamani itafutwa.',
+      'partnerMedia.reviewNote':
+          'Inaonekana kwenye ukurasa wako wa mwanzo mara moja. FitFlex hukagua picha mpya na inaweza kuondoa picha inayovunja kanuni zilizo hapa chini. Tutakueleza sababu.',
+      'partnerMedia.vendorNote':
+          'Wanachama wanaona nembo na bango la duka lako kutoka {editProfile}. Picha na nembo hizi zinaonekana kwenye ukurasa wako wa mwanzo tu.',
+      'partnerMedia.takenDownHero': 'FitFlex imeondoa picha yako ya mwanzo.',
+      'partnerMedia.takenDownLogo': 'FitFlex imeondoa nembo yako.',
+      'partnerMedia.takenDownReason': 'Sababu: {reason}',
+      'partnerMedia.takenDownNote': 'Ujumbe kutoka FitFlex: {note}',
+      'partnerMedia.takenDownNext':
+          'Ukurasa wako wa mwanzo unatumia picha ya FitFlex hadi upakie mpya.',
+      'partnerMedia.takenDownNextLogo':
+          'Ukurasa wako wa mwanzo hautaonyesha nembo hadi upakie mpya.',
+      'partnerMedia.reason.inappropriate':
+          'Haifai, kwa mfano uchi, vurugu au maudhui ya kuudhi.',
+      'partnerMedia.reason.rights': 'Inaonekana huenda huna haki ya kuitumia.',
+      'partnerMedia.reason.other_brand':
+          'Inaonyesha nembo au bango la chapa nyingine.',
+      'partnerMedia.reason.not_own_logo':
+          'Haionekani kuwa nembo ya biashara yako.',
+      'partnerMedia.reason.person_request':
+          'Mtu aliye kwenye picha aliomba iondolewe.',
+      'partnerMedia.reason.quality':
+          'Haiko wazi, imenyooshwa au ni vigumu kuitambua.',
+      'partnerMedia.reason.other': 'Sababu nyingine (tazama ujumbe).',
+      'partnerMedia.rules.title': 'Kanuni za picha',
+      'partnerMedia.rules.own':
+          'Tumia picha uliyopiga au una haki ya kuitumia.',
+      'partnerMedia.rules.people':
+          'Watu wanaruhusiwa. Muulize kwanza mtu yeyote anayetambulika kabla ya kutumia picha yake.',
+      'partnerMedia.rules.brands':
+          'Hakuna nembo wala mabango ya chapa nyingine. Yako mwenyewe inaruhusiwa.',
+      'partnerMedia.rules.text':
+          'Usiweke maandishi kwenye picha; ukurasa wako tayari unaonyesha jina lako.',
+      'partnerMedia.rules.suitable':
+          'Hakuna kisichofaa: uchi, vurugu au maudhui ya kuudhi.',
+      'partnerMedia.rules.size':
+          'Upana wa angalau pikseli 1080. Picha za mlalo zinafaa zaidi.',
+      'partnerMedia.rules.logo':
+          'PNG, JPEG au WebP, angalau pikseli 256 upande mfupi, hadi MB 2. Nembo ya biashara yako tu.',
+      'partnerMedia.sheet.titleHero': 'Picha mpya ya mwanzo',
+      'partnerMedia.sheet.titleLogo': 'Nembo mpya',
+      'partnerMedia.sheet.gallery': 'Chagua kutoka kwenye picha zako',
+      'partnerMedia.sheet.camera': 'Piga picha',
+      'partnerMedia.sheet.file': 'Chagua faili',
+      'partnerMedia.sheet.chooseAnother': 'Chagua nyingine',
+      'partnerMedia.sheet.onPhone': 'Kwenye simu',
+      'partnerMedia.sheet.onWide': 'Kwenye skrini pana',
+      'partnerMedia.sheet.focal': 'Sehemu kuu',
+      'partnerMedia.sheet.focalHint':
+          'Gusa sehemu ya picha inayopaswa kubaki ikionekana.',
+      'partnerMedia.sheet.focalNow': 'Sehemu kuu: {position}',
+      'partnerMedia.sheet.pos.topLeft': 'Juu kushoto',
+      'partnerMedia.sheet.pos.top': 'Juu',
+      'partnerMedia.sheet.pos.topRight': 'Juu kulia',
+      'partnerMedia.sheet.pos.left': 'Kushoto',
+      'partnerMedia.sheet.pos.centre': 'Katikati',
+      'partnerMedia.sheet.pos.right': 'Kulia',
+      'partnerMedia.sheet.pos.bottomLeft': 'Chini kushoto',
+      'partnerMedia.sheet.pos.bottom': 'Chini',
+      'partnerMedia.sheet.pos.bottomRight': 'Chini kulia',
+      'partnerMedia.sheet.plate': 'Mandharinyuma ya nembo',
+      'partnerMedia.sheet.plateAuto': 'Otomatiki',
+      'partnerMedia.sheet.plateAutoIs': 'Otomatiki ({tone})',
+      'partnerMedia.sheet.plateLight': 'Nyeupe',
+      'partnerMedia.sheet.plateDark': 'Nyeusi',
+      'partnerMedia.sheet.useHero': 'Tumia picha hii',
+      'partnerMedia.sheet.useLogo': 'Tumia nembo hii',
+      'partnerMedia.sheet.uploading': 'Inapakia… {n}%',
+      'partnerMedia.sheet.preparing': 'Tunaandaa picha yako…',
+      'partnerMedia.sheet.confirmChanged':
+          'Maneno yaliyo hapa chini yamebadilika. Tafadhali yasome, kisha chagua kisanduku tena.',
+      'partnerMedia.a11y.preview':
+          'Hakiki ya ukurasa wako wa mwanzo: {photo}, {logo}',
+      'partnerMedia.a11y.yourPhoto': 'picha yako',
+      'partnerMedia.a11y.fitflexPhoto': 'picha ya FitFlex',
+      'partnerMedia.a11y.yourLogo': 'nembo yako',
+      'partnerMedia.a11y.noLogo': 'hakuna nembo',
+      'partnerMedia.a11y.currentPhoto': 'Picha yako ya sasa ya mwanzo',
+      'partnerMedia.a11y.currentLogo': 'Nembo yako ya sasa',
+      'partnerMedia.a11y.previewPhone': 'Hakiki kwenye simu',
+      'partnerMedia.a11y.previewWide': 'Hakiki kwenye skrini pana',
+      'partnerMedia.a11y.focalImage':
+          'Picha. Sehemu kuu: {position}. Gusa kuisogeza.',
+      'partnerMedia.restrictedGym':
+          'Ni mmiliki wa gym tu, au wafanyakazi wenye ruhusa ya kuhariri wasifu wa gym, wanaoweza kubadilisha hili.',
+      'partnerMedia.restrictedVendor':
+          'Ni mmiliki wa biashara au mfanyakazi mwenye haki za admin tu anayeweza kubadilisha hili.',
+      'partnerMedia.noGym':
+          'Ongeza gym kwanza. Utaweza kuweka picha na nembo yake hapa ikishaidhinishwa.',
+      'partnerMedia.off': 'Huduma hii bado haipatikani.',
+      'partnerMedia.loadError':
+          'Imeshindikana kupakia picha na nembo yako. Jaribu tena.',
+      'partnerMedia.offline':
+          'Huna mtandao. Utaweza kubadilisha picha yako ukirudi mtandaoni.',
+      'partnerMedia.error.not_your_gym': 'Huwezi kubadilisha picha za gym hii.',
+      'partnerMedia.error.acl_forbidden': 'Huna ruhusa ya kubadilisha hili.',
+      'partnerMedia.error.subject_not_found':
+          'Imeshindikana kupata wasifu huu. Rudi nyuma kisha ujaribu tena.',
+      'partnerMedia.error.rate_limited':
+          'Umepakia mara nyingi mno. Subiri dakika moja kisha ujaribu tena.',
+      'partnerMedia.error.image_too_small':
+          'Picha hii ni ndogo mno. Tumia yenye upana wa angalau pikseli {minWidth}.',
+      'partnerMedia.error.image_too_small_logo':
+          'Nembo hii ni ndogo mno. Tumia yenye angalau pikseli {minSide} upande mfupi.',
+      'partnerMedia.error.unsupported_file_type':
+          'Aina hii ya faili haikubaliki. Tumia JPEG, PNG au WebP.',
+      'partnerMedia.error.svg_not_allowed':
+          'Mafaili ya SVG hayawezi kutumika. Hifadhi nembo yako kama PNG kisha ujaribu tena.',
+      'partnerMedia.error.file_too_large':
+          'Faili hili ni kubwa mno. Kikomo ni MB {maxMb}.',
+      'partnerMedia.error.variant_over_budget':
+          'Imeshindikana kuifanya picha hii iwe ndogo vya kutosha. Jaribu picha nyingine.',
+      'partnerMedia.error.invalid_focal':
+          'Kuna hitilafu kwenye sehemu kuu. Iweke tena.',
+      'partnerMedia.error.not_editable':
+          'Hili limebadilishwa sasa hivi. Tumelipakia upya.',
+      'partnerMedia.error.image_save_failed':
+          'Imeshindikana kuhifadhi picha yako. Jaribu tena.',
+      'partnerMedia.error.image_taken_down_before':
+          'FitFlex iliondoa picha hii hii awali. Chagua nyingine.',
+      'partnerMedia.error.unknown': 'Imeshindikana ({code}). Jaribu tena.',
+      'partnerMedia.error.rate_limited_day':
+          'Umefikia kikomo cha upakiaji cha leo. Jaribu tena kesho.',
+      'partnerMedia.error.rate_limited_attempts':
+          'Majaribio mengi mno leo kwa ukurasa huu. Jaribu tena kesho.',
+      'partnerMedia.error.image_service_busy':
+          'FitFlex inaandaa picha nyingi kwa sasa. Jaribu tena baada ya sekunde chache.',
+      'partnerMedia.error.rate_limit_unavailable':
+          'Imeshindikana kukagua upakiaji wako sasa hivi. Jaribu tena baada ya dakika moja.',
+      'partnerMedia.error.too_many_pixels':
+          'Picha hii ina pikseli nyingi mno. Tumia yenye hadi megapikseli {maxMp}.',
+      'partnerMedia.error.too_large_side':
+          'Nembo hii ni kubwa mno. Tumia yenye hadi pikseli {maxSide} kila upande.',
+      'partnerMedia.error.media_not_found': 'Hii ilikuwa imeshaondolewa.',
+      'partnerMedia.error.feature_disabled': 'Huduma hii bado haipatikani.',
+      'partnerMedia.error.rights_confirmation_required':
+          'Chagua kisanduku kuthibitisha kwamba unaweza kutumia picha hii.',
+      'partnerMedia.error.own_logo_confirmation_required':
+          'Chagua kisanduku kuthibitisha kwamba hii ni nembo yako mwenyewe.',
+      'partnerMedia.error.no_file_provided':
+          'Hakuna faili lililotumwa. Chagua picha kisha ujaribu tena.',
+      'partnerMedia.error.invalid_plate':
+          'Chagua mandharinyuma ya nembo kisha ujaribu tena.',
+      'partnerMedia.error.gym_id_required': 'Chagua gym kisha ujaribu tena.',
+      'partnerMedia.error.invalid_multipart':
+          'Imeshindikana kupokea faili lote. Jaribu tena.',
+      'partnerMedia.error.unknown_field':
+          'Toleo hili la app limetuma kitu ambacho seva haikubali. Sasisha app kisha ujaribu tena.',
+      'inbox.open.brandMedia': 'Fungua picha ya mwanzo na nembo',
+      // Refused photos (fitflex-functions#273). Swahili for native review.
+      'error.reason.invalidMediaSrc':
+          'Picha hii haiwezi kutumika. Chagua picha ya PNG, JPEG au WebP kutoka kwenye simu yako.',
+      'error.reason.mediaSrcTooLarge':
+          'Picha hii ni kubwa mno. Chagua picha ndogo zaidi (hadi MB 1.4).',
+      'error.reason.uploadForbidden':
+          'Akaunti yako haiwezi kupakia picha hapa.',
+      // Swahili for native review (fitflex-functions#273).
+      'error.reason.tooManyImages':
+          'Picha ni nyingi mno. Ondoa baadhi kisha ujaribu tena.',
     },
   };
 }

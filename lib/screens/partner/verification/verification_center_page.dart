@@ -115,6 +115,8 @@ class _VerificationCenterPageState extends State<VerificationCenterPage> {
   Future<void> _progressAction(PartnerNextAction action) async {
     final data = _data;
     if (data == null) return;
+    // An under-review request has nothing to fix in the app: support it is.
+    if (partnerActionIsSupport(action)) return openPartnerSupport();
     switch (action.code) {
       case 'complete_kyc_items' || 'kyc_changes_requested':
         final item = action.missing.isEmpty
@@ -318,7 +320,10 @@ class _VerificationCenterPageState extends State<VerificationCenterPage> {
                     const SizedBox(height: FFTokens.spacingMd),
                   ],
                   if (_StatusCard.shows(data)) ...[
-                    _StatusCard(data: data),
+                    _StatusCard(
+                      data: data,
+                      onSupport: _busy ? null : openPartnerSupport,
+                    ),
                     const SizedBox(height: FFTokens.spacingLg),
                   ],
                   for (final section in data.sections) ...[
@@ -391,20 +396,33 @@ class _VerificationCenterPageState extends State<VerificationCenterPage> {
 }
 
 class _StatusCard extends StatelessWidget {
-  const _StatusCard({required this.data});
+  const _StatusCard({required this.data, this.onSupport});
   final KycOverview data;
+
+  /// Opens FitFlex support; shown when the case is under review.
+  final VoidCallback? onSupport;
+
+  /// The partner was given the neutral `under_review` code in place of a
+  /// sensitive one (fitflex-functions#245): no reason is shown, ever.
+  static bool underReview(KycOverview data) =>
+      data.kycCase?.reasonCode == partnerUnderReviewReason;
+
+  /// The reviewer's note, unless the case is under review.
+  static String? _note(KycOverview data) {
+    final note = data.kycCase?.reasonNote;
+    if (underReview(data) || note == null || note.isEmpty) return null;
+    return note;
+  }
 
   /// With the progress tracker on top, the status sentence is said there;
   /// only the reviewer's note and the renewal hint are left to show.
   static bool shows(KycOverview data) {
     if (data.progress == null) return true;
-    final note = data.kycCase?.reasonNote;
-    return (note != null && note.isNotEmpty) || data.status.renewable;
+    return _note(data) != null || data.status.renewable;
   }
 
   @override
   Widget build(BuildContext context) {
-    final c = data.kycCase;
     final (String key, FFAlertTone tone) = switch (data.status) {
       KycStatus.none ||
       KycStatus.draft => ('kyc.status.draft', FFAlertTone.info),
@@ -418,13 +436,39 @@ class _StatusCard extends StatelessWidget {
       KycStatus.rejected => ('kyc.status.rejected', FFAlertTone.error),
       KycStatus.suspended => ('kyc.status.suspended', FFAlertTone.error),
     };
-    final note = c?.reasonNote;
+    final review = underReview(data);
+    final note = _note(data);
     final message = [
-      if (data.progress == null) context.tr(key),
-      if (note != null && note.isNotEmpty) note,
+      if (data.progress == null)
+        review ? partnerUnderReviewMessage(context) : context.tr(key),
+      ?note,
       if (data.status.renewable) context.tr('kyc.renewHint'),
     ].join('\n\n');
-    return FFAlert(key: const Key('kyc-status'), message: message, tone: tone);
+    final alert = FFAlert(
+      key: const Key('kyc-status'),
+      message: message,
+      tone: tone,
+    );
+    // The tracker brings its own support button; without it, add one here.
+    if (!review || data.progress != null) return alert;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        alert,
+        const SizedBox(height: FFTokens.spacingSm),
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: FFButton(
+            key: const Key('kyc-status-support'),
+            label: context.tr('member.contactSupport'),
+            maxLines: 2,
+            variant: FFButtonVariant.secondary,
+            icon: Icons.support_agent_outlined,
+            onPressed: onSupport,
+          ),
+        ),
+      ],
+    );
   }
 }
 
