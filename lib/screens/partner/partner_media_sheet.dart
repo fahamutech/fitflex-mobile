@@ -529,7 +529,7 @@ class _PartnerMediaUploadSheetState extends State<PartnerMediaUploadSheet> {
           children: [
             Container(
               padding: const EdgeInsets.all(FFTokens.spacingMd),
-              color: Colors.white,
+              color: FFTokens.logoPlateLight,
               child: plate(scale: 2),
             ),
             Container(
@@ -654,7 +654,15 @@ class _PartnerMediaUploadSheetState extends State<PartnerMediaUploadSheet> {
         }
         return KeyEventResult.ignored;
       },
-      child: Semantics(onTap: show, child: button),
+      // One node: the button's own label, the hint, and the activate
+      // action (no separate unlabelled tap target around the button).
+      child: MergeSemantics(
+        child: Semantics(
+          hint: context.tr('merch.confirmRequired'),
+          onTap: show,
+          child: button,
+        ),
+      ),
     );
   }
 

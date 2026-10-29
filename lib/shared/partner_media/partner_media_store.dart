@@ -132,6 +132,17 @@ class PartnerMediaStore {
   /// File name → a decoded image provider.
   final Map<String, ImageProvider> _ready = {};
   final Map<String, DateTime> _asked = {};
+
+  /// Requests in flight, so a home and its settings page share one.
+  final Map<String, Future<PartnerMediaOverview?>> _inflight = {};
+
+  /// Partners asked about at least once this session (answered or not).
+  final Set<String> _resolved = {};
+
+  /// Whether [subject] has been asked about this session. Until then a home
+  /// may show what the first answer brings once, fading it in (web after a
+  /// reload, a first sign-in: spec §40.1 "fetched after the first frame").
+  bool resolved(PartnerMediaSubject subject) => _resolved.contains(subject.key);
   Future<void>? _loading;
   bool _featureOff = false;
 
@@ -238,12 +249,23 @@ class PartnerMediaStore {
   Future<PartnerMediaOverview?> refresh(
     PartnerMediaSubject subject, {
     bool force = false,
-  }) async {
+  }) {
+    final running = _inflight[subject.key];
+    if (running != null) return running;
     final last = _asked[subject.key];
     if (!force && last != null && _now().difference(last) < refreshEvery) {
-      return null;
+      return Future.value(null);
     }
     _asked[subject.key] = _now();
+    final f = _refresh(subject).whenComplete(() {
+      _inflight.remove(subject.key);
+      _resolved.add(subject.key);
+    });
+    _inflight[subject.key] = f;
+    return f;
+  }
+
+  Future<PartnerMediaOverview?> _refresh(PartnerMediaSubject subject) async {
     await load();
     try {
       final raw = await _api.partnerMedia(gymId: subject.gymId);
@@ -271,6 +293,7 @@ class PartnerMediaStore {
   Future<void> apply(PartnerMediaSubject subject, PartnerMediaOverview o) =>
       _serial(() async {
         _featureOff = false;
+        _resolved.add(subject.key);
         final e = _index[subject.key] ?? _Entry();
         e.hero = await _sync(e.hero, o.hero, 'x2', maxPhotoBytes);
         e.logo = await _sync(e.logo, o.logo, 'logo256', maxLogoBytes);
@@ -401,6 +424,7 @@ class PartnerMediaStore {
     _ready.values.forEach(_evict);
     _ready.clear();
     _asked.clear();
+    _resolved.clear();
     await _files.deleteAll();
     if (!_files.persistent) return;
     try {

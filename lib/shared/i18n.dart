@@ -6868,6 +6868,7 @@ class FFLocale extends ChangeNotifier {
           'The file didn\'t arrive in full. Try again.',
       'partnerMedia.error.unknown_field':
           'This version of the app sent something the server does not accept. Update the app and try again.',
+      'partnerMedia.restricted': "You don't have access to this page.",
       'inbox.open.brandMedia': 'Open home photo and logo',
       // Refused photos (fitflex-functions#273).
       'error.reason.invalidMediaSrc':
@@ -13780,6 +13781,7 @@ class FFLocale extends ChangeNotifier {
           'Imeshindikana kupokea faili lote. Jaribu tena.',
       'partnerMedia.error.unknown_field':
           'Toleo hili la app limetuma kitu ambacho seva haikubali. Sasisha app kisha ujaribu tena.',
+      'partnerMedia.restricted': 'Huna ruhusa ya kufungua ukurasa huu.',
       'inbox.open.brandMedia': 'Fungua picha ya mwanzo na nembo',
       // Refused photos (fitflex-functions#273). Swahili for native review.
       'error.reason.invalidMediaSrc':

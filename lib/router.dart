@@ -68,6 +68,7 @@ import 'shared/friend_invites.dart';
 import 'shared/inbox/inbox_pages.dart';
 import 'screens/vendor/vendor_home_page.dart';
 import 'screens/partner/partner_media_page.dart';
+import 'shared/partner_media/partner_hero_builder.dart' show PartnerRouteWatch;
 import 'shared/partner_media/partner_media_flag.dart';
 import 'screens/vendor/stock/stock_history_page.dart';
 import 'screens/vendor/merch/banner_form_route.dart';
@@ -541,8 +542,14 @@ class _BackToSignInState extends State<_BackToSignIn> {
 }
 
 GoRouter buildRouter(AuthState auth) {
+  // PARTNER_MEDIA_UI: lets partner homes know when a page over them closes
+  // (spec §40.1). Not registered with the flag off.
+  final partnerPages = partnerMediaUi
+      ? (PartnerRouteWatch.root = PartnerRouteWatch())
+      : null;
   return GoRouter(
     initialLocation: AppRoutes.splash,
+    observers: [?partnerPages],
     extraCodec: const EmailAuthExtraCodec(),
     debugLogDiagnostics: false,
     refreshListenable: auth,

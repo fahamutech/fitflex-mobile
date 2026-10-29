@@ -240,7 +240,7 @@ void main() {
         api,
         user: const {'id': 'm', 'userType': 'member'},
       );
-      expect(find.text(h.tr('partnerMedia.restrictedGym')), findsOneWidget);
+      expect(find.text(h.tr('partnerMedia.restricted')), findsOneWidget);
       expect(api.sent('GET', '/partner/media'), isFalse);
     });
 
@@ -567,7 +567,7 @@ void main() {
         find.byKey(const Key('partner-media-confirm-rights')),
       );
       await tapVisible(tester, find.byKey(const Key('partner-media-use')));
-      expect(find.text(h.tr('partnerMedia.restrictedGym')), findsOneWidget);
+      expect(find.text(h.tr('partnerMedia.restricted')), findsOneWidget);
     });
 
     apiTest('a too-small photo is refused before any request (AC-P23)', (

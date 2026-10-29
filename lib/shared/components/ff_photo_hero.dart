@@ -544,14 +544,19 @@ class FFPhotoHero extends StatelessWidget {
             alignment: Alignment.topCenter,
             child: _vertical(context),
           );
+    final clipped = rounded || variant == FFHeroVariant.band
+        ? ClipRRect(
+            borderRadius: BorderRadius.circular(FFTokens.radiusXl),
+            child: hero,
+          )
+        : hero;
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
-      child: rounded || variant == FFHeroVariant.band
-          ? ClipRRect(
-              borderRadius: BorderRadius.circular(FFTokens.radiusXl),
-              child: hero,
-            )
-          : hero,
+      // With a plate: it fades in once this layout's photo shows. A new
+      // layout (the band <-> the 840+ banner) waits for its own photo again.
+      child: plate == null
+          ? clipped
+          : _PhotoShownHost(key: ValueKey(variant), child: clipped),
     );
   }
 
@@ -666,7 +671,7 @@ class FFPhotoHero extends StatelessWidget {
             key: const Key('ff-hero-plate'),
             left: FFTokens.spacingMd,
             top: FFTokens.spacingMd,
-            child: plate!,
+            child: _PlateGate(child: plate!),
           ),
       ],
     );
@@ -728,7 +733,7 @@ class FFPhotoHero extends StatelessWidget {
                       key: const Key('ff-hero-plate'),
                       right: FFTokens.spacingLg,
                       top: FFTokens.spacingLg,
-                      child: plate!,
+                      child: _PlateGate(child: plate!),
                     ),
                   Align(
                     alignment: Alignment.bottomLeft,
@@ -1471,7 +1476,7 @@ class _HeroPhotoLayerState extends State<_HeroPhotoLayer> {
         key: const Key('ff-hero-placeholder'),
         color: FFTokens.heroPlaceholder,
         child: noPhoto
-            ? const SizedBox.expand()
+            ? _ShownNow(shown: _HeroPhotoShown.maybeOf(context))
             : LayoutBuilder(
                 builder: (context, c) {
                   final saved = photo == null ? null : _remoteFor(photo);
@@ -1524,19 +1529,75 @@ class _HeroPhotoLayerState extends State<_HeroPhotoLayer> {
                       );
                     },
                   );
+                  final shown = _HeroPhotoShown.maybeOf(context);
+                  // The plate waits for the photo it sits on (spec §40.2).
+                  void markShown() {
+                    if (shown == null || shown.value) return;
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      shown.value = true;
+                    });
+                  }
+
                   final image = own == null
-                      ? standard
-                      : Image(
-                          key: const Key('ff-hero-own-photo'),
-                          image: heroOwnImageProvider(own, c.biggest, dpr),
-                          fit: BoxFit.cover,
-                          alignment: own.focal,
-                          width: c.maxWidth,
-                          height: c.maxHeight,
+                      ? Image(
+                          key: standard.key,
+                          image: standard.image,
+                          fit: standard.fit,
+                          alignment: standard.alignment,
+                          width: standard.width,
+                          height: standard.height,
                           excludeFromSemantics: true,
                           gaplessPlayback: true,
-                          // A saved photo that fails: the usual photo.
-                          errorBuilder: (_, _, _) => standard,
+                          errorBuilder: (context, e, st) {
+                            markShown();
+                            return standard.errorBuilder!(context, e, st);
+                          },
+                          frameBuilder: (context, child, frame, sync) {
+                            if (sync || frame != null) markShown();
+                            return standard.frameBuilder!(
+                              context,
+                              child,
+                              frame,
+                              sync,
+                            );
+                          },
+                        )
+                      // The usual photo stays underneath while the partner's
+                      // own decodes, which then fades in over it (250ms;
+                      // instant under reduced motion), so the band never
+                      // shows the bare navy ground first. If it fails, the
+                      // usual photo is simply what stays.
+                      : Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            standard,
+                            Image(
+                              key: const Key('ff-hero-own-photo'),
+                              image: heroOwnImageProvider(own, c.biggest, dpr),
+                              fit: BoxFit.cover,
+                              alignment: own.focal,
+                              width: c.maxWidth,
+                              height: c.maxHeight,
+                              excludeFromSemantics: true,
+                              gaplessPlayback: true,
+                              errorBuilder: (_, _, _) {
+                                markShown();
+                                return const SizedBox.shrink();
+                              },
+                              frameBuilder: (context, child, frame, sync) {
+                                final ready = sync || frame != null;
+                                if (ready) markShown();
+                                return AnimatedOpacity(
+                                  opacity: ready ? 1 : 0,
+                                  duration: sync || instant
+                                      ? Duration.zero
+                                      : const Duration(milliseconds: 250),
+                                  curve: Curves.easeOut,
+                                  child: child,
+                                );
+                              },
+                            ),
+                          ],
                         );
                   // Under reduced motion the new photo replaces the old one in
                   // the same frame; otherwise they cross-fade (C-4).
@@ -1876,4 +1937,86 @@ String heroGreeting(BuildContext context, DateTime now, String? name) {
       !first.contains('@') &&
       !RegExp(r'^[+\d]').hasMatch(first);
   return usable ? '$greeting, $first' : greeting;
+}
+
+/// Whether a hero's photo (or its placeholder, when there is none) has
+/// shown, so its logo plate can fade in with it (spec §40.2).
+class _HeroPhotoShown extends InheritedNotifier<ValueNotifier<bool>> {
+  const _HeroPhotoShown({required super.notifier, required super.child});
+
+  static ValueNotifier<bool>? maybeOf(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<_HeroPhotoShown>()?.notifier;
+
+  static bool watch(BuildContext context) =>
+      context
+          .dependOnInheritedWidgetOfExactType<_HeroPhotoShown>()
+          ?.notifier
+          ?.value ??
+      true;
+}
+
+class _PhotoShownHost extends StatefulWidget {
+  const _PhotoShownHost({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  State<_PhotoShownHost> createState() => _PhotoShownHostState();
+}
+
+class _PhotoShownHostState extends State<_PhotoShownHost> {
+  final _shown = ValueNotifier<bool>(false);
+
+  @override
+  void dispose() {
+    _shown.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      _HeroPhotoShown(notifier: _shown, child: widget.child);
+}
+
+/// The plate, invisible until the photo under it shows, then faded in
+/// (250ms; instant under reduced motion).
+class _PlateGate extends StatelessWidget {
+  const _PlateGate({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => AnimatedOpacity(
+    key: const Key('ff-hero-plate-gate'),
+    opacity: _HeroPhotoShown.watch(context) ? 1 : 0,
+    duration: MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : const Duration(milliseconds: 250),
+    curve: Curves.easeOut,
+    child: child,
+  );
+}
+
+/// No photo at all (high contrast): the plate may show at once.
+class _ShownNow extends StatefulWidget {
+  const _ShownNow({required this.shown});
+
+  final ValueNotifier<bool>? shown;
+
+  @override
+  State<_ShownNow> createState() => _ShownNowState();
+}
+
+class _ShownNowState extends State<_ShownNow> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final s = widget.shown;
+      if (mounted && s != null) s.value = true;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.expand();
 }

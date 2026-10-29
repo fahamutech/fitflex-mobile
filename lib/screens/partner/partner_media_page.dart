@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
@@ -71,6 +72,13 @@ class _PartnerMediaPageState extends State<PartnerMediaPage> {
   String? _gymId;
   bool _started = false;
 
+  /// The signed-in role is not this page's (generic "no access" text).
+  bool _wrongRole = false;
+
+  /// The gym from the link, kept for Back from a cold start (§41.1), so a
+  /// gym picked on this page never changes the app bar's gym.
+  String? _linkedGymId;
+
   /// The kind being uploaded, and its progress (the card shows it too).
   String? _uploadKind;
   PartnerUploadProgress? _progress;
@@ -100,6 +108,7 @@ class _PartnerMediaPageState extends State<PartnerMediaPage> {
     if (_started) return;
     _started = true;
     _gymId = widget.gymId;
+    _linkedGymId = widget.gymId;
     unawaited(_load());
   }
 
@@ -108,7 +117,12 @@ class _PartnerMediaPageState extends State<PartnerMediaPage> {
     final auth = AppScope.of(context).auth;
     final role = auth.user?['userType']?.toString() ?? auth.role;
     if (partnerMediaSideOf(role) != widget.side) {
-      setState(() => _phase = _Phase.noAccess);
+      // Another role's page (a member opening /trainer/brand-media): the
+      // generic wording, not the gym or business owner's.
+      setState(() {
+        _wrongRole = true;
+        _phase = _Phase.noAccess;
+      });
       return;
     }
     try {
@@ -418,6 +432,12 @@ class _PartnerMediaPageState extends State<PartnerMediaPage> {
       ),
     );
     if (picked == null || picked == _gymId || !mounted) return;
+    // The address follows the gym shown (a reload or a shared link opens
+    // the same gym), without a new history entry or a page rebuild.
+    SystemNavigator.routeInformationUpdated(
+      uri: Uri.parse(partnerMediaRoute('gym', gymId: picked)),
+      replace: true,
+    );
     setState(() {
       _gymId = picked;
       _o = null;
@@ -427,6 +447,8 @@ class _PartnerMediaPageState extends State<PartnerMediaPage> {
   }
 
   // ── building ────────────────────────────────────────────────────────────
+
+  bool get _wide => MediaQuery.sizeOf(context).width >= 840;
 
   String? get _gymName => _gyms
       .where((g) => g['id']?.toString() == _gymId)
@@ -447,11 +469,11 @@ class _PartnerMediaPageState extends State<PartnerMediaPage> {
     }
     context.go(switch (widget.side) {
       'gym' =>
-        _gymId == null
+        _linkedGymId == null
             ? '/owner/home'
             : Uri(
                 path: '/owner/home',
-                queryParameters: {'gymId': _gymId!},
+                queryParameters: {'gymId': _linkedGymId!},
               ).toString(),
       'trainer' => '/trainer/home',
       _ => '/vendor/home',
@@ -470,20 +492,27 @@ class _PartnerMediaPageState extends State<PartnerMediaPage> {
         ),
         // Long in Swahili at 1.3x ("Picha ya mwanzo na nembo"): up to two
         // lines, shrunk to fit the bar rather than cut.
-        title: Semantics(
-          header: true,
-          child: FittedBox(
-            key: const Key('partner-media-title'),
-            fit: BoxFit.scaleDown,
-            alignment: AlignmentDirectional.centerStart,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: MediaQuery.sizeOf(context).width - 120,
-              ),
-              child: Text(
-                context.tr('partnerMedia.title'),
-                maxLines: 2,
-                softWrap: true,
+        centerTitle: false,
+        titleSpacing: 0,
+        // Long in Swahili ("Picha ya mwanzo na nembo"): up to two lines,
+        // shrunk to fit, and kept 16px off the bar's far edge.
+        title: Padding(
+          padding: const EdgeInsetsDirectional.only(end: FFTokens.spacingMd),
+          child: Semantics(
+            header: true,
+            child: LayoutBuilder(
+              builder: (context, c) => FittedBox(
+                key: const Key('partner-media-title'),
+                fit: BoxFit.scaleDown,
+                alignment: AlignmentDirectional.centerStart,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: c.maxWidth),
+                  child: Text(
+                    context.tr('partnerMedia.title'),
+                    maxLines: 2,
+                    softWrap: true,
+                  ),
+                ),
               ),
             ),
           ),
@@ -520,11 +549,12 @@ class _PartnerMediaPageState extends State<PartnerMediaPage> {
   Widget _body(BuildContext context) {
     switch (_phase) {
       case _Phase.noAccess:
-        return _blocked(
-          widget.side == 'vendor'
-              ? 'partnerMedia.restrictedVendor'
-              : 'partnerMedia.restrictedGym',
-        );
+        return _blocked(switch (widget.side) {
+          _ when _wrongRole => 'partnerMedia.restricted',
+          'vendor' => 'partnerMedia.restrictedVendor',
+          'gym' => 'partnerMedia.restrictedGym',
+          _ => 'partnerMedia.restricted',
+        });
       case _Phase.noGym:
         return _blocked('partnerMedia.noGym', icon: Icons.fitness_center);
       case _Phase.off:
@@ -612,8 +642,13 @@ class _PartnerMediaPageState extends State<PartnerMediaPage> {
   }
 
   Widget _previewCard(BuildContext context) {
-    final photo = _saved?.photo;
-    final logo = _saved?.logo;
+    // Loading: the bundled photo or the saved copy, and no plate yet (§41.3).
+    final loading = _phase == _Phase.loading;
+    final saved =
+        _saved ??
+        (loading ? PartnerMediaStore.instance?.readyFor(_subject) : null);
+    final photo = saved?.photo;
+    final logo = loading ? null : saved?.logo;
     final label = context
         .tr('partnerMedia.a11y.preview')
         .replaceAll(
@@ -636,13 +671,27 @@ class _PartnerMediaPageState extends State<PartnerMediaPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         FFSectionTitle(context.tr('partnerMedia.preview')),
-        PartnerBandPreview(
-          key: const Key('partner-media-preview'),
-          side: widget.side,
-          name: _bandName,
-          label: label,
-          ownPhoto: photo,
-          logo: partnerLogoPlate(logo),
+        LayoutBuilder(
+          builder: (context, c) {
+            final preview = PartnerBandPreview(
+              key: const Key('partner-media-preview'),
+              side: widget.side,
+              name: _bandName,
+              label: label,
+              ownPhoto: photo,
+              logo: partnerLogoPlate(logo),
+              forceSize: _wide ? kPartnerWidePreviewWindow : null,
+            );
+            if (!_wide) return preview;
+            // 840+: the wide home's own banner, laid out as on a 1280 wide
+            // screen (220 tall, text column unwrapped), scaled to the column.
+            return FittedBox(
+              key: const Key('partner-media-preview-wide-fit'),
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.topLeft,
+              child: SizedBox(width: kPartnerWidePreviewWidth, child: preview),
+            );
+          },
         ),
         const SizedBox(height: FFTokens.spacingSm),
         Text(
@@ -690,15 +739,12 @@ class _PartnerMediaPageState extends State<PartnerMediaPage> {
             child: partnerLogoPlate(savedLogo)!,
           );
         }
+        // An empty, dashed 40 x 40 plate outline (spec §41.3).
         return ExcludeSemantics(
-          child: Container(
+          child: CustomPaint(
             key: Key('partner-media-$kind-empty-plate'),
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(FFTokens.radiusSm),
-              border: Border.all(color: scheme.outline),
-            ),
+            size: const Size.square(FFTokens.logoPlateHeight),
+            painter: DashedPlatePainter(color: scheme.outline),
           ),
         );
       }
@@ -822,30 +868,35 @@ class _PartnerMediaPageState extends State<PartnerMediaPage> {
       final reason = context.tr(reasonKey) == reasonKey
           ? context.tr('partnerMedia.reason.other')
           : context.tr(reasonKey);
+      final message = [
+        context.tr(
+          logo ? 'partnerMedia.takenDownLogo' : 'partnerMedia.takenDownHero',
+        ),
+        context
+            .tr('partnerMedia.takenDownReason')
+            .replaceAll('{reason}', reason),
+        if (down.takedownNote != null)
+          context
+              .tr('partnerMedia.takenDownNote')
+              .replaceAll('{note}', down.takedownNote!),
+        context.tr(
+          logo
+              ? 'partnerMedia.takenDownNextLogo'
+              : 'partnerMedia.takenDownNext',
+        ),
+      ].join('\n');
+      // One readable node with the whole text (reason and note), announced
+      // when the page opens (spec §41.5).
       alert = Semantics(
+        key: Key('partner-media-$kind-taken-down-semantics'),
+        container: true,
         liveRegion: true,
+        label: message,
+        excludeSemantics: true,
         child: FFAlert(
           key: Key('partner-media-$kind-taken-down'),
           tone: FFAlertTone.error,
-          message: [
-            context.tr(
-              logo
-                  ? 'partnerMedia.takenDownLogo'
-                  : 'partnerMedia.takenDownHero',
-            ),
-            context
-                .tr('partnerMedia.takenDownReason')
-                .replaceAll('{reason}', reason),
-            if (down.takedownNote != null)
-              context
-                  .tr('partnerMedia.takenDownNote')
-                  .replaceAll('{note}', down.takedownNote!),
-            context.tr(
-              logo
-                  ? 'partnerMedia.takenDownNextLogo'
-                  : 'partnerMedia.takenDownNext',
-            ),
-          ].join('\n'),
+          message: message,
         ),
       );
       actions.add(
@@ -952,24 +1003,16 @@ class _PartnerMediaPageState extends State<PartnerMediaPage> {
     bool loading = false,
     bool danger = false,
   }) {
-    Widget b = FFButton(
+    final b = FFButton(
       key: key,
       label: label,
-      variant: danger && onPressed != null ? FFButtonVariant.ghost : variant,
+      variant: variant,
       maxLines: 3,
       loading: loading,
       onPressed: onPressed,
+      // Error-tone label in light and dark (spec §41.3), set on the button.
+      foregroundColor: danger ? Theme.of(context).colorScheme.error : null,
     );
-    if (danger) {
-      b = Theme(
-        data: Theme.of(context).copyWith(
-          colorScheme: Theme.of(
-            context,
-          ).colorScheme.copyWith(primary: Theme.of(context).colorScheme.error),
-        ),
-        child: b,
-      );
-    }
     return hint == null ? b : Semantics(hint: hint, child: b);
   }
 
@@ -1012,4 +1055,43 @@ class _PartnerMediaPageState extends State<PartnerMediaPage> {
       ),
     );
   }
+}
+
+/// The wide preview is laid out as the home banner on a window this size
+/// (spec §41.2: what the partner's wide home shows).
+const Size kPartnerWidePreviewWindow = Size(1280, 800);
+
+/// The home's banner width on that window (24px page padding each side).
+const double kPartnerWidePreviewWidth = 1232;
+
+/// A dashed rounded square: the empty logo plate (spec §41.3).
+class DashedPlatePainter extends CustomPainter {
+  const DashedPlatePainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+    final path = Path()
+      ..addRRect(
+        RRect.fromRectAndRadius(
+          (Offset.zero & size).deflate(0.5),
+          const Radius.circular(FFTokens.radiusSm),
+        ),
+      );
+    const dash = 4.0;
+    const gap = 3.0;
+    for (final metric in path.computeMetrics()) {
+      for (var d = 0.0; d < metric.length; d += dash + gap) {
+        canvas.drawPath(metric.extractPath(d, d + dash), paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(DashedPlatePainter old) => old.color != color;
 }
