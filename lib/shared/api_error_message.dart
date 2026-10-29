@@ -190,6 +190,15 @@ String? _detailedReason(FFLocale locale, String reason, dynamic body) {
           .t('error.reason.quantityOutOfRange')
           .replaceFirst('{min}', '${body['min']}')
           .replaceFirst('{max}', '${body['max']}');
+    // Events S6: the distance the run has to reach (metres in the body).
+    case 'distance_too_short':
+      if (body['requiredMeters'] is! num) return null;
+      return locale
+          .t('events.run.error.distance_too_short')
+          .replaceFirst(
+            '{distance}',
+            '${((body['requiredMeters'] as num) / 1000).toStringAsFixed(2)} km',
+          );
     case 'too_many_participants':
       if (body['max'] is! num) return null;
       return locale
@@ -372,6 +381,20 @@ String? _knownReason(FFLocale locale, String reason) {
     'cannot_invite_self': 'error.reason.cannotInviteSelf',
     'cannot_remove_owner': 'error.reason.cannotRemoveOwner',
     'kyc_incomplete': 'error.reason.kycIncomplete',
+    // Events S6: runs, results, rewards (spec §8, §10).
+    'run_outside_window': 'events.run.error.run_outside_window',
+    'distance_too_short': 'events.run.error.distance_too_short',
+    'activity_not_recorded_in_app':
+        'events.run.error.activity_not_recorded_in_app',
+    'activity_already_linked': 'events.run.error.activity_already_linked',
+    'run_already_linked': 'events.run.error.run_already_linked',
+    'event_not_open_for_results': 'events.run.error.event_not_open_for_results',
+    'dispute_open': 'events.result.error.dispute_open',
+    'dispute_window_closed': 'events.result.dispute.closedWindow',
+    'result_not_found': 'events.result.error.result_not_found',
+    'visibility_not_allowed': 'events.result.error.visibility_not_allowed',
+    'reward_unavailable': 'events.rewards.error.reward_unavailable',
+    'not_enough_units': 'events.rewards.error.not_enough_units',
     // Events S3: registration, orders, claims, teams (spec §3.17).
     'capacity_unavailable': 'error.reason.capacityUnavailable',
     'event_not_open': 'error.reason.eventNotOpen',
