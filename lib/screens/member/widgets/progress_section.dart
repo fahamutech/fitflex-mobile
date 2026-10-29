@@ -10,7 +10,6 @@ import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
 import '../../../shared/i18n.dart';
 import '../member_shell.dart';
-import 'activity_bar_chart.dart';
 import 'activity_widgets.dart';
 import 'goal_widgets.dart';
 import 'training_widgets.dart';
