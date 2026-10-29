@@ -393,15 +393,27 @@ const double pinHeroClearPhoto = 0;
 /// the hero where it would push OK below the fold; text steps scroll (the
 /// hero scrolls away when the keyboard opens). [headline] is a `.lead` /
 /// `.accent` key pair, or null for the eyebrow alone.
+///
+/// [back] false: no way back (a screen the router holds the person on);
+/// [actions] go in the app bar.
 Widget _flowScreen(
   BuildContext context, {
   required String title,
   required Widget child,
   String? headline,
   bool keypad = false,
+  bool back = true,
+  List<Widget> actions = const [],
 }) {
   if (!photoHeroUi) {
-    return _flowScaffold(context, title: title, keypad: keypad, child: child);
+    return _flowScaffold(
+      context,
+      title: title,
+      keypad: keypad,
+      back: back,
+      actions: actions,
+      child: child,
+    );
   }
   return FFPhotoHeroPage(
     // Keypad steps: a thin strip like PIN entry (owner 2026-10-22), the
@@ -414,17 +426,26 @@ Widget _flowScreen(
     heroMinViewportHeight: keypad ? 800 : null,
     maxHeroTextScale: keypad ? 1.15 : null,
     fallback: keypad
-        ? (context) =>
-              _flowScaffold(context, title: title, keypad: true, child: child)
+        ? (context) => _flowScaffold(
+            context,
+            title: title,
+            keypad: true,
+            back: back,
+            actions: actions,
+            child: child,
+          )
         : null,
     contentMaxWidth: 400,
-    leading: Builder(
-      builder: (context) => IconButton(
-        tooltip: context.tr('a11y.back'),
-        icon: const Icon(Icons.arrow_back),
-        onPressed: () => Navigator.of(context).maybePop(),
-      ),
-    ),
+    actions: actions,
+    leading: back
+        ? Builder(
+            builder: (context) => IconButton(
+              tooltip: context.tr('a11y.back'),
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => Navigator.of(context).maybePop(),
+            ),
+          )
+        : null,
     hero: (context, f) => FFPhotoHero(
       key: const Key('pin-flow-hero'),
       photo: FFHeroPhoto.pin,
@@ -449,8 +470,14 @@ Widget _flowScaffold(
   required String title,
   required Widget child,
   bool keypad = false,
+  bool back = true,
+  List<Widget> actions = const [],
 }) => Scaffold(
-  appBar: AppBar(title: Text(title)),
+  appBar: AppBar(
+    title: Text(title),
+    automaticallyImplyLeading: back,
+    actions: actions,
+  ),
   body: SafeArea(
     child: Center(
       child: ConstrainedBox(
@@ -1040,6 +1067,164 @@ class ChangePinButton extends StatelessWidget {
           onPressed: () => changePinAndReport(context),
         );
       },
+    );
+  }
+}
+
+// ── Gym staff: replacing the start PIN the owner chose ─────────────────────
+
+/// What the server answered to `POST /auth/pin/change`, as the screen should
+/// handle it (fitflex-functions#260).
+enum StaffPinChangeOutcome {
+  /// Show the message; the staff member tries again.
+  retry,
+
+  /// The PIN WAS changed but no new session came back
+  /// (`pin_changed_session_failed`): sign in again with the new PIN.
+  signInAgain,
+
+  /// The server no longer holds this session (`pin_change_not_required`, or
+  /// `feature_disabled` once the flag is off): read the profile again.
+  released,
+}
+
+StaffPinChangeOutcome staffPinChangeOutcome(Object error) {
+  final code = error is ApiException ? error.code : null;
+  return switch (code) {
+    'pin_changed_session_failed' => StaffPinChangeOutcome.signInAgain,
+    'pin_change_not_required' ||
+    'feature_disabled' => StaffPinChangeOutcome.released,
+    _ => StaffPinChangeOutcome.retry,
+  };
+}
+
+/// Message for a failed start-PIN change.
+String staffPinChangeErrorMessage(BuildContext context, Object error) {
+  final code = error is ApiException ? error.code : null;
+  final key = switch (code) {
+    'pin_must_be_4_digits' => 'auth.pinExactlyFour',
+    'pin_unchanged' => 'staffPin.errUnchanged',
+    'pin_change_not_required' => 'staffPin.errNotRequired',
+    'pin_change_in_progress' => 'staffPin.errInProgress',
+    'firebase_update_failed' => 'staffPin.errNotSaved',
+    'pin_check_unavailable' => 'staffPin.errCheckUnavailable',
+    'pin_changed_session_failed' => 'staffPin.errSignInAgain',
+    'feature_disabled' => 'error.reason.featureDisabled',
+    _ => null,
+  };
+  return key != null ? context.tr(key) : pinErrorMessage(context, error);
+}
+
+/// Gym staff whose PIN their owner chose (when the account was made, or by
+/// a reset) choose their own before anything else. The router keeps a held
+/// session here (no scanner, no check-ins) until it is done or they sign
+/// out. On success the new session is stored at once: every older token
+/// has ended.
+class StaffPinChangeScreen extends StatefulWidget {
+  const StaffPinChangeScreen({super.key});
+
+  @override
+  State<StaffPinChangeScreen> createState() => _StaffPinChangeScreenState();
+}
+
+class _StaffPinChangeScreenState extends State<StaffPinChangeScreen> {
+  bool _busy = false;
+  String? _error;
+  // A new key starts the PIN step again (choose, then confirm) after an
+  // error, so nothing typed before is kept.
+  int _attempt = 0;
+
+  Future<void> _submit(String pin) async {
+    final scope = AppScope.of(context);
+    final router = GoRouter.of(context);
+    final done = context.tr('staffPin.done');
+    // The router leaves this screen as soon as the new session is stored.
+    final snack = FFSnack.of(context);
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final session = await scope.api.staffChangeStartPin(pin);
+      await scope.auth.completeStaffPinChange(session);
+      snack.success(done);
+      router.go(routeForSignedInUser(scope.auth));
+    } catch (e) {
+      if (!mounted) return;
+      switch (staffPinChangeOutcome(e)) {
+        case StaffPinChangeOutcome.signInAgain:
+          setState(() => _busy = false);
+          await _signInAgain();
+          return;
+        case StaffPinChangeOutcome.released:
+          // Read the account again: with no hold the router moves on.
+          await scope.auth.retryProfile();
+          if (!mounted || !scope.auth.pinChangeRequired) return;
+        case StaffPinChangeOutcome.retry:
+          break;
+      }
+      setState(() {
+        _error = staffPinChangeErrorMessage(context, e);
+        _attempt++;
+      });
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// The PIN was changed, but this device has no session for it.
+  Future<void> _signInAgain() async {
+    final auth = AppScope.of(context).auth;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        key: const Key('staff-pin-sign-in-again'),
+        title: Text(ctx.tr('staffPin.signInAgainTitle')),
+        content: Text(ctx.tr('staffPin.errSignInAgain')),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(ctx.tr('staffPin.signInAgainAction')),
+          ),
+        ],
+      ),
+    );
+    await auth.signOut();
+  }
+
+  Future<void> _signOut() => AppScope.of(context).auth.signOut();
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      // Nowhere to go back to: the PIN comes first.
+      canPop: false,
+      child: _flowScreen(
+        context,
+        title: context.tr('staffPin.title'),
+        headline: 'hero.pin.create',
+        keypad: true,
+        back: false,
+        actions: [
+          TextButton(
+            key: const Key('staff-pin-sign-out'),
+            onPressed: _busy ? null : _signOut,
+            child: Text(context.tr('home.signout')),
+          ),
+        ],
+        child: ChoosePinStep(
+          key: ValueKey('staff-pin-step-$_attempt'),
+          onChosen: _submit,
+          busy: _busy,
+          error: _error,
+          intro: Text(
+            context.tr('staffPin.why'),
+            key: const Key('staff-pin-why'),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ),
     );
   }
 }

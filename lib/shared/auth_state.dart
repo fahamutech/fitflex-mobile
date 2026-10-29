@@ -16,6 +16,7 @@ import 'push_service.dart';
 class AuthState extends ChangeNotifier {
   AuthState(this.api, {this.push}) {
     api.onUnauthorized = () => signOut();
+    api.onPasswordChangeRequired = holdForPinChange;
   }
 
   final ApiClient api;
@@ -66,6 +67,46 @@ class AuthState extends ChangeNotifier {
   bool _profileUnconfirmed = false;
   bool get isPendingApproval =>
       _user?['approvalStatus']?.toString() == 'pending_approval';
+
+  /// Gym staff whose PIN their owner chose (at creation or by a reset) must
+  /// choose their own before anything else (fitflex-functions#260, flag
+  /// STAFF_PIN_CHANGE_REQUIRED). The server says so with
+  /// `user.passwordChangeRequired: true` at sign-in, or by refusing any
+  /// route with `403 password_change_required`. With the flag off the field
+  /// is false or absent and nothing changes.
+  bool get pinChangeRequired =>
+      _token != null &&
+      _staffRole(_user?['userType']?.toString() ?? _role) &&
+      _user?['passwordChangeRequired'] == true;
+
+  static bool _staffRole(String role) => role == 'gym_staff';
+
+  /// The server refused a request with `403 password_change_required`: hold
+  /// this gym-staff session on the choose-your-own-PIN screen.
+  void holdForPinChange() {
+    if (_token == null) return;
+    if (!_staffRole(_user?['userType']?.toString() ?? _role)) return;
+    if (_user?['passwordChangeRequired'] == true) return;
+    _user = {...?_user, 'passwordChangeRequired': true};
+    // A held session is the server's answer, not a missing profile.
+    _profileUnconfirmed = false;
+    notifyListeners();
+    final user = _user!;
+    unawaited(
+      SharedPreferences.getInstance().then(
+        (prefs) => prefs.setString('user', jsonEncode(user)),
+      ),
+    );
+  }
+
+  /// The staff member chose their own PIN: [res] is the new session from
+  /// `POST /auth/pin/change`. Every older token is over, so it is stored at
+  /// once.
+  Future<void> completeStaffPinChange(Map<String, dynamic> res) async {
+    await completeFitFlexSession(res);
+    // The change answer has no personas list; read it again.
+    unawaited(refreshPersonas());
+  }
 
   /// All live personas of the signed-in Person (empty before Identity V2).
   List<Map<String, dynamic>> get personas => _personas;
@@ -202,8 +243,12 @@ class AuthState extends ChangeNotifier {
         await refreshIdentifiers();
         _profileUnconfirmed = false;
       } on ApiException catch (e) {
-        // Token invalid or user deleted — clear session
-        if (e.status == 401 || e.status == 404) {
+        if (e.code == 'password_change_required') {
+          // Held to the PIN change: the session is good, the profile
+          // cannot be read until the PIN is changed (holdForPinChange).
+          _profileUnconfirmed = false;
+        } else if (e.status == 401 || e.status == 404) {
+          // Token invalid or user deleted — clear session
           _token = null;
           _user = null;
           api.setToken(null);
@@ -255,6 +300,12 @@ class AuthState extends ChangeNotifier {
       notifyListeners();
       return true;
     } on ApiException catch (e) {
+      if (e.code == 'password_change_required' && pinChangeRequired) {
+        // The router moves on to the PIN change.
+        _profileUnconfirmed = false;
+        notifyListeners();
+        return true;
+      }
       if (e.status == 401 || e.status == 404) {
         _profileUnconfirmed = false;
         await signOut();
