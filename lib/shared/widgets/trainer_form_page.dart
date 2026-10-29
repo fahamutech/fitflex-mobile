@@ -207,6 +207,7 @@ class _TrainerFormPageState extends State<TrainerFormPage> {
               // Photos (first = profile picture)
               FFFieldLabel(context.tr('photos.title')),
               FFPhotoGalleryField(
+                profilePhoto: true,
                 values: _photos,
                 onChanged: (v) => setState(() {
                   _photos = v;

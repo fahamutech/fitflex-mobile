@@ -82,6 +82,9 @@ import 'screens/vendor/customers/statement_page.dart';
 import 'screens/vendor/customers/customers_widgets.dart' show customerIdPattern;
 import 'screens/vendor/documents/document_view.dart';
 import 'screens/vendor/settings/tax_details_page.dart';
+import 'screens/vendor/reports/report_models.dart'
+    show ReportSection, reportsHomeRoute;
+import 'screens/vendor/reports/report_section_page.dart';
 import 'screens/partner/verification/verification_center_page.dart';
 import 'shared/widgets/invitations.dart';
 import 'shared/pending_org_invite.dart';
@@ -321,6 +324,9 @@ final _vendorDocumentsPath = RegExp(
 final _vendorMerchPath = RegExp(
   r'^/vendor/merch(/banner/(new|[A-Za-z0-9_-]{1,64}/edit))?$',
 );
+
+/// Report pages (S6). Pending vendors see their own figures too (§11).
+final _vendorReportsPath = RegExp(r'^/vendor/reports/[a-z]{1,20}$');
 
 /// Customer pages (S4). Pending vendors keep their own records too.
 final _vendorCustomersPath = RegExp(
@@ -646,6 +652,7 @@ GoRouter buildRouter(AuthState auth) {
               _vendorSalesPath.hasMatch(loc) ||
               _vendorCustomersPath.hasMatch(loc) ||
               _vendorDocumentsPath.hasMatch(loc) ||
+              _vendorReportsPath.hasMatch(loc) ||
               _inboxPath.hasMatch(loc) ||
               // Their own home photo and logo (spec §41.3: allowed while
               // pending).
@@ -960,6 +967,26 @@ GoRouter buildRouter(AuthState auth) {
             productId: state.pathParameters['productId']!,
             variant: variant == null || variant.isEmpty ? null : variant,
             fromPush: state.uri.queryParameters['from'] == 'push',
+          );
+        },
+      ),
+      // Vendor reports (S6). The page checks the tool (`reports`) and the
+      // person's rights itself; an unknown section opens Reports home.
+      GoRoute(
+        path: '/vendor/reports/:section',
+        name: 'vendorReportSection',
+        redirect: (context, state) =>
+            ReportSection.ofRoute(state.pathParameters['section']) == null
+            ? reportsHomeRoute
+            : null,
+        builder: (context, state) {
+          final q = state.uri.queryParameters;
+          return ReportSectionPage(
+            key: ValueKey('report-${state.uri}'),
+            section: ReportSection.ofRoute(state.pathParameters['section'])!,
+            from: q['from'],
+            to: q['to'],
+            channel: q['channel'],
           );
         },
       ),

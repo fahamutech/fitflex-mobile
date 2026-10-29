@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../components/ff_remote_image.dart';
 import '../i18n.dart';
 
 /// A form-friendly photo picker that lets the user choose from the gallery
@@ -20,6 +21,7 @@ class FFPhotoPickerField extends StatefulWidget {
     required this.onChanged,
     this.size = 96.0,
     this.semanticLabel,
+    this.profilePhoto = false,
   });
 
   /// Read out for the button (e.g. "Change profile photo"). Null keeps the
@@ -29,6 +31,10 @@ class FFPhotoPickerField extends StatefulWidget {
   final ValueChanged<String> onChanged;
   final double size;
   final String? semanticLabel;
+
+  /// A person's own photo: the stored Google sign-in photo may show too
+  /// (see [FFRemoteImage.profilePhoto]).
+  final bool profilePhoto;
 
   @override
   State<FFPhotoPickerField> createState() => _FFPhotoPickerFieldState();
@@ -121,15 +127,13 @@ class _FFPhotoPickerFieldState extends State<FFPhotoPickerField> {
         color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
       );
     }
-    if (v.startsWith('data:')) {
-      final b64 = v.split(',').last;
-      return Image.memory(base64Decode(b64), fit: BoxFit.cover);
-    }
-    return Image.network(
-      v,
+    // Stored and newly picked photos alike pass the source check: no
+    // request to another host (fitflex-functions#273).
+    return FFRemoteImage(
+      src: v,
       fit: BoxFit.cover,
-      errorBuilder: (context, error, stack) =>
-          const Icon(Icons.broken_image, size: 40),
+      profilePhoto: widget.profilePhoto,
+      fallback: const Icon(Icons.broken_image, size: 40),
     );
   }
 

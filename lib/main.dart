@@ -22,6 +22,7 @@ import 'shared/pending_org_invite.dart';
 import 'shared/push_service.dart';
 import 'shared/design_tokens.dart';
 import 'shared/i18n.dart';
+import 'shared/media/media_src.dart';
 import 'shared/promotion_events.dart';
 import 'shared/push_banner.dart';
 import 'shared/splash/kinetic_splash.dart';
@@ -95,6 +96,8 @@ Future<void> main() async {
     await initPhoneStepsBackground();
   }
   final api = ApiClient();
+  // Partner photos are drawn only from this host (fitflex-functions#273).
+  MediaSrcPolicy.configure(api.baseUrl);
   PromotionEvents.install(api);
   final auth = AuthState(api, push: mockAuth ? null : PushService(api));
   await auth.hydrate();

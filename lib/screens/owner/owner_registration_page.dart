@@ -14,6 +14,7 @@ import '../../shared/date_of_birth.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
+import '../../shared/media/media_src.dart';
 import '../../shared/partner_details.dart';
 import '../../shared/widgets/location_picker.dart';
 import '../../shared/widgets/partner_details_widgets.dart';
@@ -499,18 +500,29 @@ class _GymCardWidget extends StatefulWidget {
 class _GymCardWidgetState extends State<_GymCardWidget> {
   final ImagePicker _picker = ImagePicker();
 
+  /// Room left under the server's cap (kGymMaxPhotos, too_many_images).
+  int get _photoRoom => kGymMaxPhotos - widget.gym.imagePaths.length;
+
   Future<void> _pickImage() async {
-    final files = await _picker.pickMultiImage(
+    if (_photoRoom <= 0) return _sayPhotoMax();
+    final picked = await _picker.pickMultiImage(
       maxWidth: 1024,
       imageQuality: 80,
+      limit: _photoRoom > 1 ? _photoRoom : null,
     );
-    if (files.isNotEmpty) {
-      setState(() {
-        widget.gym.imagePaths.addAll(files.map((file) => file.path));
-      });
-      widget.onChanged();
-    }
+    if (!mounted || picked.isEmpty) return;
+    final files = picked.take(_photoRoom).toList();
+    setState(() {
+      widget.gym.imagePaths.addAll(files.map((file) => file.path));
+    });
+    widget.onChanged();
+    if (picked.length > files.length) _sayPhotoMax();
   }
+
+  void _sayPhotoMax() => FFSnack.info(
+    context,
+    context.tr('photos.max').replaceAll('{n}', '$kGymMaxPhotos'),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -719,7 +731,7 @@ class _GymCardWidgetState extends State<_GymCardWidget> {
             const SizedBox(height: 8),
             FFButton(
               label: context.tr('ownerReg.pickImage'),
-              onPressed: _pickImage,
+              onPressed: _photoRoom > 0 ? _pickImage : null,
               variant: FFButtonVariant.secondary,
               icon: Icons.add_a_photo,
             ),

@@ -44,6 +44,10 @@ class ApiClient {
     : baseUrl = baseUrl ?? _resolveBaseUrl(),
       _log = logger ?? RestLogger();
 
+  /// The API base a default [ApiClient] uses (API_BASE dart-define, then
+  /// `.env`, then the live server).
+  static String defaultBaseUrl() => _resolveBaseUrl();
+
   static String _resolveBaseUrl() {
     // 1. Compile-time --dart-define wins (CI/CD, prod builds).
     const compileTime = String.fromEnvironment('API_BASE', defaultValue: '');
@@ -2586,6 +2590,64 @@ class ApiClient {
   /// nameSw, exempt, ratePct}]}`.
   Future<Map<String, dynamic>> vendorTaxRates() async =>
       await _request('GET', '/vendor/tax-rates');
+
+  // ── Vendor reports (S6, fitflex-functions#275) ──────────────────────────
+
+  /// The report sections the server answers (GET /vendor/reports/{section}).
+  static const vendorReportSections = {
+    'summary',
+    'sales',
+    'products',
+    'stock-value',
+    'profit',
+    'marketplace-net',
+    'customers',
+    'payment-methods',
+  };
+
+  /// One report as JSON. [query] carries `from` / `to` (EAT dates, both or
+  /// neither), `channel` (all | app | walk_in), `groupBy`, `sort`, `q`,
+  /// `limit`, `cursor`; empty values are left out. Errors come back as
+  /// [ApiException]: 400 `invalid_range` {reason}, `too_many_buckets`,
+  /// 403 `cost_not_allowed` / `payout_not_allowed` /
+  /// `vendor_permission_forbidden`, 404 `feature_disabled`.
+  Future<Map<String, dynamic>> vendorReport(
+    String section, {
+    Map<String, String?> query = const {},
+  }) async {
+    assert(vendorReportSections.contains(section));
+    return Map<String, dynamic>.from(
+      await _request(
+            'GET',
+            _withQuery('/vendor/reports/${_seg(section)}', {
+              for (final e in query.entries)
+                if ((e.value ?? '').isNotEmpty) e.key: e.value!,
+              'format': 'json',
+            }),
+          )
+          as Map,
+    );
+  }
+
+  /// A report as a file: `csv` (every section but the summary) or `pdf`
+  /// (summary only), headers in [lang]. 413 `export_too_large`, 503
+  /// `pdf_unavailable`.
+  Future<({Uint8List bytes, String? fileName})> vendorReportFile(
+    String section, {
+    required String format,
+    required String lang,
+    Map<String, String?> query = const {},
+  }) {
+    assert(vendorReportSections.contains(section));
+    return _binary(
+      _withQuery('/vendor/reports/${_seg(section)}', {
+        for (final e in query.entries)
+          if ((e.value ?? '').isNotEmpty) e.key: e.value!,
+        'format': format,
+        'lang': lang,
+      }),
+    );
+  }
 
   /// A binary answer (a PDF) with its file name from Content-Disposition.
   Future<({Uint8List bytes, String? fileName})> _binary(String path) async {
