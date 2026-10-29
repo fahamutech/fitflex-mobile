@@ -22,6 +22,7 @@ final _gyms = <Map<String, dynamic>>[
     'location': 'Mbezi Beach, Kinondoni, Dar es Salaam',
     'tier': 'premium',
     'status': 'pending_verification',
+    'isPayoutOwner': true,
   },
   {'id': 'g2', 'name': 'Sinza Strong', 'tier': 'standard'},
   {
