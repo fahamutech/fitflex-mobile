@@ -208,6 +208,15 @@ class _MemberEventDetailPageState extends State<MemberEventDetailPage> {
   void _back() =>
       context.canPop() ? context.pop() : context.go(AppRoutes.memberEvents);
 
+  /// Events S3 §5.1: the CTA (or a ticket row) opens the register page.
+  void _register(EventDetail d, {String? ticketTypeId}) {
+    EventsAnalytics.registrationStarted(
+      eventId: d.id,
+      source: ticketTypeId == null ? 'cta' : 'ticket_row',
+    );
+    context.push(AppRoutes.memberEventRegisterPath(d.id, ticket: ticketTypeId));
+  }
+
   // ── build ───────────────────────────────────────────────────────────────
 
   @override
@@ -796,10 +805,9 @@ class _MemberEventDetailPageState extends State<MemberEventDetailPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (d.refundPolicy.preset == 'no_refund' ||
-                d.refundPolicy.preset == 'refund_until_close')
+            if (refundPolicyLine(context, d.refundPolicy) case final line?)
               Text(
-                context.tr('events.detail.policy.${d.refundPolicy.preset}'),
+                line,
                 key: const Key('event-refund-summary'),
                 style: tt.titleSmall,
               ),
@@ -1055,17 +1063,24 @@ class _MemberEventDetailPageState extends State<MemberEventDetailPage> {
               ),
             ),
           const SizedBox(height: FFTokens.spacingSm),
-          for (final t in c.ticketTypes) _ticket(context, s, t),
+          for (final t in c.ticketTypes) _ticket(context, d, t),
         ],
       ),
     );
   }
 
-  Widget _ticket(BuildContext context, EventSummary s, EventTicketType t) {
+  Widget _ticket(BuildContext context, EventDetail d, EventTicketType t) {
+    final s = d.summary;
     final lang = FFLocaleScope.of(context).locale.languageCode;
     final tt = Theme.of(context).textTheme;
     final cs = Theme.of(context).colorScheme;
     final soldOut = t.availability == EventAvailability.soldOut;
+    // S3 §5.1: an on-sale row opens the register page with this ticket
+    // preselected; sold-out and closed rows stay plain text.
+    final tappable =
+        _options.registration &&
+        (t.availability == EventAvailability.open ||
+            t.availability == EventAvailability.closingSoon);
     final muted = cs.onSurfaceVariant;
     final price = t.isFree
         ? context.tr('events.card.free')
@@ -1086,23 +1101,46 @@ class _MemberEventDetailPageState extends State<MemberEventDetailPage> {
       utcOffsetMinutes: s.utcOffsetMinutes,
       registrationOpensAt: t.saleOpensAt,
     );
-    return Padding(
-      key: Key('event-ticket-${t.id}'),
-      padding: const EdgeInsets.symmetric(vertical: FFTokens.spacingXs),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              line,
-              style: tt.bodyMedium?.copyWith(
-                color: soldOut ? muted : null,
-                fontFeatures: const [FontFeature.tabularFigures()],
-              ),
+    final row = Row(
+      children: [
+        Expanded(
+          child: Text(
+            line,
+            style: tt.bodyMedium?.copyWith(
+              color: soldOut ? muted : null,
+              fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
-          const SizedBox(width: FFTokens.spacingSm),
-          EventAvailabilityPill(event: pillEvent),
-        ],
+        ),
+        const SizedBox(width: FFTokens.spacingSm),
+        EventAvailabilityPill(event: pillEvent),
+        if (tappable) const Icon(Icons.chevron_right, size: 20),
+      ],
+    );
+    if (!tappable) {
+      return Padding(
+        key: Key('event-ticket-${t.id}'),
+        padding: const EdgeInsets.symmetric(vertical: FFTokens.spacingXs),
+        child: row,
+      );
+    }
+    return Semantics(
+      key: Key('event-ticket-${t.id}'),
+      button: true,
+      label: '${t.name}, $price, ${availabilityLabel(context, pillEvent)}',
+      child: InkWell(
+        key: Key('event-ticket-tap-${t.id}'),
+        onTap: () => _register(d, ticketTypeId: t.id),
+        borderRadius: BorderRadius.circular(FFTokens.radiusLg),
+        child: ExcludeSemantics(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: FFTokens.spacingXs),
+              child: row,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -1150,7 +1188,7 @@ class _MemberEventDetailPageState extends State<MemberEventDetailPage> {
                   ),
                 );
           }
-          onPressed = () {}; // S3 wires the registration sheet.
+          onPressed = () => _register(d);
         case EventAvailability.closingSoon:
           label = context.tr('events.cta.register');
           icon = Icons.schedule;
@@ -1162,7 +1200,7 @@ class _MemberEventDetailPageState extends State<MemberEventDetailPage> {
                 '${closes == null ? 0 : daysUntil(closes, now)}',
               );
           hintColor = fuelTextColor(context);
-          onPressed = () {}; // S3 wires the registration sheet.
+          onPressed = () => _register(d);
         case EventAvailability.soldOut:
           label = context.tr('events.cta.soldOut');
           hint = context.tr('events.cta.soldOutHint');

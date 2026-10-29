@@ -113,16 +113,70 @@ String memberLinkFor({required String deepLink, required String type}) =>
         'training_plan_updated' || 'training_plan_stopped' => 'trainingPlan',
         // Their trainer recorded that they missed a session: open it.
         'trainer_booking_no_show' => 'session',
+        // An organisation asked to add them: open the requests to answer.
+        b2bMemberRequestType => 'memberRequests',
         // A running event (events S2; a future `event` notice type with
         // `data.eventId`): open the event, or the list without an id.
         'event' => 'event',
+        // Events S3 (spec §3.14): the purchaser's order notices open the
+        // order; "Is this you?" opens the claim page; a claim opens the
+        // registration.
+        'event_order_created' ||
+        'event_order_expired' ||
+        'event_order_cancelled' => 'eventOrder',
+        'event_claim_available' => 'eventClaim',
+        'event_place_claimed' || 'event_place_cancelled' => 'eventRegistration',
+        // Events S4 (spec §3.16): payment and refund notices open the
+        // order; a rejection opens the pay page to try again; confirmed
+        // opens the tickets; a ticket for a participant opens the ticket;
+        // a cancelled place opens the registrations list.
+        'event_payment_submitted' ||
+        'event_payment_refund_due' ||
+        'event_payment_late_received' ||
+        'event_cancelled_refund' ||
+        'event_refund_requested' ||
+        'event_refund_approved' ||
+        'event_refund_paid' ||
+        'event_refund_rejected' => 'eventOrder',
+        'event_payment_confirmed' => 'eventTickets',
+        'event_payment_rejected' => 'eventPay',
+        'event_ticket_ready' => 'eventTicket',
+        'event_place_cancelled_by_purchaser' => 'eventRegistrations',
         _ => '',
       };
 
 /// Messages whose push opens their screen directly, not the message: the
 /// screen says everything the message does, and is where the member acts.
-bool opensScreenDirectly(String type) =>
-    memberLinkFor(deepLink: '', type: type).startsWith('training');
+bool opensScreenDirectly(String type) {
+  final link = memberLinkFor(deepLink: '', type: type);
+  return link.startsWith('training') || link == 'memberRequests';
+}
+
+/// The notice an organisation's request to add someone by user id sends
+/// (fitflex-functions#241); its data carries `open: 'b2b_member_requests'`.
+const b2bMemberRequestType = 'b2b_member_request';
+
+/// Where organisation requests are answered. Not under `/member`: a request
+/// for an organisation role can reach anyone with a FitFlex account.
+const b2bMemberRequestsRoute = '/organisation-requests';
+
+/// Whether a notice (push data or inbox message) is an organisation asking
+/// to add the user, whatever side of FitFlex they are signed in on.
+bool isB2BMemberRequest(String type, Map<String, dynamic> data) =>
+    type == b2bMemberRequestType || data['open'] == 'b2b_member_requests';
+
+/// The notice a FitFlex admin's direct add sends (fitflex-functions#241);
+/// its data carries `kind` and `open: 'b2b_benefits'`.
+const b2bAdminAddedType = 'b2b_admin_added';
+
+/// The member's wellness benefits (same path as `AppRoutes.memberBenefits`).
+const memberBenefitsRoute = '/member/benefits';
+
+/// Whether a FitFlex admin's add opens the member's Benefits: only for a
+/// member enrolled or linked to a staff record. A portal role (`org_user`),
+/// or anyone not signed in as a member, sees the message itself instead.
+bool adminAddedOpensBenefits(String? role, Map<String, dynamic> data) =>
+    role == 'member' && data['kind']?.toString() != 'org_user';
 
 /// Where a message's button (or a tap on its push) takes a member. Null
 /// means "show the message itself". Only fixed app screens are allowed.
@@ -134,6 +188,8 @@ String? memberRouteFor({
   String? planId,
   String? bookingId,
   String? eventId,
+  String? orderId,
+  String? registrationId,
 }) {
   final link = memberLinkFor(deepLink: deepLink, type: type);
   return switch (link) {
@@ -150,9 +206,30 @@ String? memberRouteFor({
       queryParameters: {'booking': bookingId},
     ).toString(),
     'session' => '/member/sessions',
+    'memberRequests' || 'b2b_member_requests' => b2bMemberRequestsRoute,
     'event' when eventId != null && _safeId.hasMatch(eventId) =>
       '/member/events/$eventId',
     'event' => '/member/events',
+    'eventOrder' when orderId != null && _safeId.hasMatch(orderId) =>
+      '/member/events/orders/$orderId',
+    'eventOrder' => '/member/events/orders',
+    'eventClaim'
+        when registrationId != null && _safeId.hasMatch(registrationId) =>
+      '/member/events/claim/$registrationId',
+    'eventClaim' => '/member/events/orders',
+    'eventRegistration'
+        when registrationId != null && _safeId.hasMatch(registrationId) =>
+      '/member/events/registrations/$registrationId',
+    'eventRegistration' => '/member/events/orders',
+    'eventTickets' => '/member/events/tickets',
+    'eventPay' when orderId != null && _safeId.hasMatch(orderId) =>
+      '/member/events/orders/$orderId/pay',
+    'eventPay' => '/member/events/orders',
+    'eventTicket'
+        when registrationId != null && _safeId.hasMatch(registrationId) =>
+      '/member/events/registrations/$registrationId/ticket',
+    'eventTicket' => '/member/events/tickets',
+    'eventRegistrations' => '/member/events/orders?tab=registrations',
     _ => null,
   };
 }
@@ -168,6 +245,15 @@ String? memberRouteFor({
   InboxMessage? message,
 }) {
   final type = data['type']?.toString() ?? '';
+  // An organisation asked to add them: open the requests, where they accept
+  // or decline (any side; an organisation role can go to anyone).
+  if (isB2BMemberRequest(type, data)) {
+    return (location: b2bMemberRequestsRoute, go: true);
+  }
+  // A FitFlex admin added them: a member's benefits, else the message.
+  if (type == b2bAdminAddedType && adminAddedOpensBenefits(role, data)) {
+    return (location: memberBenefitsRoute, go: true);
+  }
   // A plan from their trainer opens on the plan itself, where they answer.
   if (role == 'member' && opensScreenDirectly(type)) {
     final direct = memberRouteFor(
@@ -208,6 +294,8 @@ String? memberRouteFor({
           planId: data['planId']?.toString(),
           bookingId: data['bookingId']?.toString(),
           eventId: data['eventId']?.toString(),
+          orderId: data['orderId']?.toString(),
+          registrationId: data['registrationId']?.toString(),
         )
       : null;
   if (route != null) return (location: route, go: true);

@@ -14,6 +14,7 @@ import '../../shared/models.dart';
 import '../../shared/photo_footer_flag.dart';
 import '../../shared/photo_hero_flag.dart';
 import '../../shared/root_back_navigation.dart';
+import '../../shared/widgets/partner_details_widgets.dart';
 import '../../shared/widgets/partner_not_verified.dart';
 import '../../router.dart';
 import '../../shared/shop_home.dart';
@@ -36,6 +37,13 @@ import '../../shared/widgets/persona_switcher.dart';
 import '../../shared/widgets/invitations.dart';
 import '../../shared/widgets/verify_identifier.dart';
 import '../pin_flows.dart';
+
+/// PHOTO_HERO_UI (owner 2026-10-22, bands "too dark"): the band grows for
+/// [FFTokens.heroBandClearPhoto] of clear photo above its text, but no taller
+/// than this on a 390x844 screen, so the check-in buttons (in the band)
+/// start above 55% of the screen
+/// (FFHeroBand.maxHeightAt844).
+const double trainerHomeBandMaxHeight = 469;
 
 /// Standalone trainer dashboard shown after trainer is onboarded.
 class TrainerHomePage extends StatefulWidget {
@@ -410,6 +418,8 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
           FFHeroBand(
             key: const Key('trainer-hero'),
             photo: FFHeroPhoto.trainer,
+            clearPhoto: FFTokens.heroBandClearPhoto,
+            maxHeightAt844: trainerHomeBandMaxHeight,
             eyebrow: heroGreeting(
               context,
               DateTime.now(),
@@ -437,6 +447,8 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
           const SizedBox(height: FFTokens.spacingMd),
         ],
         const PartnerNotVerifiedNotice(),
+        // Partner date of birth: a dismissible ask, never blocking.
+        const PartnerDobPromptCard(canEditGender: false),
         // Quick gym access: show the check-in QR, or scan the gym's QR.
         if (!photoHeroUi)
           FFCard(
@@ -666,6 +678,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
     const InvitationsTile(),
     const ContactDetailsTile(),
     const ChangePinTile(),
+    const PartnerDetailsTile(canEditGender: false),
     const PersonaSwitcherTile(),
     const SizedBox(height: 16),
     FFButton(

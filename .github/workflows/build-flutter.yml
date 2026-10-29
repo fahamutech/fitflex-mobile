@@ -23,6 +23,11 @@ jobs:
       # Shop home V2 (on/off). Set repo variable SHOP_HOME_V2=true to switch it on;
       # the server also needs SHOP_HOME_V2=1, otherwise the app falls back to today's shop.
       SHOP_HOME_V2: ${{ vars.SHOP_HOME_V2 || 'false' }}
+      # Photo heroes (PHOTO_HERO_UI) and the photo footer (PHOTO_FOOTER_UI),
+      # on/off. Off unless the repository variable is set to true; the app
+      # ignores PHOTO_FOOTER_UI unless PHOTO_HERO_UI is on as well.
+      PHOTO_HERO_UI: ${{ vars.PHOTO_HERO_UI || 'false' }}
+      PHOTO_FOOTER_UI: ${{ vars.PHOTO_FOOTER_UI || 'false' }}
 
     steps:
       - name: Checkout repository
@@ -68,11 +73,11 @@ jobs:
 
       - name: Build debug APK
         if: ${{ !cancelled() && steps.prepare.outcome == 'success' && !startsWith(github.ref, 'refs/tags/v') }}
-        run: flutter build apk --debug --dart-define=API_BASE="$API_BASE" --dart-define=SHOP_HOME_V2="$SHOP_HOME_V2"
+        run: flutter build apk --debug --dart-define=API_BASE="$API_BASE" --dart-define=SHOP_HOME_V2="$SHOP_HOME_V2" --dart-define=PHOTO_HERO_UI="$PHOTO_HERO_UI" --dart-define=PHOTO_FOOTER_UI="$PHOTO_FOOTER_UI"
 
       - name: Build release APK (tags only)
         if: ${{ !cancelled() && steps.prepare.outcome == 'success' && startsWith(github.ref, 'refs/tags/v') }}
-        run: flutter build apk --release --dart-define=API_BASE="$API_BASE" --dart-define=SHOP_HOME_V2="$SHOP_HOME_V2"
+        run: flutter build apk --release --dart-define=API_BASE="$API_BASE" --dart-define=SHOP_HOME_V2="$SHOP_HOME_V2" --dart-define=PHOTO_HERO_UI="$PHOTO_HERO_UI" --dart-define=PHOTO_FOOTER_UI="$PHOTO_FOOTER_UI"
 
       - name: Keep release APK (tags only)
         if: startsWith(github.ref, 'refs/tags/v')

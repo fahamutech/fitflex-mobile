@@ -92,6 +92,7 @@ class _Api extends ApiClient {
     bool? delivery,
     bool? promotions,
     String? sort,
+    String? areaId,
   }) async => [];
   @override
   Future<List<dynamic>> myShopOrders() async => [];

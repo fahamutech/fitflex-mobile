@@ -10,16 +10,18 @@ import '../i18n.dart';
 import 'ff_skeleton.dart';
 
 /// Bundled hero photos: FitFlex Africa's own AI-generated scenes (Figma AI,
-/// 2026-10-22, no people) and four photos supplied by the owner (people seen
-/// from behind or none; source and licence to be confirmed by the owner
-/// before the flag goes on). See assets/photos/hero/LICENSES.md. Never
+/// 2026-10-22 and 2026-10-28, no people). The four test-only photos the
+/// owner collected from the internet were replaced on 2026-10-28 (owner
+/// approval in chat), so [kTestOnlyHeroAssets] is empty. See
+/// assets/photos/hero/LICENSES.md. Never
 /// fetched from a network. With `HERO_IMAGES_REMOTE` on, an admin-published
 /// photo for the same slot (hero_images/hero_slots.dart) may replace one
 /// once it is saved and decoded ([HeroImageStore]); the bundled file stays
 /// the fallback.
 /// No crop shows another brand's logo or signage (owner rule 2026-10-20);
 /// the FitFlex Africa signage in the generated scenes is kept in the clear
-/// photo above the scrim where the crop allows.
+/// photo above the scrim where the crop allows, and otherwise cropped out:
+/// never a sign partly behind the text (owner 2026-10-22).
 enum FFHeroPhoto {
   // Every file is its own scene (sourceId), so no two slots share one.
   // Focal y = 2 x (the sign's or subject's height in the file, 0..1) - 1:
@@ -72,18 +74,25 @@ enum FFHeroPhoto {
     'fitflex-gen-10-towel-bench',
     Alignment(0, 0.1),
   ),
-  pin('hero_pin', 864 / 576, 'fitflex-gen-06-desk-sign', Alignment(0, -0.1)),
+  // PIN's thin strip (owner 2026-10-22) is all text under the bar: the
+  // crop is the gym floor above the desk plate, so no sign sits behind the
+  // headline.
+  pin('hero_pin', 864 / 540, 'fitflex-gen-06-desk-sign', Alignment(0, 0.2)),
+  // Upgrade's band has no room for clear photo (its plan cards come
+  // first), so the crop is below the wall sign: no sign behind the text.
   upgrade(
     'hero_upgrade',
     864 / 576,
     'fitflex-gen-11-premium-zone',
-    Alignment(0, -0.35),
+    Alignment(0, -0.2),
   ),
+  // Today: the bottle printed "FitFlex Africa" sits in the clear photo
+  // above the text; the crop stops short of the right shoe's maker mark.
   activityToday(
     'hero_activity_today',
-    732 / 488,
-    'owner-16-dumbbells-palms',
-    Alignment(0, 0.5),
+    810 / 540,
+    'fitflex-gen-23-activity-today-sunrise',
+    Alignment(0, -0.3),
   ),
   activityTraining(
     'hero_activity_training',
@@ -91,11 +100,13 @@ enum FFHeroPhoto {
     'fitflex-gen-12-cable-zone',
     Alignment(0, -0.2),
   ),
+  // Challenges: below the wall sign (wider than the phone crop shows, so
+  // it would be cut at both edges).
   activityChallenges(
     'hero_activity_challenges',
-    736 / 490,
-    'owner-02-hooded-bench-back',
-    Alignment(0, -0.3),
+    864 / 576,
+    'fitflex-gen-24-activity-challenges-zone',
+    Alignment(0, -0.2),
   ),
   activityProgress(
     'hero_activity_progress',
@@ -103,17 +114,20 @@ enum FFHeroPhoto {
     'fitflex-gen-13-treadmills-decal',
     Alignment(0, 0.15),
   ),
+  // Trainer and vendor homes: below the wall sign and the taped boxes. A
+  // band whose clear photo gives way (Swahili, phones under 760 tall) has
+  // text from its top edge, and a sign there would sit behind it.
   trainer(
     'hero_trainer',
     864 / 546,
     'fitflex-gen-14-coaching',
-    Alignment(0, -0.6),
+    Alignment(0, -0.3),
   ),
   vendor(
     'hero_vendor',
     864 / 576,
     'fitflex-gen-15-vendor-packing',
-    Alignment(0, 0.2),
+    Alignment.topCenter,
   ),
   owner(
     'hero_owner',
@@ -123,21 +137,27 @@ enum FFHeroPhoto {
   ),
 
   // Section bands (photo-hero spec §32, §34.1): member Gyms, Trainers and
-  // Shop home. Owner photos: Gyms keeps the window row; Trainers keeps the
-  // bar and the hands (the person is seen from behind).
+  // Shop home. Gyms: the window row below the wall sign (the sign is as
+  // wide as the phone crop, so it would touch both edges). Trainers: the
+  // polo printed "FitFlex Africa" in the clear photo, focal right so the
+  // print stays in frame on a phone band.
   gyms(
     'hero_gyms',
-    736 / 415,
-    'owner-15-empty-gym-windows',
+    864 / 487,
+    'fitflex-gen-21-gyms-bright-floor',
     Alignment(0, -0.3),
   ),
   trainers(
     'hero_trainers',
-    736 / 440,
-    'owner-01-lat-pulldown-back',
-    Alignment(0, -0.5),
+    864 / 516,
+    'fitflex-gen-22-trainers-station',
+    Alignment(0.5, -0.5),
   ),
-  shop('hero_shop', 864 / 554, 'fitflex-gen-02-shop', Alignment.topCenter),
+  // Shop (owner 2026-10-22): the whole FitFlex Africa sign above the
+  // band's text. A 4:5 crop from the top of the source, focal top: a phone
+  // band (taller than 4:5 is wide) shows the full width, the sign at the
+  // top, and its clear photo below it before the text.
+  shop('hero_shop', 864 / 1080, 'fitflex-gen-02-shop', Alignment.topCenter),
 
   // Footer pool (spec §33): four square generated scenes, 1024 wide at 2x
   // (the source size; never upscaled). Focal on the sign, so a wide footer
@@ -185,6 +205,15 @@ enum FFHeroPhoto {
 
   String get asset => 'assets/photos/hero/$file.webp';
 }
+
+/// Bundled hero photos that are OK for testing but NOT cleared for release.
+/// Empty since 2026-10-28: the four owner-collected photos (owner
+/// 2026-10-22) were replaced by FitFlex Africa scenes. Any photo added here
+/// must be replaced, and taken off this list, before PHOTO_HERO_UI goes on
+/// for users: `test/photo_hero_release_guard_test.dart` fails a run with
+/// `--dart-define=PHOTO_HERO_RELEASE=true` while this is not empty, and the
+/// user builds run that guard whenever PHOTO_HERO_UI is on.
+const Set<FFHeroPhoto> kTestOnlyHeroAssets = {};
 
 /// A photo fetched from the network for a hero (Shop home banners, Phase 2
 /// S1): the same scrim, focal alignment and navy placeholder as a bundled
@@ -323,6 +352,7 @@ class FFPhotoHero extends StatelessWidget {
     this.headingFocusNode,
     this.clearPhoto = 0,
     this.maxHeight = double.infinity,
+    this.minClearPhoto = 0,
     this.excludeHeadingSemantics = false,
     this.fillHeight = false,
     this.panelSidePad,
@@ -353,6 +383,11 @@ class FFPhotoHero extends StatelessWidget {
   /// hero stays within this height, but the text is never cut, and the hero
   /// is never shorter than [minHeight].
   final double maxHeight;
+
+  /// Under [maxHeight], the least clear photo worth growing the hero for:
+  /// when the cap leaves less, the hero keeps today's height instead (a
+  /// taller hero that shows no more photo only pushes the content down).
+  final double minClearPhoto;
 
   /// Space kept clear at the top for the status bar and app bar.
   final double topInset;
@@ -534,6 +569,7 @@ class FFPhotoHero extends StatelessWidget {
             maxHeight: maxHeight,
             topInset: topInset,
             clearPhoto: clearPhoto,
+            minClearPhoto: minClearPhoto,
             barHosted: hosted,
             children: [fadeZone(const SizedBox.shrink()), textZone],
           )
@@ -1047,6 +1083,7 @@ double heroTallFade({
   double clearPhoto = 0,
   double minHeight = 0,
   double maxHeight = double.infinity,
+  double minClearPhoto = 0,
 }) {
   var target = 0.0;
   if (clearPhoto > 0) {
@@ -1066,9 +1103,11 @@ double heroTallFade({
   final today = math.max(topInset, minHeight - text);
   if (maxHeight.isFinite && target > maxHeight - text) {
     target = maxHeight - text;
-    // Capped so far that no photo would be clear: keep today's height
-    // rather than grow the hero for nothing (and push the content down).
-    if (heroTallClearOf(target, text, topInset, barHosted) <= 0) {
+    // Capped so far that no photo (or less than [minClearPhoto]) would be
+    // clear: keep today's height rather than grow the hero for nothing
+    // (and push the content down).
+    final clear = heroTallClearOf(target, text, topInset, barHosted);
+    if (clear <= 0 || clear < minClearPhoto) {
       return today;
     }
   }
@@ -1101,12 +1140,14 @@ class _HeroTallBody extends MultiChildRenderObjectWidget {
     required this.clearPhoto,
     required this.barHosted,
     required super.children,
+    this.minClearPhoto = 0,
   }) : assert(children.length == 2);
 
   final double minHeight;
   final double maxHeight;
   final double topInset;
   final double clearPhoto;
+  final double minClearPhoto;
   final bool barHosted;
 
   @override
@@ -1116,6 +1157,7 @@ class _HeroTallBody extends MultiChildRenderObjectWidget {
         maxHeight: maxHeight,
         topInset: topInset,
         clearPhoto: clearPhoto,
+        minClearPhoto: minClearPhoto,
         barHosted: barHosted,
       );
 
@@ -1129,6 +1171,7 @@ class _HeroTallBody extends MultiChildRenderObjectWidget {
       ..maxHeight = maxHeight
       ..topInset = topInset
       ..clearPhoto = clearPhoto
+      ..minClearPhoto = minClearPhoto
       ..barHosted = barHosted;
   }
 }
@@ -1144,11 +1187,13 @@ class _RenderHeroTallBody extends RenderBox
     required double maxHeight,
     required double topInset,
     required double clearPhoto,
+    required double minClearPhoto,
     required bool barHosted,
   }) : _minHeight = minHeight,
        _maxHeight = maxHeight,
        _topInset = topInset,
        _clearPhoto = clearPhoto,
+       _minClearPhoto = minClearPhoto,
        _barHosted = barHosted;
 
   double _minHeight;
@@ -1179,6 +1224,13 @@ class _RenderHeroTallBody extends RenderBox
     markNeedsLayout();
   }
 
+  double _minClearPhoto;
+  set minClearPhoto(double v) {
+    if (v == _minClearPhoto) return;
+    _minClearPhoto = v;
+    markNeedsLayout();
+  }
+
   bool _barHosted;
   set barHosted(bool v) {
     if (v == _barHosted) return;
@@ -1203,6 +1255,7 @@ class _RenderHeroTallBody extends RenderBox
     clearPhoto: _clearPhoto,
     minHeight: math.max(minHeight, _minHeight),
     maxHeight: _maxHeight,
+    minClearPhoto: _minClearPhoto,
   );
 
   @override
@@ -1530,10 +1583,35 @@ class FFHeroBand extends StatelessWidget {
     this.actions = const [],
     this.headingFocusNode,
     this.networkImage,
+    this.clearPhoto = 0,
+    this.clearPhotoEverywhere = false,
+    this.maxHeightAt844 = double.infinity,
   });
 
   /// The bundled photo; with [networkImage] set it is only the fallback.
   final FFHeroPhoto photo;
+
+  /// Band heroes with photo above the text (owner 2026-10-22): the clear
+  /// photo (no scrim) the band keeps between its top fade and the ramp to
+  /// the text, at 1.0x text on phones from [FFTokens.heroTallMinViewport]
+  /// tall (see [heroBandClear]). The band grows to fit it; the text stays
+  /// on the [FFTokens.heroScrimText] zone. 0: as before. Ignored on the
+  /// 840+ banner.
+  final double clearPhoto;
+
+  /// [clearPhoto] on every phone and at every text scale (Shop home: its
+  /// first control sits above the band, and the FitFlex Africa sign must
+  /// stay clear of the text). Off: only from 760 tall, divided by the text
+  /// scale, like the taller heroes.
+  final bool clearPhotoEverywhere;
+
+  /// The tallest this band may grow for [clearPhoto] on a phone 844 tall,
+  /// so the screen's first control stays above about 55% of the viewport
+  /// (owner 2026-10-22); it moves with the viewport height at
+  /// [FFTokens.heroBandControlShare] per px ([heroBandMaxHeight]). The
+  /// clear photo gives way (never the text); below
+  /// [FFTokens.heroBandMinClearPhoto] of it the band keeps today's height.
+  final double maxHeightAt844;
 
   /// The subject's own photo from the network (an event cover, spec
   /// §11.5). Same scrim and typography; [photo] shows if it fails to load.
@@ -1552,15 +1630,40 @@ class FFHeroBand extends StatelessWidget {
   final List<Widget> actions;
   final FocusNode? headingFocusNode;
 
+  /// The screen's status bar height, from the view itself: under an app
+  /// bar the page's MediaQuery no longer has it, but the band sits that
+  /// much lower.
+  static double _statusBar(BuildContext context) {
+    final view = View.of(context);
+    return view.padding.top / view.devicePixelRatio;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final wide = MediaQuery.sizeOf(context).width >= 840;
+    final size = MediaQuery.sizeOf(context);
+    final wide = size.width >= 840;
     return FFPhotoHero(
       photo: photo,
       networkImage: networkImage,
       variant: wide ? FFHeroVariant.panel : FFHeroVariant.band,
       rounded: wide,
       minHeight: wide ? wideHeight : minHeight,
+      clearPhoto: wide
+          ? 0
+          : heroBandClear(
+              clearPhoto,
+              viewportHeight: size.height,
+              textScale: MediaQuery.textScalerOf(context).scale(1),
+              everywhere: clearPhotoEverywhere,
+            ),
+      maxHeight: wide
+          ? double.infinity
+          : heroBandMaxHeight(
+              maxHeightAt844,
+              size.height,
+              statusBar: _statusBar(context),
+            ),
+      minClearPhoto: FFTokens.heroBandMinClearPhoto,
       eyebrow: eyebrow,
       headlineLead: headlineLead,
       headlineAccent: headlineAccent,
@@ -1571,6 +1674,38 @@ class FFHeroBand extends StatelessWidget {
     );
   }
 }
+
+/// The clear photo a phone band (or section hero) keeps above its text
+/// for a screen's [clearPhoto] (owner 2026-10-22): none below
+/// [FFTokens.heroTallMinViewport] tall (those phones keep today's band, so
+/// search and buttons stay where they are), and larger text takes room from
+/// the photo first. With [everywhere], [clearPhoto] as is.
+double heroBandClear(
+  double clearPhoto, {
+  required double viewportHeight,
+  required double textScale,
+  bool everywhere = false,
+}) {
+  if (clearPhoto <= 0) return 0;
+  if (everywhere) return clearPhoto;
+  if (viewportHeight < FFTokens.heroTallMinViewport) return 0;
+  return clearPhoto / math.max(1.0, textScale);
+}
+
+/// A band's [maxHeightAt844] (measured on a 390x844 phone with a 47px
+/// status bar) on a phone [viewportHeight] tall with a [statusBar] px
+/// status bar: the first control keeps the same share of the screen
+/// ([FFTokens.heroBandControlShare]); a taller status bar moves the band
+/// down, so the band gives that back.
+double heroBandMaxHeight(
+  double maxHeightAt844,
+  double viewportHeight, {
+  double statusBar = 47,
+}) => maxHeightAt844.isFinite
+    ? maxHeightAt844 +
+          FFTokens.heroBandControlShare * (viewportHeight - 844) -
+          (statusBar - 47)
+    : double.infinity;
 
 /// "Good morning, Amina": the greeting for [now] and the first word of
 /// [name] (no email address or phone number), or the greeting alone.

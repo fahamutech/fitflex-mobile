@@ -104,18 +104,45 @@ class FFSheet extends StatelessWidget {
 }
 
 /// Opens [child] in an [FFSheet]. Resolves with whatever the sheet pops.
+///
+/// [wideDialogWidth] (opt-in): from 1024 px wide the sheet opens as a
+/// centred dialog at most that wide instead (spec shop-home-phase2 §12).
+/// The backdrop is announced as "Close" in the app's language, not the
+/// framework's untranslated "Scrim".
 Future<T?> showFFSheet<T>(
   BuildContext context, {
   required String title,
   required Widget child,
   bool showClose = true,
   bool isDismissible = true,
+  double? wideDialogWidth,
 }) {
+  final barrier = context.tr('common.close');
+  if (wideDialogWidth != null && MediaQuery.sizeOf(context).width >= 1024) {
+    return showDialog<T>(
+      context: context,
+      barrierDismissible: isDismissible,
+      barrierLabel: barrier,
+      builder: (_) => Dialog(
+        insetPadding: const EdgeInsets.all(FFTokens.spacingLg),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: wideDialogWidth),
+          child: FFSheet(
+            title: title,
+            showClose: showClose,
+            showHandle: false,
+            child: child,
+          ),
+        ),
+      ),
+    );
+  }
   return showModalBottomSheet<T>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
     isDismissible: isDismissible,
+    barrierLabel: barrier,
     builder: (_) => FFSheet(title: title, showClose: showClose, child: child),
   );
 }

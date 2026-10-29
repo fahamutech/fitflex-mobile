@@ -9,10 +9,18 @@ import '../../shared/photo_footer_flag.dart';
 import '../../shared/photo_hero_flag.dart';
 import 'owner_shell.dart';
 import '../../shared/widgets/challenge_manager_page.dart';
+import '../../shared/widgets/partner_details_widgets.dart';
 import '../../shared/widgets/partner_not_verified.dart';
 import '../member/member_group_page.dart' show openGroupManager;
 import 'widgets/gym_engagement_widgets.dart';
 import 'widgets/latest_checkins_card.dart';
+
+/// PHOTO_HERO_UI (owner 2026-10-22, bands "too dark"): the band grows for
+/// [FFTokens.heroBandClearPhoto] of clear photo above its text, but no taller
+/// than this on a 390x844 screen, so Check-in (in the band) starts above
+/// 55% of the screen
+/// (FFHeroBand.maxHeightAt844).
+const double ownerHomeBandMaxHeight = 417;
 
 /// Owner dashboard home tab — shows stats, quick actions, and gym summary.
 class OwnerHomeTab extends StatefulWidget {
@@ -142,6 +150,8 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
             FFHeroBand(
               key: const Key('owner-hero'),
               photo: FFHeroPhoto.owner,
+              clearPhoto: FFTokens.heroBandClearPhoto,
+              maxHeightAt844: ownerHomeBandMaxHeight,
               eyebrow: _greetingLine(context, data.displayName),
               headlineLead: hasBrand
                   ? title.replaceFirst('FitFlex', '').trim()
@@ -237,6 +247,8 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
           FFHeroBand(
             key: const Key('owner-hero'),
             photo: FFHeroPhoto.owner,
+            clearPhoto: FFTokens.heroBandClearPhoto,
+            maxHeightAt844: ownerHomeBandMaxHeight,
             eyebrow: greetingLine,
             headlineLead: context.tr('hero.owner.lead'),
             headlineAccent: context.tr('hero.owner.accent'),
@@ -252,6 +264,8 @@ class _OwnerHomeTabState extends State<OwnerHomeTab> {
           const SizedBox(height: FFTokens.spacingMd),
         ],
         const PartnerNotVerifiedNotice(),
+        // Partner date of birth: a dismissible ask, never blocking.
+        if (!data.isStaff) const PartnerDobPromptCard(canEditGender: true),
         // Greeting follows the time of day; the date filter is the one
         // control that scopes everything below it.
         if (!hero) ...[

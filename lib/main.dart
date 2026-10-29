@@ -13,6 +13,7 @@ import 'router.dart';
 import 'screens/account_recovery.dart';
 import 'shared/api_client.dart';
 import 'shared/auth_state.dart';
+import 'shared/events/event_claim_link.dart';
 import 'shared/friend_invites.dart';
 import 'shared/hero_images/hero_image_store.dart';
 import 'shared/inbox/inbox_controller.dart';
@@ -38,6 +39,11 @@ Future<void> main() async {
       ? friendInviteLinkFrom(Uri.base)
       : null;
   if (friendLink != null) showFriendInviteWithoutToken();
+  // Likewise an event claim link (`/event-claim/#tok`, events S3 §5.11).
+  final claimLink = kIsWeb && linkToken == null && friendLink == null
+      ? eventClaimLinkFrom(Uri.base)
+      : null;
+  if (claimLink != null) showEventClaimWithoutToken();
 
   WidgetsFlutterBinding.ensureInitialized();
   if (linkToken != null) {
@@ -53,6 +59,14 @@ Future<void> main() async {
     await PendingFriendInvite.clear();
   } else {
     await PendingFriendInvite.load();
+  }
+  final claimToken = claimLink?.token;
+  if (claimToken != null) {
+    await PendingEventClaim.save(claimToken);
+  } else if (claimLink != null) {
+    await PendingEventClaim.clear();
+  } else {
+    await PendingEventClaim.load();
   }
   const mockAuth = bool.fromEnvironment('MOCK_AUTH');
 
@@ -233,13 +247,17 @@ class _FitFlexAppState extends State<FitFlexApp> with WidgetsBindingObserver {
       // A kept invitation link is not the next person's.
       PendingOrgInvite.clear();
       PendingFriendInvite.clear();
+      PendingEventClaim.clear();
     }
     if (token != null && token != _lastToken) {
       _inbox.load();
       _syncLocale();
       _claimKeptInvite();
       // Only on signing in, not on a persona switch or token refresh.
-      if (_lastToken == null) _openKeptOrgInvite();
+      if (_lastToken == null) {
+        _openKeptOrgInvite();
+        _openKeptEventClaim();
+      }
     }
     _lastToken = token;
   }
@@ -268,6 +286,15 @@ class _FitFlexAppState extends State<FitFlexApp> with WidgetsBindingObserver {
     if (await PendingOrgInvite.peek() == null) return;
     if (widget.auth.token == null) return;
     _router.go(AppRoutes.invitations);
+  }
+
+  /// Someone opened an event claim link before signing in: back to the
+  /// claim page now that they have (events S3 §5.11). The page asks "Is
+  /// this you?" and claims; nothing is claimed silently.
+  Future<void> _openKeptEventClaim() async {
+    if (await PendingEventClaim.peek() == null) return;
+    if (widget.auth.token == null) return;
+    _router.go(AppRoutes.eventClaim);
   }
 
   @override

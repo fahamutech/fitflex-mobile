@@ -372,12 +372,21 @@ class _ChoosePinStepState extends State<ChoosePinStep> {
   }
 }
 
-/// PHOTO_HERO_UI, PIN entry and the PIN flows' steps: the hero's share of
-/// a phone's height (owner 2026-10-22: compact, content right under it)...
+/// PHOTO_HERO_UI, the PIN flows' text steps (Register, Forgot PIN: number,
+/// email, code): the hero's share of a phone's height (owner 2026-10-22:
+/// compact, content right under it).
 const double pinHeroFraction = 0.30;
 
-/// ...and the clear photo it keeps above its text from 760px tall.
-const double pinHeroClearPhoto = 48;
+/// PIN entry and the PIN flows' keypad steps (owner 2026-10-22, "thin
+/// strip"): the hero is only as tall as the app bar and its text (eyebrow,
+/// headline, contact line) need, with no clear photo above the text, so
+/// the dots and keypad sit right under the bar's height plus that text.
+/// No share of the screen...
+const double pinStripFraction = 0;
+
+/// ...and no clear photo (the bar band and the ramp to the text are all
+/// the photo shows).
+const double pinHeroClearPhoto = 0;
 
 /// PHOTO_HERO_UI (spec §22.2): Register, Forgot PIN and PIN setup share the
 /// `pin` photo. [keypad] steps pin their content under the hero and drop
@@ -407,11 +416,11 @@ Widget _flowScreen(
     );
   }
   return FFPhotoHeroPage(
-    phoneFraction: pinHeroFraction,
-    shortPhoneFraction: pinHeroFraction,
-    phoneMinHeight: 220,
-    // Keypad steps: compact like PIN entry (owner 2026-10-22), the content
-    // right under the hero and spare room at the bottom.
+    // Keypad steps: a thin strip like PIN entry (owner 2026-10-22), the
+    // content right under it and spare room at the bottom.
+    phoneFraction: keypad ? pinStripFraction : pinHeroFraction,
+    shortPhoneFraction: keypad ? pinStripFraction : pinHeroFraction,
+    phoneMinHeight: keypad ? 0 : 220,
     compactClearPhoto: keypad ? pinHeroClearPhoto : 0,
     pinnedContent: keypad,
     heroMinViewportHeight: keypad ? 800 : null,

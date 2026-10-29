@@ -16,7 +16,7 @@ import '../../components/components.dart';
 import '../../design_tokens.dart';
 import '../../i18n.dart';
 import '../../shop_near_you.dart';
-import '../ff_area_picker.dart';
+import 'shop_focus_ring.dart';
 
 /// The card in the near-you slot, before the person has answered.
 class ShopNearYouInviteCard extends StatelessWidget {
@@ -88,7 +88,8 @@ class ShopNearYouInviteCard extends StatelessWidget {
                       key: const Key('shop-near-you-use'),
                       label: context.tr('shop.near.use'),
                       variant: FFButtonVariant.secondary,
-                      size: FFButtonSize.sm,
+                      // 48 tall at every width (QA #3).
+                      visualDensity: VisualDensity.standard,
                       icon: Icons.my_location_outlined,
                       onPressed: offline ? null : onUse,
                     ),
@@ -130,6 +131,8 @@ Future<bool?> showShopLocationRationale(
 }) => showFFSheet<bool>(
   context,
   title: context.tr('shop.near.sheetTitle'),
+  // A centred dialog 480 wide on desktop (QA #11).
+  wideDialogWidth: 480,
   child: _RationaleBody(alreadyAllowed: alreadyAllowed),
 );
 
@@ -183,19 +186,30 @@ class _RationaleBody extends StatelessWidget {
           ),
         ),
         const SizedBox(height: FFTokens.spacingMd),
-        FFButton(
-          key: const Key('shop-location-use'),
-          label: context.tr('shop.near.use'),
-          fullWidth: true,
-          onPressed: () => Navigator.of(context).pop(true),
+        // 48 tall at every width (QA #3); two-tone focus rings (QA #7).
+        ShopFocusRing(
+          onPhoto: true,
+          builder: (node) => FFButton(
+            key: const Key('shop-location-use'),
+            focusNode: node,
+            label: context.tr('shop.near.use'),
+            fullWidth: true,
+            visualDensity: VisualDensity.standard,
+            onPressed: () => Navigator.of(context).pop(true),
+          ),
         ),
         const SizedBox(height: FFTokens.spacingXs),
-        FFButton(
-          key: const Key('shop-location-not-now'),
-          label: context.tr('shop.near.notNow'),
-          variant: FFButtonVariant.ghost,
-          fullWidth: true,
-          onPressed: () => Navigator.of(context).pop(false),
+        ShopFocusRing(
+          onPhoto: true,
+          builder: (node) => FFButton(
+            key: const Key('shop-location-not-now'),
+            focusNode: node,
+            label: context.tr('shop.near.notNow'),
+            variant: FFButtonVariant.ghost,
+            fullWidth: true,
+            visualDensity: VisualDensity.standard,
+            onPressed: () => Navigator.of(context).pop(false),
+          ),
         ),
       ],
     );
@@ -348,7 +362,7 @@ class ShopNearYouFlow {
     final uid = _uid(context);
     final api = AppScope.of(context).api;
     final state = await ShopNearYouStore.load(uid);
-    if (state.choice != ShopNearYouChoice.on || state.manual) return false;
+    if (state.choice != ShopNearYouChoice.on) return false;
     if (ShopNearYouStore.readThisSession(uid)) return false;
     ShopNearYouStore.markRead(uid);
     final areas = await ShopAreas.tryLoad(api);
@@ -376,49 +390,12 @@ class ShopNearYouFlow {
     await ShopNearYouStore.save(uid, next);
     return true;
   }
-
-  /// "Change area": pick a city or district by hand. The position is then
-  /// not read again until location is turned on again.
-  static Future<void> changeArea(BuildContext context) async {
-    final api = AppScope.of(context).api;
-    final uid = _uid(context);
-    final snack = FFSnack.of(context);
-    final locale = FFLocaleScope.of(context);
-    final lang = locale.locale.languageCode;
-    List<ShopArea> areas;
-    try {
-      areas = await ShopAreas.loadOrThrow(api);
-    } catch (_) {
-      snack.error(locale.t('vendor.areas.failed'));
-      return;
-    }
-    if (!context.mounted) return;
-    final current = ShopNearYouStore.peek(uid)?.areaId;
-    final picked = await showFFAreaPicker(
-      context,
-      title: context.tr('shop.near.pickArea'),
-      areas: areas,
-      multi: false,
-      levels: const {'city', 'district'},
-      selected: {?current},
-    );
-    if (picked == null || picked.isEmpty) return;
-    final area = areas.firstWhere((a) => a.id == picked.first);
-    await ShopNearYouStore.save(
-      uid,
-      ShopNearYouState(
-        choice: ShopNearYouChoice.on,
-        areaId: area.id,
-        areaName: area.nameIn(lang),
-        manual: true,
-      ),
-    );
-  }
 }
 
-/// "Popular near you: On · {area}" with Change area / Turn off, or
-/// "Popular near you: Off" with Turn on (spec §6.3 item 5). Shown in the
-/// Why sheet and the Privacy sheet while near-you is available.
+/// "Popular near you: On · {area}" with Turn off, or "Popular near you:
+/// Off" with Turn on (spec §6.3 item 5). Shown in the Why sheet and the
+/// Privacy sheet while near-you is available. The area is only ever the one
+/// worked out on the device: there is no "Change area" (owner 2026-10-28).
 class ShopNearYouLine extends StatefulWidget {
   const ShopNearYouLine({
     super.key,
@@ -533,15 +510,6 @@ class _ShopNearYouLineState extends State<ShopNearYouLine> {
           spacing: FFTokens.spacingSm,
           children: [
             if (on) ...[
-              FFButton(
-                key: const Key('shop-near-you-change'),
-                label: context.tr('shop.near.changeArea'),
-                variant: FFButtonVariant.ghost,
-                visualDensity: VisualDensity.standard,
-                onPressed: _busy
-                    ? null
-                    : () => _run(() => ShopNearYouFlow.changeArea(context)),
-              ),
               FFButton(
                 key: const Key('shop-near-you-turn-off'),
                 label: context.tr('shop.why.turnOff'),

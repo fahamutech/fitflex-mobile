@@ -42,6 +42,9 @@ abstract final class MomoProduct {
   static const gymPlan = 'GYM_SUBSCRIPTION';
   static const trainerSession = 'TRAINER_SERVICE';
   static const trainerGymPass = 'TRAINER_GYM_PASS';
+
+  /// Event tickets (events S4); offered only when the server lists it.
+  static const eventOrder = 'EVENT_ORDER';
 }
 
 /// What a server without the `mobileMoney` key pays by mobile money: members
@@ -134,6 +137,7 @@ const momoHeldReasons = {
 String momoSuccessBodyKey(String? productType) => switch (productType) {
   MomoProduct.trainerSession => 'momo.successBody.session',
   MomoProduct.trainerGymPass => 'momo.successBody.trainerPass',
+  MomoProduct.eventOrder => 'momo.successBody.eventOrder',
   _ => 'momo.successBody',
 };
 

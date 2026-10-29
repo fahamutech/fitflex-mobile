@@ -24,6 +24,7 @@ class EventsCache {
     _list = null;
     _listAt = null;
     _details.clear();
+    _mine.clear();
   }
 
   static Future<SharedPreferences?> _prefs() async {
@@ -83,6 +84,41 @@ class EventsCache {
         jsonEncode({'at': now.toIso8601String(), 'detail': json}),
       );
     } catch (_) {}
+  }
+
+  // ── My registrations / orders (S3 spec §5.8: offline shows the last
+  // cached page with a notice) ─────────────────────────────────────────────
+
+  static const minePrefix = 'events.cache.mine.';
+  static final Map<String, (DateTime, Map<String, dynamic>)> _mine = {};
+
+  static Future<void> putMine(String kind, Map<String, dynamic> page) async {
+    final now = DateTime.now();
+    _mine[kind] = (now, page);
+    final p = await _prefs();
+    try {
+      await p?.setString(
+        '$minePrefix$kind',
+        jsonEncode({'at': now.toIso8601String(), 'page': page}),
+      );
+    } catch (_) {}
+  }
+
+  static Future<(DateTime, Map<String, dynamic>)?> getMine(String kind) async {
+    final hit = _mine[kind];
+    if (hit != null) return hit;
+    final p = await _prefs();
+    final raw = p?.getString('$minePrefix$kind');
+    if (raw == null) return null;
+    try {
+      final m = jsonDecode(raw) as Map;
+      final at = DateTime.tryParse(m['at']?.toString() ?? '') ?? DateTime.now();
+      final page = Map<String, dynamic>.from(m['page'] as Map);
+      _mine[kind] = (at, page);
+      return (at, page);
+    } catch (_) {
+      return null;
+    }
   }
 
   static Future<(DateTime, Map<String, dynamic>)?> getDetail(String id) async {

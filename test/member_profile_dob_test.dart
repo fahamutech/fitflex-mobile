@@ -293,4 +293,38 @@ void main() {
       expect(find.text(message), findsNothing);
     });
   }
+
+  // Partner date of birth (fitflex-functions#253): an unchanged date is
+  // left out (the server keeps it), so a Trainer or gym owner whose stored
+  // member date the server would now refuse can still save other fields.
+  testWidgets('an unchanged date of birth is not sent', (tester) async {
+    final api = _FakeApi();
+    await _pump(tester, api, '2012-04-01');
+    await tester.enterText(
+      find.descendant(
+        of: find.byKey(const Key('edit-profile-name')),
+        matching: find.byType(TextField),
+      ),
+      'Amina S.',
+    );
+    await _save(tester);
+    expect(api.profiles, hasLength(1));
+    expect(api.profiles.single.containsKey('dateOfBirth'), isFalse);
+    expect(api.profiles.single['displayName'], 'Amina S.');
+  });
+
+  testWidgets('partner_under_18 shows under the date', (tester) async {
+    final api = _FakeApi(
+      error: ApiException(400, {'error': 'partner_under_18'}),
+    );
+    await _pump(tester, api, '1990-05-10');
+    final input = find.descendant(of: _dob, matching: find.byType(TextField));
+    await tester.enterText(input, '2012-04-01');
+    await _save(tester);
+    expect(api.profiles.single['dateOfBirth'], '2012-04-01');
+    expect(
+      find.text('You must be 18 or older to be a Trainer or gym owner.'),
+      findsOneWidget,
+    );
+  });
 }
