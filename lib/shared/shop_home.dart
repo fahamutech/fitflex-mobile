@@ -39,6 +39,102 @@ bool? debugShopEventsOverride;
 
 bool get shopEventsEnabled => debugShopEventsOverride ?? kShopEvents;
 
+/// The server's clock as the shop sees it (Phase 2 S4, flash sales): every
+/// countdown and "is this sale still on" check uses [now], which is the
+/// device time corrected by the last `serverNow` the shop received. A phone
+/// set an hour wrong still ends a sale at the right moment (P1 AC-21).
+class ShopClock {
+  ShopClock._();
+
+  /// Server time minus device time, from the last answer with `serverNow`.
+  static Duration offset = Duration.zero;
+
+  /// The device clock (tests replace it to fake a wrong phone clock and to
+  /// follow the test's fake time).
+  @visibleForTesting
+  static DateTime Function()? debugDeviceNow;
+
+  static DateTime deviceNow() => (debugDeviceNow ?? DateTime.now)().toUtc();
+
+  /// The server's time now, as best the app knows it.
+  static DateTime now() => deviceNow().add(offset);
+
+  /// Records [serverNow] (received just now) against the device clock.
+  static void sync(DateTime? serverNow) {
+    if (serverNow == null) return;
+    offset = serverNow.toUtc().difference(deviceNow());
+  }
+
+  @visibleForTesting
+  static void reset() {
+    offset = Duration.zero;
+    debugDeviceNow = null;
+  }
+}
+
+/// A live flash sale on a product row (Phase 2 S4, SHOP_FLASH_SALES;
+/// fitflex-functions docs/shop-flash-sales-api.md "Product rows"): `sale`
+/// = `{id, salePriceTzs, wasPriceTzs, regularPriceTzs, discountPct,
+/// startsAt, endsAt}`, sent only while live. The app still checks [endsAt]
+/// against [ShopClock], so a sale that ends while the screen is open stops
+/// at once.
+class ShopFlashSale {
+  const ShopFlashSale({
+    required this.id,
+    required this.salePriceTzs,
+    required this.wasPriceTzs,
+    required this.endsAt,
+    this.startsAt,
+    this.discountPct,
+  });
+
+  final String id;
+  final num salePriceTzs;
+
+  /// The regular price the sale is measured against (struck through): the
+  /// price when it was approved.
+  final num wasPriceTzs;
+  final DateTime? startsAt;
+  final DateTime endsAt;
+
+  /// The server's floor((was − sale) × 100 / was), when sent.
+  final int? discountPct;
+
+  /// A sale the app can show: an id, an end, and a sale price above zero
+  /// and below the "was" price. Anything else is ignored (no sale UI).
+  static ShopFlashSale? fromJson(Object? json) {
+    if (json is! Map) return null;
+    final id = json['id']?.toString() ?? '';
+    num? n(Object? v) => v is num ? v : num.tryParse(v?.toString() ?? '');
+    DateTime? d(Object? v) => DateTime.tryParse(v?.toString() ?? '')?.toUtc();
+    final sale = n(json['salePriceTzs']);
+    final was = n(json['wasPriceTzs']) ?? n(json['regularPriceTzs']);
+    final ends = d(json['endsAt']);
+    if (id.isEmpty || sale == null || was == null || ends == null) return null;
+    if (sale <= 0 || sale >= was) return null;
+    final pct = n(json['discountPct']);
+    return ShopFlashSale(
+      id: id,
+      salePriceTzs: sale,
+      wasPriceTzs: was,
+      startsAt: d(json['startsAt']),
+      endsAt: ends,
+      discountPct: pct?.toInt(),
+    );
+  }
+
+  /// Still on by the server's clock (live means now < endsAt).
+  bool get live => ShopClock.now().isBefore(endsAt);
+
+  /// floor((was − sale) × 100 / was): never overstated. The server's own
+  /// figure when it sent one.
+  int get percentOff =>
+      discountPct ??
+      (wasPriceTzs <= 0
+          ? 0
+          : ((wasPriceTzs - salePriceTzs) * 100 / wasPriceTzs).floor());
+}
+
 /// The role the customer is shopping as. A default for what is suggested,
 /// never a limit on what can be browsed.
 enum ShopHomeMode {
@@ -133,7 +229,12 @@ class ShopHomeSection {
     this.viewAll = const {},
     this.hasMore,
     this.productIds = const [],
+    this.endsAt,
   });
+
+  /// Phase 2 S4: the `flash_sale` section's end, the earliest end among
+  /// the products shown (count down against `serverNow`).
+  final DateTime? endsAt;
 
   /// featured, recommended, best_sellers, popular_near_you, essentials,
   /// recently_viewed, deals, new_arrivals (others are shown the same way).
@@ -196,6 +297,7 @@ class ShopHomeSection {
           .map((id) => id.toString())
           .where((id) => id.isNotEmpty)
           .toList(),
+      endsAt: DateTime.tryParse(json['endsAt']?.toString() ?? '')?.toUtc(),
     );
   }
 }

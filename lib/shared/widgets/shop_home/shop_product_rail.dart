@@ -63,6 +63,7 @@ IconData? shopSectionIcon(String key, {bool personalised = false}) =>
       'recently_viewed' => Icons.history,
       'deals' => Icons.local_offer_outlined,
       'new_arrivals' => Icons.fiber_new_outlined,
+      'flash_sale' => Icons.bolt_outlined,
       _ => null,
     };
 
@@ -81,9 +82,14 @@ class ShopProductRail extends StatefulWidget {
     this.onWhy,
     this.onViewAll,
     this.onShown,
+    this.subtitle,
   });
 
   final String sectionKey;
+
+  /// A line under the header (the flash sale's countdown), on its own line
+  /// so a long Swahili title never pushes it off the screen.
+  final Widget? subtitle;
   final String title;
   final List<Widget> children;
 
@@ -167,6 +173,14 @@ class _ShopProductRailState extends State<ShopProductRail> {
             padding: EdgeInsets.symmetric(horizontal: widget.inset),
             child: _header(context, showArrows: wide),
           ),
+          if (widget.subtitle case final sub?)
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: widget.inset),
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: sub,
+              ),
+            ),
           const SizedBox(height: FFTokens.spacingSm),
           SingleChildScrollView(
             key: Key('shop-home-rail-${widget.sectionKey}'),

@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app_scope.dart';
 import '../../router.dart';
+import 'merch/banner_models.dart' show toEatWallClock;
 import '../partner/verification/partner_progress_actions.dart';
 import '../../shared/api_client.dart';
 import '../../shared/api_error_message.dart';
@@ -223,26 +224,49 @@ class _VendorHomePageState extends State<VendorHomePage> {
 
   bool get _ledger => _tools.stockLedger && _can('products');
 
-  /// Shop home Phase 2 S1: the Promotions entry, only while the server
-  /// reports `merch.banners: true` and this person may work on products.
-  bool get _merch => _tools.banners && _can('products');
+  /// Shop home Phase 2 S1/S4: the Promotions entry, only while the server
+  /// reports `merch.banners` or `merch.flashSales` and this person may work
+  /// on products.
+  bool get _merch => (_tools.banners || _tools.flashSales) && _can('products');
 
   /// How many of this vendor's banners wait for approval (the entry's
   /// subtitle); null until known or when it could not be read.
   int? _merchWaiting;
 
   Future<void> _loadMerchWaiting() async {
-    try {
-      final out = await AppScope.of(
-        context,
-      ).api.vendorShopBanners(limit: 1, status: 'pending_approval');
-      final total = out['total'];
-      if (mounted) {
-        setState(() => _merchWaiting = total is num ? total.toInt() : null);
+    final api = AppScope.of(context).api;
+    // Banners and flash sales waiting, each only while its tool is on.
+    Future<int?> count(
+      bool on,
+      Future<Map<String, dynamic>> Function() get,
+    ) async {
+      if (!on) return 0;
+      try {
+        final total = (await get())['total'];
+        return total is num ? total.toInt() : null;
+      } catch (_) {
+        return null;
       }
-    } catch (_) {
-      // The plain subtitle stays.
     }
+
+    final counts = await Future.wait([
+      count(
+        _tools.banners,
+        () => api.vendorShopBanners(limit: 1, status: 'pending_approval'),
+      ),
+      count(
+        _tools.flashSales,
+        () => api.vendorFlashSales(limit: 1, status: 'pending_approval'),
+      ),
+    ]);
+    if (!mounted) return;
+    // Unknown when nothing could be read; the plain subtitle stays then.
+    final known = counts.whereType<int>();
+    setState(
+      () => _merchWaiting = known.isEmpty
+          ? null
+          : known.fold<int>(0, (a, b) => a + b),
+    );
   }
 
   Widget _merchEntry() => Padding(
@@ -332,6 +356,10 @@ class _VendorHomePageState extends State<VendorHomePage> {
   String _saveFailedText(Object e) =>
       e is ApiException && e.code == 'invalid_vat_code'
       ? context.tr('vendor.product.vatInvalid')
+      // Phase 2 S4: the price can't change while a flash sale is scheduled
+      // or live (409 sale_conflict, price_locked_by_flash_sale).
+      : e is ApiException && e.code == 'sale_conflict'
+      ? context.tr('vendor.priceLockedSave')
       : e is ApiException && _friendlyCodes.contains(e.code)
       ? apiErrorMessage(FFLocaleScope.of(context), e)
       : context.tr('vendor.saveFailed');
@@ -693,6 +721,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
       builder: (_) => VendorProductForm(
         product: product,
         showTargets: _showTargets,
+        showFlashSale: _tools.flashSales,
         vatCodes: _vatCodes,
       ),
     );
@@ -739,6 +768,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
       child: VendorProductForm(
         product: product,
         showTargets: _showTargets,
+        showFlashSale: _tools.flashSales,
         stockLedger: true,
         canSeeCost: _tools.canSeeCost,
         vatCodes: _vatCodes,
@@ -2040,9 +2070,15 @@ class VendorProductForm extends StatefulWidget {
     this.onAdjust,
     this.describeError,
     this.vatCodes,
+    this.showFlashSale = false,
   });
 
   final Map<String, dynamic>? product;
+
+  /// Phase 2 S4 (`merch.flashSales`): "Start a flash sale" on a saved
+  /// product, and the price lock while one is scheduled or live (the row's
+  /// `priceLock`). Off: neither.
+  final bool showFlashSale;
 
   /// Shop Phase 2 S2: the optional "Made for" and "Age group" pickers, sent
   /// as `targetGender` and `targetAgeBands`. Off: neither is shown or sent.
@@ -2641,6 +2677,30 @@ class _VendorProductFormState extends State<VendorProductForm> {
     );
   }
 
+  /// Phase 2 S4: the product's `priceLock` (`{saleId, startsAt, endsAt}`)
+  /// while an approved flash sale has not ended. Price and discount price
+  /// are then read-only (the server refuses a change with 409).
+  Map? get _priceLock {
+    final lock = widget.product?['priceLock'];
+    return widget.showFlashSale && lock is Map ? lock : null;
+  }
+
+  /// "Locked while your flash sale runs ({start}–{end})."
+  String? _lockHelper() {
+    final lock = _priceLock;
+    if (lock == null) return null;
+    final lang = FFLocaleScope.of(context).locale.languageCode;
+    String when(Object? v) {
+      final d = DateTime.tryParse('${v ?? ''}');
+      return d == null ? '-' : formatDateTime(toEatWallClock(d), locale: lang);
+    }
+
+    return context
+        .tr('vendor.priceLocked')
+        .replaceAll('{start}', when(lock['startsAt']))
+        .replaceAll('{end}', when(lock['endsAt']));
+  }
+
   Widget _priceField() => KeyedSubtree(
     key: _priceKey,
     child: FFTextField(
@@ -2648,10 +2708,55 @@ class _VendorProductFormState extends State<VendorProductForm> {
       controller: _price,
       keyboardType: TextInputType.number,
       label: context.tr('vendor.price'),
+      readOnly: _priceLock != null,
+      helperText: _lockHelper(),
       errorText: _ledger ? _priceError : null,
       onChanged: _ledger ? (_) => _clearFieldError() : null,
     ),
   );
+
+  /// "View sale" under a locked price, and "Start a flash sale" on a saved
+  /// product that has none (Phase 2 S4).
+  Widget _flashSaleActions() {
+    final id = widget.product?['id']?.toString() ?? '';
+    if (!widget.showFlashSale || id.isEmpty) return const SizedBox.shrink();
+    final lock = _priceLock;
+    final saleId = lock?['saleId']?.toString() ?? '';
+    final status = widget.product?['status']?.toString() ?? 'active';
+    final approval =
+        widget.product?['approvalStatus']?.toString() ?? 'approved';
+    if (lock == null && (status != 'active' || approval != 'approved')) {
+      return const SizedBox.shrink();
+    }
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: FFButton(
+        key: Key(
+          lock != null
+              ? 'vendor-product-view-sale'
+              : 'vendor-product-start-sale',
+        ),
+        label: context.tr(
+          lock != null ? 'vendor.viewSale' : 'merch.sale.start',
+        ),
+        icon: Icons.bolt_outlined,
+        variant: FFButtonVariant.ghost,
+        visualDensity: VisualDensity.standard,
+        maxLines: 2,
+        onPressed: () => context.push(
+          lock != null
+              ? Uri(
+                  path: AppRoutes.vendorMerch,
+                  queryParameters: {
+                    'tab': 'sales',
+                    if (saleId.isNotEmpty) 'item': saleId,
+                  },
+                ).toString()
+              : '${AppRoutes.vendorMerchSaleNew}?productId=${Uri.encodeQueryComponent(id)}',
+        ),
+      ),
+    );
+  }
 
   /// Typing clears the previous save's messages.
   void _clearFieldError() {
@@ -2671,7 +2776,10 @@ class _VendorProductFormState extends State<VendorProductForm> {
       controller: _discountPrice,
       keyboardType: TextInputType.number,
       label: context.tr('vendor.discountPrice'),
+      readOnly: _priceLock != null,
+      helperText: _lockHelper(),
     ),
+    _flashSaleActions(),
     Row(
       children: [
         Expanded(

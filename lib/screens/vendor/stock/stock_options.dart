@@ -30,6 +30,7 @@ class VendorTools {
     this.walkInSales = false,
     this.customers = false,
     this.banners = false,
+    this.flashSales = false,
     this.productTargets = false,
     this.shopAreas = false,
     this.documents = false,
@@ -74,6 +75,10 @@ class VendorTools {
   /// Shop home Phase 2 S1: vendors propose hero banners (SHOP_BANNERS),
   /// from `merch: {banners: true}`. Exactly `true`, else off.
   final bool banners;
+
+  /// Shop home Phase 2 S4: vendors propose flash sales (SHOP_FLASH_SALES),
+  /// from `merch: {flashSales: true}`. Exactly `true`, else off.
+  final bool flashSales;
 
   /// Shop home Phase 2 S2: products may carry "Made for" / "Age group"
   /// (SHOP_PERSONALISATION), from `merch: {productTargets: true}`. Exactly
@@ -121,6 +126,9 @@ class VendorTools {
         banners:
             options['merch'] is Map &&
             (options['merch'] as Map)['banners'] == true,
+        flashSales:
+            options['merch'] is Map &&
+            (options['merch'] as Map)['flashSales'] == true,
         productTargets:
             options['merch'] is Map &&
             (options['merch'] as Map)['productTargets'] == true,

@@ -2173,6 +2173,102 @@ class ApiClient {
   Future<Map<String, dynamic>> vendorToolsOptions() async =>
       await _request('GET', '/vendor/tools/options');
 
+  // ── Vendor flash sales (Shop home Phase 2 S4, SHOP_FLASH_SALES) ───────
+  // fitflex-functions docs/shop-flash-sales-api.md "Vendor endpoints".
+  // Every route answers 404 `feature_disabled` while the flag is off.
+
+  /// The sales on this vendor's products, one page: `{items: [sale],
+  /// total, nextCursor, vendor: {canPropose, reason}, proposalExpiryDays,
+  /// openProposals: {open, max}, rules: {...}}`.
+  Future<Map<String, dynamic>> vendorFlashSales({
+    int limit = 100,
+    String? cursor,
+    String? status,
+    String? productId,
+  }) async {
+    final out = await _request(
+      'GET',
+      _withQuery('/vendor/flash-sales', {
+        'limit': '$limit',
+        if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+        if (status != null && status.isNotEmpty) 'status': status,
+        if (productId != null && productId.isNotEmpty) 'productId': productId,
+      }),
+    );
+    if (out is List) return {'items': out};
+    return out is Map ? Map<String, dynamic>.from(out) : <String, dynamic>{};
+  }
+
+  /// `{ok, productId, regularPriceTzs, discountPriceTzs, effectivePriceTzs,
+  /// maxSalePriceTzs, raisedAt, raisedOn, earliestStart, lockedBy}` for a
+  /// sale on [productId] starting at [startsAt] (default: an hour from now).
+  Future<Map<String, dynamic>> vendorFlashSalePriceCheck(
+    String productId, {
+    DateTime? startsAt,
+  }) async {
+    final out = await _request(
+      'GET',
+      _withQuery('/vendor/flash-sales/price-check', {
+        'productId': productId,
+        if (startsAt != null) 'startsAt': startsAt.toUtc().toIso8601String(),
+      }),
+    );
+    return out is Map ? Map<String, dynamic>.from(out) : <String, dynamic>{};
+  }
+
+  /// One sale (`{sale}`); 404 `sale_not_found` for another vendor's.
+  Future<Map<String, dynamic>> vendorFlashSale(String id) async =>
+      _saleOf(await _request('GET', '/vendor/flash-sales/${_seg(id)}'));
+
+  /// Creates a sale as a draft (`{productId, salePriceTzs, startsAt,
+  /// endsAt}`, all required). Answers the sale.
+  Future<Map<String, dynamic>> vendorCreateFlashSale(
+    Map<String, dynamic> body,
+  ) async => _saleOf(await _request('POST', '/vendor/flash-sales', body: body));
+
+  /// Changes `salePriceTzs` / `startsAt` / `endsAt`. A scheduled sale goes
+  /// back for approval; a rejected one becomes a draft.
+  Future<Map<String, dynamic>> vendorUpdateFlashSale(
+    String id,
+    Map<String, dynamic> body,
+  ) async => _saleOf(
+    await _request('PATCH', '/vendor/flash-sales/${_seg(id)}', body: body),
+  );
+
+  Future<Map<String, dynamic>> vendorSubmitFlashSale(String id) async =>
+      _saleOf(
+        await _request(
+          'POST',
+          '/vendor/flash-sales/${_seg(id)}/submit',
+          body: const <String, dynamic>{},
+        ),
+      );
+
+  Future<Map<String, dynamic>> vendorWithdrawFlashSale(String id) async =>
+      _saleOf(
+        await _request(
+          'POST',
+          '/vendor/flash-sales/${_seg(id)}/withdraw',
+          body: const <String, dynamic>{},
+        ),
+      );
+
+  /// Ends the vendor's own live or scheduled sale now.
+  Future<Map<String, dynamic>> vendorEndFlashSale(String id) async => _saleOf(
+    await _request(
+      'POST',
+      '/vendor/flash-sales/${_seg(id)}/end',
+      body: const <String, dynamic>{},
+    ),
+  );
+
+  static Map<String, dynamic> _saleOf(Object? out) {
+    if (out is Map && out['sale'] is Map) {
+      return Map<String, dynamic>.from(out['sale'] as Map);
+    }
+    return out is Map ? Map<String, dynamic>.from(out) : <String, dynamic>{};
+  }
+
   // ── Vendor shop banners (Shop home Phase 2 S1, SHOP_BANNERS) ──────────
 
   /// The vendor's own banner proposals, newest first:
