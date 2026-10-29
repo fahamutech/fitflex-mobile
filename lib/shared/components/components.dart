@@ -42,5 +42,6 @@ export 'ff_skeleton.dart';
 export 'ff_error_state.dart';
 export 'ff_quantity_stepper.dart';
 export 'ff_countdown_text.dart';
+export 'ff_countdown.dart';
 export 'ff_logo_plate.dart';
 export 'ff_focal_point_picker.dart';

@@ -72,7 +72,8 @@ import 'shared/partner_media/partner_hero_builder.dart' show PartnerRouteWatch;
 import 'shared/partner_media/partner_media_flag.dart';
 import 'screens/vendor/stock/stock_history_page.dart';
 import 'screens/vendor/merch/banner_form_route.dart';
-import 'screens/vendor/merch/vendor_banners_page.dart';
+import 'screens/vendor/merch/flash_sale_form_page.dart';
+import 'screens/vendor/merch/vendor_merch_page.dart';
 import 'screens/vendor/sales/pos_page.dart';
 import 'screens/vendor/sales/receipt_page.dart';
 import 'screens/vendor/sales/sale_detail_page.dart';
@@ -135,6 +136,10 @@ abstract class AppRoutes {
   /// The banner form (its own address, so a refresh restores it).
   static const vendorMerchNew = '/vendor/merch/banner/new';
   static String vendorMerchEdit(String id) => '/vendor/merch/banner/$id/edit';
+
+  /// Phase 2 S4: the flash sale form (its own address too).
+  static const vendorMerchSaleNew = '/vendor/merch/sale/new';
+  static String vendorMerchSaleEdit(String id) => '/vendor/merch/sale/$id/edit';
 
   /// Vendor tools · S1: one product's stock history.
   static String vendorStockHistory(String productId) =>
@@ -328,7 +333,7 @@ final _vendorDocumentsPath = RegExp(
 /// Promotions and the banner form (Phase 2 S1). Pending vendors see why
 /// they cannot propose yet.
 final _vendorMerchPath = RegExp(
-  r'^/vendor/merch(/banner/(new|[A-Za-z0-9_-]{1,64}/edit))?$',
+  r'^/vendor/merch(/(banner|sale)/(new|[A-Za-z0-9_-]{1,64}/edit))?$',
 );
 
 /// Report pages (S6). Pending vendors see their own figures too (§11).
@@ -905,11 +910,35 @@ GoRouter buildRouter(AuthState auth) {
       ],
       // Shop home Phase 2 S1: the page checks the tool (merch.banners) and
       // the `products` permission itself.
+      // Phase 2 S4: "Flash sales | Banners" (`?tab=sales|banners`); with
+      // flash sales off it is the banners page as before.
       GoRoute(
         path: AppRoutes.vendorMerch,
         name: 'vendorMerch',
+        builder: (context, state) => VendorMerchPage(
+          tab: state.uri.queryParameters['tab'],
+          item: state.uri.queryParameters['item'],
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.vendorMerchSaleNew,
+        name: 'vendorMerchSaleNew',
+        builder: (context, state) => VendorFlashSaleFormRoute(
+          copyId: state.uri.queryParameters['copy'],
+          productId: state.uri.queryParameters['productId'],
+        ),
+      ),
+      GoRoute(
+        path: '/vendor/merch/sale/:saleId/edit',
+        name: 'vendorMerchSaleEdit',
+        redirect: (context, state) =>
+            RegExp(
+              r'^[A-Za-z0-9_-]{1,64}$',
+            ).hasMatch(state.pathParameters['saleId'] ?? '')
+            ? null
+            : '${AppRoutes.vendorMerch}?tab=sales',
         builder: (context, state) =>
-            VendorBannersPage(item: state.uri.queryParameters['item']),
+            VendorFlashSaleFormRoute(saleId: state.pathParameters['saleId']),
       ),
       GoRoute(
         path: AppRoutes.vendorMerchNew,

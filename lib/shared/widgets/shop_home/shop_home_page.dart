@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -195,12 +196,15 @@ class ShopHomeViewState extends State<ShopHomeView> {
       }
       if (!mounted || id != _load) return;
       final data = ShopHomeData.fromJson(json);
+      // Phase 2 S4: every countdown follows the server's clock.
+      ShopClock.sync(data.serverNow);
       setState(() {
         _data = data;
         _error = null;
         _loading = false;
       });
       _live.value = data;
+      _watchSales(data);
       widget.onData?.call(data);
       widget.onOfflineChanged?.call(false);
       ShopEvents.newLoad();
@@ -381,8 +385,69 @@ class ShopHomeViewState extends State<ShopHomeView> {
   @override
   void dispose() {
     ShopNearYouStore.changes.removeListener(_nearChanged);
+    _saleTimer?.cancel();
+    _refetchTimer?.cancel();
     _live.dispose();
     super.dispose();
+  }
+
+  // ── Phase 2 S4: flash sales ending while the home is open ────────────────
+
+  /// Fires when the next sale on screen ends (server clock).
+  Timer? _saleTimer;
+
+  /// The one refetch after a sale ended (0–3 s jitter, P1 §9).
+  Timer? _refetchTimer;
+
+  /// Tests: the delay before the refetch (default 0–3 s at random).
+  @visibleForTesting
+  static Duration Function()? debugRefetchJitter;
+
+  /// The earliest sale end still ahead among what [data] shows (the
+  /// flash_sale section's end and every product's own sale).
+  static DateTime? _nextSaleEnd(ShopHomeData data) {
+    final now = ShopClock.now();
+    DateTime? next;
+    void consider(DateTime? at) {
+      if (at == null || !at.isAfter(now)) return;
+      if (next == null || at.isBefore(next!)) next = at;
+    }
+
+    for (final s in data.sections) {
+      if (s.key == 'flash_sale') consider(s.endsAt);
+    }
+    for (final p in data.products.values) {
+      consider(ShopFlashSale.fromJson(p['sale'])?.endsAt);
+    }
+    return next;
+  }
+
+  void _watchSales(ShopHomeData data) {
+    _saleTimer?.cancel();
+    final next = _nextSaleEnd(data);
+    if (next == null) return;
+    // A moment after the end, so the sale reads as over when it fires.
+    final wait =
+        next.difference(ShopClock.now()) + const Duration(milliseconds: 1);
+    _saleTimer = Timer(wait, _saleEnded);
+  }
+
+  /// A sale on screen just ended: the cards switch to "Sale ended" now
+  /// (cart buttons off), and the home is fetched once more after a short
+  /// random wait, so phones do not all ask at the same instant.
+  void _saleEnded() {
+    if (!mounted) return;
+    setState(() {});
+    if (_refetchTimer?.isActive != true) {
+      final jitter =
+          debugRefetchJitter?.call() ??
+          Duration(milliseconds: math.Random().nextInt(3000));
+      _refetchTimer = Timer(jitter, () {
+        if (mounted) reload();
+      });
+    }
+    final data = _data;
+    if (data != null) _watchSales(data);
   }
 
   /// The bullets for [section]: translated reason codes, the server's own
@@ -860,6 +925,12 @@ class ShopHomeViewState extends State<ShopHomeView> {
               ShopHomeCategory(key: c.key, label: ShopText(c.en, c.sw)),
           ];
     final width = shopRailCardWidth(context);
+    // Phase 2 S4: the flash sale rail heads the rails, whatever the order.
+    sections.sort(
+      (a, b) =>
+          (b.$1.key == 'flash_sale' ? 1 : 0) -
+          (a.$1.key == 'flash_sale' ? 1 : 0),
+    );
     final rails = <Widget>[
       for (final (section, items) in sections)
         ShopProductRail(
@@ -868,6 +939,19 @@ class ShopHomeViewState extends State<ShopHomeView> {
           icon: shopSectionIcon(section.key, personalised: data.personalised),
           title: _title(context, section, lang),
           inset: widget.gutter,
+          subtitle: section.key == 'flash_sale' && section.endsAt != null
+              ? Padding(
+                  padding: const EdgeInsets.only(bottom: FFTokens.spacingXs),
+                  child: FFCountdown(
+                    key: const Key('shop-flash-countdown'),
+                    endsAt: section.endsAt!,
+                    serverOffset: ShopClock.offset,
+                    now: ShopClock.deviceNow,
+                    chipsLabel: context.tr('shop.home.endsIn'),
+                    onEnded: _saleEnded,
+                  ),
+                )
+              : null,
           onShown: () => _event(
             'section_viewed',
             section: section.key,
