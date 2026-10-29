@@ -4346,6 +4346,17 @@ class FFLocale extends ChangeNotifier {
       'progress.blocked.role_rejected':
           'Your partner application was not approved.',
       'progress.blocked.other': 'This step is on hold.',
+      // fitflex-functions#245: the neutral code partners get in place of a
+      // sensitive KYC reason. No reason note is ever shown with it.
+      'progress.reason.under_review':
+          'Under review — please contact FitFlex support.',
+      // fitflex-functions#247: payout_not_ready reasons for a shared gym.
+      'progress.payout.payout_owner_required':
+          'This gym has more than one owner. FitFlex needs to name the payout owner before payouts can start.',
+      'progress.payout.not_payout_owner':
+          'Another owner receives payouts for this gym.',
+      'owner.payoutOwner': 'Payout owner',
+      'owner.payoutOwner.a11y': 'Payout owner: you receive this gym’s payouts',
       'progress.cta.changes': 'Make changes',
       'progress.cta.payout': 'Add payout account',
       'progress.cta.addGym': 'Add gym',
@@ -10942,6 +10953,16 @@ class FFLocale extends ChangeNotifier {
       'progress.blocked.account_suspended': 'Akaunti yako imesimamishwa.',
       'progress.blocked.role_rejected': 'Ombi lako la ushirika halikukubaliwa.',
       'progress.blocked.other': 'Hatua hii imesitishwa kwa sasa.',
+      // fitflex-functions#245 / #247: Swahili DRAFT, needs native review.
+      'progress.reason.under_review':
+          'Inakaguliwa — tafadhali wasiliana na msaada wa FitFlex.',
+      'progress.payout.payout_owner_required':
+          'Gym hii ina mmiliki zaidi ya mmoja. FitFlex inahitaji kumtaja mmiliki atakayepokea malipo kabla malipo hayajaanza.',
+      'progress.payout.not_payout_owner':
+          'Mmiliki mwingine ndiye anayepokea malipo ya gym hii.',
+      'owner.payoutOwner': 'Mpokeaji wa malipo',
+      'owner.payoutOwner.a11y':
+          'Mpokeaji wa malipo: wewe ndiye unayepokea malipo ya gym hii',
       'progress.cta.changes': 'Fanya mabadiliko',
       'progress.cta.payout': 'Ongeza akaunti ya malipo',
       'progress.cta.addGym': 'Ongeza gym',

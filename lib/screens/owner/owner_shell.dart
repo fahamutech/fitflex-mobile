@@ -63,6 +63,14 @@ class OwnerData extends ChangeNotifier {
   /// staff need the matching scope in [aclPermissions].
   bool canAccess(String scope) => !isStaff || aclPermissions.contains(scope);
 
+  /// The active gym's row from GET /owner/gyms, or null when there is none.
+  Map<String, dynamic>? get activeGym {
+    for (final g in ownerGyms) {
+      if (g['id']?.toString() == activeGymId) return g;
+    }
+    return null;
+  }
+
   /// Display name of the active gym, falling back to the first owned gym.
   String activeGymName(String fallbackLabel) {
     if (ownerGyms.isEmpty) return fallbackLabel;

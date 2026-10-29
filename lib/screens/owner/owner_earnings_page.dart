@@ -6,6 +6,7 @@ import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
+import '../../shared/widgets/payout_owner_marker.dart';
 import 'owner_shell.dart';
 import 'owner_statement_page.dart';
 import 'widgets/invoice_utils.dart';
@@ -122,6 +123,14 @@ class _OwnerEarningsPageState extends State<OwnerEarningsPage> {
       body: ListView(
         padding: const EdgeInsets.all(FFTokens.spacingLg),
         children: [
+          // This gym's payouts go to the signed-in owner (shared gyms).
+          if (isPayoutOwnerGym(data?.activeGym)) ...[
+            const Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: PayoutOwnerMarker(key: Key('owner-earnings-payout-owner')),
+            ),
+            const SizedBox(height: FFTokens.spacingSm),
+          ],
           // Period selector
           InkWell(
             onTap: _pickDateRange,
