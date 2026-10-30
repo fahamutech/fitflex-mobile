@@ -2,8 +2,11 @@ name: Upload iOS to TestFlight
 
 # Builds the iOS app and uploads it to App Store Connect / TestFlight.
 #
-# Triggers: every push to main (like distribute-android.yml) and manual runs
-# (Actions -> Upload iOS to TestFlight). release-candidate is never uploaded.
+# Triggers: every push to main (like distribute-android.yml), every push to the
+# testflight branch and manual runs (Actions -> Upload iOS to TestFlight, which
+# GitHub only lists once this file is on main). release-candidate itself does
+# not upload: to test it, push it to testflight:
+#   git push -f origin origin/release-candidate:refs/heads/testflight
 #
 # Dormant until the owner adds the App Store Connect API key secrets: with
 # ASC_KEY_ID empty, every step after the first is skipped and the run ends
@@ -11,10 +14,11 @@ name: Upload iOS to TestFlight
 #
 # Signing: Xcode automatic signing with cloud-managed certificates, using the
 # App Store Connect API key (-allowProvisioningUpdates -authenticationKey*).
-# No certificates or profiles are stored in GitHub.
+# No certificates or profiles are stored in GitHub. The key must have the Admin
+# role, because only Admin keys may use cloud-managed distribution certificates.
 on:
   push:
-    branches: [main]
+    branches: [main, testflight]
   workflow_dispatch:
 
 concurrency:
@@ -194,17 +198,27 @@ jobs:
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
         run: |
           set -euo pipefail
-          xcodebuild archive \
-            -workspace ios/Runner.xcworkspace \
-            -scheme Runner \
-            -configuration Release \
-            -destination 'generic/platform=iOS' \
-            -archivePath "$ARCHIVE_PATH" \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$ASC_KEY_PATH" \
-            -authenticationKeyID "$ASC_KEY_ID" \
-            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
-            CODE_SIGN_STYLE=Automatic
+          archive() {
+            xcodebuild archive \
+              -workspace ios/Runner.xcworkspace \
+              -scheme Runner \
+              -configuration Release \
+              -destination 'generic/platform=iOS' \
+              -archivePath "$ARCHIVE_PATH" \
+              -allowProvisioningUpdates \
+              -authenticationKeyPath "$ASC_KEY_PATH" \
+              -authenticationKeyID "$ASC_KEY_ID" \
+              -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+              "$@"
+          }
+          # Automatic signing makes a development profile here, which needs a
+          # device registered on the team. Without one, archive unsigned: the
+          # export below signs for the App Store with the cloud certificate.
+          if ! archive CODE_SIGN_STYLE=Automatic; then
+            echo "::warning::Signed archive failed, trying unsigned. If no device is registered, this is expected."
+            rm -rf "$ARCHIVE_PATH"
+            archive CODE_SIGN_STYLE=Automatic CODE_SIGNING_ALLOWED=NO
+          fi
 
       # destination=upload: the export signs for App Store distribution (cloud
       # certificate) and sends the build straight to App Store Connect; it then
