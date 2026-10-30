@@ -190,14 +190,16 @@ class _AuthScreenState extends State<AuthScreen>
   /// Create account. Shared by both layouts.
   List<Widget> _formChildren(BuildContext context, bool loading) => [
     // Google sign-in
-    FFGoogleSignInButton(
-      label: context.tr('auth.continueWithGoogle').toUpperCase(),
-      onTap: loading ? null : _signInWithGoogle,
-      loading: _busy,
-    ),
-    const SizedBox(height: 28),
-    FFDividerLabel(label: context.tr('auth.or')),
-    const SizedBox(height: 28),
+    if (googleSignInAvailable) ...[
+      FFGoogleSignInButton(
+        label: context.tr('auth.continueWithGoogle').toUpperCase(),
+        onTap: loading ? null : _signInWithGoogle,
+        loading: _busy,
+      ),
+      const SizedBox(height: 28),
+      FFDividerLabel(label: context.tr('auth.or')),
+      const SizedBox(height: 28),
+    ],
     // Email/Phone field
     FFTextField(
       key: const Key('login-identifier'),
