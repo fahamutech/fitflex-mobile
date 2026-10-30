@@ -283,6 +283,9 @@ String? _knownReason(FFLocale locale, String reason) {
     'tier_not_covered': 'error.reason.gymTierNotCovered',
     'visits_exhausted': 'error.reason.visitCapReached',
     'gym_closed': 'error.reason.gymClosed',
+    // Account deletion (DELETE /me): support has to step in first.
+    'gym_owner_has_checkin_activity': 'error.reason.gymOwnerHasCheckins',
+    'trainer_has_bookings': 'error.reason.trainerHasBookings',
     'whatsapp_template_required': 'error.reason.whatsappTemplateRequired',
     'basic_daily_limit': 'error.reason.basicDailyLimit',
     'invalid_or_expired_qr': 'error.reason.qrExpired',

@@ -1882,6 +1882,24 @@ class FFLocale extends ChangeNotifier {
       'home.onlineGyms': 'Free online gyms',
       'home.paidGyms': 'Paid visit gyms',
       'home.signout': 'Sign out',
+      'account.delete.title': 'Delete account',
+      'account.delete.warning':
+          'This permanently deletes your FitFlex account. It cannot be undone.',
+      'account.delete.whatGoes':
+          'Your name, phone number, email and photo are removed from your FitFlex profile. You lose access to this account and everything in it, including passes, remaining visits, bookings and history.',
+      'account.delete.retained':
+          'Some records, such as payment history and support messages, may be kept where they are needed for legal, accounting, fraud prevention or dispute reasons.',
+      'account.delete.otherProfiles':
+          'This account also has other FitFlex profiles. Only the profile you are using now is deleted; the others stay.',
+      'account.delete.confirmLabel': 'Type {word} to confirm',
+      'account.delete.word': 'DELETE',
+      'account.delete.action': 'Delete my account',
+      'account.delete.done': 'Your account has been deleted.',
+      'account.delete.contactSupport': 'Contact support on WhatsApp',
+      'error.reason.gymOwnerHasCheckins':
+          'Your gym has check-in activity. FitFlex support needs to transfer or close it before this account can be deleted.',
+      'error.reason.trainerHasBookings':
+          'Your trainer profile has bookings. Please contact FitFlex support before deleting this account.',
       'startup.offline.title': "Can't reach FitFlex",
       'startup.offline.body':
           'We could not load your account. Check your connection and try again.',
@@ -9332,6 +9350,24 @@ class FFLocale extends ChangeNotifier {
       'home.paidGyms': 'Gym za kulipia kwa kila ziara',
       'home.back': 'Rudi',
       'home.signout': 'Toka',
+      'account.delete.title': 'Futa akaunti',
+      'account.delete.warning':
+          'Hatua hii inafuta akaunti yako ya FitFlex kabisa. Haiwezi kutenduliwa.',
+      'account.delete.whatGoes':
+          'Jina, namba ya simu, barua pepe na picha yako vitaondolewa kwenye wasifu wako wa FitFlex. Utapoteza ufikiaji wa akaunti hii na vyote vilivyomo, ikiwemo pasi, ziara zilizobaki, vipindi vilivyowekwa na historia.',
+      'account.delete.retained':
+          'Baadhi ya kumbukumbu, kama historia ya malipo na mawasiliano ya usaidizi, zinaweza kuhifadhiwa pale zinapohitajika kisheria, kwa uhasibu, kuzuia udanganyifu au kutatua migogoro.',
+      'account.delete.otherProfiles':
+          'Akaunti hii ina wasifu mwingine wa FitFlex pia. Wasifu unaotumia sasa ndio pekee utakaofutwa; mingine itabaki.',
+      'account.delete.confirmLabel': 'Andika {word} ili kuthibitisha',
+      'account.delete.word': 'FUTA',
+      'account.delete.action': 'Futa akaunti yangu',
+      'account.delete.done': 'Akaunti yako imefutwa.',
+      'account.delete.contactSupport': 'Wasiliana na msaada kwa WhatsApp',
+      'error.reason.gymOwnerHasCheckins':
+          'Gym yako ina rekodi za mahudhurio. Msaada wa FitFlex unahitaji kuihamisha au kuifunga kabla ya kufuta akaunti hii.',
+      'error.reason.trainerHasBookings':
+          'Wasifu wako wa trainer una vipindi vilivyowekwa. Tafadhali wasiliana na msaada wa FitFlex kabla ya kufuta akaunti hii.',
       'startup.offline.title': 'Hatuwezi kufikia FitFlex',
       'startup.offline.body':
           'Hatukuweza kupakia akaunti yako. Angalia mtandao wako kisha ujaribu tena.',

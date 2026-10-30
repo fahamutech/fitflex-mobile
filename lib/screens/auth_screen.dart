@@ -15,6 +15,7 @@ import '../shared/firebase_auth_service.dart';
 import '../shared/i18n.dart';
 import '../shared/partner_progress.dart';
 import '../shared/widgets/partner_progress_tracker.dart';
+import '../shared/widgets/delete_account.dart';
 import '../shared/widgets/persona_switcher.dart';
 import 'partner/verification/partner_progress_actions.dart';
 import 'partner/verification/verification_models.dart';
@@ -586,6 +587,8 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
                       onPressed: _backToRoles,
                       variant: FFButtonVariant.secondary,
                     ),
+                    const SizedBox(height: FFTokens.spacingXs),
+                    const DeleteAccountButton(),
                   ],
                 ),
               ),

@@ -703,6 +703,11 @@ class ApiClient {
 
   Future<Map<String, dynamic>> me() async => await _request('GET', '/me');
 
+  /// Permanently deletes the signed-in account. 409 with
+  /// `gym_owner_has_checkin_activity`, `trainer_has_bookings` or
+  /// `organizer_owner` when support has to step in first.
+  Future<Map<String, dynamic>> deleteMyAccount() => _map('DELETE', '/me');
+
   Future<Map<String, dynamic>> updateProfile(
     Map<String, dynamic> profile,
   ) async => await _request('POST', '/me/profile', body: profile);
