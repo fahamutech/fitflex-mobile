@@ -58,7 +58,7 @@ class _EventResultsBoardPageState extends State<EventResultsBoardPage> {
   EventsOptions get _options => eventsOptionsOf(context, widget.options);
 
   String _cacheKey(_Query q) =>
-      'board.${widget.eventId}.${q.categoryId}.${q.q}';
+      memberCacheKey(context, 'board.${widget.eventId}.${q.categoryId}.${q.q}');
 
   @override
   void initState() {
@@ -99,7 +99,7 @@ class _EventResultsBoardPageState extends State<EventResultsBoardPage> {
       onError: (q, e) async {
         if (!mounted) return;
         final cached = isNetworkError(e) && q.q.isEmpty
-            ? await EventsCache.getMine(_cacheKey(q))
+            ? await EventsCache.getFreshMine(_cacheKey(q))
             : null;
         if (!mounted) return;
         if (cached != null) {
@@ -247,9 +247,12 @@ class _EventResultsBoardPageState extends State<EventResultsBoardPage> {
             child: FFAlert(
               key: const Key('board-cached'),
               tone: FFAlertTone.warning,
-              message:
-                  '${context.tr('events.board.cached')} · '
-                  '${formatDateTime(_savedAt, locale: lang)}',
+              message: context
+                  .tr('events.result.cached')
+                  .replaceFirst(
+                    '{time}',
+                    formatDateTime(_savedAt, locale: lang),
+                  ),
             ),
           ),
         if (page.categories.length > 1)
@@ -392,9 +395,13 @@ class _BoardRow extends StatelessWidget {
         }
       }
     }
+    // The server says "Runner" for a name that is not shown.
+    final hidden =
+        (shown.displayName ?? '').isEmpty ||
+        shown.displayName!.trim().toLowerCase() == 'runner';
     final name = mine
         ? context.tr('events.board.you')
-        : (shown.displayName ?? '').isEmpty
+        : hidden
         ? context
               .tr('events.board.runner')
               .replaceFirst('{bib}', shown.bibNumber)
@@ -475,10 +482,13 @@ class _BoardRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: FFTokens.spacingSm),
-              Text(
-                timeText ?? statusWord ?? '',
-                style: tt.titleSmall?.copyWith(
-                  fontFeatures: const [FontFeature.tabularFigures()],
+              Flexible(
+                child: Text(
+                  timeText ?? statusWord ?? '',
+                  textAlign: TextAlign.end,
+                  style: tt.titleSmall?.copyWith(
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
                 ),
               ),
             ],

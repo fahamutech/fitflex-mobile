@@ -6544,9 +6544,9 @@ class FFLocale extends ChangeNotifier {
       'events.result.line.dns':
           'You didn\'t start this event.',
       'events.result.line.dq':
-          'This result was disqualified. {reason}',
+          'This result was disqualified.',
       'events.result.line.rejected':
-          'This result wasn\'t accepted. {reason}',
+          'This result wasn\'t accepted.',
       'events.result.line.virtual':
           'Virtual run. The time is moving time recorded by FitFlex GPS.',
       'events.result.source.timing_provider':
@@ -6589,20 +6589,10 @@ class FFLocale extends ChangeNotifier {
           'Saved on this phone, updated {time}',
       'events.result.entry.myResults':
           'My results',
-      'events.result.reason.virtual_gps_rejected':
-          'the organizer couldn\'t confirm the GPS run',
       'events.result.reason.replaced_by_participant':
           'you replaced the run',
-      'events.result.reason.import_row_refused':
-          'the timing file didn\'t match your entry',
-      'events.result.reason.time_corrected':
-          'the time was corrected',
       'events.result.reason.wrong_category':
-          'you were in a different category',
-      'events.result.reason.not_finished':
-          'you didn\'t finish the course',
-      'events.result.reason.rule_breach':
-          'a rule of the event was broken',
+          'it was in a different category',
       'events.result.reason.other':
           'the organizer gave another reason',
       'events.result.dispute.ask':
@@ -6650,7 +6640,7 @@ class FFLocale extends ChangeNotifier {
       'events.result.visibility.title':
           'Who can see my name',
       'events.result.visibility.standard':
-          'Show my name',
+          'Show my first name and last initial',
       'events.result.visibility.bib_only':
           'Show only my bib',
       'events.result.visibility.hidden':
@@ -6660,7 +6650,7 @@ class FFLocale extends ChangeNotifier {
       'events.result.visibility.ask':
           'Show your name on the results?',
       'events.result.visibility.askBody':
-          'Other FitFlex members can see the board. You can change this any time.',
+          'Other FitFlex members can see the results list. You can change this any time.',
       'events.result.visibility.save':
           'Save',
       'events.duration.spoken.hms':
@@ -6698,7 +6688,7 @@ class FFLocale extends ChangeNotifier {
       'events.run.state.linked':
           'Already added',
       'events.run.confirm.virtual':
-          'This run will be sent to the organizer for {event} to review.',
+          'This run, its route and GPS data will be shared with the organizer of {event} to review.',
       'events.run.confirm.inPerson':
           'This run will be shown next to your official result. It isn\'t sent to the organizer.',
       'events.run.notOfficial':
@@ -6757,8 +6747,6 @@ class FFLocale extends ChangeNotifier {
           'Results aren\'t published yet.',
       'events.board.signin':
           'Sign in to see the results.',
-      'events.board.cached':
-          'Saved on this phone',
       'events.board.rank.a11y':
           'Rank {rank}',
       'events.medals.title':
@@ -6875,6 +6863,70 @@ class FFLocale extends ChangeNotifier {
           'View medals',
       'inbox.open.eventRewards':
           'View rewards',
+      'events.result.reason.not_a_valid_run':
+          'it was not a valid run',
+      'events.result.reason.data_error':
+          'of an error in the timing data',
+      'events.result.reason.duplicate':
+          'it was a duplicate entry',
+      'events.result.reason.timing_error':
+          'of a timing error',
+      'events.result.reason.wrong_bib':
+          'the bib number was wrong',
+      'events.result.reason.late_finish_data':
+          'late finish data arrived',
+      'events.result.reason.rule_violation':
+          'a rule of the event was broken',
+      'events.result.reason.course_cut':
+          'the course was cut',
+      'events.result.reason.equipment':
+          'equipment that is not allowed was used',
+      'events.result.reason.identity':
+          'the runner\'s identity could not be confirmed',
+      'events.result.reason.virtual_evidence':
+          'the run evidence was not accepted',
+      'events.reason.source_revoked':
+          'the result it came from was removed',
+      'events.result.line.dq.because':
+          'This result was disqualified because {reason}.',
+      'events.result.line.rejected.because':
+          'This result wasn\'t accepted because {reason}.',
+      'events.medals.removedNoReason':
+          'Removed',
+      'events.medals.alt.removed':
+          '{medal}, {event}, {category}, removed {date}',
+      'events.medals.awardedOn':
+          'awarded {date}',
+      'events.medals.removedOn':
+          'removed {date}',
+      'events.error.evidence_limit':
+          'You have added the most runs allowed for this place.',
+      'events.error.link_locked':
+          'This run can no longer be changed.',
+      'events.error.linking_closed':
+          'Adding runs to this event has closed.',
+      'events.error.registration_not_confirmed':
+          'This place is not confirmed yet.',
+      'events.error.result_exists':
+          'This place already has a result.',
+      'events.error.no_result':
+          'There is no result for this place yet.',
+      'events.error.rewards_unavailable':
+          'Rewards are not available right now. Try again later.',
+      'events.error.dispute_closed':
+          'This question has already been answered.',
+      'events.error.dispute_not_found':
+          'We couldn\'t find that question.',
+      'events.error.request_in_progress':
+          'Still working on your last request. Wait a moment and try again.',
+      'events.error.redemption_expired':
+          'This reward has expired.',
+      'events.error.activity_not_found':
+          'We couldn\'t find that run.',
+      'events.error.link_not_found':
+          'We couldn\'t find that added run.',
+      'events.error.organizer_owner':
+          'Transfer or close your organizer account first.',
       'ownerScan.eventTicket.title':
           'This is an event ticket',
       'ownerScan.eventTicket.body':
@@ -13943,10 +13995,11 @@ class FFLocale extends ChangeNotifier {
           'Hakuna muda wa kumaliza uliorekodiwa.',
       'events.result.line.dns':
           'Hukuanza tukio hili.',
+      // TODO(sw-review): DQ / "futa" wording needs a native speaker
       'events.result.line.dq':
-          'Matokeo haya yamefutwa. {reason}',
+          'Matokeo haya yamefutwa.',
       'events.result.line.rejected':
-          'Matokeo haya hayakukubaliwa. {reason}',
+          'Matokeo haya hayakukubaliwa.',
       'events.result.line.virtual':
           'Mbio pepe. Muda ni muda wa kukimbia uliorekodiwa na GPS ya FitFlex.',
       'events.result.source.timing_provider':
@@ -13957,12 +14010,13 @@ class FFLocale extends ChangeNotifier {
           'Mbio pepe, GPS',
       'events.result.source.manual_unverified':
           'Imeripotiwa na mshiriki, haijathibitishwa',
+      // TODO(sw-review): "Nafasi" for rank collides with its role meaning (D22); alternative "Cheo"
       'events.result.rank':
           'Nafasi ya {rank} kati ya {total} kwenye {category}',
       'events.result.pb':
           'Muda wako bora kwa umbali huu',
       'events.result.bib':
-          'Namba {number}',
+          'Namba ya mbio {number}',
       'events.result.time':
           'Muda wa kumaliza',
       'events.result.note':
@@ -13989,20 +14043,10 @@ class FFLocale extends ChangeNotifier {
           'Imehifadhiwa kwenye simu hii, imesasishwa {time}',
       'events.result.entry.myResults':
           'Matokeo yangu',
-      'events.result.reason.virtual_gps_rejected':
-          'mwandaaji hakuweza kuthibitisha mbio za GPS',
       'events.result.reason.replaced_by_participant':
           'ulibadilisha mbio',
-      'events.result.reason.import_row_refused':
-          'faili la muda halikulingana na usajili wako',
-      'events.result.reason.time_corrected':
-          'muda ulisahihishwa',
       'events.result.reason.wrong_category':
-          'ulikuwa kwenye kundi tofauti',
-      'events.result.reason.not_finished':
-          'hukumaliza njia',
-      'events.result.reason.rule_breach':
-          'sharti la tukio lilivunjwa',
+          'ilikuwa kwenye kundi tofauti',
       'events.result.reason.other':
           'mwandaaji alitoa sababu nyingine',
       'events.result.dispute.ask':
@@ -14050,7 +14094,7 @@ class FFLocale extends ChangeNotifier {
       'events.result.visibility.title':
           'Nani anaweza kuona jina langu',
       'events.result.visibility.standard':
-          'Onyesha jina langu',
+          'Onyesha jina langu la kwanza na herufi ya jina la mwisho',
       'events.result.visibility.bib_only':
           'Onyesha namba yangu tu',
       'events.result.visibility.hidden':
@@ -14060,7 +14104,7 @@ class FFLocale extends ChangeNotifier {
       'events.result.visibility.ask':
           'Onyesha jina lako kwenye matokeo?',
       'events.result.visibility.askBody':
-          'Wanachama wengine wa FitFlex wanaweza kuona ubao. Unaweza kubadilisha wakati wowote.',
+          'Wanachama wengine wa FitFlex wanaweza kuona orodha ya matokeo. Unaweza kubadilisha wakati wowote.',
       'events.result.visibility.save':
           'Hifadhi',
       'events.duration.spoken.hms':
@@ -14097,12 +14141,14 @@ class FFLocale extends ChangeNotifier {
           'Nje ya muda wa tukio',
       'events.run.state.linked':
           'Tayari imeongezwa',
+      // TODO(sw-review): kushirikisha wording: counsel and native review (what the organizer can see)
       'events.run.confirm.virtual':
-          'Mbio hizi zitatumwa kwa mwandaaji wa {event} zikaguliwe.',
+          'Mbio hizi, njia yake na data ya GPS vitashirikishwa na mwandaaji wa {event} ili azikague.',
       'events.run.confirm.inPerson':
           'Mbio hizi zitaonyeshwa karibu na matokeo yako rasmi. Hazitumwi kwa mwandaaji.',
       'events.run.notOfficial':
           'Imerekodiwa kwa GPS ya FitFlex. Huu si muda rasmi wa mbio.',
+      // TODO(sw-review): sentence order with slower/faster needs a native speaker
       'events.run.compare':
           'Muda rasmi ni {diff} {slower} kuliko mbio zako za FitFlex',
       'events.run.slower':
@@ -14157,8 +14203,7 @@ class FFLocale extends ChangeNotifier {
           'Matokeo bado hayajachapishwa.',
       'events.board.signin':
           'Ingia ili uone matokeo.',
-      'events.board.cached':
-          'Imehifadhiwa kwenye simu hii',
+      // TODO(sw-review): "Nafasi" for rank (see events.result.rank)
       'events.board.rank.a11y':
           'Nafasi ya {rank}',
       'events.medals.title':
@@ -14182,7 +14227,7 @@ class FFLocale extends ChangeNotifier {
       'events.medals.share.includeTime':
           'Jumuisha muda wangu',
       'events.medals.designBy':
-          'Muundo na {organizer}',
+          'Muundo wa {organizer}',
       'events.medals.report':
           'Ripoti picha hii',
       'events.medals.report.sent':
@@ -14217,8 +14262,10 @@ class FFLocale extends ChangeNotifier {
           'Zawadi zilizopo',
       'events.rewards.claimed':
           'Zilizodaiwa',
+      // TODO(sw-review): "Dai" as the claim verb needs a native speaker
       'events.rewards.claim':
           'Dai',
+      // TODO(sw-review): "Dai" as the claim verb needs a native speaker
       'events.rewards.claim.confirm':
           'Dai zawadi hii?',
       'events.rewards.claim.bodyCertificate':
@@ -14236,7 +14283,7 @@ class FFLocale extends ChangeNotifier {
       'events.rewards.offline':
           'Hakuna intaneti, kwa hiyo huwezi kudai sasa.',
       'events.rewards.status.reserved':
-          'Imehifadhiwa',
+          'Inasubiri kutumika',
       'events.rewards.status.redeemed':
           'Imetumika',
       'events.rewards.status.expired':
@@ -14275,6 +14322,74 @@ class FFLocale extends ChangeNotifier {
           'Ona medali',
       'inbox.open.eventRewards':
           'Ona zawadi',
+      'events.result.reason.not_a_valid_run':
+          'haikuwa mbio halali',
+      'events.result.reason.data_error':
+          'kulikuwa na hitilafu kwenye data ya muda',
+      'events.result.reason.duplicate':
+          'ilikuwa rekodi iliyojirudia',
+      'events.result.reason.timing_error':
+          'kulikuwa na hitilafu ya muda',
+      'events.result.reason.wrong_bib':
+          'namba ya mbio ilikuwa si sahihi',
+      'events.result.reason.late_finish_data':
+          'data ya kumaliza ilifika kwa kuchelewa',
+      // TODO(sw-review): native review of the reason clause
+      'events.result.reason.rule_violation':
+          'sharti la tukio lilivunjwa',
+      // TODO(sw-review): native review of the reason clause
+      'events.result.reason.course_cut':
+          'njia ilifupishwa',
+      'events.result.reason.equipment':
+          'vifaa visivyoruhusiwa vilitumika',
+      // TODO(sw-review): native review of the reason clause
+      'events.result.reason.identity':
+          'utambulisho wa mkimbiaji haukuweza kuthibitishwa',
+      'events.result.reason.virtual_evidence':
+          'ushahidi wa mbio haukukubaliwa',
+      'events.reason.source_revoked':
+          'matokeo yaliyoipa yaliondolewa',
+      // TODO(sw-review): DQ / "futa" wording needs a native speaker
+      'events.result.line.dq.because':
+          'Matokeo haya yamefutwa kwa sababu {reason}.',
+      'events.result.line.rejected.because':
+          'Matokeo haya hayakukubaliwa kwa sababu {reason}.',
+      'events.medals.removedNoReason':
+          'Imeondolewa',
+      'events.medals.alt.removed':
+          '{medal}, {event}, {category}, imeondolewa {date}',
+      'events.medals.awardedOn':
+          'imetolewa {date}',
+      'events.medals.removedOn':
+          'imeondolewa {date}',
+      'events.error.evidence_limit':
+          'Umeongeza idadi ya juu ya mbio inayoruhusiwa kwa tiketi hii.',
+      'events.error.link_locked':
+          'Mbio hizi haziwezi kubadilishwa tena.',
+      'events.error.linking_closed':
+          'Kuongeza mbio kwenye tukio hili kumefungwa.',
+      'events.error.registration_not_confirmed':
+          'Tiketi hii bado haijathibitishwa.',
+      'events.error.result_exists':
+          'Tiketi hii tayari ina matokeo.',
+      'events.error.no_result':
+          'Bado hakuna matokeo ya tiketi hii.',
+      'events.error.rewards_unavailable':
+          'Zawadi hazipatikani kwa sasa. Jaribu tena baadaye.',
+      'events.error.dispute_closed':
+          'Swali hili tayari limejibiwa.',
+      'events.error.dispute_not_found':
+          'Hatukupata swali hilo.',
+      'events.error.request_in_progress':
+          'Bado tunashughulikia ombi lako la mwisho. Subiri kidogo kisha ujaribu tena.',
+      'events.error.redemption_expired':
+          'Zawadi hii imeisha muda.',
+      'events.error.activity_not_found':
+          'Hatukupata mbio hizo.',
+      'events.error.link_not_found':
+          'Hatukupata mbio hizo zilizoongezwa.',
+      'events.error.organizer_owner':
+          'Hamisha au funga akaunti yako ya mwandaaji kwanza.',
       'ownerScan.eventTicket.title':
           'Hii ni tiketi ya tukio',
       'ownerScan.eventTicket.body':

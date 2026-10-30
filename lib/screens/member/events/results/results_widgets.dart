@@ -8,10 +8,12 @@ import 'package:flutter/rendering.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../../app_scope.dart';
+import '../../../../shared/api_client.dart' show ApiException;
 import '../../../../shared/components/components.dart';
 import '../../../../shared/design_tokens.dart';
 import '../../../../shared/events/event_medal.dart';
 import '../../../../shared/events/event_result.dart';
+import '../../../../shared/events/events_cache.dart';
 import '../../../../shared/i18n.dart';
 
 /// The stage chip of a result: always a word (never colour alone), with a
@@ -65,24 +67,97 @@ String medalReasonWords(BuildContext context, String? code) {
     'registration_cancelled',
     'event_cancelled',
     'rule_changed_by_admin',
+    'source_revoked',
   };
   return known.contains(code) ? context.tr('events.reason.$code') : '';
 }
 
-/// "Your place was cancelled" style words for a result reason code.
+/// The reason clause for a result code (what follows "because"), or an
+/// empty string for none. The codes are the backend's closed list
+/// (reject, correct, disqualify and unlink); an unknown code reads as no
+/// reason, never a raw code.
+const resultReasonCodes = {
+  'not_a_valid_run',
+  'data_error',
+  'duplicate',
+  'timing_error',
+  'wrong_bib',
+  'late_finish_data',
+  'rule_violation',
+  'course_cut',
+  'equipment',
+  'identity',
+  'virtual_evidence',
+  'wrong_category',
+  'other',
+  'replaced_by_participant',
+};
+
 String resultReasonWords(BuildContext context, String? code) {
   if (code == null || code.isEmpty) return '';
-  const known = {
-    'virtual_gps_rejected',
-    'replaced_by_participant',
-    'import_row_refused',
-    'time_corrected',
-    'wrong_category',
-    'not_finished',
-    'rule_breach',
-    'other',
-  };
-  return known.contains(code) ? context.tr('events.result.reason.$code') : '';
+  return resultReasonCodes.contains(code)
+      ? context.tr('events.result.reason.$code')
+      : '';
+}
+
+/// A sentence with its "because" clause only when there is a reason:
+/// [plainKey] alone, or [becauseKey] with `{reason}` filled in.
+String sentenceWithReason(
+  BuildContext context, {
+  required String plainKey,
+  required String becauseKey,
+  required String reason,
+}) => reason.isEmpty
+    ? context.tr(plainKey)
+    : context.tr(becauseKey).replaceFirst('{reason}', reason);
+
+/// A saved-copy key for this member (security review M7): the signed-in
+/// user's id is part of it, so one member's copy is never read for another.
+String memberCacheKey(BuildContext context, String base) {
+  final uid = AppScope.of(context).auth.user?['id']?.toString() ?? '';
+  return '$base.$uid';
+}
+
+/// A wallet answer without perk codes: a code is shown while the app is
+/// open and is never written to the phone.
+Map<String, dynamic> walletWithoutCodes(Map<String, dynamic> json) {
+  final out = Map<String, dynamic>.from(json);
+  final reds = out['redemptions'];
+  if (reds is List) {
+    out['redemptions'] = [
+      for (final r in reds)
+        if (r is Map) (Map<String, dynamic>.from(r)..remove('code')) else r,
+    ];
+  }
+  return out;
+}
+
+/// Joins the non-empty parts of a screen-reader label with commas.
+String tidyLabel(Iterable<String> parts) =>
+    parts.map((p) => p.trim()).where((p) => p.isNotEmpty).join(', ');
+
+/// What a screen reader says for a medal: name, event, category, then
+/// "awarded {date}" or "removed {date}"; empty parts are skipped. A custom
+/// description from the organizer replaces the name but never the event.
+String medalSemanticsLabel(
+  BuildContext context,
+  MedalAward a,
+  String lang, {
+  required String dateText,
+}) {
+  final alt = a.art.altText.of(lang).trim();
+  final dateKey = a.isRevoked
+      ? 'events.medals.removedOn'
+      : 'events.medals.awardedOn';
+  final when = dateText.isEmpty
+      ? ''
+      : context.tr(dateKey).replaceFirst('{date}', dateText);
+  return tidyLabel([
+    alt.isEmpty ? a.name.of(lang) : alt,
+    a.eventTitle,
+    a.categoryName ?? '',
+    when,
+  ]);
 }
 
 // ── Medal artwork ────────────────────────────────────────────────────────
@@ -94,6 +169,7 @@ class MedalArtLoader {
 
   static final Map<String, Uint8List> _bytes = {};
   static final Set<String> _gone = {};
+  static _ResumeObserver? _observer;
 
   static Future<Uint8List> Function(
     BuildContext context,
@@ -102,10 +178,23 @@ class MedalArtLoader {
   )?
   fetch;
 
-  /// Forget everything (tests, sign-out).
+  /// Forget everything (tests, sign-out, app resume).
   static void reset() {
     _bytes.clear();
     _gone.clear();
+  }
+
+  /// Drops every size of one picture (taken down, or a 404).
+  static void evict(String artId) =>
+      _bytes.removeWhere((k, _) => k.startsWith('$artId/'));
+
+  /// Pictures are not kept for the life of the app: a take-down shows up
+  /// the next time the app is opened, and sign-out clears them (L6).
+  static void _watch() {
+    if (_observer != null) return;
+    _observer = _ResumeObserver();
+    WidgetsBinding.instance.addObserver(_observer!);
+    EventsCache.clearHooks.add(reset);
   }
 
   /// The picture, or null when it is gone (taken down, not yours, offline
@@ -115,6 +204,7 @@ class MedalArtLoader {
     String artId,
     String variant,
   ) async {
+    _watch();
     final key = '$artId/$variant';
     final hit = _bytes[key];
     if (hit != null) return hit;
@@ -126,18 +216,25 @@ class MedalArtLoader {
               context,
             ).api.eventMedalArtFile(artId, variant: variant));
       if (bytes.isEmpty) return null;
-      if (_bytes.length > 60) _bytes.remove(_bytes.keys.first);
+      if (_bytes.length > 30) _bytes.remove(_bytes.keys.first);
       _bytes[key] = bytes;
       return bytes;
     } catch (e) {
       // A 404 is final for this id (ids are never reused); a network error
       // is retried next time.
-      final text = e.toString();
-      if (text.contains('404') || text.contains('Not found')) {
+      if (e is ApiException && e.status == 404) {
         _gone.add(artId);
+        evict(artId);
       }
       return null;
     }
+  }
+}
+
+class _ResumeObserver with WidgetsBindingObserver {
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) MedalArtLoader.reset();
   }
 }
 

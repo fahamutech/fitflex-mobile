@@ -78,7 +78,9 @@ String apiErrorMessage(
   final reason =
       body is Map &&
           (body['error'] == 'hold_limit_reached' ||
-              body['error'] == 'invalid_media_src')
+              body['error'] == 'invalid_media_src' ||
+              // Carries `message`/`messageSw`; the code still names it.
+              body['error'] == 'organizer_owner')
       ? body['error'] as String
       : _firstReason(body);
   if (reason != null && reason.isNotEmpty) {
@@ -199,6 +201,16 @@ String? _detailedReason(FFLocale locale, String reason, dynamic body) {
             '{distance}',
             '${((body['requiredMeters'] as num) / 1000).toStringAsFixed(2)} km',
           );
+    // Account deletion for an organizer owner (DELETE /me, 409): the server
+    // sends the sentence in both languages.
+    case 'organizer_owner':
+      final lang = locale.locale.languageCode;
+      final text = (lang == 'sw' ? body['messageSw'] : body['message'])
+          ?.toString()
+          .trim();
+      return text == null || text.isEmpty
+          ? locale.t('events.error.organizer_owner')
+          : text;
     case 'too_many_participants':
       if (body['max'] is! num) return null;
       return locale
@@ -393,6 +405,20 @@ String? _knownReason(FFLocale locale, String reason) {
     'dispute_window_closed': 'events.result.dispute.closedWindow',
     'result_not_found': 'events.result.error.result_not_found',
     'visibility_not_allowed': 'events.result.error.visibility_not_allowed',
+    'evidence_limit': 'events.error.evidence_limit',
+    'link_locked': 'events.error.link_locked',
+    'linking_closed': 'events.error.linking_closed',
+    'registration_not_confirmed': 'events.error.registration_not_confirmed',
+    'result_exists': 'events.error.result_exists',
+    'no_result': 'events.error.no_result',
+    'rewards_unavailable': 'events.error.rewards_unavailable',
+    'dispute_closed': 'events.error.dispute_closed',
+    'dispute_not_found': 'events.error.dispute_not_found',
+    'request_in_progress': 'events.error.request_in_progress',
+    'redemption_expired': 'events.error.redemption_expired',
+    'activity_not_found': 'events.error.activity_not_found',
+    'link_not_found': 'events.error.link_not_found',
+    'invalid_route': 'run.fail.weakGps',
     'reward_unavailable': 'events.rewards.error.reward_unavailable',
     'not_enough_units': 'events.rewards.error.not_enough_units',
     // Events S3: registration, orders, claims, teams (spec §3.17).

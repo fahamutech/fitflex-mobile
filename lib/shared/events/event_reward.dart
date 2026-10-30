@@ -78,7 +78,7 @@ class RewardAvailable {
       title: EventText.fromJson(json['title']),
       terms: EventText.fromJson(json['terms']),
       units: _int(json['units']) ?? 0,
-      nextExpiry: _date(json['nextExpiry']),
+      nextExpiry: _date(json['nextExpiry'] ?? json['expiredAt']),
       redeemMode: _opt(json['redeemMode']) ?? 'certificate',
       canClaim: json['canClaim'] != false,
     );
@@ -123,6 +123,7 @@ class RewardRedemptionView {
     if (json is! Map) return null;
     final id = _str(json['id']);
     if (id.isEmpty) return null;
+    final cert = json['certificate'] is Map ? json['certificate'] as Map : null;
     return RewardRedemptionView(
       id: id,
       definitionId: _str(json['definitionId']),
@@ -132,8 +133,8 @@ class RewardRedemptionView {
       code: _opt(json['code']),
       expiresAt: _date(json['expiresAt']),
       redeemedAt: _date(json['redeemedAt']),
-      eventTitle: _opt(json['eventTitle']),
-      resultLine: _opt(json['resultLine']),
+      eventTitle: _opt(json['eventTitle'] ?? cert?['eventTitle']),
+      resultLine: _opt(json['resultLine'] ?? cert?['resultLine']),
     );
   }
 }

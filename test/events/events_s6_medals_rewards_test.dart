@@ -47,8 +47,9 @@ Map<String, dynamic> _medals({
             'en': 'First event finished',
             'sw': 'Tukio la kwanza limekamilika',
           },
-          'earned': true,
+          'status': 'awarded',
           'awardedAt': '2027-03-15T10:00:00Z',
+          'progress': {'current': 1, 'target': 1},
         },
         {
           'key': 'three_events_year',
@@ -56,8 +57,8 @@ Map<String, dynamic> _medals({
             'en': '3 events in 12 months',
             'sw': 'Matukio 3 ndani ya miezi 12',
           },
-          'earned': false,
-          'progress': {'done': 1, 'total': 3},
+          'status': 'locked',
+          'progress': {'current': 1, 'target': 3},
         },
       ],
   'removed': const [],
@@ -397,6 +398,9 @@ void main() {
       expect(opened!.scheme, 'mailto');
       expect(opened!.path, eventsSupportEmail);
       expect(opened!.queryParameters['subject'], contains('art_77'));
+      // Spaces go as %20, never "+".
+      expect(opened!.toString(), contains('Medal%20image%20art_77'));
+      expect(opened!.toString(), isNot(contains('+')));
       expect(find.text('Thanks. FitFlex will look at it.'), findsOneWidget);
     });
 

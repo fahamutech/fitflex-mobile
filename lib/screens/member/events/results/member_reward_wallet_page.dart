@@ -68,7 +68,11 @@ class _MemberRewardWalletPageState extends State<MemberRewardWalletPage> {
     try {
       final json = await _api.myEventRewards();
       if (!mounted) return;
-      await EventsCache.putMine('wallet', json);
+      // A perk code is never written to the phone.
+      await EventsCache.putMine(
+        memberCacheKey(context, 'wallet'),
+        walletWithoutCodes(json),
+      );
       if (!mounted) return;
       setState(() {
         _wallet = RewardWallet.fromJson(json);
@@ -80,7 +84,7 @@ class _MemberRewardWalletPageState extends State<MemberRewardWalletPage> {
     } catch (e) {
       if (!mounted) return;
       final cached = isNetworkError(e)
-          ? await EventsCache.getMine('wallet')
+          ? await EventsCache.getFreshMine(memberCacheKey(context, 'wallet'))
           : null;
       if (!mounted) return;
       if (cached != null) {

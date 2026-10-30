@@ -68,7 +68,7 @@ class _MemberMedalsPageState extends State<MemberMedalsPage> {
     try {
       final json = await _api.myEventAchievements();
       if (!mounted) return;
-      await EventsCache.putMine('medals', json);
+      await EventsCache.putMine(memberCacheKey(context, 'medals'), json);
       if (!mounted) return;
       setState(() {
         _data = MedalsPayload.fromJson(json);
@@ -79,7 +79,7 @@ class _MemberMedalsPageState extends State<MemberMedalsPage> {
     } catch (e) {
       if (!mounted) return;
       final cached = isNetworkError(e)
-          ? await EventsCache.getMine('medals')
+          ? await EventsCache.getFreshMine(memberCacheKey(context, 'medals'))
           : null;
       if (!mounted) return;
       if (cached != null) {
@@ -293,8 +293,7 @@ class _MemberMedalsPageState extends State<MemberMedalsPage> {
       for (final r in _data.removed.where((r) => r.kind != 'medal'))
         FFCard(
           child: Text(
-            '${r.title.of(lang)} · '
-            '${context.tr('events.medals.removedWhy').replaceFirst('{reason}', medalReasonWords(context, r.reasonCode))}',
+            '${r.title.of(lang)} · ${sentenceWithReason(context, plainKey: 'events.medals.removedNoReason', becauseKey: 'events.medals.removedWhy', reason: medalReasonWords(context, r.reasonCode))}',
           ),
         ),
     ];
@@ -343,16 +342,10 @@ class _MedalTile extends StatelessWidget {
       removed ? award.revokedAt : award.awardedAt,
       locale: lang,
     );
-    final label = context
-        .tr('events.medals.alt')
-        .replaceFirst('{medal}', award.name.of(lang))
-        .replaceFirst('{event}', award.eventTitle)
-        .replaceFirst('{category}', award.categoryName ?? '')
-        .replaceFirst('{date}', date);
-    final altOverride = award.art.altText.of(lang).trim();
+    final label = medalSemanticsLabel(context, award, lang, dateText: date);
     return Semantics(
       button: true,
-      label: altOverride.isEmpty ? label : '$altOverride, $date',
+      label: label,
       hint: context.tr('events.medals.tapHint'),
       child: ExcludeSemantics(
         child: InkWell(
@@ -391,12 +384,12 @@ class _MedalTile extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
                     child: Text(
-                      context
-                          .tr('events.medals.removedWhy')
-                          .replaceFirst(
-                            '{reason}',
-                            medalReasonWords(context, award.reasonCode),
-                          ),
+                      sentenceWithReason(
+                        context,
+                        plainKey: 'events.medals.removedNoReason',
+                        becauseKey: 'events.medals.removedWhy',
+                        reason: medalReasonWords(context, award.reasonCode),
+                      ),
                       textAlign: TextAlign.center,
                       style: tt.bodySmall,
                     ),
@@ -446,13 +439,14 @@ class _MedalDetailState extends State<MedalDetail> {
     final snack = FFSnack.of(context);
     final thanks = context.tr('events.medals.report.sent');
     final a = widget.award;
+    // Spaces as %20 (a mail app shows "+" literally).
+    String enc(String v) => Uri.encodeComponent(v);
     final uri = Uri(
       scheme: 'mailto',
       path: eventsSupportEmail,
-      queryParameters: {
-        'subject': 'Medal image ${a.art.artId ?? ''}',
-        'body': 'Medal ${a.id}\nImage ${a.art.artId ?? ''}\n',
-      },
+      query:
+          'subject=${enc('Medal image ${a.art.artId ?? ''}')}'
+          '&body=${enc('Medal ${a.id}\nImage ${a.art.artId ?? ''}\n')}',
     );
     var opened = false;
     try {
@@ -491,17 +485,16 @@ class _MedalDetailState extends State<MedalDetail> {
             Center(
               child: Semantics(
                 image: true,
-                label: a.art.altText.of(lang).trim().isNotEmpty
-                    ? a.art.altText.of(lang)
-                    : context
-                          .tr('events.medals.alt')
-                          .replaceFirst('{medal}', a.name.of(lang))
-                          .replaceFirst('{event}', a.eventTitle)
-                          .replaceFirst('{category}', a.categoryName ?? '')
-                          .replaceFirst(
-                            '{date}',
-                            formatDate(a.awardedAt, locale: lang),
-                          ),
+                label: medalSemanticsLabel(
+                  context,
+                  a,
+                  lang,
+                  dateText: formatDate(
+                    a.isRevoked ? a.revokedAt : a.awardedAt,
+                    locale: lang,
+                    fallback: '',
+                  ),
+                ),
                 child: MedalBadge(
                   art: a.art,
                   size: 200,

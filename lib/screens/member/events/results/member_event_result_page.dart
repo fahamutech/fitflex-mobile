@@ -61,7 +61,8 @@ class _MemberEventResultPageState extends State<MemberEventResultPage> {
 
   ApiClient get _api => AppScope.of(context).api;
   EventsOptions get _options => eventsOptionsOf(context, widget.options);
-  String get _cacheKey => 'result.${widget.registrationId}';
+  String get _cacheKey =>
+      memberCacheKey(context, 'result.${widget.registrationId}');
 
   @override
   void initState() {
@@ -108,7 +109,7 @@ class _MemberEventResultPageState extends State<MemberEventResultPage> {
     } catch (e) {
       if (!mounted) return;
       final cached = isNetworkError(e)
-          ? await EventsCache.getMine(_cacheKey)
+          ? await EventsCache.getFreshMine(_cacheKey)
           : null;
       if (!mounted) return;
       if (cached != null) {
@@ -545,14 +546,25 @@ class _MemberEventResultPageState extends State<MemberEventResultPage> {
       key = 'events.result.empty.noneForYou';
     }
     final reason = resultReasonWords(context, r?.reasonCode);
-    final text = context
-        .tr(key)
-        .replaceFirst(
-          '{date}',
-          formatDate(r?.correctedAt, locale: lang, fallback: ''),
-        )
-        .replaceFirst('{reason}', reason)
-        .trim();
+    // Only the sentences that can carry a reason take the "because" clause;
+    // with no reason the sentence is complete without it.
+    final text = switch (key) {
+      'events.result.line.dq' ||
+      'events.result.line.rejected' => sentenceWithReason(
+        context,
+        plainKey: key,
+        becauseKey: '$key.because',
+        reason: reason,
+      ),
+      _ =>
+        context
+            .tr(key)
+            .replaceFirst(
+              '{date}',
+              formatDate(r?.correctedAt, locale: lang, fallback: ''),
+            )
+            .trim(),
+    };
     return Padding(
       padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
       child: Column(
@@ -713,15 +725,12 @@ class _MemberEventResultPageState extends State<MemberEventResultPage> {
           for (final m in earned)
             Semantics(
               button: true,
-              label: context
-                  .tr('events.medals.alt')
-                  .replaceFirst('{medal}', m.name.of(lang))
-                  .replaceFirst('{event}', m.eventTitle)
-                  .replaceFirst('{category}', m.categoryName ?? '')
-                  .replaceFirst(
-                    '{date}',
-                    formatDate(m.awardedAt, locale: lang),
-                  ),
+              label: medalSemanticsLabel(
+                context,
+                m,
+                lang,
+                dateText: formatDate(m.awardedAt, locale: lang, fallback: ''),
+              ),
               child: InkWell(
                 borderRadius: BorderRadius.circular(FFTokens.radiusMd),
                 onTap: () => context.push(AppRoutes.memberEventMedals),

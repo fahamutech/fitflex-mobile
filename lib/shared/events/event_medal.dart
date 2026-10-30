@@ -174,13 +174,16 @@ class AchievementView {
     return AchievementView(
       key: key,
       title: EventText.fromJson(json['title']),
+      // The server sends `status: awarded|locked` and `progress {current,
+      // target}`; `earned`, `done` and `total` are read as well if sent.
       earned:
           json['earned'] == true ||
           status == 'awarded' ||
-          _date(json['awardedAt'] ?? json['earnedAt']) != null,
+          (status == null &&
+              _date(json['awardedAt'] ?? json['earnedAt']) != null),
       earnedAt: _date(json['awardedAt'] ?? json['earnedAt']),
-      done: _int(progress?['done'] ?? json['done']),
-      total: _int(progress?['total'] ?? json['total']),
+      done: _int(progress?['current'] ?? progress?['done'] ?? json['done']),
+      total: _int(progress?['target'] ?? progress?['total'] ?? json['total']),
     );
   }
 }

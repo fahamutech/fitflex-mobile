@@ -311,6 +311,7 @@ class _MemberRecordRunPageState extends State<MemberRecordRunPage> {
                       child: FFButton(
                         key: const Key('run-discard'),
                         label: context.tr('run.discard'),
+                        maxLines: 3,
                         onPressed: _saving ? null : () => _discard(r),
                         variant: FFButtonVariant.secondary,
                       ),
@@ -324,6 +325,7 @@ class _MemberRecordRunPageState extends State<MemberRecordRunPage> {
                               ? 'events.run.save'
                               : 'run.save',
                         ),
+                        maxLines: 3,
                         onPressed: _saving ? null : () => _save(r),
                       ),
                     ),

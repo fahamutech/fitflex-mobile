@@ -113,14 +113,16 @@ void main() {
         _path,
         resultPayload(
           stage: 'disqualified',
-          result: resultRow(finishStatus: 'dq', reasonCode: 'rule_breach'),
+          result: resultRow(finishStatus: 'dq', reasonCode: 'rule_violation'),
         ),
       );
       await _pump(tester, api);
       expect(find.text('Disqualified'), findsWidgets);
       expect(find.byKey(const Key('result-time')), findsNothing);
       expect(
-        find.textContaining('a rule of the event was broken'),
+        find.text(
+          'This result was disqualified because a rule of the event was broken.',
+        ),
         findsOneWidget,
       );
     });

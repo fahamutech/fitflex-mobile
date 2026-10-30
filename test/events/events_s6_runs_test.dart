@@ -637,7 +637,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         find.text(
-          'This run will be sent to the organizer for Dar Half Marathon to review.',
+          'This run, its route and GPS data will be shared with the organizer of Dar Half Marathon to review.',
         ),
         findsOneWidget,
       );
