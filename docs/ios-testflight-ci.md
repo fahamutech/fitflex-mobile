@@ -2,7 +2,9 @@
 
 Workflow: `.github/workflows/ios-testflight.yml` ("Upload iOS to TestFlight").
 
-- **Runs on:** every push to `main`, and by hand (Actions → Upload iOS to TestFlight → Run workflow). `release-candidate` is never uploaded.
+- **Runs on:** every push to `main`, every push to the `testflight` branch, and by hand (Actions → Upload iOS to TestFlight → Run workflow; GitHub lists it only once this workflow is on `main`). `release-candidate` itself does not upload. To send it to TestFlight: `git push -f origin origin/release-candidate:refs/heads/testflight`.
+- **API key:** it must have the **Admin** role (key `47N3T93HJQ`). `Z88DY2A8KA` is App Manager and cannot use cloud signing. No `.cer`, `.p12` or `.mobileprovision` is needed.
+- **No iPhone registered?** The archive step falls back to an unsigned archive and the export signs it. Not yet proven on a real run.
 - **Off until set up:** while the `ASC_KEY_ID` secret is empty, the run skips every step and ends green with a notice.
 - **App:** bundle ID `com.fitflexafrica.app`, team `UT3M2LB58H` (Nassor Mohammed), App Store Connect app ID 6828055385. The Xcode project gets these from fitflex-mobile#243. Until #243 is merged, the workflow stops with an error. Android stays `com.fitflexafrica.mobile`.
 - **Version:** the version name comes from `pubspec.yaml` (`version: 1.0.1+2` gives `1.0.1`). The build number is `IOS_BUILD_NUMBER_OFFSET` (default 100) plus the workflow run number, so it goes up with every run.
