@@ -294,6 +294,7 @@ String? memberRouteFor({
       saleId: data['saleId']?.toString(),
       customerId: data['customerId']?.toString(),
       bannerId: (data['bannerId'] ?? data['item'])?.toString(),
+      flashSaleId: (data['saleId'] ?? data['item'])?.toString(),
     );
     if (direct != null) return (location: direct, go: true);
   }
@@ -399,6 +400,12 @@ String partnerLinkFor({required String side, required String type}) =>
         'shop_banner_rejected' ||
         'shop_banner_expired' ||
         'shop_banner_ended' => 'merch',
+        // Phase 2 S4: a flash sale was approved, rejected, expired or ended
+        // by FitFlex (data `{saleId, open: merch, tab: sales, item}`).
+        'vendor_flash_sale_approved' ||
+        'vendor_flash_sale_rejected' ||
+        'vendor_flash_sale_expired' ||
+        'vendor_flash_sale_ended' => 'merchSale',
         // FitFlex took down a home photo or logo (spec §44.3).
         partnerMediaTakenDownType when partnerMediaUi => 'brandMedia',
         _ => '',
@@ -430,6 +437,7 @@ String? partnerRouteFor({
   String? saleId,
   String? customerId,
   String? bannerId,
+  String? flashSaleId,
 }) {
   bool ok(String? id) => id != null && _safeId.hasMatch(id);
   return switch (partnerLinkFor(side: side, type: type)) {
@@ -464,6 +472,9 @@ String? partnerRouteFor({
     // The Promotions page checks the tool and the `products` permission.
     'merch' when ok(bannerId) => '/vendor/merch?item=$bannerId',
     'merch' => '/vendor/merch',
+    'merchSale' when ok(flashSaleId) =>
+      '/vendor/merch?tab=sales&item=$flashSaleId',
+    'merchSale' => '/vendor/merch?tab=sales',
     'checkins' when ok(gymId) => '/owner/gyms/$gymId/checkins',
     'member' when ok(memberId) => '/owner/members/$memberId',
     'memberPayments' when ok(memberId) => '/owner/members/$memberId/payments',

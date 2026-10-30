@@ -16,6 +16,7 @@ import '../../../shared/i18n.dart';
 import '../../../shared/shop_home.dart';
 import '../../../shared/widgets/shop_home/shop_banner_carousel.dart';
 import 'banner_models.dart';
+import 'merch_time_picker.dart';
 
 /// Picks a banner photo. Replaced in tests.
 typedef BannerImagePicker = Future<PickedBannerImage?> Function();
@@ -733,9 +734,10 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
       helpText: context.tr(start ? 'merch.dates.starts' : 'merch.dates.ends'),
     );
     if (day == null || !mounted) return;
-    final time = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay(hour: base.hour, minute: base.minute),
+    // QA S4 #12: Swahili gets its own 12-hour time-of-day list.
+    final time = await pickMerchTime(
+      context,
+      initial: TimeOfDay(hour: base.hour, minute: base.minute),
       helpText: context.tr('merch.dates.tzNote'),
     );
     if (time == null || !mounted) return;

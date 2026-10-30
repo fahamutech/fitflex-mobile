@@ -336,6 +336,7 @@ class _OfflineStore extends PartnerMediaStore {
   Future<PartnerMediaOverview?> refresh(
     PartnerMediaSubject subject, {
     bool force = false,
+    Duration? every,
   }) async => null;
 }
 

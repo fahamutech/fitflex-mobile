@@ -23,10 +23,17 @@ import '../shop_home.dart';
 import '../shop_near_you.dart';
 import '../../screens/vendor/documents/document_view.dart'
     show buyerInvoiceRoute, documentIdPattern;
+import 'shop_home/shop_flash_sale.dart';
 import 'shop_home/shop_home_page.dart';
 import 'shop_home/shop_near_you_ui.dart' show ShopDeliversBadge;
 import 'shop_home/shop_product_card.dart'
-    show ShopOutOfStockBadge, shopOnSale, shopDiscountPercent;
+    show
+        ShopOutOfStockBadge,
+        shopOnSale,
+        shopDiscountPercent,
+        shopSalePrice,
+        shopSalePriceLabel,
+        shopWasPrice;
 
 num _shopNumber(dynamic value, [num fallback = 0]) {
   if (value is num) return value;
@@ -63,7 +70,29 @@ class ShopProduct {
     this.promotion,
     this.variants = const [],
     this.deliversToViewerArea = false,
+    this.sale,
+    this.effectivePriceTzs,
   });
+
+  /// What checkout charges now, per the server (`effectivePriceTzs`, on
+  /// every row while SHOP_FLASH_SALES is on; null otherwise). Its presence
+  /// is how the app knows the server checks `expectedPriceTzs`.
+  final num? effectivePriceTzs;
+
+  /// The server prices this row with flash sales on: checkout sends the
+  /// price shown as `expectedPriceTzs`. Off: the order body is unchanged.
+  bool get serverChecksPrice => effectivePriceTzs != null;
+
+  /// Phase 2 S4: the live flash sale on this product (SHOP_FLASH_SALES),
+  /// else null. While it is on, its price is the price.
+  final ShopFlashSale? sale;
+
+  /// The flash sale is on now by the server's clock.
+  bool get flashSaleLive => sale?.live == true;
+
+  /// The row came with a sale that has ended since (the screen has not
+  /// been refreshed yet): "Sale ended", and no adding until it is.
+  bool get flashSaleEnded => sale != null && !sale!.live;
 
   /// Phase 2 S3: the seller delivers to the area this phone worked out
   /// (sent on Shop home rows only, and only while near-you is on). Shows
@@ -95,6 +124,8 @@ class ShopProduct {
     promotion: promotion,
     variants: variants,
     deliversToViewerArea: true,
+    sale: sale,
+    effectivePriceTzs: effectivePriceTzs,
   );
 
   final String id;
@@ -168,15 +199,25 @@ class ShopProduct {
         .where((value) => value.name.isNotEmpty)
         .toList(),
     deliversToViewerArea: json['deliversToViewerArea'] == true,
+    sale: ShopFlashSale.fromJson(json['sale']),
+    effectivePriceTzs: json['effectivePriceTzs'] is num
+        ? json['effectivePriceTzs'] as num
+        : null,
   );
 
   bool get inStock => stock > 0;
-  num get effectivePrice =>
+
+  /// The price without a flash sale: the seller's own discount, if any.
+  num get regularEffectivePrice =>
       discountPriceTzs != null &&
           discountPriceTzs! > 0 &&
           discountPriceTzs! < priceTzs
       ? discountPriceTzs!
       : priceTzs;
+
+  /// What one unit costs now: the flash sale's price while it is on.
+  num get effectivePrice =>
+      flashSaleLive ? sale!.salePriceTzs : regularEffectivePrice;
 }
 
 /// "4 in stock" / "Zipo 4", one placeholder line in both languages.
@@ -217,11 +258,45 @@ class ShopCart {
   ];
   bool get isEmpty => _qty.isEmpty;
   int qtyOf(String productId) => _qty[productId] ?? 0;
+
+  /// Unit prices the server gave in a `409 price_changed` that the buyer
+  /// confirmed, for lines whose product could not be fetched again
+  /// (Phase 2 S4). A fresh product row replaces it.
+  final Map<String, num> _confirmed = {};
+
+  /// What one unit of [productId] costs as the cart shows it.
+  num unitPriceOf(String productId) =>
+      _confirmed[productId] ?? _products[productId]?.effectivePrice ?? 0;
+
   num get totalTzs => _qty.entries.fold(
     0,
-    (sum, entry) =>
-        sum + (_products[entry.key]?.effectivePrice ?? 0) * entry.value,
+    (sum, entry) => sum + unitPriceOf(entry.key) * entry.value,
   );
+
+  /// Lines whose flash sale has ended since they were added (the price
+  /// shown is the regular one now).
+  List<ShopProduct> get saleEndedProducts => [
+    for (final e in _qty.keys)
+      if (_products[e] case final p?
+          when p.flashSaleEnded && !_confirmed.containsKey(e))
+        p,
+  ];
+
+  /// Puts a fresh copy of a product in the cart (after prices changed); the
+  /// quantity and option stay. With [keepConfirmed] (a background refresh of
+  /// the home or the list) a price the buyer confirmed after a 409 stays
+  /// the line's price, so "Continue with {total}" sends what it showed.
+  void refreshProduct(ShopProduct product, {bool keepConfirmed = false}) {
+    if (!_qty.containsKey(product.id)) return;
+    _products[product.id] = product;
+    if (!keepConfirmed) _confirmed.remove(product.id);
+  }
+
+  /// The server's current unit price for a line, kept until the product is
+  /// fetched again.
+  void confirmPrice(String productId, num priceTzs) {
+    if (_qty.containsKey(productId)) _confirmed[productId] = priceTzs;
+  }
 
   bool add(ShopProduct product) {
     final current = _qty[product.id] ?? 0;
@@ -243,6 +318,7 @@ class ShopCart {
       _qty.remove(productId);
       _products.remove(productId);
       _variant.remove(productId);
+      _confirmed.remove(productId);
     } else {
       _qty[productId] = current - 1;
     }
@@ -252,20 +328,30 @@ class ShopCart {
     _qty.remove(productId);
     _products.remove(productId);
     _variant.remove(productId);
+    _confirmed.remove(productId);
   }
 
   void clear() {
     _qty.clear();
     _products.clear();
     _variant.clear();
+    _confirmed.clear();
   }
 
+  /// The order lines. While the server prices with flash sales (its rows
+  /// carry `effectivePriceTzs`), each line also says the unit price the app
+  /// showed (`expectedPriceTzs`), so a price that moved is caught as
+  /// `409 price_changed` instead of being charged. Otherwise the body is
+  /// exactly as before.
   List<Map<String, dynamic>> toOrderItems() => _qty.entries
       .map(
         (entry) => {
           'productId': entry.key,
           'qty': entry.value,
           if (_variant[entry.key] != null) 'variant': _variant[entry.key],
+          if (_products[entry.key]?.serverChecksPrice == true ||
+              _confirmed.containsKey(entry.key))
+            'expectedPriceTzs': unitPriceOf(entry.key).round(),
         },
       )
       .toList();
@@ -337,6 +423,10 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
   String _sort = 'newest';
   bool _deliveryOnly = false;
   bool _promotionsOnly = false;
+
+  /// Phase 2 S4: only products in a live flash sale (the rail's View all,
+  /// `flashSale=true`).
+  bool _flashSaleOnly = false;
   String _brand = '';
   String _vendorId = '';
 
@@ -410,6 +500,9 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
   String? _openProductId;
   BuildContext? _sheetContext;
   bool _closingFromUrl = false;
+
+  /// The product the address switched to while a sheet was open.
+  String? _replaceWith;
   ScaffoldMessengerState? _messenger;
 
   /// The selected category chip, scrolled into view when the list opens.
@@ -432,6 +525,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
   @override
   void initState() {
     super.initState();
+    _lifecycle;
     addRootBackHandler(_onRootBack);
     ShopNearYouStore.changes.addListener(_nearChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -447,6 +541,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
 
   @override
   void dispose() {
+    _lifecycle.dispose();
     _heroFocus.dispose();
     removeRootBackHandler(_onRootBack);
     ShopNearYouStore.changes.removeListener(_nearChanged);
@@ -468,7 +563,45 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _messenger = ScaffoldMessenger.maybeOf(context);
+    // QA #1: coming back to the Shop tab (a tab kept alive in an
+    // IndexedStack) fetches again, so a sale that started meanwhile shows.
+    final visible = Visibility.of(context);
+    if (visible && _shown == false) _refreshOnReturn();
+    _shown = visible;
     _syncFromUrl();
+  }
+
+  /// Whether the shop was visible last time (null before the first look).
+  bool? _shown;
+
+  /// When the shop last fetched what it shows (device time).
+  DateTime? _lastFetch;
+
+  /// Returning within this long of the last fetch keeps what is shown.
+  static const _refetchAfter = Duration(seconds: 30);
+
+  late final AppLifecycleListener _lifecycle = AppLifecycleListener(
+    onResume: () {
+      if (mounted && (_shown ?? true)) _refreshOnReturn();
+    },
+  );
+
+  /// Fetches the home (or the list) again when the shop is looked at again,
+  /// unless it was fetched in the last 30 s. What is on screen stays while
+  /// it loads (the home keeps its last answer; the list its rows).
+  void _refreshOnReturn() {
+    final last = _lastFetch;
+    if (last == null ||
+        ShopClock.deviceNow().difference(last) < _refetchAfter) {
+      return;
+    }
+    _lastFetch = ShopClock.deviceNow();
+    if (_catalogueLoaded) unawaited(_load());
+    if (_section == 0 && _showHome) {
+      unawaited(_homeKey.currentState?.reload());
+    } else if (!_catalogueLoaded) {
+      unawaited(_load());
+    }
   }
 
   /// Android Back (and the shells' root PopScope): from the product list,
@@ -489,6 +622,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
     if (_results && _search.trim().isNotEmpty) 'q': _search.trim(),
     if (_results && _sort != 'newest') 'sort': _sort,
     if (_results && _promotionsOnly) 'promotions': 'true',
+    if (_results && _flashSaleOnly) 'flashSale': 'true',
     if (_results && _deliveryOnly) 'delivery': 'true',
     if (_results && _vendorId.isNotEmpty) 'vendorId': _vendorId,
     'product': ?_openProductId,
@@ -534,6 +668,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
           'category': ?q['category'],
           'sort': ?q['sort'],
           'promotions': ?q['promotions'],
+          'flashSale': ?q['flashSale'],
           'delivery': ?q['delivery'],
           'vendorId': ?q['vendorId'],
         },
@@ -547,9 +682,18 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
     }
     final product = q['product'];
     if (product != null && product != _openProductId) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _openProductById(product);
-      });
+      final open = _sheetContext;
+      if (open != null && open.mounted) {
+        // QA #13: another product while a sheet is open: close this one
+        // and open that one in its place (never two sheets stacked).
+        _replaceWith = product;
+        _closingFromUrl = true;
+        Navigator.of(open).maybePop();
+      } else {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _openProductById(product);
+        });
+      }
     } else if (product == null && _sheetContext != null) {
       _closingFromUrl = true;
       final sheet = _sheetContext!;
@@ -629,6 +773,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
           : num.tryParse(query['maxDistanceKm'] ?? '');
       _deliveryOnly = query['delivery'] == 'true';
       _promotionsOnly = query['promotions'] == 'true';
+      _flashSaleOnly = query['flashSale'] == 'true';
       const sorts = {
         'newest',
         'popularity',
@@ -769,7 +914,18 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
     });
   }
 
+  /// Replaces the cart's copies of [fresh] products, so the cart bar and
+  /// the cart show the price the buyer will pay now, not the price when the
+  /// line was added (QA #2). Quantity and option stay.
+  void _refreshCart(Iterable<ShopProduct> fresh) {
+    if (_cart.isEmpty) return;
+    for (final p in fresh) {
+      if (_cart.qtyOf(p.id) > 0) _cart.refreshProduct(p, keepConfirmed: true);
+    }
+  }
+
   Future<void> _load() async {
+    _lastFetch = ShopClock.deviceNow();
     setState(() => _loading = true);
     final catalogue = _needsCatalogue;
     try {
@@ -786,6 +942,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
               .map(ShopProduct.fromJson)
               .toList();
           _catalogueLoaded = true;
+          _refreshCart(_products);
         }
         _orders = results.last.whereType<Map<String, dynamic>>().toList();
         _loading = false;
@@ -849,6 +1006,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
           (!_deliveryOnly || product.deliveryAvailable) &&
           // On sale exactly as the server counts it: 0 < sale < price.
           (!_promotionsOnly || product.effectivePrice < product.priceTzs) &&
+          (!_flashSaleOnly || product.flashSaleLive) &&
           (_brand.isEmpty ||
               (product.brand ?? '').toLowerCase().contains(
                 _brand.toLowerCase(),
@@ -884,18 +1042,60 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
     return values;
   }
 
+  /// The delivery and payment choices from the last checkout sheet, so
+  /// "Back to cart" from the price-changed sheet keeps what was entered.
+  Map<String, String>? _lastCheckout;
+
   Future<void> _checkout() async {
     if (_cart.isEmpty || _ordering) return;
     final checkout = await showModalBottomSheet<Map<String, String>>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) => _CheckoutSheet(cart: shopHomeV2Enabled ? _cart : null),
+      builder: (sheet) => Semantics(
+        namesRoute: true,
+        explicitChildNodes: true,
+        label: sheet.tr('shop.checkout'),
+        child: _CheckoutSheet(
+          cart: shopHomeV2Enabled ? _cart : null,
+          initial: _lastCheckout,
+        ),
+      ),
     );
     if (checkout == null || !mounted || _ordering) return;
+    _lastCheckout = checkout;
+    final cartTotal = _cart.totalTzs;
+    setState(() => _ordering = true);
+    final messenger = FFSnack.of(context);
+    final locale = FFLocaleScope.of(context);
+    try {
+      final order = await _placeOrder(checkout);
+      if (!mounted) return;
+      await _orderPlaced(order, cartTotal, messenger, locale);
+    } catch (e) {
+      if (!mounted) return;
+      // A clear refusal means nothing was ordered, so the next attempt is a new one.
+      // When the outcome is unknown the key is kept: the retry cannot duplicate.
+      if (!orderOutcomeUnknown(e)) _attempt = null;
+      // Phase 2 S4: a price moved (a sale ended or started): show what
+      // changed and let the buyer confirm the new total.
+      final change = ShopPriceChange.fromError(e);
+      if (change != null) {
+        await _pricesChanged(change, checkout, messenger, locale);
+        return;
+      }
+      setState(() => _ordering = false);
+      messenger.error(shopCheckoutErrorMessage(locale, e));
+      // Stock or prices moved: show the customer the current catalogue.
+      if (shopCheckoutErrorKey(e) != null) await _load();
+    }
+  }
+
+  /// Sends the cart as an order. The same key is reused while the purchase
+  /// is unchanged: a timeout followed by another tap returns the first
+  /// order, not a second one.
+  Future<Map<String, dynamic>> _placeOrder(Map<String, String> checkout) {
     final items = _cart.toOrderItems();
-    // The same key is reused while the purchase is unchanged: a timeout
-    // followed by another tap returns the first order, not a second one.
     final attempt = _attempt = CheckoutAttempt.forPurchase(
       _attempt,
       checkoutSignature(
@@ -906,52 +1106,129 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
         paymentMethod: checkout['paymentMethod']!,
       ),
     );
-    final cartTotal = _cart.totalTzs;
-    setState(() => _ordering = true);
-    final messenger = FFSnack.of(context);
-    final locale = FFLocaleScope.of(context);
-    try {
-      final order = await AppScope.of(context).api.createShopOrder(
-        items,
-        deliveryMethod: checkout['deliveryMethod']!,
-        pickupGymId: checkout['pickupGymId'],
-        deliveryAddress: checkout['deliveryAddress'],
-        paymentMethod: checkout['paymentMethod']!,
-        idempotencyKey: attempt.key,
+    return AppScope.of(context).api.createShopOrder(
+      items,
+      deliveryMethod: checkout['deliveryMethod']!,
+      pickupGymId: checkout['pickupGymId'],
+      deliveryAddress: checkout['deliveryAddress'],
+      paymentMethod: checkout['paymentMethod']!,
+      idempotencyKey: attempt.key,
+    );
+  }
+
+  Future<void> _orderPlaced(
+    Map<String, dynamic> order,
+    num cartTotal,
+    FFSnackMessenger messenger,
+    FFLocale locale,
+  ) async {
+    // The order exists on the server: only now is the cart given up.
+    _attempt = null;
+    _lastCheckout = null;
+    setState(() {
+      _cart.clear();
+      _ordering = false;
+      _section = 1;
+    });
+    final paid = shopOrderPayment(order) == ShopOrderPayment.paid;
+    final serverTotal = order['totalTzs'];
+    // The total the server priced is the one that counts; say so if it differs.
+    final differs = serverTotal is num && serverTotal != cartTotal;
+    if (paid) {
+      messenger.success(locale.t('shop.paymentConfirmed'));
+    } else if (differs) {
+      messenger.info(
+        '${locale.t('shop.orderPending')} '
+        '${locale.t('shop.orderTotalIs')}: ${formatCurrency(serverTotal)}.',
       );
-      // The order exists on the server: only now is the cart given up.
-      _attempt = null;
-      if (!mounted) return;
-      setState(() {
-        _cart.clear();
-        _ordering = false;
-        _section = 1;
-      });
-      final paid = shopOrderPayment(order) == ShopOrderPayment.paid;
-      final serverTotal = order['totalTzs'];
-      // The total the server priced is the one that counts; say so if it differs.
-      final differs = serverTotal is num && serverTotal != cartTotal;
-      if (paid) {
-        messenger.success(locale.t('shop.paymentConfirmed'));
-      } else if (differs) {
-        messenger.info(
-          '${locale.t('shop.orderPending')} '
-          '${locale.t('shop.orderTotalIs')}: ${formatCurrency(serverTotal)}.',
-        );
-      } else {
-        messenger.info(locale.t('shop.orderPending'));
-      }
-      await _load();
-    } catch (e) {
-      if (!mounted) return;
-      // A clear refusal means nothing was ordered, so the next attempt is a new one.
-      // When the outcome is unknown the key is kept: the retry cannot duplicate.
-      if (!orderOutcomeUnknown(e)) _attempt = null;
-      setState(() => _ordering = false);
-      messenger.error(shopCheckoutErrorMessage(locale, e));
-      // Stock or prices moved: show the customer the current catalogue.
-      if (shopCheckoutErrorKey(e) != null) await _load();
+    } else {
+      messenger.info(locale.t('shop.orderPending'));
     }
+    await _load();
+  }
+
+  /// The cart after a `409 price_changed`: each changed product fetched
+  /// again (its sale state, for the cart lines) and its line priced at the
+  /// server's current price, which is what the next attempt says it
+  /// expects. The Shop home is asked again too, so its rails match.
+  Future<void> _applyPriceChange(ShopPriceChange change) async {
+    final api = AppScope.of(context).api;
+    final area = _areaToSend;
+    await Future.wait([
+      for (final line in change.lines)
+        api
+            .shopProduct(line.productId, areaId: area)
+            .then((json) {
+              _cart.refreshProduct(ShopProduct.fromJson(json));
+            })
+            .catchError((Object _) {}),
+    ]);
+    for (final line in change.lines) {
+      _cart.confirmPrice(line.productId, line.currentPriceTzs);
+    }
+    if (!mounted) return;
+    setState(() {});
+    if (_section == 0 && _showHome) {
+      unawaited(_homeKey.currentState?.reload());
+    }
+  }
+
+  /// "Prices have changed" (spec §8.2): "Continue with {new total}" sends
+  /// the order again with the new prices; if they move again the same
+  /// sheet updates; "Back to cart" (or Back) returns to the cart.
+  Future<void> _pricesChanged(
+    ShopPriceChange first,
+    Map<String, String> checkout,
+    FFSnackMessenger messenger,
+    FFLocale locale,
+  ) async {
+    await _applyPriceChange(first);
+    if (!mounted) return;
+    // The sheet shows its own progress; the cart bar is idle behind it
+    // (the sheet is modal, so it can't be tapped meanwhile).
+    setState(() => _ordering = false);
+    final change = ValueNotifier(first);
+    Map<String, dynamic>? placed;
+    Object? failure;
+    var total = _cart.totalTzs;
+    await showShopPriceChangedSheet(
+      context,
+      change: change,
+      product: (id) => _cart.lines.where((l) => l.$1.id == id).firstOrNull?.$1,
+      onContinue: () async {
+        total = _cart.totalTzs;
+        try {
+          placed = await _placeOrder(checkout);
+          return ShopPriceRetry.placed;
+        } catch (e) {
+          if (!orderOutcomeUnknown(e)) _attempt = null;
+          final again = ShopPriceChange.fromError(e);
+          if (again != null && mounted) {
+            await _applyPriceChange(again);
+            change.value = again;
+            return ShopPriceRetry.changedAgain;
+          }
+          // No answer: the key is kept, so trying again cannot duplicate.
+          if (isNetworkError(e)) return ShopPriceRetry.offline;
+          failure = e;
+          return ShopPriceRetry.failed;
+        }
+      },
+    );
+    change.dispose();
+    if (!mounted) return;
+    if (placed case final order?) {
+      await _orderPlaced(order, total, messenger, locale);
+      return;
+    }
+    setState(() => _ordering = false);
+    if (failure case final e?) {
+      messenger.error(shopCheckoutErrorMessage(locale, e));
+      if (shopCheckoutErrorKey(e) != null) await _load();
+      return;
+    }
+    // Back to cart: the cart (with its new prices) opens again.
+    if (shopHomeV2Enabled) unawaited(_checkout());
   }
 
   /// Add one unit; a product with options asks which one first. Returns
@@ -1086,10 +1363,16 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
         // Follows a refetch (the area became sendable after it opened).
         return ValueListenableBuilder<ShopProduct>(
           valueListenable: shown,
-          builder: (_, product, _) => _ProductDetailsSheet(
-            product: product,
-            showDistance: !_areasExist,
-            onAdd: () => _addToCart(product),
+          // QA #15: the sheet's route is named by the product.
+          builder: (_, product, _) => Semantics(
+            namesRoute: true,
+            explicitChildNodes: true,
+            label: product.name,
+            child: _ProductDetailsSheet(
+              product: product,
+              showDistance: !_areasExist,
+              onAdd: () => _addToCart(product),
+            ),
           ),
         );
       },
@@ -1103,6 +1386,13 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
     if (!_closingFromUrl) _pushUrl();
     _closingFromUrl = false;
     setState(() {});
+    final next = _replaceWith;
+    _replaceWith = null;
+    if (next != null) {
+      // The address now names another product: open it in this one's place.
+      await _openProductById(next);
+      return;
+    }
     if (buyNow == true) await _checkout();
   }
 
@@ -1329,7 +1619,18 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
                   cart: _cart,
                   gutter: gutter,
                   initialData: _homeCache,
-                  onData: (data) => _homeCache = data,
+                  onData: (data) {
+                    _homeCache = data;
+                    _lastFetch = ShopClock.deviceNow();
+                    // QA #2: the cart follows the fresh rows (a sale that
+                    // started, ended or was ended early).
+                    setState(
+                      () => _refreshCart([
+                        for (final e in data.products.entries)
+                          ShopProduct.fromJson({'id': e.key, ...e.value}),
+                      ]),
+                    );
+                  },
                   catalogue: _catalogueLoaded ? _products : null,
                   catalogueFailed: !_catalogueLoaded && _loadError != null,
                   onNeedCatalogue: () => unawaited(_ensureCatalogue()),
@@ -1373,6 +1674,18 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
     return Column(
       children: [
         Expanded(child: list),
+        // Phase 2 S4 (P1 §9): a sale in the cart ended or is about to.
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: ShopCartSaleNotice(
+            key: const Key('shop-cartbar-sale-notice'),
+            cart: _cart,
+            // A line's sale ended: the bar's total is the price paid now.
+            onChanged: () {
+              if (mounted) setState(() {});
+            },
+          ),
+        ),
         _cartBar(context),
       ],
     );
@@ -1567,6 +1880,20 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
             selected: _promotionsOnly,
             onSelected: (value) => setState(() => _promotionsOnly = value),
           ),
+          // Phase 2 S4: shown while it is on (from the flash sale rail), or
+          // while something is on a flash sale.
+          if (_flashSaleOnly || _products.any((p) => p.flashSaleLive))
+            FilterChip(
+              key: const Key('shop-flash-filter'),
+              materialTapTargetSize: MaterialTapTargetSize.padded,
+              visualDensity: VisualDensity.standard,
+              label: Text(context.tr('shop.section.flash_sale')),
+              selected: _flashSaleOnly,
+              onSelected: (value) {
+                setState(() => _flashSaleOnly = value);
+                _pushUrl();
+              },
+            ),
         ],
       ),
       const SizedBox(height: FFTokens.spacingMd),
@@ -2190,22 +2517,25 @@ class _ProductTile extends StatelessWidget {
                       child: const ShopDeliversBadge(),
                     ),
                   if (shopOnSale(product)) ...[
+                    // QA #7 (§8.1): the same "−N%" Fuel badge as the cards;
+                    // the % is already in the price's label.
+                    if (shopDiscountPercent(product) >= 1)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: ExcludeSemantics(
+                          child: FFBadge(
+                            key: Key('shop-discount-${product.id}'),
+                            label: '−${shopDiscountPercent(product)}%',
+                            tone: FFBadgeTone.fuel,
+                          ),
+                        ),
+                      ),
                     // Sale price in Fuel, the original struck through below;
                     // read once as "Sale price …, was …".
                     Text(
-                      formatCurrency(product.discountPriceTzs!),
+                      formatCurrency(shopSalePrice(product)),
                       key: Key('shop-sale-${product.id}'),
-                      semanticsLabel: context
-                          .tr('shop.a11y.salePrice')
-                          .replaceAll(
-                            '{sale}',
-                            formatCurrency(product.discountPriceTzs!),
-                          )
-                          .replaceAll('{old}', formatCurrency(product.priceTzs))
-                          .replaceAll(
-                            '{pct}',
-                            '${shopDiscountPercent(product)}',
-                          ),
+                      semanticsLabel: shopSalePriceLabel(context, product),
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
                         color: Theme.of(context).brightness == Brightness.dark
                             ? FFTokens.fuelOnDark
@@ -2215,7 +2545,7 @@ class _ProductTile extends StatelessWidget {
                     ),
                     ExcludeSemantics(
                       child: Text(
-                        formatCurrency(product.priceTzs),
+                        formatCurrency(shopWasPrice(product)),
                         key: Key('shop-was-${product.id}'),
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
                           color: FFTokens.mutedText(context),
@@ -2300,7 +2630,10 @@ final ButtonStyle _tileButton = IconButton.styleFrom(
 );
 
 class _CheckoutSheet extends StatefulWidget {
-  const _CheckoutSheet({this.cart});
+  const _CheckoutSheet({this.cart, this.initial});
+
+  /// The choices from the last time (after "Back to cart").
+  final Map<String, String>? initial;
 
   /// With the Shop home on, the sheet starts with the cart itself (lines and
   /// total), so "View cart" and the cart bar open the real cart.
@@ -2368,6 +2701,13 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
   @override
   void initState() {
     super.initState();
+    final initial = widget.initial;
+    if (initial != null) {
+      _delivery = initial['deliveryMethod'] ?? _delivery;
+      _address.text = initial['deliveryAddress'] ?? '';
+      _gymId = initial['pickupGymId'];
+      _payment = initial['paymentMethod'] ?? _payment;
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
         final rows = await AppScope.of(context).api.listGyms();
@@ -2399,24 +2739,72 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
         children: [
           for (final (product, qty, variant) in cart.lines)
             Padding(
+              key: Key('shop-cart-line-${product.id}'),
               padding: const EdgeInsets.only(bottom: FFTokens.spacingXs),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    child: Text(
-                      '$qty × ${product.name}${variant == null ? '' : ' · $variant'}',
-                      style: theme.textTheme.bodyMedium,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '$qty × ${product.name}${variant == null ? '' : ' · $variant'}',
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                        // Phase 2 S4: a line whose flash sale ended since it
+                        // was added now costs the regular price.
+                        if (product.flashSaleEnded)
+                          Text(
+                            context.tr('shop.sale.cartLineEnded'),
+                            key: Key('shop-cart-line-ended-${product.id}'),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: FFTokens.mutedText(context),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                   const SizedBox(width: FFTokens.spacingSm),
-                  Text(
-                    formatCurrency(product.effectivePrice * qty),
-                    style: theme.textTheme.bodyMedium,
-                  ),
+                  if (product.flashSaleLive)
+                    // Sale price in Fuel, the "was" total struck below it;
+                    // read once.
+                    Semantics(
+                      container: true,
+                      excludeSemantics: true,
+                      label: shopSalePriceLabel(context, product),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            formatCurrency(cart.unitPriceOf(product.id) * qty),
+                            key: Key('shop-cart-line-sale-${product.id}'),
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.brightness == Brightness.dark
+                                  ? FFTokens.fuelOnDark
+                                  : FFTokens.fuel,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          Text(
+                            formatCurrency(shopWasPrice(product) * qty),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: FFTokens.mutedText(context),
+                              decoration: TextDecoration.lineThrough,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    Text(
+                      formatCurrency(cart.unitPriceOf(product.id) * qty),
+                      style: theme.textTheme.bodyMedium,
+                    ),
                 ],
               ),
             ),
+          ShopCartSaleNotice(cart: cart),
           const Divider(),
           Row(
             children: [
@@ -2688,17 +3076,73 @@ class _ProductDetailsSheet extends StatelessWidget {
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             if (product.brand != null) Text(product.brand!),
-            Text(
-              formatCurrency(product.effectivePrice),
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            // Same rule as the cards: a real reduction only (0 < discount
-            // < price); a 0 or higher "discount" is not a sale.
-            if (product.effectivePrice < product.priceTzs)
-              Text(
-                formatCurrency(product.priceTzs),
-                style: const TextStyle(decoration: TextDecoration.lineThrough),
+            if (product.flashSaleLive) ...[
+              // Phase 2 S4: the sale price in Fuel, the "was" price struck
+              // below it, read once; then when the sale ends (spec §8.1).
+              Semantics(
+                container: true,
+                excludeSemantics: true,
+                label: shopSalePriceLabel(context, product),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: FFTokens.spacingSm,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text(
+                          formatCurrency(shopSalePrice(product)),
+                          key: Key('shop-detail-sale-${product.id}'),
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(
+                                color:
+                                    Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? FFTokens.fuelOnDark
+                                    : FFTokens.fuel,
+                                fontWeight: FontWeight.w800,
+                              ),
+                        ),
+                        FFBadge(
+                          label: '−${product.sale!.percentOff}%',
+                          tone: FFBadgeTone.fuel,
+                        ),
+                      ],
+                    ),
+                    Text(
+                      formatCurrency(shopWasPrice(product)),
+                      key: Key('shop-detail-was-${product.id}'),
+                      style: TextStyle(
+                        color: FFTokens.mutedText(context),
+                        decoration: TextDecoration.lineThrough,
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              ShopSaleEndsLine(sale: product.sale!),
+            ] else ...[
+              Text(
+                formatCurrency(product.effectivePrice),
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              // Same rule as the cards: a real reduction only (0 < discount
+              // < price); a 0 or higher "discount" is not a sale.
+              if (product.effectivePrice < product.priceTzs)
+                Text(
+                  formatCurrency(product.priceTzs),
+                  style: const TextStyle(
+                    decoration: TextDecoration.lineThrough,
+                  ),
+                ),
+              // The sale ended while the sheet was open (or before it was
+              // refreshed): said, with the price it costs now.
+              if (product.flashSaleEnded)
+                Text(
+                  context.tr('shop.home.saleEnded'),
+                  key: const Key('shop-detail-sale-ended'),
+                ),
+            ],
             Row(
               children: [
                 if (product.reviewCount > 0 && product.rating > 0) ...[
@@ -2756,10 +3200,59 @@ class _ProductDetailsSheet extends StatelessWidget {
               ),
               ...product.similarProducts.map(
                 (similar) => ListTile(
+                  key: Key('shop-similar-${similar.id}'),
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.shopping_bag_outlined),
                   title: Text(similar.name),
-                  trailing: Text(formatCurrency(similar.effectivePrice)),
+                  // QA #9: a product on sale says so here too: −N%, the
+                  // sale price and the struck "was" price (read once).
+                  subtitle:
+                      shopOnSale(similar) && shopDiscountPercent(similar) >= 1
+                      ? Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: ExcludeSemantics(
+                            child: FFBadge(
+                              key: Key('shop-similar-discount-${similar.id}'),
+                              label: '−${shopDiscountPercent(similar)}%',
+                              tone: FFBadgeTone.fuel,
+                            ),
+                          ),
+                        )
+                      : null,
+                  trailing: shopOnSale(similar)
+                      ? Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              formatCurrency(shopSalePrice(similar)),
+                              key: Key('shop-similar-sale-${similar.id}'),
+                              semanticsLabel: shopSalePriceLabel(
+                                context,
+                                similar,
+                              ),
+                              style: TextStyle(
+                                color:
+                                    Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? FFTokens.fuelOnDark
+                                    : FFTokens.fuel,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            ExcludeSemantics(
+                              child: Text(
+                                formatCurrency(shopWasPrice(similar)),
+                                style: TextStyle(
+                                  color: FFTokens.mutedText(context),
+                                  decoration: TextDecoration.lineThrough,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      : Text(formatCurrency(similar.effectivePrice)),
                 ),
               ),
             ],

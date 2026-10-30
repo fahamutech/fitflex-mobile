@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'models.dart';
 import 'promotion.dart';
 import 'rest_log.dart';
+import 'shop_clock.dart';
 
 class ApiException implements Exception {
   final int status;
@@ -95,11 +96,13 @@ class ApiClient {
     String path, {
     Object? body,
     Map<String, String>? extraHeaders,
+    void Function(Map<String, String> headers)? onHeaders,
   }) => _doRequest(
     method,
     path,
     body: body,
     extraHeaders: extraHeaders,
+    onHeaders: onHeaders,
     attempt: 0,
   );
 
@@ -108,6 +111,7 @@ class ApiClient {
     String path, {
     Object? body,
     Map<String, String>? extraHeaders,
+    void Function(Map<String, String> headers)? onHeaders,
     required int attempt,
   }) async {
     final uri = Uri.parse('$baseUrl$path');
@@ -168,6 +172,7 @@ class ApiClient {
           path,
           body: body,
           extraHeaders: extraHeaders,
+          onHeaders: onHeaders,
           attempt: attempt + 1,
         );
       }
@@ -184,6 +189,7 @@ class ApiClient {
         // ApiException, with no body: its HTML never reaches the UI.
         : _decodeErrorBody(res.body);
     if (ok) {
+      onHeaders?.call(res.headers);
       for (final l in List.of(_successListeners)) {
         try {
           l(method, path);
@@ -733,10 +739,11 @@ class ApiClient {
     String kind,
     DiscoverQuery query,
   ) async {
-    final out = await _request(
-      'GET',
-      '/discover/$kind${query.toQueryString()}',
-    );
+    final path = '/discover/$kind${query.toQueryString()}';
+    // Products may carry flash sales (Phase 2 S4): say this build shows them.
+    final out = kind == 'products'
+        ? await _shopGet(path)
+        : await _request('GET', path);
     return Map<String, dynamic>.from(out as Map);
   }
 
@@ -1908,6 +1915,7 @@ class ApiClient {
     List<String> recent = const [],
     String? areaId,
   }) async {
+    Map<String, String>? headers;
     final out = await _request(
       'GET',
       _withQuery('/shop/home', {
@@ -1918,13 +1926,37 @@ class ApiClient {
       }),
       extraHeaders: {
         if (areaId != null && areaId.isNotEmpty) kShopAreaHeader: areaId,
+        ..._shopCaps,
       },
+      onHeaders: (h) => headers = h,
     );
+    ShopClock.syncFrom(out, headers);
     return Map<String, dynamic>.from(out as Map);
   }
 
   /// The header that carries the near-you area on GET /shop/home.
   static const kShopAreaHeader = 'X-FF-Area';
+
+  /// Phase 2 S4: what this build can show, on GET /shop/home,
+  /// /shop/products and /shop/products/:id. Without `flash_sale` the
+  /// server leaves out the flash_sale section and the `sale` fields (so
+  /// older builds never see prices they can't explain).
+  static const kShopCapsHeader = 'X-FF-Shop-Caps';
+  static const _shopCaps = {kShopCapsHeader: 'flash_sale'};
+
+  /// GET with the shop capability header, syncing [ShopClock] from the
+  /// answer (docs/shop-flash-sales-api.md revision 2, item 4).
+  Future<dynamic> _shopGet(String path, {Map<String, String>? headers}) async {
+    Map<String, String>? got;
+    final out = await _request(
+      'GET',
+      path,
+      extraHeaders: {...?headers, ..._shopCaps},
+      onHeaders: (h) => got = h,
+    );
+    ShopClock.syncFrom(out, got);
+    return out;
+  }
 
   /// The active shop areas (Phase 2 S3): `{areas: [{id, level, name, names,
   /// parentId, lat, lng, radiusKm}]}`. 404 `feature_disabled` when
@@ -2027,7 +2059,15 @@ class ApiClient {
     final path = query.isEmpty
         ? '/shop/products'
         : '/shop/products?${Uri(queryParameters: query).query}';
-    return await _request('GET', path, extraHeaders: _areaHeader(areaId));
+    Map<String, String>? headers;
+    final out = await _request(
+      'GET',
+      path,
+      extraHeaders: {...?_areaHeader(areaId), ..._shopCaps},
+      onHeaders: (h) => headers = h,
+    );
+    ShopClock.syncFrom(out, headers);
+    return out;
   }
 
   Future<Map<String, dynamic>> createShopOrder(
@@ -2059,18 +2099,23 @@ class ApiClient {
 
   /// [areaId]: the near-you area in `X-FF-Area` (QA #4), for the
   /// "Delivers to your area" badge.
-  Future<Map<String, dynamic>> shopProduct(String id, {String? areaId}) async =>
-      await _request(
-        'GET',
-        '/shop/products/$id',
-        extraHeaders: _areaHeader(areaId),
-      );
+  Future<Map<String, dynamic>> shopProduct(String id, {String? areaId}) async {
+    Map<String, String>? headers;
+    final out = await _request(
+      'GET',
+      '/shop/products/$id',
+      extraHeaders: {...?_areaHeader(areaId), ..._shopCaps},
+      onHeaders: (h) => headers = h,
+    );
+    ShopClock.syncFrom(out, headers);
+    return out;
+  }
 
   static Map<String, String>? _areaHeader(String? areaId) =>
       areaId == null || areaId.isEmpty ? null : {kShopAreaHeader: areaId};
 
   Future<Map<String, dynamic>> vendorStore(String id) async =>
-      await _request('GET', '/shop/vendors/$id');
+      Map<String, dynamic>.from(await _shopGet('/shop/vendors/$id') as Map);
 
   Future<Map<String, dynamic>> sendMarketplaceEnquiry(
     String productId,
@@ -2172,6 +2217,102 @@ class ApiClient {
   /// `{stockLedger: true, ...}`. Anything but `true` means "not on".
   Future<Map<String, dynamic>> vendorToolsOptions() async =>
       await _request('GET', '/vendor/tools/options');
+
+  // ── Vendor flash sales (Shop home Phase 2 S4, SHOP_FLASH_SALES) ───────
+  // fitflex-functions docs/shop-flash-sales-api.md "Vendor endpoints".
+  // Every route answers 404 `feature_disabled` while the flag is off.
+
+  /// The sales on this vendor's products, one page: `{items: [sale],
+  /// total, nextCursor, vendor: {canPropose, reason}, proposalExpiryDays,
+  /// openProposals: {open, max}, rules: {...}}`.
+  Future<Map<String, dynamic>> vendorFlashSales({
+    int limit = 100,
+    String? cursor,
+    String? status,
+    String? productId,
+  }) async {
+    final out = await _request(
+      'GET',
+      _withQuery('/vendor/flash-sales', {
+        'limit': '$limit',
+        if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+        if (status != null && status.isNotEmpty) 'status': status,
+        if (productId != null && productId.isNotEmpty) 'productId': productId,
+      }),
+    );
+    if (out is List) return {'items': out};
+    return out is Map ? Map<String, dynamic>.from(out) : <String, dynamic>{};
+  }
+
+  /// `{ok, productId, regularPriceTzs, discountPriceTzs, effectivePriceTzs,
+  /// maxSalePriceTzs, raisedAt, raisedOn, earliestStart, lockedBy}` for a
+  /// sale on [productId] starting at [startsAt] (default: an hour from now).
+  Future<Map<String, dynamic>> vendorFlashSalePriceCheck(
+    String productId, {
+    DateTime? startsAt,
+  }) async {
+    final out = await _request(
+      'GET',
+      _withQuery('/vendor/flash-sales/price-check', {
+        'productId': productId,
+        if (startsAt != null) 'startsAt': startsAt.toUtc().toIso8601String(),
+      }),
+    );
+    return out is Map ? Map<String, dynamic>.from(out) : <String, dynamic>{};
+  }
+
+  /// One sale (`{sale}`); 404 `sale_not_found` for another vendor's.
+  Future<Map<String, dynamic>> vendorFlashSale(String id) async =>
+      _saleOf(await _request('GET', '/vendor/flash-sales/${_seg(id)}'));
+
+  /// Creates a sale as a draft (`{productId, salePriceTzs, startsAt,
+  /// endsAt}`, all required). Answers the sale.
+  Future<Map<String, dynamic>> vendorCreateFlashSale(
+    Map<String, dynamic> body,
+  ) async => _saleOf(await _request('POST', '/vendor/flash-sales', body: body));
+
+  /// Changes `salePriceTzs` / `startsAt` / `endsAt`. A scheduled sale goes
+  /// back for approval; a rejected one becomes a draft.
+  Future<Map<String, dynamic>> vendorUpdateFlashSale(
+    String id,
+    Map<String, dynamic> body,
+  ) async => _saleOf(
+    await _request('PATCH', '/vendor/flash-sales/${_seg(id)}', body: body),
+  );
+
+  Future<Map<String, dynamic>> vendorSubmitFlashSale(String id) async =>
+      _saleOf(
+        await _request(
+          'POST',
+          '/vendor/flash-sales/${_seg(id)}/submit',
+          body: const <String, dynamic>{},
+        ),
+      );
+
+  Future<Map<String, dynamic>> vendorWithdrawFlashSale(String id) async =>
+      _saleOf(
+        await _request(
+          'POST',
+          '/vendor/flash-sales/${_seg(id)}/withdraw',
+          body: const <String, dynamic>{},
+        ),
+      );
+
+  /// Ends the vendor's own live or scheduled sale now.
+  Future<Map<String, dynamic>> vendorEndFlashSale(String id) async => _saleOf(
+    await _request(
+      'POST',
+      '/vendor/flash-sales/${_seg(id)}/end',
+      body: const <String, dynamic>{},
+    ),
+  );
+
+  static Map<String, dynamic> _saleOf(Object? out) {
+    if (out is Map && out['sale'] is Map) {
+      return Map<String, dynamic>.from(out['sale'] as Map);
+    }
+    return out is Map ? Map<String, dynamic>.from(out) : <String, dynamic>{};
+  }
 
   // ── Vendor shop banners (Shop home Phase 2 S1, SHOP_BANNERS) ──────────
 
