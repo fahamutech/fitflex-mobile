@@ -21,6 +21,7 @@ const _blockedCodes = {
   'gym_owner_has_checkin_activity',
   'trainer_has_bookings',
   'organizer_owner',
+  'open_paid_order',
 };
 
 /// The "Delete account" action. Draws nothing for gym and vendor staff: their

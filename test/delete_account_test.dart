@@ -52,7 +52,7 @@ void main() {
       await _openSheet(tester);
 
       expect(find.textContaining('cannot be undone'), findsOneWidget);
-      expect(find.textContaining('may be kept'), findsOneWidget);
+      expect(find.textContaining('without your name'), findsOneWidget);
       expect(isEnabled(tester, _submit), isFalse);
 
       await tester.enterText(_field, 'delet');
@@ -193,6 +193,25 @@ void main() {
       await _confirmAndSubmit(tester, 'FUTA');
 
       expect(find.textContaining('Gym yako ina rekodi'), findsOneWidget);
+    });
+
+    apiTest('a paid order on its way blocks deletion, in Swahili too', (
+      tester,
+      api,
+    ) async {
+      api.fail('DELETE /me', 409, {'error': 'open_paid_order'});
+      await pumpPage(
+        tester,
+        api,
+        DeleteAccountButton(firebaseAuth: _FakeFirebase()),
+        user: _member,
+        lang: 'sw',
+      );
+      await _openSheet(tester);
+      await _confirmAndSubmit(tester, 'FUTA');
+
+      expect(find.textContaining('oda iliyolipiwa'), findsOneWidget);
+      expect(find.byKey(const Key('delete-account-blocked')), findsOneWidget);
     });
 
     apiTest('organizer owners get the server\'s Swahili sentence', (

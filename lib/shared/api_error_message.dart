@@ -286,6 +286,7 @@ String? _knownReason(FFLocale locale, String reason) {
     // Account deletion (DELETE /me): support has to step in first.
     'gym_owner_has_checkin_activity': 'error.reason.gymOwnerHasCheckins',
     'trainer_has_bookings': 'error.reason.trainerHasBookings',
+    'open_paid_order': 'error.reason.openPaidOrder',
     'whatsapp_template_required': 'error.reason.whatsappTemplateRequired',
     'basic_daily_limit': 'error.reason.basicDailyLimit',
     'invalid_or_expired_qr': 'error.reason.qrExpired',

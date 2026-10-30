@@ -1888,7 +1888,7 @@ class FFLocale extends ChangeNotifier {
       'account.delete.whatGoes':
           'Your name, phone number, email and photo are removed from your FitFlex profile. You lose access to this account and everything in it, including passes, remaining visits, bookings and history.',
       'account.delete.retained':
-          'Some records, such as payment history and support messages, may be kept where they are needed for legal, accounting, fraud prevention or dispute reasons.',
+          'Payment, pass, check-in, booking and order records are kept without your name or contact details, because gyms, trainers and vendors need them for their accounts and the law may require it.',
       'account.delete.otherProfiles':
           'This account also has other FitFlex profiles. Only the profile you are using now is deleted; the others stay.',
       'account.delete.confirmLabel': 'Type {word} to confirm',
@@ -1900,6 +1900,8 @@ class FFLocale extends ChangeNotifier {
           'Your gym has check-in activity. FitFlex support needs to transfer or close it before this account can be deleted.',
       'error.reason.trainerHasBookings':
           'Your trainer profile has bookings. Please contact FitFlex support before deleting this account.',
+      'error.reason.openPaidOrder':
+          'You have a paid order that has not been delivered. You can delete your account once it is delivered or cancelled.',
       'startup.offline.title': "Can't reach FitFlex",
       'startup.offline.body':
           'We could not load your account. Check your connection and try again.',
@@ -9356,7 +9358,7 @@ class FFLocale extends ChangeNotifier {
       'account.delete.whatGoes':
           'Jina, namba ya simu, barua pepe na picha yako vitaondolewa kwenye wasifu wako wa FitFlex. Utapoteza ufikiaji wa akaunti hii na vyote vilivyomo, ikiwemo pasi, ziara zilizobaki, vipindi vilivyowekwa na historia.',
       'account.delete.retained':
-          'Baadhi ya kumbukumbu, kama historia ya malipo na mawasiliano ya usaidizi, zinaweza kuhifadhiwa pale zinapohitajika kisheria, kwa uhasibu, kuzuia udanganyifu au kutatua migogoro.',
+          'Kumbukumbu za malipo, pasi, kuingia gym, vipindi na oda zinahifadhiwa bila jina lako wala mawasiliano yako, kwa sababu gym, ma-trainer na wauzaji wanazihitaji kwa hesabu zao na sheria inaweza kuhitaji hivyo.',
       'account.delete.otherProfiles':
           'Akaunti hii ina wasifu mwingine wa FitFlex pia. Wasifu unaotumia sasa ndio pekee utakaofutwa; mingine itabaki.',
       'account.delete.confirmLabel': 'Andika {word} ili kuthibitisha',
@@ -9368,6 +9370,8 @@ class FFLocale extends ChangeNotifier {
           'Gym yako ina rekodi za mahudhurio. Msaada wa FitFlex unahitaji kuihamisha au kuifunga kabla ya kufuta akaunti hii.',
       'error.reason.trainerHasBookings':
           'Wasifu wako wa trainer una vipindi vilivyowekwa. Tafadhali wasiliana na msaada wa FitFlex kabla ya kufuta akaunti hii.',
+      'error.reason.openPaidOrder':
+          'Una oda iliyolipiwa ambayo bado haijafikishwa. Unaweza kufuta akaunti yako ikishafikishwa au kughairiwa.',
       'startup.offline.title': 'Hatuwezi kufikia FitFlex',
       'startup.offline.body':
           'Hatukuweza kupakia akaunti yako. Angalia mtandao wako kisha ujaribu tena.',
