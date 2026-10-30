@@ -6688,7 +6688,7 @@ class FFLocale extends ChangeNotifier {
       'events.run.state.linked':
           'Already added',
       'events.run.confirm.virtual':
-          'This run, its route and GPS data will be shared with the organizer of {event} to review.',
+          'The distance, time, pace and GPS quality checks of this run will be shared with the organizer of {event} to review. Your route is not shared.',
       'events.run.confirm.inPerson':
           'This run will be shown next to your official result. It isn\'t sent to the organizer.',
       'events.run.notOfficial':
@@ -14141,9 +14141,9 @@ class FFLocale extends ChangeNotifier {
           'Nje ya muda wa tukio',
       'events.run.state.linked':
           'Tayari imeongezwa',
-      // TODO(sw-review): kushirikisha wording: counsel and native review (what the organizer can see)
+      // TODO(sw-review): kushirikisha wording: native review and counsel review (exactly what the organizer sees: distance, time, pace and GPS quality checks, flags; never the route)
       'events.run.confirm.virtual':
-          'Mbio hizi, njia yake na data ya GPS vitashirikishwa na mwandaaji wa {event} ili azikague.',
+          'Umbali, muda na ukaguzi wa kasi na ubora wa GPS wa mbio hizi vitashirikishwa na mwandaaji wa {event} ili azikague. Njia yako haishirikishwi.',
       'events.run.confirm.inPerson':
           'Mbio hizi zitaonyeshwa karibu na matokeo yako rasmi. Hazitumwi kwa mwandaaji.',
       'events.run.notOfficial':
