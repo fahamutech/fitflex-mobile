@@ -67,7 +67,13 @@ const vendorFabClearance = 96.0;
 const double vendorHomeBandMaxHeight = 409;
 
 class VendorHomePage extends StatefulWidget {
-  const VendorHomePage({super.key, this.open, this.filter, this.view});
+  const VendorHomePage({
+    super.key,
+    this.open,
+    this.filter,
+    this.view,
+    this.reportsNow,
+  });
 
   /// The section to show first — where a notification leads: `orders`,
   /// `enquiries`, `products`, `payments`, `sales`, `customers` or (S6)
@@ -80,6 +86,9 @@ class VendorHomePage extends StatefulWidget {
 
   /// `low`: start the product list on the low-stock filter (stock ledger).
   final String? filter;
+
+  /// Test clock for the Reports tab.
+  final DateTime? reportsNow;
 
   @override
   State<VendorHomePage> createState() => _VendorHomePageState();
@@ -1615,6 +1624,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
             access: _reportAccess,
             staffDisabled: _staffDisabled,
             businessName: _profile['businessName']?.toString(),
+            now: widget.reportsNow,
           )
         : ListenableBuilder(
             listenable: _sales!,
@@ -1624,6 +1634,7 @@ class _VendorHomePageState extends State<VendorHomePage> {
               staffDisabled: _staffDisabled,
               businessName: _profile['businessName']?.toString(),
               pendingSales: _sales!.waiting.length,
+              now: widget.reportsNow,
             ),
           );
     return Column(

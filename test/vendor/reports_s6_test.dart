@@ -148,6 +148,10 @@ void seedHome(
   api.on('GET /vendor/reports/summary', summary ?? ownerSummary());
 }
 
+/// The day the fixtures describe (a Thursday, mid-month): the presets read
+/// the clock, so the tests must not depend on the day they run.
+final reportsNow = DateTime.utc(2026, 10, 29, 10);
+
 Future<PageHost> pumpHome(
   WidgetTester tester,
   RecordingApi api, {
@@ -157,7 +161,7 @@ Future<PageHost> pumpHome(
 }) => pumpPage(
   tester,
   api,
-  VendorHomePage(open: open),
+  VendorHomePage(open: open, reportsNow: reportsNow),
   user: user,
   lang: lang,
   size: const Size(420, 2400),
@@ -193,12 +197,7 @@ Future<PageHost> pumpSection(
   return pumpPage(
     tester,
     api,
-    ReportSectionPage(
-      section: section,
-      from: from,
-      to: to,
-      now: DateTime.utc(2026, 10, 29, 10),
-    ),
+    ReportSectionPage(section: section, from: from, to: to, now: reportsNow),
     user: user,
     lang: lang,
     size: const Size(420, 2600),
@@ -1337,7 +1336,7 @@ void main() {
         await pumpPage(
           tester,
           api,
-          const VendorHomePage(open: 'reports'),
+          VendorHomePage(open: 'reports', reportsNow: reportsNow),
           user: owner,
           lang: 'sw',
           textScale: 2.0,
