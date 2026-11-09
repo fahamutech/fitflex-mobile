@@ -5,8 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import 'shared/auth_state.dart';
 import 'shared/held_nav_extras.dart';
-import 'shared/inbox/inbox_controller.dart'
-    show b2bMemberRequestsRoute, securityActivityRoute;
+import 'shared/inbox/inbox_controller.dart' show b2bMemberRequestsRoute, securityActivityRoute;
 import 'screens/splash_screen.dart';
 import 'screens/route_status_pages.dart';
 import 'screens/language_screen.dart';

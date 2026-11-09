@@ -28,7 +28,12 @@ Future<T?> showShopSheet<T>(
   BuildContext context, {
   required String title,
   required Widget child,
-}) => showFFSheet<T>(context, title: title, wideDialogWidth: 480, child: child);
+}) => showFFSheet<T>(
+  context,
+  title: title,
+  wideDialogWidth: 480,
+  child: child,
+);
 
 /// Whether this failure means "there is no personalisation here".
 bool shopPersonalisationMissing(Object error) =>

@@ -349,8 +349,7 @@ class _VendorBannerFormPageState extends State<VendorBannerFormPage> {
 
   String? _errorFor(String key) =>
       (key == 'image' ? _serverErrors[key] ?? _pickError : null) ??
-      _serverErrors[key] ??
-      (_submitted ? _errors()[key] : null);
+      _serverErrors[key] ?? (_submitted ? _errors()[key] : null);
 
   Map<String, dynamic> _body() {
     ShopText? pair(String f) {

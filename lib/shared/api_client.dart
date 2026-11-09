@@ -138,7 +138,9 @@ class ApiClient {
     try {
       switch (method) {
         case 'GET':
-          res = await http.get(uri, headers: headers).timeout(timeout);
+          res = await http
+              .get(uri, headers: headers)
+              .timeout(timeout);
           break;
         case 'POST':
           res = await http
