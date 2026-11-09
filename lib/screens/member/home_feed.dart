@@ -272,11 +272,7 @@ HomeCardPick? _goal(MemberData d, DateTime now) {
 /// event; the shell leaves [MemberData.upcomingEvents] empty otherwise.
 HomeCardPick? _events(MemberData d) {
   if (!d.eventsDiscovery || d.upcomingEvents.isEmpty) return null;
-  return const HomeCardPick(
-    HomeCardKind.events,
-    HomeReason.upcomingEvents,
-    29,
-  );
+  return const HomeCardPick(HomeCardKind.events, HomeReason.upcomingEvents, 29);
 }
 
 /// One recommendation at most: a gym or a trainer, whichever fits better.

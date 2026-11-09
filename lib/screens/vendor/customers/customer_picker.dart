@@ -177,9 +177,11 @@ class _CustomerPickerState extends State<CustomerPicker> {
           default:
             _addProblem = isRateLimited(e)
                 ? rateLimitedText(context, e)
-                : context.tr(e.status == 403
-                  ? 'vendor.customers.noAccess'
-                  : 'vendor.saveFailed');
+                : context.tr(
+                    e.status == 403
+                        ? 'vendor.customers.noAccess'
+                        : 'vendor.saveFailed',
+                  );
         }
       });
     } catch (_) {
