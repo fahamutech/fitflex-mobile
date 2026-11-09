@@ -267,6 +267,8 @@ class FFLocale extends ChangeNotifier {
       'staffPin.signInAgainAction': 'Sign in again',
       'pin.errInvalid': 'That mobile number, email or PIN is not right.',
       'pin.errTooMany': 'Too many wrong tries. Try again in {n} minutes.',
+      'register.errTooManyNetwork':
+          'Too many sign-ups are coming from your network right now. Try again in {n} minutes, or switch between Wi-Fi and mobile data.',
       'pin.errResetRequired':
           'Too many wrong tries. Reset your PIN to sign in again.',
       'pin.errAlreadyRegistered':
@@ -7556,8 +7558,7 @@ class FFLocale extends ChangeNotifier {
       'vendor.permission.purchases': 'Suppliers and stock in',
       'vendor.permission.purchasesHint':
           'Suppliers, receiving stock, cost prices from deliveries and what you owe',
-      'vendor.permission.import':
-          'Data import',
+      'vendor.permission.import': 'Data import',
       'vendor.permission.importHint':
           'Lets them add products and stock counts from a file, even without Products.',
       'vendor.stock.reason.stock_in': 'Received from supplier',
@@ -7566,13 +7567,16 @@ class FFLocale extends ChangeNotifier {
       'vendor.stock.note.variantGone': 'This option no longer exists',
       'vendor.purchases.qtyFor': 'Quantity received for {name}',
       'vendor.purchases.variantCountOne': '{n} variant',
-      'vendor.purchases.confirmTitleOne': 'Receive {units} item from {supplier}?',
+      'vendor.purchases.confirmTitleOne':
+          'Receive {units} item from {supplier}?',
       'vendor.purchases.confirmTitleNoSupplierOne': 'Receive {units} item?',
-      'vendor.purchases.voidPaymentsOne': 'The {n} payment recorded on it ({amount}) is voided too. Get any money back from the supplier yourself.',
+      'vendor.purchases.voidPaymentsOne':
+          'The {n} payment recorded on it ({amount}) is voided too. Get any money back from the supplier yourself.',
       'vendor.purchases.inst.overdueOne': 'Overdue {n} day',
       'vendor.purchases.inst.dueInOne': 'Due in {n} day',
       'vendor.purchases.costChangesOne': 'Cost price changes for {n} item',
-      'vendor.suppliers.boughtOne': 'Bought {amount} in {n} delivery · paid {paid}',
+      'vendor.suppliers.boughtOne':
+          'Bought {amount} in {n} delivery · paid {paid}',
       'vendor.purchases.lastCostNoSupplier': 'Last time: {amount}, {date}',
       'vendor.purchases.qtyForValue': 'Quantity received for {name}, {qty}',
       'vendor.purchases.unitCostForValue':
@@ -7872,8 +7876,7 @@ class FFLocale extends ChangeNotifier {
           'Upload a CSV file to add many products or stock counts at once.',
       'vendor.import.noName': 'Unnamed file',
       'vendor.import.rowsTotal': 'Rows: {n}',
-      'vendor.import.status.mapping_required':
-          'Match columns',
+      'vendor.import.status.mapping_required': 'Match columns',
       'vendor.import.status.ready': 'Ready to import',
       'vendor.import.status.applying': 'Importing',
       'vendor.import.status.applied': 'Imported',
@@ -7909,10 +7912,8 @@ class FFLocale extends ChangeNotifier {
       'vendor.import.template.download': 'Download template',
       'vendor.import.file.hint':
           'CSV file saved as UTF-8, up to {size} and {rows} rows.',
-      'vendor.import.unit.mb':
-          '{n} MB',
-      'vendor.import.unit.kb':
-          '{n} KB',
+      'vendor.import.unit.mb': '{n} MB',
+      'vendor.import.unit.kb': '{n} KB',
       'vendor.import.file.pick': 'Choose CSV file',
       'vendor.import.file.change': 'Choose another file',
       'vendor.import.file.spreadsheet':
@@ -7934,8 +7935,7 @@ class FFLocale extends ChangeNotifier {
       'vendor.import.match.synonym': 'Similar name',
       'vendor.import.match.fuzzy': 'Close spelling, needs confirming',
       'vendor.import.match.none': 'No match',
-      'vendor.import.count.valid':
-          'Ready rows',
+      'vendor.import.count.valid': 'Ready rows',
       'vendor.import.count.needs_review': 'Rows to review',
       'vendor.import.count.invalid': 'Invalid rows',
       'vendor.import.count.total': 'All rows',
@@ -7952,8 +7952,7 @@ class FFLocale extends ChangeNotifier {
       'vendor.import.rowNo': 'Row {n}',
       'vendor.import.rowStatus.invalid': 'Invalid',
       'vendor.import.rowStatus.needs_review': 'Needs review',
-      'vendor.import.rowStatus.valid':
-          'Ready',
+      'vendor.import.rowStatus.valid': 'Ready',
       'vendor.import.rowStatus.failed': 'Failed',
       'vendor.import.rowError': 'This row could not be imported.',
       'vendor.import.issue.generic': 'This row has a problem.',
@@ -8004,12 +8003,10 @@ class FFLocale extends ChangeNotifier {
       'vendor.import.result.profile':
           'Empty profile fields were filled. Nothing was published.',
       'vendor.import.result.viewProducts': 'Go to Products',
-      'vendor.import.result.retry':
-          'Retry failed rows',
+      'vendor.import.result.retry': 'Retry failed rows',
       'vendor.import.result.newImport': 'New import',
       'vendor.import.result.rowsTitle': 'Rows to check',
-      'vendor.import.errorsCsv':
-          'Download problems file',
+      'vendor.import.errorsCsv': 'Download problems file',
       'vendor.import.errorsCsv.help':
           'The file lists the problems found when your rows were checked. Rows that failed while importing are listed on this screen.',
       'vendor.import.expired.title': 'This import has expired',
@@ -8079,7 +8076,8 @@ class FFLocale extends ChangeNotifier {
       'vendor.import.err.empty': 'The file has no data rows.',
       // Vendor tools · S8 (barcodes).
       'vendor.barcodes.title': 'Barcodes',
-      'vendor.barcodes.help': 'Scan or type the code printed on the item. Customers never see it.',
+      'vendor.barcodes.help':
+          'Scan or type the code printed on the item. Customers never see it.',
       'vendor.barcodes.field': 'Barcode',
       'vendor.barcodes.add': 'Add barcode',
       'vendor.barcodes.for': 'For',
@@ -8090,24 +8088,33 @@ class FFLocale extends ChangeNotifier {
       'vendor.barcodes.remove': 'Remove barcode {code}',
       'vendor.barcodes.rowLabel': 'Barcode {code}, {for}',
       'vendor.barcodes.dialogTitle': 'Barcodes for {name}',
-      'vendor.barcodes.scannerHint': 'A USB scanner types the code and presses Enter.',
+      'vendor.barcodes.scannerHint':
+          'A USB scanner types the code and presses Enter.',
       'vendor.barcodes.saved': 'Barcodes saved.',
-      'vendor.barcodes.removedWithVariant': '{n} barcodes were removed with the variant.',
-      'vendor.barcodes.removedWithVariantOne': '1 barcode was removed with the variant.',
+      'vendor.barcodes.removedWithVariant':
+          '{n} barcodes were removed with the variant.',
+      'vendor.barcodes.removedWithVariantOne':
+          '1 barcode was removed with the variant.',
       'vendor.barcodes.unavailable': 'Barcodes aren\'t available right now.',
-      'vendor.barcodes.notSaved': 'Your other changes were saved. The barcodes below were not.',
-      'vendor.barcodes.notSavedNew': 'The product was saved without its barcodes. Add them later in the product form.',
+      'vendor.barcodes.notSaved':
+          'Your other changes were saved. The barcodes below were not.',
+      'vendor.barcodes.notSavedNew':
+          'The product was saved without its barcodes. Add them later in the product form.',
       'vendor.barcodes.discardTitle': 'Discard changes to barcodes?',
       'vendor.barcodes.err.tooShort': 'A barcode has at least 4 characters.',
       'vendor.barcodes.err.tooLong': 'A barcode has at most 48 characters.',
-      'vendor.barcodes.err.badChars': 'Use letters, numbers and symbols only, with no spaces.',
-      'vendor.barcodes.err.checkDigit': 'This number doesn\'t look right. Check the last digit.',
+      'vendor.barcodes.err.badChars':
+          'Use letters, numbers and symbols only, with no spaces.',
+      'vendor.barcodes.err.checkDigit':
+          'This number doesn\'t look right. Check the last digit.',
       'vendor.barcodes.err.duplicate': 'This barcode is already in the list.',
       'vendor.barcodes.err.inUse': 'Already on {name}.',
       'vendor.barcodes.err.inUseRetry': 'This barcode is in use. Try again.',
-      'vendor.barcodes.err.saveConflict': 'This product was changed at the same time. Try again.',
+      'vendor.barcodes.err.saveConflict':
+          'This product was changed at the same time. Try again.',
       'vendor.barcodes.err.tooMany': 'A product can have up to {max} barcodes.',
-      'vendor.barcodes.err.variantGone': 'The variant {variant} no longer exists. Choose again.',
+      'vendor.barcodes.err.variantGone':
+          'The variant {variant} no longer exists. Choose again.',
       'vendor.scan.open': 'Scan barcode',
       'vendor.scan.findProduct': 'Find a product by scanning',
       'vendor.scan.scanItems': 'Scan items',
@@ -8132,25 +8139,30 @@ class FFLocale extends ChangeNotifier {
       'vendor.scan.undo': 'Undo',
       'vendor.scan.undoLabel': 'Undo last scan of {name}',
       'vendor.scan.notFound': 'No product has the code {code}.',
-      'vendor.scan.notFoundOffline': '{code} isn\'t in the saved product list. Search by name, or try again when you\'re online.',
+      'vendor.scan.notFoundOffline':
+          '{code} isn\'t in the saved product list. Search by name, or try again when you\'re online.',
       'vendor.scan.addToProduct': 'Add this code to a product',
       'vendor.scan.createProduct': 'New product with this code',
       'vendor.scan.searchByName': 'Search by name',
       'vendor.scan.again': 'Scan again',
-      'vendor.scan.askProducts': 'Ask someone who manages products to add this code.',
+      'vendor.scan.askProducts':
+          'Ask someone who manages products to add this code.',
       'vendor.scan.chooseProduct': 'Choose the product',
       'vendor.scan.confirmAddTitle': 'Add code {code} to {name}?',
       'vendor.scan.confirmAdd': 'Add code',
       'vendor.scan.codeAdded': 'Code added to {name}.',
-      'vendor.scan.pickMatch': 'More than one product has this code. Choose one.',
-      'vendor.scan.archived': '{name} is archived. Restore it in Products first.',
+      'vendor.scan.pickMatch':
+          'More than one product has this code. Choose one.',
+      'vendor.scan.archived':
+          '{name} is archived. Restore it in Products first.',
       'vendor.scan.archivedBadge': 'Archived',
       'vendor.scan.outOfStock': '{name} is out of stock.',
       'vendor.scan.notProduct': 'This isn\'t a product barcode.',
       'vendor.scan.rateLimited': 'Too many scans. Wait {s} seconds.',
       'vendor.scan.rateLimitedOne': 'Too many scans. Wait 1 second.',
       'vendor.scan.lookupFailed': 'Couldn\'t check this code. Try again.',
-      'vendor.scan.noAccess': 'You don\'t have access to products. Ask the owner.',
+      'vendor.scan.noAccess':
+          'You don\'t have access to products. Ask the owner.',
       'vendor.scan.stockNow': 'Stock now: {n}',
       'vendor.scan.countStock': 'Count stock',
       'vendor.scan.adjustStock': 'Adjust stock',
@@ -8161,10 +8173,14 @@ class FFLocale extends ChangeNotifier {
       'vendor.scan.countedOne': '1 counted',
       'vendor.scan.counted': '{n} counted',
       'vendor.scan.otherProduct': 'That\'s {name}. Save this count first.',
-      'vendor.scan.camera.denied': 'Camera access is off. Allow the camera for FitFlex in your settings, or type the code.',
-      'vendor.scan.camera.unsupported': 'This device can\'t scan here. Type the code or use a USB scanner.',
-      'vendor.scan.camera.insecure': 'The camera works only on a secure (https) page. Type the code instead.',
-      'vendor.scan.camera.error': 'The camera couldn\'t start. Try again, or type the code.',
+      'vendor.scan.camera.denied':
+          'Camera access is off. Allow the camera for FitFlex in your settings, or type the code.',
+      'vendor.scan.camera.unsupported':
+          'This device can\'t scan here. Type the code or use a USB scanner.',
+      'vendor.scan.camera.insecure':
+          'The camera works only on a secure (https) page. Type the code instead.',
+      'vendor.scan.camera.error':
+          'The camera couldn\'t start. Try again, or type the code.',
     },
     'sw': {
       'app.title': 'FitFlex',
@@ -8377,6 +8393,8 @@ class FFLocale extends ChangeNotifier {
       'pin.errInvalid': 'Namba ya simu, barua pepe au PIN si sahihi.',
       'pin.errTooMany':
           'Umekosea mara nyingi mno. Jaribu tena baada ya dakika {n}.',
+      'register.errTooManyNetwork':
+          'Usajili mwingi mno unatoka kwenye mtandao wako kwa sasa. Jaribu tena baada ya dakika {n}, au badilisha kati ya Wi-Fi na data ya simu.', // TODO(sw-review)
       'pin.errResetRequired':
           'Umekosea mara nyingi mno. Weka PIN mpya ili uingie tena.',
       'pin.errAlreadyRegistered':
@@ -15791,8 +15809,7 @@ class FFLocale extends ChangeNotifier {
       'vendor.permission.purchases': 'Wasambazaji na kupokea Stock',
       'vendor.permission.purchasesHint':
           'Wasambazaji, kupokea Stock, bei za kununua na madeni yako',
-      'vendor.permission.import':
-          'Kuingiza data',
+      'vendor.permission.import': 'Kuingiza data',
       'vendor.permission.importHint':
           'Inawawezesha kuongeza bidhaa na hesabu za Stock kutoka kwenye faili, hata bila ruhusa ya Bidhaa.',
       'vendor.stock.reason.stock_in': 'Imepokelewa kutoka kwa msambazaji',
@@ -15801,13 +15818,17 @@ class FFLocale extends ChangeNotifier {
       'vendor.stock.note.variantGone': 'Chaguo hili halipo tena',
       'vendor.purchases.qtyFor': 'Idadi iliyopokelewa ya {name}',
       'vendor.purchases.variantCountOne': 'Chaguo {n}',
-      'vendor.purchases.confirmTitleOne': 'Upokee bidhaa {units} kutoka kwa {supplier}?',
+      'vendor.purchases.confirmTitleOne':
+          'Upokee bidhaa {units} kutoka kwa {supplier}?',
       'vendor.purchases.confirmTitleNoSupplierOne': 'Upokee bidhaa {units}?',
-      'vendor.purchases.voidPaymentsOne': 'Malipo {n} yaliyorekodiwa ({amount}) yatabatilishwa pia. Dai pesa yako kutoka kwa msambazaji wewe mwenyewe.',
+      'vendor.purchases.voidPaymentsOne':
+          'Malipo {n} yaliyorekodiwa ({amount}) yatabatilishwa pia. Dai pesa yako kutoka kwa msambazaji wewe mwenyewe.',
       'vendor.purchases.inst.overdueOne': 'Imechelewa siku {n}',
       'vendor.purchases.inst.dueInOne': 'Inadaiwa baada ya siku {n}',
-      'vendor.purchases.costChangesOne': 'Bei ya kununua inabadilika kwa bidhaa {n}',
-      'vendor.suppliers.boughtOne': 'Umenunua {amount} kwa mzigo {n} · umelipa {paid}',
+      'vendor.purchases.costChangesOne':
+          'Bei ya kununua inabadilika kwa bidhaa {n}',
+      'vendor.suppliers.boughtOne':
+          'Umenunua {amount} kwa mzigo {n} · umelipa {paid}',
       'vendor.purchases.lastCostNoSupplier': 'Mara ya mwisho: {amount}, {date}',
       'vendor.purchases.qtyForValue': 'Idadi iliyopokelewa ya {name}, {qty}',
       'vendor.purchases.unitCostForValue':
@@ -16076,7 +16097,8 @@ class FFLocale extends ChangeNotifier {
       'vendor.suppliers.notFound': 'Msambazaji huyu hapatikani.',
       'vendor.purchases.offline':
           'Kupokea Stock kunahitaji intaneti. Rasimu yako imehifadhiwa.',
-      'vendor.purchases.offlineWrite': 'Hakuna intaneti. Hakuna kilichohifadhiwa; jaribu tena ukiwa na intaneti.',
+      'vendor.purchases.offlineWrite':
+          'Hakuna intaneti. Hakuna kilichohifadhiwa; jaribu tena ukiwa na intaneti.',
       'vendor.purchases.err.server':
           'Imeshindikana kuhifadhi. Hakuna kilichobadilishwa.',
       'vendor.purchases.err.productGone':
@@ -16101,14 +16123,14 @@ class FFLocale extends ChangeNotifier {
           'Chagua tarehe kati ya {earliest} na {latest}.',
       'vendor.purchases.err.tooLong':
           'Namba ya ankara au maelezo ni marefu mno.',
-      'vendor.purchases.err.hasOthersPayments': 'Mwombe mmiliki au admin abatilishe hii; ina malipo yaliyorekodiwa na mtu mwingine.',
+      'vendor.purchases.err.hasOthersPayments':
+          'Mwombe mmiliki au admin abatilishe hii; ina malipo yaliyorekodiwa na mtu mwingine.',
       'vendor.purchases.notFound': 'Mzigo huu haupatikani.',
       // Vendor smart import V3: Swahili is a draft for native review.
       'vendor.import.tile': 'Ingiza data ya biashara',
       'vendor.import.tileSubtitle':
           'Ongeza bidhaa, Stock au wasifu kutoka CSV.',
-      'vendor.import.title':
-          'Ingiza data',
+      'vendor.import.title': 'Ingiza data',
       'vendor.import.new': 'Uingizaji mpya',
       'vendor.import.loading': 'Inapakia uingizaji',
       'vendor.import.more': 'Onyesha zaidi',
@@ -16117,8 +16139,7 @@ class FFLocale extends ChangeNotifier {
           'Pakia faili ya CSV ili kuongeza bidhaa nyingi au hesabu za Stock kwa wakati mmoja.',
       'vendor.import.noName': 'Faili isiyo na jina',
       'vendor.import.rowsTotal': 'Safu mlalo: {n}',
-      'vendor.import.status.mapping_required':
-          'Unganisha safu wima',
+      'vendor.import.status.mapping_required': 'Unganisha safu wima',
       'vendor.import.status.ready': 'Tayari kuingizwa',
       'vendor.import.status.applying': 'Inaingizwa',
       'vendor.import.status.applied': 'Imeingizwa',
@@ -16148,17 +16169,14 @@ class FFLocale extends ChangeNotifier {
       'vendor.import.step.file': 'Faili yako ya CSV',
       'vendor.import.template.body':
           'Anza na kiolezo chetu ili safu wima ziendane. Chagua lugha yake.',
-      'vendor.import.template.english':
-          'English',
+      'vendor.import.template.english': 'English',
       'vendor.import.template.swahili': 'Kiswahili',
       'vendor.import.template.example': 'Jumuisha safu mlalo mbili za mfano',
       'vendor.import.template.download': 'Pakua kiolezo',
       'vendor.import.file.hint':
           'Faili ya CSV iliyohifadhiwa kama UTF-8, hadi {size} na safu mlalo {rows}.',
-      'vendor.import.unit.mb':
-          '{n} MB',
-      'vendor.import.unit.kb':
-          '{n} KB',
+      'vendor.import.unit.mb': '{n} MB',
+      'vendor.import.unit.kb': '{n} KB',
       'vendor.import.file.pick': 'Chagua faili ya CSV',
       'vendor.import.file.change': 'Chagua faili nyingine',
       'vendor.import.file.spreadsheet':
@@ -16180,8 +16198,7 @@ class FFLocale extends ChangeNotifier {
       'vendor.import.match.synonym': 'Jina linalofanana',
       'vendor.import.match.fuzzy': 'Tahajia ya karibu, inahitaji kuthibitishwa',
       'vendor.import.match.none': 'Hakuna linalolingana',
-      'vendor.import.count.valid':
-          'Safu mlalo tayari',
+      'vendor.import.count.valid': 'Safu mlalo tayari',
       'vendor.import.count.needs_review': 'Safu mlalo za kuhakiki',
       'vendor.import.count.invalid': 'Safu mlalo zisizo sahihi',
       'vendor.import.count.total': 'Safu mlalo zote',
@@ -16198,8 +16215,7 @@ class FFLocale extends ChangeNotifier {
       'vendor.import.rowNo': 'Safu mlalo {n}',
       'vendor.import.rowStatus.invalid': 'Si sahihi',
       'vendor.import.rowStatus.needs_review': 'Inahitaji kuhakikiwa',
-      'vendor.import.rowStatus.valid':
-          'Tayari',
+      'vendor.import.rowStatus.valid': 'Tayari',
       'vendor.import.rowStatus.failed': 'Imeshindikana',
       'vendor.import.rowError': 'Safu mlalo hii haikuweza kuingizwa.',
       'vendor.import.issue.generic': 'Safu mlalo hii ina tatizo.',
@@ -16250,12 +16266,10 @@ class FFLocale extends ChangeNotifier {
       'vendor.import.result.profile':
           'Sehemu tupu za wasifu zimejazwa. Hakuna kilichochapishwa.',
       'vendor.import.result.viewProducts': 'Nenda kwenye Bidhaa',
-      'vendor.import.result.retry':
-          'Jaribu tena safu mlalo zilizoshindikana',
+      'vendor.import.result.retry': 'Jaribu tena safu mlalo zilizoshindikana',
       'vendor.import.result.newImport': 'Uingizaji mpya',
       'vendor.import.result.rowsTitle': 'Safu mlalo za kuhakiki',
-      'vendor.import.errorsCsv':
-          'Pakua faili ya matatizo',
+      'vendor.import.errorsCsv': 'Pakua faili ya matatizo',
       'vendor.import.errorsCsv.help':
           'Faili hii inaorodhesha matatizo yaliyopatikana safu mlalo zilipohakikiwa. Safu mlalo zilizoshindikana wakati wa kuingiza zimeorodheshwa kwenye skrini hii.',
       'vendor.import.expired.title': 'Uingizaji huu umekwisha muda',
@@ -16329,7 +16343,8 @@ class FFLocale extends ChangeNotifier {
       'vendor.import.err.empty': 'Faili haina safu mlalo za data.',
       // Vendor tools · S8 (barcodes). SWAHILI IS A DRAFT for native review; msimbopau (plural misimbopau) is new to the glossary.
       'vendor.barcodes.title': 'Misimbopau',
-      'vendor.barcodes.help': 'Skani au andika msimbo uliochapishwa kwenye bidhaa. Wateja hawauoni kamwe.',
+      'vendor.barcodes.help':
+          'Skani au andika msimbo uliochapishwa kwenye bidhaa. Wateja hawauoni kamwe.',
       'vendor.barcodes.field': 'Msimbopau',
       'vendor.barcodes.add': 'Ongeza msimbopau',
       'vendor.barcodes.for': 'Kwa ajili ya',
@@ -16340,24 +16355,35 @@ class FFLocale extends ChangeNotifier {
       'vendor.barcodes.remove': 'Ondoa msimbopau {code}',
       'vendor.barcodes.rowLabel': 'Msimbopau {code}, {for}',
       'vendor.barcodes.dialogTitle': 'Misimbopau ya {name}',
-      'vendor.barcodes.scannerHint': 'Skana ya USB huandika msimbo na kubonyeza Enter.',
+      'vendor.barcodes.scannerHint':
+          'Skana ya USB huandika msimbo na kubonyeza Enter.',
       'vendor.barcodes.saved': 'Misimbopau imehifadhiwa.',
-      'vendor.barcodes.removedWithVariant': 'Misimbopau {n} imeondolewa pamoja na chaguo hilo.',
-      'vendor.barcodes.removedWithVariantOne': 'Msimbopau 1 umeondolewa pamoja na chaguo hilo.',
+      'vendor.barcodes.removedWithVariant':
+          'Misimbopau {n} imeondolewa pamoja na chaguo hilo.',
+      'vendor.barcodes.removedWithVariantOne':
+          'Msimbopau 1 umeondolewa pamoja na chaguo hilo.',
       'vendor.barcodes.unavailable': 'Misimbopau haipatikani kwa sasa.',
-      'vendor.barcodes.notSaved': 'Mabadiliko yako mengine yamehifadhiwa. Misimbopau iliyo hapa chini haijahifadhiwa.',
-      'vendor.barcodes.notSavedNew': 'Bidhaa imehifadhiwa bila misimbopau yake. Iongeze baadaye kwenye fomu ya bidhaa.',
+      'vendor.barcodes.notSaved':
+          'Mabadiliko yako mengine yamehifadhiwa. Misimbopau iliyo hapa chini haijahifadhiwa.',
+      'vendor.barcodes.notSavedNew':
+          'Bidhaa imehifadhiwa bila misimbopau yake. Iongeze baadaye kwenye fomu ya bidhaa.',
       'vendor.barcodes.discardTitle': 'Ufute mabadiliko ya misimbopau?',
       'vendor.barcodes.err.tooShort': 'Msimbopau una angalau herufi 4.',
       'vendor.barcodes.err.tooLong': 'Msimbopau hauzidi herufi 48.',
-      'vendor.barcodes.err.badChars': 'Tumia herufi, namba na alama tu, bila nafasi.',
-      'vendor.barcodes.err.checkDigit': 'Namba hii haionekani sahihi. Angalia tarakimu ya mwisho.',
-      'vendor.barcodes.err.duplicate': 'Msimbopau huu tayari upo kwenye orodha.',
+      'vendor.barcodes.err.badChars':
+          'Tumia herufi, namba na alama tu, bila nafasi.',
+      'vendor.barcodes.err.checkDigit':
+          'Namba hii haionekani sahihi. Angalia tarakimu ya mwisho.',
+      'vendor.barcodes.err.duplicate':
+          'Msimbopau huu tayari upo kwenye orodha.',
       'vendor.barcodes.err.inUse': 'Tayari upo kwenye {name}.',
       'vendor.barcodes.err.inUseRetry': 'Msimbopau huu unatumika. Jaribu tena.',
-      'vendor.barcodes.err.saveConflict': 'Bidhaa hii ilibadilishwa wakati huo huo. Jaribu tena.',
-      'vendor.barcodes.err.tooMany': 'Bidhaa inaweza kuwa na misimbopau hadi {max}.',
-      'vendor.barcodes.err.variantGone': 'Chaguo {variant} halipo tena. Chagua tena.',
+      'vendor.barcodes.err.saveConflict':
+          'Bidhaa hii ilibadilishwa wakati huo huo. Jaribu tena.',
+      'vendor.barcodes.err.tooMany':
+          'Bidhaa inaweza kuwa na misimbopau hadi {max}.',
+      'vendor.barcodes.err.variantGone':
+          'Chaguo {variant} halipo tena. Chagua tena.',
       'vendor.scan.open': 'Skani msimbopau',
       'vendor.scan.findProduct': 'Tafuta bidhaa kwa kuskani',
       'vendor.scan.scanItems': 'Skani bidhaa',
@@ -16382,24 +16408,31 @@ class FFLocale extends ChangeNotifier {
       'vendor.scan.undo': 'Tendua',
       'vendor.scan.undoLabel': 'Tendua uskani wa mwisho wa {name}',
       'vendor.scan.notFound': 'Hakuna bidhaa yenye msimbo {code}.',
-      'vendor.scan.notFoundOffline': '{code} haipo kwenye orodha ya bidhaa iliyohifadhiwa. Tafuta kwa jina, au jaribu tena ukiwa mtandaoni.',
+      'vendor.scan.notFoundOffline':
+          '{code} haipo kwenye orodha ya bidhaa iliyohifadhiwa. Tafuta kwa jina, au jaribu tena ukiwa mtandaoni.',
       'vendor.scan.addToProduct': 'Weka msimbo huu kwenye bidhaa',
       'vendor.scan.createProduct': 'Bidhaa mpya yenye msimbo huu',
       'vendor.scan.searchByName': 'Tafuta kwa jina',
       'vendor.scan.again': 'Skani tena',
-      'vendor.scan.askProducts': 'Mwombe anayesimamia bidhaa aongeze msimbo huu.',
+      'vendor.scan.askProducts':
+          'Mwombe anayesimamia bidhaa aongeze msimbo huu.',
       'vendor.scan.chooseProduct': 'Chagua bidhaa',
       'vendor.scan.confirmAddTitle': 'Uweke msimbo {code} kwenye {name}?',
       'vendor.scan.confirmAdd': 'Weka msimbo',
       'vendor.scan.codeAdded': 'Msimbo umewekwa kwenye {name}.',
-      'vendor.scan.pickMatch': 'Zaidi ya bidhaa moja ina msimbo huu. Chagua moja.',
-      'vendor.scan.archived': '{name} imewekwa kando. Irejeshe kwenye Bidhaa kwanza.',
+      'vendor.scan.pickMatch':
+          'Zaidi ya bidhaa moja ina msimbo huu. Chagua moja.',
+      'vendor.scan.archived':
+          '{name} imewekwa kando. Irejeshe kwenye Bidhaa kwanza.',
       'vendor.scan.archivedBadge': 'Imewekwa kando',
       'vendor.scan.outOfStock': 'Stock ya {name} imeisha.',
       'vendor.scan.notProduct': 'Huu si msimbopau wa bidhaa.',
-      'vendor.scan.rateLimited': 'Umeskani mara nyingi mno. Subiri sekunde {s}.',
-      'vendor.scan.rateLimitedOne': 'Umeskani mara nyingi mno. Subiri sekunde 1.',
-      'vendor.scan.lookupFailed': 'Imeshindikana kuangalia msimbo huu. Jaribu tena.',
+      'vendor.scan.rateLimited':
+          'Umeskani mara nyingi mno. Subiri sekunde {s}.',
+      'vendor.scan.rateLimitedOne':
+          'Umeskani mara nyingi mno. Subiri sekunde 1.',
+      'vendor.scan.lookupFailed':
+          'Imeshindikana kuangalia msimbo huu. Jaribu tena.',
       'vendor.scan.noAccess': 'Huna ruhusa ya bidhaa. Muulize mmiliki.',
       'vendor.scan.stockNow': 'Stock sasa: {n}',
       'vendor.scan.countStock': 'Hesabu Stock',
@@ -16411,10 +16444,14 @@ class FFLocale extends ChangeNotifier {
       'vendor.scan.countedOne': '1 imehesabiwa',
       'vendor.scan.counted': '{n} zimehesabiwa',
       'vendor.scan.otherProduct': 'Hiyo ni {name}. Hifadhi hesabu hii kwanza.',
-      'vendor.scan.camera.denied': 'Ruhusa ya kamera imezimwa. Ruhusu kamera kwa FitFlex kwenye mipangilio, au andika msimbo.',
-      'vendor.scan.camera.unsupported': 'Kifaa hiki hakiwezi kuskani hapa. Andika msimbo au tumia skana ya USB.',
-      'vendor.scan.camera.insecure': 'Kamera inafanya kazi kwenye ukurasa salama (https) tu. Andika msimbo badala yake.',
-      'vendor.scan.camera.error': 'Imeshindikana kuwasha kamera. Jaribu tena, au andika msimbo.',
+      'vendor.scan.camera.denied':
+          'Ruhusa ya kamera imezimwa. Ruhusu kamera kwa FitFlex kwenye mipangilio, au andika msimbo.',
+      'vendor.scan.camera.unsupported':
+          'Kifaa hiki hakiwezi kuskani hapa. Andika msimbo au tumia skana ya USB.',
+      'vendor.scan.camera.insecure':
+          'Kamera inafanya kazi kwenye ukurasa salama (https) tu. Andika msimbo badala yake.',
+      'vendor.scan.camera.error':
+          'Imeshindikana kuwasha kamera. Jaribu tena, au andika msimbo.',
     },
   };
 }
