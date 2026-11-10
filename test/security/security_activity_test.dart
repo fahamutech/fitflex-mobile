@@ -145,7 +145,7 @@ void main() {
         _app(api, const SecurityActivityPage(), lang: 'sw'),
       );
       await _settle(tester);
-      expect(find.text('Umejiandikisha kupitia kivinjari'), findsOneWidget);
+      expect(find.text('Kuingia gym kupitia kivinjari'), findsOneWidget);
       expect(find.text('Imerekodiwa'), findsOneWidget);
     });
 
@@ -170,7 +170,10 @@ void main() {
       final api = _Api()..error = Exception('offline');
       await tester.pumpWidget(_app(api, const SecurityActivityPage()));
       await _settle(tester);
-      expect(find.text('Couldn\'t load your messages'), findsOneWidget);
+      expect(
+        find.text('Couldn\'t load your security activity'),
+        findsOneWidget,
+      );
       api
         ..error = null
         ..pages = {
@@ -359,7 +362,8 @@ void main() {
     final en = FFLocale.keysOf('en').where((k) => k.startsWith('secAct.'));
     final sw = FFLocale.keysOf('sw').where((k) => k.startsWith('secAct.'));
     expect(en.toSet(), sw.toSet());
-    expect(en.length, 14);
+    // 15 for the list (S4a + its own load error) and 26 for the report (S4c).
+    expect(en.length, 41);
     for (final k in en) {
       expect(
         FFLocale.textOf('sw', k),

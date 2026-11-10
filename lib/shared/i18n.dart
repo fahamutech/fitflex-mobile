@@ -287,7 +287,7 @@ class FFLocale extends ChangeNotifier {
       'pin.errInvalid': 'That mobile number, email or PIN is not right.',
       'pin.errTooMany': 'Too many wrong tries. Try again in {n} minutes.',
       'pin.errResetRequired':
-          'Too many wrong tries. Reset your PIN to sign in again.',
+          'You need a new PIN to sign in. Use Forgot PIN to set one.',
       'pin.errAlreadyRegistered':
           'An account already uses this mobile number or email.',
       'pin.errCurrentWrong': 'Your current PIN is not right.',
@@ -3831,7 +3831,35 @@ class FFLocale extends ChangeNotifier {
       'secAct.off.title': "Not available yet",
       'secAct.off.body': "Security activity is not switched on yet.",
       'secAct.loadMore': "Load more",
+      'secAct.loadFailed': "Couldn't load your security activity",
       'secAct.review': "Review activity",
+      // "This wasn't me" report (S4c).
+      'secAct.report.action': "This wasn't me",
+      'secAct.report.actionHint': "Report this check-in to FitFlex support",
+      'secAct.report.sheet.title': "Report this check-in",
+      'secAct.report.sheet.body': "We will record a report for FitFlex support to review.",
+      'secAct.report.sheet.notRemoved': "The visit is not removed automatically.",
+      'secAct.report.sheet.secure': "Report and secure my account",
+      'secAct.report.sheet.secureHint': "Signs you out on every device. If you sign in with a PIN, you then set a new one with Forgot PIN.",
+      'secAct.report.sheet.only': "Report only",
+      'secAct.report.sheet.onlyHint': "Sends the report. Nothing else changes on your account.",
+      'secAct.report.status.open': "Reported",
+      'secAct.report.status.acknowledged': "Being reviewed",
+      'secAct.report.status.resolved': "Reviewed",
+      'secAct.report.done': "Report sent. FitFlex support will review it.",
+      'secAct.report.limited': "Report recorded. Your account was already secured recently, so nothing more was changed.",
+      'secAct.report.failed': "Report recorded, but we could not secure your account. Try securing again.",
+      'secAct.report.failedChangePin': "Report recorded, but we could not secure your account. Change your PIN now.",
+      'secAct.report.failedForgotPin': "Report recorded, but we could not finish securing your account. Your PIN no longer works. Set a new one with Forgot PIN.",
+      'secAct.report.failedRetry': "Try securing again",
+      'secAct.report.signedOut.title': "You have been signed out",
+      'secAct.report.signedOut.pin': "Report recorded and your account is secured. You are signed out on every device. To sign in, use Forgot PIN and set a new PIN.",
+      'secAct.report.signedOut.again': "Report recorded and your account is secured. You are signed out on every device. Sign in again to continue.",
+      'secAct.report.signedOut.action': "Go to sign in",
+      'secAct.report.err.limit': "You have sent the most reports allowed for now. Try again later.",
+      'secAct.report.err.unavailable': "Reporting is not available for this check-in.",
+      'secAct.report.err.failed': "We couldn't send your report. Try again.",
+      'secAct.report.err.network': "No connection. Check your internet and try again.",
       'inbox.filter.all': 'All',
       'inbox.filter.membership': 'Membership',
       'inbox.filter.payments': 'Payments',
@@ -5042,6 +5070,51 @@ class FFLocale extends ChangeNotifier {
       'vendor.pos.referenceOptional': 'Reference (optional)',
       'vendor.pos.referenceHint': 'From the payment SMS or card slip.',
       'vendor.pos.referenceRequired': 'Enter the transaction reference.',
+      // Sale extras (docs/design/vendor-sale-extras-1110.md §7).
+      'vendor.pos.referenceHintCash':
+          "Slip or receipt number (not the customer's phone).",
+      'vendor.pos.a11y.referenceFor': 'Reference (optional), {method}',
+      'vendor.pos.cust.section': 'Customer (optional)',
+      'vendor.pos.cust.sectionA11y': 'Customer details, optional',
+      'vendor.pos.cust.empty': 'Add name, mobile or type',
+      'vendor.pos.cust.type': 'Customer type',
+      'vendor.customerType.new': 'New',
+      'vendor.customerType.returning': 'Returning',
+      'vendor.customerType.walk_in': 'Walk-in',
+      'vendor.customerType.online': 'Online',
+      'vendor.customerType.other': 'Other',
+      'vendor.pos.cust.name': 'Customer name',
+      'vendor.pos.cust.mobile': 'Mobile number',
+      'vendor.pos.cust.mobileHint': 'e.g. 0712 345 678',
+      'vendor.pos.cust.nameNeeded': 'Add a name to save this number.',
+      'vendor.pos.cust.nameLength': 'Name must be 2 to 80 characters.',
+      'vendor.pos.cust.matched': 'Already a customer: {name}',
+      'vendor.pos.cust.manyMatches':
+          '{n} customers have this number. Search customers to choose one.',
+      'vendor.pos.cust.search': 'Search customers',
+      'vendor.pos.cust.offline':
+          'Name and mobile need a connection. You can still choose the customer type.',
+      'vendor.pos.cust.saveFailed':
+          "Couldn't save the customer. Try again, or complete the sale without them.",
+      'vendor.pos.cust.completeWithout': 'Complete without customer',
+      'vendor.sales.customerTypeLine': 'Customer type: {type}',
+      'vendor.receipt.asImage': 'Image',
+      'vendor.receipt.asPdf': 'PDF',
+      'vendor.receipt.downloadImage': 'Download image',
+      'vendor.receipt.a11y.image': 'Share receipt {number} as an image',
+      'vendor.receipt.a11y.pdf': 'Share receipt {number} as a PDF',
+      'vendor.receipt.a11y.downloadImage':
+          'Download receipt {number} as an image',
+      'vendor.receipt.preparing': 'Preparing…',
+      'vendor.receipt.fileFailed':
+          "Couldn't make the file. Try again, or share as text.",
+      'vendor.receipt.tooLongImage':
+          'This receipt is too long for an image. Use PDF.',
+      'vendor.receipt.downloaded': 'Downloaded',
+      'vendor.documents.needsNumberFiles':
+          'This sale has no receipt number yet. You can share it as an image, a PDF or text.',
+      'vendor.documents.offlineFiles':
+          'Links need an internet connection. Image, PDF and text work offline.',
       'vendor.pos.addPayment': 'Add another payment',
       'vendor.pos.removePayment': 'Remove {method} payment',
       'vendor.pos.paymentRow': 'Payment {n}',
@@ -8456,7 +8529,7 @@ class FFLocale extends ChangeNotifier {
       'pin.errTooMany':
           'Umekosea mara nyingi mno. Jaribu tena baada ya dakika {n}.',
       'pin.errResetRequired':
-          'Umekosea mara nyingi mno. Weka PIN mpya ili uingie tena.',
+          'Unahitaji PIN mpya ili uingie. Tumia Umesahau PIN kuweka mpya.', // TODO(sw-review)
       'pin.errAlreadyRegistered':
           'Tayari kuna akaunti inayotumia namba hii ya simu au barua pepe.',
       'pin.errCurrentWrong': 'PIN yako ya sasa si sahihi.',
@@ -12036,7 +12109,7 @@ class FFLocale extends ChangeNotifier {
       'secAct.title': "Shughuli za usalama",
       'secAct.tile.subtitle': "Kujiandikisha kupitia kivinjari",
       'secAct.intro': "Hapa unaona kujiandikisha gym kupitia kivinjari kwa akaunti yako.",
-      'secAct.row.title': "Umejiandikisha kupitia kivinjari",
+      'secAct.row.title': "Kuingia gym kupitia kivinjari", // TODO(sw-review)
       'secAct.row.gymUnknown': "gym ya FitFlex",
       'secAct.status.inbox': "Tahadhari ilitumwa",
       'secAct.status.recorded': "Imerekodiwa",
@@ -12046,7 +12119,35 @@ class FFLocale extends ChangeNotifier {
       'secAct.off.title': "Bado haipatikani",
       'secAct.off.body': "Shughuli za usalama bado hazijawashwa.",
       'secAct.loadMore': "Pakia zaidi",
+      'secAct.loadFailed': "Imeshindikana kupakia shughuli zako za usalama", // TODO(sw-review)
       'secAct.review': "Kagua shughuli",
+      // Ripoti ya "Sikuwa mimi" (S4c). Swahili drafts for native review.
+      'secAct.report.action': "Sikuwa mimi", // TODO(sw-review)
+      'secAct.report.actionHint': "Ripoti kujiandikisha huku kwa timu ya msaada ya FitFlex", // TODO(sw-review)
+      'secAct.report.sheet.title': "Ripoti kujiandikisha huku", // TODO(sw-review)
+      'secAct.report.sheet.body': "Tutarekodi ripoti, na timu ya msaada ya FitFlex itaipitia.", // TODO(sw-review)
+      'secAct.report.sheet.notRemoved': "Ziara haiondolewi kiotomatiki.", // TODO(sw-review)
+      'secAct.report.sheet.secure': "Ripoti na linda akaunti yangu", // TODO(sw-review)
+      'secAct.report.sheet.secureHint': "Utatolewa kwenye kila kifaa. Kama unaingia kwa PIN, kisha utaweka PIN mpya kupitia Umesahau PIN.", // TODO(sw-review)
+      'secAct.report.sheet.only': "Ripoti tu", // TODO(sw-review)
+      'secAct.report.sheet.onlyHint': "Inatuma ripoti. Hakuna kingine kinachobadilika kwenye akaunti yako.", // TODO(sw-review)
+      'secAct.report.status.open': "Imeripotiwa", // TODO(sw-review)
+      'secAct.report.status.acknowledged': "Inapitiwa", // TODO(sw-review)
+      'secAct.report.status.resolved': "Imepitiwa", // TODO(sw-review)
+      'secAct.report.done': "Ripoti imetumwa. Timu ya msaada ya FitFlex itaipitia.", // TODO(sw-review)
+      'secAct.report.limited': "Ripoti imerekodiwa. Akaunti yako ililindwa hivi karibuni, kwa hiyo hakuna kingine kilichobadilishwa.", // TODO(sw-review)
+      'secAct.report.failed': "Ripoti imerekodiwa, lakini hatukuweza kulinda akaunti yako. Jaribu kulinda tena.", // TODO(sw-review)
+      'secAct.report.failedChangePin': "Ripoti imerekodiwa, lakini hatukuweza kulinda akaunti yako. Badilisha PIN yako sasa.", // TODO(sw-review)
+      'secAct.report.failedForgotPin': "Ripoti imerekodiwa, lakini hatukuweza kumaliza kulinda akaunti yako. PIN yako haifanyi kazi tena. Weka PIN mpya kupitia Umesahau PIN.", // TODO(sw-review)
+      'secAct.report.failedRetry': "Jaribu kulinda tena", // TODO(sw-review)
+      'secAct.report.signedOut.title': "Umetolewa kwenye akaunti", // TODO(sw-review)
+      'secAct.report.signedOut.pin': "Ripoti imerekodiwa na akaunti yako imelindwa. Umetolewa kwenye kila kifaa. Ili kuingia, tumia Umesahau PIN kisha weka PIN mpya.", // TODO(sw-review)
+      'secAct.report.signedOut.again': "Ripoti imerekodiwa na akaunti yako imelindwa. Umetolewa kwenye kila kifaa. Ingia tena ili kuendelea.", // TODO(sw-review)
+      'secAct.report.signedOut.action': "Ingia", // TODO(sw-review)
+      'secAct.report.err.limit': "Umefikia idadi ya ripoti zinazoruhusiwa kwa sasa. Jaribu tena baadaye.", // TODO(sw-review)
+      'secAct.report.err.unavailable': "Kuripoti hakupatikani kwa kujiandikisha huku.", // TODO(sw-review)
+      'secAct.report.err.failed': "Hatukuweza kutuma ripoti yako. Jaribu tena.", // TODO(sw-review)
+      'secAct.report.err.network': "Hakuna intaneti. Angalia intaneti yako kisha ujaribu tena.", // TODO(sw-review)
       'inbox.filter.all': 'Zote',
       'inbox.filter.membership': 'Uanachama',
       'inbox.filter.payments': 'Malipo',
@@ -13280,6 +13381,51 @@ class FFLocale extends ChangeNotifier {
       'vendor.pos.referenceOptional': 'Namba ya muamala (si lazima)',
       'vendor.pos.referenceHint': 'Kutoka SMS ya malipo au risiti ya kadi.',
       'vendor.pos.referenceRequired': 'Weka namba ya muamala.',
+      // Sale extras (vendor-sale-extras-1110 §7). RASIMU: zinasubiri
+      // mapitio ya mzawa wa Kiswahili.
+      'vendor.pos.referenceHintCash':
+          'Namba ya risiti au kumbukumbu yako (si namba ya simu ya mteja).',
+      'vendor.pos.a11y.referenceFor': 'Namba ya muamala (si lazima), {method}',
+      'vendor.pos.cust.section': 'Mteja (si lazima)',
+      'vendor.pos.cust.sectionA11y': 'Taarifa za mteja, si lazima',
+      'vendor.pos.cust.empty': 'Ongeza jina, simu au aina',
+      'vendor.pos.cust.type': 'Aina ya mteja',
+      'vendor.customerType.new': 'Mpya',
+      'vendor.customerType.returning': 'Anayerudi',
+      'vendor.customerType.walk_in': 'Wa dukani',
+      'vendor.customerType.online': 'Mtandaoni',
+      'vendor.customerType.other': 'Nyingine',
+      'vendor.pos.cust.name': 'Jina la mteja',
+      'vendor.pos.cust.mobile': 'Namba ya simu',
+      'vendor.pos.cust.mobileHint': 'mf. 0712 345 678',
+      'vendor.pos.cust.nameNeeded': 'Weka jina ili kuhifadhi namba hii.',
+      'vendor.pos.cust.nameLength': 'Jina liwe na herufi 2 hadi 80.',
+      'vendor.pos.cust.matched': 'Tayari ni mteja: {name}',
+      'vendor.pos.cust.manyMatches':
+          'Wateja {n} wana namba hii. Tafuta wateja ili uchague mmoja.',
+      'vendor.pos.cust.search': 'Tafuta wateja',
+      'vendor.pos.cust.offline':
+          'Jina na namba ya simu vinahitaji intaneti. Bado unaweza kuchagua aina ya mteja.',
+      'vendor.pos.cust.saveFailed':
+          'Imeshindikana kuhifadhi mteja. Jaribu tena, au kamilisha mauzo bila mteja.',
+      'vendor.pos.cust.completeWithout': 'Kamilisha bila mteja',
+      'vendor.sales.customerTypeLine': 'Aina ya mteja: {type}',
+      'vendor.receipt.asImage': 'Picha',
+      'vendor.receipt.asPdf': 'PDF',
+      'vendor.receipt.downloadImage': 'Pakua picha',
+      'vendor.receipt.a11y.image': 'Tuma risiti {number} kama picha',
+      'vendor.receipt.a11y.pdf': 'Tuma risiti {number} kama PDF',
+      'vendor.receipt.a11y.downloadImage': 'Pakua risiti {number} kama picha',
+      'vendor.receipt.preparing': 'Inaandaa…',
+      'vendor.receipt.fileFailed':
+          'Imeshindikana kutengeneza faili. Jaribu tena, au tuma kama maandishi.',
+      'vendor.receipt.tooLongImage':
+          'Risiti hii ni ndefu mno kwa picha. Tumia PDF.',
+      'vendor.receipt.downloaded': 'Imepakuliwa',
+      'vendor.documents.needsNumberFiles':
+          'Mauzo haya bado hayana namba ya risiti. Unaweza kuyatuma kama picha, PDF au maandishi.',
+      'vendor.documents.offlineFiles':
+          'Viungo vinahitaji intaneti. Picha, PDF na maandishi vinafanya kazi bila intaneti.',
       'vendor.pos.addPayment': 'Ongeza malipo mengine',
       'vendor.pos.removePayment': 'Ondoa malipo ya {method}',
       'vendor.pos.paymentRow': 'Malipo {n}',
