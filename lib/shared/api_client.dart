@@ -1498,6 +1498,17 @@ class ApiClient {
   Future<Map<String, dynamic>> clearUsername() =>
       _map('DELETE', '/me/username');
 
+  /// Check-ins made from a web browser with this account, newest first
+  /// (member and trainer). [before] is the opaque `next` cursor of the
+  /// previous page, passed back unchanged. 404 `not_found`: feature off.
+  Future<Map<String, dynamic>> securityActivity({
+    int limit = 20,
+    String? before,
+  }) => _map(
+    'GET',
+    '/me/security-activity?${Uri(queryParameters: {'limit': '$limit', if (before != null && before.isNotEmpty) 'before': before}).query}',
+  );
+
   Future<Map<String, dynamic>> myGroups() => _map('GET', '/me/groups');
   Future<Map<String, dynamic>> createMyGroup(Map<String, dynamic> body) =>
       _map('POST', '/me/groups', body: body);
