@@ -17,6 +17,7 @@ class SecurityReportResult {
     required this.reportedAt,
     required this.signedOut,
     required this.pinResetRequired,
+    required this.pinNotApplicable,
     required this.limited,
     required this.failed,
   });
@@ -28,9 +29,14 @@ class SecurityReportResult {
   /// Every session of the account, this one included, has been ended.
   final bool signedOut;
 
-  /// FitFlex holds a PIN and it must be replaced with Forgot PIN. False for
-  /// `false` and for `"not_applicable"` (no PIN held by FitFlex).
+  /// FitFlex holds a PIN and has switched it off: PIN sign-in and Change PIN
+  /// answer `pin_reset_required` until Forgot PIN is completed. False for
+  /// `false` and for `"not_applicable"`.
   final bool pinResetRequired;
+
+  /// `"not_applicable"`: FitFlex holds no PIN for this account, so there is
+  /// none to change or reset.
+  final bool pinNotApplicable;
 
   /// Recorded, but the account was already secured twice in 24 hours, so
   /// nothing was locked again.
@@ -50,26 +56,11 @@ class SecurityReportResult {
       reportedAt: i['reportedAt']?.toString(),
       signedOut: j['signedOut'] == true,
       pinResetRequired: p['pinResetRequired'] == true,
+      pinNotApplicable: p['pinResetRequired'] == 'not_applicable',
       limited: p['limited'] == true,
       failed: p['failed'] == true,
     );
   }
-}
-
-/// The words for a 429 `report_limit_reached`, with the wait when the server
-/// gave one (`retryAfterSeconds`).
-String securityReportLimitText(BuildContext context, Object? retryAfter) {
-  final seconds = retryAfter is num
-      ? retryAfter.toInt()
-      : int.tryParse(retryAfter?.toString() ?? '');
-  if (seconds == null || seconds <= 0) {
-    return context.tr('secAct.report.err.limit');
-  }
-  // Up to an hour and a half in minutes, longer in whole hours (2 or more).
-  final (key, n) = seconds <= 5400
-      ? ('secAct.report.err.limitMinutes', (seconds / 60).ceil())
-      : ('secAct.report.err.limitHours', (seconds / 3600).ceil());
-  return context.tr(key).replaceAll('{n}', '$n');
 }
 
 /// Asks how to report. Resolves `true` for "Report and secure my account",

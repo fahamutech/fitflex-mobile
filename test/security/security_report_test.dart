@@ -141,6 +141,7 @@ const _only = Key('security-report-only');
 const _cancel = Key('security-report-cancel');
 const _retry = Key('security-report-retry-e1');
 const _changePin = Key('security-report-change-pin-e1');
+const _forgotPin = Key('security-report-forgot-pin-e1');
 const _signedOutOk = Key('security-report-signed-out-ok');
 
 Future<AuthState> _signedIn(_Api api) async {
@@ -254,8 +255,8 @@ void main() {
       expect(find.text('Report and secure my account'), findsOneWidget);
       expect(
         find.text(
-          'Signs you out on every device. You then set a new PIN with '
-          'Forgot PIN.',
+          'Signs you out on every device. If you sign in with a PIN, you '
+          'then set a new one with Forgot PIN.',
         ),
         findsOneWidget,
       );
@@ -422,10 +423,11 @@ void main() {
       expect(auth.isSignedIn, isFalse);
     });
 
-    testWidgets('failed without PIN sign-in: no Change PIN button', (
+    testWidgets('failed with no FitFlex PIN: no PIN words, only the retry', (
       tester,
     ) async {
-      final api = _Api()
+      // PIN sign-in is on, but FitFlex holds no PIN for this account.
+      final api = _Api(pinOn: true)
         ..answers.add(
           _result(
             protection: {
@@ -437,13 +439,76 @@ void main() {
           ),
         );
       await _open(tester, api, choice: _secure);
+      expect(
+        find.text(
+          'Report recorded, but we could not secure your account. Try '
+          'securing again.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('PIN'), findsNothing);
+      expect(find.byKey(_changePin), findsNothing);
+      expect(find.byKey(_forgotPin), findsNothing);
+      expect(find.byKey(_retry), findsOneWidget);
+    });
+
+    testWidgets('failed while PIN sign-in is off: no PIN words either', (
+      tester,
+    ) async {
+      final api = _Api()
+        ..answers.add(
+          _result(
+            protection: {
+              'requested': true,
+              'sessionsEnded': false,
+              'pinResetRequired': false,
+              'failed': true,
+            },
+          ),
+        );
+      await _open(tester, api, choice: _secure);
+      expect(find.textContaining('PIN'), findsNothing);
+      expect(find.byKey(_changePin), findsNothing);
+      expect(find.byKey(_forgotPin), findsNothing);
+      expect(find.byKey(_retry), findsOneWidget);
+    });
+
+    testWidgets('failed with the PIN already off: Forgot PIN, not Change '
+        'PIN', (tester) async {
+      final api = _Api(pinOn: true)
+        ..answers.add(
+          _result(
+            protection: {
+              'requested': true,
+              'sessionsEnded': false,
+              'pinResetRequired': true,
+              'failed': true,
+            },
+          ),
+        );
+      final auth = await _open(tester, api, choice: _secure);
+      expect(
+        find.text(
+          'Report recorded, but we could not finish securing your account. '
+          'Your PIN no longer works. Set a new one with Forgot PIN.',
+        ),
+        findsOneWidget,
+      );
+      expect(auth.isSignedIn, isTrue);
       expect(find.byKey(_changePin), findsNothing);
       expect(find.byKey(_retry), findsOneWidget);
+      expect(find.text('Try securing again'), findsOneWidget);
+
+      // The existing Forgot PIN flow opens.
+      await _show(tester, find.byKey(_forgotPin));
+      await tester.tap(find.byKey(_forgotPin));
+      await _settle(tester);
+      expect(find.byKey(const Key('pin-flow-send')), findsOneWidget);
     });
   });
 
   group('errors', () {
-    testWidgets('429 says how long to wait', (tester) async {
+    testWidgets('429: try again later, with no time', (tester) async {
       final api = _Api()
         ..answers.add(
           ApiException(429, {
@@ -454,34 +519,17 @@ void main() {
       await _open(tester, api, choice: _only);
       expect(
         find.text(
-          'You have sent the most reports allowed for now. Try again in '
-          'about 60 minutes.',
+          'You have sent the most reports allowed for now. Try again later.',
         ),
         findsOneWidget,
       );
+      // The server's hour is not shown: the cap is a rolling day.
+      expect(find.textContaining('minutes'), findsNothing);
+      expect(find.textContaining('hour'), findsNothing);
       expect(find.byKey(_retry), findsNothing);
       // Not reported: the action is still there.
       expect(find.byKey(_action), findsOneWidget);
       expect(find.text('Reported'), findsNothing);
-    });
-
-    testWidgets('429 wait in hours, or none', (tester) async {
-      final api = _Api()
-        ..answers.addAll([
-          ApiException(429, {
-            'error': 'report_limit_reached',
-            'retryAfterSeconds': 9000,
-          }),
-          ApiException(429, {'error': 'report_limit_reached'}),
-        ]);
-      await _open(tester, api, choice: _only);
-      expect(find.textContaining('in about 3 hours.'), findsOneWidget);
-      await _show(tester, find.byKey(_action));
-      await tester.tap(find.byKey(_action));
-      await _settle(tester);
-      await tester.tap(find.byKey(_only));
-      await _settle(tester);
-      expect(find.textContaining('Try again later.'), findsOneWidget);
     });
 
     testWidgets('404: not available, list read again', (tester) async {
@@ -631,14 +679,14 @@ void main() {
     await tester.tap(find.byKey(_action));
     await _settle(tester);
     expect(find.text('Ripoti kujiandikisha huku'), findsOneWidget);
-    expect(find.text('Ziara haiondolewi moja kwa moja.'), findsOneWidget);
-    expect(find.text('Ripoti na ulinde akaunti yangu'), findsOneWidget);
+    expect(find.text('Ziara haiondolewi kiotomatiki.'), findsOneWidget);
+    expect(find.text('Ripoti na linda akaunti yangu'), findsOneWidget);
     expect(find.text('Ripoti tu'), findsOneWidget);
     expect(find.text('Ghairi'), findsOneWidget);
     await tester.tap(find.byKey(_only));
     await _settle(tester);
     expect(
-      find.text('Ripoti imetumwa. Msaada wa FitFlex wataipitia.'),
+      find.text('Ripoti imetumwa. Timu ya msaada ya FitFlex itaipitia.'),
       findsOneWidget,
     );
     expect(find.text('Imeripotiwa'), findsOneWidget);
@@ -660,12 +708,14 @@ void main() {
       expect(r.status, 'open');
       expect(r.signedOut, isTrue);
       expect(r.pinResetRequired, isFalse);
+      expect(r.pinNotApplicable, isTrue);
       expect(r.limited, isFalse);
       expect(r.failed, isFalse);
       // Nothing but `ok`: reads as a plain, unprotected report.
       final bare = SecurityReportResult.fromJson({'ok': true});
       expect(bare.signedOut, isFalse);
       expect(bare.failed, isFalse);
+      expect(bare.pinNotApplicable, isFalse);
     });
 
     test('event report', () {

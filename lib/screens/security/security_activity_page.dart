@@ -12,7 +12,7 @@ import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
-import '../pin_flows.dart' show changePinAndReport;
+import '../pin_flows.dart' show ForgotPinScreen, changePinAndReport;
 import 'security_report_sheet.dart';
 
 /// The member's report of an event. Only its progress is known here, never
@@ -256,17 +256,13 @@ class _SecurityActivityPageState extends State<SecurityActivityPage> {
         snack.error(unavailable);
         return _load(refresh: true);
       }
-      final body = e.body;
+      // 429 report_limit_reached: no wait is shown. The server's
+      // retryAfterSeconds is a fixed hour while the cap is a rolling day.
       final limit = e.status == 429;
       setState(() {
         _reporting = null;
         _notices[event.id] = limit
-            ? _ReportNotice(
-                securityReportLimitText(
-                  context,
-                  body is Map ? body['retryAfterSeconds'] : null,
-                ),
-              )
+            ? _ReportNotice(context.tr('secAct.report.err.limit'))
             : _ReportNotice(
                 context.tr('secAct.report.err.failed'),
                 retry: secure,
@@ -300,12 +296,26 @@ class _SecurityActivityPageState extends State<SecurityActivityPage> {
       }
       if (result.signedOut) return;
       if (result.failed) {
+        // What the member can still do about the PIN, if anything:
+        // - the PIN is already off (Change PIN would answer
+        //   pin_reset_required): Forgot PIN;
+        // - FitFlex holds a PIN that still works: Change PIN;
+        // - no PIN held by FitFlex, or PINs off: only the retry.
+        final pin = result.pinResetRequired
+            ? (scope.auth.pinResetEnabled ? _PinRoute.forgot : null)
+            : (!result.pinNotApplicable && scope.auth.pinLoginEnabled
+                  ? _PinRoute.change
+                  : null);
         _notices[event.id] = _ReportNotice(
-          context.tr('secAct.report.failed'),
+          context.tr(switch (pin) {
+            _PinRoute.forgot => 'secAct.report.failedForgotPin',
+            _PinRoute.change => 'secAct.report.failedChangePin',
+            null => 'secAct.report.failed',
+          }),
           tone: FFAlertTone.warning,
           retry: true,
           retryKey: 'secAct.report.failedRetry',
-          changePin: true,
+          pin: pin,
         );
       } else if (result.limited) {
         _notices[event.id] = _ReportNotice(
@@ -346,7 +356,7 @@ class _SecurityActivityPageState extends State<SecurityActivityPage> {
       );
     } else if (_failed) {
       content = FFErrorState(
-        title: context.tr('inbox.loadFailed'),
+        title: context.tr('secAct.loadFailed'),
         retryLabel: context.tr('comms.retry'),
         onRetry: _load,
       );
@@ -374,7 +384,7 @@ class _SecurityActivityPageState extends State<SecurityActivityPage> {
             Padding(
               padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
               child: Text(
-                context.tr('inbox.loadFailed'),
+                context.tr('secAct.loadFailed'),
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ),
@@ -431,7 +441,7 @@ class _SecurityActivityPageState extends State<SecurityActivityPage> {
           liveRegion: true,
           child: FFAlert(message: n.message, tone: n.tone),
         ),
-        if (n.changePin && AppScope.of(context).auth.pinLoginEnabled) ...[
+        if (n.pin == _PinRoute.change) ...[
           const SizedBox(height: FFTokens.spacingSm),
           FFButton(
             key: Key('security-report-change-pin-${event.id}'),
@@ -440,6 +450,23 @@ class _SecurityActivityPageState extends State<SecurityActivityPage> {
             maxLines: 3,
             fullWidth: true,
             onPressed: busy ? null : () => changePinAndReport(context),
+          ),
+        ],
+        if (n.pin == _PinRoute.forgot) ...[
+          const SizedBox(height: FFTokens.spacingSm),
+          FFButton(
+            key: Key('security-report-forgot-pin-${event.id}'),
+            label: context.tr('pin.forgotTitle'),
+            icon: Icons.lock_reset,
+            maxLines: 3,
+            fullWidth: true,
+            onPressed: busy
+                ? null
+                : () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const ForgotPinScreen(),
+                    ),
+                  ),
           ),
         ],
         if (retry != null) ...[
@@ -465,7 +492,7 @@ class _ReportNotice {
     this.tone = FFAlertTone.error,
     this.retry,
     this.retryKey = 'comms.retry',
-    this.changePin = false,
+    this.pin,
   });
 
   final String message;
@@ -474,8 +501,13 @@ class _ReportNotice {
   /// The choice to send again (`secureAccount`), or null for no retry.
   final bool? retry;
   final String retryKey;
-  final bool changePin;
+
+  /// Where to send the member about the PIN, or null for nowhere.
+  final _PinRoute? pin;
 }
+
+/// The PIN step offered when the account could not be secured.
+enum _PinRoute { change, forgot }
 
 /// One event: icon, what happened, where, when (EAT), a status chip, the
 /// report chip once reported, and the "This wasn't me" action while

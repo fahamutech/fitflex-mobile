@@ -3812,6 +3812,7 @@ class FFLocale extends ChangeNotifier {
       'secAct.off.title': "Not available yet",
       'secAct.off.body': "Security activity is not switched on yet.",
       'secAct.loadMore': "Load more",
+      'secAct.loadFailed': "Couldn't load your security activity",
       'secAct.review': "Review activity",
       // "This wasn't me" report (S4c).
       'secAct.report.action': "This wasn't me",
@@ -3820,7 +3821,7 @@ class FFLocale extends ChangeNotifier {
       'secAct.report.sheet.body': "We will record a report for FitFlex support to review.",
       'secAct.report.sheet.notRemoved': "The visit is not removed automatically.",
       'secAct.report.sheet.secure': "Report and secure my account",
-      'secAct.report.sheet.secureHint': "Signs you out on every device. You then set a new PIN with Forgot PIN.",
+      'secAct.report.sheet.secureHint': "Signs you out on every device. If you sign in with a PIN, you then set a new one with Forgot PIN.",
       'secAct.report.sheet.only': "Report only",
       'secAct.report.sheet.onlyHint': "Sends the report. Nothing else changes on your account.",
       'secAct.report.status.open': "Reported",
@@ -3828,15 +3829,15 @@ class FFLocale extends ChangeNotifier {
       'secAct.report.status.resolved': "Reviewed",
       'secAct.report.done': "Report sent. FitFlex support will review it.",
       'secAct.report.limited': "Report recorded. Your account was already secured recently, so nothing more was changed.",
-      'secAct.report.failed': "Report recorded, but we could not secure your account. Change your PIN now.",
+      'secAct.report.failed': "Report recorded, but we could not secure your account. Try securing again.",
+      'secAct.report.failedChangePin': "Report recorded, but we could not secure your account. Change your PIN now.",
+      'secAct.report.failedForgotPin': "Report recorded, but we could not finish securing your account. Your PIN no longer works. Set a new one with Forgot PIN.",
       'secAct.report.failedRetry': "Try securing again",
       'secAct.report.signedOut.title': "You have been signed out",
       'secAct.report.signedOut.pin': "Report recorded and your account is secured. You are signed out on every device. To sign in, use Forgot PIN and set a new PIN.",
       'secAct.report.signedOut.again': "Report recorded and your account is secured. You are signed out on every device. Sign in again to continue.",
       'secAct.report.signedOut.action': "Go to sign in",
       'secAct.report.err.limit': "You have sent the most reports allowed for now. Try again later.",
-      'secAct.report.err.limitMinutes': "You have sent the most reports allowed for now. Try again in about {n} minutes.",
-      'secAct.report.err.limitHours': "You have sent the most reports allowed for now. Try again in about {n} hours.",
       'secAct.report.err.unavailable': "Reporting is not available for this check-in.",
       'secAct.report.err.failed': "We couldn't send your report. Try again.",
       'secAct.report.err.network': "No connection. Check your internet and try again.",
@@ -12003,7 +12004,7 @@ class FFLocale extends ChangeNotifier {
       'secAct.title': "Shughuli za usalama",
       'secAct.tile.subtitle': "Kujiandikisha kupitia kivinjari",
       'secAct.intro': "Hapa unaona kujiandikisha gym kupitia kivinjari kwa akaunti yako.",
-      'secAct.row.title': "Umejiandikisha kupitia kivinjari",
+      'secAct.row.title': "Kuingia gym kupitia kivinjari", // TODO(sw-review)
       'secAct.row.gymUnknown': "gym ya FitFlex",
       'secAct.status.inbox': "Tahadhari ilitumwa",
       'secAct.status.recorded': "Imerekodiwa",
@@ -12013,34 +12014,35 @@ class FFLocale extends ChangeNotifier {
       'secAct.off.title': "Bado haipatikani",
       'secAct.off.body': "Shughuli za usalama bado hazijawashwa.",
       'secAct.loadMore': "Pakia zaidi",
+      'secAct.loadFailed': "Imeshindikana kupakia shughuli zako za usalama", // TODO(sw-review)
       'secAct.review': "Kagua shughuli",
-      // Ripoti ya "Sikuwa mimi" (S4c). DRAFT: for native Swahili review.
-      'secAct.report.action': "Sikuwa mimi",
-      'secAct.report.actionHint': "Ripoti kujiandikisha huku kwa msaada wa FitFlex",
-      'secAct.report.sheet.title': "Ripoti kujiandikisha huku",
-      'secAct.report.sheet.body': "Tutarekodi ripoti ili msaada wa FitFlex waipitie.",
-      'secAct.report.sheet.notRemoved': "Ziara haiondolewi moja kwa moja.",
-      'secAct.report.sheet.secure': "Ripoti na ulinde akaunti yangu",
-      'secAct.report.sheet.secureHint': "Utaondolewa kwenye kila kifaa. Kisha utaweka PIN mpya kupitia Umesahau PIN.",
-      'secAct.report.sheet.only': "Ripoti tu",
-      'secAct.report.sheet.onlyHint': "Inatuma ripoti. Hakuna kingine kinachobadilika kwenye akaunti yako.",
-      'secAct.report.status.open': "Imeripotiwa",
-      'secAct.report.status.acknowledged': "Inapitiwa",
-      'secAct.report.status.resolved': "Imepitiwa",
-      'secAct.report.done': "Ripoti imetumwa. Msaada wa FitFlex wataipitia.",
-      'secAct.report.limited': "Ripoti imerekodiwa. Akaunti yako ililindwa hivi karibuni, kwa hiyo hakuna kingine kilichobadilishwa.",
-      'secAct.report.failed': "Ripoti imerekodiwa, lakini hatukuweza kulinda akaunti yako. Badilisha PIN yako sasa.",
-      'secAct.report.failedRetry': "Jaribu kulinda tena",
-      'secAct.report.signedOut.title': "Umeondolewa kwenye akaunti",
-      'secAct.report.signedOut.pin': "Ripoti imerekodiwa na akaunti yako imelindwa. Umeondolewa kwenye kila kifaa. Ili kuingia, tumia Umesahau PIN kisha weka PIN mpya.",
-      'secAct.report.signedOut.again': "Ripoti imerekodiwa na akaunti yako imelindwa. Umeondolewa kwenye kila kifaa. Ingia tena ili kuendelea.",
-      'secAct.report.signedOut.action': "Nenda kuingia",
-      'secAct.report.err.limit': "Umefikia idadi ya ripoti zinazoruhusiwa kwa sasa. Jaribu tena baadaye.",
-      'secAct.report.err.limitMinutes': "Umefikia idadi ya ripoti zinazoruhusiwa kwa sasa. Jaribu tena baada ya takriban dakika {n}.",
-      'secAct.report.err.limitHours': "Umefikia idadi ya ripoti zinazoruhusiwa kwa sasa. Jaribu tena baada ya takriban saa {n}.",
-      'secAct.report.err.unavailable': "Kuripoti hakupatikani kwa kujiandikisha huku.",
-      'secAct.report.err.failed': "Hatukuweza kutuma ripoti yako. Jaribu tena.",
-      'secAct.report.err.network': "Hakuna mtandao. Angalia intaneti yako kisha ujaribu tena.",
+      // Ripoti ya "Sikuwa mimi" (S4c). Swahili drafts for native review.
+      'secAct.report.action': "Sikuwa mimi", // TODO(sw-review)
+      'secAct.report.actionHint': "Ripoti kujiandikisha huku kwa timu ya msaada ya FitFlex", // TODO(sw-review)
+      'secAct.report.sheet.title': "Ripoti kujiandikisha huku", // TODO(sw-review)
+      'secAct.report.sheet.body': "Tutarekodi ripoti, na timu ya msaada ya FitFlex itaipitia.", // TODO(sw-review)
+      'secAct.report.sheet.notRemoved': "Ziara haiondolewi kiotomatiki.", // TODO(sw-review)
+      'secAct.report.sheet.secure': "Ripoti na linda akaunti yangu", // TODO(sw-review)
+      'secAct.report.sheet.secureHint': "Utatolewa kwenye kila kifaa. Kama unaingia kwa PIN, kisha utaweka PIN mpya kupitia Umesahau PIN.", // TODO(sw-review)
+      'secAct.report.sheet.only': "Ripoti tu", // TODO(sw-review)
+      'secAct.report.sheet.onlyHint': "Inatuma ripoti. Hakuna kingine kinachobadilika kwenye akaunti yako.", // TODO(sw-review)
+      'secAct.report.status.open': "Imeripotiwa", // TODO(sw-review)
+      'secAct.report.status.acknowledged': "Inapitiwa", // TODO(sw-review)
+      'secAct.report.status.resolved': "Imepitiwa", // TODO(sw-review)
+      'secAct.report.done': "Ripoti imetumwa. Timu ya msaada ya FitFlex itaipitia.", // TODO(sw-review)
+      'secAct.report.limited': "Ripoti imerekodiwa. Akaunti yako ililindwa hivi karibuni, kwa hiyo hakuna kingine kilichobadilishwa.", // TODO(sw-review)
+      'secAct.report.failed': "Ripoti imerekodiwa, lakini hatukuweza kulinda akaunti yako. Jaribu kulinda tena.", // TODO(sw-review)
+      'secAct.report.failedChangePin': "Ripoti imerekodiwa, lakini hatukuweza kulinda akaunti yako. Badilisha PIN yako sasa.", // TODO(sw-review)
+      'secAct.report.failedForgotPin': "Ripoti imerekodiwa, lakini hatukuweza kumaliza kulinda akaunti yako. PIN yako haifanyi kazi tena. Weka PIN mpya kupitia Umesahau PIN.", // TODO(sw-review)
+      'secAct.report.failedRetry': "Jaribu kulinda tena", // TODO(sw-review)
+      'secAct.report.signedOut.title': "Umetolewa kwenye akaunti", // TODO(sw-review)
+      'secAct.report.signedOut.pin': "Ripoti imerekodiwa na akaunti yako imelindwa. Umetolewa kwenye kila kifaa. Ili kuingia, tumia Umesahau PIN kisha weka PIN mpya.", // TODO(sw-review)
+      'secAct.report.signedOut.again': "Ripoti imerekodiwa na akaunti yako imelindwa. Umetolewa kwenye kila kifaa. Ingia tena ili kuendelea.", // TODO(sw-review)
+      'secAct.report.signedOut.action': "Ingia", // TODO(sw-review)
+      'secAct.report.err.limit': "Umefikia idadi ya ripoti zinazoruhusiwa kwa sasa. Jaribu tena baadaye.", // TODO(sw-review)
+      'secAct.report.err.unavailable': "Kuripoti hakupatikani kwa kujiandikisha huku.", // TODO(sw-review)
+      'secAct.report.err.failed': "Hatukuweza kutuma ripoti yako. Jaribu tena.", // TODO(sw-review)
+      'secAct.report.err.network': "Hakuna intaneti. Angalia intaneti yako kisha ujaribu tena.", // TODO(sw-review)
       'inbox.filter.all': 'Zote',
       'inbox.filter.membership': 'Uanachama',
       'inbox.filter.payments': 'Malipo',
