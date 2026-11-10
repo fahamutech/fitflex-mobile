@@ -151,7 +151,12 @@ void main() {
       expect(find.byKey(const Key('pass-visits-ring')), findsOneWidget);
       // "11 left" in the ring, "7 of 18 used" beside it: no number twice.
       expect(find.text('11'), findsOneWidget);
-      expect(find.textContaining('11 '), findsNothing);
+      // The end date can fall on the 11th ("Ends 11 Dec 2026"); that is not
+      // the visit count.
+      expect(
+        find.textContaining(RegExp(r'\b11 (?![A-Za-z]{3} \d{4})')),
+        findsNothing,
+      );
       expect(find.text('left'), findsOneWidget);
       expect(find.text('7 of 18 used'), findsOneWidget);
       expect(find.text('Show my QR'), findsOneWidget);
