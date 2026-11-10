@@ -2800,7 +2800,7 @@ class FFLocale extends ChangeNotifier {
       'onboarding.dob': 'Date of birth',
       // Partner date of birth (fitflex-functions#253).
       'partnerDob.help':
-          'Used to suggest shop products for your age group. Not shown on your profile.',
+          'Used to check you are 18 or over and to suggest shop products for your age group. Not shown on your profile.',
       'partnerDob.errRateLimited':
           'Too many changes. Try again in {seconds} seconds.',
       'partnerDob.promptTitle': 'Add your date of birth',
@@ -2810,7 +2810,7 @@ class FFLocale extends ChangeNotifier {
       'partnerDob.tapToChoose': 'Tap to choose',
       'partnerDob.notNow': 'Not now',
       'partnerDob.tileTitle': 'Date of birth and gender',
-      'partnerDob.tileSubtitle': 'Used only for shop suggestions',
+      'partnerDob.tileSubtitle': 'Used for the 18+ check and shop suggestions',
       'partnerDob.saved': 'Saved',
       'partnerGender.optional': 'Gender (optional)',
       'partnerGender.preferNot': 'Prefer not to say',
@@ -4616,6 +4616,57 @@ class FFLocale extends ChangeNotifier {
       'privacy.shop.never':
           'We never use your activity, health, training or company data.',
       'privacy.shop.draft': 'This text is a draft and may change.',
+      // Partner DOB slices 4-5 (shop personalisation for Trainers and gym
+      // owners, SHOP_PERSONALISATION_PARTNERS). Draft pending Tanzanian
+      // counsel (review round 1, 2026-11-10).
+      'shop.why.switchHintPartnerGender':
+          'Use my purchases, my age and my gender to order the shop for me.',
+      'shop.why.switchHintPartnerGenderArea':
+          'Use my purchases, my age, my gender and my current area to order the shop for me.',
+      'shop.why.switchHintPartnerGenderSpecialty':
+          'Use my purchases, my age, my gender and my trainer specialties to order the shop for me.',
+      'shop.why.switchHintPartnerGenderSpecialtyArea':
+          'Use my purchases, my age, my gender, my trainer specialties and my current area to order the shop for me.',
+      'shop.why.switchHintPartnerAge':
+          'Use my purchases and my age to order the shop for me.',
+      'shop.why.switchHintPartnerAgeArea':
+          'Use my purchases, my age and my current area to order the shop for me.',
+      'shop.why.switchHintPartnerAgeSpecialty':
+          'Use my purchases, my age and my trainer specialties to order the shop for me.',
+      'shop.why.switchHintPartnerAgeSpecialtyArea':
+          'Use my purchases, my age, my trainer specialties and my current area to order the shop for me.',
+      'shop.why.genderTrainer': 'The gender on your trainer profile.',
+      'shop.why.genderOwner': 'The gender you gave FitFlex.',
+      'shop.why.agePartner':
+          'Your age, from the date of birth you gave FitFlex.',
+      'privacy.shop.usesGenderAgePartner':
+          'Your age and gender, to show tagged products first (never used for under-18s)',
+      'privacy.shop.usesGenderPartner':
+          'Your gender, to show tagged products first (never used for under-18s)',
+      'privacy.shop.usesAgePartner':
+          'Your age, from the date of birth you gave FitFlex, to show tagged products first (never used for under-18s)',
+      'shop.partnerDob.hint':
+          'Add your date of birth to get suggestions for your age group. Until then, your age and gender are not used.',
+      'shop.partnerAbout.title': 'Date of birth, gender and the shop',
+      'shop.partnerAbout.askedTrainer':
+          'We ask for your date of birth. Your gender comes from your trainer profile.',
+      'shop.partnerAbout.askedOwner':
+          'We ask for your date of birth and, if you choose, your gender.',
+      'shop.partnerAbout.use':
+          'We use your date of birth to check you are 18 or over. In the shop, your age and gender only change the order of products, never hide them. Your date of birth is not shown on your profile.',
+      'shop.partnerAbout.useTrainer':
+          'Your gender is shown on your trainer profile.',
+      'shop.partnerAbout.memberDob':
+          "If you haven't given one here, we may use the date of birth in your FitFlex member profile.",
+      'shop.partnerAbout.noDob':
+          'With no date of birth at all, your age and gender are not used.',
+      'shop.partnerAbout.under18':
+          'If any date of birth on your account shows you are under 18, nothing is personalised.',
+      'shop.partnerAbout.switchOff':
+          'You can turn off “Personalised shop” at any time.',
+      'shop.partnerAbout.never':
+          'We never use your activity, health, training, company or verification (KYC) data for this.',
+      'partnerDob.whyLink': 'How we use it',
       'vendor.target.title': "Who it's for (optional)",
       'vendor.target.hint':
           'Helps FitFlex show it first to members it suits. Everyone can still find and buy it.',
@@ -11109,7 +11160,7 @@ class FFLocale extends ChangeNotifier {
       'onboarding.dob': 'Tarehe ya kuzaliwa',
       // Partner date of birth (fitflex-functions#253). Draft: needs native review.
       'partnerDob.help':
-          'Hutumika kupendekeza bidhaa za dukani zinazofaa kundi lako la umri. Haionyeshwi kwenye wasifu wako.',
+          'Hutumika kuthibitisha una miaka 18 au zaidi na kupendekeza bidhaa za dukani zinazofaa kundi lako la umri. Haionyeshwi kwenye wasifu wako.',
       'partnerDob.errRateLimited':
           'Mabadiliko mengi mno. Jaribu tena baada ya sekunde {seconds}.',
       'partnerDob.promptTitle': 'Ongeza tarehe yako ya kuzaliwa',
@@ -11119,7 +11170,8 @@ class FFLocale extends ChangeNotifier {
       'partnerDob.tapToChoose': 'Gusa kuchagua',
       'partnerDob.notNow': 'Si sasa',
       'partnerDob.tileTitle': 'Tarehe ya kuzaliwa na jinsia',
-      'partnerDob.tileSubtitle': 'Hutumika kwa mapendekezo ya dukani tu',
+      'partnerDob.tileSubtitle':
+          'Hutumika kuthibitisha una miaka 18+ na kwa mapendekezo ya dukani',
       'partnerDob.saved': 'Imehifadhiwa',
       'partnerGender.optional': 'Jinsia (si lazima)',
       'partnerGender.preferNot': 'Sipendi kusema',
@@ -12877,6 +12929,56 @@ class FFLocale extends ChangeNotifier {
       'privacy.shop.never':
           'Hatutumii kamwe data za shughuli, afya, mazoezi au kampuni yako.',
       'privacy.shop.draft': 'Maandishi haya ni rasimu na yanaweza kubadilika.',
+      // Partner DOB slices 4-5 [SW native review]. Rasimu: inasubiri
+      // mwanasheria wa Tanzania (review round 1, 2026-11-10).
+      'shop.why.switchHintPartnerGender':
+          'Tumia manunuzi yangu, umri wangu na jinsia yangu kupanga duka kwa ajili yangu.',
+      'shop.why.switchHintPartnerGenderArea':
+          'Tumia manunuzi yangu, umri wangu, jinsia yangu na eneo nililopo sasa kupanga duka kwa ajili yangu.',
+      'shop.why.switchHintPartnerGenderSpecialty':
+          'Tumia manunuzi yangu, umri wangu, jinsia yangu na utaalamu wangu wa trainer kupanga duka kwa ajili yangu.',
+      'shop.why.switchHintPartnerGenderSpecialtyArea':
+          'Tumia manunuzi yangu, umri wangu, jinsia yangu, utaalamu wangu wa trainer na eneo nililopo sasa kupanga duka kwa ajili yangu.',
+      'shop.why.switchHintPartnerAge':
+          'Tumia manunuzi yangu na umri wangu kupanga duka kwa ajili yangu.',
+      'shop.why.switchHintPartnerAgeArea':
+          'Tumia manunuzi yangu, umri wangu na eneo nililopo sasa kupanga duka kwa ajili yangu.',
+      'shop.why.switchHintPartnerAgeSpecialty':
+          'Tumia manunuzi yangu, umri wangu na utaalamu wangu wa trainer kupanga duka kwa ajili yangu.',
+      'shop.why.switchHintPartnerAgeSpecialtyArea':
+          'Tumia manunuzi yangu, umri wangu, utaalamu wangu wa trainer na eneo nililopo sasa kupanga duka kwa ajili yangu.',
+      'shop.why.genderTrainer': 'Jinsia iliyo kwenye wasifu wako wa trainer.',
+      'shop.why.genderOwner': 'Jinsia uliyoweka kwenye FitFlex.',
+      'shop.why.agePartner':
+          'Umri wako, kutoka tarehe ya kuzaliwa uliyoipa FitFlex.',
+      'privacy.shop.usesGenderAgePartner':
+          'Umri na jinsia yako, kuonyesha kwanza bidhaa zilizowekewa lebo (havitumiki kwa walio chini ya miaka 18)',
+      'privacy.shop.usesGenderPartner':
+          'Jinsia yako, kuonyesha kwanza bidhaa zilizowekewa lebo (haitumiki kwa walio chini ya miaka 18)',
+      'privacy.shop.usesAgePartner':
+          'Umri wako, kutoka tarehe ya kuzaliwa uliyoipa FitFlex, kuonyesha kwanza bidhaa zilizowekewa lebo (hautumiki kwa walio chini ya miaka 18)',
+      'shop.partnerDob.hint':
+          'Ongeza tarehe yako ya kuzaliwa upate mapendekezo ya dukani yanayofaa kundi lako la umri. Hadi utakapoiongeza, umri na jinsia yako havitumiki.',
+      'shop.partnerAbout.title': 'Tarehe ya kuzaliwa, jinsia na duka',
+      'shop.partnerAbout.askedTrainer':
+          'Tunakuomba tarehe yako ya kuzaliwa. Jinsia yako inatoka kwenye wasifu wako wa trainer.',
+      'shop.partnerAbout.askedOwner':
+          'Tunakuomba tarehe yako ya kuzaliwa na, ukipenda, jinsia yako.',
+      'shop.partnerAbout.use':
+          'Tunatumia tarehe yako ya kuzaliwa kuhakikisha una miaka 18 au zaidi. Dukani, umri na jinsia yako hubadilisha tu mpangilio wa bidhaa, kamwe si kuzificha. Tarehe yako ya kuzaliwa haionyeshwi kwenye wasifu wako.',
+      'shop.partnerAbout.useTrainer':
+          'Jinsia yako inaonyeshwa kwenye wasifu wako wa trainer.',
+      'shop.partnerAbout.memberDob':
+          'Ikiwa hujaitoa hapa, tunaweza kutumia tarehe ya kuzaliwa iliyo kwenye wasifu wako wa mwanachama wa FitFlex.',
+      'shop.partnerAbout.noDob':
+          'Bila tarehe yoyote ya kuzaliwa, umri na jinsia yako havitumiki.',
+      'shop.partnerAbout.under18':
+          'Ikiwa tarehe yoyote ya kuzaliwa kwenye akaunti yako inaonyesha uko chini ya miaka 18, duka halipangwi kwa ajili yako.',
+      'shop.partnerAbout.switchOff':
+          'Unaweza kuzima “Duka kwa ajili yako” wakati wowote.',
+      'shop.partnerAbout.never':
+          'Hatutumii kamwe data zako za shughuli, afya, mazoezi, kampuni au uthibitisho (KYC) kwa hili.',
+      'partnerDob.whyLink': 'Jinsi tunavyoitumia',
       'vendor.target.title': 'Ni kwa ajili ya nani (si lazima)',
       'vendor.target.hint':
           'Inasaidia FitFlex kuionyesha kwanza kwa wanachama ambao bidhaa hii inawafaa. Kila mtu bado anaweza kuipata na kuinunua.',
