@@ -5010,7 +5010,8 @@ class FFLocale extends ChangeNotifier {
       'vendor.pos.referenceHint': 'From the payment SMS or card slip.',
       'vendor.pos.referenceRequired': 'Enter the transaction reference.',
       // Sale extras (docs/design/vendor-sale-extras-1110.md §7).
-      'vendor.pos.referenceHintCash': "Till or slip number (not the customer's phone).",
+      'vendor.pos.referenceHintCash':
+          "Slip or receipt number (not the customer's phone).",
       'vendor.pos.a11y.referenceFor': 'Reference (optional), {method}',
       'vendor.pos.cust.section': 'Customer (optional)',
       'vendor.pos.cust.sectionA11y': 'Customer details, optional',
@@ -13239,7 +13240,7 @@ class FFLocale extends ChangeNotifier {
       // Sale extras (vendor-sale-extras-1110 §7). RASIMU: zinasubiri
       // mapitio ya mzawa wa Kiswahili.
       'vendor.pos.referenceHintCash':
-          'Namba ya till au risiti (si namba ya simu ya mteja).',
+          'Namba ya risiti au kumbukumbu yako (si namba ya simu ya mteja).',
       'vendor.pos.a11y.referenceFor': 'Namba ya muamala (si lazima), {method}',
       'vendor.pos.cust.section': 'Mteja (si lazima)',
       'vendor.pos.cust.sectionA11y': 'Taarifa za mteja, si lazima',

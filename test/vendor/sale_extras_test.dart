@@ -89,6 +89,24 @@ Future<void> typeMobile(WidgetTester tester, String v) async {
   await tester.pumpAndSettle();
 }
 
+const draftKey = 'vendor_pos_draft.v1.v1';
+
+Map<String, dynamic> draftJson({String? customerType, String? clientRef}) => {
+  'lines': [
+    {
+      'productId': 'p1',
+      'name': 'Whey',
+      'listPriceTzs': 95000,
+      'qty': 1,
+      'discountTzs': 0,
+    },
+  ],
+  'saleDiscountTzs': 0,
+  'note': '',
+  'clientRef': ?clientRef,
+  'customerType': ?customerType,
+};
+
 Map saleBody(RecordingApi api) => api.only('POST', '/vendor/sales').body as Map;
 
 void main() {
@@ -160,6 +178,11 @@ void main() {
         'reference': 'TILL-889',
       });
       expect(cleanReference('A\nB\tC'), 'A B C');
+      // The server's \p{Cc}: C1 controls too (NEL U+0085, U+0080, U+009F).
+      expect(cleanReference('A\u0085B\u0080C\u009F'), 'A B C');
+      expect(referenceControlChars.hasMatch('\u0085'), isTrue);
+      expect(referenceControlChars.hasMatch('\u00A0'), isFalse);
+      expect(referenceControlChars.hasMatch('Ā-ü'), isFalse);
       expect(
         PaymentRow(
           method: 'cash',
@@ -703,14 +726,39 @@ void main() {
       expect(find.text('Namba ya simu'), findsOneWidget);
     });
 
-    apiTest('section off: a draft type is not sent', (tester, api) async {
-      SharedPreferences.setMockInitialValues({});
+    apiTest('section off: a draft type not yet sent is dropped', (
+      tester,
+      api,
+    ) async {
+      SharedPreferences.setMockInitialValues({
+        draftKey: jsonEncode(draftJson(customerType: 'walk_in')),
+      });
       seed(api, tools: customersOn);
       await pumpPos(tester, api);
-      await openPayment(tester);
+      await tapVisible(tester, find.byKey(const Key('pos-cart-charge')));
       expect(find.byKey(const Key('pos-cust-section')), findsNothing);
       await tapVisible(tester, find.byKey(const Key('pos-complete')));
       expect(saleBody(api).containsKey('customerType'), isFalse);
+    });
+
+    apiTest('section off: a draft already being sent keeps key and type', (
+      tester,
+      api,
+    ) async {
+      // Killed mid-send (clientRef fixed), reopened with the flag off: the
+      // retry must replay the same sale, not make a new key (duplicate).
+      SharedPreferences.setMockInitialValues({
+        draftKey: jsonEncode(
+          draftJson(customerType: 'walk_in', clientRef: 'sale_kept0001'),
+        ),
+      });
+      seed(api, tools: customersOn);
+      await pumpPos(tester, api);
+      await tapVisible(tester, find.byKey(const Key('pos-cart-charge')));
+      await tapVisible(tester, find.byKey(const Key('pos-complete')));
+      final body = saleBody(api);
+      expect(body['clientRef'], 'sale_kept0001');
+      expect(body['customerType'], 'walk_in');
     });
   });
 }

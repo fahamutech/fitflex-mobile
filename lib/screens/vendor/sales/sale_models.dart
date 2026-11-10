@@ -35,9 +35,10 @@ const referenceRequiredMethods = {
 Set<String> saleReferenceRequired({required bool referenceOptional}) =>
     referenceOptional ? const <String>{} : referenceRequiredMethods;
 
-/// Characters the server refuses in a payment reference (control
-/// characters, newlines included): stripped as the seller types or pastes.
-final referenceControlChars = RegExp(r'[\x00-\x1F\x7F]');
+/// Characters the server refuses in a payment reference: Unicode control
+/// characters (`\p{Cc}`: U+0000–U+001F, U+007F and U+0080–U+009F, e.g. NEL
+/// U+0085), newlines included. Stripped as the seller types or pastes.
+final referenceControlChars = RegExp(r'[\x00-\x1F\x7F-\x9F]');
 
 /// A reference as it is sent: control characters removed, trimmed.
 String cleanReference(String raw) =>

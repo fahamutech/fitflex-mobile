@@ -161,8 +161,13 @@ class _PosPageState extends State<PosPage> {
     }
     // S4: the draft keeps the customer's id only; its name is asked again.
     // Sale extras: a type kept from when the section was on is not sent
-    // while it is off (nothing hidden goes with a sale).
-    if (draft?.customerType != null && !_tools.saleCustomerDetailsOn) {
+    // while it is off (nothing hidden goes with a sale) — unless the draft
+    // was already being sent (it has a clientRef): changing the type would
+    // mean a new key and a possible duplicate, and the server stores the
+    // type whatever the flag says.
+    if (draft?.customerType != null &&
+        draft?.clientRef == null &&
+        !_tools.saleCustomerDetailsOn) {
       _cart.update((c) => c.setCustomerType(null));
     }
     final customerId = draft?.customerId;
