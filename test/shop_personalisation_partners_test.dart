@@ -9,6 +9,7 @@
 // `uses` may hold profile_gender/profile_age), GET /shop/home reason codes,
 // GET /me/personal-details (`ask`, `dateOfBirth`). Mocked at the HTTP level.
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fitflexmobile/shared/i18n.dart';
@@ -75,6 +76,9 @@ void _seed(
   Map<String, dynamic> home, {
   List<String>? uses,
   Map<String, dynamic>? details,
+  // functions#346: true only in trainer/owner mode with both server flags
+  // on; null leaves the key out (an older server, or a flag off).
+  bool? profileSignals = true,
 }) {
   api.on('GET /shop/products', _products.values.toList());
   api.on('GET /me/shop-orders', <dynamic>[]);
@@ -87,6 +91,7 @@ void _seed(
       'historyDays': 365,
       'mode': home['mode'],
       'uses': uses,
+      'profileSignals': ?profileSignals,
     });
   }
   if (details != null) api.on('GET /me/personal-details', details);
@@ -146,8 +151,9 @@ void main() {
         api.where('GET', '/shop/preferences').map((r) => r.query),
         contains('mode=trainer'),
       );
+      // Age (no gender) and specialties are listed: exactly those.
       expect(
-        find.text(host.tr('shop.why.switchHintPartnerDob')),
+        find.text(host.tr('shop.why.switchHintPartnerAgeSpecialty')),
         findsOneWidget,
       );
       expect(find.text(host.tr('shop.why.switchHintPartner')), findsNothing);
@@ -223,6 +229,96 @@ void main() {
       expect(api.where('GET', '/shop/home').length, greaterThan(homeLoads));
     });
 
+    apiTest('profileSignals absent: no hint, personal details not asked', (
+      tester,
+      api,
+    ) async {
+      _seed(
+        api,
+        _home(mode: 'owner'),
+        uses: ['purchase_history'],
+        details: _noDob,
+        profileSignals: null,
+      );
+      final host = await _pump(tester, api, ShopHomeMode.owner);
+      await _openWhy(tester);
+      await tester.pumpAndSettle();
+      expect(find.text(host.tr('shop.why.switchHintPartner')), findsOneWidget);
+      expect(_key('shop-partner-dob-hint'), findsNothing);
+      expect(api.sent('GET', '/me/personal-details'), isFalse);
+      // The partner sheet has no hint either.
+      await tapVisible(tester, _key('shop-why-partner-privacy'));
+      expect(_key('privacy-shop-sheet'), findsOneWidget);
+      expect(_key('shop-partner-dob-hint'), findsNothing);
+      expect(api.sent('GET', '/me/personal-details'), isFalse);
+    });
+
+    apiTest('profileSignals false: no hint', (tester, api) async {
+      _seed(
+        api,
+        _home(mode: 'trainer'),
+        uses: ['purchase_history'],
+        details: _noDob,
+        profileSignals: false,
+      );
+      await _pump(tester, api, ShopHomeMode.trainer);
+      await _openWhy(tester);
+      await tester.pumpAndSettle();
+      expect(_key('shop-partner-dob-hint'), findsNothing);
+      expect(api.sent('GET', '/me/personal-details'), isFalse);
+    });
+
+    apiTest('an old server (no profileSignals, no mode, no uses): no hint, '
+        'the purchases-only wording', (tester, api) async {
+      _seed(api, _home(mode: 'owner'), details: _noDob);
+      api.on('GET /shop/preferences', {
+        'personalised': true,
+        'available': true,
+      });
+      final host = await _pump(tester, api, ShopHomeMode.owner);
+      await _openWhy(tester);
+      await tester.pumpAndSettle();
+      expect(find.text(host.tr('shop.why.switchHintPartner')), findsOneWidget);
+      expect(_key('shop-partner-dob-hint'), findsNothing);
+      expect(api.sent('GET', '/me/personal-details'), isFalse);
+    });
+
+    apiTest('the hint button wraps at large text in Swahili', (
+      tester,
+      api,
+    ) async {
+      _seed(
+        api,
+        _home(mode: 'owner'),
+        uses: ['purchase_history'],
+        details: _noDob,
+      );
+      await pumpPage(
+        tester,
+        api,
+        const ShopBrowseBody(mode: ShopHomeMode.owner),
+        user: const {'id': 'p-owner', 'userType': 'owner'},
+        lang: 'sw',
+        textScale: 2,
+        size: const Size(375, 1600),
+        keepRequests: true,
+      );
+      await _openWhy(tester);
+      await tester.pumpAndSettle();
+      final label = find.descendant(
+        of: _key('shop-partner-dob-add'),
+        matching: find.byType(Text),
+      );
+      expect(label, findsOneWidget);
+      final text = tester.widget<Text>(label);
+      expect(text.maxLines, greaterThan(1));
+      final paragraph = tester.renderObject<RenderParagraph>(
+        find.descendant(of: label, matching: find.byType(RichText)),
+      );
+      expect(paragraph.didExceedMaxLines, isFalse);
+      expect(tester.takeException(), isNull);
+    });
+
     apiTest('a known under-18 date of birth never gets the hint', (
       tester,
       api,
@@ -275,7 +371,7 @@ void main() {
       final host = await _pump(tester, api, ShopHomeMode.trainer);
       await _openWhy(tester);
       await tester.pumpAndSettle();
-      expect(find.text(host.tr('shop.why.genderPartner')), findsOneWidget);
+      expect(find.text(host.tr('shop.why.genderTrainer')), findsOneWidget);
       expect(find.text(host.tr('shop.why.agePartner')), findsOneWidget);
       expect(find.text(host.tr('shop.why.gender')), findsNothing);
       expect(find.text(host.tr('shop.why.age')), findsNothing);
@@ -299,7 +395,7 @@ void main() {
       await tester.tap(_key('shop-why-personalised'));
       await tester.pumpAndSettle();
       expect(
-        find.text(host.tr('shop.why.switchHintPartnerDob')),
+        find.text(host.tr('shop.why.switchHintPartnerGender')),
         findsOneWidget,
       );
     });
@@ -347,7 +443,7 @@ void main() {
       expect(find.text(host.tr('privacy.shop.never')), findsNothing);
       expect(find.text(host.tr('privacy.shop.draft')), findsOneWidget);
       expect(
-        find.text(host.tr('shop.why.switchHintPartnerDob')),
+        find.text(host.tr('shop.why.switchHintPartnerGender')),
         findsOneWidget,
       );
     });
@@ -360,16 +456,40 @@ void main() {
       final host = await pumpPage(
         tester,
         api,
-        Material(child: PartnerDobField(controller: controller)),
+        Material(
+          child: PartnerDobField(
+            controller: controller,
+            role: PartnerRole.trainer,
+          ),
+        ),
         user: const {'id': 't1', 'userType': 'trainer'},
       );
       expect(find.text(host.tr('partnerDob.help')), findsOneWidget);
       await tapVisible(tester, _key('partner-dob-why'));
       expect(_key('partner-shop-explainer'), findsOneWidget);
-      for (final k in PartnerShopExplainer.lines) {
+      expect(find.text(host.tr('shop.partnerAbout.title')), findsOneWidget);
+      for (final k in PartnerShopExplainer.linesFor(PartnerRole.trainer)) {
         expect(find.text(host.tr(k)), findsOneWidget, reason: k);
       }
+      // The trainer wording, not the owner's.
+      expect(find.text(host.tr('shop.partnerAbout.askedOwner')), findsNothing);
       expect(_key('partner-shop-explainer-draft'), findsOneWidget);
+    });
+
+    apiTest('the owner explanation has the owner wording', (tester, api) async {
+      final host = await pumpPage(
+        tester,
+        api,
+        const Material(child: PartnerShopExplainer(role: PartnerRole.owner)),
+      );
+      for (final k in PartnerShopExplainer.linesFor(PartnerRole.owner)) {
+        expect(find.text(host.tr(k)), findsOneWidget, reason: k);
+      }
+      expect(
+        find.text(host.tr('shop.partnerAbout.askedTrainer')),
+        findsNothing,
+      );
+      expect(find.text(host.tr('shop.partnerAbout.useTrainer')), findsNothing);
     });
 
     apiTest('without help (compact use) there is no link', (tester, api) async {
@@ -379,7 +499,11 @@ void main() {
         tester,
         api,
         Material(
-          child: PartnerDobField(controller: controller, showHelp: false),
+          child: PartnerDobField(
+            controller: controller,
+            role: PartnerRole.owner,
+            showHelp: false,
+          ),
         ),
       );
       expect(_key('partner-dob-why'), findsNothing);
@@ -412,21 +536,64 @@ void main() {
       );
     });
 
+    test('the switch hint follows uses', () {
+      Set<ShopSignal> u(List<String> w) => {
+        for (final x in w) ?ShopSignal.fromWire(x),
+      };
+      expect(partnerSwitchHintKey(null, area: false), isNull);
+      expect(partnerSwitchHintKey(u(['purchase_history']), area: true), isNull);
+      expect(
+        partnerSwitchHintKey(u(['profile_gender', 'profile_age']), area: false),
+        'shop.why.switchHintPartnerGender',
+      );
+      expect(
+        partnerSwitchHintKey(u(['profile_age']), area: true),
+        'shop.why.switchHintPartnerAgeArea',
+      );
+      expect(
+        partnerSwitchHintKey(
+          u(['profile_gender', 'profile_age', 'location', 'specialty']),
+          area: true,
+        ),
+        'shop.why.switchHintPartnerGenderSpecialtyArea',
+      );
+    });
+
+    test('profileSignals is parsed, absent = false', () {
+      expect(
+        ShopPreferences.fromJson({'available': true}).profileSignals,
+        isFalse,
+      );
+      expect(
+        ShopPreferences.fromJson({'profileSignals': true}).profileSignals,
+        isTrue,
+      );
+      expect(
+        ShopPreferences.fromJson({'profileSignals': 'true'}).profileSignals,
+        isFalse,
+      );
+    });
+
     test('every new key has English and Swahili', () {
       final en = FFLocale()..set(const Locale('en'));
       final sw = FFLocale()..set(const Locale('sw'));
       for (final key in [
-        'shop.why.switchHintPartnerDob',
-        'shop.why.switchHintPartnerDobArea',
-        'shop.why.genderPartner',
+        for (final g in ['Gender', 'Age'])
+          for (final sp in ['', 'Specialty'])
+            for (final a in ['', 'Area']) 'shop.why.switchHintPartner$g$sp$a',
+        'shop.why.genderTrainer',
+        'shop.why.genderOwner',
         'shop.why.agePartner',
         'privacy.shop.usesGenderAgePartner',
         'privacy.shop.usesGenderPartner',
         'privacy.shop.usesAgePartner',
         'shop.partnerDob.hint',
         'shop.partnerAbout.title',
-        ...PartnerShopExplainer.lines,
+        ...PartnerShopExplainer.linesFor(PartnerRole.trainer),
+        ...PartnerShopExplainer.linesFor(PartnerRole.owner),
         'partnerDob.whyLink',
+        'partnerDob.help',
+        'partnerDob.tileSubtitle',
       ]) {
         expect(en.t(key), isNot(key), reason: 'en $key');
         expect(sw.t(key), isNot(key), reason: 'sw $key');
@@ -437,7 +604,18 @@ void main() {
         sw.t('shop.partnerAbout.switchOff'),
         contains('Duka kwa ajili yako'),
       );
-      for (final key in PartnerShopExplainer.lines) {
+      expect(
+        en.t('shop.partnerAbout.switchOff'),
+        contains('“Personalised shop”'),
+      );
+      expect(
+        sw.t('shop.partnerAbout.switchOff'),
+        contains('“Duka kwa ajili yako”'),
+      );
+      for (final key in [
+        ...PartnerShopExplainer.linesFor(PartnerRole.trainer),
+        ...PartnerShopExplainer.linesFor(PartnerRole.owner),
+      ]) {
         expect(sw.t(key), isNot(contains('mkufunzi')));
         expect(sw.t(key), isNot(contains('kocha')));
       }

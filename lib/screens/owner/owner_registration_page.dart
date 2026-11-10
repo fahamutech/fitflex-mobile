@@ -413,6 +413,7 @@ class _OwnerRegistrationPageState extends State<OwnerRegistrationPage> {
           PartnerDobField(
             key: const Key('owner-reg-dob'),
             controller: _dobCtrl,
+            role: PartnerRole.owner,
             errorText: _dobError,
             onChanged: () => setState(() => _dobError = _dobProblem()),
           ),

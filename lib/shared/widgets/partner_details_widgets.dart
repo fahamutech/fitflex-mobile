@@ -26,6 +26,7 @@ class PartnerDobField extends StatelessWidget {
   const PartnerDobField({
     super.key,
     required this.controller,
+    required this.role,
     this.required = true,
     this.enabled = true,
     this.errorText,
@@ -34,6 +35,9 @@ class PartnerDobField extends StatelessWidget {
   });
 
   final TextEditingController controller;
+
+  /// Whose explanation "How we use it" opens.
+  final PartnerRole role;
   final bool required;
   final bool enabled;
 
@@ -105,7 +109,8 @@ class PartnerDobField extends StatelessWidget {
           label: context.tr('partnerDob.whyLink'),
           variant: FFButtonVariant.ghost,
           visualDensity: VisualDensity.standard,
-          onPressed: () => showPartnerShopExplainer(context),
+          maxLines: 3,
+          onPressed: () => showPartnerShopExplainer(context, role: role),
         ),
       ],
     );
@@ -117,9 +122,12 @@ class PartnerDobField extends StatelessWidget {
 class PartnerShopExplainer extends StatelessWidget {
   const PartnerShopExplainer({
     super.key,
+    required this.role,
     this.showTitle = false,
     this.showDraft = true,
   });
+
+  final PartnerRole role;
 
   /// Shown inside another sheet: a heading of its own.
   final bool showTitle;
@@ -127,9 +135,14 @@ class PartnerShopExplainer extends StatelessWidget {
   /// The "draft" note (off where the host already shows it).
   final bool showDraft;
 
-  static const lines = [
-    'shop.partnerAbout.asked',
+  /// The lines for [role], in order (review round 1, 2026-11-10).
+  static List<String> linesFor(PartnerRole role) => [
+    role == PartnerRole.trainer
+        ? 'shop.partnerAbout.askedTrainer'
+        : 'shop.partnerAbout.askedOwner',
     'shop.partnerAbout.use',
+    if (role == PartnerRole.trainer) 'shop.partnerAbout.useTrainer',
+    'shop.partnerAbout.memberDob',
     'shop.partnerAbout.noDob',
     'shop.partnerAbout.under18',
     'shop.partnerAbout.switchOff',
@@ -154,7 +167,7 @@ class PartnerShopExplainer extends StatelessWidget {
           ),
           const SizedBox(height: FFTokens.spacingXs),
         ],
-        for (final key in lines)
+        for (final key in linesFor(role))
           Padding(
             padding: const EdgeInsets.only(bottom: FFTokens.spacingXs),
             child: Row(
@@ -187,12 +200,14 @@ class PartnerShopExplainer extends StatelessWidget {
 }
 
 /// Opens [PartnerShopExplainer] in a sheet of its own.
-Future<void> showPartnerShopExplainer(BuildContext context) =>
-    showFFSheet<void>(
-      context,
-      title: context.tr('shop.partnerAbout.title'),
-      child: const PartnerShopExplainer(),
-    );
+Future<void> showPartnerShopExplainer(
+  BuildContext context, {
+  required PartnerRole role,
+}) => showFFSheet<void>(
+  context,
+  title: context.tr('shop.partnerAbout.title'),
+  child: PartnerShopExplainer(role: role),
+);
 
 /// A gym owner's optional gender: Male, Female, Other or Prefer not to say
 /// ([partnerGenderPreferNot], sent as null).
@@ -251,11 +266,16 @@ Future<PersonalDetails?> showPartnerDetailsSheet(
   BuildContext context, {
   required PersonalDetails details,
   required bool canEditGender,
+  PartnerRole? role,
 }) {
   return showFFSheet<PersonalDetails>(
     context,
     title: context.tr('partnerDob.tileTitle'),
-    child: PartnerDetailsForm(details: details, canEditGender: canEditGender),
+    child: PartnerDetailsForm(
+      details: details,
+      canEditGender: canEditGender,
+      role: role,
+    ),
   );
 }
 
@@ -265,10 +285,17 @@ class PartnerDetailsForm extends StatefulWidget {
     super.key,
     required this.details,
     required this.canEditGender,
-  });
+    PartnerRole? role,
+  }) : _role = role;
 
   final PersonalDetails details;
   final bool canEditGender;
+  final PartnerRole? _role;
+
+  /// Whose wording the explanation uses. Without one: gym owners are the
+  /// ones who choose their gender here, Trainers are not.
+  PartnerRole get role =>
+      _role ?? (canEditGender ? PartnerRole.owner : PartnerRole.trainer);
 
   @override
   State<PartnerDetailsForm> createState() => _PartnerDetailsFormState();
@@ -353,6 +380,7 @@ class _PartnerDetailsFormState extends State<PartnerDetailsForm> {
         children: [
           PartnerDobField(
             controller: _dob,
+            role: widget.role,
             required: widget.details.required,
             enabled: !_busy,
             errorText: _dobError,

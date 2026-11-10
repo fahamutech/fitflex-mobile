@@ -351,11 +351,11 @@ class ShopHomeViewState extends State<ShopHomeView> {
       ),
       // Partner DOB slice 4: in trainer and owner modes these come from the
       // partner's own date of birth (and gender), not a member profile.
-      'profile_gender' => context.tr(
-        isPartnerShopMode(_mode(_data).wire)
-            ? 'shop.why.genderPartner'
-            : 'shop.why.gender',
-      ),
+      'profile_gender' => context.tr(switch (_mode(_data)) {
+        ShopHomeMode.trainer => 'shop.why.genderTrainer',
+        ShopHomeMode.owner => 'shop.why.genderOwner',
+        _ => 'shop.why.gender',
+      }),
       'profile_age' => context.tr(
         isPartnerShopMode(_mode(_data).wire)
             ? 'shop.why.agePartner'
@@ -410,16 +410,27 @@ class ShopHomeViewState extends State<ShopHomeView> {
     }
   }
 
-  /// Whether gender or age is in play for this answer or preferences.
-  static bool _usesProfile(ShopHomeData? data, ShopPreferences? prefs) {
-    const codes = {'profile_gender', 'profile_age'};
-    if (prefs?.uses?.contains(ShopSignal.gender) ?? false) return true;
-    if (prefs?.uses?.contains(ShopSignal.age) ?? false) return true;
-    if (data == null) return false;
-    if (data.signalsUsed.any(codes.contains)) return true;
-    return data.sections.any(
-      (s) => s.reasonCodes.any((c) => codes.contains(c.code)),
-    );
+  /// The signals in play for this answer and preferences: the
+  /// preferences' `uses` plus any gender/age the home answer reports.
+  static Set<ShopSignal> _signalsOf(
+    ShopHomeData? data,
+    ShopPreferences? prefs,
+  ) {
+    final out = <ShopSignal>{...?prefs?.uses};
+    void add(String code) {
+      final s = ShopSignal.fromWire(code);
+      if (s == ShopSignal.gender || s == ShopSignal.age) out.add(s!);
+    }
+
+    for (final code in data?.signalsUsed ?? const <String>[]) {
+      add(code);
+    }
+    for (final s in data?.sections ?? const <ShopHomeSection>[]) {
+      for (final c in s.reasonCodes) {
+        add(c.code);
+      }
+    }
+    return out;
   }
 
   /// The trainer or owner shop's own "Personalised shop" sheet (what is
@@ -577,9 +588,10 @@ class ShopHomeViewState extends State<ShopHomeView> {
       _partnerPrefs.value = null;
       unawaited(_loadPartnerPrefs(mode));
     }
-    // Gender/age seen in use while the sheet is open (kept when the switch
-    // goes off and `uses` empties, so the hint does not change under it).
-    var profileSeen = false;
+    // The last signals naming gender/age while the sheet is open (kept when
+    // the switch goes off and `uses` empties, so the hint does not change
+    // under it).
+    Set<ShopSignal>? profileUses;
     final lang = FFLocaleScope.of(context).locale.languageCode;
     // The switch's value as the customer just set it (null: as loaded).
     bool? on;
@@ -591,8 +603,8 @@ class ShopHomeViewState extends State<ShopHomeView> {
         builder: (sheet, _) => StatefulBuilder(
           builder: (sheet, setSheet) {
             final data = _live.value;
-            profileSeen =
-                profileSeen || _usesProfile(data, _partnerPrefs.value);
+            final signals = _signalsOf(data, _partnerPrefs.value);
+            if (usesProfileSignals(signals)) profileUses = signals;
             final theme = Theme.of(sheet);
             final p = data?.personalisation ?? first;
             final live = data?.sections
@@ -667,7 +679,7 @@ class ShopHomeViewState extends State<ShopHomeView> {
                     partnerHint: mode != ShopHomeMode.member,
                     // Slice 4: a trainer's or owner's own age/gender, once
                     // the server lists them.
-                    partnerProfileHint: partner && profileSeen,
+                    partnerUses: partner ? profileUses : null,
                     // Phase 2 S3: near-you can be used, so the hint names
                     // the current area too.
                     // Not while off (QA #9).
@@ -693,6 +705,8 @@ class ShopHomeViewState extends State<ShopHomeView> {
                     // Slice 4: no date of birth → only purchases are used.
                     ShopPartnerDobHint(
                       mode: mode.wire,
+                      profileSignals:
+                          _partnerPrefs.value?.profileSignals ?? false,
                       onSaved: () {
                         if (!mounted) return;
                         reload();
