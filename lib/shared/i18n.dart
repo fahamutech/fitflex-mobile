@@ -268,7 +268,7 @@ class FFLocale extends ChangeNotifier {
       'pin.errInvalid': 'That mobile number, email or PIN is not right.',
       'pin.errTooMany': 'Too many wrong tries. Try again in {n} minutes.',
       'pin.errResetRequired':
-          'Too many wrong tries. Reset your PIN to sign in again.',
+          'You need a new PIN to sign in. Use Forgot PIN to set one.',
       'pin.errAlreadyRegistered':
           'An account already uses this mobile number or email.',
       'pin.errCurrentWrong': 'Your current PIN is not right.',
@@ -8424,7 +8424,7 @@ class FFLocale extends ChangeNotifier {
       'pin.errTooMany':
           'Umekosea mara nyingi mno. Jaribu tena baada ya dakika {n}.',
       'pin.errResetRequired':
-          'Umekosea mara nyingi mno. Weka PIN mpya ili uingie tena.',
+          'Unahitaji PIN mpya ili uingie. Tumia Umesahau PIN kuweka mpya.', // TODO(sw-review)
       'pin.errAlreadyRegistered':
           'Tayari kuna akaunti inayotumia namba hii ya simu au barua pepe.',
       'pin.errCurrentWrong': 'PIN yako ya sasa si sahihi.',
