@@ -68,7 +68,7 @@ class PartnerDobField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FFTextField(
+    final field = FFTextField(
       key: const Key('partner-dob'),
       controller: controller,
       readOnly: true,
@@ -92,8 +92,107 @@ class PartnerDobField extends StatelessWidget {
         onPressed: enabled ? () => _pick(context) : null,
       ),
     );
+    if (!showHelp) return field;
+    // Slice 5: the "why we ask" line is the helper text; this links to the
+    // full explanation.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        field,
+        FFButton(
+          key: const Key('partner-dob-why'),
+          label: context.tr('partnerDob.whyLink'),
+          variant: FFButtonVariant.ghost,
+          visualDensity: VisualDensity.standard,
+          onPressed: () => showPartnerShopExplainer(context),
+        ),
+      ],
+    );
   }
 }
+
+/// Partner DOB slice 5: how a Trainer's or gym owner's date of birth and
+/// gender are used in the shop. Draft text pending Tanzanian counsel.
+class PartnerShopExplainer extends StatelessWidget {
+  const PartnerShopExplainer({
+    super.key,
+    this.showTitle = false,
+    this.showDraft = true,
+  });
+
+  /// Shown inside another sheet: a heading of its own.
+  final bool showTitle;
+
+  /// The "draft" note (off where the host already shows it).
+  final bool showDraft;
+
+  static const lines = [
+    'shop.partnerAbout.asked',
+    'shop.partnerAbout.use',
+    'shop.partnerAbout.noDob',
+    'shop.partnerAbout.under18',
+    'shop.partnerAbout.switchOff',
+    'shop.partnerAbout.never',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      key: const Key('partner-shop-explainer'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (showTitle) ...[
+          Semantics(
+            header: true,
+            child: Text(
+              context.tr('shop.partnerAbout.title'),
+              style: theme.textTheme.titleSmall,
+            ),
+          ),
+          const SizedBox(height: FFTokens.spacingXs),
+        ],
+        for (final key in lines)
+          Padding(
+            padding: const EdgeInsets.only(bottom: FFTokens.spacingXs),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ExcludeSemantics(
+                  child: Text('•  ', style: theme.textTheme.bodyMedium),
+                ),
+                Expanded(
+                  child: Text(
+                    context.tr(key),
+                    key: Key('partner-shop-explainer-$key'),
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        if (showDraft)
+          Text(
+            context.tr('privacy.shop.draft'),
+            key: const Key('partner-shop-explainer-draft'),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Opens [PartnerShopExplainer] in a sheet of its own.
+Future<void> showPartnerShopExplainer(BuildContext context) =>
+    showFFSheet<void>(
+      context,
+      title: context.tr('shop.partnerAbout.title'),
+      child: const PartnerShopExplainer(),
+    );
 
 /// A gym owner's optional gender: Male, Female, Other or Prefer not to say
 /// ([partnerGenderPreferNot], sent as null).

@@ -305,7 +305,7 @@ void main() {
             k == 'error.reason.invalidGender' ||
             k == 'error.reason.rateLimitedSeconds',
       );
-      expect(mine.length, 17);
+      expect(mine.length, 18); // + partnerDob.whyLink (slice 5)
       for (final k in mine) {
         expect(sw, contains(k), reason: k);
         expect(FFLocale.textOf('sw', k), isNot(FFLocale.textOf('en', k)));
