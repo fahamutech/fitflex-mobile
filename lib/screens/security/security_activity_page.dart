@@ -4,6 +4,8 @@
 // (docs/security-incident-report-api.md).
 // Nothing here is kept on the device, and payloads are never logged.
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../app_scope.dart';
@@ -18,12 +20,34 @@ import 'security_report_sheet.dart';
 /// The member's report of an event. Only its progress is known here, never
 /// what staff decided.
 class SecurityReport {
-  const SecurityReport({required this.incidentId, required this.status});
+  const SecurityReport({
+    required this.incidentId,
+    required this.status,
+    this.protectionPending = false,
+    this.protectionRetryable = true,
+    this.protectionKnown = false,
+  });
 
   final String incidentId;
 
   /// `open`, `acknowledged` or `resolved`.
   final String status;
+
+  /// The member asked to secure the account and that is not in place yet.
+  /// A repeat report retries it. False when the server does not say (an
+  /// older backend).
+  final bool protectionPending;
+
+  /// False only when the server says so: no retry will help (the member
+  /// should contact support). [protectionPending] is still true then.
+  final bool protectionRetryable;
+
+  /// The server sent `protectionPending` at all. An older backend does not,
+  /// and then the list says nothing either way about the protection.
+  final bool protectionKnown;
+
+  /// Securing is still owed. A resolved report is never pending.
+  bool get securingPending => protectionPending && status != 'resolved';
 
   /// The i18n key of the report chip. An unknown status reads as reported.
   String get statusKey => switch (status) {
@@ -36,6 +60,9 @@ class SecurityReport {
       ? SecurityReport(
           incidentId: j['incidentId']?.toString() ?? '',
           status: j['status']?.toString() ?? 'open',
+          protectionPending: j['protectionPending'] == true,
+          protectionRetryable: j['protectionRetryable'] != false,
+          protectionKnown: j['protectionPending'] is bool,
         )
       : null;
 }
@@ -131,8 +158,44 @@ class _SecurityActivityPageState extends State<SecurityActivityPage> {
   /// The event whose report is being sent. One at a time.
   String? _reporting;
 
-  /// What to say under an event after a report, until the page is left.
+  /// What to say under an event after a report (an error, or "limited"),
+  /// until the page is left.
   final _notices = <String, _ReportNotice>{};
+
+  /// Events whose protection a report call of this visit said had failed,
+  /// with what that call knew (the PIN step, whether a retry can help).
+  /// The list says the same through `report.protectionPending`, which also
+  /// survives leaving the page; see [_protectionNotice].
+  final _protection = <String, _FailedProtection>{};
+
+  /// Events whose retry is paused. The server ignores a repeat within 60
+  /// seconds of the last attempt and answers it like a failure, so the
+  /// retry is not offered meanwhile. In memory only.
+  final _cooldowns = <String, Timer>{};
+
+  /// The server's cooldown between attempts.
+  static const _retryCooldown = Duration(seconds: 60);
+
+  @override
+  void dispose() {
+    _clearCooldowns();
+    super.dispose();
+  }
+
+  void _clearCooldowns() {
+    for (final t in _cooldowns.values) {
+      t.cancel();
+    }
+    _cooldowns.clear();
+  }
+
+  void _startCooldown(String eventId) {
+    _cooldowns.remove(eventId)?.cancel();
+    _cooldowns[eventId] = Timer(_retryCooldown, () {
+      _cooldowns.remove(eventId);
+      if (mounted) setState(() {});
+    });
+  }
 
   @override
   void didChangeDependencies() {
@@ -185,6 +248,8 @@ class _SecurityActivityPageState extends State<SecurityActivityPage> {
           _events.clear();
           _reportEnabled = false;
           _notices.clear();
+          _protection.clear();
+          _clearCooldowns();
         }
       });
     } catch (_) {
@@ -232,7 +297,10 @@ class _SecurityActivityPageState extends State<SecurityActivityPage> {
   /// Sends the report. Also the retry: the server answers a repeat with the
   /// same incident, and applies a protection that failed the first time.
   Future<void> _report(SecurityEvent event, bool secure) async {
+    // One at a time: a second tap while a request is in flight does nothing.
     if (_reporting != null) return;
+    // Already reported: this is a repeat, and the list may have moved on.
+    final repeat = event.report != null;
     final scope = AppScope.of(context);
     final snack = FFSnack.of(context);
     final done = context.tr('secAct.report.done');
@@ -256,18 +324,19 @@ class _SecurityActivityPageState extends State<SecurityActivityPage> {
         snack.error(unavailable);
         return _load(refresh: true);
       }
-      // 429 report_limit_reached: no wait is shown. The server's
-      // retryAfterSeconds is a fixed hour while the cap is a rolling day.
+      // 429 report_limit_reached: the cap is a rolling day and the server's
+      // retryAfterSeconds is the real wait until a slot frees (1..86400).
       final limit = e.status == 429;
       setState(() {
         _reporting = null;
         _notices[event.id] = limit
-            ? _ReportNotice(context.tr('secAct.report.err.limit'))
+            ? _ReportNotice(securityReportLimitMessage(context.tr, e.body))
             : _ReportNotice(
                 context.tr('secAct.report.err.failed'),
                 retry: secure,
               );
       });
+      if (repeat) await _load(refresh: true);
       return;
     } catch (_) {
       if (!mounted) return;
@@ -278,6 +347,7 @@ class _SecurityActivityPageState extends State<SecurityActivityPage> {
           retry: secure,
         );
       });
+      if (repeat) await _load(refresh: true);
       return;
     }
     if (!mounted) {
@@ -291,7 +361,13 @@ class _SecurityActivityPageState extends State<SecurityActivityPage> {
       final at = _events.indexWhere((e) => e.id == event.id);
       if (at >= 0) {
         _events[at] = _events[at].withReport(
-          SecurityReport(incidentId: result.incidentId, status: result.status),
+          SecurityReport(
+            incidentId: result.incidentId,
+            status: result.status,
+            protectionPending: result.failed,
+            protectionRetryable: result.retryable,
+            protectionKnown: true,
+          ),
         );
       }
       if (result.signedOut) return;
@@ -306,22 +382,23 @@ class _SecurityActivityPageState extends State<SecurityActivityPage> {
             : (!result.pinNotApplicable && scope.auth.pinLoginEnabled
                   ? _PinRoute.change
                   : null);
-        _notices[event.id] = _ReportNotice(
-          context.tr(switch (pin) {
-            _PinRoute.forgot => 'secAct.report.failedForgotPin',
-            _PinRoute.change => 'secAct.report.failedChangePin',
-            null => 'secAct.report.failed',
-          }),
-          tone: FFAlertTone.warning,
-          retry: true,
-          retryKey: 'secAct.report.failedRetry',
+        _protection[event.id] = _FailedProtection(
           pin: pin,
+          retryable: result.retryable,
         );
-      } else if (result.limited) {
-        _notices[event.id] = _ReportNotice(
-          context.tr('secAct.report.limited'),
-          tone: FFAlertTone.info,
-        );
+        // The server does nothing on a repeat within 60 seconds of the last
+        // attempt (this one, or the one this call ran into) and answers it
+        // with this same failure, so the retry waits.
+        if (result.retryable) _startCooldown(event.id);
+      } else {
+        _protection.remove(event.id);
+        _cooldowns.remove(event.id)?.cancel();
+        if (result.limited) {
+          _notices[event.id] = _ReportNotice(
+            context.tr('secAct.report.limited'),
+            tone: FFAlertTone.info,
+          );
+        }
       }
     });
     if (result.signedOut) {
@@ -426,13 +503,54 @@ class _SecurityActivityPageState extends State<SecurityActivityPage> {
     );
   }
 
-  /// The message under an event after a report, with its retry and (when
-  /// the account could not be secured) the way to change the PIN.
+  /// The "could not secure" notice of an event, from the list
+  /// (`report.protectionPending`, which survives leaving the page) and from
+  /// what a report call of this visit said. Null when securing is not owed.
+  _ReportNotice? _protectionNotice(SecurityEvent event) {
+    final report = event.report;
+    final local = _protection[event.id];
+    final listed = report != null && report.securingPending;
+    if (!listed) {
+      // Nothing from this visit either, or the list now says positively
+      // that nothing is owed (secured elsewhere, or resolved by staff).
+      if (local == null) return null;
+      if (report != null &&
+          (report.protectionKnown || report.status == 'resolved')) {
+        return null;
+      }
+    }
+    final retryable =
+        (local?.retryable ?? true) && (report?.protectionRetryable ?? true);
+    final pin = local?.pin;
+    return _ReportNotice(
+      context.tr(switch (pin) {
+        _PinRoute.forgot => 'secAct.report.failedForgotPin',
+        _PinRoute.change => 'secAct.report.failedChangePin',
+        null =>
+          retryable ? 'secAct.report.failed' : 'secAct.report.failedSupport',
+      }),
+      tone: FFAlertTone.warning,
+      retry: retryable ? true : null,
+      retryKey: 'secAct.report.failedRetry',
+      pin: pin,
+      // With a PIN message above, the pointer to support is its own line.
+      support: !retryable && pin != null,
+      securing: true,
+    );
+  }
+
+  /// The message under an event: the outcome or error of a report, or that
+  /// the account is still not secured, with the retry and (when known) the
+  /// way to change the PIN. One notice per event: an error of this visit
+  /// comes before the list's state.
   Widget? _noticeFor(SecurityEvent event) {
-    final n = _notices[event.id];
-    if (n == null || !_reportEnabled) return null;
+    if (!_reportEnabled) return null;
+    final n = _notices[event.id] ?? _protectionNotice(event);
+    if (n == null) return null;
     final retry = n.retry;
     final busy = _reporting != null;
+    final cooling = n.securing && _cooldowns.containsKey(event.id);
+    final small = Theme.of(context).textTheme.bodySmall;
     return Column(
       key: Key('security-report-notice-${event.id}'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -441,6 +559,14 @@ class _SecurityActivityPageState extends State<SecurityActivityPage> {
           liveRegion: true,
           child: FFAlert(message: n.message, tone: n.tone),
         ),
+        if (n.support) ...[
+          const SizedBox(height: FFTokens.spacingSm),
+          Text(
+            context.tr('secAct.report.support'),
+            key: Key('security-report-support-${event.id}'),
+            style: small,
+          ),
+        ],
         if (n.pin == _PinRoute.change) ...[
           const SizedBox(height: FFTokens.spacingSm),
           FFButton(
@@ -478,12 +604,53 @@ class _SecurityActivityPageState extends State<SecurityActivityPage> {
             fullWidth: true,
             variant: FFButtonVariant.secondary,
             loading: _reporting == event.id,
-            onPressed: busy ? null : () => _report(event, retry),
+            onPressed: busy || cooling ? null : () => _report(event, retry),
           ),
+          if (cooling) ...[
+            const SizedBox(height: FFTokens.spacingXs),
+            Semantics(
+              liveRegion: true,
+              child: Text(
+                context.tr('secAct.report.retryWait'),
+                key: Key('security-report-wait-${event.id}'),
+                style: small,
+              ),
+            ),
+          ],
         ],
       ],
     );
   }
+}
+
+/// The 429 `report_limit_reached` message, with the server's real wait
+/// (`retryAfterSeconds`, 1..86400) when it gave one: minutes under an hour,
+/// else the nearest hour. Without a usable wait: "try again later".
+String securityReportLimitMessage(String Function(String) tr, Object? body) {
+  final raw = body is Map ? body['retryAfterSeconds'] : null;
+  final seconds = raw is num && raw.isFinite ? raw.ceil() : null;
+  if (seconds == null || seconds < 1 || seconds > 86400) {
+    return tr('secAct.report.err.limit');
+  }
+  final minutes = (seconds / 60).ceil();
+  if (minutes == 1) return tr('secAct.report.err.limitMinute');
+  if (minutes < 60) {
+    return tr('secAct.report.err.limitMinutes').replaceAll('{n}', '$minutes');
+  }
+  final hours = (seconds / 3600).round();
+  if (hours <= 1) return tr('secAct.report.err.limitHour');
+  return tr('secAct.report.err.limitHours').replaceAll('{n}', '$hours');
+}
+
+/// What a report call said when it could not secure the account.
+class _FailedProtection {
+  const _FailedProtection({required this.pin, required this.retryable});
+
+  /// Where to send the member about the PIN, or null for nowhere.
+  final _PinRoute? pin;
+
+  /// False: the server said no retry will help.
+  final bool retryable;
 }
 
 class _ReportNotice {
@@ -493,6 +660,8 @@ class _ReportNotice {
     this.retry,
     this.retryKey = 'comms.retry',
     this.pin,
+    this.support = false,
+    this.securing = false,
   });
 
   final String message;
@@ -504,6 +673,12 @@ class _ReportNotice {
 
   /// Where to send the member about the PIN, or null for nowhere.
   final _PinRoute? pin;
+
+  /// Adds the line that points to FitFlex support.
+  final bool support;
+
+  /// The "could not secure" notice: its retry waits out the cooldown.
+  final bool securing;
 }
 
 /// The PIN step offered when the account could not be secured.

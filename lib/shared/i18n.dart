@@ -3852,11 +3852,18 @@ class FFLocale extends ChangeNotifier {
       'secAct.report.failedChangePin': "Report recorded, but we could not secure your account. Change your PIN now.",
       'secAct.report.failedForgotPin': "Report recorded, but we could not finish securing your account. Your PIN no longer works. Set a new one with Forgot PIN.",
       'secAct.report.failedRetry': "Try securing again",
+      'secAct.report.failedSupport': "Report recorded, but we could not secure your account. Contact FitFlex support.",
+      'secAct.report.support': "Trying again here will not secure your account. Contact FitFlex support.",
+      'secAct.report.retryWait': "Wait about a minute before you try again.",
       'secAct.report.signedOut.title': "You have been signed out",
       'secAct.report.signedOut.pin': "Report recorded and your account is secured. You are signed out on every device. To sign in, use Forgot PIN and set a new PIN.",
       'secAct.report.signedOut.again': "Report recorded and your account is secured. You are signed out on every device. Sign in again to continue.",
       'secAct.report.signedOut.action': "Go to sign in",
       'secAct.report.err.limit': "You have sent the most reports allowed for now. Try again later.",
+      'secAct.report.err.limitMinute': "You have sent the most reports allowed for now. Try again in about a minute.",
+      'secAct.report.err.limitMinutes': "You have sent the most reports allowed for now. Try again in about {n} minutes.",
+      'secAct.report.err.limitHour': "You have sent the most reports allowed for now. Try again in about an hour.",
+      'secAct.report.err.limitHours': "You have sent the most reports allowed for now. Try again in about {n} hours.",
       'secAct.report.err.unavailable': "Reporting is not available for this check-in.",
       'secAct.report.err.failed': "We couldn't send your report. Try again.",
       'secAct.report.err.network': "No connection. Check your internet and try again.",
@@ -12194,11 +12201,18 @@ class FFLocale extends ChangeNotifier {
       'secAct.report.failedChangePin': "Ripoti imerekodiwa, lakini hatukuweza kulinda akaunti yako. Badilisha PIN yako sasa.", // TODO(sw-review)
       'secAct.report.failedForgotPin': "Ripoti imerekodiwa, lakini hatukuweza kumaliza kulinda akaunti yako. PIN yako haifanyi kazi tena. Weka PIN mpya kupitia Umesahau PIN.", // TODO(sw-review)
       'secAct.report.failedRetry': "Jaribu kulinda tena", // TODO(sw-review)
+      'secAct.report.failedSupport': "Ripoti imerekodiwa, lakini hatukuweza kulinda akaunti yako. Wasiliana na msaada wa FitFlex.", // TODO(sw-review)
+      'secAct.report.support': "Kujaribu tena hapa hakutalinda akaunti yako. Wasiliana na msaada wa FitFlex.", // TODO(sw-review)
+      'secAct.report.retryWait': "Subiri takriban dakika moja kabla ya kujaribu tena.", // TODO(sw-review)
       'secAct.report.signedOut.title': "Umetolewa kwenye akaunti", // TODO(sw-review)
       'secAct.report.signedOut.pin': "Ripoti imerekodiwa na akaunti yako imelindwa. Umetolewa kwenye kila kifaa. Ili kuingia, tumia Umesahau PIN kisha weka PIN mpya.", // TODO(sw-review)
       'secAct.report.signedOut.again': "Ripoti imerekodiwa na akaunti yako imelindwa. Umetolewa kwenye kila kifaa. Ingia tena ili kuendelea.", // TODO(sw-review)
       'secAct.report.signedOut.action': "Ingia", // TODO(sw-review)
       'secAct.report.err.limit': "Umefikia idadi ya ripoti zinazoruhusiwa kwa sasa. Jaribu tena baadaye.", // TODO(sw-review)
+      'secAct.report.err.limitMinute': "Umefikia idadi ya ripoti zinazoruhusiwa kwa sasa. Jaribu tena baada ya takriban dakika moja.", // TODO(sw-review)
+      'secAct.report.err.limitMinutes': "Umefikia idadi ya ripoti zinazoruhusiwa kwa sasa. Jaribu tena baada ya takriban dakika {n}.", // TODO(sw-review)
+      'secAct.report.err.limitHour': "Umefikia idadi ya ripoti zinazoruhusiwa kwa sasa. Jaribu tena baada ya takriban saa moja.", // TODO(sw-review)
+      'secAct.report.err.limitHours': "Umefikia idadi ya ripoti zinazoruhusiwa kwa sasa. Jaribu tena baada ya takriban saa {n}.", // TODO(sw-review)
       'secAct.report.err.unavailable': "Kuripoti hakupatikani kwa kujiandikisha huku.", // TODO(sw-review)
       'secAct.report.err.failed': "Hatukuweza kutuma ripoti yako. Jaribu tena.", // TODO(sw-review)
       'secAct.report.err.network': "Hakuna intaneti. Angalia intaneti yako kisha ujaribu tena.", // TODO(sw-review)
