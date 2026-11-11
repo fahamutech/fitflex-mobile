@@ -215,7 +215,9 @@ class _SecurityActivityPageState extends State<SecurityActivityPage> {
     return n == null || n.isEmpty ? null : n;
   }
 
-  Future<void> _load({bool refresh = false}) async {
+  /// Reads the first page. True when the list was read. A refresh that
+  /// fails keeps the list that is showing.
+  Future<bool> _load({bool refresh = false}) async {
     final api = AppScope.of(context).api;
     if (!refresh) {
       setState(() {
@@ -226,7 +228,7 @@ class _SecurityActivityPageState extends State<SecurityActivityPage> {
     }
     try {
       final body = await api.securityActivity(limit: _pageSize);
-      if (!mounted) return;
+      if (!mounted) return false;
       setState(() {
         _events
           ..clear()
@@ -238,11 +240,12 @@ class _SecurityActivityPageState extends State<SecurityActivityPage> {
         _moreFailed = false;
         _loading = false;
       });
+      return true;
     } on ApiException catch (e) {
-      if (!mounted) return;
+      if (!mounted) return false;
       setState(() {
         _off = e.status == 404;
-        _failed = !_off;
+        _failed = !_off && (!refresh || _events.isEmpty);
         _loading = false;
         if (_off) {
           _events.clear();
@@ -252,12 +255,14 @@ class _SecurityActivityPageState extends State<SecurityActivityPage> {
           _clearCooldowns();
         }
       });
+      return false;
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) return false;
       setState(() {
         _failed = _events.isEmpty;
         _loading = false;
       });
+      return false;
     }
   }
 
@@ -322,33 +327,39 @@ class _SecurityActivityPageState extends State<SecurityActivityPage> {
         // Switched off, or no longer this member's event.
         setState(() => _reporting = null);
         snack.error(unavailable);
-        return _load(refresh: true);
+        await _load(refresh: true);
+        return;
       }
       // 429 report_limit_reached: the cap is a rolling day and the server's
       // retryAfterSeconds is the real wait until a slot frees (1..86400).
-      final limit = e.status == 429;
-      setState(() {
-        _reporting = null;
-        _notices[event.id] = limit
-            ? _ReportNotice(securityReportLimitMessage(context.tr, e.body))
-            : _ReportNotice(
-                context.tr('secAct.report.err.failed'),
-                retry: secure,
-              );
-      });
-      if (repeat) await _load(refresh: true);
-      return;
+      if (e.status == 429) {
+        setState(() {
+          _reporting = null;
+          _notices[event.id] = _ReportNotice(
+            securityReportLimitMessage(context.tr, e.body),
+          );
+        });
+        return;
+      }
+      // A 4xx was refused outright. Anything else may have been taken up.
+      final reached = e.status < 400 || e.status >= 500;
+      return _attemptError(
+        event,
+        secure: secure,
+        repeat: repeat,
+        claimed: reached && (secure || repeat),
+        messageKey: 'secAct.report.err.failed',
+      );
     } catch (_) {
       if (!mounted) return;
-      setState(() {
-        _reporting = null;
-        _notices[event.id] = _ReportNotice(
-          context.tr('secAct.report.err.network'),
-          retry: secure,
-        );
-      });
-      if (repeat) await _load(refresh: true);
-      return;
+      // No answer (offline, timeout): the request may still have arrived.
+      return _attemptError(
+        event,
+        secure: secure,
+        repeat: repeat,
+        claimed: secure || repeat,
+        messageKey: 'secAct.report.err.network',
+      );
     }
     if (!mounted) {
       // The page was left meanwhile; a session the server ended still has
@@ -356,49 +367,59 @@ class _SecurityActivityPageState extends State<SecurityActivityPage> {
       if (result.signedOut) await scope.auth.signOut();
       return;
     }
-    setState(() {
-      _reporting = null;
-      final at = _events.indexWhere((e) => e.id == event.id);
-      if (at >= 0) {
-        _events[at] = _events[at].withReport(
-          SecurityReport(
-            incidentId: result.incidentId,
-            status: result.status,
-            protectionPending: result.failed,
-            protectionRetryable: result.retryable,
-            protectionKnown: true,
-          ),
-        );
-      }
-      if (result.signedOut) return;
-      if (result.failed) {
-        // What the member can still do about the PIN, if anything:
-        // - the PIN is already off (Change PIN would answer
-        //   pin_reset_required): Forgot PIN;
-        // - FitFlex holds a PIN that still works: Change PIN;
-        // - no PIN held by FitFlex, or PINs off: only the retry.
-        final pin = result.pinResetRequired
-            ? (scope.auth.pinResetEnabled ? _PinRoute.forgot : null)
-            : (!result.pinNotApplicable && scope.auth.pinLoginEnabled
-                  ? _PinRoute.change
-                  : null);
+    final reported = SecurityReport(
+      incidentId: result.incidentId,
+      status: result.status,
+      protectionPending: result.failed,
+      protectionRetryable: result.retryable,
+      protectionKnown: true,
+    );
+    if (result.failed && !result.signedOut) {
+      // Not secured, says this call. That is a real failed attempt, or the
+      // server's answer to a repeat it ignored (inside its 60 seconds, or
+      // while an earlier attempt, perhaps one whose answer was lost, is
+      // still running). So the list is read first and has the last word:
+      // the notice shows only if the list agrees, or cannot say.
+      // What the member can still do about the PIN, if anything:
+      // - the PIN is already off (Change PIN would answer
+      //   pin_reset_required): Forgot PIN;
+      // - FitFlex holds a PIN that still works: Change PIN;
+      // - no PIN held by FitFlex, or PINs off: only the retry.
+      final pin = result.pinResetRequired
+          ? (scope.auth.pinResetEnabled ? _PinRoute.forgot : null)
+          : (!result.pinNotApplicable && scope.auth.pinLoginEnabled
+                ? _PinRoute.change
+                : null);
+      await _load(refresh: true);
+      if (!mounted) return;
+      setState(() {
+        _reporting = null;
+        final at = _events.indexWhere((e) => e.id == event.id);
+        // The list was not read, or does not show the report yet.
+        if (at >= 0 && _events[at].report == null) {
+          _events[at] = _events[at].withReport(reported);
+        }
         _protection[event.id] = _FailedProtection(
           pin: pin,
           retryable: result.retryable,
         );
-        // The server does nothing on a repeat within 60 seconds of the last
-        // attempt (this one, or the one this call ran into) and answers it
-        // with this same failure, so the retry waits.
+        // Either way the server does nothing on a repeat for 60 seconds
+        // and would answer it with this same failure, so the retry waits.
         if (result.retryable) _startCooldown(event.id);
-      } else {
-        _protection.remove(event.id);
-        _cooldowns.remove(event.id)?.cancel();
-        if (result.limited) {
-          _notices[event.id] = _ReportNotice(
-            context.tr('secAct.report.limited'),
-            tone: FFAlertTone.info,
-          );
-        }
+      });
+      return;
+    }
+    setState(() {
+      _reporting = null;
+      final at = _events.indexWhere((e) => e.id == event.id);
+      if (at >= 0) _events[at] = _events[at].withReport(reported);
+      _protection.remove(event.id);
+      _cooldowns.remove(event.id)?.cancel();
+      if (result.limited && !result.signedOut) {
+        _notices[event.id] = _ReportNotice(
+          context.tr('secAct.report.limited'),
+          tone: FFAlertTone.info,
+        );
       }
     });
     if (result.signedOut) {
@@ -410,8 +431,44 @@ class _SecurityActivityPageState extends State<SecurityActivityPage> {
       // sign-in.
       return scope.auth.signOut();
     }
-    if (!result.failed && !result.limited) snack.success(done);
+    if (!result.limited) snack.success(done);
     await _load(refresh: true);
+  }
+
+  /// A report call that got no usable answer. [claimed]: it asked to secure
+  /// (or was a repeat) and may have reached the server, which then counts
+  /// it as an attempt: the retry waits out the 60 seconds like any other,
+  /// and the list is read again, because the report may exist and the
+  /// account may even be secured.
+  Future<void> _attemptError(
+    SecurityEvent event, {
+    required bool secure,
+    required bool repeat,
+    required bool claimed,
+    required String messageKey,
+  }) async {
+    setState(() {
+      _reporting = null;
+      _notices[event.id] = _ReportNotice(
+        // A repeat is the retry of securing; the report itself was sent.
+        context.tr(repeat ? 'secAct.report.err.retryFailed' : messageKey),
+        retry: secure,
+      );
+      if (claimed) _startCooldown(event.id);
+    });
+    if (!claimed && !repeat) return;
+    final read = await _load(refresh: true);
+    if (!mounted || !read) return;
+    final at = _events.indexWhere((e) => e.id == event.id);
+    final report = at < 0 ? null : _events[at].report;
+    // The list cannot say (no report, or an older backend): the error stays.
+    if (report == null || !report.protectionKnown) return;
+    // Nothing is owed any more, or a first report did arrive after all:
+    // the list's own state is shown instead of the error. A failed retry
+    // of securing that is still owed keeps its error.
+    if (!report.securingPending || !repeat) {
+      setState(() => _notices.remove(event.id));
+    }
   }
 
   @override
@@ -535,7 +592,6 @@ class _SecurityActivityPageState extends State<SecurityActivityPage> {
       pin: pin,
       // With a PIN message above, the pointer to support is its own line.
       support: !retryable && pin != null,
-      securing: true,
     );
   }
 
@@ -549,7 +605,8 @@ class _SecurityActivityPageState extends State<SecurityActivityPage> {
     if (n == null) return null;
     final retry = n.retry;
     final busy = _reporting != null;
-    final cooling = n.securing && _cooldowns.containsKey(event.id);
+    // Set only by an attempt to secure; it holds every retry of the event.
+    final cooling = _cooldowns.containsKey(event.id);
     final small = Theme.of(context).textTheme.bodySmall;
     return Column(
       key: Key('security-report-notice-${event.id}'),
@@ -624,8 +681,9 @@ class _SecurityActivityPageState extends State<SecurityActivityPage> {
 }
 
 /// The 429 `report_limit_reached` message, with the server's real wait
-/// (`retryAfterSeconds`, 1..86400) when it gave one: minutes under an hour,
-/// else the nearest hour. Without a usable wait: "try again later".
+/// (`retryAfterSeconds`, 1..86400) when it gave one: minutes up to an hour,
+/// else hours, always rounded up so the member is never told to come back
+/// early. Without a usable wait: "try again later".
 String securityReportLimitMessage(String Function(String) tr, Object? body) {
   final raw = body is Map ? body['retryAfterSeconds'] : null;
   final seconds = raw is num && raw.isFinite ? raw.ceil() : null;
@@ -637,8 +695,8 @@ String securityReportLimitMessage(String Function(String) tr, Object? body) {
   if (minutes < 60) {
     return tr('secAct.report.err.limitMinutes').replaceAll('{n}', '$minutes');
   }
-  final hours = (seconds / 3600).round();
-  if (hours <= 1) return tr('secAct.report.err.limitHour');
+  final hours = (seconds / 3600).ceil();
+  if (hours == 1) return tr('secAct.report.err.limitHour');
   return tr('secAct.report.err.limitHours').replaceAll('{n}', '$hours');
 }
 
@@ -661,7 +719,6 @@ class _ReportNotice {
     this.retryKey = 'comms.retry',
     this.pin,
     this.support = false,
-    this.securing = false,
   });
 
   final String message;
@@ -676,9 +733,6 @@ class _ReportNotice {
 
   /// Adds the line that points to FitFlex support.
   final bool support;
-
-  /// The "could not secure" notice: its retry waits out the cooldown.
-  final bool securing;
 }
 
 /// The PIN step offered when the account could not be secured.

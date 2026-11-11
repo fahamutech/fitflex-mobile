@@ -362,9 +362,9 @@ void main() {
     final en = FFLocale.keysOf('en').where((k) => k.startsWith('secAct.'));
     final sw = FFLocale.keysOf('sw').where((k) => k.startsWith('secAct.'));
     expect(en.toSet(), sw.toSet());
-    // 15 for the list (S4a + its own load error) and 33 for the report (S4c + the
+    // 15 for the list (S4a + its own load error) and 34 for the report (S4c + the
     // retry markers).
-    expect(en.length, 48);
+    expect(en.length, 49);
     for (final k in en) {
       expect(
         FFLocale.textOf('sw', k),

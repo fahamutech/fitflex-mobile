@@ -76,12 +76,19 @@ class _Api extends ApiClient {
   List<Map<String, dynamic>> events = [_event(1)];
   int lists = 0;
 
+  /// Thrown by every list read after the first.
+  Object? listError;
+
   /// Answers to the report calls, in order: a map, or something to throw.
   final answers = <Object>[];
 
   /// How the list shows an event once a report call has answered. The
   /// default is an older backend's: no protection fields.
   Map<String, dynamic> listed = _reported('open');
+
+  /// A report call that throws was still taken up by the server: the list
+  /// shows [listed] afterwards.
+  bool recordedOnError = false;
 
   /// When set, a report call waits for it.
   Completer<void>? gate;
@@ -93,6 +100,8 @@ class _Api extends ApiClient {
     String? before,
   }) async {
     lists++;
+    final error = listError;
+    if (error != null && lists > 1) throw error;
     return {'events': events, 'reportEnabled': reportEnabled};
   }
 
@@ -111,6 +120,12 @@ class _Api extends ApiClient {
           e['id'] == eventId ? {...e, 'report': listed} : e,
       ];
       return answer;
+    }
+    if (recordedOnError) {
+      events = [
+        for (final e in events)
+          e['id'] == eventId ? {...e, 'report': listed} : e,
+      ];
     }
     throw answer;
   }
@@ -473,10 +488,7 @@ void main() {
         );
       await _open(tester, api, choice: _secure);
       expect(
-        find.text(
-          'Report recorded, but we could not secure your account. Try '
-          'securing again.',
-        ),
+        find.text('Report recorded, but we could not secure your account.'),
         findsOneWidget,
       );
       expect(find.textContaining('PIN'), findsNothing);
@@ -553,7 +565,7 @@ void main() {
       expect(
         find.text(
           'You have sent the most reports allowed for now. Try again in '
-          'about 5 hours.',
+          'about 6 hours.',
         ),
         findsOneWidget,
       );
@@ -619,7 +631,9 @@ void main() {
       expect(find.byKey(_retry), findsNothing);
     });
 
-    testWidgets('network error: retry', (tester) async {
+    testWidgets('network error on "secure": the retry waits 60 seconds', (
+      tester,
+    ) async {
       final api = _Api()..answers.addAll([Exception('offline'), _result()]);
       final auth = await _open(tester, api, choice: _secure);
       expect(
@@ -628,11 +642,221 @@ void main() {
       );
       expect(find.text('Try again'), findsOneWidget);
       expect(auth.isSignedIn, isTrue);
+      // The request may have arrived: the list is read again, and the
+      // server's cooldown is respected.
+      expect(api.lists, 2);
+      expect(find.byKey(_action), findsOneWidget);
+      expect(find.text('Wait a minute, then try again.'), findsOneWidget);
+      expect(_enabled(tester, _retry), isFalse);
+      await tester.tap(find.byKey(_retry), warnIfMissed: false);
+      await _settle(tester);
+      expect(api.reports.length, 1);
+
+      await tester.pump(_cooldown);
+      await tester.pump();
+      expect(find.byKey(_wait), findsNothing);
+      expect(_enabled(tester, _retry), isTrue);
       await _show(tester, find.byKey(_retry));
       await tester.tap(find.byKey(_retry));
       await _settle(tester);
       expect(api.reports.last, (eventId: 'e1', secureAccount: true));
       expect(find.text('Reported'), findsOneWidget);
+      expect(find.byKey(_retry), findsNothing);
+    });
+
+    testWidgets('503 on "secure": the retry waits too', (tester) async {
+      final api = _Api()
+        ..answers.add(ApiException(503, {'error': 'unavailable'}));
+      await _open(tester, api, choice: _secure);
+      expect(
+        find.text("We couldn't send your report. Try again."),
+        findsOneWidget,
+      );
+      expect(api.lists, 2);
+      expect(find.byKey(_wait), findsOneWidget);
+      expect(_enabled(tester, _retry), isFalse);
+    });
+
+    testWidgets('400 on "secure": refused outright, retry at once', (
+      tester,
+    ) async {
+      final api = _Api()
+        ..answers.add(ApiException(400, {'error': 'invalid_secure_account'}));
+      await _open(tester, api, choice: _secure);
+      expect(find.byKey(_wait), findsNothing);
+      expect(_enabled(tester, _retry), isTrue);
+    });
+
+    testWidgets('network error on "report only": retry at once', (
+      tester,
+    ) async {
+      final api = _Api()..answers.addAll([Exception('offline'), _result()]);
+      await _open(tester, api, choice: _only);
+      expect(
+        find.text('No connection. Check your internet and try again.'),
+        findsOneWidget,
+      );
+      expect(api.lists, 1);
+      expect(find.byKey(_wait), findsNothing);
+      expect(_enabled(tester, _retry), isTrue);
+      await _show(tester, find.byKey(_retry));
+      await tester.tap(find.byKey(_retry));
+      await _settle(tester);
+      expect(api.reports.last, (eventId: 'e1', secureAccount: false));
+      expect(find.text('Reported'), findsOneWidget);
+    });
+  });
+
+  group('a "secure" report whose answer was lost', () {
+    testWidgets('the list shows it arrived and is still owed: the failed '
+        'notice, waiting', (tester) async {
+      final api = _Api()
+        ..recordedOnError = true
+        ..listed = _reported('open', pending: true)
+        ..answers.add(Exception('timeout'));
+      await _open(tester, api, choice: _secure);
+      expect(api.lists, 2);
+      // The list's state, not the error.
+      expect(find.textContaining('No connection'), findsNothing);
+      expect(
+        find.text('Report recorded, but we could not secure your account.'),
+        findsOneWidget,
+      );
+      expect(find.text('Reported'), findsOneWidget);
+      expect(find.byKey(_action), findsNothing);
+      expect(find.byKey(_notice), findsOneWidget);
+      expect(find.text('Try securing again'), findsOneWidget);
+      expect(find.byKey(_wait), findsOneWidget);
+      expect(_enabled(tester, _retry), isFalse);
+    });
+
+    testWidgets('the list shows it arrived and nothing is owed: no notice', (
+      tester,
+    ) async {
+      final api = _Api()
+        ..recordedOnError = true
+        ..listed = _reported('open', pending: false)
+        ..answers.add(Exception('timeout'));
+      await _open(tester, api, choice: _secure);
+      expect(find.text('Reported'), findsOneWidget);
+      expect(find.byKey(_notice), findsNothing);
+      expect(find.byKey(_retry), findsNothing);
+      expect(find.byKey(_action), findsNothing);
+    });
+
+    testWidgets('a retry answered "failed" is not final: the list says it '
+        'is secured, so no notice', (tester) async {
+      final api = _Api()
+        ..answers.addAll([
+          Exception('timeout'),
+          // The server ignored the repeat: the first attempt was running.
+          _result(idempotent: true, protection: _failedProtection),
+        ]);
+      await _open(tester, api, choice: _secure);
+      expect(find.textContaining('No connection'), findsOneWidget);
+      await tester.pump(_cooldown);
+      await tester.pump();
+      // By now the first attempt has finished and nothing is owed.
+      api.listed = _reported('open', pending: false);
+      await _show(tester, find.byKey(_retry));
+      await tester.tap(find.byKey(_retry));
+      await _settle(tester);
+      expect(api.reports.length, 2);
+      expect(find.text('Reported'), findsOneWidget);
+      expect(find.textContaining('could not secure'), findsNothing);
+      expect(find.byKey(_notice), findsNothing);
+      expect(find.byKey(_retry), findsNothing);
+    });
+
+    testWidgets('a retry answered "failed", and the list agrees: the failed '
+        'notice, waiting', (tester) async {
+      final api = _Api()
+        ..listed = _reported('open', pending: true)
+        ..answers.addAll([
+          Exception('timeout'),
+          _result(idempotent: true, protection: _failedProtection),
+        ]);
+      await _open(tester, api, choice: _secure);
+      await tester.pump(_cooldown);
+      await tester.pump();
+      await _show(tester, find.byKey(_retry));
+      await tester.tap(find.byKey(_retry));
+      await _settle(tester);
+      expect(
+        find.text('Report recorded, but we could not secure your account.'),
+        findsOneWidget,
+      );
+      expect(find.byKey(_notice), findsOneWidget);
+      expect(find.byKey(_wait), findsOneWidget);
+      expect(_enabled(tester, _retry), isFalse);
+    });
+  });
+
+  group('errors on a retry of securing', () {
+    for (final (name, error) in <(String, Object)>[
+      ('network', Exception('offline')),
+      ('503', ApiException(503, {'error': 'unavailable'})),
+    ]) {
+      testWidgets('$name: could not reach FitFlex, and the retry waits', (
+        tester,
+      ) async {
+        final api = _Api()
+          ..events = [_event(1, report: _reported('open', pending: true))]
+          ..answers.add(error);
+        await _open(tester, api);
+        expect(_enabled(tester, _retry), isTrue);
+        await tester.tap(find.byKey(_retry));
+        await _settle(tester);
+        expect(api.reports.single, (eventId: 'e1', secureAccount: true));
+        expect(
+          find.text(
+            'We could not reach FitFlex to secure your account. Try again.',
+          ),
+          findsOneWidget,
+        );
+        expect(find.textContaining('send your report'), findsNothing);
+        expect(find.textContaining('No connection'), findsNothing);
+        // One notice; the list was read again and still owes the securing.
+        expect(api.lists, 2);
+        expect(find.byKey(_notice), findsOneWidget);
+        expect(find.text('Wait a minute, then try again.'), findsOneWidget);
+        expect(_enabled(tester, _retry), isFalse);
+        await tester.pump(_cooldown);
+        await tester.pump();
+        expect(find.byKey(_wait), findsNothing);
+        expect(_enabled(tester, _retry), isTrue);
+      });
+    }
+
+    testWidgets('the list then says it is secured: the error goes', (
+      tester,
+    ) async {
+      final api = _Api()
+        ..events = [_event(1, report: _reported('open', pending: true))]
+        ..recordedOnError = true
+        ..listed = _reported('open', pending: false)
+        ..answers.add(Exception('timeout'));
+      await _open(tester, api);
+      await tester.tap(find.byKey(_retry));
+      await _settle(tester);
+      expect(find.byKey(_notice), findsNothing);
+      expect(find.byKey(_retry), findsNothing);
+      expect(find.text('Reported'), findsOneWidget);
+    });
+
+    testWidgets('a refresh that fails keeps the list and the notice', (
+      tester,
+    ) async {
+      final api = _Api()
+        ..events = [_event(1, report: _reported('open', pending: true))]
+        ..answers.add(Exception('offline'))
+        ..listError = ApiException(503, {'error': 'unavailable'});
+      await _open(tester, api);
+      await tester.tap(find.byKey(_retry));
+      await _settle(tester);
+      expect(find.text('Iron Gym'), findsOneWidget);
+      expect(find.byKey(_notice), findsOneWidget);
+      expect(find.textContaining('could not reach FitFlex'), findsOneWidget);
     });
   });
 
@@ -683,10 +907,7 @@ void main() {
       final auth = await _open(tester, api);
       expect(api.reports, isEmpty);
       expect(
-        find.text(
-          'Report recorded, but we could not secure your account. Try '
-          'securing again.',
-        ),
+        find.text('Report recorded, but we could not secure your account.'),
         findsOneWidget,
       );
       expect(find.byKey(_action), findsNothing);
@@ -701,6 +922,32 @@ void main() {
       await tester.tap(find.byKey(_signedOutOk));
       await _settle(tester);
       expect(auth.isSignedIn, isFalse);
+    });
+
+    testWidgets('reopened page: a retry answered "failed" with no marker '
+        'waits, with no error text', (tester) async {
+      final api = _Api()
+        ..events = [_event(1, report: _reported('open', pending: true))]
+        ..listed = _reported('open', pending: true)
+        ..answers.add(_result(idempotent: true, protection: _failedProtection));
+      await _open(tester, api);
+      expect(find.byKey(_wait), findsNothing);
+      expect(_enabled(tester, _retry), isTrue);
+      await tester.tap(find.byKey(_retry));
+      await _settle(tester);
+      expect(api.reports.single, (eventId: 'e1', secureAccount: true));
+      expect(_enabled(tester, _retry), isFalse);
+      expect(find.text('Wait a minute, then try again.'), findsOneWidget);
+      // Told to wait; nothing reads as a new error.
+      expect(find.byKey(_notice), findsOneWidget);
+      expect(
+        find.text('Report recorded, but we could not secure your account.'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('could not reach'), findsNothing);
+      expect(find.textContaining("couldn't send"), findsNothing);
+      expect(find.textContaining('No connection'), findsNothing);
+      expect(find.textContaining('support'), findsNothing);
     });
 
     testWidgets('not retryable: no retry, contact support', (tester) async {
@@ -866,10 +1113,7 @@ void main() {
       // The list was read again and agrees: one notice, still pending.
       expect(api.lists, 2);
       expect(find.byKey(_notice), findsOneWidget);
-      expect(
-        find.text('Wait about a minute before you try again.'),
-        findsOneWidget,
-      );
+      expect(find.text('Wait a minute, then try again.'), findsOneWidget);
       expect(_enabled(tester, _retry), isFalse);
       await tester.tap(find.byKey(_retry), warnIfMissed: false);
       await _settle(tester);
@@ -932,39 +1176,26 @@ void main() {
     String en(Object? body) =>
         securityReportLimitMessage((k) => FFLocale.textOf('en', k) ?? k, body);
     const lead = 'You have sent the most reports allowed for now. ';
-    test('rounds to minutes, then hours', () {
-      expect(
-        en({'retryAfterSeconds': 1}),
-        '${lead}Try again in about a minute.',
-      );
-      expect(
-        en({'retryAfterSeconds': 60}),
-        '${lead}Try again in about a minute.',
-      );
-      expect(
-        en({'retryAfterSeconds': 61}),
-        '${lead}Try again in about 2 minutes.',
-      );
-      expect(
-        en({'retryAfterSeconds': 59 * 60}),
-        '${lead}Try again in about 59 minutes.',
-      );
-      expect(
-        en({'retryAfterSeconds': 3600}),
-        '${lead}Try again in about an hour.',
-      );
-      expect(
-        en({'retryAfterSeconds': 5399}),
-        '${lead}Try again in about an hour.',
-      );
-      expect(
-        en({'retryAfterSeconds': 5400}),
-        '${lead}Try again in about 2 hours.',
-      );
-      expect(
-        en({'retryAfterSeconds': 86400}),
-        '${lead}Try again in about 24 hours.',
-      );
+    test('rounds up to minutes, then hours, never down', () {
+      String wait(int seconds) {
+        final text = en({'retryAfterSeconds': seconds});
+        expect(text, startsWith('${lead}Try again in about '));
+        return text.substring('${lead}Try again in about '.length);
+      }
+
+      expect(wait(1), 'a minute.');
+      expect(wait(60), 'a minute.');
+      expect(wait(61), '2 minutes.');
+      expect(wait(120), '2 minutes.');
+      expect(wait(59 * 60), '59 minutes.');
+      expect(wait(59 * 60 + 1), 'an hour.');
+      expect(wait(3600), 'an hour.');
+      expect(wait(3601), '2 hours.');
+      expect(wait(5399), '2 hours.');
+      expect(wait(7200), '2 hours.');
+      expect(wait(7201), '3 hours.');
+      expect(wait(86399), '24 hours.');
+      expect(wait(86400), '24 hours.');
     });
     test('missing or invalid: no time', () {
       for (final body in <Object?>[
@@ -1027,7 +1258,7 @@ void main() {
       expect(
         find.text(
           'Ripoti imerekodiwa, lakini hatukuweza kulinda akaunti yako. '
-          'Wasiliana na msaada wa FitFlex.',
+          'Wasiliana na timu ya msaada ya FitFlex.',
         ),
         findsOneWidget,
       );
@@ -1036,7 +1267,7 @@ void main() {
       await _settle(tester);
       expect(tester.takeException(), isNull);
       expect(
-        find.text('Subiri takriban dakika moja kabla ya kujaribu tena.'),
+        find.text('Subiri dakika moja kisha ujaribu tena.'),
         findsOneWidget,
       );
       // The 429 wait, on the event not yet reported.
@@ -1049,6 +1280,33 @@ void main() {
       await _settle(tester);
       expect(tester.takeException(), isNull);
       expect(find.textContaining('takriban saa 2'), findsOneWidget);
+    });
+
+    testWidgets('a retry that could not reach FitFlex does not overflow', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(320, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final api = _Api()
+        ..events = [_event(1, report: _reported('open', pending: true))]
+        ..answers.add(Exception('offline'));
+      await _open(tester, api, lang: 'sw', scale: 2);
+      await _show(tester, find.byKey(_retry));
+      await tester.tap(find.byKey(_retry));
+      await _settle(tester);
+      expect(tester.takeException(), isNull);
+      expect(
+        find.text(
+          'Hatukuweza kuwasiliana na FitFlex ili kulinda akaunti yako. '
+          'Jaribu tena.',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Subiri dakika moja kisha ujaribu tena.'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('PIN step with the support line does not overflow', (
@@ -1074,8 +1332,8 @@ void main() {
       expect(find.byKey(_forgotPin), findsOneWidget);
       expect(
         find.text(
-          'Kujaribu tena hapa hakutalinda akaunti yako. Wasiliana na msaada '
-          'wa FitFlex.',
+          'Kujaribu tena hapa hakutalinda akaunti yako. Wasiliana na timu ya '
+          'msaada ya FitFlex.',
         ),
         findsOneWidget,
       );
@@ -1264,7 +1522,7 @@ void main() {
       'sw',
     ).where((k) => k.startsWith('secAct.report.'));
     expect(en.toSet(), sw.toSet());
-    expect(en.length, 33);
+    expect(en.length, 34);
     for (final k in en) {
       expect(
         FFLocale.textOf('sw', k),
