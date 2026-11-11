@@ -2928,9 +2928,13 @@ class FFLocale extends ChangeNotifier {
       'ownerReg.phone': 'Phone number',
       'ownerReg.email': 'Email address',
       'ownerReg.trainersLabel': 'Trainers',
-      'ownerReg.trainersHint': 'Select trainers for this gym (optional).',
-      'ownerReg.searchTrainers': 'Search trainers...',
-      'ownerReg.noTrainersFound': 'No trainers found.',
+      'ownerReg.trainersJoinHint':
+          'Trainers join your gym by sending a join request from the FitFlex app. You approve requests on the Trainers page.',
+      'ownerReg.trainersLinkedHint':
+          'Trainers linked to this gym. Untick a trainer to remove them from this gym.',
+      'ownerReg.noLinkedTrainers': 'No trainers are linked to this gym yet.',
+      'ownerReg.trainersLoadFailed':
+          "Couldn't load this gym's trainers. Saving won't change them.",
       'ownerReg.createTrainer': 'Create new trainer',
       'ownerReg.trainerName': 'Trainer name',
       'ownerReg.trainerEmail': 'Trainer email',
@@ -2949,7 +2953,6 @@ class FFLocale extends ChangeNotifier {
       'ownerReg.trainerPassEnabled': 'Enable trainer pass',
       'ownerReg.trainerPassFee': 'Trainer pass fee (TSh)',
       'ownerReg.trainerPassPeriod': 'Trainer pass period',
-      'ownerReg.done': 'Done',
       'home.back': 'Back',
       'member.pricing': 'Pricing',
       'member.noAvailability': 'No availability listed.',
@@ -11338,9 +11341,14 @@ class FFLocale extends ChangeNotifier {
       'ownerReg.phone': 'Namba ya simu',
       'ownerReg.email': 'Barua pepe',
       'ownerReg.trainersLabel': 'Ma-trainer',
-      'ownerReg.trainersHint': 'Chagua ma-trainer wa gym hii (si lazima).',
-      'ownerReg.searchTrainers': 'Tafuta ma-trainer...',
-      'ownerReg.noTrainersFound': 'Hakuna ma-trainer waliopatikana.',
+      'ownerReg.trainersJoinHint':
+          'Ma-trainer hujiunga na gym yako kwa kutuma ombi la kujiunga kupitia programu ya FitFlex. Unaidhinisha maombi kwenye ukurasa wa Ma-trainer.',
+      'ownerReg.trainersLinkedHint':
+          'Ma-trainer waliounganishwa na gym hii. Ondoa alama kwa trainer ili kumwondoa kwenye gym hii.',
+      'ownerReg.noLinkedTrainers':
+          'Bado hakuna trainer aliyeunganishwa na gym hii.',
+      'ownerReg.trainersLoadFailed':
+          'Imeshindikana kupakia ma-trainer wa gym hii. Kuhifadhi hakutawabadilisha.',
       'ownerReg.createTrainer': 'Ongeza trainer mpya',
       'ownerReg.trainerName': 'Jina la trainer',
       'ownerReg.trainerEmail': 'Barua pepe ya trainer',
@@ -11359,7 +11367,6 @@ class FFLocale extends ChangeNotifier {
       'ownerReg.trainerPassEnabled': 'Washa pasi ya trainer',
       'ownerReg.trainerPassFee': 'Ada ya pasi ya trainer (TSh)',
       'ownerReg.trainerPassPeriod': 'Muda wa pasi ya trainer',
-      'ownerReg.done': 'Tayari',
       'ownerScan.title': 'Skani QR ya Mwanachama',
       'ownerScan.hint': 'Elekeza kamera kwenye QR ya mwanachama',
       'ownerScan.camera.denied':
