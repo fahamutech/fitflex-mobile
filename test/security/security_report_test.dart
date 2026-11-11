@@ -1,0 +1,753 @@
+// Security activity (S4c): the "This wasn't me" report of a web check-in
+// (fitflex-functions docs/security-incident-report-api.md).
+
+import 'dart:async';
+
+import 'package:fitflexmobile/app_scope.dart';
+import 'package:fitflexmobile/screens/security/security_activity_page.dart';
+import 'package:fitflexmobile/screens/security/security_report_sheet.dart';
+import 'package:fitflexmobile/shared/api_client.dart';
+import 'package:fitflexmobile/shared/auth_state.dart';
+import 'package:fitflexmobile/shared/design_tokens.dart';
+import 'package:fitflexmobile/shared/i18n.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+Map<String, dynamic> _event(
+  int n, {
+  String kind = 'web_checkin',
+  Map<String, dynamic>? report,
+}) => {
+  'id': 'e$n',
+  'kind': kind,
+  'occurredAt': '2026-11-09T11:30:00.000Z',
+  'gym': {'id': 'g1', 'name': 'Iron Gym'},
+  'channel': 'web',
+  'status': 'inbox',
+  'report': report,
+};
+
+Map<String, dynamic> _reported(String status) => {
+  'incidentId': 'inc1',
+  'status': status,
+  'reportedAt': '2026-11-10T08:00:00.000Z',
+};
+
+Map<String, dynamic> _result({
+  bool idempotent = false,
+  bool signedOut = false,
+  Map<String, dynamic> protection = const {
+    'requested': false,
+    'sessionsEnded': false,
+    'pinResetRequired': false,
+  },
+}) => {
+  'ok': true,
+  'idempotent': idempotent,
+  'incident': {
+    'id': 'inc1',
+    'status': 'open',
+    'reportedAt': '2026-11-10T08:00:00.000Z',
+  },
+  'protection': protection,
+  'signedOut': signedOut,
+};
+
+class _Api extends ApiClient {
+  _Api({this.pinOn = false}) : super(baseUrl: 'http://localhost:0');
+
+  final bool pinOn;
+  bool reportEnabled = true;
+  List<Map<String, dynamic>> events = [_event(1)];
+  int lists = 0;
+
+  /// Answers to the report calls, in order: a map, or something to throw.
+  final answers = <Object>[];
+
+  /// When set, a report call waits for it.
+  Completer<void>? gate;
+  final reports = <({String eventId, bool secureAccount})>[];
+
+  @override
+  Future<Map<String, dynamic>> securityActivity({
+    int limit = 20,
+    String? before,
+  }) async {
+    lists++;
+    return {'events': events, 'reportEnabled': reportEnabled};
+  }
+
+  @override
+  Future<Map<String, dynamic>> reportSecurityActivity(
+    String eventId, {
+    bool secureAccount = true,
+  }) async {
+    reports.add((eventId: eventId, secureAccount: secureAccount));
+    await gate?.future;
+    final answer = answers.removeAt(0);
+    if (answer is Map<String, dynamic>) {
+      // The server now lists the event as reported.
+      events = [
+        for (final e in events)
+          e['id'] == eventId ? {...e, 'report': _reported('open')} : e,
+      ];
+      return answer;
+    }
+    throw answer;
+  }
+
+  @override
+  Future<Map<String, dynamic>> signInOptions() async => {
+    'pinLogin': pinOn,
+    'pinReset': pinOn,
+  };
+}
+
+Widget _app(_Api api, AuthState auth, {String lang = 'en', double scale = 1}) =>
+    AppScope(
+      api: api,
+      auth: auth,
+      child: FFLocaleScope(
+        notifier: FFLocale()..set(Locale(lang)),
+        child: MaterialApp(
+          theme: buildTheme(),
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: TextScaler.linear(scale)),
+            child: child!,
+          ),
+          home: const SecurityActivityPage(),
+        ),
+      ),
+    );
+
+Future<void> _settle(WidgetTester tester) async {
+  for (var i = 0; i < 8; i++) {
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+}
+
+/// Scrolls [finder] into view.
+Future<void> _show(WidgetTester tester, Finder finder) async {
+  await tester.ensureVisible(finder);
+  await tester.pump();
+}
+
+const _action = Key('security-report-e1');
+const _secure = Key('security-report-secure');
+const _only = Key('security-report-only');
+const _cancel = Key('security-report-cancel');
+const _retry = Key('security-report-retry-e1');
+const _changePin = Key('security-report-change-pin-e1');
+const _forgotPin = Key('security-report-forgot-pin-e1');
+const _signedOutOk = Key('security-report-signed-out-ok');
+
+Future<AuthState> _signedIn(_Api api) async {
+  final auth = AuthState(api);
+  await auth.signIn('tok', {'id': 'u1', 'userType': 'member'});
+  await auth.loadSignInOptions(force: true);
+  return auth;
+}
+
+/// Opens the page, then the sheet, and taps [choice].
+Future<AuthState> _open(
+  WidgetTester tester,
+  _Api api, {
+  Key? choice,
+  String lang = 'en',
+  double scale = 1,
+}) async {
+  final auth = await _signedIn(api);
+  await tester.pumpWidget(_app(api, auth, lang: lang, scale: scale));
+  await _settle(tester);
+  if (choice == null) return auth;
+  await _show(tester, find.byKey(_action));
+  await tester.tap(find.byKey(_action));
+  await _settle(tester);
+  await _show(tester, find.byKey(choice));
+  await tester.tap(find.byKey(choice));
+  await _settle(tester);
+  return auth;
+}
+
+void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  group('when the action shows', () {
+    testWidgets('hidden while reportEnabled is false', (tester) async {
+      final api = _Api()..reportEnabled = false;
+      await _open(tester, api);
+      expect(find.text('Iron Gym'), findsOneWidget);
+      expect(find.text("This wasn't me"), findsNothing);
+      expect(find.byKey(_action), findsNothing);
+      // Exactly the S4a row: one semantics label, no report words.
+      expect(
+        find.bySemanticsLabel(
+          'Check-in from a web browser, Iron Gym, 9 Nov 2026, 14:30 EAT, '
+          'Alert sent',
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('shown on web check-ins only', (tester) async {
+      final api = _Api()
+        ..events = [_event(1), _event(2, kind: 'something_new')];
+      await _open(tester, api);
+      expect(find.text("This wasn't me"), findsOneWidget);
+      expect(find.byKey(_action), findsOneWidget);
+      expect(find.byKey(const Key('security-report-e2')), findsNothing);
+      expect(
+        find.bySemanticsLabel(
+          "This wasn't me. Report this check-in to FitFlex support",
+        ),
+        findsOneWidget,
+      );
+      // At least 48 high.
+      expect(
+        tester.getSize(find.byKey(_action)).height,
+        greaterThanOrEqualTo(48),
+      );
+    });
+
+    testWidgets('hidden once reported; a chip says how far it is', (
+      tester,
+    ) async {
+      final api = _Api()
+        ..events = [
+          _event(1, report: _reported('open')),
+          _event(2, report: _reported('acknowledged')),
+          _event(3, report: _reported('resolved')),
+          _event(4, report: _reported('something_new')),
+        ];
+      await _open(tester, api);
+      expect(find.text("This wasn't me"), findsNothing);
+      expect(find.text('Reported'), findsNWidgets(2));
+      expect(find.text('Being reviewed'), findsOneWidget);
+      expect(find.text('Reviewed'), findsOneWidget);
+      expect(
+        find.bySemanticsLabel(
+          'Check-in from a web browser, Iron Gym, 9 Nov 2026, 14:30 EAT, '
+          'Alert sent, Being reviewed',
+        ),
+        findsOneWidget,
+      );
+    });
+  });
+
+  group('sheet', () {
+    testWidgets('says what happens and offers both choices', (tester) async {
+      final api = _Api();
+      await _open(tester, api);
+      await tester.tap(find.byKey(_action));
+      await _settle(tester);
+      expect(find.text('Report this check-in'), findsOneWidget);
+      expect(
+        find.text('We will record a report for FitFlex support to review.'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('The visit is not removed automatically.'),
+        findsOneWidget,
+      );
+      expect(find.text('Report and secure my account'), findsOneWidget);
+      expect(
+        find.text(
+          'Signs you out on every device. If you sign in with a PIN, you '
+          'then set a new one with Forgot PIN.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Report only'), findsOneWidget);
+      expect(find.text('Cancel'), findsOneWidget);
+      for (final k in [_secure, _only, _cancel]) {
+        expect(tester.getSize(find.byKey(k)).height, greaterThanOrEqualTo(48));
+      }
+
+      await tester.tap(find.byKey(_cancel));
+      await _settle(tester);
+      expect(find.text('Report this check-in'), findsNothing);
+      expect(api.reports, isEmpty);
+      expect(find.byKey(_action), findsOneWidget);
+    });
+  });
+
+  group('results', () {
+    testWidgets('report only: confirmation, chip and a fresh list', (
+      tester,
+    ) async {
+      final api = _Api()..answers.add(_result());
+      final auth = await _open(tester, api, choice: _only);
+      expect(api.reports.single, (eventId: 'e1', secureAccount: false));
+      expect(
+        find.text('Report sent. FitFlex support will review it.'),
+        findsOneWidget,
+      );
+      expect(find.text('Reported'), findsOneWidget);
+      expect(find.byKey(_action), findsNothing);
+      expect(api.lists, 2);
+      expect(auth.isSignedIn, isTrue);
+    });
+
+    testWidgets('secured with a PIN: told to use Forgot PIN, then signed '
+        'out', (tester) async {
+      final api = _Api()
+        ..answers.add(
+          _result(
+            signedOut: true,
+            protection: {
+              'requested': true,
+              'sessionsEnded': true,
+              'pinResetRequired': true,
+            },
+          ),
+        );
+      final auth = await _open(tester, api, choice: _secure);
+      expect(api.reports.single, (eventId: 'e1', secureAccount: true));
+      expect(find.text('You have been signed out'), findsOneWidget);
+      expect(find.textContaining('use Forgot PIN'), findsOneWidget);
+      // Still this session until the member has read it.
+      expect(auth.isSignedIn, isTrue);
+      await tester.tap(find.byKey(_signedOutOk));
+      await _settle(tester);
+      expect(auth.isSignedIn, isFalse);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('token'), isNull);
+      expect(prefs.getString('user'), isNull);
+    });
+
+    testWidgets('secured without a FitFlex PIN: told to sign in again', (
+      tester,
+    ) async {
+      final api = _Api()
+        ..answers.add(
+          _result(
+            signedOut: true,
+            protection: {
+              'requested': true,
+              'sessionsEnded': true,
+              'pinResetRequired': 'not_applicable',
+            },
+          ),
+        );
+      final auth = await _open(tester, api, choice: _secure);
+      expect(find.textContaining('Sign in again to continue'), findsOneWidget);
+      expect(find.textContaining('Forgot PIN'), findsNothing);
+      await tester.tap(find.byKey(_signedOutOk));
+      await _settle(tester);
+      expect(auth.isSignedIn, isFalse);
+    });
+
+    testWidgets('limited: recorded, nothing locked again, still signed in', (
+      tester,
+    ) async {
+      final api = _Api()
+        ..answers.add(
+          _result(
+            protection: {
+              'requested': true,
+              'sessionsEnded': false,
+              'pinResetRequired': false,
+              'limited': true,
+            },
+          ),
+        );
+      final auth = await _open(tester, api, choice: _secure);
+      expect(
+        find.text(
+          'Report recorded. Your account was already secured recently, so '
+          'nothing more was changed.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Reported'), findsOneWidget);
+      expect(find.byKey(_retry), findsNothing);
+      expect(find.byKey(_action), findsNothing);
+      expect(auth.isSignedIn, isTrue);
+    });
+
+    testWidgets('failed: change PIN now, and a retry that secures', (
+      tester,
+    ) async {
+      final api = _Api(pinOn: true)
+        ..answers.addAll([
+          _result(
+            protection: {
+              'requested': true,
+              'sessionsEnded': false,
+              'pinResetRequired': false,
+              'failed': true,
+            },
+          ),
+          _result(
+            idempotent: true,
+            signedOut: true,
+            protection: {
+              'requested': true,
+              'sessionsEnded': true,
+              'pinResetRequired': true,
+            },
+          ),
+        ]);
+      final auth = await _open(tester, api, choice: _secure);
+      expect(
+        find.text(
+          'Report recorded, but we could not secure your account. Change '
+          'your PIN now.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Reported'), findsOneWidget);
+      expect(find.byKey(_action), findsNothing);
+      expect(auth.isSignedIn, isTrue);
+
+      // The way to change the PIN.
+      await _show(tester, find.byKey(_changePin));
+      await tester.tap(find.byKey(_changePin));
+      await _settle(tester);
+      expect(find.byKey(const Key('change-pin-save')), findsOneWidget);
+      await tester.tapAt(const Offset(5, 5));
+      await _settle(tester);
+
+      // The retry asks the server to secure again.
+      await _show(tester, find.byKey(_retry));
+      expect(find.text('Try securing again'), findsOneWidget);
+      await tester.tap(find.byKey(_retry));
+      await _settle(tester);
+      expect(api.reports.last, (eventId: 'e1', secureAccount: true));
+      expect(api.reports.length, 2);
+      await tester.tap(find.byKey(_signedOutOk));
+      await _settle(tester);
+      expect(auth.isSignedIn, isFalse);
+    });
+
+    testWidgets('failed with no FitFlex PIN: no PIN words, only the retry', (
+      tester,
+    ) async {
+      // PIN sign-in is on, but FitFlex holds no PIN for this account.
+      final api = _Api(pinOn: true)
+        ..answers.add(
+          _result(
+            protection: {
+              'requested': true,
+              'sessionsEnded': false,
+              'pinResetRequired': 'not_applicable',
+              'failed': true,
+            },
+          ),
+        );
+      await _open(tester, api, choice: _secure);
+      expect(
+        find.text(
+          'Report recorded, but we could not secure your account. Try '
+          'securing again.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('PIN'), findsNothing);
+      expect(find.byKey(_changePin), findsNothing);
+      expect(find.byKey(_forgotPin), findsNothing);
+      expect(find.byKey(_retry), findsOneWidget);
+    });
+
+    testWidgets('failed while PIN sign-in is off: no PIN words either', (
+      tester,
+    ) async {
+      final api = _Api()
+        ..answers.add(
+          _result(
+            protection: {
+              'requested': true,
+              'sessionsEnded': false,
+              'pinResetRequired': false,
+              'failed': true,
+            },
+          ),
+        );
+      await _open(tester, api, choice: _secure);
+      expect(find.textContaining('PIN'), findsNothing);
+      expect(find.byKey(_changePin), findsNothing);
+      expect(find.byKey(_forgotPin), findsNothing);
+      expect(find.byKey(_retry), findsOneWidget);
+    });
+
+    testWidgets('failed with the PIN already off: Forgot PIN, not Change '
+        'PIN', (tester) async {
+      final api = _Api(pinOn: true)
+        ..answers.add(
+          _result(
+            protection: {
+              'requested': true,
+              'sessionsEnded': false,
+              'pinResetRequired': true,
+              'failed': true,
+            },
+          ),
+        );
+      final auth = await _open(tester, api, choice: _secure);
+      expect(
+        find.text(
+          'Report recorded, but we could not finish securing your account. '
+          'Your PIN no longer works. Set a new one with Forgot PIN.',
+        ),
+        findsOneWidget,
+      );
+      expect(auth.isSignedIn, isTrue);
+      expect(find.byKey(_changePin), findsNothing);
+      expect(find.byKey(_retry), findsOneWidget);
+      expect(find.text('Try securing again'), findsOneWidget);
+
+      // The existing Forgot PIN flow opens.
+      await _show(tester, find.byKey(_forgotPin));
+      await tester.tap(find.byKey(_forgotPin));
+      await _settle(tester);
+      expect(find.byKey(const Key('pin-flow-send')), findsOneWidget);
+    });
+  });
+
+  group('errors', () {
+    testWidgets('429: try again later, with no time', (tester) async {
+      final api = _Api()
+        ..answers.add(
+          ApiException(429, {
+            'error': 'report_limit_reached',
+            'retryAfterSeconds': 3600,
+          }),
+        );
+      await _open(tester, api, choice: _only);
+      expect(
+        find.text(
+          'You have sent the most reports allowed for now. Try again later.',
+        ),
+        findsOneWidget,
+      );
+      // The server's hour is not shown: the cap is a rolling day.
+      expect(find.textContaining('minutes'), findsNothing);
+      expect(find.textContaining('hour'), findsNothing);
+      expect(find.byKey(_retry), findsNothing);
+      // Not reported: the action is still there.
+      expect(find.byKey(_action), findsOneWidget);
+      expect(find.text('Reported'), findsNothing);
+    });
+
+    testWidgets('404: not available, list read again', (tester) async {
+      final api = _Api()
+        ..answers.add(ApiException(404, {'error': 'not_found'}));
+      final auth = await _open(tester, api, choice: _only);
+      expect(
+        find.text('Reporting is not available for this check-in.'),
+        findsOneWidget,
+      );
+      expect(find.byKey(_retry), findsNothing);
+      expect(api.lists, 2);
+      expect(auth.isSignedIn, isTrue);
+    });
+
+    testWidgets('400: could not send, retry sends the same choice', (
+      tester,
+    ) async {
+      final api = _Api()
+        ..answers.addAll([
+          ApiException(400, {'error': 'invalid_secure_account'}),
+          _result(),
+        ]);
+      await _open(tester, api, choice: _only);
+      expect(
+        find.text("We couldn't send your report. Try again."),
+        findsOneWidget,
+      );
+      await _show(tester, find.byKey(_retry));
+      await tester.tap(find.byKey(_retry));
+      await _settle(tester);
+      expect(api.reports, [
+        (eventId: 'e1', secureAccount: false),
+        (eventId: 'e1', secureAccount: false),
+      ]);
+      expect(find.text('Reported'), findsOneWidget);
+      expect(find.byKey(_retry), findsNothing);
+    });
+
+    testWidgets('network error: retry', (tester) async {
+      final api = _Api()..answers.addAll([Exception('offline'), _result()]);
+      final auth = await _open(tester, api, choice: _secure);
+      expect(
+        find.text('No connection. Check your internet and try again.'),
+        findsOneWidget,
+      );
+      expect(find.text('Try again'), findsOneWidget);
+      expect(auth.isSignedIn, isTrue);
+      await _show(tester, find.byKey(_retry));
+      await tester.tap(find.byKey(_retry));
+      await _settle(tester);
+      expect(api.reports.last, (eventId: 'e1', secureAccount: true));
+      expect(find.text('Reported'), findsOneWidget);
+    });
+  });
+
+  testWidgets('one report at a time: no second send while one is in flight', (
+    tester,
+  ) async {
+    final api = _Api()
+      ..events = [_event(1), _event(2)]
+      ..gate = Completer<void>()
+      ..answers.add(_result());
+    await _open(tester, api, choice: _only);
+    expect(api.reports.length, 1);
+
+    // This event's button shows progress and ignores taps; the other is off.
+    await tester.tap(find.byKey(_action), warnIfMissed: false);
+    await _settle(tester);
+    expect(find.text('Report this check-in'), findsNothing);
+    final other = find.byKey(const Key('security-report-e2'));
+    await _show(tester, other);
+    await tester.tap(other, warnIfMissed: false);
+    await _settle(tester);
+    expect(find.text('Report this check-in'), findsNothing);
+    expect(api.reports.length, 1);
+
+    api.gate!.complete();
+    await _settle(tester);
+    expect(api.reports.length, 1);
+    expect(find.text('Reported'), findsOneWidget);
+    // The other event can be reported again now.
+    expect(find.byKey(const Key('security-report-e2')), findsOneWidget);
+  });
+
+  group('200% text', () {
+    testWidgets('row, sheet and notice do not overflow on a small phone', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(320, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final api = _Api(pinOn: true)
+        ..events = [_event(1), _event(2, report: _reported('acknowledged'))]
+        ..answers.add(
+          _result(
+            protection: {
+              'requested': true,
+              'sessionsEnded': false,
+              'pinResetRequired': false,
+              'failed': true,
+            },
+          ),
+        );
+      await _open(tester, api, lang: 'sw', scale: 2);
+      expect(tester.takeException(), isNull);
+      await _show(tester, find.byKey(_action));
+      await tester.tap(find.byKey(_action));
+      await _settle(tester);
+      expect(tester.takeException(), isNull);
+      await _show(tester, find.byKey(_secure));
+      await tester.tap(find.byKey(_secure));
+      await _settle(tester);
+      expect(tester.takeException(), isNull);
+      expect(find.byKey(_changePin), findsOneWidget);
+      expect(find.byKey(_retry), findsOneWidget);
+    });
+
+    testWidgets('signed-out dialog does not overflow', (tester) async {
+      tester.view.physicalSize = const Size(320, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final api = _Api()
+        ..answers.add(
+          _result(
+            signedOut: true,
+            protection: {
+              'requested': true,
+              'sessionsEnded': true,
+              'pinResetRequired': true,
+            },
+          ),
+        );
+      await _open(tester, api, choice: _secure, lang: 'sw', scale: 2);
+      expect(tester.takeException(), isNull);
+      expect(find.byKey(_signedOutOk), findsOneWidget);
+    });
+  });
+
+  testWidgets('Swahili', (tester) async {
+    final api = _Api()
+      ..events = [_event(1), _event(2, report: _reported('resolved'))]
+      ..answers.add(_result());
+    await _open(tester, api, lang: 'sw');
+    expect(find.text('Sikuwa mimi'), findsOneWidget);
+    expect(find.text('Imepitiwa'), findsOneWidget);
+    await tester.tap(find.byKey(_action));
+    await _settle(tester);
+    expect(find.text('Ripoti kujiandikisha huku'), findsOneWidget);
+    expect(find.text('Ziara haiondolewi kiotomatiki.'), findsOneWidget);
+    expect(find.text('Ripoti na linda akaunti yangu'), findsOneWidget);
+    expect(find.text('Ripoti tu'), findsOneWidget);
+    expect(find.text('Ghairi'), findsOneWidget);
+    await tester.tap(find.byKey(_only));
+    await _settle(tester);
+    expect(
+      find.text('Ripoti imetumwa. Timu ya msaada ya FitFlex itaipitia.'),
+      findsOneWidget,
+    );
+    expect(find.text('Imeripotiwa'), findsOneWidget);
+  });
+
+  group('parsing', () {
+    test('report result', () {
+      final r = SecurityReportResult.fromJson(
+        _result(
+          signedOut: true,
+          protection: {
+            'requested': true,
+            'sessionsEnded': true,
+            'pinResetRequired': 'not_applicable',
+          },
+        ),
+      );
+      expect(r.incidentId, 'inc1');
+      expect(r.status, 'open');
+      expect(r.signedOut, isTrue);
+      expect(r.pinResetRequired, isFalse);
+      expect(r.pinNotApplicable, isTrue);
+      expect(r.limited, isFalse);
+      expect(r.failed, isFalse);
+      // Nothing but `ok`: reads as a plain, unprotected report.
+      final bare = SecurityReportResult.fromJson({'ok': true});
+      expect(bare.signedOut, isFalse);
+      expect(bare.failed, isFalse);
+      expect(bare.pinNotApplicable, isFalse);
+    });
+
+    test('event report', () {
+      expect(SecurityEvent.fromJson(_event(1)).report, isNull);
+      final e = SecurityEvent.fromJson(
+        _event(1, report: _reported('acknowledged')),
+      );
+      expect(e.report?.incidentId, 'inc1');
+      expect(e.report?.statusKey, 'secAct.report.status.acknowledged');
+      // An older server: no `report` key at all.
+      expect(
+        SecurityEvent.fromJson({'id': 'e9', 'kind': 'web_checkin'}).report,
+        isNull,
+      );
+    });
+  });
+
+  test('en and sw report keys match and differ', () {
+    final en = FFLocale.keysOf(
+      'en',
+    ).where((k) => k.startsWith('secAct.report.'));
+    final sw = FFLocale.keysOf(
+      'sw',
+    ).where((k) => k.startsWith('secAct.report.'));
+    expect(en.toSet(), sw.toSet());
+    expect(en.length, 26);
+    for (final k in en) {
+      expect(
+        FFLocale.textOf('sw', k),
+        isNot(FFLocale.textOf('en', k)),
+        reason: k,
+      );
+    }
+  });
+}
