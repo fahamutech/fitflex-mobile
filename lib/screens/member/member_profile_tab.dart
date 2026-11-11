@@ -24,6 +24,7 @@ import '../../shared/widgets/persona_switcher.dart';
 import '../../shared/widgets/invitations.dart';
 import '../../shared/widgets/verify_identifier.dart';
 import '../pin_flows.dart';
+import '../../shared/auth_error_message.dart';
 import '../security/security_activity_tile.dart';
 
 class MemberProfileTab extends StatefulWidget {
@@ -216,7 +217,10 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
                             error = switch (e.code) {
                               'invalid-credential' || 'wrong-password' =>
                                 context.tr('auth.invalidCredentials'),
-                              _ => e.message ?? e.code,
+                              _ => authErrorMessage(
+                                FFLocaleScope.of(context),
+                                e.code,
+                              ),
                             };
                           });
                         } catch (e) {
@@ -251,7 +255,7 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
     final data = MemberDataScope.of(context);
     final me = data.me;
     final displayName =
-        me?.user.resolvedName ?? context.tr('member.nameFallback');
+        me?.user.knownName ?? context.tr('member.nameFallback');
     final passState = passStateFor(data);
     final stateMessage = passState == PassState.active
         ? null
