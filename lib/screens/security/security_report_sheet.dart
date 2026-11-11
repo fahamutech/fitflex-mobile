@@ -20,6 +20,7 @@ class SecurityReportResult {
     required this.pinNotApplicable,
     required this.limited,
     required this.failed,
+    this.retryable = true,
   });
 
   final String incidentId;
@@ -45,6 +46,12 @@ class SecurityReportResult {
   /// Securing was asked for but not applied.
   final bool failed;
 
+  /// False only when the server says so (alongside [failed]): no retry will
+  /// help, the member should contact support. Absent: a retry is worth
+  /// offering, though the server ignores one within 60 seconds of the last
+  /// attempt and then answers with this same failure.
+  final bool retryable;
+
   factory SecurityReportResult.fromJson(Map<String, dynamic> j) {
     final incident = j['incident'];
     final protection = j['protection'];
@@ -59,6 +66,7 @@ class SecurityReportResult {
       pinNotApplicable: p['pinResetRequired'] == 'not_applicable',
       limited: p['limited'] == true,
       failed: p['failed'] == true,
+      retryable: p['retryable'] != false,
     );
   }
 }
