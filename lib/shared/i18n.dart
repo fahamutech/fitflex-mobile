@@ -8501,6 +8501,26 @@ class FFLocale extends ChangeNotifier {
           "This is permanent. You lose access, nothing is refunded, and neither the buyer nor the gym can add you again to this pass or to any other pass this buyer buys.",
       'gymPass.leaveConfirm': "Leave pass",
       'gymPass.showQr': "Show my QR",
+      'gymPass.error.referenceDuplicate':
+          "This transaction ID was already used. Check it and try again.",
+      'gymPass.error.alreadyBeneficiary':
+          "This person is already on this pass.",
+      'gymPass.error.tooManyAttempts':
+          "Too many attempts. Wait a while and try again.",
+      'gymPass.error.cannotModifyBuyer':
+          "The person who bought the pass can't be changed.",
+      'gymPass.error.notAllowed':
+          "You can't do this.",
+      'gymPass.status.unknown':
+          "Unknown",
+      'gymPass.person.unknown':
+          "Unknown",
+      'gymPass.payLater':
+          "Your pass was requested, but the payment did not finish. Finish the payment from My gym passes.",
+      'gymPass.priceDiffers':
+          "The gym pass price is {amount}. Check it matches what you paid.",
+      'gymPass.closeSheet':
+          "Close",
     },
     'sw': {
       'app.title': 'FitFlex',
@@ -17130,6 +17150,26 @@ class FFLocale extends ChangeNotifier {
       'gymPass.leaveConfirm':
           "[SW pending review] Leave pass", // TODO(sw-review)
       'gymPass.showQr': "[SW pending review] Show my QR", // TODO(sw-review)
+      'gymPass.error.referenceDuplicate':
+          "[SW pending review] This transaction ID was already used. Check it and try again.", // TODO(sw-review)
+      'gymPass.error.alreadyBeneficiary':
+          "[SW pending review] This person is already on this pass.", // TODO(sw-review)
+      'gymPass.error.tooManyAttempts':
+          "[SW pending review] Too many attempts. Wait a while and try again.", // TODO(sw-review)
+      'gymPass.error.cannotModifyBuyer':
+          "[SW pending review] The person who bought the pass can't be changed.", // TODO(sw-review)
+      'gymPass.error.notAllowed':
+          "[SW pending review] You can't do this.", // TODO(sw-review)
+      'gymPass.status.unknown':
+          "[SW pending review] Unknown", // TODO(sw-review)
+      'gymPass.person.unknown':
+          "[SW pending review] Unknown", // TODO(sw-review)
+      'gymPass.payLater':
+          "[SW pending review] Your pass was requested, but the payment did not finish. Finish the payment from My gym passes.", // TODO(sw-review)
+      'gymPass.priceDiffers':
+          "[SW pending review] The gym pass price is {amount}. Check it matches what you paid.", // TODO(sw-review)
+      'gymPass.closeSheet':
+          "[SW pending review] Close", // TODO(sw-review)
     },
   };
 }

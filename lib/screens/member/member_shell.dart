@@ -352,10 +352,9 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
     if (!gymCustomPassesEnabled || _auth?.token == null) return;
     try {
       final out = await AppScope.of(context).api.myGymPasses();
-      final active = GymPassesMine.fromJson(
-        out,
-      ).memberships.any((m) => m.isRunning && m.status == 'active');
-      if (active && _data.me?.subscription == null && mounted) {
+      final known = _data.me?.knownSubscriptionIds ?? const <String>{};
+      if (gymPassNeedsProfileReload(GymPassesMine.fromJson(out), known) &&
+          mounted) {
         await _refreshMe();
       }
     } catch (_) {

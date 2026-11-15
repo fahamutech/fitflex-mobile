@@ -138,7 +138,7 @@ class GymPassPerson {
       id: json['id'].toString(),
       slot: (json['slot'] as num?)?.toInt() ?? 0,
       isPurchaser: json['isPurchaser'] == true,
-      status: json['status']?.toString() ?? 'invited',
+      status: json['status']?.toString() ?? 'unknown',
       you: json['you'] == true,
       displayName: json['displayName']?.toString(),
       contactType: json['contactType']?.toString(),
@@ -228,9 +228,11 @@ class GymPassMembership {
     required this.planName,
     this.gymName,
     this.expiresAt,
+    this.subscriptionId,
   });
 
   final String purchaseId;
+  final String? subscriptionId;
   final String beneficiaryId;
 
   /// active | suspended | pending_registration.
@@ -252,6 +254,7 @@ class GymPassMembership {
       planName: plan['name']?.toString() ?? '',
       gymName: gym['name']?.toString(),
       expiresAt: json['expiresAt']?.toString(),
+      subscriptionId: json['subscriptionId']?.toString(),
     );
   }
 
@@ -390,6 +393,16 @@ String gymPassErrorMessage(
         return locale.t('gymPass.error.cannotRemoveBuyer');
       case 'feature_disabled':
         return locale.t('gymPass.error.unavailable');
+      case 'payment_reference_duplicate':
+        return locale.t('gymPass.error.referenceDuplicate');
+      case 'already_beneficiary':
+        return locale.t('gymPass.error.alreadyBeneficiary');
+      case 'too_many_attempts':
+        return locale.t('gymPass.error.tooManyAttempts');
+      case 'cannot_modify_purchaser':
+        return locale.t('gymPass.error.cannotModifyBuyer');
+      case 'not_allowed':
+        return locale.t('gymPass.error.notAllowed');
     }
   }
   return fallback(locale, error);
@@ -427,3 +440,17 @@ String gymPassCategoryLabel(FFLocale locale, GymPassPlan plan) =>
             .t('gymPass.category.group')
             .replaceFirst('{n}', '${plan.beneficiaryLimit}'),
     };
+
+/// Whether the profile (`/me`) must be reloaded after a claim: an active
+/// pass whose subscription is not among those already loaded
+/// ([knownSubscriptionIds]: the current subscription and `entitlements`).
+bool gymPassNeedsProfileReload(
+  GymPassesMine mine,
+  Set<String> knownSubscriptionIds,
+) => mine.memberships.any(
+  (m) =>
+      m.isRunning &&
+      m.status == 'active' &&
+      !(m.subscriptionId != null &&
+          knownSubscriptionIds.contains(m.subscriptionId)),
+);

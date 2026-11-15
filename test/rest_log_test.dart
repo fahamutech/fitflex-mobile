@@ -88,6 +88,31 @@ void main() {
   });
 
   group('redactBody', () {
+    test('redacts invite links and contacts (custom gym passes)', () {
+      final out = redactBody(
+        path: '/me/gym-pass-purchases/p1/beneficiaries/b2/invite',
+        jsonEncode({
+          'share': {
+            'link': 'https://x.app/gym-pass/#secrettoken',
+            'text': 'Join with https://x.app/gym-pass/#secrettoken',
+          },
+          'phone': '0712345678',
+          'email': 'a@b.co',
+          'contact': '+255 7** *** 678',
+          'status': 'invited',
+        }),
+      );
+      for (final v in ['secrettoken', '0712345678', 'a@b.co', '7** ***']) {
+        expect(out, isNot(contains(v)));
+      }
+      expect(out, contains('"status":"invited"'));
+      // Other routes keep their debug output as before.
+      expect(
+        redactBody(jsonEncode({'email': 'a@b.co'}), path: '/me'),
+        contains('a@b.co'),
+      );
+    });
+
     test('redacts token, PIN, password and code values', () {
       final out = redactBody(
         jsonEncode({

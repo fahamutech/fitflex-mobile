@@ -806,6 +806,11 @@ class MemberMeResponse {
   final int visitsUsed;
   final int? visitCap;
 
+  /// Ids of the member's active gym subscriptions (`entitlements`), and of
+  /// the current one. Lets the app tell whether a pass it was just attached
+  /// to is already loaded.
+  final Set<String> knownSubscriptionIds;
+
   /// The member's username, when they have one. [usernameEnabled] is true
   /// when the server sent the username fields at all (feature on).
   final String? username;
@@ -819,6 +824,7 @@ class MemberMeResponse {
     this.pendingPayments = const [],
     required this.visitsUsed,
     this.visitCap,
+    this.knownSubscriptionIds = const {},
     this.username,
     this.usernameChangeableAt,
     this.usernameEnabled = false,
@@ -842,6 +848,15 @@ class MemberMeResponse {
     ],
     visitsUsed: (json['visitsUsed'] as num?)?.toInt() ?? 0,
     visitCap: (json['visitCap'] as num?)?.toInt(),
+    knownSubscriptionIds: {
+      if (json['subscription'] is Map && json['subscription']['id'] != null)
+        json['subscription']['id'].toString(),
+      if (json['entitlements'] is Map)
+        for (final s
+            in ((json['entitlements'] as Map)['gymSubscriptions'] as List? ??
+                const []))
+          if (s is Map && s['id'] != null) s['id'].toString(),
+    },
     username: json['username'] as String?,
     usernameChangeableAt: DateTime.tryParse(
       json['usernameChangeableAt']?.toString() ?? '',

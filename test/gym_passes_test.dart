@@ -81,15 +81,21 @@ Widget _wrap(Widget child) => FFLocaleScope(
 Future<PageHost> _pumpSheet(
   WidgetTester tester,
   RecordingApi api,
-  GymPassPlan plan,
-) async {
+  GymPassPlan plan, {
+  Future<bool> Function(BuildContext, String?, num)? payOverride,
+}) async {
   final host = await pumpPage(
     tester,
     api,
     Builder(
       builder: (context) => TextButton(
         key: const Key('open-sheet'),
-        onPressed: () => showGymPassBuySheet(context, gym: _gym(), plan: plan),
+        onPressed: () => showGymPassBuySheet(
+          context,
+          gym: _gym(),
+          plan: plan,
+          payOverride: payOverride,
+        ),
         child: const Text('open'),
       ),
     ),
@@ -648,8 +654,8 @@ void main() {
 
     test('anything else falls back to the shared message', () {
       expect(
-        msg(_err(403, {'error': 'not_allowed'})),
-        errorMessage(en, _err(403, {'error': 'not_allowed'})),
+        msg(_err(403, {'error': 'some_other_code'})),
+        errorMessage(en, _err(403, {'error': 'some_other_code'})),
       );
     });
   });
@@ -772,6 +778,225 @@ void main() {
         user: const {'id': 'm1', 'userType': 'member'},
       );
       expect(find.byKey(const Key('gym-passes-unavailable')), findsOneWidget);
+    });
+  });
+
+  group('review fixes', () {
+    apiTest('1: the sheet re-reads the plan and shows the fresh price', (
+      tester,
+      api,
+    ) async {
+      api.on('GET /gyms/gym_1/pass-plans', {
+        'gymId': 'gym_1',
+        'plans': [_plan('a', 'individual', price: 120000)],
+      });
+      final stale = GymPassPlan.fromJson(
+        _plan('a', 'individual', price: 90000),
+      )!;
+      await tester.runAsync(() async {});
+      await _pumpSheet(tester, api, stale);
+      expect(find.byKey(const Key('gym-pass-buy-price')), findsOneWidget);
+      expect(find.textContaining('120,000'), findsWidgets);
+      expect(find.textContaining('90,000'), findsNothing);
+    });
+
+    apiTest('1: a plan that is gone cannot be bought', (tester, api) async {
+      api.on('GET /gyms/gym_1/pass-plans', {'gymId': 'gym_1', 'plans': []});
+      final plan = GymPassPlan.fromJson(_plan('a', 'individual'))!;
+      await _pumpSheet(tester, api, plan);
+      expect(find.text("This pass isn't available any more."), findsOneWidget);
+      await tester.tap(
+        find.byKey(const Key('gym-pass-buy')),
+        warnIfMissed: false,
+      );
+      await tester.pumpAndSettle();
+      expect(api.sent('POST', '/me/gym-pass-purchases'), isFalse);
+    });
+
+    apiTest('1: the people boxes follow a changed headcount rule', (
+      tester,
+      api,
+    ) async {
+      api.on('GET /gyms/gym_1/pass-plans', {
+        'gymId': 'gym_1',
+        'plans': [_plan('c', 'group', limit: 5)],
+      });
+      final listed = GymPassPlan.fromJson(_plan('c', 'group', limit: 4))!;
+      await _pumpSheet(tester, api, listed);
+      // 5 people with the buyer = up to 4 boxes.
+      expect(find.byKey(const Key('gym-pass-person-1')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('gym-pass-add-person')));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('gym-pass-add-person')));
+      await tester.pump();
+      expect(find.byKey(const Key('gym-pass-person-3')), findsOneWidget);
+      expect(find.byKey(const Key('gym-pass-add-person')), findsNothing);
+    });
+
+    apiTest('2: a payment step that throws still ends as a purchase', (
+      tester,
+      api,
+    ) async {
+      api.on('GET /gyms/gym_1/pass-plans', {
+        'gymId': 'gym_1',
+        'plans': [_plan('a', 'individual')],
+      });
+      api.on('POST /me/gym-pass-purchases', {
+        'purchase': {'id': 'gpp_1'},
+        'paymentRequest': {'id': 'pay_1', 'amountTzs': 90000},
+      });
+      final plan = GymPassPlan.fromJson(_plan('a', 'individual'))!;
+      await _pumpSheet(
+        tester,
+        api,
+        plan,
+        payOverride: (_, _, _) async => throw StateError('boom'),
+      );
+      await tester.tap(find.byKey(const Key('gym-pass-buy')));
+      await tester.pumpAndSettle();
+      expect(api.where('POST', '/me/gym-pass-purchases'), hasLength(1));
+      // The sheet closed (a purchase exists) and the member was told.
+      expect(find.byKey(const Key('gym-pass-buy')), findsNothing);
+      expect(find.textContaining('Finish the payment'), findsOneWidget);
+    });
+
+    apiTest('2: no swipe or outside tap, Close is off while busy', (
+      tester,
+      api,
+    ) async {
+      api.on('GET /gyms/gym_1/pass-plans', {
+        'gymId': 'gym_1',
+        'plans': [_plan('a', 'individual')],
+      });
+      final held = api.hold('POST /me/gym-pass-purchases');
+      api.on('POST /me/gym-pass-purchases', {
+        'purchase': {'id': 'gpp_1'},
+        'paymentRequest': {'id': 'pay_1', 'amountTzs': 90000},
+      });
+      final plan = GymPassPlan.fromJson(_plan('a', 'individual'))!;
+      await _pumpSheet(tester, api, plan, payOverride: (_, _, _) async => true);
+      await tester.tap(find.byKey(const Key('gym-pass-buy')));
+      await tester.pump();
+      final close = tester.widget<IconButton>(
+        find.byKey(const Key('gym-pass-close')),
+      );
+      expect(close.onPressed, isNull);
+      // A tap on the barrier does not close it.
+      await tester.tapAt(const Offset(200, 20));
+      await tester.pump();
+      expect(find.byKey(const Key('gym-pass-buy')), findsOneWidget);
+      held.complete();
+      await tester.pumpAndSettle();
+    });
+
+    test('3: reload when an active pass is not already loaded', () {
+      final mine = GymPassesMine.fromJson({
+        'memberships': [
+          {
+            'purchaseId': 'p1',
+            'beneficiaryId': 'b1',
+            'status': 'active',
+            'purchaseStatus': 'active',
+            'subscriptionId': 'sub_new',
+          },
+        ],
+      });
+      // The member already has another subscription: still reload.
+      expect(gymPassNeedsProfileReload(mine, {'sub_old'}), isTrue);
+      expect(gymPassNeedsProfileReload(mine, {'sub_old', 'sub_new'}), isFalse);
+      expect(gymPassNeedsProfileReload(const GymPassesMine(), {}), isFalse);
+      final suspended = GymPassesMine.fromJson({
+        'memberships': [
+          {
+            'purchaseId': 'p1',
+            'beneficiaryId': 'b1',
+            'status': 'suspended',
+            'purchaseStatus': 'active',
+            'subscriptionId': 'sub_x',
+          },
+        ],
+      });
+      expect(gymPassNeedsProfileReload(suspended, {}), isFalse);
+    });
+
+    test('3: /me lists the subscriptions it already knows', () {
+      final me = MemberMeResponse.fromJson({
+        'user': {'id': 'u1'},
+        'subscription': {'id': 'sub_a', 'status': 'active'},
+        'entitlements': {
+          'gymSubscriptions': [
+            {'id': 'sub_b'},
+          ],
+        },
+      });
+      expect(me.knownSubscriptionIds, {'sub_a', 'sub_b'});
+      expect(
+        MemberMeResponse.fromJson(<String, dynamic>{}).knownSubscriptionIds,
+        isEmpty,
+      );
+    });
+
+    test('5: user-fixable codes have their own message', () {
+      final en = _en();
+      for (final (code, key) in [
+        ('payment_reference_duplicate', 'referenceDuplicate'),
+        ('already_beneficiary', 'alreadyBeneficiary'),
+        ('too_many_attempts', 'tooManyAttempts'),
+        ('cannot_modify_purchaser', 'cannotModifyBuyer'),
+        ('not_allowed', 'notAllowed'),
+      ]) {
+        expect(
+          gymPassErrorMessage(en, _err(409, {'error': code}), errorMessage),
+          en.t('gymPass.error.$key'),
+          reason: code,
+        );
+        expect(en.t('gymPass.error.$key'), isNot('gymPass.error.$key'));
+        expect(
+          _sw().t('gymPass.error.$key'),
+          startsWith('[SW pending review]'),
+        );
+      }
+    });
+
+    test('6: a missing status is neutral, unknown labels exist', () {
+      expect(GymPassPerson.fromJson({'id': 'x'})!.status, 'unknown');
+      expect(_en().t('gymPass.status.unknown'), 'Unknown');
+      expect(_en().t('gymPass.person.unknown'), 'Unknown');
+      expect(_sw().t('gymPass.person.unknown'), startsWith('[SW pending'));
+    });
+
+    apiTest('6: an unknown status never shows raw server text', (
+      tester,
+      api,
+    ) async {
+      api.on('GET /me/gym-passes', {
+        'purchased': [
+          {
+            'id': 'gpp_1',
+            'status': 'weird_state',
+            'plan': {'name': 'P', 'category': 'group'},
+            'slots': {'used': 2, 'limit': 3},
+            'beneficiaries': [
+              {
+                'id': 'b2',
+                'slot': 2,
+                'isPurchaser': false,
+                'status': 'quantum_flux',
+              },
+            ],
+          },
+        ],
+      });
+      await pumpPage(
+        tester,
+        api,
+        const MemberGymPassesPage(),
+        user: const {'id': 'm1', 'userType': 'member'},
+        size: const Size(400, 1600),
+      );
+      expect(find.textContaining('weird'), findsNothing);
+      expect(find.textContaining('quantum'), findsNothing);
+      expect(find.text('Unknown'), findsNWidgets(2));
     });
   });
 

@@ -397,7 +397,9 @@ class _PurchasedCard extends StatelessWidget {
 String _statusLabel(BuildContext context, String prefix, String status) {
   final key = _statusKey(prefix, status);
   final label = context.tr(key);
-  return label == key ? status.replaceAll('_', ' ') : label;
+  if (label != key) return label;
+  // A status this app does not know: a neutral word, never raw server text.
+  return context.tr('$prefix.unknown');
 }
 
 class _PersonRow extends StatelessWidget {

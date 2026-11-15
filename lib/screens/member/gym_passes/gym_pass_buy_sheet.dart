@@ -21,17 +21,35 @@ Future<bool?> showGymPassBuySheet(
   BuildContext context, {
   required Gym gym,
   required GymPassPlan plan,
+  @visibleForTesting
+  Future<bool> Function(BuildContext context, String? id, num amount)?
+  payOverride,
 }) {
   return showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
-    builder: (ctx) => GymPassBuySheet(gym: gym, plan: plan),
+    // Never closed by a swipe or a tap outside: a purchase may be in flight.
+    // The sheet has its own Close button, off while it is busy.
+    isDismissible: false,
+    enableDrag: false,
+    builder: (ctx) =>
+        GymPassBuySheet(gym: gym, plan: plan, payOverride: payOverride),
   );
 }
 
 class GymPassBuySheet extends StatefulWidget {
-  const GymPassBuySheet({super.key, required this.gym, required this.plan});
+  const GymPassBuySheet({
+    super.key,
+    required this.gym,
+    required this.plan,
+    this.payOverride,
+  });
+
+  /// Tests replace the mobile-money step (to make it fail).
+  @visibleForTesting
+  final Future<bool> Function(BuildContext context, String? id, num amount)?
+  payOverride;
 
   final Gym gym;
   final GymPassPlan plan;
@@ -54,7 +72,11 @@ class _GymPassBuySheetState extends State<GymPassBuySheet> {
   PaymentModes _modes = PaymentModes.none;
   final _manualInput = ManualPaymentInput();
 
-  GymPassPlan get _plan => widget.plan;
+  /// The plan as the server lists it now (re-read when the sheet opens, so a
+  /// price or terms change since the list was loaded is never missed).
+  late GymPassPlan _plan = widget.plan;
+  bool _refreshing = true;
+  bool _planGone = false;
 
   @override
   void initState() {
@@ -76,6 +98,45 @@ class _GymPassBuySheetState extends State<GymPassBuySheet> {
       );
       setState(() => _modes = m);
     });
+    _refreshPlan(scope.api);
+  }
+
+  Future<void> _refreshPlan(ApiClient api) async {
+    GymPassPlan? fresh;
+    var answered = false;
+    try {
+      final raw = await api.gymPassPlans(widget.gym.id);
+      answered = true;
+      for (final p in raw) {
+        final plan = GymPassPlan.fromJson(p);
+        if (plan?.id == widget.plan.id) fresh = plan;
+      }
+    } catch (_) {
+      // Could not re-read: the listed plan stays. The server still decides
+      // the price when the purchase is made.
+    }
+    if (!mounted) return;
+    setState(() {
+      _refreshing = false;
+      if (answered && fresh == null) {
+        _planGone = true;
+        _error = context.tr('gymPass.error.planUnavailable');
+        return;
+      }
+      if (fresh != null) {
+        if (fresh.termsVersion != _plan.termsVersion || fresh.terms == null) {
+          _termsAccepted = false;
+        }
+        _plan = fresh;
+        // The people boxes follow the fresh headcount rule.
+        while (_others.length < _plan.minOthers) {
+          _others.add(TextEditingController());
+        }
+        while (_others.length > _plan.maxOthers && _others.isNotEmpty) {
+          _others.removeLast().dispose();
+        }
+      }
+    });
   }
 
   @override
@@ -96,7 +157,7 @@ class _GymPassBuySheetState extends State<GymPassBuySheet> {
   ], (key) => context.tr(key));
 
   Future<void> _buy() async {
-    if (_busy || _submitted) return;
+    if (_busy || _submitted || _refreshing || _planGone) return;
     final problem = _peopleProblem();
     if (problem != null || (_plan.terms != null && !_termsAccepted)) {
       setState(() {
@@ -137,14 +198,39 @@ class _GymPassBuySheetState extends State<GymPassBuySheet> {
       _submitted = true;
       if (!mounted) return;
       final req = created['paymentRequest'];
-      if (manual == null && req is Map) {
-        await offerMobileMoney(
+      final serverAmount = req is Map ? req['amountTzs'] : null;
+      if (manual != null &&
+          serverAmount is num &&
+          serverAmount != _plan.priceTzs) {
+        // Paid by hand against the price shown: say what the server charged.
+        FFSnack.warning(
           context,
-          paymentRequestId: req['id'] as String?,
-          // The amount is the server's, taken from its payment request.
-          amountTzs: (req['amountTzs'] as num?) ?? 0,
-          productType: MomoProduct.gymPlan,
+          context
+              .tr('gymPass.priceDiffers')
+              .replaceFirst('{amount}', formatCurrency(serverAmount)),
         );
+      }
+      if (manual == null && req is Map) {
+        try {
+          final id = req['id'] as String?;
+          // The amount is the server's, taken from its payment request.
+          final amount = (req['amountTzs'] as num?) ?? 0;
+          final pay = widget.payOverride;
+          if (pay != null) {
+            await pay(context, id, amount);
+          } else {
+            await offerMobileMoney(
+              context,
+              paymentRequestId: id,
+              amountTzs: amount,
+              productType: MomoProduct.gymPlan,
+            );
+          }
+        } catch (_) {
+          // The purchase exists; only the payment step failed. Say so, and
+          // end as a purchase (the payment can be finished from My passes).
+          if (mounted) FFSnack.warning(context, context.tr('gymPass.payLater'));
+        }
       }
       if (!mounted) return;
       FocusManager.instance.primaryFocus?.unfocus();
@@ -177,219 +263,238 @@ class _GymPassBuySheetState extends State<GymPassBuySheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final locale = FFLocaleScope.of(context);
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.only(
-          left: FFTokens.spacingLg,
-          right: FFTokens.spacingLg,
-          bottom: MediaQuery.of(context).viewInsets.bottom + FFTokens.spacingLg,
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                context.tr('gymPass.buyTitle'),
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(widget.gym.name, style: theme.textTheme.bodySmall),
-              const SizedBox(height: 12),
-              FFCard(
-                key: const Key('gym-pass-buy-summary'),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+    return PopScope(
+      canPop: !_busy,
+      child: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.only(
+            left: FFTokens.spacingLg,
+            right: FFTokens.spacingLg,
+            bottom:
+                MediaQuery.of(context).viewInsets.bottom + FFTokens.spacingLg,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Text(
-                      _plan.name,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
+                    Expanded(
+                      child: Text(
+                        context.tr('gymPass.buyTitle'),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${gymPassCategoryLabel(locale, _plan)} · ${gymPassDurationLabel(locale, _plan)}',
-                      style: theme.textTheme.labelMedium,
-                    ),
-                    if (_plan.description != null) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        _plan.description!,
-                        style: theme.textTheme.bodySmall,
-                      ),
-                    ],
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            context.tr('gymPass.price'),
-                            style: theme.textTheme.bodyMedium,
-                          ),
-                        ),
-                        Text(
-                          formatCurrency(_plan.priceTzs),
-                          key: const Key('gym-pass-buy-price'),
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      context.tr('gymPass.priceNote'),
-                      style: theme.textTheme.labelSmall,
+                    IconButton(
+                      key: const Key('gym-pass-close'),
+                      tooltip: context.tr('gymPass.closeSheet'),
+                      onPressed: _busy ? null : () => Navigator.pop(context),
+                      icon: const Icon(Icons.close),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                context.tr('gymPass.coversYou'),
-                key: const Key('gym-pass-covers-you'),
-                style: theme.textTheme.bodyMedium,
-              ),
-              if (_plan.takesOthers) ...[
-                const SizedBox(height: 10),
-                Text(
-                  context
-                      .tr('gymPass.othersHint')
-                      .replaceFirst('{max}', '${_plan.maxOthers}'),
-                  style: theme.textTheme.labelMedium,
-                ),
-                const SizedBox(height: 8),
-                for (var i = 0; i < _others.length; i++)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: FFTextField(
-                            key: Key('gym-pass-person-$i'),
-                            controller: _others[i],
-                            label: context
-                                .tr('gymPass.personLabel')
-                                .replaceFirst('{n}', '${i + 2}'),
-                            hint: context.tr('gymPass.personHint'),
-                            keyboardType: TextInputType.emailAddress,
-                            enabled: !_busy,
-                            errorText:
-                                _showFieldErrors &&
-                                    gymPassContactBody(_others[i].text) == null
-                                ? context.tr('gymPass.error.contactProblem')
-                                : null,
-                            onChanged: (_) => setState(() => _error = null),
-                          ),
-                        ),
-                        if (i >= _plan.minOthers)
-                          IconButton(
-                            key: Key('gym-pass-person-remove-$i'),
-                            tooltip: context.tr('gymPass.removeField'),
-                            onPressed: _busy
-                                ? null
-                                : () => setState(() {
-                                    _others.removeAt(i).dispose();
-                                  }),
-                            icon: const Icon(Icons.close),
-                          ),
-                      ],
-                    ),
-                  ),
-                if (_canAddField)
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: FFButton(
-                      key: const Key('gym-pass-add-person'),
-                      label: context.tr('gymPass.addAnother'),
-                      variant: FFButtonVariant.ghost,
-                      onPressed: _busy
-                          ? null
-                          : () => setState(
-                              () => _others.add(TextEditingController()),
-                            ),
-                    ),
-                  ),
                 const SizedBox(height: 4),
-                Text(
-                  context.tr('gymPass.notifyNote'),
-                  key: const Key('gym-pass-notify-note'),
-                  style: theme.textTheme.labelSmall,
-                ),
-              ],
-              if (_plan.terms != null) ...[
+                Text(widget.gym.name, style: theme.textTheme.bodySmall),
                 const SizedBox(height: 12),
                 FFCard(
+                  key: const Key('gym-pass-buy-summary'),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        context.tr('gymPass.terms'),
-                        style: theme.textTheme.labelLarge,
+                        _plan.name,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       const SizedBox(height: 4),
-                      Text(_plan.terms!, style: theme.textTheme.bodySmall),
+                      Text(
+                        '${gymPassCategoryLabel(locale, _plan)} · ${gymPassDurationLabel(locale, _plan)}',
+                        style: theme.textTheme.labelMedium,
+                      ),
+                      if (_plan.description != null) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          _plan.description!,
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ],
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              context.tr('gymPass.price'),
+                              style: theme.textTheme.bodyMedium,
+                            ),
+                          ),
+                          Text(
+                            formatCurrency(_plan.priceTzs),
+                            key: const Key('gym-pass-buy-price'),
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        context.tr('gymPass.priceNote'),
+                        style: theme.textTheme.labelSmall,
+                      ),
                     ],
                   ),
                 ),
-                CheckboxListTile(
-                  key: const Key('gym-pass-terms'),
-                  contentPadding: EdgeInsets.zero,
-                  controlAffinity: ListTileControlAffinity.leading,
-                  value: _termsAccepted,
-                  onChanged: _busy
-                      ? null
-                      : (v) => setState(() => _termsAccepted = v ?? false),
-                  title: Text(context.tr('gymPass.acceptTerms')),
+                const SizedBox(height: 12),
+                Text(
+                  context.tr('gymPass.coversYou'),
+                  key: const Key('gym-pass-covers-you'),
+                  style: theme.textTheme.bodyMedium,
                 ),
-                if (_showFieldErrors && !_termsAccepted)
+                if (_plan.takesOthers) ...[
+                  const SizedBox(height: 10),
                   Text(
-                    context.tr('gymPass.error.termsNeeded'),
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.error,
+                    context
+                        .tr('gymPass.othersHint')
+                        .replaceFirst('{max}', '${_plan.maxOthers}'),
+                    style: theme.textTheme.labelMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  for (var i = 0; i < _others.length; i++)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: FFTextField(
+                              key: Key('gym-pass-person-$i'),
+                              controller: _others[i],
+                              label: context
+                                  .tr('gymPass.personLabel')
+                                  .replaceFirst('{n}', '${i + 2}'),
+                              hint: context.tr('gymPass.personHint'),
+                              keyboardType: TextInputType.emailAddress,
+                              enabled: !_busy,
+                              errorText:
+                                  _showFieldErrors &&
+                                      gymPassContactBody(_others[i].text) ==
+                                          null
+                                  ? context.tr('gymPass.error.contactProblem')
+                                  : null,
+                              onChanged: (_) => setState(() => _error = null),
+                            ),
+                          ),
+                          if (i >= _plan.minOthers)
+                            IconButton(
+                              key: Key('gym-pass-person-remove-$i'),
+                              tooltip: context.tr('gymPass.removeField'),
+                              onPressed: _busy
+                                  ? null
+                                  : () => setState(() {
+                                      _others.removeAt(i).dispose();
+                                    }),
+                              icon: const Icon(Icons.close),
+                            ),
+                        ],
+                      ),
+                    ),
+                  if (_canAddField)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: FFButton(
+                        key: const Key('gym-pass-add-person'),
+                        label: context.tr('gymPass.addAnother'),
+                        variant: FFButtonVariant.ghost,
+                        onPressed: _busy
+                            ? null
+                            : () => setState(
+                                () => _others.add(TextEditingController()),
+                              ),
+                      ),
+                    ),
+                  const SizedBox(height: 4),
+                  Text(
+                    context.tr('gymPass.notifyNote'),
+                    key: const Key('gym-pass-notify-note'),
+                    style: theme.textTheme.labelSmall,
+                  ),
+                ],
+                if (_plan.terms != null) ...[
+                  const SizedBox(height: 12),
+                  FFCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          context.tr('gymPass.terms'),
+                          style: theme.textTheme.labelLarge,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(_plan.terms!, style: theme.textTheme.bodySmall),
+                      ],
                     ),
                   ),
-              ],
-              if (_modes.manual != null) ...[
-                const SizedBox(height: 8),
-                ManualPaymentFields(
-                  key: const Key('gym-pass-manual-pay'),
-                  manual: _modes.manual!,
-                  amountLabel: formatCurrency(_plan.priceTzs),
-                  input: _manualInput,
-                  enabled: !_busy,
-                  onChanged: (_) {
-                    if (_manualInput.clearErrors()) setState(() {});
-                  },
-                ),
-              ],
-              if (_error != null) ...[
-                const SizedBox(height: 8),
-                FFAlert(
-                  key: const Key('gym-pass-error'),
-                  message: _error!,
-                  tone: FFAlertTone.error,
-                ),
-              ],
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: FFButton(
-                  key: const Key('gym-pass-buy'),
-                  label: context.tr(
-                    _modes.manual != null
-                        ? 'manualPay.submit'
-                        : 'gymPass.buyAction',
+                  CheckboxListTile(
+                    key: const Key('gym-pass-terms'),
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    value: _termsAccepted,
+                    onChanged: _busy
+                        ? null
+                        : (v) => setState(() => _termsAccepted = v ?? false),
+                    title: Text(context.tr('gymPass.acceptTerms')),
                   ),
-                  onPressed: _busy || _submitted ? null : _buy,
-                  loading: _busy,
+                  if (_showFieldErrors && !_termsAccepted)
+                    Text(
+                      context.tr('gymPass.error.termsNeeded'),
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.error,
+                      ),
+                    ),
+                ],
+                if (_modes.manual != null) ...[
+                  const SizedBox(height: 8),
+                  ManualPaymentFields(
+                    key: const Key('gym-pass-manual-pay'),
+                    manual: _modes.manual!,
+                    amountLabel: formatCurrency(_plan.priceTzs),
+                    input: _manualInput,
+                    enabled: !_busy,
+                    onChanged: (_) {
+                      if (_manualInput.clearErrors()) setState(() {});
+                    },
+                  ),
+                ],
+                if (_error != null) ...[
+                  const SizedBox(height: 8),
+                  FFAlert(
+                    key: const Key('gym-pass-error'),
+                    message: _error!,
+                    tone: FFAlertTone.error,
+                  ),
+                ],
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: FFButton(
+                    key: const Key('gym-pass-buy'),
+                    label: context.tr(
+                      _modes.manual != null
+                          ? 'manualPay.submit'
+                          : 'gymPass.buyAction',
+                    ),
+                    onPressed: _busy || _submitted || _refreshing || _planGone
+                        ? null
+                        : _buy,
+                    loading: _busy,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
