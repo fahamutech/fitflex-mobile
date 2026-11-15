@@ -151,7 +151,7 @@ class PassSummaryCard extends StatelessWidget {
           if (sub?.isDirect == true && (hasPass || pending == null)) ...[
             const SizedBox(height: 10),
             Text(
-              context.tr('member.plan_${sub!.plan ?? 'monthly'}'),
+              sub!.directLabel(FFLocaleScope.of(context)),
               style: Theme.of(
                 context,
               ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),

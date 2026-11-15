@@ -9,6 +9,7 @@ import '../../shared/api_error_message.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/firebase_auth_service.dart';
+import '../../shared/gym_passes/gym_passes_flag.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
 import '../../shared/photo_footer_flag.dart';
@@ -264,7 +265,7 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
     final badge = FFBadge(
       key: const Key('profile-plan-badge'),
       label: data.subscription?.isDirect == true
-          ? context.tr('member.plan_${data.subscription?.plan ?? 'monthly'}')
+          ? data.subscription!.directLabel(FFLocaleScope.of(context))
           : passState == PassState.pending
           ? context.tr('pass.pending')
           : tier != null && tier.isNotEmpty
@@ -362,6 +363,15 @@ class _MemberProfileTabState extends State<MemberProfileTab> {
       subtitle: context.tr('benefits.tile'),
       onTap: () => context.push(AppRoutes.memberBenefits),
     ),
+    // Custom Gym Passes: only in builds with the flag on.
+    if (gymCustomPassesEnabled)
+      FFActionTile(
+        key: const Key('profile-gym-passes'),
+        icon: Icons.groups_outlined,
+        title: context.tr('gymPass.mineTitle'),
+        subtitle: context.tr('gymPass.mineTile'),
+        onTap: () => context.push(AppRoutes.memberGymPasses),
+      ),
     FFActionTile(
       key: const Key('profile-sessions'),
       icon: Icons.event_repeat_outlined,

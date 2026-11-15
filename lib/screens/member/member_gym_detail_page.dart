@@ -17,6 +17,7 @@ import 'member_shell.dart';
 import '../../shared/promotion_events.dart';
 import '../../shared/widgets/photo_gallery.dart';
 import 'widgets/gym_card.dart';
+import 'gym_passes/gym_pass_plans_section.dart';
 import 'widgets/gym_plans_sheet.dart';
 import 'widgets/trainer_card.dart';
 import 'widgets/gym_filters.dart';
@@ -73,6 +74,25 @@ class _MemberGymDetailPageState extends State<MemberGymDetailPage> {
       if (!mounted) return;
       FFSnack.info(context, context.tr('member.subscribeRequested'));
     }
+  }
+
+  /// A custom pass was bought: reload the profile so its pending payment
+  /// shows, as after a direct plan.
+  Future<void> _afterGymPassBought() async {
+    final data = MemberDataScope.of(context);
+    try {
+      final res = await AppScope.of(context).api.me();
+      if (!mounted) return;
+      data.update(
+        (d) => d.me = MemberMeResponse.fromJson(
+          Map<String, dynamic>.from(res as Map),
+        ),
+      );
+    } catch (_) {
+      // The purchase stands; the profile reloads on its next refresh.
+    }
+    if (!mounted) return;
+    FFSnack.info(context, context.tr('gymPass.bought'));
   }
 
   @override
@@ -188,6 +208,9 @@ class _MemberGymDetailPageState extends State<MemberGymDetailPage> {
             key: const Key('gym-section-plans'),
           ),
           _GymPlansPreview(gym: gym, onSubscribe: () => _openPlans(gym)),
+
+          // 6b. Custom gym passes (GYM_CUSTOM_PASSES): nothing when off.
+          GymPassPlansSection(gym: gym, onBought: _afterGymPassBought),
 
           // 7. Directions
           InkWell(
