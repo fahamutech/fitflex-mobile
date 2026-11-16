@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../app_scope.dart';
+import '../../../shared/api_client.dart';
 import '../../../shared/api_error_message.dart';
 import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
@@ -26,6 +27,34 @@ bool looksLikeTzMobile(String raw) {
   if (RegExp(r'^0[67]\d{8}$').hasMatch(d)) return true;
   if (RegExp(r'^[67]\d{8}$').hasMatch(d)) return true;
   return RegExp(r'^255[67]\d{8}$').hasMatch(d);
+}
+
+/// The wallets AzamPay takes, as the server expects them (`network` on
+/// `POST /me/payments/:id/mobile-money`), in the order they are offered.
+const momoWallets = ['Mpesa', 'Tigo', 'Airtel', 'Halopesa', 'Azampesa'];
+
+/// The wallet a Tanzanian number most likely pays from, or null.
+///
+/// ASSUMPTION: the prefix table follows the TCRA ranges (Vodacom M-Pesa
+/// 074/075/076, Tigo/Mixx 065/067/071/077, Airtel 068/069/078, Halotel
+/// 061/062) and matches the server's own guess. Numbers port between
+/// networks, so this is only a starting choice the member can change.
+/// AzamPesa is a wallet, not a number range: it is never guessed.
+String? momoWalletGuess(String raw) {
+  var d = raw.replaceAll(RegExp(r'[^0-9]'), '');
+  if (d.startsWith('255')) {
+    d = d.substring(3);
+  } else if (d.startsWith('0')) {
+    d = d.substring(1);
+  }
+  if (d.length < 2) return null;
+  return switch (d.substring(0, 2)) {
+    '74' || '75' || '76' => 'Mpesa',
+    '65' || '67' || '71' || '77' => 'Tigo',
+    '68' || '69' || '78' => 'Airtel',
+    '61' || '62' => 'Halopesa',
+    _ => null,
+  };
 }
 
 /// The server's answer to "has it gone through?" as a stage.
@@ -120,6 +149,7 @@ Future<bool> offerMobileMoney(
       testMode: options['environment'] == 'sandbox',
       productType: productType,
       onCompleted: onCompleted,
+      provider: options['provider']?.toString(),
     ),
   );
   return done == true;
@@ -158,6 +188,7 @@ class MobileMoneyPayPanel extends StatefulWidget {
     this.giveUpAfter = const Duration(minutes: 2),
     this.onCompleted,
     this.productType,
+    this.provider,
   });
 
   final String paymentRequestId;
@@ -172,6 +203,10 @@ class MobileMoneyPayPanel extends StatefulWidget {
 
   /// What is being paid for, so "payment received" says what happens next.
   final String? productType;
+
+  /// `GET /payments/options.provider`. Only 'azampay' asks which wallet
+  /// pays; any other provider (Tunzaa) keeps the panel and request as they were.
+  final String? provider;
 
   @override
   State<MobileMoneyPayPanel> createState() => _MobileMoneyPayPanelState();
@@ -188,6 +223,16 @@ class _MobileMoneyPayPanelState extends State<MobileMoneyPayPanel> {
   bool _checking = false;
   String? _heldReason;
 
+  /// AzamPay only: the wallet that pays, guessed from the number until the
+  /// member picks one themselves.
+  late String? _wallet = _picksWallet
+      ? momoWalletGuess(widget.defaultPhone ?? '')
+      : null;
+  bool _walletPicked = false;
+  String? _walletError;
+
+  bool get _picksWallet => widget.provider == 'azampay';
+
   @override
   void dispose() {
     _timer?.cancel();
@@ -201,14 +246,21 @@ class _MobileMoneyPayPanelState extends State<MobileMoneyPayPanel> {
       setState(() => _error = context.tr('error.reason.invalidPhone'));
       return;
     }
+    if (_picksWallet && _wallet == null) {
+      setState(() => _walletError = context.tr('error.reason.networkRequired'));
+      return;
+    }
     setState(() {
       _stage = MomoStage.sending;
       _error = null;
+      _walletError = null;
     });
     try {
-      await AppScope.of(
-        context,
-      ).api.payByMobileMoney(widget.paymentRequestId, _phone.text.trim());
+      await AppScope.of(context).api.payByMobileMoney(
+        widget.paymentRequestId,
+        _phone.text.trim(),
+        network: _picksWallet ? _wallet : null,
+      );
       if (!mounted) return;
       _polls = 0;
       setState(() => _stage = MomoStage.waiting);
@@ -218,9 +270,22 @@ class _MobileMoneyPayPanelState extends State<MobileMoneyPayPanel> {
       if (!mounted) return;
       setState(() {
         _stage = MomoStage.input;
-        _error = errorMessage(FFLocaleScope.of(context), e);
+        // The server could not tell the wallet from the number: ask for it
+        // beside the wallet choice, not under the number.
+        if (_picksWallet && e is ApiException && e.code == 'network_required') {
+          _walletError = context.tr('error.reason.networkRequired');
+        } else {
+          _error = errorMessage(FFLocaleScope.of(context), e);
+        }
       });
     }
+  }
+
+  void _phoneChanged(String text) {
+    setState(() {
+      _error = null;
+      if (_picksWallet && !_walletPicked) _wallet = momoWalletGuess(text);
+    });
   }
 
   Future<void> _check() async {
@@ -260,6 +325,45 @@ class _MobileMoneyPayPanelState extends State<MobileMoneyPayPanel> {
     }
   }
 
+  /// AzamPay: which wallet pays. Preselected from the number; a tap wins
+  /// and is never changed by later typing.
+  Widget _walletChoice(ThemeData theme) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(context.tr('momo.wallet'), style: theme.textTheme.labelMedium),
+      const SizedBox(height: FFTokens.spacingXs),
+      Wrap(
+        spacing: FFTokens.spacingSm,
+        children: [
+          for (final w in momoWallets)
+            FFFilterChip(
+              key: Key('momo-wallet-$w'),
+              label: context.tr('momo.wallet.$w'),
+              selected: _wallet == w,
+              tone: FFFilterChipTone.tint,
+              selection: FFChipSelection.radio,
+              onSelected: _stage == MomoStage.sending
+                  ? () {}
+                  : () => setState(() {
+                      _wallet = w;
+                      _walletPicked = true;
+                      _walletError = null;
+                    }),
+            ),
+        ],
+      ),
+      if (_walletError != null) ...[
+        const SizedBox(height: FFTokens.spacingXs),
+        Text(
+          _walletError!,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.error,
+          ),
+        ),
+      ],
+    ],
+  );
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -292,10 +396,16 @@ class _MobileMoneyPayPanelState extends State<MobileMoneyPayPanel> {
             inputFormatters: [
               FilteringTextInputFormatter.allow(RegExp(r'[0-9+\s\-]')),
             ],
-            onChanged: (_) {
-              if (_error != null) setState(() => _error = null);
-            },
+            onChanged: _picksWallet
+                ? _phoneChanged
+                : (_) {
+                    if (_error != null) setState(() => _error = null);
+                  },
           ),
+          if (_picksWallet) ...[
+            const SizedBox(height: FFTokens.spacingMd),
+            _walletChoice(theme),
+          ],
           const SizedBox(height: FFTokens.spacingMd),
           FFButton(
             label: context
