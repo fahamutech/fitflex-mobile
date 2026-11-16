@@ -20,8 +20,9 @@ class _FakeApi extends ApiClient {
   @override
   Future<Map<String, dynamic>> payByMobileMoney(
     String paymentRequestId,
-    String phone,
-  ) async {
+    String phone, {
+    String? network,
+  }) async {
     if (payError != null) throw payError!;
     sent.add([paymentRequestId, phone]);
     return {'state': 'in_progress'};

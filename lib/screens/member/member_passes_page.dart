@@ -19,6 +19,7 @@ import '../../shared/photo_hero_flag.dart';
 import '../../shared/payment_labels.dart';
 import 'widgets/mobile_money_pay.dart';
 import 'widgets/pass_gyms_sheet.dart';
+import 'widgets/scheduled_renewals_card.dart';
 import 'member_shell.dart';
 
 /// PHOTO_HERO_UI (owner 2026-10-22, bands "too dark"): no clear photo on
@@ -63,6 +64,17 @@ class MemberPassesPage extends StatelessWidget {
         data.update((d) => d.passesLoaded = true);
       }
     }
+  }
+
+  /// "Your next plan starts on …" for renewals paid early (SCHEDULED_RENEWALS).
+  /// Nothing when `/me` has none, so the page is unchanged without the flag.
+  static Widget renewals(MemberData data) {
+    final me = data.me;
+    final home = me?.subscription?.homeGym;
+    return ScheduledRenewalsCards(
+      renewals: me?.scheduledRenewals ?? const [],
+      gyms: [...data.gyms, ?home],
+    );
   }
 
   /// The selected tier if it is still on sale, else the first one offered.
@@ -159,6 +171,7 @@ class MemberPassesPage extends StatelessWidget {
     if (data.pendingPass != null) {
       body = [
         buyHero(context, pending: true),
+        renewals(data),
         _PendingBlockCard(pending: data.pendingPass!),
       ];
     } else if (!data.passesLoaded) {
@@ -169,22 +182,32 @@ class MemberPassesPage extends StatelessWidget {
           headline: false,
           eyebrowKey: data.hasActivePass ? 'member.upgradePlan' : null,
         ),
+        renewals(data),
         const Center(child: FFSpinner(size: 32)),
       ];
     } else if (data.passes.isEmpty) {
-      body = [buyHero(context, headline: false), _loadError(context, data)];
+      body = [
+        buyHero(context, headline: false),
+        renewals(data),
+        _loadError(context, data),
+      ];
     } else if (data.hasActivePass) {
       body = [
         _UpgradeGate(
           withHero: true,
           onFooterReady: onGateReady,
+          leading: renewals(data),
           fallback: Column(
-            children: [buyHero(context), ...normalList(context, data)],
+            children: [
+              buyHero(context),
+              renewals(data),
+              ...normalList(context, data),
+            ],
           ),
         ),
       ];
     } else {
-      body = [buyHero(context), ...normalList(context, data)];
+      body = [buyHero(context), renewals(data), ...normalList(context, data)];
     }
     return body;
   }
@@ -241,6 +264,7 @@ class MemberPassesPage extends StatelessWidget {
         padding: const EdgeInsets.all(FFTokens.spacingLg),
         children: [
           const SizedBox(height: 4),
+          renewals(data),
           // Only an open FitFlex Pass payment holds this screen: a pending
           // gym plan or trainer session is a different product.
           if (data.pendingPass != null)
@@ -288,9 +312,13 @@ class _UpgradeGate extends StatefulWidget {
     required this.fallback,
     this.withHero = false,
     this.onFooterReady,
+    this.leading,
   });
 
   final Widget fallback;
+
+  /// PHOTO_HERO_UI: shown under the hero, above the upgrade options.
+  final Widget? leading;
 
   /// PHOTO_FOOTER_UI: whether the page footer may show (the options or the
   /// buy list are on screen, and no manual-payment fields).
@@ -464,6 +492,7 @@ class _UpgradeGateState extends State<_UpgradeGate> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _hero(context, key: key),
+            ?widget.leading,
             _build(context),
           ],
         );

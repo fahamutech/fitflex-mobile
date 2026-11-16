@@ -830,6 +830,21 @@ class FFLocale extends ChangeNotifier {
           'That plan is not higher than your current one.',
       'error.reason.sponsoredPass':
           'Your pass is paid for by your company, so it cannot be upgraded here.',
+      // AzamPay wallet choice and scheduled renewals (fitflex-functions#357).
+      // Wallet names are brand names, the same in both languages.
+      'momo.wallet': 'Mobile money wallet',
+      'error.reason.networkRequired':
+          'Choose the mobile money wallet you are paying from, then try again.',
+      'error.reason.renewalAlreadyScheduled':
+          'You already have a renewal waiting. It starts when your current plan ends.',
+      'renewal.nextPass': 'Your next pass ({tier}) starts on {date}',
+      'renewal.nextGymPlan': 'Your next plan at {gym} starts on {date}',
+      'renewal.nextGymPlanGeneric': 'Your next gym plan starts on {date}',
+      'momo.wallet.Mpesa': 'M-Pesa',
+      'momo.wallet.Tigo': 'Tigo / Mixx',
+      'momo.wallet.Airtel': 'Airtel Money',
+      'momo.wallet.Halopesa': 'HaloPesa',
+      'momo.wallet.Azampesa': 'AzamPesa',
       'member.showQr': 'Show my QR',
       'member.nearGyms': 'Gyms near you',
       'member.featuredTrainers': 'Featured trainers',
@@ -9201,6 +9216,25 @@ class FFLocale extends ChangeNotifier {
       'error.reason.notAnUpgrade': 'Mpango huo si wa juu kuliko wako wa sasa.',
       'error.reason.sponsoredPass':
           'Pasi yako inalipwa na kampuni yako, kwa hivyo haiwezi kuboreshwa hapa.',
+      // TODO(sw-review): AzamPay wallet choice and scheduled renewals.
+      // [SW-PENDING] = English placeholder awaiting a native-speaker translation.
+      // Wallet names are brand names, the same in both languages.
+      'momo.wallet': '[SW-PENDING] Mobile money wallet',
+      'error.reason.networkRequired':
+          '[SW-PENDING] Choose the mobile money wallet you are paying from, then try again.',
+      'error.reason.renewalAlreadyScheduled':
+          '[SW-PENDING] You already have a renewal waiting. It starts when your current plan ends.',
+      'renewal.nextPass':
+          '[SW-PENDING] Your next pass ({tier}) starts on {date}',
+      'renewal.nextGymPlan':
+          '[SW-PENDING] Your next plan at {gym} starts on {date}',
+      'renewal.nextGymPlanGeneric':
+          '[SW-PENDING] Your next gym plan starts on {date}',
+      'momo.wallet.Mpesa': 'M-Pesa',
+      'momo.wallet.Tigo': 'Tigo / Mixx',
+      'momo.wallet.Airtel': 'Airtel Money',
+      'momo.wallet.Halopesa': 'HaloPesa',
+      'momo.wallet.Azampesa': 'AzamPesa',
       'member.showQr': 'Onyesha QR',
       'member.nearGyms': 'Gym zilizo karibu',
       'member.featuredTrainers': 'Ma-trainer waliopendekezwa',

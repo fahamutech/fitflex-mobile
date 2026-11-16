@@ -777,6 +777,43 @@ class TrainerBooking {
 }
 
 /// Response from /me endpoint — matches portal's MemberMeResponse.
+/// A plan paid early that waits for the current one to end
+/// (`GET /me.scheduledRenewals`, server flag SCHEDULED_RENEWALS).
+class ScheduledRenewal {
+  final String id;
+
+  /// 'platform_pass' (FitFlex Pass) or 'direct_sub' (a gym plan).
+  final String? type;
+  final String? tier;
+  final String? plan;
+  final String? homeGymId;
+  final String? startsAt;
+  final String? expiresAt;
+
+  ScheduledRenewal({
+    required this.id,
+    this.type,
+    this.tier,
+    this.plan,
+    this.homeGymId,
+    this.startsAt,
+    this.expiresAt,
+  });
+
+  factory ScheduledRenewal.fromJson(Map<String, dynamic> json) =>
+      ScheduledRenewal(
+        id: json['id']?.toString() ?? '',
+        type: json['type']?.toString(),
+        tier: json['tier']?.toString(),
+        plan: json['plan']?.toString(),
+        homeGymId: json['homeGymId']?.toString(),
+        startsAt: json['startsAt']?.toString(),
+        expiresAt: json['expiresAt']?.toString(),
+      );
+
+  bool get isGymPlan => type == 'direct_sub';
+}
+
 class MemberMeResponse {
   final MemberSummary user;
   final Subscription? subscription;
@@ -793,6 +830,10 @@ class MemberMeResponse {
   final DateTime? usernameChangeableAt;
   final bool usernameEnabled;
 
+  /// Renewals already paid for, soonest first; empty when the server sends
+  /// none (or the field at all).
+  final List<ScheduledRenewal> scheduledRenewals;
+
   MemberMeResponse({
     required this.user,
     this.subscription,
@@ -803,6 +844,7 @@ class MemberMeResponse {
     this.username,
     this.usernameChangeableAt,
     this.usernameEnabled = false,
+    this.scheduledRenewals = const [],
   });
 
   factory MemberMeResponse.fromJson(
@@ -828,6 +870,13 @@ class MemberMeResponse {
       json['usernameChangeableAt']?.toString() ?? '',
     )?.toLocal(),
     usernameEnabled: json.containsKey('username'),
+    scheduledRenewals: [
+      for (final r
+          in (json['scheduledRenewals'] is List
+              ? json['scheduledRenewals'] as List
+              : const []))
+        if (r is Map<String, dynamic>) ScheduledRenewal.fromJson(r),
+    ],
   );
 
   bool get hasActivePass => subscription?.isActive == true;
