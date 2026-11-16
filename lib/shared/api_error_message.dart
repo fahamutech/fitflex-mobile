@@ -363,6 +363,10 @@ String? _knownReason(FFLocale locale, String reason) {
     'group_slot_rebooked': 'error.reason.groupSlotRebooked',
     'unsupported_currency': 'error.reason.unsupportedCurrency',
     'sponsored_pass': 'error.reason.sponsoredPass',
+    // AzamPay (fitflex-functions#357): the wallet could not be told from the
+    // number; a renewal is already paid and waiting (SCHEDULED_RENEWALS).
+    'network_required': 'error.reason.networkRequired',
+    'renewal_already_scheduled': 'error.reason.renewalAlreadyScheduled',
     // Accounts.
     'email_already_used': 'error.reason.emailAlreadyUsed',
     'invalid_credentials': 'error.reason.invalidCredentials',

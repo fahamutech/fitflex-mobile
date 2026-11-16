@@ -366,6 +366,15 @@ class _OwnerGymGridCard extends StatelessWidget {
   }
 }
 
+/// What the entrance QR holds: the web link when the server sends one (a phone
+/// camera opens the gym's page; the in-app scanner accepts it too), else the
+/// signed app code.
+String? gymEntranceQrData(Map<String, dynamic>? body) {
+  final webUrl = body?['webUrl']?.toString().trim() ?? '';
+  if (webUrl.startsWith('https://')) return webUrl;
+  return body?['payload']?.toString();
+}
+
 /// Tech Brief §5: the static QR members scan to check themselves in.
 Future<void> showGymEntranceQr(
   BuildContext context, {
@@ -387,7 +396,7 @@ Future<void> showGymEntranceQr(
               message: errorMessage(locale, snap.error!),
             );
           }
-          final payload = snap.data?['payload']?.toString();
+          final payload = gymEntranceQrData(snap.data);
           if (payload == null) {
             return const SizedBox(
               height: 240,

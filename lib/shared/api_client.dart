@@ -835,14 +835,19 @@ class ApiClient {
       await _request('GET', '/payments/options') as Map<String, dynamic>;
 
   /// Ask the member's phone to approve a pending payment request.
+  ///
+  /// [network] is the wallet that pays (AzamPay only: `Mpesa`, `Tigo`,
+  /// `Airtel`, `Halopesa`, `Azampesa`). Left out of the body when null, so a
+  /// Tunzaa payment sends exactly `{phone}` as before.
   Future<Map<String, dynamic>> payByMobileMoney(
     String paymentRequestId,
-    String phone,
-  ) async =>
+    String phone, {
+    String? network,
+  }) async =>
       await _request(
             'POST',
             '/me/payments/$paymentRequestId/mobile-money',
-            body: {'phone': phone},
+            body: {'phone': phone, 'network': ?network},
           )
           as Map<String, dynamic>;
 
