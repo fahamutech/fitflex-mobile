@@ -8400,6 +8400,148 @@ class FFLocale extends ChangeNotifier {
       'kyc.country.GB': 'United Kingdom',
       'kyc.country.US': 'United States',
       'kyc.country.IN': 'India',
+      // Custom Gym Passes (phase 4).
+      'gymPass.sectionTitle': "Gym Membership Plans",
+      'gymPass.sectionNote':
+          "Passes set by this gym. They are separate from FitFlex Pass and the daily, weekly and monthly plans.",
+      'gymPass.category.individual': "Individual (1 person)",
+      'gymPass.category.couples': "Couples (2 people)",
+      'gymPass.category.group': "Group (up to {n} people)",
+      'gymPass.duration.day': "{n} day",
+      'gymPass.duration.days': "{n} days",
+      'gymPass.duration.week': "{n} week",
+      'gymPass.duration.weeks': "{n} weeks",
+      'gymPass.duration.month': "{n} month",
+      'gymPass.duration.months': "{n} months",
+      'gymPass.genericLabel': "Gym pass",
+      'gymPass.buyTitle': "Buy a gym pass",
+      'gymPass.buyAction': "Buy pass",
+      'gymPass.price': "Price",
+      'gymPass.priceNote':
+          "The gym set this price. You pay once for everyone on the pass.",
+      'gymPass.coversYou': "This pass covers you.",
+      'gymPass.othersHint':
+          "Who else is on this pass? Enter a phone number or email for each person (up to {max} besides you).",
+      'gymPass.notifyNote':
+          "People you add are told, not asked to approve. Anyone without a FitFlex account gets an invite link and joins the pass when they sign up and verify that contact.",
+      'gymPass.personLabel': "Person {n}",
+      'gymPass.personHint': "Phone number or email",
+      'gymPass.personLabelAdd': "Phone number or email",
+      'gymPass.removeField': "Remove this person",
+      'gymPass.addAnother': "Add another person",
+      'gymPass.terms': "Terms",
+      'gymPass.acceptTerms': "I accept these terms",
+      'gymPass.buyFailed': "Could not start this purchase. Try again.",
+      'gymPass.bought':
+          "Pass requested. It starts once the payment is approved.",
+      'gymPass.error.termsNeeded': "Accept the terms to continue.",
+      'gymPass.error.invalidBeneficiaries':
+          "One of the people you entered can't be added to this pass. Check the contacts or choose someone else.",
+      'gymPass.error.cannotAddPerson':
+          "This person can't be added to this pass.",
+      'gymPass.error.rateLimited': "Too many attempts. Try again later.",
+      'gymPass.error.rateLimitedSeconds':
+          "Too many attempts. Try again in {time}.",
+      'gymPass.error.tooSoon':
+          "An invite was sent a moment ago. Try again later.",
+      'gymPass.error.removedByOwner':
+          "The gym removed this person from this pass, so you can't add them again.",
+      'gymPass.error.suspendedByOther':
+          "Only the gym can let this person back in.",
+      'gymPass.error.replacementLimit':
+          "You can't replace any more people on this pass.",
+      'gymPass.error.limitExceeded': "This pass has no free place.",
+      'gymPass.error.contactProblem':
+          "Check the phone number or email. Each person needs a different, valid contact.",
+      'gymPass.error.headcount':
+          "This pass needs a different number of people.",
+      'gymPass.error.planUnavailable': "This pass isn't available any more.",
+      'gymPass.error.termsChanged':
+          "The terms changed. Close this and open the pass again.",
+      'gymPass.error.paymentPending':
+          "You already have a payment waiting for this gym. Finish or cancel it first.",
+      'gymPass.error.passNotActive': "This pass isn't running yet.",
+      'gymPass.error.invalidTransition': "That can't be done right now.",
+      'gymPass.error.cannotRemoveBuyer':
+          "The person who bought the pass can't be removed.",
+      'gymPass.error.unavailable': "Gym passes aren't available right now.",
+      'gymPass.wait.seconds': "{n} seconds",
+      'gymPass.wait.minutes': "{n} minutes",
+      'gymPass.mineTitle': "My gym passes",
+      'gymPass.mineTile': "Passes you bought or share",
+      'gymPass.mineEmpty': "No gym passes yet",
+      'gymPass.mineEmptyBody':
+          "When you buy a pass, or someone adds you to one, it shows here.",
+      'gymPass.unavailable': "Gym passes aren't available right now.",
+      'gymPass.bought.title': "Passes I bought",
+      'gymPass.covered.title': "Passes I'm covered by",
+      'gymPass.status.pending_payment': "Waiting for payment",
+      'gymPass.status.active': "Active",
+      'gymPass.status.expired': "Expired",
+      'gymPass.status.cancelled': "Cancelled",
+      'gymPass.person.awaiting_payment': "Waiting for payment",
+      'gymPass.person.invited': "Invited",
+      'gymPass.person.pending_registration': "Invited",
+      'gymPass.person.active': "Active",
+      'gymPass.person.suspended': "Suspended",
+      'gymPass.person.removed': "Removed",
+      'gymPass.person.you': "You",
+      'gymPass.person.buyer': "Bought the pass",
+      'gymPass.person.slot': "Person {n}",
+      'gymPass.person.added': "Person added. They are being told.",
+      'gymPass.awaitingPayment': "Starts once the payment is approved.",
+      'gymPass.sharedExpiry': "Everyone on this pass: valid until {date}",
+      'gymPass.slots': "{used} of {limit} places used",
+      'gymPass.addPerson': "Add a person",
+      'gymPass.addPersonConfirm': "Add",
+      'gymPass.personMenu': "Person options",
+      'gymPass.action.suspend': "Pause entry",
+      'gymPass.action.resume': "Let back in",
+      'gymPass.action.remove': "Remove from pass",
+      'gymPass.action.invite': "Share invite link",
+      'gymPass.invite.none':
+          "No invite link to share for this person right now.",
+      'gymPass.removeTitle': "Remove this person?",
+      'gymPass.removeBody':
+          "They lose access to this pass. Nothing is refunded and the pass keeps running. You can add someone else in their place.",
+      'gymPass.removeConfirm': "Remove",
+      'gymPass.cancelTitle': "Cancel this purchase?",
+      'gymPass.cancelBody':
+          "The pass has not been paid for yet. Its payment request is cancelled with it.",
+      'gymPass.cancelConfirm': "Cancel purchase",
+      'gymPass.cancelAction': "Cancel purchase",
+      'gymPass.leaveAction': "Leave this pass",
+      'gymPass.leaveTitle': "Leave this pass?",
+      'gymPass.leaveBody':
+          "This is permanent. You lose access, nothing is refunded, and neither the buyer nor the gym can add you again to this pass or to any other pass this buyer buys.",
+      'gymPass.leaveConfirm': "Leave pass",
+      'gymPass.showQr': "Show my QR",
+      'gymPass.error.referenceDuplicate':
+          "This transaction ID was already used. Check it and try again.",
+      'gymPass.error.alreadyBeneficiary':
+          "This person is already on this pass.",
+      'gymPass.error.tooManyAttempts':
+          "Too many attempts. Wait a while and try again.",
+      'gymPass.error.cannotModifyBuyer':
+          "The person who bought the pass can't be changed.",
+      'gymPass.error.notAllowed':
+          "You can't do this.",
+      'gymPass.status.unknown':
+          "Unknown",
+      'gymPass.person.unknown':
+          "Unknown",
+      'gymPass.payLater':
+          "Your pass was requested, but the payment did not finish. Finish the payment from My gym passes.",
+      'gymPass.priceDiffers':
+          "The gym pass price is {amount}. Check it matches what you paid.",
+      'gymPass.closeSheet':
+          "Close",
+      'gymPass.error.priceChanged':
+          "The price changed to {amount}. Check it and tap Buy again to confirm.",
+      'gymPass.error.priceChangedGeneric':
+          "The price changed. Check the new price and tap Buy again to confirm.",
+      'gymPass.invite.sentByMessage':
+          "The invitation was sent by message.",
     },
     'sw': {
       'app.title': 'FitFlex',
@@ -16872,6 +17014,208 @@ class FFLocale extends ChangeNotifier {
       'kyc.country.GB': 'Uingereza',
       'kyc.country.US': 'Marekani',
       'kyc.country.IN': 'India',
+      // Custom Gym Passes (phase 4) [SW pending review: placeholders, native review needed].
+      'gymPass.sectionTitle':
+          "[SW pending review] Gym Membership Plans", // TODO(sw-review)
+      'gymPass.sectionNote':
+          "[SW pending review] Passes set by this gym. They are separate from FitFlex Pass and the daily, weekly and monthly plans.", // TODO(sw-review)
+      'gymPass.category.individual':
+          "[SW pending review] Individual (1 person)", // TODO(sw-review)
+      'gymPass.category.couples':
+          "[SW pending review] Couples (2 people)", // TODO(sw-review)
+      'gymPass.category.group':
+          "[SW pending review] Group (up to {n} people)", // TODO(sw-review)
+      'gymPass.duration.day': "[SW pending review] {n} day", // TODO(sw-review)
+      'gymPass.duration.days':
+          "[SW pending review] {n} days", // TODO(sw-review)
+      'gymPass.duration.week':
+          "[SW pending review] {n} week", // TODO(sw-review)
+      'gymPass.duration.weeks':
+          "[SW pending review] {n} weeks", // TODO(sw-review)
+      'gymPass.duration.month':
+          "[SW pending review] {n} month", // TODO(sw-review)
+      'gymPass.duration.months':
+          "[SW pending review] {n} months", // TODO(sw-review)
+      'gymPass.genericLabel': "[SW pending review] Gym pass", // TODO(sw-review)
+      'gymPass.buyTitle':
+          "[SW pending review] Buy a gym pass", // TODO(sw-review)
+      'gymPass.buyAction': "[SW pending review] Buy pass", // TODO(sw-review)
+      'gymPass.price': "[SW pending review] Price", // TODO(sw-review)
+      'gymPass.priceNote':
+          "[SW pending review] The gym set this price. You pay once for everyone on the pass.", // TODO(sw-review)
+      'gymPass.coversYou':
+          "[SW pending review] This pass covers you.", // TODO(sw-review)
+      'gymPass.othersHint':
+          "[SW pending review] Who else is on this pass? Enter a phone number or email for each person (up to {max} besides you).", // TODO(sw-review)
+      'gymPass.notifyNote':
+          "[SW pending review] People you add are told, not asked to approve. Anyone without a FitFlex account gets an invite link and joins the pass when they sign up and verify that contact.", // TODO(sw-review)
+      'gymPass.personLabel':
+          "[SW pending review] Person {n}", // TODO(sw-review)
+      'gymPass.personHint':
+          "[SW pending review] Phone number or email", // TODO(sw-review)
+      'gymPass.personLabelAdd':
+          "[SW pending review] Phone number or email", // TODO(sw-review)
+      'gymPass.removeField':
+          "[SW pending review] Remove this person", // TODO(sw-review)
+      'gymPass.addAnother':
+          "[SW pending review] Add another person", // TODO(sw-review)
+      'gymPass.terms': "[SW pending review] Terms", // TODO(sw-review)
+      'gymPass.acceptTerms':
+          "[SW pending review] I accept these terms", // TODO(sw-review)
+      'gymPass.buyFailed':
+          "[SW pending review] Could not start this purchase. Try again.", // TODO(sw-review)
+      'gymPass.bought':
+          "[SW pending review] Pass requested. It starts once the payment is approved.", // TODO(sw-review)
+      'gymPass.error.termsNeeded':
+          "[SW pending review] Accept the terms to continue.", // TODO(sw-review)
+      'gymPass.error.invalidBeneficiaries':
+          "[SW pending review] One of the people you entered can't be added to this pass. Check the contacts or choose someone else.", // TODO(sw-review)
+      'gymPass.error.cannotAddPerson':
+          "[SW pending review] This person can't be added to this pass.", // TODO(sw-review)
+      'gymPass.error.rateLimited':
+          "[SW pending review] Too many attempts. Try again later.", // TODO(sw-review)
+      'gymPass.error.rateLimitedSeconds':
+          "[SW pending review] Too many attempts. Try again in {time}.", // TODO(sw-review)
+      'gymPass.error.tooSoon':
+          "[SW pending review] An invite was sent a moment ago. Try again later.", // TODO(sw-review)
+      'gymPass.error.removedByOwner':
+          "[SW pending review] The gym removed this person from this pass, so you can't add them again.", // TODO(sw-review)
+      'gymPass.error.suspendedByOther':
+          "[SW pending review] Only the gym can let this person back in.", // TODO(sw-review)
+      'gymPass.error.replacementLimit':
+          "[SW pending review] You can't replace any more people on this pass.", // TODO(sw-review)
+      'gymPass.error.limitExceeded':
+          "[SW pending review] This pass has no free place.", // TODO(sw-review)
+      'gymPass.error.contactProblem':
+          "[SW pending review] Check the phone number or email. Each person needs a different, valid contact.", // TODO(sw-review)
+      'gymPass.error.headcount':
+          "[SW pending review] This pass needs a different number of people.", // TODO(sw-review)
+      'gymPass.error.planUnavailable':
+          "[SW pending review] This pass isn't available any more.", // TODO(sw-review)
+      'gymPass.error.termsChanged':
+          "[SW pending review] The terms changed. Close this and open the pass again.", // TODO(sw-review)
+      'gymPass.error.paymentPending':
+          "[SW pending review] You already have a payment waiting for this gym. Finish or cancel it first.", // TODO(sw-review)
+      'gymPass.error.passNotActive':
+          "[SW pending review] This pass isn't running yet.", // TODO(sw-review)
+      'gymPass.error.invalidTransition':
+          "[SW pending review] That can't be done right now.", // TODO(sw-review)
+      'gymPass.error.cannotRemoveBuyer':
+          "[SW pending review] The person who bought the pass can't be removed.", // TODO(sw-review)
+      'gymPass.error.unavailable':
+          "[SW pending review] Gym passes aren't available right now.", // TODO(sw-review)
+      'gymPass.wait.seconds':
+          "[SW pending review] {n} seconds", // TODO(sw-review)
+      'gymPass.wait.minutes':
+          "[SW pending review] {n} minutes", // TODO(sw-review)
+      'gymPass.mineTitle':
+          "[SW pending review] My gym passes", // TODO(sw-review)
+      'gymPass.mineTile':
+          "[SW pending review] Passes you bought or share", // TODO(sw-review)
+      'gymPass.mineEmpty':
+          "[SW pending review] No gym passes yet", // TODO(sw-review)
+      'gymPass.mineEmptyBody':
+          "[SW pending review] When you buy a pass, or someone adds you to one, it shows here.", // TODO(sw-review)
+      'gymPass.unavailable':
+          "[SW pending review] Gym passes aren't available right now.", // TODO(sw-review)
+      'gymPass.bought.title':
+          "[SW pending review] Passes I bought", // TODO(sw-review)
+      'gymPass.covered.title':
+          "[SW pending review] Passes I'm covered by", // TODO(sw-review)
+      'gymPass.status.pending_payment':
+          "[SW pending review] Waiting for payment", // TODO(sw-review)
+      'gymPass.status.active': "[SW pending review] Active", // TODO(sw-review)
+      'gymPass.status.expired':
+          "[SW pending review] Expired", // TODO(sw-review)
+      'gymPass.status.cancelled':
+          "[SW pending review] Cancelled", // TODO(sw-review)
+      'gymPass.person.awaiting_payment':
+          "[SW pending review] Waiting for payment", // TODO(sw-review)
+      'gymPass.person.invited':
+          "[SW pending review] Invited", // TODO(sw-review)
+      'gymPass.person.pending_registration':
+          "[SW pending review] Invited", // TODO(sw-review)
+      'gymPass.person.active': "[SW pending review] Active", // TODO(sw-review)
+      'gymPass.person.suspended':
+          "[SW pending review] Suspended", // TODO(sw-review)
+      'gymPass.person.removed':
+          "[SW pending review] Removed", // TODO(sw-review)
+      'gymPass.person.you': "[SW pending review] You", // TODO(sw-review)
+      'gymPass.person.buyer':
+          "[SW pending review] Bought the pass", // TODO(sw-review)
+      'gymPass.person.slot':
+          "[SW pending review] Person {n}", // TODO(sw-review)
+      'gymPass.person.added':
+          "[SW pending review] Person added. They are being told.", // TODO(sw-review)
+      'gymPass.awaitingPayment':
+          "[SW pending review] Starts once the payment is approved.", // TODO(sw-review)
+      'gymPass.sharedExpiry':
+          "[SW pending review] Everyone on this pass: valid until {date}", // TODO(sw-review)
+      'gymPass.slots':
+          "[SW pending review] {used} of {limit} places used", // TODO(sw-review)
+      'gymPass.addPerson':
+          "[SW pending review] Add a person", // TODO(sw-review)
+      'gymPass.addPersonConfirm': "[SW pending review] Add", // TODO(sw-review)
+      'gymPass.personMenu':
+          "[SW pending review] Person options", // TODO(sw-review)
+      'gymPass.action.suspend':
+          "[SW pending review] Pause entry", // TODO(sw-review)
+      'gymPass.action.resume':
+          "[SW pending review] Let back in", // TODO(sw-review)
+      'gymPass.action.remove':
+          "[SW pending review] Remove from pass", // TODO(sw-review)
+      'gymPass.action.invite':
+          "[SW pending review] Share invite link", // TODO(sw-review)
+      'gymPass.invite.none':
+          "[SW pending review] No invite link to share for this person right now.", // TODO(sw-review)
+      'gymPass.removeTitle':
+          "[SW pending review] Remove this person?", // TODO(sw-review)
+      'gymPass.removeBody':
+          "[SW pending review] They lose access to this pass. Nothing is refunded and the pass keeps running. You can add someone else in their place.", // TODO(sw-review)
+      'gymPass.removeConfirm': "[SW pending review] Remove", // TODO(sw-review)
+      'gymPass.cancelTitle':
+          "[SW pending review] Cancel this purchase?", // TODO(sw-review)
+      'gymPass.cancelBody':
+          "[SW pending review] The pass has not been paid for yet. Its payment request is cancelled with it.", // TODO(sw-review)
+      'gymPass.cancelConfirm':
+          "[SW pending review] Cancel purchase", // TODO(sw-review)
+      'gymPass.cancelAction':
+          "[SW pending review] Cancel purchase", // TODO(sw-review)
+      'gymPass.leaveAction':
+          "[SW pending review] Leave this pass", // TODO(sw-review)
+      'gymPass.leaveTitle':
+          "[SW pending review] Leave this pass?", // TODO(sw-review)
+      'gymPass.leaveBody':
+          "[SW pending review] This is permanent. You lose access, nothing is refunded, and neither the buyer nor the gym can add you again to this pass or to any other pass this buyer buys.", // TODO(sw-review)
+      'gymPass.leaveConfirm':
+          "[SW pending review] Leave pass", // TODO(sw-review)
+      'gymPass.showQr': "[SW pending review] Show my QR", // TODO(sw-review)
+      'gymPass.error.referenceDuplicate':
+          "[SW pending review] This transaction ID was already used. Check it and try again.", // TODO(sw-review)
+      'gymPass.error.alreadyBeneficiary':
+          "[SW pending review] This person is already on this pass.", // TODO(sw-review)
+      'gymPass.error.tooManyAttempts':
+          "[SW pending review] Too many attempts. Wait a while and try again.", // TODO(sw-review)
+      'gymPass.error.cannotModifyBuyer':
+          "[SW pending review] The person who bought the pass can't be changed.", // TODO(sw-review)
+      'gymPass.error.notAllowed':
+          "[SW pending review] You can't do this.", // TODO(sw-review)
+      'gymPass.status.unknown':
+          "[SW pending review] Unknown", // TODO(sw-review)
+      'gymPass.person.unknown':
+          "[SW pending review] Unknown", // TODO(sw-review)
+      'gymPass.payLater':
+          "[SW pending review] Your pass was requested, but the payment did not finish. Finish the payment from My gym passes.", // TODO(sw-review)
+      'gymPass.priceDiffers':
+          "[SW pending review] The gym pass price is {amount}. Check it matches what you paid.", // TODO(sw-review)
+      'gymPass.closeSheet':
+          "[SW pending review] Close", // TODO(sw-review)
+      'gymPass.error.priceChanged':
+          "[SW pending review] The price changed to {amount}. Check it and tap Buy again to confirm.", // TODO(sw-review)
+      'gymPass.error.priceChangedGeneric':
+          "[SW pending review] The price changed. Check the new price and tap Buy again to confirm.", // TODO(sw-review)
+      'gymPass.invite.sentByMessage':
+          "[SW pending review] The invitation was sent by message.", // TODO(sw-review)
     },
   };
 }

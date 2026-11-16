@@ -902,6 +902,72 @@ class ApiClient {
     },
   );
 
+  // ── Custom gym passes (GYM_CUSTOM_PASSES; docs/custom-gym-passes-api.md) ──
+  // Every route answers 404 `feature_disabled` while the server flag is off.
+
+  /// A live gym's active custom passes (public).
+  Future<List<dynamic>> gymPassPlans(String gymId) async {
+    final out = await _map('GET', '/gyms/${_e(gymId)}/pass-plans');
+    return (out['plans'] as List?) ?? const [];
+  }
+
+  /// Buys a custom pass. The price is the plan's; [others] are `{phone}` or
+  /// `{email}` for the people covered besides the buyer. One payment request
+  /// for the full price comes back as `paymentRequest`.
+  Future<Map<String, dynamic>> buyGymPass({
+    required String planId,
+    List<Map<String, String>> others = const [],
+    String? reference,
+    String? payerPhone,
+    int? termsVersion,
+    num? expectedPriceTzs,
+  }) => _map(
+    'POST',
+    '/me/gym-pass-purchases',
+    body: {
+      'planId': planId,
+      if (others.isNotEmpty) 'beneficiaries': others,
+      'reference': ?reference,
+      'payerPhone': ?payerPhone,
+      'termsVersion': ?termsVersion,
+      // The price the member was shown: the server answers 409
+      // price_changed (nothing created) when it no longer matches.
+      'expectedPriceTzs': ?expectedPriceTzs,
+    },
+  );
+
+  /// The passes I bought and the passes I am covered by. Opening it also
+  /// attaches me to passes waiting on a contact I have verified, so the app
+  /// calls it after sign-in and when it comes back to the foreground.
+  Future<Map<String, dynamic>> myGymPasses() => _map('GET', '/me/gym-passes');
+
+  Future<Map<String, dynamic>> cancelGymPassPurchase(String purchaseId) =>
+      _map('POST', '/me/gym-pass-purchases/${_e(purchaseId)}/cancel');
+
+  /// A covered person leaves a pass. Final for that buyer.
+  Future<Map<String, dynamic>> leaveGymPass(String purchaseId) =>
+      _map('POST', '/me/gym-passes/${_e(purchaseId)}/leave');
+
+  /// Buyer: adds a person (`{phone}` or `{email}`) to a running pass.
+  Future<Map<String, dynamic>> addGymPassPerson(
+    String purchaseId,
+    Map<String, String> contact,
+  ) => _map(
+    'POST',
+    '/me/gym-pass-purchases/${_e(purchaseId)}/beneficiaries',
+    body: contact,
+  );
+
+  /// Buyer: `suspend` | `resume` | `remove` | `invite` on one person.
+  Future<Map<String, dynamic>> changeGymPassPerson(
+    String purchaseId,
+    String beneficiaryId,
+    String action,
+  ) => _map(
+    'POST',
+    '/me/gym-pass-purchases/${_e(purchaseId)}/beneficiaries/${_e(beneficiaryId)}/$action',
+  );
+
   Future<Map<String, dynamic>> myQr() async => await _request('GET', '/me/qr');
 
   /// Member self check-in: scan the static QR posted at the gym entrance.

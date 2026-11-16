@@ -48,7 +48,7 @@ class MembershipCard extends StatelessWidget {
     final daysLeft = sub.daysLeft;
     final expired = sub.isExpired;
     final planLabel = sub.isDirect
-        ? context.tr('member.plan_${sub.plan ?? 'monthly'}')
+        ? sub.directLabel(FFLocaleScope.of(context))
         : (sub.tier ?? '-').toUpperCase();
     final statusTone = expired
         ? FFBadgeTone.danger
