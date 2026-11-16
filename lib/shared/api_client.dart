@@ -915,6 +915,7 @@ class ApiClient {
     String? reference,
     String? payerPhone,
     int? termsVersion,
+    num? expectedPriceTzs,
   }) => _map(
     'POST',
     '/me/gym-pass-purchases',
@@ -924,6 +925,9 @@ class ApiClient {
       'reference': ?reference,
       'payerPhone': ?payerPhone,
       'termsVersion': ?termsVersion,
+      // The price the member was shown: the server answers 409
+      // price_changed (nothing created) when it no longer matches.
+      'expectedPriceTzs': ?expectedPriceTzs,
     },
   );
 

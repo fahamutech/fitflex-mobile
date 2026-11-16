@@ -90,6 +90,21 @@ class GymPassPlan {
     );
   }
 
+  /// The same plan at the price the server just named (409 price_changed).
+  GymPassPlan withPrice(num price) => GymPassPlan(
+    id: id,
+    gymId: gymId,
+    name: name,
+    category: category,
+    durationValue: durationValue,
+    durationUnit: durationUnit,
+    beneficiaryLimit: beneficiaryLimit,
+    priceTzs: price,
+    description: description,
+    terms: terms,
+    termsVersion: termsVersion,
+  );
+
   /// Other people the buyer can name at checkout (the buyer holds slot 1).
   int get maxOthers => beneficiaryLimit - 1;
 
@@ -393,6 +408,8 @@ String gymPassErrorMessage(
         return locale.t('gymPass.error.cannotRemoveBuyer');
       case 'feature_disabled':
         return locale.t('gymPass.error.unavailable');
+      case 'price_changed':
+        return locale.t('gymPass.error.priceChangedGeneric');
       case 'payment_reference_duplicate':
         return locale.t('gymPass.error.referenceDuplicate');
       case 'already_beneficiary':
@@ -454,3 +471,32 @@ bool gymPassNeedsProfileReload(
       !(m.subscriptionId != null &&
           knownSubscriptionIds.contains(m.subscriptionId)),
 );
+
+/// What a buyer's invite answer lets the app do. The answer is opaque: it is
+/// the same for a person waiting for an account and one already attached.
+/// `share.link` may be null (no portal host configured on the server).
+enum GymPassInviteShare { linkAndText, textOnly, nothing }
+
+({GymPassInviteShare kind, String? link, String? text}) gymPassInviteShare(
+  Map<String, dynamic> answer,
+) {
+  final share = answer['share'];
+  String? clean(Object? v) {
+    final t = v?.toString().trim() ?? '';
+    return t.isEmpty ? null : t;
+  }
+
+  final link = share is Map ? clean(share['link']) : null;
+  final text = share is Map ? clean(share['text']) : null;
+  if (link != null) {
+    return (
+      kind: GymPassInviteShare.linkAndText,
+      link: link,
+      text: text ?? link,
+    );
+  }
+  if (text != null) {
+    return (kind: GymPassInviteShare.textOnly, link: null, text: text);
+  }
+  return (kind: GymPassInviteShare.nothing, link: null, text: null);
+}

@@ -1000,6 +1000,104 @@ void main() {
     });
   });
 
+  group('backend follow-up (#358)', () {
+    apiTest(
+      'sends the shown price; price_changed creates nothing and asks again',
+      (tester, api) async {
+        api.on('GET /gyms/gym_1/pass-plans', {
+          'gymId': 'gym_1',
+          'plans': [_plan('a', 'individual', price: 90000)],
+        });
+        api.fail('POST /me/gym-pass-purchases', 409, {
+          'error': 'price_changed',
+          'priceTzs': 130000,
+          'currency': 'TZS',
+        });
+        final plan = GymPassPlan.fromJson(
+          _plan('a', 'individual', price: 90000),
+        )!;
+        await _pumpSheet(tester, api, plan);
+        // The price moves on the server after the sheet opened.
+        api.on('GET /gyms/gym_1/pass-plans', {
+          'gymId': 'gym_1',
+          'plans': [_plan('a', 'individual', price: 130000)],
+        });
+        await tester.tap(find.byKey(const Key('gym-pass-buy')));
+        await tester.pumpAndSettle();
+        final first = api.only('POST', '/me/gym-pass-purchases').body as Map;
+        expect(first['expectedPriceTzs'], 90000);
+        // Shown again with the new price; nothing was bought; sheet stays open.
+        expect(find.textContaining('The price changed to'), findsOneWidget);
+        expect(find.textContaining('130,000'), findsWidgets);
+        expect(find.byKey(const Key('gym-pass-buy')), findsOneWidget);
+        // Confirming again sends the new price.
+        api.heal('POST /me/gym-pass-purchases');
+        api.on('POST /me/gym-pass-purchases', {
+          'purchase': {'id': 'gpp_1'},
+          'paymentRequest': {'id': 'pay_1', 'amountTzs': 130000},
+        });
+        await tester.tap(find.byKey(const Key('gym-pass-buy')));
+        await tester.pumpAndSettle();
+        final second =
+            api.where('POST', '/me/gym-pass-purchases').last.body as Map;
+        expect(second['expectedPriceTzs'], 130000);
+      },
+    );
+
+    test('invite answer: link null is never shared or copied', () {
+      var s = gymPassInviteShare({
+        'share': {'link': 'https://x/gym-pass/#t', 'text': 'Join'},
+        'delivery': ['sms'],
+      });
+      expect(s.kind, GymPassInviteShare.linkAndText);
+      expect(s.link, 'https://x/gym-pass/#t');
+      s = gymPassInviteShare({
+        'share': {'link': null, 'text': 'Sign up on FitFlex'},
+      });
+      expect(s.kind, GymPassInviteShare.textOnly);
+      expect(s.link, isNull);
+      s = gymPassInviteShare({
+        'share': {'link': null, 'text': ''},
+      });
+      expect(s.kind, GymPassInviteShare.nothing);
+      expect(gymPassInviteShare(const {}).kind, GymPassInviteShare.nothing);
+    });
+
+    apiTest('invite with no link and no text: neutral message, no crash', (
+      tester,
+      api,
+    ) async {
+      api.on('GET /me/gym-passes', _mine);
+      api.on('POST /me/gym-pass-purchases/gpp_1/beneficiaries/b2/invite', {
+        'share': {'link': null, 'text': null},
+        'delivery': [],
+      });
+      await pumpPage(
+        tester,
+        api,
+        const MemberGymPassesPage(),
+        user: const {'id': 'm1', 'userType': 'member'},
+        size: const Size(400, 1600),
+      );
+      await tester.tap(find.byKey(const Key('gym-pass-person-menu-b2')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('gym-pass-action-invite')));
+      await tester.pumpAndSettle();
+      expect(find.text('The invitation was sent by message.'), findsOneWidget);
+    });
+
+    test('new strings exist in en and as sw placeholders', () {
+      for (final k in [
+        'gymPass.error.priceChanged',
+        'gymPass.error.priceChangedGeneric',
+        'gymPass.invite.sentByMessage',
+      ]) {
+        expect(_en().t(k), isNot(k));
+        expect(_sw().t(k), startsWith('[SW pending review]'));
+      }
+    });
+  });
+
   group('long text', () {
     // Swahili placeholders are the longest strings; a narrow phone at a large
     // text size must not overflow (a Flutter overflow fails the test).

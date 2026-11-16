@@ -124,18 +124,21 @@ class _MemberGymPassesPageState extends State<MemberGymPassesPage> {
         final out = await AppScope.of(
           context,
         ).api.changeGymPassPerson(p.id, who.id, 'invite');
-        final share = out['share'];
         if (!mounted) return;
-        if (share is Map && share['link'] != null) {
-          await shareFriendInvite(
-            context,
-            text: share['text']?.toString() ?? share['link'].toString(),
-            link: share['link'].toString(),
-          );
+        // Opaque answer: never inferred into an account state. A null link
+        // (no portal host on the server) is never shared or copied.
+        final s = gymPassInviteShare(out);
+        switch (s.kind) {
+          case GymPassInviteShare.linkAndText:
+            await shareFriendInvite(context, text: s.text!, link: s.link!);
+          case GymPassInviteShare.textOnly:
+            await shareFriendInvite(context, text: s.text!, link: s.text!);
+          case GymPassInviteShare.nothing:
+            FFSnack.info(context, context.tr('gymPass.invite.sentByMessage'));
         }
       } on ApiException catch (e) {
-        // A person with nothing to share answers 404; say so neutrally, so
-        // the buyer is not told whether the person has an account.
+        // 404 is only a removed person, the buyer's own row or an unknown
+        // id; the wording is neutral and says nothing about accounts.
         if (e.status == 404 && mounted) {
           FFSnack.info(context, context.tr('gymPass.invite.none'));
         } else {

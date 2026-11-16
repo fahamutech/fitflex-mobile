@@ -101,7 +101,7 @@ class _GymPassBuySheetState extends State<GymPassBuySheet> {
     _refreshPlan(scope.api);
   }
 
-  Future<void> _refreshPlan(ApiClient api) async {
+  Future<void> _refreshPlan(ApiClient api, {bool keepError = false}) async {
     GymPassPlan? fresh;
     var answered = false;
     try {
@@ -118,6 +118,7 @@ class _GymPassBuySheetState extends State<GymPassBuySheet> {
     if (!mounted) return;
     setState(() {
       _refreshing = false;
+      // The server's own price (just refused) is kept if the re-read fails.
       if (answered && fresh == null) {
         _planGone = true;
         _error = context.tr('gymPass.error.planUnavailable');
@@ -128,6 +129,11 @@ class _GymPassBuySheetState extends State<GymPassBuySheet> {
           _termsAccepted = false;
         }
         _plan = fresh;
+        if (keepError) {
+          _error = context
+              .tr('gymPass.error.priceChanged')
+              .replaceFirst('{amount}', formatCurrency(_plan.priceTzs));
+        }
         // The people boxes follow the fresh headcount rule.
         while (_others.length < _plan.minOthers) {
           _others.add(TextEditingController());
@@ -194,6 +200,8 @@ class _GymPassBuySheetState extends State<GymPassBuySheet> {
         reference: reference,
         payerPhone: payerPhone,
         termsVersion: _plan.terms != null ? _plan.termsVersion : null,
+        // The price the member is looking at; a change is refused (409).
+        expectedPriceTzs: _plan.priceTzs,
       );
       _submitted = true;
       if (!mounted) return;
@@ -237,6 +245,24 @@ class _GymPassBuySheetState extends State<GymPassBuySheet> {
       Navigator.pop(context, true);
     } on ApiException catch (e) {
       if (!mounted) return;
+      if (e.status == 409 && e.code == 'price_changed') {
+        // Nothing was created. Take the server's new price, show it, and
+        // ask again (the next tap confirms the new price).
+        final body = e.body is Map ? e.body as Map : const {};
+        final now = body['priceTzs'];
+        final api = AppScope.of(context).api;
+        setState(() {
+          _busy = false;
+          if (now is num) _plan = _plan.withPrice(now);
+          _error = (now is num)
+              ? context
+                    .tr('gymPass.error.priceChanged')
+                    .replaceFirst('{amount}', formatCurrency(now))
+              : context.tr('gymPass.error.priceChangedGeneric');
+        });
+        await _refreshPlan(api, keepError: true);
+        return;
+      }
       final onField = manual != null && _manualInput.takeServerError(e);
       setState(() {
         _busy = false;

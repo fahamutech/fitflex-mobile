@@ -8521,6 +8521,12 @@ class FFLocale extends ChangeNotifier {
           "The gym pass price is {amount}. Check it matches what you paid.",
       'gymPass.closeSheet':
           "Close",
+      'gymPass.error.priceChanged':
+          "The price changed to {amount}. Check it and tap Buy again to confirm.",
+      'gymPass.error.priceChangedGeneric':
+          "The price changed. Check the new price and tap Buy again to confirm.",
+      'gymPass.invite.sentByMessage':
+          "The invitation was sent by message.",
     },
     'sw': {
       'app.title': 'FitFlex',
@@ -17170,6 +17176,12 @@ class FFLocale extends ChangeNotifier {
           "[SW pending review] The gym pass price is {amount}. Check it matches what you paid.", // TODO(sw-review)
       'gymPass.closeSheet':
           "[SW pending review] Close", // TODO(sw-review)
+      'gymPass.error.priceChanged':
+          "[SW pending review] The price changed to {amount}. Check it and tap Buy again to confirm.", // TODO(sw-review)
+      'gymPass.error.priceChangedGeneric':
+          "[SW pending review] The price changed. Check the new price and tap Buy again to confirm.", // TODO(sw-review)
+      'gymPass.invite.sentByMessage':
+          "[SW pending review] The invitation was sent by message.", // TODO(sw-review)
     },
   };
 }
