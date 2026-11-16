@@ -28,19 +28,49 @@ class FFActionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final tile = FFCard(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(FFTokens.radiusXl),
-        child: Row(
+    final grouped = _FFTileSlot.of(context);
+    final Widget tile;
+    if (grouped != null) {
+      // Inside an [FFTileGroup]: a flat row, hairline above all but the first.
+      // Hairline from the text, not the card edge (inset 64).
+      tile = Container(
+        foregroundDecoration: grouped.first
+            ? null
+            : _InsetTopLine(theme.colorScheme.outlineVariant),
+        child: InkWell(
+          onTap: onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 56),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: FFTokens.spacingMd,
+                vertical: 10,
+              ),
+              child: _row(theme),
+            ),
+          ),
+        ),
+      );
+    } else {
+      tile = FFCard(
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(FFTokens.radiusXl),
+          child: _row(theme),
+        ),
+      );
+    }
+    return onTap == null ? Opacity(opacity: 0.6, child: tile) : tile;
+  }
+
+  Widget _row(ThemeData theme) => Row(
           children: [
             Container(
               width: FFTokens.iconBox,
               height: FFTokens.iconBox,
               decoration: BoxDecoration(
                 color: theme.colorScheme.surfaceContainerHighest,
-                border: Border.all(color: theme.colorScheme.outline),
-                borderRadius: BorderRadius.circular(FFTokens.radiusLg),
+                borderRadius: BorderRadius.circular(FFTokens.radiusFull),
               ),
               child: Icon(
                 icon,
@@ -71,9 +101,76 @@ class FFActionTile extends StatelessWidget {
                   size: FFTokens.iconMd,
                 ),
           ],
+        );
+}
+
+/// Several [FFActionTile]s in one white card with hairlines between them
+/// (DS v1.0 grouped rows). Children that render nothing leave no gap.
+class FFTileGroup extends StatelessWidget {
+  const FFTileGroup({super.key, required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: FFTokens.spacingSm),
+      child: FFSurface(
+        color: theme.colorScheme.surface,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var i = 0; i < children.length; i++)
+              _FFTileSlot(first: i == 0, child: children[i]),
+          ],
         ),
       ),
     );
-    return onTap == null ? Opacity(opacity: 0.6, child: tile) : tile;
+  }
+}
+
+class _FFTileSlot extends InheritedWidget {
+  const _FFTileSlot({required this.first, required super.child});
+
+  final bool first;
+
+  static _FFTileSlot? of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_FFTileSlot>();
+
+  @override
+  bool updateShouldNotify(_FFTileSlot old) => old.first != first;
+}
+
+/// A 1px line along the top, starting 64px in (past the icon).
+class _InsetTopLine extends Decoration {
+  const _InsetTopLine(this.color);
+
+  final Color color;
+
+  @override
+  BoxPainter createBoxPainter([VoidCallback? onChanged]) => _InsetTopPainter(color);
+}
+
+class _InsetTopPainter extends BoxPainter {
+  _InsetTopPainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Offset offset, ImageConfiguration configuration) {
+    final size = configuration.size;
+    if (size == null) return;
+    final rtl = configuration.textDirection == TextDirection.rtl;
+    const inset = 64.0;
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1;
+    final y = offset.dy + 0.5;
+    canvas.drawLine(
+      Offset(offset.dx + (rtl ? 0 : inset), y),
+      Offset(offset.dx + size.width - (rtl ? inset : 0), y),
+      paint,
+    );
   }
 }

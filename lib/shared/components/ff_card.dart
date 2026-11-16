@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../design_tokens.dart';
 
-/// Surface card matching portal's Card component.
+/// Surface card: white on the sage page (light), charcoal on black (dark).
+/// DS v1.0: radius 20, no border, elevation 1 in light (a soft forest
+/// shadow), flat in dark.
 class FFCard extends StatelessWidget {
   const FFCard({super.key, required this.child, this.padding, this.margin});
 
@@ -14,13 +16,8 @@ class FFCard extends StatelessWidget {
     final theme = Theme.of(context);
     return Padding(
       padding: margin ?? const EdgeInsets.only(bottom: FFTokens.spacingSm),
-      child: Material(
+      child: FFSurface(
         color: theme.colorScheme.surface,
-        shape: RoundedRectangleBorder(
-          side: BorderSide(color: theme.colorScheme.outlineVariant),
-          borderRadius: BorderRadius.circular(FFTokens.radiusXl),
-        ),
-        clipBehavior: Clip.antiAlias,
         child: Padding(
           padding: padding ?? const EdgeInsets.all(FFTokens.spacingMd),
           child: child,
@@ -90,6 +87,47 @@ class FFCardFooter extends StatelessWidget {
         ),
       ),
       child: child,
+    );
+  }
+}
+
+/// A white (charcoal in dark) radius-20 surface with the DS v1.0 card
+/// shadow, `0 2 12 rgba(16,45,36,.05)`, in light mode only. No border.
+class FFSurface extends StatelessWidget {
+  const FFSurface({
+    super.key,
+    required this.color,
+    required this.child,
+    this.radius = FFTokens.radiusXl,
+  });
+
+  final Color color;
+  final Widget child;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    final light = Theme.of(context).brightness == Brightness.light;
+    final shape = BorderRadius.circular(radius);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: shape,
+        boxShadow: light
+            ? [
+                BoxShadow(
+                  color: FFTokens.ink.withValues(alpha: 0.05),
+                  blurRadius: 12,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : null,
+      ),
+      child: Material(
+        color: color,
+        shape: RoundedRectangleBorder(borderRadius: shape),
+        clipBehavior: Clip.antiAlias,
+        child: child,
+      ),
     );
   }
 }

@@ -324,7 +324,9 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
       child: Scaffold(
         appBar: AppBar(
           automaticallyImplyLeading: false,
-          title: Text(context.tr('trainer.dashboard')),
+          // DS v1.0 app bar: wordmark left; language and theme moved to the
+          // Trainer profile tab.
+          title: const FFLimeWordmark(),
           // Bookings, pass approvals, and FitFlex promotions and news.
           actions: [
             IconButton(
@@ -334,7 +336,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
               icon: const Icon(Icons.qr_code_2),
             ),
             const InboxBellButton(),
-            const AppPrefsButtons(),
+            const SizedBox(width: 8),
           ],
         ),
         body: RefreshIndicator(
@@ -476,54 +478,41 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
         // Partner date of birth: a dismissible ask, never blocking.
         const PartnerDobPromptCard(canEditGender: false),
         // Quick gym access: show the check-in QR, or scan the gym's QR.
+        // DS v1.0 trainer "Today" card: the gym door, on lime.
         if (!photoHeroUi)
-          FFCard(
+          FFTodayCard(
             key: const Key('trainer-checkin-card'),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            chipIcon: Icons.door_front_door_outlined,
+            chipLabel: formatDayMonth(
+              DateTime.now(),
+              locale: FFLocaleScope.of(context).locale.languageCode,
+            ),
+            title: context.tr('checkin.title'),
+            body: context.tr('checkin.body'),
+            action: Row(
               children: [
-                Row(
-                  children: [
-                    const Icon(Icons.door_front_door_outlined, size: 20),
-                    const SizedBox(width: 8),
-                    Text(
-                      context.tr('checkin.title'),
-                      style: const TextStyle(fontWeight: FontWeight.w700),
+                Expanded(
+                  child: FilledButton.icon(
+                    key: const Key('trainer-checkin-qr'),
+                    onPressed: _showMyQr,
+                    icon: const Icon(Icons.qr_code_2, size: 18),
+                    label: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(context.tr('checkin.showQr')),
                     ),
-                  ],
+                  ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  context.tr('checkin.body'),
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: FilledButton.icon(
-                        key: const Key('trainer-checkin-qr'),
-                        onPressed: _showMyQr,
-                        icon: const Icon(Icons.qr_code_2, size: 18),
-                        label: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(context.tr('checkin.showQr')),
-                        ),
-                      ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    key: const Key('trainer-checkin-scan'),
+                    onPressed: _scanGymQr,
+                    icon: const Icon(Icons.qr_code_scanner, size: 18),
+                    label: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(context.tr('checkin.scan')),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        key: const Key('trainer-checkin-scan'),
-                        onPressed: _scanGymQr,
-                        icon: const Icon(Icons.qr_code_scanner, size: 18),
-                        label: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(context.tr('checkin.scan')),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ],
             ),
@@ -653,6 +642,20 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
       style: Theme.of(context).textTheme.headlineSmall,
     ),
     const SizedBox(height: 12),
+    FFCard(
+      key: const Key('trainer-prefs'),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              context.tr('member.prefs'),
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+          ),
+          const AppPrefsButtons(),
+        ],
+      ),
+    ),
     FFActionTile(
       key: const Key('trainer-tile-professional'),
       icon: Icons.edit_outlined,

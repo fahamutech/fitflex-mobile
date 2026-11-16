@@ -1,0 +1,86 @@
+name: Design check
+
+# Fork-only helper for the light-system branch: analyze, test and screenshot
+# every role in light and dark, then save the results to the design/results
+# branch for review. Remove before merging upstream.
+on:
+  push:
+    branches: ['design/light-system-*']
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.2'
+          channel: stable
+          cache: true
+
+      - name: Prepare
+        run: |
+          echo "API_BASE=http://fixtures.local" > .env
+          flutter pub get
+
+      - name: Analyze
+        id: analyze
+        continue-on-error: true
+        run: flutter analyze > analyze.txt 2>&1
+
+      - name: Test
+        id: test
+        continue-on-error: true
+        timeout-minutes: 35
+        run: flutter test --reporter expanded --timeout=120s > test.txt 2>&1
+
+      - name: Screens
+        id: shots
+        continue-on-error: true
+        timeout-minutes: 25
+        run: |
+          flutter test test/design_screens_test.dart \
+            --dart-define=DESIGN_SHOTS=true --update-goldens > shots.txt 2>&1
+          flutter test test/design_routes_test.dart \
+            --dart-define=DESIGN_SHOTS=true --update-goldens >> shots.txt 2>&1 || true
+
+      - name: Save results to design/results
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          sha="${GITHUB_SHA::7}"
+          out="$RUNNER_TEMP/out/$sha"
+          mkdir -p "$out"
+          cp analyze.txt test.txt shots.txt "$out/" 2>/dev/null || true
+          grep -E "\[E\]|Some tests failed|All tests passed|TimeoutException" test.txt | tail -n 300 > "$out/test-summary.txt" || true
+          tail -n 8 test.txt >> "$out/test-summary.txt" || true
+          cp -r test/design_shots "$out/shots" 2>/dev/null || true
+          cp -r test/design_routes "$out/routes" 2>/dev/null || true
+          {
+            echo "commit=$GITHUB_SHA"
+            echo "analyze=${{ steps.analyze.outcome }}"
+            echo "test=${{ steps.test.outcome }}"
+            echo "shots=${{ steps.shots.outcome }}"
+          } > "$out/summary.txt"
+          url="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          dir="$RUNNER_TEMP/results"
+          if ! git clone -q --depth 1 --branch design/results "$url" "$dir"; then
+            mkdir -p "$dir" && cd "$dir" && git init -q -b design/results && git remote add origin "$url" && cd -
+          fi
+          cd "$dir"
+          rm -rf "$sha" && cp -r "$out" "./$sha"
+          git config user.name "design-check"
+          git config user.email "design-check@users.noreply.github.com"
+          git add -A
+          git commit -qm "Design check results for $sha" || true
+          # Two runs can finish together: rebase and retry the push.
+          for i in 1 2 3 4 5; do
+            git push -q origin HEAD:design/results && break
+            sleep $((i * 5))
+            git pull -q --rebase origin design/results || true
+          done

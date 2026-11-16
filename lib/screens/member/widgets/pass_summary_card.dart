@@ -11,6 +11,9 @@ import '../member_shell.dart';
 import '../../../shared/photo_hero_flag.dart';
 import 'pass_state.dart';
 
+/// Built once: it does not depend on the context.
+final ThemeData _voltCardTheme = buildVoltCardTheme();
+
 class PassSummaryCard extends StatelessWidget {
   const PassSummaryCard({super.key, required this.data});
 
@@ -46,7 +49,6 @@ class PassSummaryCard extends StatelessWidget {
         onRetry: () => _retry(context),
       );
     }
-    final theme = Theme.of(context);
     final state = passStateFor(data);
     final sub = data.subscription;
     final pending = data.pendingPayment;
@@ -87,8 +89,51 @@ class PassSummaryCard extends StatelessWidget {
       status = null;
     }
 
-    return FFCard(
-      child: Column(
+    // Light system: a healthy, active pass is the screen's one Volt card.
+    // Act-soon, pending and ended states stay on the normal card with their
+    // warning colours. The content is built with the inner context so it
+    // takes the Volt card's colours.
+    final volt = state == PassState.active;
+    final card = Builder(
+      builder: (context) => _card(
+        context,
+        state: state,
+        title: title,
+        status: status,
+        pendingAside: pendingAside,
+        hasPass: hasPass,
+        directDaysLeft: directDaysLeft,
+        directProgress: directProgress,
+      ),
+    );
+    if (!volt) return card;
+    return Theme(
+      key: const Key('pass-summary-volt'),
+      data: _voltCardTheme,
+      child: card,
+    );
+  }
+
+  Widget _card(
+    BuildContext context, {
+    required PassState state,
+    required String title,
+    required String? status,
+    required PaymentRequest? pendingAside,
+    required bool hasPass,
+    required int? directDaysLeft,
+    required double? directProgress,
+  }) {
+    final theme = Theme.of(context);
+    final sub = data.subscription;
+    final pending = data.pendingPayment;
+    // A purchase in flight keeps the full card, which has room for its line.
+    if (state == PassState.active &&
+        sub?.isDirect != true &&
+        pendingAside == null) {
+      return _voltCard(context, title: title);
+    }
+    final content = Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // "Your pass" and the badge share the top line; the title gets the
@@ -223,6 +268,219 @@ class PassSummaryCard extends StatelessWidget {
               onPressed: () => _go(context, AppRoutes.memberPasses),
             ),
           ],
+        ],
+      );
+    return FFCard(child: content);
+  }
+
+  /// The active platform pass as the screen's lime card (DS v1.0 Home
+  /// board): a forest "Active till" chip, "FitFlex Pass · Pro", the visits
+  /// left large with "of 18 visits left" beside it, a forest Check in pill,
+  /// and the Africa dot map, faint, top right.
+  Widget _voltCard(BuildContext context, {required String title}) {
+    final theme = Theme.of(context);
+    final sub = data.subscription;
+    final left = visitsLeft(data);
+    final cap = data.me?.visitCap;
+    final ofLeft = cap == null
+        ? context.tr('pass.unlimited')
+        : context.tr('pass.state.ofVisitsLeft').replaceAll('{total}', '$cap');
+    final until = sub?.expiresAt == null
+        ? null
+        : context
+              .tr('pass.activeTill')
+              .replaceAll('{date}', passShortDate(context, sub!.expiresAt));
+    final passName = title.contains('FitFlex')
+        ? title
+        : '${context.tr('pass.brand')} · $title';
+    return Material(
+      color: FFTokens.volt,
+      borderRadius: BorderRadius.circular(FFTokens.radius2xl),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: [
+          PositionedDirectional(
+            top: -6,
+            end: -10,
+            child: IgnorePointer(
+              child: ExcludeSemantics(
+                child: Opacity(
+                  opacity: 0.4,
+                  child: Image.asset(
+                    'assets/brand/africa-dots.png',
+                    key: const Key('pass-africa-motif'),
+                    width: 150,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  key: const Key('pass-status-badge'),
+                  padding: const EdgeInsets.fromLTRB(10, 6, 12, 6),
+                  decoration: BoxDecoration(
+                    color: FFTokens.ink,
+                    borderRadius: BorderRadius.circular(FFTokens.radiusFull),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.event_available,
+                        size: 14,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        until ?? context.tr('member.status_active'),
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: FFTokens.spacingMd),
+                Text(
+                  passName,
+                  key: const Key('pass-title'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: FFTokens.spacingSm),
+                LayoutBuilder(
+                  builder: (context, c) {
+                    // The board puts Check in beside the count; on a narrow
+                    // phone or at large text it moves under it.
+                    final scale = MediaQuery.textScalerOf(context).scale(1);
+                    final numStyle = theme.textTheme.displayMedium?.copyWith(
+                      fontSize: 56,
+                      fontWeight: FontWeight.w800,
+                      height: 0.95,
+                      letterSpacing: -2,
+                    );
+                    final ofStyle = theme.textTheme.bodyMedium?.copyWith(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    );
+                    double width(String t, TextStyle? st) => (TextPainter(
+                      text: TextSpan(text: t, style: st),
+                      textDirection: Directionality.of(context),
+                      textScaler: MediaQuery.textScalerOf(context),
+                      maxLines: 1,
+                    )..layout()).width;
+                    // "11 of 18 visits left" stays on one line (DS v1.0);
+                    // when it and the pill don't both fit, the pill drops
+                    // to its own row.
+                    final need =
+                        (left == null ? 44 : width('$left', numStyle)) +
+                        6 +
+                        width(ofLeft, ofStyle) +
+                        FFTokens.spacingSm +
+                        width(
+                          context.tr('member.checkInNav'),
+                          theme.textTheme.labelLarge,
+                        ) +
+                        24 + 18 + 8 + 4 + 16 + 4;
+                    final stacked = need > c.maxWidth || scale > 1.1;
+                    final count = Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        // No flex: the measured count keeps its width and
+                        // "of 18 visits left" gets the rest (one line).
+                        Flexible(
+                          flex: 0,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: AlignmentDirectional.bottomStart,
+                            child: Semantics(
+                          key: const Key('pass-visits-ring'),
+                          container: true,
+                          label: left == null ? ofLeft : '$left $ofLeft',
+                          child: ExcludeSemantics(
+                            child: left == null
+                                ? const Icon(Icons.all_inclusive, size: 44)
+                                : Text('$left', style: numStyle),
+                          ),
+                        ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: ExcludeSemantics(
+                              child: Text(
+                                ofLeft,
+                                key: const Key('pass-visits-used'),
+                                style: ofStyle,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                    final action = FilledButton.icon(
+                      key: const Key('pass-primary-action'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: FFTokens.ink,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(0, 44),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                      ),
+                      onPressed: () => _go(context, AppRoutes.memberQr),
+                      icon: const Icon(Icons.qr_code_2, size: 18),
+                      label: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(context.tr('member.checkInNav')),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.arrow_forward, size: 16),
+                        ],
+                      ),
+                    );
+                    if (stacked) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          count,
+                          const SizedBox(height: FFTokens.spacingMd),
+                          action,
+                        ],
+                      );
+                    }
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(child: count),
+                        const SizedBox(width: FFTokens.spacingSm),
+                        ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxWidth: c.maxWidth * 0.45,
+                          ),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: AlignmentDirectional.bottomEnd,
+                            child: action,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

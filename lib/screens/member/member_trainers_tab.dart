@@ -154,6 +154,12 @@ class _MemberTrainersTabState extends State<MemberTrainersTab> {
     _requestDiscovery(immediate: true);
   }
 
+  static OutlineInputBorder _pill(Color color, [double width = 1]) =>
+      OutlineInputBorder(
+        borderRadius: BorderRadius.circular(999),
+        borderSide: BorderSide(color: color, width: width),
+      );
+
   @override
   Widget build(BuildContext context) {
     final data = MemberDataScope.of(context);
@@ -165,6 +171,8 @@ class _MemberTrainersTabState extends State<MemberTrainersTab> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final cols = ffCardGridColumns(context, constraints.maxWidth);
+        // DS v1.0 Trainers board: rows on phones (under 600 wide).
+        final rows = constraints.maxWidth < 600;
 
         return CustomScrollView(
           key: const Key('trainer-page-scroll'),
@@ -221,10 +229,18 @@ class _MemberTrainersTabState extends State<MemberTrainersTab> {
                                     _requestDiscovery(immediate: true);
                                   },
                                 ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(
-                              FFTokens.radiusLg,
-                            ),
+                          // DS v1.0: the search field is a white pill.
+                          filled: true,
+                          fillColor: Theme.of(context).colorScheme.surface,
+                          border: _pill(
+                            Theme.of(context).colorScheme.outlineVariant,
+                          ),
+                          enabledBorder: _pill(
+                            Theme.of(context).colorScheme.outlineVariant,
+                          ),
+                          focusedBorder: _pill(
+                            Theme.of(context).colorScheme.onSurface,
+                            1.5,
                           ),
                         ),
                         onChanged: (v) {
@@ -370,13 +386,14 @@ class _MemberTrainersTabState extends State<MemberTrainersTab> {
                 // ratio: a long name or a large text size makes the row
                 // taller instead of overflowing it.
                 sliver: SliverFFRowGrid(
-                  columns: cols,
+                  columns: rows ? 1 : cols,
                   itemCount: trainers.length,
                   itemBuilder: (context, i) => TrainerGridCard(
                     key: Key('trainer-card-${trainers[i].id}'),
                     trainer: trainers[i],
                     placement: _discovery?.placement,
                     imageAspectRatio: cols == 1 ? 4 / 3 : 1,
+                    row: rows,
                   ),
                 ),
               ),

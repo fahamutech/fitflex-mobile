@@ -211,18 +211,30 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
   AuthState? _auth;
   String? _lastToken;
 
+  // Bottom bar (FitFlex DS v1.0): Home, Activity, the central Check in
+  // action, Gyms, Shop. Profile lives behind the avatar in the app bar.
+  static const _checkInSlot = 2;
+
   int get _tabIndex {
     final loc = GoRouterState.of(context).matchedLocation;
     if (loc.startsWith('/member/activity')) return 1;
     // Event discovery is a section of Activity (events S2 spec §11.1).
     if (loc.startsWith('/member/events')) return 1;
+    if (loc.startsWith(AppRoutes.memberQr)) return _checkInSlot;
     // Trainer discovery lives under Gyms now that Activity has the tab.
-    if (loc.startsWith('/member/gyms')) return 2;
-    if (loc.startsWith('/member/trainers')) return 2;
-    if (loc.startsWith('/member/shop')) return 3;
-    if (loc.startsWith('/member/profile')) return 4;
-    if (loc.startsWith('/member/privacy')) return 4;
+    if (loc.startsWith('/member/gyms')) return 3;
+    if (loc.startsWith('/member/trainers')) return 3;
+    if (loc.startsWith('/member/shop')) return 4;
     return 0;
+  }
+
+  /// True where no tab is current: Profile (and its pages) and the check-in
+  /// screen, which the central action shows without a tab highlight.
+  bool get _noTabSelected {
+    final loc = GoRouterState.of(context).matchedLocation;
+    return loc.startsWith('/member/profile') ||
+        loc.startsWith('/member/privacy') ||
+        loc.startsWith(AppRoutes.memberQr);
   }
 
   @override
@@ -738,9 +750,9 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
     final routes = [
       AppRoutes.memberHome,
       AppRoutes.memberActivity,
+      AppRoutes.memberQr,
       AppRoutes.memberGyms,
       AppRoutes.memberShop,
-      AppRoutes.memberProfile,
     ];
     context.go(routes[index]);
   }
@@ -789,7 +801,11 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
             bar(
               const Row(
                 mainAxisSize: MainAxisSize.min,
-                children: [InboxBellButton(), AppPrefsButtons()],
+                children: [
+                  InboxBellButton(),
+                  AppPrefsButtons(),
+                  _ProfileAvatarButton(),
+                ],
               ),
             ),
           ],
@@ -847,6 +863,7 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
       AppRoutes.memberTrainers,
       AppRoutes.memberShop,
       AppRoutes.memberProfile,
+      AppRoutes.memberQr,
     }.contains(location);
     // PHOTO_HERO_UI: on Home, Activity and Profile at phone width the app
     // bar floats over the hero (spec C-7).
@@ -872,8 +889,10 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
               ? _heroAppBar(context)
               : AppBar(
                   automaticallyImplyLeading: false,
-                  title: Text(context.tr('app.title')),
-                  actions: const [InboxBellButton(), AppPrefsButtons()],
+                  title: const FFLimeWordmark(),
+                  // DS v1.0: bell and avatar only; language and theme live
+                  // in Profile.
+                  actions: const [InboxBellButton(), _ProfileAvatarButton()],
                 ),
           body: heroHome
               ? _heroHomeBody(context)
@@ -896,39 +915,43 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
           // Out of the way while typing, so a form's submit button (the
           // payment page and plan sheets) is never half under it (M16).
           bottomNavigationBar: FFHideWhileTyping(
-            child: NavigationBar(
-              selectedIndex: _tabIndex,
-              onDestinationSelected: _onTab,
-              destinations: [
-                NavigationDestination(
-                  icon: const Icon(Icons.home_outlined),
-                  selectedIcon: const Icon(Icons.home),
-                  label: context.tr('member.home'),
-                ),
-                NavigationDestination(
-                  key: const Key('member-nav-activity'),
-                  icon: const Icon(Icons.directions_run_outlined),
-                  selectedIcon: const Icon(Icons.directions_run),
-                  label: context.tr('activity.title'),
-                ),
-                NavigationDestination(
-                  key: const Key('member-nav-gyms'),
-                  icon: const Icon(Icons.fitness_center_outlined),
-                  selectedIcon: const Icon(Icons.fitness_center),
-                  label: context.tr('member.gyms'),
-                ),
-                NavigationDestination(
-                  key: const Key('member-nav-shop'),
-                  icon: const Icon(Icons.storefront_outlined),
-                  selectedIcon: const Icon(Icons.storefront),
-                  label: context.tr('member.shop'),
-                ),
-                NavigationDestination(
-                  icon: const Icon(Icons.person_outline),
-                  selectedIcon: const Icon(Icons.person),
-                  label: context.tr('member.profile'),
-                ),
-              ],
+            child: _MemberNavTheme(
+              noneSelected: _noTabSelected,
+              child: NavigationBar(
+                selectedIndex: _tabIndex,
+                onDestinationSelected: _onTab,
+                destinations: [
+                  NavigationDestination(
+                    icon: const Icon(Icons.home_outlined),
+                    selectedIcon: const Icon(Icons.home),
+                    label: context.tr('member.home'),
+                  ),
+                  NavigationDestination(
+                    key: const Key('member-nav-activity'),
+                    icon: const Icon(Icons.monitor_heart_outlined),
+                    selectedIcon: const Icon(Icons.monitor_heart),
+                    label: context.tr('activity.title'),
+                  ),
+                  NavigationDestination(
+                    key: const Key('member-nav-checkin'),
+                    icon: const _CheckInAction(),
+                    label: context.tr('member.checkInNav'),
+                    tooltip: context.tr('checkin.title'),
+                  ),
+                  NavigationDestination(
+                    key: const Key('member-nav-gyms'),
+                    icon: const Icon(Icons.fitness_center_outlined),
+                    selectedIcon: const Icon(Icons.fitness_center),
+                    label: context.tr('member.gyms'),
+                  ),
+                  NavigationDestination(
+                    key: const Key('member-nav-shop'),
+                    icon: const Icon(Icons.shopping_bag_outlined),
+                    selectedIcon: const Icon(Icons.shopping_bag),
+                    label: context.tr('member.shop'),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -980,6 +1003,115 @@ class _OfflineBanner extends StatelessWidget {
               size: FFButtonSize.sm,
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+
+/// The member bar's centre slot: a raised round check-in button (forest with
+/// a lime QR icon in light, lime with a forest icon in dark). It takes a
+/// normal icon's space; the lift above the bar is visual only.
+class _CheckInAction extends StatelessWidget {
+  const _CheckInAction();
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final ring = Theme.of(context).navigationBarTheme.backgroundColor ??
+        Theme.of(context).colorScheme.surface;
+    // Laid out as a normal 24dp icon so its label lines up with the other
+    // tabs; the 52dp circle overflows upwards out of the bar.
+    return SizedBox(
+      width: 60,
+      height: 24,
+      child: OverflowBox(
+        maxHeight: 60,
+        maxWidth: 60,
+        child: Transform.translate(
+          offset: const Offset(0, -18),
+          child: Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: dark ? FFTokens.volt : FFTokens.ink,
+              shape: BoxShape.circle,
+              border: Border.all(color: ring, width: 4),
+            ),
+            alignment: Alignment.center,
+            child: Icon(
+              Icons.qr_code_2,
+              size: 24,
+              color: dark ? FFTokens.onVolt : FFTokens.volt,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Hides the selected-tab treatment where no tab is current (Profile and
+/// the check-in screen), so the bar never points at the wrong tab.
+class _MemberNavTheme extends StatelessWidget {
+  const _MemberNavTheme({required this.noneSelected, required this.child});
+
+  final bool noneSelected;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!noneSelected) return child;
+    final base = NavigationBarTheme.of(context);
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+    return NavigationBarTheme(
+      data: base.copyWith(
+        indicatorColor: Colors.transparent,
+        iconTheme: WidgetStatePropertyAll(IconThemeData(color: muted)),
+        labelTextStyle: WidgetStatePropertyAll(
+          TextStyle(
+            fontFamily: FFTokens.fontSans,
+            color: muted,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+      child: child,
+    );
+  }
+}
+
+/// Profile, from the app bar: a round avatar with the member's initial.
+class _ProfileAvatarButton extends StatelessWidget {
+  const _ProfileAvatarButton();
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final name =
+        AppScope.of(context).auth.user?['displayName']?.toString() ?? '';
+    final initial = name.trim().isEmpty ? '' : name.trim()[0].toUpperCase();
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(end: 8),
+      child: IconButton(
+        key: const Key('member-nav-profile'),
+        tooltip: context.tr('member.profile'),
+        onPressed: () => context.go(AppRoutes.memberProfile),
+        icon: CircleAvatar(
+          radius: 20,
+          backgroundColor: dark ? FFTokens.volt : FFTokens.ink,
+          foregroundColor: dark ? FFTokens.onVolt : FFTokens.volt,
+          child: initial.isEmpty
+              ? const Icon(Icons.person, size: 18)
+              : Text(
+                  initial,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
         ),
       ),
     );

@@ -96,6 +96,7 @@ class FFLocale extends ChangeNotifier {
       'common.errorTitle': 'Something went wrong',
       'common.errorBody':
           'We could not load this. Check your connection and try again.',
+      'common.loadFailedBody': 'Check your connection and try again.',
       'a11y.search': 'Search',
       'a11y.showPin': 'Show PIN',
       'a11y.hidePin': 'Hide PIN',
@@ -323,6 +324,8 @@ class FFLocale extends ChangeNotifier {
       'persona.switch': 'Switch role',
       'persona.roles': 'Roles',
       'persona.addTitle': 'Add a role',
+      'persona.addPrompt': 'Own a gym, train or sell?',
+      'persona.addPromptBody': 'Run it from this same account.',
       'persona.addMember': 'Use FitFlex as a member',
       'persona.addTrainer': 'Become a trainer',
       'persona.addOwner': 'Register a gym',
@@ -623,6 +626,7 @@ class FFLocale extends ChangeNotifier {
       'trainer.todaySessions': 'Today sessions',
       'trainer.earnings': 'Earnings',
       'payouts.title': 'My payouts',
+      'payouts.loadFailed': "Your payouts didn't load",
       'payouts.tile': 'Weekly statements of what FitFlex pays you',
       'payouts.intro':
           'FitFlex pays you each week for sessions you completed, and for paid sessions that took place. Each statement is checked and approved before it is paid.',
@@ -705,6 +709,23 @@ class FFLocale extends ChangeNotifier {
       'member.trainers': 'Trainers',
       'member.qr': 'My QR',
       'member.profile': 'Profile',
+      'member.prefs': 'Language and theme',
+      // Bottom-bar label of the central check-in action.
+      'member.checkInNav': 'Check in',
+      'member.since': 'Member since {date}',
+      'vendor.today.toPack': 'open orders to pack',
+      'qr.newCodeIn': 'New code in {n} s',
+      'trainer.bookPill': 'Book',
+      'activity.period.week': 'Week',
+      'activity.period.month': 'Month',
+      'activity.period.year': 'Year',
+      'activity.stat.activeDays': 'Active days',
+      'activity.stat.visits': 'Gym visits',
+      'activity.stat.minutes': 'Active minutes',
+      'activity.chart.summary': 'Active on {n} days in this period',
+      'member.findGym': 'Find your gym',
+      'member.allGyms': 'All gyms',
+      'gym.view': 'View',
       'member.yourPass': 'Your pass',
       'member.upgradePlan': 'Upgrade plan',
       'momo.title': 'Pay with mobile money',
@@ -1491,6 +1512,7 @@ class FFLocale extends ChangeNotifier {
       'shop.cancelledRefund':
           'Order cancelled. Your refund is being processed (not sent yet); follow it under Sessions & refunds.',
       'sessions.title': 'Sessions & refunds',
+      'sessions.loadFailed': "Your sessions didn't load",
       'sessions.tile': 'Trainer sessions you booked, cancellations and refunds',
       'sessions.mine': 'My trainer sessions',
       'sessions.empty':
@@ -1904,6 +1926,9 @@ class FFLocale extends ChangeNotifier {
       'member.level.advanced': 'Advanced',
       'home.qr': 'Show this code at the gym',
       'home.qr.refreshes': 'Refreshes every 60s for security',
+      'qr.visitOf': 'Visit {n} of {total}',
+      'qr.visitsLeft': 'visits left',
+      'qr.needsSignal': 'The code needs signal to refresh.',
       'home.qr.lockedTitle': 'Gym QR locked',
       'home.qr.lockedBody':
           'Choose a paid physical gym pass and wait for admin approval to unlock check-in QR.',
@@ -2744,6 +2769,16 @@ class FFLocale extends ChangeNotifier {
       'home.why.trainerRegular':
           "You've been training regularly. A coach can help plan what's next.",
       'home.streak.title': '{n}-day streak',
+      // Home board (FitFlex DS v1.0).
+      'home.week.title': 'This week',
+      'home.week.activeDays': '{n} active days',
+      'home.stat.streak': 'Streak',
+      'home.stat.days': 'days',
+      'home.stat.visitsMonth': 'Visits this month',
+      'home.stat.checkins': 'check-ins',
+      'home.nearest.title': 'Nearest gym',
+      'home.nearest.suggested': 'A gym to try',
+      'home.nearest.open': 'Open',
       'home.streak.endedTitle': 'Your {n}-day streak ended',
       'home.streak.atRisk':
           'Nothing counted yet today. Any activity keeps it going.',
@@ -2792,6 +2827,9 @@ class FFLocale extends ChangeNotifier {
       'pass.state.payAgain': 'Pay again',
       'pass.state.left': 'left',
       'pass.state.usedOf': '{used} of {total} used',
+      'pass.state.ofVisitsLeft': 'of {total} visits left',
+      'pass.activeTill': 'Active till {date}',
+      'pass.brand': 'FitFlex Pass',
       'pass.state.endsOn': 'Ends {date}',
       'pass.badge.endingSoon': 'Ending soon',
       'pass.gymAccess': 'Gym access',
@@ -3910,6 +3948,7 @@ class FFLocale extends ChangeNotifier {
       'inbox.offersNote':
           'You can turn off offers in Privacy & data → Messages & offers.',
       'benefits.title': 'My wellness benefits',
+      'benefits.loadFailed': "Your benefits didn't load",
       'benefits.tile': 'From your employer, insurer or club',
       'benefits.intro':
           'Benefits are used automatically when you check in at a gym or finish a trainer session. When one runs out, your own pass is used.',
@@ -3963,6 +4002,7 @@ class FFLocale extends ChangeNotifier {
           'You pay {amount}; your sponsor pays the rest',
       'benefits.funding.none': 'Nothing to pay',
       'msgPrefs.title': 'Messages & offers',
+      'msgPrefs.loadFailed': "Your message settings didn't load",
       'msgPrefs.tile': 'Choose which offers you get from your gym and FitFlex',
       'msgPrefs.intro':
           'Your gym and FitFlex can send you offers and news. Choose how you want to get offers.',
@@ -8411,6 +8451,7 @@ class FFLocale extends ChangeNotifier {
       'common.errorTitle': 'Hitilafu imetokea',
       'common.errorBody':
           'Hatukuweza kupakia hili. Angalia mtandao wako kisha jaribu tena.',
+      'common.loadFailedBody': 'Angalia mtandao wako kisha ujaribu tena.', // TODO(sw-review)
       'a11y.search': 'Tafuta',
       'a11y.showPin': 'Onyesha PIN',
       'a11y.hidePin': 'Ficha PIN',
@@ -8649,6 +8690,10 @@ class FFLocale extends ChangeNotifier {
       'persona.switch': 'Badilisha nafasi',
       'persona.roles': 'Nafasi',
       'persona.addTitle': 'Ongeza nafasi',
+      // TODO(sw-review)
+      'persona.addPrompt': 'Una gym, unafundisha au unauza?',
+      // TODO(sw-review)
+      'persona.addPromptBody': 'Endesha kwa akaunti hii hii.',
       'persona.addMember': 'Tumia FitFlex kama mwanachama',
       'persona.addTrainer': 'Kuwa trainer',
       'persona.addOwner': 'Sajili gym',
@@ -9010,6 +9055,7 @@ class FFLocale extends ChangeNotifier {
       'trainer.todaySessions': 'Vipindi vya leo',
       'trainer.earnings': 'Mapato',
       'payouts.title': 'Malipo yangu',
+      'payouts.loadFailed': 'Malipo yako hayakupakiwa', // TODO(sw-review)
       'payouts.tile': 'Taarifa za kila wiki za kile FitFlex inachokulipa',
       'payouts.intro':
           'FitFlex inakulipa kila wiki kwa vipindi ulivyokamilisha, na kwa vipindi vilivyolipiwa vilivyofanyika. Kila taarifa hukaguliwa na kuidhinishwa kabla ya kulipwa.',
@@ -9092,6 +9138,36 @@ class FFLocale extends ChangeNotifier {
       'member.trainers': 'Ma-trainer',
       'member.qr': 'QR yangu',
       'member.profile': 'Wasifu',
+      'member.prefs': 'Lugha na mwonekano',
+      'member.checkInNav': 'Ingia',
+      // TODO(sw-review)
+      'member.since': 'Mwanachama tangu {date}',
+      // TODO(sw-review)
+      'vendor.today.toPack': 'oda za kufunga',
+      // TODO(sw-review)
+      'qr.newCodeIn': 'Msimbo mpya baada ya sekunde {n}',
+      // TODO(sw-review)
+      'trainer.bookPill': 'Weka',
+      // TODO(sw-review)
+      'activity.period.week': 'Wiki',
+      // TODO(sw-review)
+      'activity.period.month': 'Mwezi',
+      // TODO(sw-review)
+      'activity.period.year': 'Mwaka',
+      // TODO(sw-review)
+      'activity.stat.activeDays': 'Siku za mazoezi',
+      // TODO(sw-review)
+      'activity.stat.visits': 'Ziara za gym',
+      // TODO(sw-review)
+      'activity.stat.minutes': 'Dakika za mazoezi',
+      // TODO(sw-review)
+      'activity.chart.summary': 'Ulifanya mazoezi siku {n} katika kipindi hiki',
+      // TODO(sw-review)
+      'member.findGym': 'Tafuta gym yako',
+      // TODO(sw-review)
+      'member.allGyms': 'Gym zote',
+      // TODO(sw-review)
+      'gym.view': 'Tazama',
       'member.yourPass': 'Pasi yako',
       'member.upgradePlan': 'Boresha mpango',
       'momo.title': 'Lipa kwa mtandao wa simu',
@@ -9897,6 +9973,7 @@ class FFLocale extends ChangeNotifier {
       'shop.cancelledRefund':
           'Oda imeghairiwa. Marejesho yako yanashughulikiwa (bado hayajatumwa); fuatilia kwenye Vipindi na marejesho.',
       'sessions.title': 'Vipindi na marejesho',
+      'sessions.loadFailed': 'Vipindi vyako havikupakiwa', // TODO(sw-review)
       'sessions.tile':
           'Vipindi ulivyoweka na ma-trainer, kughairi na marejesho',
       'sessions.mine': 'Vipindi vyangu na ma-trainer',
@@ -10316,6 +10393,9 @@ class FFLocale extends ChangeNotifier {
       'member.level.advanced': 'Mzoefu',
       'home.qr': 'Onyesha msimbo huu kwenye gym',
       'home.qr.refreshes': 'Unabadilika kila sekunde 60 kwa usalama',
+      'qr.visitOf': 'Ziara ya {n} kati ya {total}', // TODO(sw-review)
+      'qr.visitsLeft': 'zimebaki',
+      'qr.needsSignal': 'Msimbo unahitaji mtandao ili kujisasisha.', // TODO(sw-review)
       'home.qr.lockedTitle': 'QR ya gym imefungwa',
       'home.qr.lockedBody':
           'Chagua pasi ya gym ya kulipia kisha subiri idhini ya admin ili QR ya kuingia ifunguke.',
@@ -11167,6 +11247,15 @@ class FFLocale extends ChangeNotifier {
       'home.why.trainerRegular':
           'Umekuwa ukifanya mazoezi mara kwa mara. Trainer anaweza kukusaidia kupanga hatua inayofuata.',
       'home.streak.title': 'Mfululizo wa siku {n}',
+      'home.week.title': 'Wiki hii',
+      'home.week.activeDays': 'Siku {n} za mazoezi', // TODO(sw-review)
+      'home.stat.streak': 'Mfululizo',
+      'home.stat.days': 'siku',
+      'home.stat.visitsMonth': 'Ziara za mwezi huu', // TODO(sw-review)
+      'home.stat.checkins': 'mara', // TODO(sw-review)
+      'home.nearest.title': 'Gym iliyo karibu',
+      'home.nearest.suggested': 'Gym ya kujaribu', // TODO(sw-review)
+      'home.nearest.open': 'Fungua',
       'home.streak.endedTitle': 'Mfululizo wako wa siku {n} umeisha',
       'home.streak.atRisk':
           'Bado hakuna kilichohesabiwa leo. Shughuli yoyote itaendeleza mfululizo.',
@@ -11228,6 +11317,9 @@ class FFLocale extends ChangeNotifier {
       'pass.state.payAgain': 'Lipa tena',
       'pass.state.left': 'zimebaki',
       'pass.state.usedOf': 'Umetumia {used} kati ya {total}',
+      'pass.state.ofVisitsLeft': 'kati ya {total} zimebaki', // TODO(sw-review)
+      'pass.activeTill': 'Inatumika hadi {date}', // TODO(sw-review)
+      'pass.brand': 'FitFlex Pass',
       'pass.state.endsOn': 'Inaisha {date}',
       'pass.badge.endingSoon': 'Inaisha karibuni',
       'pass.gymAccess': 'Ufikiaji wa gym',
@@ -12288,6 +12380,7 @@ class FFLocale extends ChangeNotifier {
       'inbox.offersNote':
           'Unaweza kuzima ofa kwenye Faragha na data → Ujumbe na ofa.',
       'benefits.title': 'Benefits zangu za afya',
+      'benefits.loadFailed': 'Benefits zako hazikupakiwa', // TODO(sw-review)
       'benefits.tile': 'Kutoka kwa mwajiri, bima au klabu yako',
       'benefits.intro':
           'Benefits hutumika moja kwa moja unapoingia gym au unapomaliza kipindi cha trainer. Zikiisha, pasi yako mwenyewe hutumika.',
@@ -12343,6 +12436,7 @@ class FFLocale extends ChangeNotifier {
           'Unalipa {amount}; mdhamini wako analipa kilichobaki',
       'benefits.funding.none': 'Hakuna cha kulipa',
       'msgPrefs.title': 'Ujumbe na ofa',
+      'msgPrefs.loadFailed': 'Mipangilio yako ya ujumbe haikupakiwa', // TODO(sw-review)
       'msgPrefs.tile': 'Chagua ofa unazopokea kutoka gym yako na FitFlex',
       'msgPrefs.intro':
           'Gym yako na FitFlex zinaweza kukutumia ofa na habari. Chagua jinsi unavyotaka kupokea ofa.',
