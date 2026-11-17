@@ -5,6 +5,8 @@ import '../../../shared/activity/manual_activity_log.dart'
     show manualMaxDaysBack;
 import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
+import '../../../shared/gym_passes/gym_pass.dart';
+import '../../../shared/gym_passes/gym_passes_flag.dart';
 import '../../../shared/i18n.dart';
 import '../../../shared/models.dart';
 import '../member_log_activity_page.dart' show openLogActivity;
@@ -138,19 +140,30 @@ List<(MonthWeek, List<RecentEntry>)> groupByMonthWeek(
 }
 
 /// One timeline row.
-Widget recentEntryTile(RecentEntry e) => switch (e) {
+Widget recentEntryTile(
+  RecentEntry e, {
+  Map<String, String> passNames = const {},
+}) => switch (e) {
   RecentActivityEntry(:final activity) => ActivityTimelineTile(
     activity: activity,
   ),
-  RecentVisitEntry() => GymVisitTile(entry: e),
+  RecentVisitEntry() => GymVisitTile(entry: e, passNames: passNames),
 };
 
 /// A gym visit in Recent activity. Tap to open it: what was logged during
 /// the visit, and a way to log what the member did.
 class GymVisitTile extends StatefulWidget {
-  const GymVisitTile({super.key, required this.entry, this.now});
+  const GymVisitTile({
+    super.key,
+    required this.entry,
+    this.now,
+    this.passNames = const {},
+  });
 
   final RecentVisitEntry entry;
+
+  /// Gym pass names by purchase id; labels a visit made with a pass.
+  final Map<String, String> passNames;
 
   /// Injectable clock for tests.
   final DateTime? now;
@@ -168,6 +181,12 @@ class _GymVisitTileState extends State<GymVisitTile> {
     final e = widget.entry;
     final c = e.checkin;
     final gymName = c.gym?.name ?? c.gymId ?? '';
+    final passLabel = gymPassVisitLabel(
+      FFLocaleScope.of(context),
+      passPurchaseId: c.passPurchaseId,
+      names: widget.passNames,
+      enabled: gymCustomPassesEnabled,
+    );
     final logged = e.activities.length;
     // Older visits are past what Log activity accepts.
     final now = widget.now ?? DateTime.now();
@@ -226,6 +245,12 @@ class _GymVisitTileState extends State<GymVisitTile> {
                           context.localDayTime(e.at),
                           style: theme.textTheme.bodySmall,
                         ),
+                        if (passLabel != null)
+                          Text(
+                            passLabel,
+                            key: Key('visit-pass-${c.id}'),
+                            style: theme.textTheme.bodySmall,
+                          ),
                         Text(status, style: theme.textTheme.bodySmall),
                       ],
                     ),
