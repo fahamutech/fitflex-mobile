@@ -824,6 +824,55 @@ class FFLocale extends ChangeNotifier {
           'This order belongs to another account, so it cannot be paid from here.',
       'error.reason.orderAmountMismatch':
           'The amount of this payment does not match the order, so no payment request was sent. Please contact FitFlex support.',
+      // Three ways to pay through AzamPay (fitflex-functions#361): mobile
+      // money, bank checkout (CRDB / NMB) and AzamPay's payment page. The bank
+      // steps are AzamPay's own; bank names are brand names.
+      'momo.method': 'How to pay',
+      'momo.method.mobile_money': 'Mobile money',
+      'momo.method.bank': 'Bank account',
+      'momo.method.page': 'AzamPay page',
+      'momo.checkNowPlain': 'Check now',
+      'momo.bank.intro':
+          'Pay from your bank account with a one-time code from your bank.',
+      'momo.bank.bank': 'Bank',
+      'momo.bank.chooseBank': 'Choose your bank.',
+      'momo.bank.stepsTitle': 'How to get the one-time code',
+      'momo.bank.steps.CRDB':
+          'Dial *150*03#, enter your SIM Banking PIN, choose 7 Other services, then 5 AzamPay, then Link AzamPay Account.',
+      'momo.bank.steps.NMB':
+          'Dial *150*66#, choose 8 More, then 5 Register Sarafu, then 1 Select Account No.',
+      'momo.bank.account': 'Bank account number',
+      'momo.bank.phone': 'Mobile number registered with the bank',
+      'momo.bank.otp': 'One-time code from your bank',
+      'momo.bank.otpHelp': 'We send it to AzamPay once and do not keep it.',
+      'momo.bank.pay': 'Pay {amount} from my bank account',
+      'momo.bank.rejected':
+          'The payment was not accepted. Check the account number, the mobile number and the one-time code. Get a new code from your bank, then try again.',
+      'momo.bank.waitingTitle': 'Waiting for your bank',
+      'momo.bank.waitingBody':
+          'We asked your bank for the payment of {amount}. This page updates by itself.',
+      'momo.bank.endedBody':
+          'Your bank did not confirm this payment in time. You can try again with a new one-time code. If money has already left your account, do not pay again: contact FitFlex support.',
+      'momo.page.intro':
+          "You pay on AzamPay's payment page in your browser, then come back to this app.",
+      'momo.page.open': "Open AzamPay's payment page",
+      'momo.page.reopen': 'Open the payment page again',
+      'momo.page.openFailed': "We couldn't open the payment page. Try again.",
+      'momo.page.waitingTitle': 'Finish paying in your browser',
+      'momo.page.waitingBody':
+          "Pay {amount} on AzamPay's page, then come back here. Your payment shows here once AzamPay confirms it to us.",
+      'momo.page.endedBody':
+          'The payment page is no longer open and we did not get a payment. You can open it again. If money has already left your account, do not pay again: contact FitFlex support.',
+      'error.reason.invalidBank':
+          'That bank cannot be used here. Choose one of the banks shown.',
+      'error.reason.invalidAccountNumber':
+          'Enter your bank account number (5 to 30 letters or digits).',
+      'error.reason.invalidOtp':
+          'Enter the one-time code from your bank (4 to 12 letters or digits).',
+      'error.reason.amountOverBankLimit':
+          'This amount is above the limit for paying from a bank account. Choose another way to pay.',
+      'error.reason.pageUnavailable':
+          "AzamPay's payment page is not available right now. Choose another way to pay.",
       'shop.payNothingOpen':
           'There is no payment waiting for this order. Check the payment to see where it stands.',
       'member.showQr': 'Show my QR',
@@ -9310,6 +9359,56 @@ class FFLocale extends ChangeNotifier {
           '[SW-PENDING] This order belongs to another account, so it cannot be paid from here.',
       'error.reason.orderAmountMismatch':
           '[SW-PENDING] The amount of this payment does not match the order, so no payment request was sent. Please contact FitFlex support.',
+      // TODO(sw-review): three ways to pay through AzamPay (fitflex-functions#361).
+      // [SW-PENDING] = English placeholder awaiting a native-speaker translation.
+      'momo.method': '[SW-PENDING] How to pay',
+      'momo.method.mobile_money': '[SW-PENDING] Mobile money',
+      'momo.method.bank': '[SW-PENDING] Bank account',
+      'momo.method.page': '[SW-PENDING] AzamPay page',
+      'momo.checkNowPlain': '[SW-PENDING] Check now',
+      'momo.bank.intro':
+          '[SW-PENDING] Pay from your bank account with a one-time code from your bank.',
+      'momo.bank.bank': '[SW-PENDING] Bank',
+      'momo.bank.chooseBank': '[SW-PENDING] Choose your bank.',
+      'momo.bank.stepsTitle': '[SW-PENDING] How to get the one-time code',
+      'momo.bank.steps.CRDB':
+          '[SW-PENDING] Dial *150*03#, enter your SIM Banking PIN, choose 7 Other services, then 5 AzamPay, then Link AzamPay Account.',
+      'momo.bank.steps.NMB':
+          '[SW-PENDING] Dial *150*66#, choose 8 More, then 5 Register Sarafu, then 1 Select Account No.',
+      'momo.bank.account': '[SW-PENDING] Bank account number',
+      'momo.bank.phone': '[SW-PENDING] Mobile number registered with the bank',
+      'momo.bank.otp': '[SW-PENDING] One-time code from your bank',
+      'momo.bank.otpHelp':
+          '[SW-PENDING] We send it to AzamPay once and do not keep it.',
+      'momo.bank.pay': '[SW-PENDING] Pay {amount} from my bank account',
+      'momo.bank.rejected':
+          '[SW-PENDING] The payment was not accepted. Check the account number, the mobile number and the one-time code. Get a new code from your bank, then try again.',
+      'momo.bank.waitingTitle': '[SW-PENDING] Waiting for your bank',
+      'momo.bank.waitingBody':
+          '[SW-PENDING] We asked your bank for the payment of {amount}. This page updates by itself.',
+      'momo.bank.endedBody':
+          '[SW-PENDING] Your bank did not confirm this payment in time. You can try again with a new one-time code. If money has already left your account, do not pay again: contact FitFlex support.',
+      'momo.page.intro':
+          "[SW-PENDING] You pay on AzamPay's payment page in your browser, then come back to this app.",
+      'momo.page.open': "[SW-PENDING] Open AzamPay's payment page",
+      'momo.page.reopen': '[SW-PENDING] Open the payment page again',
+      'momo.page.openFailed':
+          "[SW-PENDING] We couldn't open the payment page. Try again.",
+      'momo.page.waitingTitle': '[SW-PENDING] Finish paying in your browser',
+      'momo.page.waitingBody':
+          "[SW-PENDING] Pay {amount} on AzamPay's page, then come back here. Your payment shows here once AzamPay confirms it to us.",
+      'momo.page.endedBody':
+          '[SW-PENDING] The payment page is no longer open and we did not get a payment. You can open it again. If money has already left your account, do not pay again: contact FitFlex support.',
+      'error.reason.invalidBank':
+          '[SW-PENDING] That bank cannot be used here. Choose one of the banks shown.',
+      'error.reason.invalidAccountNumber':
+          '[SW-PENDING] Enter your bank account number (5 to 30 letters or digits).',
+      'error.reason.invalidOtp':
+          '[SW-PENDING] Enter the one-time code from your bank (4 to 12 letters or digits).',
+      'error.reason.amountOverBankLimit':
+          '[SW-PENDING] This amount is above the limit for paying from a bank account. Choose another way to pay.',
+      'error.reason.pageUnavailable':
+          "[SW-PENDING] AzamPay's payment page is not available right now. Choose another way to pay.",
       'shop.payNothingOpen':
           '[SW-PENDING] There is no payment waiting for this order. Check the payment to see where it stands.',
       'member.showQr': 'Onyesha QR',

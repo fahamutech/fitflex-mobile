@@ -109,10 +109,11 @@ Map<String, String> redactHeaders(Map<String, String> headers) => {
 
 /// JSON keys whose string or number values are replaced with `<redacted>`:
 /// any key ending in token, pin, password, secret or otp (idToken, setupToken,
-/// newPin, ...), plus verification `code` and the personal details
-/// `dateOfBirth` and `gender` (fitflex-functions#253).
+/// newPin, ...), plus verification `code`, the personal details
+/// `dateOfBirth` and `gender` (fitflex-functions#253) and a payer's bank
+/// `accountNumber` (bank checkout, fitflex-functions#361).
 final _secretValue = RegExp(
-  r'"([A-Za-z_]*(?:token|pin|password|secret|otp)|code|dateOfBirth|gender)"\s*:\s*("(?:[^"\\]|\\.)*"|-?\d+)',
+  r'"([A-Za-z_]*(?:token|pin|password|secret|otp)|code|dateOfBirth|gender|accountNumber)"\s*:\s*("(?:[^"\\]|\\.)*"|-?\d+)',
   caseSensitive: false,
 );
 
