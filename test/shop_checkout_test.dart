@@ -27,26 +27,20 @@ void main() {
       expect(changed.key, isNot(first.key));
     });
 
-    test('the signature changes with items, option, delivery and payment', () {
-      String sig({
-        int qty = 1,
-        String? variant,
-        String address = 'x',
-        String pay = 'mpesa',
-      }) => checkoutSignature(
-        items: [
-          {'productId': 'p1', 'qty': qty, 'variant': ?variant},
-        ],
-        deliveryMethod: 'home_delivery',
-        deliveryAddress: address,
-        paymentMethod: pay,
-      );
+    test('the signature changes with items, option and delivery', () {
+      String sig({int qty = 1, String? variant, String address = 'x'}) =>
+          checkoutSignature(
+            items: [
+              {'productId': 'p1', 'qty': qty, 'variant': ?variant},
+            ],
+            deliveryMethod: 'home_delivery',
+            deliveryAddress: address,
+          );
       final base = sig();
       expect(sig(), base);
       expect(sig(qty: 2), isNot(base));
       expect(sig(variant: 'L'), isNot(base));
       expect(sig(address: 'y'), isNot(base));
-      expect(sig(pay: 'airtel_money'), isNot(base));
     });
   });
 

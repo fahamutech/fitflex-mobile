@@ -702,10 +702,8 @@ void main() {
       expect(api.sent('POST', '/me/shop-orders'), isFalse);
 
       await typeInto(tester, _key('shop-delivery-address'), ' Masaki 12 ');
-      // Payment method defaults to M-Pesa; switch to Airtel Money.
-      await tapVisible(tester, _key('shop-payment-method'));
-      await tester.tap(find.text('Airtel Money').last);
-      await tester.pumpAndSettle();
+      // No payment method is asked for: it never drove a payment.
+      expect(_key('shop-payment-method'), findsNothing);
       await tapVisible(tester, _key('shop-place-order'));
 
       expect(api.only('POST', '/me/shop-orders').body, {
@@ -714,7 +712,6 @@ void main() {
         ],
         'deliveryMethod': 'home_delivery',
         'deliveryAddress': 'Masaki 12',
-        'paymentMethod': 'airtel_money',
         'paymentOutcome': 'success',
       });
       // The server has not confirmed payment: the customer is told so.
@@ -725,7 +722,10 @@ void main() {
       expect(api.where('GET', '/shop/products'), isNotEmpty);
     });
 
-    apiTest('the default payment method is M-Pesa', (tester, api) async {
+    apiTest('no payment method is sent (the server keeps its default)', (
+      tester,
+      api,
+    ) async {
       _seed(api);
       await _pump(tester, api);
       await _add(tester, 'p2');
@@ -733,7 +733,7 @@ void main() {
       await typeInto(tester, _key('shop-delivery-address'), 'Mikocheni');
       await tapVisible(tester, _key('shop-place-order'));
       final body = api.only('POST', '/me/shop-orders').body as Map;
-      expect(body['paymentMethod'], 'mpesa');
+      expect(body.containsKey('paymentMethod'), isFalse);
       expect(body['items'], [
         {'productId': 'p2', 'qty': 1},
       ]);
@@ -770,7 +770,6 @@ void main() {
         ],
         'deliveryMethod': 'gym_pickup',
         'pickupGymId': 'g2',
-        'paymentMethod': 'mpesa',
         'paymentOutcome': 'success',
       });
     });
@@ -1385,6 +1384,219 @@ void main() {
     });
   });
 
+  // AzamPay is the only payment method (fitflex-functions#360): with
+  // AZAMPAY_SHOP_ORDERS on, GET /payments/options lists SHOP_ORDER for a
+  // member, who then pays their own order by prompt. Checkout answers with
+  // the order only, so its payment request is found in GET /me/payments.
+  group('paying an order by mobile money', () {
+    const shopPayOn = {
+      'enabled': true,
+      'provider': 'azampay',
+      'environment': 'live',
+      'mobileMoney': {
+        'products': ['FITFLEX_PASS', 'GYM_SUBSCRIPTION', 'SHOP_ORDER'],
+      },
+    };
+    const shopPayOff = {
+      'enabled': true,
+      'provider': 'azampay',
+      'environment': 'live',
+    };
+    final unpaid = _order('o1', status: 'pending', paymentStatus: 'pending');
+    const request = {
+      'id': 'pay_o1',
+      'orderId': 'o1',
+      'status': 'pending',
+      'amountTzs': 170000,
+      'productType': 'SHOP_ORDER',
+    };
+
+    Future<PageHost> pumpAs(
+      WidgetTester tester,
+      RecordingApi api, {
+      String userType = 'member',
+    }) => pumpPage(
+      tester,
+      api,
+      const ShopBrowsePage(),
+      user: {'id': 'm1', 'userType': userType, 'phone': '0754123456'},
+      keepRequests: true,
+      size: const Size(420, 900),
+    );
+
+    apiTest('listed: an unpaid order has Pay now, which opens the sheet for '
+        'its own payment request and sends the prompt', (tester, api) async {
+      _seed(api, orders: [unpaid]);
+      api.on('GET /payments/options', shopPayOn);
+      api.on('GET /me/payments', [
+        // Another order's request, and an old one of this order: not these.
+        {...request, 'id': 'pay_other', 'orderId': 'o2'},
+        {...request, 'id': 'pay_old', 'status': 'cancelled'},
+        request,
+      ]);
+      final host = await pumpAs(tester, api);
+      await _openMyOrders(tester, host);
+      expect(_key('order-pay-now-o1'), findsOneWidget);
+      // Checking the payment stays as it was.
+      expect(_key('order-check-payment-o1'), findsOneWidget);
+
+      await tapVisible(tester, _key('order-pay-now-o1'));
+      expect(find.text(host.tr('momo.title')), findsOneWidget);
+      // The amount is the payment request's; the wallet is guessed.
+      expect(find.textContaining(formatCurrency(170000)), findsWidgets);
+      expect(_key('momo-wallet-Mpesa'), findsOneWidget);
+
+      await tester.tap(find.textContaining('Send payment request'));
+      await tester.pump();
+      await tester.pump();
+      expect(api.only('POST', '/me/payments/pay_o1/mobile-money').body, {
+        'phone': '0754123456',
+        'network': 'Mpesa',
+      });
+      // /payments/options is asked once, not again for the sheet.
+      expect(api.where('GET', '/payments/options'), hasLength(1));
+    });
+
+    apiTest('not listed: no Pay now, and the payments are never read', (
+      tester,
+      api,
+    ) async {
+      _seed(api, orders: [unpaid]);
+      api.on('GET /payments/options', shopPayOff);
+      final host = await pumpAs(tester, api);
+      await _openMyOrders(tester, host);
+      expect(_key('order-pay-now-o1'), findsNothing);
+      expect(_key('order-check-payment-o1'), findsOneWidget);
+      expect(api.sent('GET', '/me/payments'), isFalse);
+    });
+
+    apiTest('an order that is paid, or already accepted, has no Pay now', (
+      tester,
+      api,
+    ) async {
+      _seed(
+        api,
+        orders: [
+          _order('o1'),
+          _order('o2', status: 'cancelled', paymentStatus: 'cancelled'),
+        ],
+      );
+      api.on('GET /payments/options', shopPayOn);
+      final host = await pumpAs(tester, api);
+      await _openMyOrders(tester, host);
+      expect(_key('order-pay-now-o1'), findsNothing);
+      expect(_key('order-pay-now-o2'), findsNothing);
+    });
+
+    for (final userType in ['trainer', 'owner', 'vendor']) {
+      apiTest('a $userType buying here is not offered the prompt', (
+        tester,
+        api,
+      ) async {
+        _seed(api, orders: [unpaid]);
+        api.on('GET /payments/options', shopPayOn);
+        final host = await pumpAs(tester, api, userType: userType);
+        await _openMyOrders(tester, host);
+        expect(_key('order-pay-now-o1'), findsNothing);
+        expect(api.sent('GET', '/payments/options'), isFalse);
+        expect(api.sent('GET', '/me/payments'), isFalse);
+      });
+    }
+
+    apiTest('no payment request waiting for the order: says so, no sheet', (
+      tester,
+      api,
+    ) async {
+      _seed(api, orders: [unpaid]);
+      api.on('GET /payments/options', shopPayOn);
+      api.on('GET /me/payments', [
+        {...request, 'status': 'approved'},
+      ]);
+      final host = await pumpAs(tester, api);
+      await _openMyOrders(tester, host);
+      await tapVisible(tester, _key('order-pay-now-o1'));
+      expect(host.snack(host.tr('shop.payNothingOpen')), findsOneWidget);
+      expect(find.text(host.tr('momo.title')), findsNothing);
+    });
+
+    apiTest('checkout, listed: the sheet opens for the new order', (
+      tester,
+      api,
+    ) async {
+      _seed(api);
+      api.on('GET /payments/options', shopPayOn);
+      api.on('POST /me/shop-orders', {
+        'id': 'o9',
+        'status': 'pending',
+        'paymentStatus': 'pending',
+        'totalTzs': 85000,
+      });
+      api.on('GET /me/payments', [
+        {...request, 'id': 'pay_o9', 'orderId': 'o9', 'amountTzs': 85000},
+      ]);
+      final host = await pumpAs(tester, api);
+      await _add(tester, 'p1');
+      await _openCheckout(tester);
+      await typeInto(tester, _key('shop-delivery-address'), 'Masaki');
+      await tapVisible(tester, _key('shop-place-order'));
+      expect(find.text(host.tr('momo.title')), findsOneWidget);
+      expect(find.textContaining(formatCurrency(85000)), findsWidgets);
+
+      await tester.tap(find.textContaining('Send payment request'));
+      await tester.pump();
+      await tester.pump();
+      expect(api.only('POST', '/me/payments/pay_o9/mobile-money').body, {
+        'phone': '0754123456',
+        'network': 'Mpesa',
+      });
+    });
+
+    apiTest('checkout, not listed: as before (pending message, no sheet)', (
+      tester,
+      api,
+    ) async {
+      _seed(api);
+      api.on('GET /payments/options', shopPayOff);
+      api.on('POST /me/shop-orders', {
+        'id': 'o9',
+        'status': 'pending',
+        'paymentStatus': 'pending',
+        'totalTzs': 85000,
+      });
+      final host = await pumpAs(tester, api);
+      await _add(tester, 'p1');
+      await _openCheckout(tester);
+      await typeInto(tester, _key('shop-delivery-address'), 'Masaki');
+      await tapVisible(tester, _key('shop-place-order'));
+      expect(host.snack(host.tr('shop.orderPending')), findsOneWidget);
+      expect(find.text(host.tr('momo.title')), findsNothing);
+      expect(api.sent('GET', '/me/payments'), isFalse);
+    });
+
+    apiTest('checkout: a failed payments read leaves the order placed', (
+      tester,
+      api,
+    ) async {
+      _seed(api);
+      api.on('GET /payments/options', shopPayOn);
+      api.on('POST /me/shop-orders', {
+        'id': 'o9',
+        'status': 'pending',
+        'paymentStatus': 'pending',
+        'totalTzs': 85000,
+      });
+      api.fail('GET /me/payments', 500);
+      final host = await pumpAs(tester, api);
+      await _add(tester, 'p1');
+      await _openCheckout(tester);
+      await typeInto(tester, _key('shop-delivery-address'), 'Masaki');
+      await tapVisible(tester, _key('shop-place-order'));
+      expect(host.snack(host.tr('shop.orderPending')), findsOneWidget);
+      expect(find.text(host.tr('momo.title')), findsNothing);
+      expect(_key('shop-checkout'), findsNothing); // the cart was given up
+    });
+  });
+
   group('English and Swahili layout', () {
     // KNOWN ISSUE (characterized, not endorsed): the rating/stock line of a
     // product row (a Row with no flexible child) overflows at 360px once an
@@ -1470,7 +1682,6 @@ void main() {
         ],
         'deliveryMethod': 'home_delivery',
         'deliveryAddress': 'Masaki',
-        'paymentMethod': 'mpesa',
         'paymentOutcome': 'success',
       });
       expect(host.snack(host.tr('shop.orderPending')), findsOneWidget);

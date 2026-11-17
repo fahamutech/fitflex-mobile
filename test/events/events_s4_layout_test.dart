@@ -33,14 +33,14 @@ void main() {
   setUp(() => debugEventsDiscoveryOverride = true);
   tearDown(() => debugEventsDiscoveryOverride = null);
 
-  final opts = optsS3(payment: 'manual', ticketsQr: true);
+  final opts = optsS3(payment: 'provider', ticketsQr: true);
 
   for (final lang in ['sw', 'en']) {
     apiTest('pay page at 1.3x ($lang): no overflow, the bar holds both', (
       tester,
       api,
     ) async {
-      api.on('GET /me/event-orders/ord_1', manualOrderJson(total: 1250000));
+      api.on('GET /me/event-orders/ord_1', payableOrderJson(total: 1250000));
       await _pump(
         tester,
         api,
@@ -48,9 +48,9 @@ void main() {
         lang: lang,
       );
       expect(tester.takeException(), isNull);
-      expect(find.byKey(const Key('pay-submit')), findsOneWidget);
+      expect(find.byKey(const Key('pay-provider-cta')), findsOneWidget);
       expect(find.byKey(const Key('pay-back')), findsOneWidget);
-      final bar = tester.getRect(find.byKey(const Key('pay-submit')));
+      final bar = tester.getRect(find.byKey(const Key('pay-provider-cta')));
       expect(bar.right, lessThanOrEqualTo(375));
     });
 
@@ -58,7 +58,7 @@ void main() {
       tester,
       api,
     ) async {
-      api.on('GET /me/event-orders/ord_1', manualOrderJson(total: 1250000));
+      api.on('GET /me/event-orders/ord_1', payableOrderJson(total: 1250000));
       await _pump(
         tester,
         api,
@@ -124,8 +124,8 @@ void main() {
 
   // The state cards, in the longest language, at 1.3x.
   final states = <String, Map<String, dynamic>>{
-    'submitted': manualOrderJson(paymentView: paymentView()),
-    'rejected': manualOrderJson(
+    'submitted': payableOrderJson(paymentView: paymentView()),
+    'rejected': payableOrderJson(
       paymentView: paymentView(
         state: 'rejected',
         rejectCode: 'wrong_account',
@@ -135,7 +135,7 @@ void main() {
     ),
     'confirmed with invitation and refund': orderJson(
       status: 'partially_cancelled',
-      payment: 'manual',
+      payment: 'provider',
       paymentView: paymentView(state: 'confirmed'),
       registrations: [
         registrationJson(
@@ -165,7 +165,7 @@ void main() {
         ),
       ],
     ),
-    'unfulfilled': manualOrderJson(
+    'unfulfilled': payableOrderJson(
       status: 'expired',
       closeReason: 'expired',
       closedAt: '2027-03-10T11:50:00Z',

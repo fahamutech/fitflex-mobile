@@ -13,7 +13,6 @@ import '../formatters.dart';
 import '../discovery_loader.dart';
 import '../i18n.dart';
 import '../photo_footer_flag.dart';
-import '../payment_labels.dart';
 import '../product_categories.dart';
 import '../promotion.dart';
 import '../promotion_events.dart';
@@ -21,6 +20,7 @@ import '../root_back_navigation.dart';
 import '../shop_checkout.dart';
 import '../shop_home.dart';
 import '../shop_near_you.dart';
+import '../../screens/member/widgets/mobile_money_pay.dart';
 import '../../screens/vendor/documents/document_view.dart'
     show buyerInvoiceRoute, documentIdPattern;
 import 'shop_home/shop_flash_sale.dart';
@@ -414,6 +414,13 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
   final Set<String> _saved = {};
   bool _loading = true;
   bool _ordering = false;
+
+  /// `GET /payments/options`, asked once a member has an order to pay; null
+  /// until then (and for every other role, whose orders staff confirm).
+  Map<String, dynamic>? _payOptions;
+
+  /// The order whose payment request is being looked up for "Pay now".
+  String? _payingOrderId;
 
   /// The checkout in progress, kept while the cart is unchanged so a retry is
   /// recognised by the server and never makes a second order.
@@ -948,6 +955,8 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
         _loading = false;
         _loadError = null;
       });
+      // An unpaid order may be payable by mobile money: find out once.
+      if (_orders.any(_awaitsPayment)) unawaited(_loadPayOptions());
       if (catalogue) await _loadPromotions();
     } catch (e) {
       // Offline or a server error: the list says so instead of "no products".
@@ -1042,7 +1051,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
     return values;
   }
 
-  /// The delivery and payment choices from the last checkout sheet, so
+  /// The delivery choices from the last checkout sheet, so
   /// "Back to cart" from the price-changed sheet keeps what was entered.
   Map<String, String>? _lastCheckout;
 
@@ -1103,7 +1112,6 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
         deliveryMethod: checkout['deliveryMethod']!,
         pickupGymId: checkout['pickupGymId'],
         deliveryAddress: checkout['deliveryAddress'],
-        paymentMethod: checkout['paymentMethod']!,
       ),
     );
     return AppScope.of(context).api.createShopOrder(
@@ -1111,7 +1119,6 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
       deliveryMethod: checkout['deliveryMethod']!,
       pickupGymId: checkout['pickupGymId'],
       deliveryAddress: checkout['deliveryAddress'],
-      paymentMethod: checkout['paymentMethod']!,
       idempotencyKey: attempt.key,
     );
   }
@@ -1144,7 +1151,86 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
     } else {
       messenger.info(locale.t('shop.orderPending'));
     }
+    // A member pays their own order straight away when the server takes
+    // shop orders by mobile money; otherwise staff confirm it as before.
+    if (!paid) await _payOrder(order, quiet: true);
+    if (!mounted) return;
     await _load();
+  }
+
+  static bool _awaitsPayment(Map<String, dynamic> order) =>
+      order['status'] == 'pending' &&
+      shopOrderPayment(order) == ShopOrderPayment.awaitingConfirmation;
+
+  /// Reads `/payments/options` once, for a member only: trainers, owners
+  /// and vendors buying here cannot pay by prompt (their orders are
+  /// confirmed by staff).
+  Future<void> _loadPayOptions() async {
+    if (_payOptions != null || widget.mode != ShopHomeMode.member) return;
+    final scope = AppScope.of(context);
+    // The signed-in role decides, not only how the shop was opened.
+    final role = scope.auth.user?['userType']?.toString() ?? scope.auth.role;
+    if (role != 'member') return;
+    try {
+      final options = await scope.api.paymentOptions();
+      if (mounted) setState(() => _payOptions = options);
+    } catch (_) {
+      // Unreachable: nothing extra is offered, as before.
+    }
+  }
+
+  /// Whether the server takes a member's own shop order by mobile money
+  /// (`mobileMoney.products` lists SHOP_ORDER).
+  bool get _shopPayOn {
+    final options = _payOptions;
+    return options != null &&
+        momoOffers(options, MomoProduct.shopOrder, role: 'member');
+  }
+
+  /// Opens the mobile-money sheet for an unpaid order of the member's own.
+  /// The order's payment request is found in the member's own payments
+  /// (`GET /me/payments`, by `orderId`): checkout answers with the order
+  /// only. [quiet]: straight after checkout, say nothing when there is
+  /// nothing to pay here.
+  Future<void> _payOrder(
+    Map<String, dynamic> order, {
+    bool quiet = false,
+  }) async {
+    if (_payingOrderId != null) return; // one sheet per tap
+    final messenger = FFSnack.of(context);
+    final locale = FFLocaleScope.of(context);
+    final orderId = order['id']?.toString() ?? '';
+    setState(() => _payingOrderId = orderId);
+    try {
+      await _loadPayOptions();
+      if (!mounted || !_shopPayOn || orderId.isEmpty) return;
+      final rows = await AppScope.of(context).api.myPayments();
+      if (!mounted) return;
+      final request = rows.whereType<Map>().where((p) {
+        return p['orderId']?.toString() == orderId && p['status'] == 'pending';
+      }).firstOrNull;
+      final id = request?['id']?.toString() ?? '';
+      if (request == null || id.isEmpty) {
+        if (!quiet) messenger.info(locale.t('shop.payNothingOpen'));
+        return;
+      }
+      // Found: the button stops spinning while the sheet is open.
+      setState(() => _payingOrderId = null);
+      await offerMobileMoney(
+        context,
+        paymentRequestId: id,
+        // The amount is the server's, taken from its payment request.
+        amountTzs: (request['amountTzs'] as num?) ?? 0,
+        productType: MomoProduct.shopOrder,
+        options: _payOptions,
+      );
+    } catch (e) {
+      // The order exists; only the payment step failed. It can be paid
+      // from My orders.
+      if (!quiet && mounted) messenger.error(errorMessage(locale, e));
+    } finally {
+      if (mounted) setState(() => _payingOrderId = null);
+    }
   }
 
   /// The cart after a `409 price_changed`: each changed product fetched
@@ -2025,6 +2111,20 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
                   key: Key('order-payment-${order['id']}'),
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
+              if (_shopPayOn && _awaitsPayment(order))
+                FFButton(
+                  key: Key('order-pay-now-${order['id']}'),
+                  label: context.tr('momo.payNow'),
+                  icon: Icons.phone_android,
+                  loading: _payingOrderId == order['id']?.toString(),
+                  onPressed: _payingOrderId != null
+                      ? null
+                      : () async {
+                          await _payOrder(order);
+                          if (mounted) await _load();
+                        },
+                  size: FFButtonSize.sm,
+                ),
               if (shopOrderPayment(order) ==
                   ShopOrderPayment.awaitingConfirmation)
                 FFButton(
@@ -2644,7 +2744,6 @@ class _CheckoutSheet extends StatefulWidget {
 
 class _CheckoutSheetState extends State<_CheckoutSheet> {
   String _delivery = 'home_delivery';
-  String _payment = 'mpesa';
   final _address = TextEditingController();
   String? _gymId;
   List<Map<String, dynamic>> _gyms = [];
@@ -2706,7 +2805,6 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
       _delivery = initial['deliveryMethod'] ?? _delivery;
       _address.text = initial['deliveryAddress'] ?? '';
       _gymId = initial['pickupGymId'];
-      _payment = initial['paymentMethod'] ?? _payment;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
@@ -2841,7 +2939,6 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
       'deliveryMethod': _delivery,
       if (_delivery == 'home_delivery') 'deliveryAddress': _address.text.trim(),
       if (_delivery == 'gym_pickup') 'pickupGymId': _gymId!,
-      'paymentMethod': _payment,
     });
   }
 
@@ -2928,27 +3025,6 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
                   isExpanded: true,
                 ),
               ],
-              const SizedBox(height: FFTokens.spacingMd),
-              FFDropdownField<String>(
-                key: const Key('shop-payment-method'),
-                value: _payment,
-                label: context.tr('shop.paymentMethod'),
-                items: [
-                  for (final method in const [
-                    'mpesa',
-                    'airtel_money',
-                    'mixx',
-                    'card',
-                    'bank',
-                  ])
-                    DropdownMenuItem(
-                      value: method,
-                      child: Text(shopPaymentMethodLabel(context, method)),
-                    ),
-                ],
-                onChanged: (value) =>
-                    setState(() => _payment = value ?? 'mpesa'),
-              ),
               const SizedBox(height: FFTokens.spacingLg),
               SizedBox(
                 width: double.infinity,

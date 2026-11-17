@@ -8,9 +8,7 @@ import '../../../shared/design_tokens.dart';
 import '../../../shared/formatters.dart';
 import '../../../shared/gym_passes/gym_pass.dart';
 import '../../../shared/i18n.dart';
-import '../../../shared/manual_payment.dart';
 import '../../../shared/models.dart';
-import '../member_shell.dart';
 import '../widgets/mobile_money_pay.dart';
 
 /// Custom Gym Passes: the buy flow for one plan. Pick the people (couples and
@@ -69,8 +67,6 @@ class _GymPassBuySheetState extends State<GymPassBuySheet> {
   bool _termsAccepted = false;
   String? _error;
   bool _showFieldErrors = false;
-  PaymentModes _modes = PaymentModes.none;
-  final _manualInput = ManualPaymentInput();
 
   /// The plan as the server lists it now (re-read when the sheet opens, so a
   /// price or terms change since the list was loaded is never missed).
@@ -86,18 +82,6 @@ class _GymPassBuySheetState extends State<GymPassBuySheet> {
     }
     final scope = context.getInheritedWidgetOfExactType<AppScope>();
     if (scope == null) return;
-    loadPaymentModes(scope.api).then((m) {
-      if (!mounted) return;
-      _manualInput.prefillPhone(
-        context
-            .getInheritedWidgetOfExactType<MemberDataScope>()
-            ?.notifier
-            ?.me
-            ?.user
-            .phone,
-      );
-      setState(() => _modes = m);
-    });
     _refreshPlan(scope.api);
   }
 
@@ -150,7 +134,6 @@ class _GymPassBuySheetState extends State<GymPassBuySheet> {
     for (final c in _others) {
       c.dispose();
     }
-    _manualInput.dispose();
     super.dispose();
   }
 
@@ -172,18 +155,6 @@ class _GymPassBuySheetState extends State<GymPassBuySheet> {
       });
       return;
     }
-    final manual = _modes.manual;
-    String? reference;
-    String? payerPhone;
-    if (manual != null) {
-      final ready = _manualInput.check(manual);
-      if (ready == null) {
-        setState(() {});
-        return;
-      }
-      reference = ready.reference;
-      payerPhone = ready.payerPhone;
-    }
     final others = <Map<String, String>>[
       for (final c in _others) ?gymPassContactBody(c.text),
     ];
@@ -197,8 +168,6 @@ class _GymPassBuySheetState extends State<GymPassBuySheet> {
       final created = await AppScope.of(context).api.buyGymPass(
         planId: _plan.id,
         others: others,
-        reference: reference,
-        payerPhone: payerPhone,
         termsVersion: _plan.terms != null ? _plan.termsVersion : null,
         // The price the member is looking at; a change is refused (409).
         expectedPriceTzs: _plan.priceTzs,
@@ -206,19 +175,7 @@ class _GymPassBuySheetState extends State<GymPassBuySheet> {
       _submitted = true;
       if (!mounted) return;
       final req = created['paymentRequest'];
-      final serverAmount = req is Map ? req['amountTzs'] : null;
-      if (manual != null &&
-          serverAmount is num &&
-          serverAmount != _plan.priceTzs) {
-        // Paid by hand against the price shown: say what the server charged.
-        FFSnack.warning(
-          context,
-          context
-              .tr('gymPass.priceDiffers')
-              .replaceFirst('{amount}', formatCurrency(serverAmount)),
-        );
-      }
-      if (manual == null && req is Map) {
+      if (req is Map) {
         try {
           final id = req['id'] as String?;
           // The amount is the server's, taken from its payment request.
@@ -263,16 +220,13 @@ class _GymPassBuySheetState extends State<GymPassBuySheet> {
         await _refreshPlan(api, keepError: true);
         return;
       }
-      final onField = manual != null && _manualInput.takeServerError(e);
       setState(() {
         _busy = false;
-        if (!onField) {
-          _error = gymPassErrorMessage(
-            FFLocaleScope.of(context),
-            e,
-            errorMessage,
-          );
-        }
+        _error = gymPassErrorMessage(
+          FFLocaleScope.of(context),
+          e,
+          errorMessage,
+        );
       });
     } catch (e) {
       if (!mounted) return;
@@ -482,19 +436,6 @@ class _GymPassBuySheetState extends State<GymPassBuySheet> {
                       ),
                     ),
                 ],
-                if (_modes.manual != null) ...[
-                  const SizedBox(height: 8),
-                  ManualPaymentFields(
-                    key: const Key('gym-pass-manual-pay'),
-                    manual: _modes.manual!,
-                    amountLabel: formatCurrency(_plan.priceTzs),
-                    input: _manualInput,
-                    enabled: !_busy,
-                    onChanged: (_) {
-                      if (_manualInput.clearErrors()) setState(() {});
-                    },
-                  ),
-                ],
                 if (_error != null) ...[
                   const SizedBox(height: 8),
                   FFAlert(
@@ -508,11 +449,7 @@ class _GymPassBuySheetState extends State<GymPassBuySheet> {
                   width: double.infinity,
                   child: FFButton(
                     key: const Key('gym-pass-buy'),
-                    label: context.tr(
-                      _modes.manual != null
-                          ? 'manualPay.submit'
-                          : 'gymPass.buyAction',
-                    ),
+                    label: context.tr('gymPass.buyAction'),
                     onPressed: _busy || _submitted || _refreshing || _planGone
                         ? null
                         : _buy,

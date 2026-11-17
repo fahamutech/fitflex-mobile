@@ -87,11 +87,11 @@ void main() {
   });
 
   group('pay sheet', () {
-    apiTest('Tunzaa: no wallet choice and the body is just {phone}', (
+    apiTest('another provider name: no wallet choice, the body is {phone}', (
       tester,
       api,
     ) async {
-      await _pumpPanel(tester, api, provider: 'tunzaa');
+      await _pumpPanel(tester, api, provider: 'other');
       expect(find.text(FFLocale.textOf('en', 'momo.wallet')!), findsNothing);
       expect(find.byKey(const Key('momo-wallet-Mpesa')), findsNothing);
       await _send(tester);

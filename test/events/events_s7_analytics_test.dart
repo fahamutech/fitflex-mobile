@@ -382,7 +382,7 @@ void main() {
       api,
       MemberEventTicketPage(
         registrationId: 'reg_1',
-        options: optsS3(payment: 'manual', ticketsQr: true),
+        options: optsS3(payment: 'provider', ticketsQr: true),
       ),
       user: member,
       size: const Size(375, 1800),

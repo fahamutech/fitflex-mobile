@@ -26,7 +26,7 @@ Future<PageHost> _pump(
   api,
   MemberEventOrdersPage(
     initialTab: tab,
-    options: optsS3(payment: 'manual', ticketsQr: qr),
+    options: optsS3(payment: 'provider', ticketsQr: qr),
     now: DateTime.utc(2027, 3, 10, 12),
   ),
   user: member,

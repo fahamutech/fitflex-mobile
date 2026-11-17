@@ -466,7 +466,6 @@ void main() {
         ],
         'deliveryMethod': 'home_delivery',
         'deliveryAddress': 'Masaki',
-        'paymentMethod': 'mpesa',
         'paymentOutcome': 'success',
       });
     });
