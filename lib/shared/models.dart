@@ -730,6 +730,9 @@ class CheckIn {
   final Gym? gym;
   final String? gymId;
 
+  /// Set when the visit used a custom gym pass.
+  final String? passPurchaseId;
+
   CheckIn({
     required this.id,
     required this.memberId,
@@ -741,6 +744,7 @@ class CheckIn {
     required this.gymTier,
     this.gym,
     this.gymId,
+    this.passPurchaseId,
   });
 
   factory CheckIn.fromJson(Map<String, dynamic> json) => CheckIn(
@@ -756,6 +760,7 @@ class CheckIn {
         ? Gym.fromJson(json['gym'] as Map<String, dynamic>)
         : null,
     gymId: json['gymId'] as String?,
+    passPurchaseId: json['passPurchaseId'] as String?,
   );
 }
 
@@ -848,6 +853,11 @@ class MemberMeResponse {
   /// to is already loaded.
   final Set<String> knownSubscriptionIds;
 
+  /// The server's own access picture (`entitlements`): an active FitFlex
+  /// Pass, or at least one active gym subscription. The check-in QR is issued
+  /// when any of them is active, not only the newest subscription.
+  final bool hasActiveEntitlement;
+
   /// The member's username, when they have one. [usernameEnabled] is true
   /// when the server sent the username fields at all (feature on).
   final String? username;
@@ -866,6 +876,7 @@ class MemberMeResponse {
     required this.visitsUsed,
     this.visitCap,
     this.knownSubscriptionIds = const {},
+    this.hasActiveEntitlement = false,
     this.username,
     this.usernameChangeableAt,
     this.usernameEnabled = false,
@@ -899,6 +910,7 @@ class MemberMeResponse {
                 const []))
           if (s is Map && s['id'] != null) s['id'].toString(),
     },
+    hasActiveEntitlement: _hasActiveEntitlement(json['entitlements']),
     username: json['username'] as String?,
     usernameChangeableAt: DateTime.tryParse(
       json['usernameChangeableAt']?.toString() ?? '',
@@ -914,6 +926,15 @@ class MemberMeResponse {
   );
 
   bool get hasActivePass => subscription?.isActive == true;
+
+  static bool _hasActiveEntitlement(Object? raw) {
+    if (raw is! Map) return false;
+    final pass = raw['fitflexPass'];
+    if (pass is Map && pass['status'] == 'active') return true;
+    final subs = raw['gymSubscriptions'];
+    return subs is List && subs.any((s) => s is Map && s['status'] == 'active');
+  }
+
   bool get needsOnboarding => user.onboardingCompleted != true;
 }
 

@@ -223,7 +223,8 @@ class _MemberActivityHistoryPageState extends State<MemberActivityHistoryPage> {
         else
           for (final (week, entries) in groups) ...[
             _WeekHeader(week: week),
-            for (final e in entries) recentEntryTile(e),
+            for (final e in entries)
+              recentEntryTile(e, passNames: data.gymPassNames),
           ],
         const SizedBox(height: FFTokens.spacingMd),
         if (_failed)

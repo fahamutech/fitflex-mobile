@@ -66,7 +66,11 @@ class MemberQrTab extends StatelessWidget {
 
           // Recent checkins
           FFSectionTitle(context.tr('member.recentCheckins')),
-          CheckinList(checkins: data.checkins, limit: 5),
+          CheckinList(
+            checkins: data.checkins,
+            limit: 5,
+            passNames: data.gymPassNames,
+          ),
         ],
       ),
     );
