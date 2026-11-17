@@ -11,7 +11,6 @@ import '../../shared/formatters.dart';
 import '../../shared/api_client.dart';
 import '../../shared/api_error_message.dart';
 import '../../shared/i18n.dart';
-import '../../shared/manual_payment.dart';
 import '../../shared/models.dart';
 import '../../shared/pass_gyms.dart';
 import '../../shared/photo_footer_flag.dart';
@@ -147,7 +146,7 @@ class MemberPassesPage extends StatelessWidget {
     return _PassesScroll(
       // Footer (spec §33.6): once the pass list is shown; never while the
       // pending-payment card is on screen. In upgrade mode the gate decides
-      // (options shown, no manual-payment fields).
+      // (options shown).
       gated: listed && data.hasActivePass,
       footerEnabled: listed,
       appBar: AppBar(
@@ -321,7 +320,7 @@ class _UpgradeGate extends StatefulWidget {
   final Widget? leading;
 
   /// PHOTO_FOOTER_UI: whether the page footer may show (the options or the
-  /// buy list are on screen, and no manual-payment fields).
+  /// buy list are on screen).
   final ValueChanged<bool>? onFooterReady;
 
   /// PHOTO_HERO_UI: lead with the Upgrade plan band hero.
@@ -335,8 +334,6 @@ class _UpgradeGateState extends State<_UpgradeGate> {
   late Future<Map<String, dynamic>> _future;
   String? _selected;
   bool _sending = false;
-  PaymentModes _modes = PaymentModes.none;
-  final _manualInput = ManualPaymentInput();
 
   @override
   void initState() {
@@ -344,24 +341,6 @@ class _UpgradeGateState extends State<_UpgradeGate> {
     // Read without depending on it: initState may not register dependencies.
     final api = context.getInheritedWidgetOfExactType<AppScope>()!.api;
     _future = api.upgradeOptions();
-    loadPaymentModes(api).then((m) {
-      if (!mounted) return;
-      _manualInput.prefillPhone(
-        context
-            .getInheritedWidgetOfExactType<MemberDataScope>()
-            ?.notifier
-            ?.me
-            ?.user
-            .phone,
-      );
-      setState(() => _modes = m);
-    });
-  }
-
-  @override
-  void dispose() {
-    _manualInput.dispose();
-    super.dispose();
   }
 
   void _reload() {
@@ -371,47 +350,18 @@ class _UpgradeGateState extends State<_UpgradeGate> {
   Future<void> _submit() async {
     final tier = _selected;
     if (tier == null || _sending) return; // a second tap must not send twice
-    final manual = _modes.manual;
-    String? reference;
-    String? payerPhone;
-    if (manual != null) {
-      final ready = _manualInput.check(manual);
-      if (ready == null) {
-        setState(() {});
-        return;
-      }
-      reference = ready.reference;
-      payerPhone = ready.payerPhone;
-    }
-    // Let go of the focused field before it is disabled for the request:
-    // disabling a focused field throws "Null check operator used on a null
-    // value" on the web, even when the request then fails (L4).
-    FocusManager.instance.primaryFocus?.unfocus();
     setState(() => _sending = true);
     try {
-      final created = await AppScope.of(
-        context,
-      ).api.upgradePass(tier, reference: reference, payerPhone: payerPhone);
+      final created = await AppScope.of(context).api.upgradePass(tier);
       if (!mounted) return;
-      // A focused field must not outlive the page it is on (L4).
-      FocusManager.instance.primaryFocus?.unfocus();
       // An upgrade applies to the pass the member already has once it is
       // approved; it does not start a new plan.
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            context.tr(
-              manual != null
-                  ? 'manualPay.submittedUpgrade'
-                  : 'upgrade.submitted',
-            ),
-          ),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.tr('upgrade.submitted'))));
       // With mobile money switched on, pay the difference straight away.
-      // A transaction ID means it was paid by hand already.
       final req = created['paymentRequest'];
-      if (manual == null && req is Map) {
+      if (req is Map) {
         await offerMobileMoney(
           context,
           paymentRequestId: req['id'] as String?,
@@ -427,10 +377,6 @@ class _UpgradeGateState extends State<_UpgradeGate> {
       context.go(AppRoutes.memberHome);
     } catch (e) {
       if (!mounted) return;
-      if (manual != null && _manualInput.takeServerError(e)) {
-        setState(() {});
-        return;
-      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(errorMessage(FFLocaleScope.of(context), e))),
       );
@@ -484,10 +430,7 @@ class _UpgradeGateState extends State<_UpgradeGate> {
             : (options == null || options.isEmpty)
             ? 'hero.upgrade.top'
             : 'hero.upgrade';
-        // The manual-payment fields are a payment step: no footer (§33.6).
-        _footerReady(
-          key != null && !(_modes.manual != null && _selected != null),
-        );
+        _footerReady(key != null);
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -711,22 +654,6 @@ class _UpgradeGateState extends State<_UpgradeGate> {
                 tone: FFAlertTone.warning,
               ),
             ],
-            if (_modes.manual != null && chosen != null) ...[
-              const SizedBox(height: 16),
-              ManualPaymentFields(
-                key: const Key('upgrade-manual-pay'),
-                manual: _modes.manual!,
-                amountLabel: formatCurrency(
-                  ((chosen['differenceTzs'] as num?) ?? 0).toInt(),
-                ),
-                input: _manualInput,
-                enabled: !_sending,
-                upgrade: true,
-                onChanged: (_) {
-                  if (_manualInput.clearErrors()) setState(() {});
-                },
-              ),
-            ],
             const SizedBox(height: 16),
             // Nothing to submit until a plan is picked: say so instead of
             // showing a button that does nothing (L3).
@@ -741,16 +668,14 @@ class _UpgradeGateState extends State<_UpgradeGate> {
             else
               FFButton(
                 key: const Key('upgrade-submit'),
-                label: _modes.manual != null
-                    ? context.tr('manualPay.submit')
-                    : context
-                          .tr('upgrade.pay')
-                          .replaceFirst(
-                            '{amount}',
-                            formatCurrency(
-                              ((chosen['differenceTzs'] as num?) ?? 0).toInt(),
-                            ),
-                          ),
+                label: context
+                    .tr('upgrade.pay')
+                    .replaceFirst(
+                      '{amount}',
+                      formatCurrency(
+                        ((chosen['differenceTzs'] as num?) ?? 0).toInt(),
+                      ),
+                    ),
                 onPressed: _sending ? null : _submit,
                 loading: _sending,
               ),

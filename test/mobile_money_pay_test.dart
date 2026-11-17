@@ -1,5 +1,5 @@
 // Pay by mobile money: the number check, the stages, and the panel against a
-// fake server (input → waiting → success / failed / held / slow).
+// fake server (input → waiting → success / failed / held / slow / ended).
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fitflexmobile/app_scope.dart';
 import 'package:fitflexmobile/screens/member/widgets/mobile_money_pay.dart';
 import 'package:fitflexmobile/shared/api_client.dart';
+import 'package:fitflexmobile/shared/api_error_message.dart';
 import 'package:fitflexmobile/shared/auth_state.dart';
 import 'package:fitflexmobile/shared/i18n.dart';
 
@@ -16,6 +17,9 @@ class _FakeApi extends ApiClient {
   final sent = <List<String>>[];
   final states = <String>[];
   Object? payError;
+
+  /// The `reason` sent with a `held` state.
+  String? heldReason;
 
   @override
   Future<Map<String, dynamic>> payByMobileMoney(
@@ -31,7 +35,10 @@ class _FakeApi extends ApiClient {
   @override
   Future<Map<String, dynamic>> refreshMobileMoney(
     String paymentRequestId,
-  ) async => {'state': states.isEmpty ? 'in_progress' : states.removeAt(0)};
+  ) async => {
+    'state': states.isEmpty ? 'in_progress' : states.removeAt(0),
+    'reason': ?heldReason,
+  };
 }
 
 Widget _app(_FakeApi api, Widget child) => AppScope(
@@ -83,8 +90,186 @@ void main() {
     expect(momoStageFor('failed'), MomoStage.failed);
     expect(momoStageFor('held'), MomoStage.held);
     expect(momoStageFor('in_progress'), MomoStage.waiting);
-    expect(momoStageFor('none'), MomoStage.waiting);
     expect(momoStageFor(null), MomoStage.waiting);
+    expect(momoStageFor('something_new'), MomoStage.waiting);
+  });
+
+  test('none (the prompt is no longer open) is its own stage', () {
+    expect(momoStageFor('none'), MomoStage.ended);
+  });
+
+  testWidgets('an ended prompt offers to send it again, and sends a new one', (
+    t,
+  ) async {
+    final api = _FakeApi()..states.addAll(['in_progress', 'none']);
+    await t.pumpWidget(_panel(api));
+    await t.tap(find.textContaining('Send payment request to'));
+    await t.pump();
+    await t.pump(const Duration(seconds: 1)); // in_progress
+    await t.pump(const Duration(seconds: 1)); // none
+    expect(find.text('The payment request has ended'), findsOneWidget);
+    expect(find.text('Still waiting'), findsNothing);
+    expect(find.text('Done'), findsOneWidget);
+
+    await t.tap(find.byKey(const Key('momo-send-again')));
+    await t.pump();
+    await t.tap(find.textContaining('Send payment request to 0712345678'));
+    await t.pump();
+    expect(api.sent, hasLength(2));
+    expect(find.text('Check your phone'), findsOneWidget);
+    // Stop the poll timer before the test ends.
+    api.states.add('completed');
+    await t.pump(const Duration(seconds: 1));
+    expect(find.text('Payment received'), findsOneWidget);
+  });
+
+  testWidgets('still waiting can be checked again; an ended prompt then '
+      'offers to send again', (t) async {
+    final api = _FakeApi();
+    await t.pumpWidget(_panel(api, giveUpAfter: const Duration(seconds: 2)));
+    await t.tap(find.textContaining('Send payment request'));
+    await t.pump();
+    for (var i = 0; i < 3; i++) {
+      await t.pump(const Duration(seconds: 1));
+    }
+    expect(find.text('Still waiting'), findsOneWidget);
+    expect(find.byKey(const Key('momo-send-again')), findsNothing);
+
+    // Still out: nothing changes.
+    await t.tap(find.byKey(const Key('momo-check-again')));
+    await t.pump();
+    await t.pump();
+    expect(find.text('Still waiting'), findsOneWidget);
+
+    // Ten minutes on, the server has given the prompt up.
+    api.states.add('none');
+    await t.tap(find.byKey(const Key('momo-check-again')));
+    await t.pump();
+    await t.pump();
+    expect(find.text('The payment request has ended'), findsOneWidget);
+    expect(find.byKey(const Key('momo-send-again')), findsOneWidget);
+  });
+
+  testWidgets('money that came after the prompt ended has its own wording', (
+    t,
+  ) async {
+    final api = _FakeApi()
+      ..states.add('held')
+      ..heldReason = 'no_open_attempt';
+    await t.pumpWidget(_panel(api));
+    await t.tap(find.textContaining('Send payment request'));
+    await t.pump();
+    await t.pump(const Duration(seconds: 1));
+    expect(find.text('We received your payment'), findsOneWidget);
+    expect(
+      find.text(FFLocale.textOf('en', 'momo.held.noOpenAttempt')!),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('momo-send-again')), findsNothing);
+  });
+
+  test('held reasons the server names each have wording', () {
+    for (final reason in [
+      'no_open_attempt',
+      'amount_mismatch',
+      'transaction_mismatch',
+    ]) {
+      final key = momoHeldBodyKey(reason);
+      expect(key, isNot('momo.heldBody'), reason: reason);
+      expect(FFLocale.textOf('en', key), isNotNull, reason: reason);
+      expect(FFLocale.textOf('sw', key), isNotNull, reason: reason);
+    }
+    expect(momoHeldBodyKey('sandbox_not_settled'), 'momo.heldBody');
+  });
+
+  group('shop orders (AZAMPAY_SHOP_ORDERS)', () {
+    const listed = {
+      'enabled': true,
+      'provider': 'azampay',
+      'mobileMoney': {
+        'products': ['FITFLEX_PASS', 'GYM_SUBSCRIPTION', 'SHOP_ORDER'],
+      },
+    };
+
+    test('offered to a member only when the server lists SHOP_ORDER', () {
+      expect(momoOffers(listed, MomoProduct.shopOrder, role: 'member'), isTrue);
+      expect(
+        momoOffers(listed, MomoProduct.shopOrder, role: 'trainer'),
+        isFalse,
+      );
+      // No list (switches off), or a list without it: never.
+      expect(
+        momoOffers(
+          const {'enabled': true, 'provider': 'azampay'},
+          MomoProduct.shopOrder,
+          role: 'member',
+        ),
+        isFalse,
+      );
+      expect(
+        momoOffers(
+          const {
+            'enabled': true,
+            'mobileMoney': {
+              'products': ['FITFLEX_PASS'],
+            },
+          },
+          MomoProduct.shopOrder,
+          role: 'member',
+        ),
+        isFalse,
+      );
+      expect(
+        momoOffers(
+          {...listed, 'enabled': false},
+          MomoProduct.shopOrder,
+          role: 'member',
+        ),
+        isFalse,
+      );
+    });
+
+    test('a paid order says the vendor has it, not that a plan is active', () {
+      expect(
+        momoSuccessBodyKey(MomoProduct.shopOrder),
+        'shop.paymentConfirmed',
+      );
+    });
+
+    for (final code in [
+      'order_not_found',
+      'order_buyer_mismatch',
+      'order_amount_mismatch',
+      'order_not_payable',
+    ]) {
+      test('409 $code is explained in English and Swahili', () {
+        final e = ApiException(409, {'error': code});
+        final en = apiErrorMessage(FFLocale(), e);
+        final sw = apiErrorMessage(FFLocale()..set(const Locale('sw')), e);
+        expect(en, isNot(contains(code)));
+        expect(sw, isNot(contains(code)));
+        expect(sw, isNot(en));
+      });
+    }
+  });
+
+  test('new Swahili is a marked placeholder until a native review', () {
+    for (final key in [
+      'momo.endedTitle',
+      'momo.endedBody',
+      'momo.sendAgain',
+      'momo.held.noOpenAttempt',
+      'error.reason.orderBuyerMismatch',
+      'error.reason.orderAmountMismatch',
+      'shop.payNothingOpen',
+    ]) {
+      expect(FFLocale.textOf('en', key), isNotNull, reason: key);
+      expect(
+        FFLocale.textOf('sw', key),
+        '[SW-PENDING] ${FFLocale.textOf('en', key)}',
+        reason: key,
+      );
+    }
   });
 
   testWidgets('a bad number is caught before anything is sent', (t) async {

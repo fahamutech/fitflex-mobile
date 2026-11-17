@@ -31,7 +31,7 @@ Future<PageHost> _pump(
   api,
   MemberEventTicketPage(
     registrationId: 'reg_1',
-    options: options ?? optsS3(payment: 'manual', ticketsQr: true),
+    options: options ?? optsS3(payment: 'provider', ticketsQr: true),
   ),
   user: member,
   lang: lang,
@@ -140,7 +140,7 @@ void main() {
       await _pump(
         tester,
         api,
-        options: optsS3(payment: 'manual', ticketsQr: true, scanning: true),
+        options: optsS3(payment: 'provider', ticketsQr: true, scanning: true),
       );
       expect(
         find.text('Show this code at the kit collection point.'),

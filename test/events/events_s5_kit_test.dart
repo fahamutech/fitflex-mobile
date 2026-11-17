@@ -28,7 +28,7 @@ Future<PageHost> _pump(
   api,
   MemberEventTicketPage(
     registrationId: 'reg_1',
-    options: options ?? optsS3(payment: 'manual', ticketsQr: true),
+    options: options ?? optsS3(payment: 'provider', ticketsQr: true),
   ),
   user: member,
   lang: lang,
@@ -314,7 +314,7 @@ void main() {
         api,
         MemberEventRegistrationPage(
           registrationId: 'reg_1',
-          options: optsS3(payment: 'manual', ticketsQr: true),
+          options: optsS3(payment: 'provider', ticketsQr: true),
         ),
         user: member,
         size: const Size(375, 2000),

@@ -23,6 +23,8 @@ import '../../shared/events/event_summary.dart';
 import '../../shared/events/events_analytics_transport.dart';
 import '../../shared/events/events_options.dart';
 import '../../shared/events_flag.dart';
+import '../../shared/gym_passes/gym_pass.dart';
+import '../../shared/gym_passes/gym_passes_flag.dart';
 import '../../shared/i18n.dart';
 import '../../shared/models.dart';
 import '../../shared/root_back_navigation.dart';
@@ -295,7 +297,10 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) syncPhoneSteps();
+    if (state == AppLifecycleState.resumed) {
+      syncPhoneSteps();
+      unawaited(_claimGymPasses());
+    }
   }
 
   /// Reads this phone's step counter (when counting is on) and, if the
@@ -330,9 +335,30 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
         _refreshBenefits(),
         _refreshEvents(),
       ]);
+      // After the profile loaded: a pass it attaches may need a reload.
+      await _claimGymPasses();
       if (_data.canCheckIn) await _refreshQr();
     } finally {
       _data.update((d) => d.loading = false);
+    }
+  }
+
+  /// Custom Gym Passes: opening `GET /me/gym-passes` attaches this member to
+  /// passes waiting on a contact they have verified. Quiet: with the flag off
+  /// (here or on the server: 404 feature_disabled) or any failure nothing
+  /// shows and nothing else is affected. When it brought a pass that this
+  /// profile does not know yet, the profile reloads.
+  Future<void> _claimGymPasses() async {
+    if (!gymCustomPassesEnabled || _auth?.token == null) return;
+    try {
+      final out = await AppScope.of(context).api.myGymPasses();
+      final known = _data.me?.knownSubscriptionIds ?? const <String>{};
+      if (gymPassNeedsProfileReload(GymPassesMine.fromJson(out), known) &&
+          mounted) {
+        await _refreshMe();
+      }
+    } catch (_) {
+      // Not available, or offline: try again at the next refresh.
     }
   }
 

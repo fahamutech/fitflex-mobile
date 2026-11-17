@@ -273,7 +273,6 @@ EventsOptions optsS3({
   'payment': payment,
   // Events S4 (spec §3.1): only present when payment is on.
   if (payment != 'none') ...{
-    'manualConfirmHours': 24,
     'refundDays': 5,
     'hold': {
       'manualExtendHours': 24,
@@ -595,28 +594,6 @@ Map<String, dynamic> teamJson({
 
 // ── Events S4 fixtures (spec §3.5, §3.8, §3.12) ──────────────────────────
 
-/// `next.instructions` for a manual order: Lipa Namba plus the order's own
-/// amount and reference.
-Map<String, dynamic> manualInstructions({
-  int amountTzs = 25000,
-  bool payerPhoneRequired = true,
-  String lipaNamba = '5123456',
-  String accountName = 'FitFlex Africa',
-  String? network = 'Vodacom',
-}) => {
-  'lipaNamba': lipaNamba,
-  'accountName': accountName,
-  'network': network,
-  'instructions': {
-    'en': 'Pay from M-Pesa, Tigo Pesa or Airtel Money.',
-    'sw': 'Lipa kwa M-Pesa, Tigo Pesa au Airtel Money.',
-  },
-  'amountTzs': amountTzs,
-  'reference': 'EV-3F9A2B7C1D',
-  'referenceRequired': true,
-  'payerPhoneRequired': payerPhoneRequired,
-};
-
 /// A `PaymentView`.
 Map<String, dynamic> paymentView({
   String state = 'submitted',
@@ -671,8 +648,9 @@ Map<String, dynamic> refundView({
   'rejectionNote': rejectionNote,
 };
 
-/// An order awaiting payment in manual mode, with the instructions.
-Map<String, dynamic> manualOrderJson({
+/// An order awaiting payment while the server takes payment (`next.payment`
+/// is `provider`: AzamPay, the only payment method; `instructions` null).
+Map<String, dynamic> payableOrderJson({
   Map<String, dynamic>? paymentView,
   int total = 25000,
   String status = 'awaiting_payment',
@@ -683,13 +661,12 @@ Map<String, dynamic> manualOrderJson({
   List<Map<String, dynamic>>? registrations,
   List<String>? allowedActions,
 }) => orderJson(
-  payment: 'manual',
+  payment: 'provider',
   total: total,
   status: status,
   closeReason: closeReason,
   closedAt: closedAt,
   holdExpiresAt: holdExpiresAt,
-  instructions: manualInstructions(amountTzs: total),
   paymentView: paymentView,
   refunds: refunds,
   registrations: registrations,
@@ -698,7 +675,7 @@ Map<String, dynamic> manualOrderJson({
 
 /// The server's answer to `POST …/payment`.
 Map<String, dynamic> paymentAccepted({
-  String mode = 'manual',
+  String mode = 'provider',
   bool replayed = false,
   bool late = false,
   String? paymentRequestId = 'pr_1',

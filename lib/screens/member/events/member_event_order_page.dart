@@ -13,7 +13,6 @@ import '../../../shared/components/components.dart';
 import '../../../shared/design_tokens.dart';
 import '../../../shared/events/event_order.dart';
 import '../../../shared/events/event_payment.dart';
-import '../../../shared/events/event_payment_rules.dart';
 import '../../../shared/events/event_summary.dart';
 import '../../../shared/events/event_time.dart';
 import '../../../shared/events/events_analytics.dart';
@@ -76,7 +75,6 @@ class _MemberEventOrderPageState extends State<MemberEventOrderPage>
 
   ApiClient get _api => AppScope.of(context).api;
   EventsOptions get _options => eventsOptionsOf(context, widget.options);
-  DateTime get _clock => widget.now ?? DateTime.now();
 
   @override
   void initState() {
@@ -785,10 +783,7 @@ class _MemberEventOrderPageState extends State<MemberEventOrderPage>
       ];
     }
     // A mode this release does not know: say nothing it cannot complete.
-    if (o.isAwaitingPayment &&
-        !d.hasPayment &&
-        mode != 'manual' &&
-        mode != 'provider') {
+    if (o.isAwaitingPayment && !d.hasPayment && mode != 'provider') {
       return [
         FFCard(
           child: Text(
@@ -799,7 +794,6 @@ class _MemberEventOrderPageState extends State<MemberEventOrderPage>
         ),
       ];
     }
-    final late = eventOrderLatePayable(o, _options, _clock);
     return [
       if (slot != EventPaymentSlot.none)
         EventPaymentStatusCard(
@@ -820,18 +814,6 @@ class _MemberEventOrderPageState extends State<MemberEventOrderPage>
           onCheck: () => _load(quiet: true),
           onOpenTickets: () => context.push(AppRoutes.memberEventTickets),
         ),
-      // Expired a moment ago: the member who already paid may still send
-      // the transaction ID (spec §3.4.1, D26).
-      if (late && !(d.paymentView?.state.isLive ?? false))
-        Align(
-          alignment: Alignment.centerLeft,
-          child: FFButton(
-            key: const Key('order-already-paid'),
-            label: context.tr('events.pay.alreadyPaid'),
-            variant: FFButtonVariant.ghost,
-            onPressed: _openPay,
-          ),
-        ),
     ];
   }
 
@@ -840,9 +822,7 @@ class _MemberEventOrderPageState extends State<MemberEventOrderPage>
   Widget? _payBar(BuildContext context, EventOrderDetail d) {
     final o = d.order;
     final mode = _modeOf(d);
-    if (!o.isAwaitingPayment ||
-        d.hasPayment ||
-        (mode != 'manual' && mode != 'provider')) {
+    if (!o.isAwaitingPayment || d.hasPayment || mode != 'provider') {
       return null;
     }
     final amount = formatCurrency(o.totalTzs, currency: o.currency);

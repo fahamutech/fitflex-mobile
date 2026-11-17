@@ -711,43 +711,10 @@ class FFLocale extends ChangeNotifier {
       'momo.payNow': 'Pay now',
       'momo.pageBody':
           'Pay with mobile money. Your pass starts as soon as the payment goes through.',
-      'manualPay.title': 'How to pay',
-      'manualPay.step1':
-          'Pay {amount} to the Lipa Namba below (account name {name}).',
-      'manualPay.step1Network':
-          'Pay {amount} to the Lipa Namba below (account name {name}, network {network}).',
-      'manualPay.step2':
-          'Keep the confirmation SMS. It has the transaction ID.',
-      'manualPay.step3': 'Enter the transaction ID below and submit it.',
-      'manualPay.copy': 'Copy number',
-      'manualPay.copied': 'Lipa Namba copied',
       'manualPay.idLabel': 'Transaction ID',
-      'manualPay.idHint': 'e.g. QJK3H7XY2P',
       'manualPay.idShown': 'Transaction ID: {id}',
-      'manualPay.phoneLabel': 'Number you paid from',
-      'manualPay.phoneHint': 'e.g. 0712\u00A0345\u00A0678',
-      'manualPay.phoneHelp': 'The mobile money number the payment came from.',
-      'manualPay.phoneRequired': 'Enter the number you paid from',
-      'manualPay.phoneInvalid':
-          'Enter a Tanzanian mobile number, e.g. 0712\u00A0345\u00A0678',
       'manualPay.paidFrom': 'Paid from',
       'manualPay.paidFromShown': 'Paid from: {phone}',
-      'manualPay.idRequired': 'Enter the transaction ID from your payment SMS',
-      'manualPay.idInvalid':
-          "That doesn't look like a transaction ID. Check the SMS and try again.",
-      'manualPay.idDuplicate':
-          'This transaction ID has already been used. Check the SMS and try again.',
-      'manualPay.submit': 'Submit transaction ID',
-      'manualPay.submitted':
-          "Transaction ID sent. Your plan starts once we've matched the payment.",
-      'manualPay.pageBody':
-          'Pay the Lipa Namba below, then enter the transaction ID.',
-      'manualPay.step3Upgrade':
-          'Enter the transaction ID below and submit it. Once it is approved, the upgrade applies to your current pass.',
-      'manualPay.submittedUpgrade':
-          "Transaction ID sent. Once it's approved, the upgrade applies to your current pass.",
-      'manualPay.copyFailed': "Couldn't copy. The Lipa Namba is {number}.",
-      'manualPay.numberA11y': 'Lipa Namba {number}',
       'member.chooseFirst': 'Choose a plan to continue.',
       'momo.intro':
           'We will send a payment request to your phone. Approve it with your PIN to finish.',
@@ -845,6 +812,20 @@ class FFLocale extends ChangeNotifier {
       'momo.wallet.Airtel': 'Airtel Money',
       'momo.wallet.Halopesa': 'HaloPesa',
       'momo.wallet.Azampesa': 'AzamPesa',
+      // AzamPay only (fitflex-functions#360): a prompt that ended can be sent
+      // again; a member pays their own shop order by prompt.
+      'momo.endedTitle': 'The payment request has ended',
+      'momo.endedBody':
+          'It was not approved on your phone, or it timed out. You can send the payment request again. If money has already left your account, do not pay again: contact FitFlex support.',
+      'momo.sendAgain': 'Send the payment request again',
+      'momo.held.noOpenAttempt':
+          'Your payment arrived after this payment request had ended, so our team will check it. You do not need to pay again.',
+      'error.reason.orderBuyerMismatch':
+          'This order belongs to another account, so it cannot be paid from here.',
+      'error.reason.orderAmountMismatch':
+          'The amount of this payment does not match the order, so no payment request was sent. Please contact FitFlex support.',
+      'shop.payNothingOpen':
+          'There is no payment waiting for this order. Check the payment to see where it stands.',
       'member.showQr': 'Show my QR',
       'member.nearGyms': 'Gyms near you',
       'member.featuredTrainers': 'Featured trainers',
@@ -1588,17 +1569,8 @@ class FFLocale extends ChangeNotifier {
       'error.reason.gymNotAvailable':
           'this gym is not taking subscriptions right now',
       'error.reason.tierNotAvailable': 'this pass is not on sale right now',
-      'error.reason.paymentReferenceRequired':
-          'enter the transaction ID from your payment SMS',
-      'error.reason.paymentReferenceInvalid':
-          'that transaction ID is not valid',
-      'error.reason.paymentReferenceDuplicate':
-          'that transaction ID has already been used',
       'error.reason.manualPaymentSubmitted':
           'this payment was already sent with a transaction ID and is waiting for approval',
-      'error.reason.payerPhoneRequired':
-          'enter the mobile number you paid from',
-      'error.reason.payerPhoneInvalid': 'that is not a Tanzanian mobile number',
       'pay.product.fitflexPass': 'FitFlex Pass',
       'pay.product.gymPlan': 'Gym plan',
       'pay.product.trainerSession': 'Trainer session',
@@ -1656,7 +1628,6 @@ class FFLocale extends ChangeNotifier {
       'shop.nearestGyms': 'Show nearest gyms',
       'shop.locationUnavailable':
           'Location unavailable. You can still search for a gym.',
-      'shop.paymentMethod': 'Payment method',
       'shop.payAndOrder': 'Pay and place order',
       'shop.addToCart': 'Add to cart',
       'shop.buyNow': 'Buy now',
@@ -6858,22 +6829,8 @@ class FFLocale extends ChangeNotifier {
       'events.pay.title': 'Pay for your tickets',
       'events.pay.cta': 'Pay · {amount}',
       'events.pay.cta.a11y': 'Pay {amount} for order {ref}',
-      'events.pay.manual.badge': 'Manual confirmation',
-      'events.pay.manual.banner.title':
-          'Manual confirmation: FitFlex checks your payment',
-      'events.pay.manual.banner.body':
-          'You pay the Lipa Namba from your phone, then send us the transaction ID. FitFlex staff check it against the till statement, within {hours} hours. Your tickets appear after FitFlex confirms it.',
       'events.pay.recap.title': 'Your order',
       'events.pay.exact': 'Pay exactly {amount}',
-      'events.pay.confirmCheck': 'I paid {amount} to {name} from this number',
-      'events.pay.submit': 'I have paid · Send for checking',
-      'events.pay.sending': 'Sending…',
-      'events.pay.sent.snack': 'Sent for checking',
-      'events.pay.late.banner.title': 'Your hold ended',
-      'events.pay.late.banner.body':
-          'Send your transaction ID only if you already paid. We\'ll try to re-reserve your places; if they are gone we\'ll refund you in full. Don\'t pay again.',
-      'events.pay.late.cta': 'Send my transaction ID',
-      'events.pay.alreadyPaid': 'I already paid',
       'events.pay.uncertain.title': 'We couldn\'t tell if it was sent',
       'events.pay.uncertain.body':
           'Check your order before sending again. If it says "Payment sent for checking", you\'re done.',
@@ -8400,6 +8357,146 @@ class FFLocale extends ChangeNotifier {
       'kyc.country.GB': 'United Kingdom',
       'kyc.country.US': 'United States',
       'kyc.country.IN': 'India',
+      // Custom Gym Passes (phase 4).
+      'gymPass.sectionTitle': "Gym Membership Plans",
+      'gymPass.sectionNote':
+          "Passes set by this gym. They are separate from FitFlex Pass and the daily, weekly and monthly plans.",
+      'gymPass.category.individual': "Individual (1 person)",
+      'gymPass.category.couples': "Couples (2 people)",
+      'gymPass.category.group': "Group (up to {n} people)",
+      'gymPass.duration.day': "{n} day",
+      'gymPass.duration.days': "{n} days",
+      'gymPass.duration.week': "{n} week",
+      'gymPass.duration.weeks': "{n} weeks",
+      'gymPass.duration.month': "{n} month",
+      'gymPass.duration.months': "{n} months",
+      'gymPass.genericLabel': "Gym pass",
+      'gymPass.buyTitle': "Buy a gym pass",
+      'gymPass.buyAction': "Buy pass",
+      'gymPass.price': "Price",
+      'gymPass.priceNote':
+          "The gym set this price. You pay once for everyone on the pass.",
+      'gymPass.coversYou': "This pass covers you.",
+      'gymPass.othersHint':
+          "Who else is on this pass? Enter a phone number or email for each person (up to {max} besides you).",
+      'gymPass.notifyNote':
+          "People you add are told, not asked to approve. Anyone without a FitFlex account gets an invite link and joins the pass when they sign up and verify that contact.",
+      'gymPass.personLabel': "Person {n}",
+      'gymPass.personHint': "Phone number or email",
+      'gymPass.personLabelAdd': "Phone number or email",
+      'gymPass.removeField': "Remove this person",
+      'gymPass.addAnother': "Add another person",
+      'gymPass.terms': "Terms",
+      'gymPass.acceptTerms': "I accept these terms",
+      'gymPass.buyFailed': "Could not start this purchase. Try again.",
+      'gymPass.bought':
+          "Pass requested. It starts once the payment is approved.",
+      'gymPass.error.termsNeeded': "Accept the terms to continue.",
+      'gymPass.error.invalidBeneficiaries':
+          "One of the people you entered can't be added to this pass. Check the contacts or choose someone else.",
+      'gymPass.error.cannotAddPerson':
+          "This person can't be added to this pass.",
+      'gymPass.error.rateLimited': "Too many attempts. Try again later.",
+      'gymPass.error.rateLimitedSeconds':
+          "Too many attempts. Try again in {time}.",
+      'gymPass.error.tooSoon':
+          "An invite was sent a moment ago. Try again later.",
+      'gymPass.error.removedByOwner':
+          "The gym removed this person from this pass, so you can't add them again.",
+      'gymPass.error.suspendedByOther':
+          "Only the gym can let this person back in.",
+      'gymPass.error.replacementLimit':
+          "You can't replace any more people on this pass.",
+      'gymPass.error.limitExceeded': "This pass has no free place.",
+      'gymPass.error.contactProblem':
+          "Check the phone number or email. Each person needs a different, valid contact.",
+      'gymPass.error.headcount':
+          "This pass needs a different number of people.",
+      'gymPass.error.planUnavailable': "This pass isn't available any more.",
+      'gymPass.error.termsChanged':
+          "The terms changed. Close this and open the pass again.",
+      'gymPass.error.paymentPending':
+          "You already have a payment waiting for this gym. Finish or cancel it first.",
+      'gymPass.error.passNotActive': "This pass isn't running yet.",
+      'gymPass.error.invalidTransition': "That can't be done right now.",
+      'gymPass.error.cannotRemoveBuyer':
+          "The person who bought the pass can't be removed.",
+      'gymPass.error.unavailable': "Gym passes aren't available right now.",
+      'gymPass.wait.seconds': "{n} seconds",
+      'gymPass.wait.minutes': "{n} minutes",
+      'gymPass.mineTitle': "My gym passes",
+      'gymPass.mineTile': "Passes you bought or share",
+      'gymPass.mineEmpty': "No gym passes yet",
+      'gymPass.mineEmptyBody':
+          "When you buy a pass, or someone adds you to one, it shows here.",
+      'gymPass.unavailable': "Gym passes aren't available right now.",
+      'gymPass.bought.title': "Passes I bought",
+      'gymPass.covered.title': "Passes I'm covered by",
+      'gymPass.status.pending_payment': "Waiting for payment",
+      'gymPass.status.active': "Active",
+      'gymPass.status.expired': "Expired",
+      'gymPass.status.cancelled': "Cancelled",
+      'gymPass.person.awaiting_payment': "Waiting for payment",
+      'gymPass.person.invited': "Invited",
+      'gymPass.person.pending_registration': "Invited",
+      'gymPass.person.active': "Active",
+      'gymPass.person.suspended': "Suspended",
+      'gymPass.person.removed': "Removed",
+      'gymPass.person.you': "You",
+      'gymPass.person.buyer': "Bought the pass",
+      'gymPass.person.slot': "Person {n}",
+      'gymPass.person.added': "Person added. They are being told.",
+      'gymPass.awaitingPayment': "Starts once the payment is approved.",
+      'gymPass.sharedExpiry': "Everyone on this pass: valid until {date}",
+      'gymPass.slots': "{used} of {limit} places used",
+      'gymPass.addPerson': "Add a person",
+      'gymPass.addPersonConfirm': "Add",
+      'gymPass.personMenu': "Person options",
+      'gymPass.action.suspend': "Pause entry",
+      'gymPass.action.resume': "Let back in",
+      'gymPass.action.remove': "Remove from pass",
+      'gymPass.action.invite': "Share invite link",
+      'gymPass.invite.none':
+          "No invite link to share for this person right now.",
+      'gymPass.removeTitle': "Remove this person?",
+      'gymPass.removeBody':
+          "They lose access to this pass. Nothing is refunded and the pass keeps running. You can add someone else in their place.",
+      'gymPass.removeConfirm': "Remove",
+      'gymPass.cancelTitle': "Cancel this purchase?",
+      'gymPass.cancelBody':
+          "The pass has not been paid for yet. Its payment request is cancelled with it.",
+      'gymPass.cancelConfirm': "Cancel purchase",
+      'gymPass.cancelAction': "Cancel purchase",
+      'gymPass.leaveAction': "Leave this pass",
+      'gymPass.leaveTitle': "Leave this pass?",
+      'gymPass.leaveBody':
+          "This is permanent. You lose access, nothing is refunded, and neither the buyer nor the gym can add you again to this pass or to any other pass this buyer buys.",
+      'gymPass.leaveConfirm': "Leave pass",
+      'gymPass.showQr': "Show my QR",
+      'gymPass.error.referenceDuplicate':
+          "This transaction ID was already used. Check it and try again.",
+      'gymPass.error.alreadyBeneficiary':
+          "This person is already on this pass.",
+      'gymPass.error.tooManyAttempts':
+          "Too many attempts. Wait a while and try again.",
+      'gymPass.error.cannotModifyBuyer':
+          "The person who bought the pass can't be changed.",
+      'gymPass.error.notAllowed':
+          "You can't do this.",
+      'gymPass.status.unknown':
+          "Unknown",
+      'gymPass.person.unknown':
+          "Unknown",
+      'gymPass.payLater':
+          "Your pass was requested, but the payment did not finish. Finish the payment from My gym passes.",
+      'gymPass.closeSheet':
+          "Close",
+      'gymPass.error.priceChanged':
+          "The price changed to {amount}. Check it and tap Buy again to confirm.",
+      'gymPass.error.priceChangedGeneric':
+          "The price changed. Check the new price and tap Buy again to confirm.",
+      'gymPass.invite.sentByMessage':
+          "The invitation was sent by message.",
     },
     'sw': {
       'app.title': 'FitFlex',
@@ -9096,46 +9193,12 @@ class FFLocale extends ChangeNotifier {
       'member.upgradePlan': 'Boresha mpango',
       'momo.title': 'Lipa kwa mtandao wa simu',
       'momo.payNow': 'Lipa sasa',
-      // Swahili for native review (manual Lipa Namba payment, A3).
       'momo.pageBody':
           'Lipa kwa mtandao wa simu. Pasi yako inaanza mara malipo yanapokamilika.',
-      'manualPay.title': 'Jinsi ya kulipa',
-      'manualPay.step1':
-          'Lipa {amount} kwa Lipa Namba iliyo hapa chini (jina la akaunti {name}).',
-      'manualPay.step1Network':
-          'Lipa {amount} kwa Lipa Namba iliyo hapa chini (jina la akaunti {name}, mtandao {network}).',
-      'manualPay.step2': 'Hifadhi SMS ya uthibitisho. Ina namba ya muamala.',
-      'manualPay.step3': 'Weka namba ya muamala hapa chini kisha uitume.',
-      'manualPay.copy': 'Nakili namba',
-      'manualPay.copied': 'Lipa Namba imenakiliwa',
       'manualPay.idLabel': 'Namba ya muamala',
-      'manualPay.idHint': 'mf. QJK3H7XY2P',
       'manualPay.idShown': 'Namba ya muamala: {id}',
-      'manualPay.phoneLabel': 'Namba uliyolipia',
-      'manualPay.phoneHint': 'mf. 0712\u00A0345\u00A0678',
-      'manualPay.phoneHelp': 'Namba ya mtandao wa simu iliyotumika kulipa.',
-      'manualPay.phoneRequired': 'Weka namba uliyolipia',
-      'manualPay.phoneInvalid':
-          'Weka namba ya simu ya Tanzania, mf. 0712\u00A0345\u00A0678',
       'manualPay.paidFrom': 'Imelipwa kutoka',
       'manualPay.paidFromShown': 'Imelipwa kutoka: {phone}',
-      'manualPay.idRequired':
-          'Weka namba ya muamala kutoka kwenye SMS ya malipo',
-      'manualPay.idInvalid':
-          'Hii haionekani kuwa namba ya muamala. Angalia SMS ujaribu tena.',
-      'manualPay.idDuplicate':
-          'Namba hii ya muamala imeshatumika. Angalia SMS ujaribu tena.',
-      'manualPay.submit': 'Tuma namba ya muamala',
-      'manualPay.submitted':
-          'Namba ya muamala imetumwa. Mpango wako utaanza tukishalinganisha malipo.',
-      'manualPay.pageBody':
-          'Lipa kwa Lipa Namba hapa chini, kisha weka namba ya muamala.',
-      'manualPay.step3Upgrade':
-          'Weka namba ya muamala hapa chini kisha uitume. Ikishaidhinishwa, uboreshaji utatumika kwenye pasi yako ya sasa.',
-      'manualPay.submittedUpgrade':
-          'Namba ya muamala imetumwa. Ikishaidhinishwa, uboreshaji utatumika kwenye pasi yako ya sasa.',
-      'manualPay.copyFailed': 'Imeshindikana kunakili. Lipa Namba ni {number}.',
-      'manualPay.numberA11y': 'Lipa Namba ni {number}',
       'member.chooseFirst': 'Chagua mpango ili kuendelea.',
       'momo.intro':
           'Tutatuma ombi la malipo kwenye simu yako. Likubali kwa PIN yako ili kukamilisha.',
@@ -9235,6 +9298,20 @@ class FFLocale extends ChangeNotifier {
       'momo.wallet.Airtel': 'Airtel Money',
       'momo.wallet.Halopesa': 'HaloPesa',
       'momo.wallet.Azampesa': 'AzamPesa',
+      // TODO(sw-review): AzamPay only (fitflex-functions#360).
+      // [SW-PENDING] = English placeholder awaiting a native-speaker translation.
+      'momo.endedTitle': '[SW-PENDING] The payment request has ended',
+      'momo.endedBody':
+          '[SW-PENDING] It was not approved on your phone, or it timed out. You can send the payment request again. If money has already left your account, do not pay again: contact FitFlex support.',
+      'momo.sendAgain': '[SW-PENDING] Send the payment request again',
+      'momo.held.noOpenAttempt':
+          '[SW-PENDING] Your payment arrived after this payment request had ended, so our team will check it. You do not need to pay again.',
+      'error.reason.orderBuyerMismatch':
+          '[SW-PENDING] This order belongs to another account, so it cannot be paid from here.',
+      'error.reason.orderAmountMismatch':
+          '[SW-PENDING] The amount of this payment does not match the order, so no payment request was sent. Please contact FitFlex support.',
+      'shop.payNothingOpen':
+          '[SW-PENDING] There is no payment waiting for this order. Check the payment to see where it stands.',
       'member.showQr': 'Onyesha QR',
       'member.nearGyms': 'Gym zilizo karibu',
       'member.featuredTrainers': 'Ma-trainer waliopendekezwa',
@@ -9997,15 +10074,8 @@ class FFLocale extends ChangeNotifier {
       'error.reason.gymNotAvailable': 'gym hii haipokei wanachama kwa sasa',
       // Swahili for native review.
       'error.reason.tierNotAvailable': 'pasi hii haiuzwi kwa sasa',
-      'error.reason.paymentReferenceRequired':
-          'weka namba ya muamala kutoka kwenye SMS ya malipo',
-      'error.reason.paymentReferenceInvalid': 'namba hiyo ya muamala si sahihi',
-      'error.reason.paymentReferenceDuplicate':
-          'namba hiyo ya muamala imeshatumika',
       'error.reason.manualPaymentSubmitted':
           'malipo haya yameshatumwa kwa namba ya muamala na yanasubiri idhini',
-      'error.reason.payerPhoneRequired': 'weka namba ya simu uliyolipia',
-      'error.reason.payerPhoneInvalid': 'hiyo si namba ya simu ya Tanzania',
       'pay.product.fitflexPass': 'FitFlex Pass',
       'pay.product.gymPlan': 'Mpango wa gym',
       'pay.product.trainerSession':
@@ -10066,7 +10136,6 @@ class FFLocale extends ChangeNotifier {
       'shop.nearestGyms': 'Onyesha gym za karibu',
       'shop.locationUnavailable':
           'Eneo lako halipatikani. Bado unaweza kutafuta gym.',
-      'shop.paymentMethod': 'Njia ya malipo',
       'shop.payAndOrder': 'Lipa na weka oda',
       'shop.addToCart': 'Ongeza kwenye kikapu',
       'shop.buyNow': 'Nunua sasa',
@@ -15283,23 +15352,8 @@ class FFLocale extends ChangeNotifier {
       'events.pay.title': 'Lipia tiketi zako',
       'events.pay.cta': 'Lipa · {amount}',
       'events.pay.cta.a11y': 'Lipa {amount} kwa oda {ref}',
-      'events.pay.manual.badge': 'Uthibitisho wa mkono',
-      'events.pay.manual.banner.title':
-          'Uthibitisho wa mkono: FitFlex inakagua malipo yako',
-      'events.pay.manual.banner.body':
-          'Unalipa Lipa Namba kwa simu yako, kisha unatutumia namba ya muamala. Wafanyakazi wa FitFlex wanaikagua kwenye taarifa ya Lipa Namba, ndani ya saa {hours}. Tiketi zako zitaonekana baada ya FitFlex kuthibitisha.',
       'events.pay.recap.title': 'Oda yako',
       'events.pay.exact': 'Lipa kiasi kamili: {amount}',
-      'events.pay.confirmCheck':
-          'Nimelipa {amount} kwa {name} kutoka namba hii',
-      'events.pay.submit': 'Nimelipa · Tuma ikaguliwe',
-      'events.pay.sending': 'Inatuma…',
-      'events.pay.sent.snack': 'Imetumwa ikaguliwe',
-      'events.pay.late.banner.title': 'Muda wa kushikilia umeisha',
-      'events.pay.late.banner.body':
-          'Tuma namba ya muamala ikiwa tayari umelipa tu. Tutajaribu kukuwekea tiketi tena; zikiwa zimeisha tutakurejeshea pesa zote. Usilipe tena.',
-      'events.pay.late.cta': 'Tuma namba yangu ya muamala',
-      'events.pay.alreadyPaid': 'Nimeshalipa',
       'events.pay.uncertain.title': 'Hatukuweza kujua kama imetumwa',
       'events.pay.uncertain.body':
           'Angalia oda yako kabla ya kutuma tena. Ikisema "Malipo yametumwa kukaguliwa", umemaliza.',
@@ -16872,6 +16926,206 @@ class FFLocale extends ChangeNotifier {
       'kyc.country.GB': 'Uingereza',
       'kyc.country.US': 'Marekani',
       'kyc.country.IN': 'India',
+      // Custom Gym Passes (phase 4) [SW pending review: placeholders, native review needed].
+      'gymPass.sectionTitle':
+          "[SW pending review] Gym Membership Plans", // TODO(sw-review)
+      'gymPass.sectionNote':
+          "[SW pending review] Passes set by this gym. They are separate from FitFlex Pass and the daily, weekly and monthly plans.", // TODO(sw-review)
+      'gymPass.category.individual':
+          "[SW pending review] Individual (1 person)", // TODO(sw-review)
+      'gymPass.category.couples':
+          "[SW pending review] Couples (2 people)", // TODO(sw-review)
+      'gymPass.category.group':
+          "[SW pending review] Group (up to {n} people)", // TODO(sw-review)
+      'gymPass.duration.day': "[SW pending review] {n} day", // TODO(sw-review)
+      'gymPass.duration.days':
+          "[SW pending review] {n} days", // TODO(sw-review)
+      'gymPass.duration.week':
+          "[SW pending review] {n} week", // TODO(sw-review)
+      'gymPass.duration.weeks':
+          "[SW pending review] {n} weeks", // TODO(sw-review)
+      'gymPass.duration.month':
+          "[SW pending review] {n} month", // TODO(sw-review)
+      'gymPass.duration.months':
+          "[SW pending review] {n} months", // TODO(sw-review)
+      'gymPass.genericLabel': "[SW pending review] Gym pass", // TODO(sw-review)
+      'gymPass.buyTitle':
+          "[SW pending review] Buy a gym pass", // TODO(sw-review)
+      'gymPass.buyAction': "[SW pending review] Buy pass", // TODO(sw-review)
+      'gymPass.price': "[SW pending review] Price", // TODO(sw-review)
+      'gymPass.priceNote':
+          "[SW pending review] The gym set this price. You pay once for everyone on the pass.", // TODO(sw-review)
+      'gymPass.coversYou':
+          "[SW pending review] This pass covers you.", // TODO(sw-review)
+      'gymPass.othersHint':
+          "[SW pending review] Who else is on this pass? Enter a phone number or email for each person (up to {max} besides you).", // TODO(sw-review)
+      'gymPass.notifyNote':
+          "[SW pending review] People you add are told, not asked to approve. Anyone without a FitFlex account gets an invite link and joins the pass when they sign up and verify that contact.", // TODO(sw-review)
+      'gymPass.personLabel':
+          "[SW pending review] Person {n}", // TODO(sw-review)
+      'gymPass.personHint':
+          "[SW pending review] Phone number or email", // TODO(sw-review)
+      'gymPass.personLabelAdd':
+          "[SW pending review] Phone number or email", // TODO(sw-review)
+      'gymPass.removeField':
+          "[SW pending review] Remove this person", // TODO(sw-review)
+      'gymPass.addAnother':
+          "[SW pending review] Add another person", // TODO(sw-review)
+      'gymPass.terms': "[SW pending review] Terms", // TODO(sw-review)
+      'gymPass.acceptTerms':
+          "[SW pending review] I accept these terms", // TODO(sw-review)
+      'gymPass.buyFailed':
+          "[SW pending review] Could not start this purchase. Try again.", // TODO(sw-review)
+      'gymPass.bought':
+          "[SW pending review] Pass requested. It starts once the payment is approved.", // TODO(sw-review)
+      'gymPass.error.termsNeeded':
+          "[SW pending review] Accept the terms to continue.", // TODO(sw-review)
+      'gymPass.error.invalidBeneficiaries':
+          "[SW pending review] One of the people you entered can't be added to this pass. Check the contacts or choose someone else.", // TODO(sw-review)
+      'gymPass.error.cannotAddPerson':
+          "[SW pending review] This person can't be added to this pass.", // TODO(sw-review)
+      'gymPass.error.rateLimited':
+          "[SW pending review] Too many attempts. Try again later.", // TODO(sw-review)
+      'gymPass.error.rateLimitedSeconds':
+          "[SW pending review] Too many attempts. Try again in {time}.", // TODO(sw-review)
+      'gymPass.error.tooSoon':
+          "[SW pending review] An invite was sent a moment ago. Try again later.", // TODO(sw-review)
+      'gymPass.error.removedByOwner':
+          "[SW pending review] The gym removed this person from this pass, so you can't add them again.", // TODO(sw-review)
+      'gymPass.error.suspendedByOther':
+          "[SW pending review] Only the gym can let this person back in.", // TODO(sw-review)
+      'gymPass.error.replacementLimit':
+          "[SW pending review] You can't replace any more people on this pass.", // TODO(sw-review)
+      'gymPass.error.limitExceeded':
+          "[SW pending review] This pass has no free place.", // TODO(sw-review)
+      'gymPass.error.contactProblem':
+          "[SW pending review] Check the phone number or email. Each person needs a different, valid contact.", // TODO(sw-review)
+      'gymPass.error.headcount':
+          "[SW pending review] This pass needs a different number of people.", // TODO(sw-review)
+      'gymPass.error.planUnavailable':
+          "[SW pending review] This pass isn't available any more.", // TODO(sw-review)
+      'gymPass.error.termsChanged':
+          "[SW pending review] The terms changed. Close this and open the pass again.", // TODO(sw-review)
+      'gymPass.error.paymentPending':
+          "[SW pending review] You already have a payment waiting for this gym. Finish or cancel it first.", // TODO(sw-review)
+      'gymPass.error.passNotActive':
+          "[SW pending review] This pass isn't running yet.", // TODO(sw-review)
+      'gymPass.error.invalidTransition':
+          "[SW pending review] That can't be done right now.", // TODO(sw-review)
+      'gymPass.error.cannotRemoveBuyer':
+          "[SW pending review] The person who bought the pass can't be removed.", // TODO(sw-review)
+      'gymPass.error.unavailable':
+          "[SW pending review] Gym passes aren't available right now.", // TODO(sw-review)
+      'gymPass.wait.seconds':
+          "[SW pending review] {n} seconds", // TODO(sw-review)
+      'gymPass.wait.minutes':
+          "[SW pending review] {n} minutes", // TODO(sw-review)
+      'gymPass.mineTitle':
+          "[SW pending review] My gym passes", // TODO(sw-review)
+      'gymPass.mineTile':
+          "[SW pending review] Passes you bought or share", // TODO(sw-review)
+      'gymPass.mineEmpty':
+          "[SW pending review] No gym passes yet", // TODO(sw-review)
+      'gymPass.mineEmptyBody':
+          "[SW pending review] When you buy a pass, or someone adds you to one, it shows here.", // TODO(sw-review)
+      'gymPass.unavailable':
+          "[SW pending review] Gym passes aren't available right now.", // TODO(sw-review)
+      'gymPass.bought.title':
+          "[SW pending review] Passes I bought", // TODO(sw-review)
+      'gymPass.covered.title':
+          "[SW pending review] Passes I'm covered by", // TODO(sw-review)
+      'gymPass.status.pending_payment':
+          "[SW pending review] Waiting for payment", // TODO(sw-review)
+      'gymPass.status.active': "[SW pending review] Active", // TODO(sw-review)
+      'gymPass.status.expired':
+          "[SW pending review] Expired", // TODO(sw-review)
+      'gymPass.status.cancelled':
+          "[SW pending review] Cancelled", // TODO(sw-review)
+      'gymPass.person.awaiting_payment':
+          "[SW pending review] Waiting for payment", // TODO(sw-review)
+      'gymPass.person.invited':
+          "[SW pending review] Invited", // TODO(sw-review)
+      'gymPass.person.pending_registration':
+          "[SW pending review] Invited", // TODO(sw-review)
+      'gymPass.person.active': "[SW pending review] Active", // TODO(sw-review)
+      'gymPass.person.suspended':
+          "[SW pending review] Suspended", // TODO(sw-review)
+      'gymPass.person.removed':
+          "[SW pending review] Removed", // TODO(sw-review)
+      'gymPass.person.you': "[SW pending review] You", // TODO(sw-review)
+      'gymPass.person.buyer':
+          "[SW pending review] Bought the pass", // TODO(sw-review)
+      'gymPass.person.slot':
+          "[SW pending review] Person {n}", // TODO(sw-review)
+      'gymPass.person.added':
+          "[SW pending review] Person added. They are being told.", // TODO(sw-review)
+      'gymPass.awaitingPayment':
+          "[SW pending review] Starts once the payment is approved.", // TODO(sw-review)
+      'gymPass.sharedExpiry':
+          "[SW pending review] Everyone on this pass: valid until {date}", // TODO(sw-review)
+      'gymPass.slots':
+          "[SW pending review] {used} of {limit} places used", // TODO(sw-review)
+      'gymPass.addPerson':
+          "[SW pending review] Add a person", // TODO(sw-review)
+      'gymPass.addPersonConfirm': "[SW pending review] Add", // TODO(sw-review)
+      'gymPass.personMenu':
+          "[SW pending review] Person options", // TODO(sw-review)
+      'gymPass.action.suspend':
+          "[SW pending review] Pause entry", // TODO(sw-review)
+      'gymPass.action.resume':
+          "[SW pending review] Let back in", // TODO(sw-review)
+      'gymPass.action.remove':
+          "[SW pending review] Remove from pass", // TODO(sw-review)
+      'gymPass.action.invite':
+          "[SW pending review] Share invite link", // TODO(sw-review)
+      'gymPass.invite.none':
+          "[SW pending review] No invite link to share for this person right now.", // TODO(sw-review)
+      'gymPass.removeTitle':
+          "[SW pending review] Remove this person?", // TODO(sw-review)
+      'gymPass.removeBody':
+          "[SW pending review] They lose access to this pass. Nothing is refunded and the pass keeps running. You can add someone else in their place.", // TODO(sw-review)
+      'gymPass.removeConfirm': "[SW pending review] Remove", // TODO(sw-review)
+      'gymPass.cancelTitle':
+          "[SW pending review] Cancel this purchase?", // TODO(sw-review)
+      'gymPass.cancelBody':
+          "[SW pending review] The pass has not been paid for yet. Its payment request is cancelled with it.", // TODO(sw-review)
+      'gymPass.cancelConfirm':
+          "[SW pending review] Cancel purchase", // TODO(sw-review)
+      'gymPass.cancelAction':
+          "[SW pending review] Cancel purchase", // TODO(sw-review)
+      'gymPass.leaveAction':
+          "[SW pending review] Leave this pass", // TODO(sw-review)
+      'gymPass.leaveTitle':
+          "[SW pending review] Leave this pass?", // TODO(sw-review)
+      'gymPass.leaveBody':
+          "[SW pending review] This is permanent. You lose access, nothing is refunded, and neither the buyer nor the gym can add you again to this pass or to any other pass this buyer buys.", // TODO(sw-review)
+      'gymPass.leaveConfirm':
+          "[SW pending review] Leave pass", // TODO(sw-review)
+      'gymPass.showQr': "[SW pending review] Show my QR", // TODO(sw-review)
+      'gymPass.error.referenceDuplicate':
+          "[SW pending review] This transaction ID was already used. Check it and try again.", // TODO(sw-review)
+      'gymPass.error.alreadyBeneficiary':
+          "[SW pending review] This person is already on this pass.", // TODO(sw-review)
+      'gymPass.error.tooManyAttempts':
+          "[SW pending review] Too many attempts. Wait a while and try again.", // TODO(sw-review)
+      'gymPass.error.cannotModifyBuyer':
+          "[SW pending review] The person who bought the pass can't be changed.", // TODO(sw-review)
+      'gymPass.error.notAllowed':
+          "[SW pending review] You can't do this.", // TODO(sw-review)
+      'gymPass.status.unknown':
+          "[SW pending review] Unknown", // TODO(sw-review)
+      'gymPass.person.unknown':
+          "[SW pending review] Unknown", // TODO(sw-review)
+      'gymPass.payLater':
+          "[SW pending review] Your pass was requested, but the payment did not finish. Finish the payment from My gym passes.", // TODO(sw-review)
+      'gymPass.closeSheet':
+          "[SW pending review] Close", // TODO(sw-review)
+      'gymPass.error.priceChanged':
+          "[SW pending review] The price changed to {amount}. Check it and tap Buy again to confirm.", // TODO(sw-review)
+      'gymPass.error.priceChangedGeneric':
+          "[SW pending review] The price changed. Check the new price and tap Buy again to confirm.", // TODO(sw-review)
+      'gymPass.invite.sentByMessage':
+          "[SW pending review] The invitation was sent by message.", // TODO(sw-review)
     },
   };
 }

@@ -1,5 +1,5 @@
-// Events S4 (spec §5.11 events_copy_rules_test): the labelled manual path
-// never says a payment is instant, automatic or successful before FitFlex
+// Events S4 (spec §5.11 events_copy_rules_test): the payment wording never
+// says a payment is instant, automatic or successful before FitFlex
 // confirms it, and never calls a submission "paid". The scan covers every
 // string under the payment, ticket, cancel and refund key groups, in both
 // languages, plus the mobile-money sheet strings that event orders reuse.
@@ -36,6 +36,12 @@ const _momo = [
   'momo.heldBody',
   'momo.slowTitle',
   'momo.slowBody',
+  'momo.endedTitle',
+  'momo.endedBody',
+  'momo.sendAgain',
+  'momo.held.noOpenAttempt',
+  'momo.held.amountMismatch',
+  'momo.held.transactionMismatch',
 ];
 
 /// "Paid" is allowed only as the member's own first-person claim ("I paid",
@@ -136,26 +142,28 @@ void main() {
     }
   });
 
-  test('the manual label and the staff / hours statement are on the manual '
-      'banner (rule 1)', () {
+  test('no pay-by-hand wording is left for a member (AzamPay only)', () {
     for (final lang in ['en', 'sw']) {
-      final banner = _text(lang, 'events.pay.manual.banner.body');
-      expect(banner, contains('{hours}'));
+      final keys = FFLocale.keysOf(lang);
+      expect(keys.where((k) => k.startsWith('events.pay.manual.')), isEmpty);
+      expect(keys.where((k) => k.startsWith('events.pay.late.')), isEmpty);
+      for (final gone in [
+        'events.pay.submit',
+        'events.pay.confirmCheck',
+        'events.pay.alreadyPaid',
+        'events.pay.sent.snack',
+      ]) {
+        expect(keys, isNot(contains(gone)), reason: '$lang $gone');
+      }
     }
-    expect(_text('en', 'events.pay.manual.badge'), 'Manual confirmation');
-    expect(_text('sw', 'events.pay.manual.badge'), 'Uthibitisho wa mkono');
-    expect(
-      _text('en', 'events.pay.manual.banner.body'),
-      contains('FitFlex staff'),
-    );
   });
 
-  test('after sending, the words are "sent for checking", not paid', () {
+  test('a transaction ID sent before the change still reads "sent for '
+      'checking", not paid', () {
     expect(
       _text('en', 'events.pay.submitted.title'),
       'Payment sent for checking',
     );
-    expect(_text('en', 'events.pay.sent.snack'), 'Sent for checking');
     expect(_text('en', 'events.payment.status.submitted'), 'Under review');
   });
 }

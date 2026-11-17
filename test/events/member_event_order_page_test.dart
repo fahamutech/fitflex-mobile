@@ -1,5 +1,5 @@
 // Events S3 (spec §5.14 member_event_order_page_test): awaiting state with
-// the countdown, the labelled placeholder (no ManualPaymentSteps), cancel
+// the countdown, the labelled placeholder (no pay-by-hand steps), cancel
 // with reason → cancelled view, expired with "Register again", per-place
 // removal incl. remove_whole_line, polling on resume, 404.
 import 'package:fitflexmobile/screens/member/events/member_event_order_page.dart';
@@ -7,7 +7,6 @@ import 'package:fitflexmobile/shared/components/components.dart';
 import 'package:fitflexmobile/shared/events/events_analytics.dart';
 import 'package:fitflexmobile/shared/events/registration_draft.dart';
 import 'package:fitflexmobile/shared/events_flag.dart';
-import 'package:fitflexmobile/shared/manual_payment.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -71,7 +70,7 @@ void main() {
         find.text(host.tr('events.order.payment.soon.title')),
         findsOneWidget,
       );
-      expect(find.byType(ManualPaymentSteps), findsNothing);
+      expect(find.byKey(const Key('manual-pay-steps')), findsNothing);
       expect(find.textContaining('Lipa'), findsNothing);
       expect(find.byKey(const Key('order-quote')), findsOneWidget);
       expect(find.byKey(const Key('order-participant-reg_1')), findsOneWidget);

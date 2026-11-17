@@ -9,7 +9,6 @@ import 'package:fitflexmobile/shared/api_error_message.dart';
 import 'package:fitflexmobile/shared/auth_state.dart';
 import 'package:fitflexmobile/shared/events/event_order.dart';
 import 'package:fitflexmobile/shared/events/event_payment.dart';
-import 'package:fitflexmobile/shared/events/event_payment_rules.dart';
 import 'package:fitflexmobile/shared/events/event_refund.dart';
 import 'package:fitflexmobile/shared/events/event_ticket.dart';
 import 'package:fitflexmobile/shared/events/events_options.dart';
@@ -28,19 +27,8 @@ const _specKeys = <String>[
   'events.pay.title',
   'events.pay.cta',
   'events.pay.cta.a11y',
-  'events.pay.manual.badge',
-  'events.pay.manual.banner.title',
-  'events.pay.manual.banner.body',
   'events.pay.recap.title',
   'events.pay.exact',
-  'events.pay.confirmCheck',
-  'events.pay.submit',
-  'events.pay.sending',
-  'events.pay.sent.snack',
-  'events.pay.late.banner.title',
-  'events.pay.late.banner.body',
-  'events.pay.late.cta',
-  'events.pay.alreadyPaid',
   'events.pay.uncertain.title',
   'events.pay.uncertain.body',
   'events.pay.uncertain.open',
@@ -317,13 +305,6 @@ void main() {
     test('reasons that already existed are untouched', () {
       final locale = FFLocale()..set(const Locale('en'));
       expect(
-        errorMessage(
-          locale,
-          ApiException(409, {'error': 'payment_reference_duplicate'}),
-        ),
-        contains(locale.t('error.reason.paymentReferenceDuplicate')),
-      );
-      expect(
         errorMessage(locale, ApiException(429, {'error': 'too_many_attempts'})),
         contains(locale.t('error.reason.tooManyAttempts')),
       );
@@ -476,16 +457,14 @@ void main() {
       expect(o.paymentsOn, isFalse);
       expect(o.tickets.qr, isFalse);
       expect(o.tickets.scanning, isFalse);
-      expect(o.manualConfirmHours, 24);
       expect(o.refundDays, 5);
       expect(o.hold.lateGraceHours, 24);
     });
 
-    test('manual and provider read their keys', () {
+    test('provider reads its keys; a member never pays by hand', () {
       final m = EventsOptions.fromJson({
         ...optionsS3,
-        'payment': 'manual',
-        'manualConfirmHours': 12,
+        'payment': 'provider',
         'refundDays': 7,
         'hold': {
           'manualExtendHours': 24,
@@ -495,9 +474,13 @@ void main() {
         },
         'tickets': {'qr': true, 'scanning': true},
       });
-      expect(m.payment, 'manual');
+      expect(m.payment, 'provider');
       expect(m.paymentsOn, isTrue);
-      expect(m.manualConfirmHours, 12);
+      // A mode this release does not take (an older server's `manual`).
+      expect(
+        EventsOptions.fromJson({...optionsS3, 'payment': 'manual'}).paymentsOn,
+        isFalse,
+      );
       expect(m.refundDays, 7);
       expect(m.hold.lateGraceHours, 6);
       expect(m.tickets.qr, isTrue);
@@ -566,21 +549,23 @@ void main() {
       expect(EventPaymentState.rejected.isLive, isFalse);
     });
 
-    test('order detail carries the payment, the instructions and refunds', () {
+    test('order detail carries the way to pay, the payment and refunds', () {
       final d = EventOrderDetail.fromJson(
-        manualOrderJson(paymentView: paymentView(), refunds: [refundView()]),
+        payableOrderJson(paymentView: paymentView(), refunds: [refundView()]),
       );
-      expect(d.payment, 'manual');
+      expect(d.payment, 'provider');
       expect(d.paymentView!.state, EventPaymentState.submitted);
-      expect(d.manualInstructions!.manual.lipaNamba, '5123456');
-      expect(d.manualInstructions!.manual.payerPhoneRequired, isTrue);
-      expect(d.manualInstructions!.amountTzs, 25000);
+      // A transaction ID sent before AzamPay became the only way to pay.
+      expect(d.paymentView!.reference, 'QGH7XK2L9P');
       expect(d.refunds.single.status, 'requested');
     });
 
-    test('instructions without the Lipa Namba are unusable (fail closed)', () {
-      expect(EventManualInstructions.fromJson({'accountName': 'x'}), isNull);
-      expect(EventManualInstructions.fromJson(null), isNull);
+    test('the answer to starting a payment defaults to nothing to pay', () {
+      expect(EventPaymentSubmission.fromJson(const {}).mode, 'none');
+      expect(
+        EventPaymentSubmission.fromJson(paymentAccepted()).mode,
+        'provider',
+      );
     });
 
     test('a registration reads its ticket state, refunds and invitation', () {
@@ -678,50 +663,6 @@ void main() {
         isTrue,
       );
       expect(CancelPreview.fromJson({}).isBlocked, isTrue);
-    });
-  });
-
-  group('late payment rule', () {
-    final opts = optsS3(payment: 'manual');
-    EventOrder order({
-      String status = 'expired',
-      String? reason = 'expired',
-      String? closedAt = '2027-03-10T11:00:00Z',
-    }) => EventOrder.fromJson(
-      (orderJson(status: status, closeReason: reason, closedAt: closedAt)
-              as Map)['order']
-          as Map,
-    );
-
-    test('payable inside the window, only after a natural expiry', () {
-      final now = DateTime.utc(2027, 3, 10, 12);
-      expect(eventOrderLatePayable(order(), opts, now), isTrue);
-      expect(
-        eventOrderLatePayable(order(reason: 'cancelled'), opts, now),
-        isFalse,
-      );
-      expect(eventOrderLatePayable(order(reason: 'admin'), opts, now), isFalse);
-      expect(
-        eventOrderLatePayable(order(), opts, DateTime.utc(2027, 3, 11, 11, 1)),
-        isFalse,
-      );
-      expect(
-        eventOrderLatePayable(order(), opts, DateTime.utc(2027, 3, 11, 10, 59)),
-        isTrue,
-      );
-      expect(
-        eventOrderLatePayable(order(status: 'awaiting_payment'), opts, now),
-        isFalse,
-      );
-    });
-
-    test('not in provider mode, and not when payment is off', () {
-      final now = DateTime.utc(2027, 3, 10, 12);
-      expect(
-        eventOrderLatePayable(order(), optsS3(payment: 'provider'), now),
-        isFalse,
-      );
-      expect(eventOrderLatePayable(order(), optsS3(), now), isFalse);
     });
   });
 

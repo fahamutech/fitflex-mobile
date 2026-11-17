@@ -32,6 +32,7 @@ import 'screens/member/member_shared_activity_page.dart';
 import 'screens/member/member_record_run_page.dart';
 import 'screens/member/member_run_detail_page.dart';
 import 'screens/member/events/event_claim_page.dart';
+import 'screens/member/gym_passes/member_gym_passes_page.dart';
 import 'screens/member/events/event_team_page.dart';
 import 'screens/member/events/member_event_detail_page.dart';
 import 'screens/member/events/cancel/member_event_cancel_page.dart';
@@ -189,6 +190,9 @@ abstract class AppRoutes {
   /// Organisations asking to add the user by account id (accept / decline).
   static const memberRequests = b2bMemberRequestsRoute;
   static const memberSessions = '/member/sessions';
+
+  /// Custom Gym Passes (GYM_CUSTOM_PASSES): passes I bought or am covered by.
+  static const memberGymPasses = '/member/gym-passes';
   static const ownerCommunications = '/owner/communications';
   static const ownerCampaignNew = '/owner/communications/new';
   static const ownerCampaignDetail =
@@ -1405,6 +1409,11 @@ GoRouter buildRouter(AuthState auth) {
         path: AppRoutes.memberRequests,
         name: 'memberRequests',
         builder: (context, state) => const MemberRequestsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.memberGymPasses,
+        name: 'memberGymPasses',
+        builder: (context, state) => const MemberGymPassesPage(),
       ),
       GoRoute(
         path: AppRoutes.memberSessions,

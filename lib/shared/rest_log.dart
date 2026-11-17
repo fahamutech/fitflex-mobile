@@ -59,7 +59,9 @@ class RestLogger {
     _sink('[REST] --> $method ${describeUri(uri)}');
     if (!_full) return;
     _sink('[REST] headers: ${redactHeaders(headers)}');
-    if (body != null) _sink('[REST] request: ${redactBody(body)}');
+    if (body != null) {
+      _sink('[REST] request: ${redactBody(body, path: uri.path)}');
+    }
   }
 
   void multipart(String method, Uri uri, int bytes) {
@@ -71,7 +73,7 @@ class RestLogger {
     if (!_on) return;
     _sink('[REST] <-- $status $method ${describeUri(uri)}');
     if (!_full) return;
-    _sink('[REST] response: ${redactBody(body)}');
+    _sink('[REST] response: ${redactBody(body, path: uri.path)}');
   }
 
   void error(String method, Uri uri, Object error) {
@@ -114,11 +116,25 @@ final _secretValue = RegExp(
   caseSensitive: false,
 );
 
-/// Redacts secret values from a JSON text and truncates long bodies.
-String redactBody(String body) {
-  final text = body.replaceAllMapped(
+/// Contact data on the custom gym-pass routes (`/me/gym-pass-purchases…`,
+/// `/me/gym-passes…`, `/gym-pass-invitations…`): invite links, the share
+/// text, and the contacts typed for people on a pass.
+final _gymPassContact = RegExp(
+  r'"(link|text|email|phone|contact)"\s*:\s*("(?:[^"\\]|\\.)*"|-?\d+)',
+);
+
+/// Redacts secret values from a JSON text and truncates long bodies. With a
+/// gym-pass [path], invite links and contacts are redacted too.
+String redactBody(String body, {String? path}) {
+  var text = body.replaceAllMapped(
     _secretValue,
     (m) => '"${m.group(1)}":"<redacted>"',
   );
+  if (path != null && path.contains('gym-pass')) {
+    text = text.replaceAllMapped(
+      _gymPassContact,
+      (m) => '"${m.group(1)}":"<redacted>"',
+    );
+  }
   return text.length > 4000 ? '${text.substring(0, 4000)}...<truncated>' : text;
 }

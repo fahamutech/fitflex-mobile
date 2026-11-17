@@ -1,3 +1,5 @@
+import 'gym_passes/gym_pass.dart';
+import 'i18n.dart';
 import 'promotion.dart';
 // Typed data models matching the portal's TypeScript interfaces in api.ts.
 // Keeps the mobile app aligned with the backend/portal data contract.
@@ -562,6 +564,10 @@ class Subscription {
   final String? expiresAt;
   final String? homeGymId;
 
+  /// Set when the subscription belongs to a custom gym pass (the plan is
+  /// then null): such a row is labelled with the pass, not "Monthly".
+  final String? passPurchaseId;
+
   /// The subscribed gym for direct subscriptions (A3), hydrated by /me.
   final Gym? homeGym;
 
@@ -575,6 +581,7 @@ class Subscription {
     this.renewsAt,
     this.expiresAt,
     this.homeGymId,
+    this.passPurchaseId,
     this.homeGym,
   });
 
@@ -588,6 +595,7 @@ class Subscription {
     renewsAt: json['renewsAt'] as String?,
     expiresAt: json['expiresAt'] as String?,
     homeGymId: json['homeGymId'] as String?,
+    passPurchaseId: json['passPurchaseId'] as String?,
     homeGym: json['homeGym'] is Map<String, dynamic>
         ? Gym.fromJson(json['homeGym'] as Map<String, dynamic>)
         : null,
@@ -595,6 +603,17 @@ class Subscription {
 
   bool get isActive => status == 'active';
   bool get isDirect => type == 'direct_sub';
+
+  /// A direct subscription that came from a custom gym pass.
+  bool get isGymPass => isDirect && (passPurchaseId ?? '').isNotEmpty;
+
+  /// What a direct subscription is called: the old plan name for a legacy row
+  /// (daily/weekly/monthly, `monthly` when none), "Gym pass" for a custom pass.
+  String directLabel(FFLocale locale) => directSubscriptionLabel(
+    locale,
+    plan: plan,
+    passPurchaseId: passPurchaseId,
+  );
 
   DateTime? get expiryDate =>
       expiresAt == null ? null : DateTime.tryParse(expiresAt!);
@@ -824,6 +843,11 @@ class MemberMeResponse {
   final int visitsUsed;
   final int? visitCap;
 
+  /// Ids of the member's active gym subscriptions (`entitlements`), and of
+  /// the current one. Lets the app tell whether a pass it was just attached
+  /// to is already loaded.
+  final Set<String> knownSubscriptionIds;
+
   /// The member's username, when they have one. [usernameEnabled] is true
   /// when the server sent the username fields at all (feature on).
   final String? username;
@@ -841,6 +865,7 @@ class MemberMeResponse {
     this.pendingPayments = const [],
     required this.visitsUsed,
     this.visitCap,
+    this.knownSubscriptionIds = const {},
     this.username,
     this.usernameChangeableAt,
     this.usernameEnabled = false,
@@ -865,6 +890,15 @@ class MemberMeResponse {
     ],
     visitsUsed: (json['visitsUsed'] as num?)?.toInt() ?? 0,
     visitCap: (json['visitCap'] as num?)?.toInt(),
+    knownSubscriptionIds: {
+      if (json['subscription'] is Map && json['subscription']['id'] != null)
+        json['subscription']['id'].toString(),
+      if (json['entitlements'] is Map)
+        for (final s
+            in ((json['entitlements'] as Map)['gymSubscriptions'] as List? ??
+                const []))
+          if (s is Map && s['id'] != null) s['id'].toString(),
+    },
     username: json['username'] as String?,
     usernameChangeableAt: DateTime.tryParse(
       json['usernameChangeableAt']?.toString() ?? '',

@@ -96,7 +96,7 @@ Future<PageHost> _pumpOrder(
   api,
   MemberEventOrderPage(
     orderId: 'ord_1',
-    options: optsS3(payment: 'manual', ticketsQr: true),
+    options: optsS3(payment: 'provider', ticketsQr: true),
     now: _now,
     livePollEvery: livePollEvery,
   ),
@@ -112,7 +112,7 @@ Future<PageHost> _pumpReg(WidgetTester tester, RecordingApi api) => pumpPage(
   api,
   MemberEventRegistrationPage(
     registrationId: 'reg_1',
-    options: optsS3(payment: 'manual', ticketsQr: true),
+    options: optsS3(payment: 'provider', ticketsQr: true),
   ),
   user: member,
   size: const Size(375, 2000),
@@ -221,7 +221,7 @@ void main() {
           api,
           MemberEventCancelPage.registration(
             registrationId: 'reg_1',
-            options: optsS3(payment: 'manual'),
+            options: optsS3(payment: 'provider'),
           ),
           user: member,
           size: const Size(375, 1800),
@@ -245,7 +245,7 @@ void main() {
           api,
           MemberEventCancelPage.registration(
             registrationId: 'reg_1',
-            options: optsS3(payment: 'manual'),
+            options: optsS3(payment: 'provider'),
           ),
           user: member,
           size: const Size(375, 1800),
@@ -283,7 +283,7 @@ void main() {
         'GET /me/event-orders/ord_1',
         orderJson(
           status: 'partially_cancelled',
-          payment: 'manual',
+          payment: 'provider',
           refunds: [
             {...refundView(id: 'rf_this'), 'registrationId': 'reg_1'},
             {...refundView(id: 'rf_other'), 'registrationId': 'reg_2'},
@@ -337,7 +337,7 @@ void main() {
 
   group('payment-status polling', () {
     Map<String, dynamic> orderWithPayment() =>
-        manualOrderJson(paymentView: paymentView());
+        payableOrderJson(paymentView: paymentView());
 
     apiTest('429 backs off to 60 s with no error shown', (tester, api) async {
       api.on('GET /me/event-orders/ord_1', orderWithPayment());
@@ -405,7 +405,7 @@ void main() {
       expect(p.state.isLive, isFalse);
       expect(
         EventOrderDetail.fromJson(
-          manualOrderJson(paymentView: paymentView(state: 'none')),
+          payableOrderJson(paymentView: paymentView(state: 'none')),
         ).hasPayment,
         isFalse,
       );
@@ -417,7 +417,7 @@ void main() {
     ) async {
       api.on(
         'GET /me/event-orders/ord_1',
-        manualOrderJson(paymentView: paymentView(state: 'none')),
+        payableOrderJson(paymentView: paymentView(state: 'none')),
       );
       await _pumpOrder(tester, api);
       expect(find.byKey(const Key('pay-not-yet-paid')), findsOneWidget);
@@ -433,7 +433,7 @@ void main() {
   ) async {
     api.on(
       'GET /me/event-orders/ord_1',
-      manualOrderJson(
+      payableOrderJson(
         paymentView: {
           ...paymentView(),
           'payerMethod': 'bank_transfer',
@@ -449,7 +449,7 @@ void main() {
   });
 
   group('the admin note', () {
-    Map<String, dynamic> rejected({String? sw}) => manualOrderJson(
+    Map<String, dynamic> rejected({String? sw}) => payableOrderJson(
       paymentView: {
         ...paymentView(
           state: 'rejected',
@@ -500,7 +500,7 @@ void main() {
   group('plural tickets', () {
     Map<String, dynamic> confirmed(int n) => orderJson(
       status: 'confirmed',
-      payment: 'manual',
+      payment: 'provider',
       paymentView: paymentView(state: 'confirmed'),
       registrations: [
         for (var i = 1; i <= n; i++)
@@ -602,7 +602,7 @@ void rotateAndRejectionTests() {
           api,
           MemberEventTicketPage(
             registrationId: 'reg_1',
-            options: optsS3(payment: 'manual', ticketsQr: true),
+            options: optsS3(payment: 'provider', ticketsQr: true),
           ),
           user: member,
           lang: lang,
@@ -673,7 +673,7 @@ void rotateAndRejectionTests() {
   group('refund rejection note', () {
     Map<String, dynamic> order({String? sw}) => orderJson(
       status: 'cancelled',
-      payment: 'manual',
+      payment: 'provider',
       paymentView: paymentView(state: 'confirmed'),
       registrations: [
         registrationJson(status: 'cancelled', orderStatus: 'cancelled'),

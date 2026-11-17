@@ -148,8 +148,14 @@ class EventPaymentStatusCard extends StatelessWidget {
       p?.amountTzs ?? order.totalTzs,
       currency: order.currency,
     );
-    final hours = '${options.manualConfirmHours}';
-    final manual = options.payment == 'manual' || p?.method == 'manual';
+    // A transaction ID sent before AzamPay became the only way to pay is
+    // still shown until FitFlex decides it; the hours quoted are the
+    // server's own target (`confirmTargetAt`), 24 when it sent none.
+    final target = p?.confirmTargetAt;
+    final sentAt = p?.submittedAt;
+    final hours = target != null && sentAt != null
+        ? '${target.difference(sentAt).inHours}'
+        : '24';
 
     Widget body(String text, {Key? key}) => Padding(
       padding: const EdgeInsets.only(top: FFTokens.spacingXs),
@@ -177,17 +183,6 @@ class EventPaymentStatusCard extends StatelessWidget {
             small(
               context.tr('events.payment.status.none'),
               key: const Key('pay-not-yet-paid'),
-            ),
-          );
-        }
-        if (manual) {
-          pill = context.tr('events.pay.manual.badge');
-          pillTone = FFBadgeTone.defaultTone;
-          children.add(
-            small(
-              context
-                  .tr('events.pay.manual.banner.body')
-                  .replaceFirst('{hours}', hours),
             ),
           );
         }

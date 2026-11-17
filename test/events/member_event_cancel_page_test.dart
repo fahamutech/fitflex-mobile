@@ -23,7 +23,7 @@ Future<PageHost> _pumpReg(
   MemberEventCancelPage.registration(
     registrationId: 'reg_1',
     orderId: orderId,
-    options: optsS3(payment: 'manual', ticketsQr: true),
+    options: optsS3(payment: 'provider', ticketsQr: true),
   ),
   user: member,
   lang: lang,
@@ -37,7 +37,7 @@ Future<PageHost> _pumpOrder(WidgetTester tester, RecordingApi api) => pumpPage(
   api,
   MemberEventCancelPage.order(
     orderId: 'ord_1',
-    options: optsS3(payment: 'manual', ticketsQr: true),
+    options: optsS3(payment: 'provider', ticketsQr: true),
   ),
   user: member,
   size: const Size(375, 1800),

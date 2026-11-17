@@ -1,8 +1,6 @@
 // Events S4 (docs/design/events-s4-payments-and-tickets.md §3.4, §3.5): the
-// wire shapes of an order's payment, the manual-payment instructions the
-// order carries, and refunds. Field names are the server's. The money state
+// wire shapes of an order's payment and refunds. Field names are the server's. The money state
 // is only ever read from here: the app never marks anything paid itself.
-import '../manual_payment.dart';
 import 'event_summary.dart' show parseInstant;
 
 int _int(Object? v, [int fallback = 0]) => v is num
@@ -145,42 +143,6 @@ class EventPaymentView {
   }
 }
 
-/// `next.instructions` of an order for `next.payment == 'manual'` (spec
-/// §3.5): shaped like `/payments/options.manual` plus the order's amount and
-/// reference, so the page can say "pay exactly TSh 120,000".
-class EventManualInstructions {
-  const EventManualInstructions({
-    required this.manual,
-    this.amountTzs,
-    this.reference = '',
-  });
-
-  /// Lipa Namba, account name, network, the admin's own instructions and
-  /// the two "required" switches, in the shared manual-payment shape.
-  final ManualPayment manual;
-
-  /// The amount the server wants for this order, when it said so.
-  final int? amountTzs;
-
-  /// The order reference to quote.
-  final String reference;
-
-  /// Null when the block is missing, or lacks the number or account name.
-  static EventManualInstructions? fromJson(Object? json) {
-    if (json is! Map) return null;
-    final block = {...Map<String, dynamic>.from(json), 'enabled': true};
-    final manual = ManualPayment.fromOptions({'manual': block});
-    if (manual == null) return null;
-    return EventManualInstructions(
-      manual: manual,
-      amountTzs: json['amountTzs'] is num
-          ? (json['amountTzs'] as num).toInt()
-          : null,
-      reference: _str(json['reference']),
-    );
-  }
-}
-
 /// `RefundView` (spec §3.5): one refund the member can read.
 class EventRefundView {
   const EventRefundView({
@@ -292,7 +254,7 @@ class EventPaymentSubmission {
     this.payment,
     this.orderStatus = '',
     this.holdExpiresAt,
-    this.mode = 'manual',
+    this.mode = 'none',
     this.paymentRequestId,
     this.late = false,
     this.replayed = false,
@@ -303,7 +265,7 @@ class EventPaymentSubmission {
   final String orderStatus;
   final DateTime? holdExpiresAt;
 
-  /// `next.payment`: `manual` | `provider` | `none` (a free order).
+  /// `next.payment`: `provider` | `none` (a free order).
   final String mode;
   final String? paymentRequestId;
   final bool late;
@@ -317,7 +279,7 @@ class EventPaymentSubmission {
       payment: EventPaymentView.fromJson(json['payment']),
       orderStatus: _str(order['status']),
       holdExpiresAt: parseInstant(order['holdExpiresAt']),
-      mode: _opt(next['payment']) ?? 'manual',
+      mode: _opt(next['payment']) ?? 'none',
       paymentRequestId: _opt(next['paymentRequestId']),
       late: json['late'] == true,
       replayed: json['replayed'] == true,
