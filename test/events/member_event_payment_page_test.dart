@@ -1,15 +1,14 @@
-// Events S4 (spec §5.2, §5.3, §5.14 member_event_payment_page_test): the
-// labelled-manual alert first, the steps from `next.instructions`, a submit
-// that waits for valid entries and the confirmation box, the idempotency key
-// (kept on a retry, renewed on a change), no amount / currency / provider in
-// the body, an unknown outcome that keeps the form, each server refusal in
-// its place, late mode, the provider variant and the mode switch.
+// Events S4 (spec §5.2, §5.3, §5.14 member_event_payment_page_test), after
+// AzamPay became the only payment method (fitflex-functions#360): the recap
+// with the exact amount and one mobile-money button; the body is `{}` with
+// an idempotency key (kept on a retry); no Lipa Namba, transaction ID or
+// paying number is asked for or sent; an unknown outcome keeps the page;
+// each server refusal in its place; an order whose hold ended is not paid.
 import 'package:fitflexmobile/screens/member/events/pay/member_event_payment_page.dart';
 import 'package:fitflexmobile/shared/components/components.dart';
 import 'package:fitflexmobile/shared/events/events_analytics.dart';
 import 'package:fitflexmobile/shared/events/events_options.dart';
 import 'package:fitflexmobile/shared/events_flag.dart';
-import 'package:fitflexmobile/shared/manual_payment.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -18,6 +17,19 @@ import 'fixtures.dart';
 import 's3_support.dart';
 
 final _now = DateTime.utc(2027, 3, 10, 12);
+
+const _payPath = '/me/event-orders/ord_1/payment';
+const _cta = Key('pay-provider-cta');
+
+/// `GET /payments/options` while a member may pay an event order.
+const _momoOn = {
+  'enabled': true,
+  'provider': 'azampay',
+  'environment': 'production',
+  'mobileMoney': {
+    'products': ['EVENT_ORDER'],
+  },
+};
 
 Future<PageHost> _pump(
   WidgetTester tester,
@@ -29,7 +41,7 @@ Future<PageHost> _pump(
   api,
   MemberEventPaymentPage(
     orderId: 'ord_1',
-    options: options ?? optsS3(payment: 'manual'),
+    options: options ?? optsS3(payment: 'provider'),
     now: _now,
   ),
   user: member,
@@ -39,20 +51,14 @@ Future<PageHost> _pump(
   keepRequests: true,
 );
 
-const _idField = Key('manual-pay-transaction-id');
-const _phoneField = Key('manual-pay-payer-phone');
-const _submit = Key('pay-submit');
-const _check = Key('pay-confirm-check');
-
-Future<void> _fill(
-  WidgetTester tester, {
-  String id = 'QGH7XK2L9P',
-  String phone = '0712345678',
-  bool check = true,
-}) async {
-  await typeInto(tester, find.byKey(_idField), id);
-  await typeInto(tester, find.byKey(_phoneField), phone);
-  if (check) await tapVisible(tester, find.byKey(_check));
+void _expectNoPayByHand() {
+  expect(find.byKey(const Key('manual-pay-steps')), findsNothing);
+  expect(find.byKey(const Key('manual-pay-transaction-id')), findsNothing);
+  expect(find.byKey(const Key('manual-pay-payer-phone')), findsNothing);
+  expect(find.byKey(const Key('pay-manual-banner')), findsNothing);
+  expect(find.byKey(const Key('pay-confirm-check')), findsNothing);
+  expect(find.byKey(const Key('pay-submit')), findsNothing);
+  expect(find.textContaining('Lipa Namba'), findsNothing);
 }
 
 void main() {
@@ -65,288 +71,184 @@ void main() {
     EventsAnalytics.debugSink = null;
   });
 
-  apiTest('manual: the alert comes first, then recap, steps, fields', (
+  apiTest('the recap and one mobile-money button; nothing to pay by hand', (
     tester,
     api,
   ) async {
-    api.on('GET /me/event-orders/ord_1', manualOrderJson());
-    await _pump(tester, api);
-    expect(find.byKey(const Key('pay-manual-banner')), findsOneWidget);
-    expect(
-      find.textContaining('Manual confirmation: FitFlex checks your payment'),
-      findsOneWidget,
-    );
-    expect(find.textContaining('within 24 hours'), findsOneWidget);
+    api.on('GET /me/event-orders/ord_1', payableOrderJson());
+    api.on('GET /payments/options', _momoOn);
+    final host = await _pump(tester, api);
     // Amount comes from the server order.
     expect(find.text('Pay exactly TSh 25,000'), findsOneWidget);
     expect(find.text('EV-3F9A2B7C1D · 1 places'), findsOneWidget);
-    // The steps are the shared widget, filled from next.instructions.
-    expect(find.byType(ManualPaymentSteps), findsOneWidget);
-    expect(find.byKey(const Key('manual-pay-number')), findsOneWidget);
-    expect(find.text('5123456'), findsOneWidget);
+    expect(find.byKey(const Key('pay-recap')), findsOneWidget);
+    expect(find.byKey(const Key('pay-countdown')), findsOneWidget);
     expect(
-      find.text('Pay from M-Pesa, Tigo Pesa or Airtel Money.'),
+      buttonLabelled(
+        host
+            .tr('events.pay.provider.cta')
+            .replaceFirst('{amount}', 'TSh 25,000'),
+      ),
       findsOneWidget,
     );
-    expect(find.byKey(_idField), findsOneWidget);
-    expect(find.byKey(_phoneField), findsOneWidget);
-    expect(
-      find.text('I paid TSh 25,000 to FitFlex Africa from this number'),
-      findsOneWidget,
-    );
-    // The alert is the first block under the heading.
-    final alertY = tester
-        .getTopLeft(find.byKey(const Key('pay-manual-banner')))
-        .dy;
-    final recapY = tester.getTopLeft(find.byKey(const Key('pay-recap'))).dy;
-    final stepsY = tester
-        .getTopLeft(find.byKey(const Key('manual-pay-steps')))
-        .dy;
-    final fieldY = tester.getTopLeft(find.byKey(_idField)).dy;
-    expect(alertY < recapY && recapY < stepsY && stepsY < fieldY, isTrue);
-    // No provider wording or instant claims on the manual page.
-    expect(find.byKey(const Key('pay-provider-cta')), findsNothing);
+    expect(isEnabled(tester, find.byKey(_cta)), isTrue);
+    _expectNoPayByHand();
     expect(find.textContaining('instant'), findsNothing);
-    expect(EventsAnalytics.debugSink!.map((e) => e.name), ['payment_started']);
+    final started = EventsAnalytics.debugSink!.single;
+    expect(started.name, 'payment_started');
+    expect(started.props['late'], isFalse);
   });
 
-  apiTest('submit waits for a valid ID, a valid number and the tick', (
+  apiTest('tap: empty body, key, then the existing mobile-money sheet', (
     tester,
     api,
   ) async {
-    api.on('GET /me/event-orders/ord_1', manualOrderJson());
-    await _pump(tester, api);
-    expect(isEnabled(tester, find.byKey(_submit)), isFalse);
-    await typeInto(tester, find.byKey(_idField), 'QGH7XK2L9P');
-    expect(isEnabled(tester, find.byKey(_submit)), isFalse);
-    await typeInto(tester, find.byKey(_phoneField), '12345');
-    await tapVisible(tester, find.byKey(_check));
-    // Number is not a valid mobile number yet.
-    expect(isEnabled(tester, find.byKey(_submit)), isFalse);
-    await typeInto(tester, find.byKey(_phoneField), '0712345678');
-    expect(isEnabled(tester, find.byKey(_submit)), isTrue);
-    await tapVisible(tester, find.byKey(_check));
-    expect(isEnabled(tester, find.byKey(_submit)), isFalse);
-    await typeInto(tester, find.byKey(_idField), 'ab1');
-    await tapVisible(tester, find.byKey(_check));
-    expect(isEnabled(tester, find.byKey(_submit)), isFalse);
+    api.on('GET /me/event-orders/ord_1', payableOrderJson());
+    api.on('GET /payments/options', _momoOn);
+    api.on('POST $_payPath', paymentAccepted());
+    final host = await _pump(tester, api);
+    await tapVisible(tester, find.byKey(_cta));
+    final req = api.only('POST', _payPath);
+    // Never an amount, currency, provider, transaction ID or paying number.
+    expect(req.body, <String, dynamic>{});
+    expect(req.headers['idempotency-key'], startsWith('chk_'));
+    // The shared sheet opens for the server's payment request, and asks
+    // which wallet pays.
+    expect(find.text(host.tr('momo.title')), findsOneWidget);
+    expect(find.byKey(const Key('momo-wallet-Mpesa')), findsOneWidget);
+    _expectNoPayByHand();
+    expect(
+      EventsAnalytics.debugSink!
+          .firstWhere((e) => e.name == 'payment_submitted')
+          .props['late'],
+      isFalse,
+    );
   });
 
-  apiTest(
-    'submit: key sent, body is the entries only, then back to the order',
-    (tester, api) async {
-      api.on('GET /me/event-orders/ord_1', manualOrderJson());
-      api.on('POST /me/event-orders/ord_1/payment', paymentAccepted());
-      final host = await _pump(tester, api);
-      await _fill(tester);
-      await tapVisible(tester, find.byKey(_submit));
-      final req = api.only('POST', '/me/event-orders/ord_1/payment');
-      expect(req.headers['idempotency-key'], isNotEmpty);
-      expect(req.headers['idempotency-key'], startsWith('chk_'));
-      expect(req.body, {'reference': 'QGH7XK2L9P', 'payerPhone': '0712345678'});
-      final body = req.body as Map;
-      for (final k in ['amountTzs', 'amount', 'currency', 'provider']) {
-        expect(body.containsKey(k), isFalse, reason: k);
-      }
-      expect(host.snack(host.tr('events.pay.sent.snack')), findsOneWidget);
-      expect(find.text('ROUTE-ORDER-ord_1'), findsOneWidget);
-      expect(
-        EventsAnalytics.debugSink!.map((e) => e.name),
-        containsAll(['payment_started', 'payment_submitted']),
-      );
-      // Never a green "paid" visual on this page.
-      expect(find.textContaining('Payment confirmed'), findsNothing);
-    },
-  );
-
-  apiTest('an unknown outcome keeps the form; the same entries reuse the key, '
-      'a changed one renews it', (tester, api) async {
-    api.on('GET /me/event-orders/ord_1', manualOrderJson());
-    api.fail('POST /me/event-orders/ord_1/payment', 503, {'error': 'down'});
+  apiTest('an unknown outcome keeps the page; the retry reuses the key', (
+    tester,
+    api,
+  ) async {
+    api.on('GET /me/event-orders/ord_1', payableOrderJson());
+    api.on('GET /payments/options', _momoOn);
+    api.fail('POST $_payPath', 503);
     final host = await _pump(tester, api);
-    await _fill(tester);
-    await tapVisible(tester, find.byKey(_submit));
+    await tapVisible(tester, find.byKey(_cta));
     expect(find.text(host.tr('events.pay.uncertain.title')), findsOneWidget);
-    expect(find.text(host.tr('events.pay.uncertain.body')), findsOneWidget);
     await tapVisible(tester, find.byKey(const Key('pay-uncertain-close')));
-    // The form is not cleared.
-    expect(textOf(tester, find.byKey(_idField)), 'QGH7XK2L9P');
-    expect(textOf(tester, find.byKey(_phoneField)), '0712345678');
-    await tapVisible(tester, find.byKey(_submit));
-    await tapVisible(tester, find.byKey(const Key('pay-uncertain-close')));
-    final both = api.where('POST', '/me/event-orders/ord_1/payment');
-    expect(both, hasLength(2));
-    expect(
-      both[0].headers['idempotency-key'],
-      both[1].headers['idempotency-key'],
-    );
-    // A corrected ID is a new purchase: a new key.
-    await typeInto(tester, find.byKey(_idField), 'QGH7XK2L9Q');
-    await tapVisible(tester, find.byKey(_submit));
-    await tapVisible(tester, find.byKey(const Key('pay-uncertain-close')));
-    final three = api.where('POST', '/me/event-orders/ord_1/payment');
-    expect(
-      three[2].headers['idempotency-key'],
-      isNot(three[0].headers['idempotency-key']),
-    );
-    // "Open my order" goes to the order page.
-    await tapVisible(tester, find.byKey(_submit));
-    await tapVisible(tester, find.byKey(const Key('pay-uncertain-open')));
-    expect(find.text('ROUTE-ORDER-ord_1'), findsOneWidget);
-  });
+    expect(find.byKey(_cta), findsOneWidget);
 
-  apiTest('a replayed answer is treated as sent', (tester, api) async {
-    api.on('GET /me/event-orders/ord_1', manualOrderJson());
-    api.on(
-      'POST /me/event-orders/ord_1/payment',
-      paymentAccepted(replayed: true),
+    api.heal('POST $_payPath');
+    api.on('POST $_payPath', paymentAccepted(replayed: true));
+    await tapVisible(tester, find.byKey(_cta));
+    final sent = api.where('POST', _payPath);
+    expect(sent, hasLength(2));
+    expect(
+      sent[1].headers['idempotency-key'],
+      sent[0].headers['idempotency-key'],
     );
-    final host = await _pump(tester, api);
-    await _fill(tester);
-    await tapVisible(tester, find.byKey(_submit));
-    expect(host.snack(host.tr('events.pay.sent.snack')), findsOneWidget);
-    expect(find.text('ROUTE-ORDER-ord_1'), findsOneWidget);
+    expect(sent[1].body, <String, dynamic>{});
+    expect(find.text(host.tr('momo.title')), findsOneWidget);
   });
 
   group('server refusals', () {
-    apiTest('a duplicate ID lands under the ID field', (tester, api) async {
-      api.on('GET /me/event-orders/ord_1', manualOrderJson());
-      api.fail('POST /me/event-orders/ord_1/payment', 409, {
-        'error': 'payment_reference_duplicate',
-      });
-      final host = await _pump(tester, api);
-      await _fill(tester);
-      await tapVisible(tester, find.byKey(_submit));
-      expect(find.text(host.tr('manualPay.idDuplicate')), findsOneWidget);
-      // Editing clears it.
-      await typeInto(tester, find.byKey(_idField), 'QGH7XK2L9R');
-      expect(find.text(host.tr('manualPay.idDuplicate')), findsNothing);
-    });
-
-    apiTest('an invalid number lands under the number field', (
-      tester,
-      api,
+    Future<PageHost> refused(
+      WidgetTester tester,
+      RecordingApi api,
+      int status,
+      Map<String, dynamic> body,
     ) async {
-      api.on('GET /me/event-orders/ord_1', manualOrderJson());
-      api.fail('POST /me/event-orders/ord_1/payment', 400, {
-        'error': 'payer_phone_invalid',
-      });
+      api.on('GET /me/event-orders/ord_1', payableOrderJson());
+      api.on('GET /payments/options', _momoOn);
+      api.fail('POST $_payPath', status, body);
       final host = await _pump(tester, api);
-      await _fill(tester);
-      await tapVisible(tester, find.byKey(_submit));
-      expect(find.text(host.tr('manualPay.phoneInvalid')), findsOneWidget);
-    });
+      await tapVisible(tester, find.byKey(_cta));
+      return host;
+    }
 
     apiTest('too many attempts is an alert with the wait', (tester, api) async {
-      api.on('GET /me/event-orders/ord_1', manualOrderJson());
-      api.fail('POST /me/event-orders/ord_1/payment', 429, {
-        'error': 'too_many_attempts',
-      });
-      final host = await _pump(tester, api);
-      await _fill(tester);
-      await tapVisible(tester, find.byKey(_submit));
+      await refused(tester, api, 429, {'error': 'too_many_attempts'});
       expect(find.byKey(const Key('pay-inline-error')), findsOneWidget);
-      expect(
-        find.textContaining(host.tr('error.reason.tooManyAttempts')),
-        findsOneWidget,
-      );
+      expect(find.byKey(_cta), findsOneWidget);
     });
 
     apiTest('payment_in_progress goes to the order page', (tester, api) async {
-      api.on('GET /me/event-orders/ord_1', manualOrderJson());
-      api.fail('POST /me/event-orders/ord_1/payment', 409, {
-        'error': 'payment_in_progress',
-      });
-      await _pump(tester, api);
-      await _fill(tester);
-      await tapVisible(tester, find.byKey(_submit));
+      await refused(tester, api, 409, {'error': 'payment_in_progress'});
       expect(find.text('ROUTE-ORDER-ord_1'), findsOneWidget);
     });
 
-    apiTest('hold_expired shows the expired view', (tester, api) async {
-      var calls = 0;
-      api.onCall('GET /me/event-orders/ord_1', (_) {
-        calls++;
-        return calls == 1
-            ? manualOrderJson()
-            : manualOrderJson(
-                status: 'expired',
-                closeReason: 'expired',
-                closedAt: '2027-03-09T12:00:00Z', // beyond the 24 h grace
-                holdExpiresAt: null,
-              );
+    apiTest('order_not_payable goes to the order page', (tester, api) async {
+      await refused(tester, api, 409, {
+        'error': 'order_not_payable',
+        'status': 'cancelled',
       });
-      api.fail('POST /me/event-orders/ord_1/payment', 409, {
-        'error': 'hold_expired',
-      });
-      await _pump(tester, api);
-      await _fill(tester);
-      await tapVisible(tester, find.byKey(_submit));
-      expect(find.byKey(const Key('pay-expired')), findsOneWidget);
-      expect(find.byKey(_submit), findsNothing);
+      expect(find.text('ROUTE-ORDER-ord_1'), findsOneWidget);
     });
 
-    apiTest('unsupported currency / tickets unavailable submits nothing', (
-      tester,
-      api,
-    ) async {
-      api.on('GET /me/event-orders/ord_1', manualOrderJson());
-      api.fail('POST /me/event-orders/ord_1/payment', 503, {
-        'error': 'tickets_unavailable',
-      });
-      final host = await _pump(tester, api);
-      await _fill(tester);
-      await tapVisible(tester, find.byKey(_submit));
-      // A 5xx is an unknown outcome; dismiss, then a definite refusal.
-      await tapVisible(tester, find.byKey(const Key('pay-uncertain-close')));
-      api.fail('POST /me/event-orders/ord_1/payment', 409, {
-        'error': 'unsupported_currency',
-      });
-      await typeInto(tester, find.byKey(_idField), 'QGH7XK2L9Z');
-      await tapVisible(tester, find.byKey(_submit));
-      expect(find.byKey(const Key('pay-unavailable')), findsOneWidget);
-      expect(find.text(host.tr('events.pay.unavailable')), findsOneWidget);
-      expect(isEnabled(tester, find.byKey(_submit)), isFalse);
-    });
-
-    apiTest('payment_mode_mismatch re-reads the options and the mode', (
+    apiTest('hold_expired re-reads the order: the expired view', (
       tester,
       api,
     ) async {
       var orders = 0;
       api.onCall('GET /me/event-orders/ord_1', (_) {
         orders++;
-        return orders == 1 ? manualOrderJson() : orderJson(payment: 'provider');
+        return orders == 1
+            ? payableOrderJson()
+            : orderJson(
+                status: 'expired',
+                closeReason: 'expired',
+                closedAt: '2027-03-10T12:00:00Z',
+                holdExpiresAt: null,
+                allowedActions: [],
+              );
       });
-      api.on('GET /events/options', {...optionsS3, 'payment': 'provider'});
-      api.on('GET /payments/options', {
-        'enabled': true,
-        'mobileMoney': {
-          'products': ['EVENT_ORDER'],
-        },
+      api.on('GET /payments/options', _momoOn);
+      api.fail('POST $_payPath', 409, {'error': 'hold_expired'});
+      await _pump(tester, api);
+      await tapVisible(tester, find.byKey(_cta));
+      expect(find.byKey(const Key('pay-expired')), findsOneWidget);
+      expect(find.byKey(_cta), findsNothing);
+    });
+
+    apiTest('tickets unavailable (5xx) is an unknown outcome; unsupported '
+        'currency turns the button off', (tester, api) async {
+      final host = await refused(tester, api, 503, {
+        'error': 'tickets_unavailable',
       });
-      api.fail('POST /me/event-orders/ord_1/payment', 409, {
+      // A 5xx is an unknown outcome; dismiss, then a definite refusal.
+      await tapVisible(tester, find.byKey(const Key('pay-uncertain-close')));
+      api.fail('POST $_payPath', 409, {'error': 'unsupported_currency'});
+      await tapVisible(tester, find.byKey(_cta));
+      expect(find.byKey(const Key('pay-unavailable')), findsOneWidget);
+      expect(find.text(host.tr('events.pay.unavailable')), findsOneWidget);
+      expect(isEnabled(tester, find.byKey(_cta)), isFalse);
+    });
+
+    apiTest('payment_mode_mismatch (paying was switched off) re-reads the '
+        'options and goes back to the order', (tester, api) async {
+      var orders = 0;
+      api.onCall('GET /me/event-orders/ord_1', (_) {
+        orders++;
+        return orders == 1 ? payableOrderJson() : orderJson();
+      });
+      api.on('GET /events/options', {...optionsS3, 'payment': 'none'});
+      api.on('GET /payments/options', _momoOn);
+      api.fail('POST $_payPath', 409, {
         'error': 'payment_mode_mismatch',
-        'mode': 'provider',
+        'mode': 'none',
       });
       await _pump(tester, api);
-      await _fill(tester);
-      await tapVisible(tester, find.byKey(_submit));
+      await tapVisible(tester, find.byKey(_cta));
       expect(api.sent('GET', '/events/options'), isTrue);
-      // Re-rendered as the provider page: no Lipa Namba, no ID field.
-      expect(find.byKey(const Key('pay-provider-cta')), findsOneWidget);
-      expect(find.byKey(_idField), findsNothing);
-      expect(find.byType(ManualPaymentSteps), findsNothing);
+      expect(find.text('ROUTE-ORDER-ord_1'), findsOneWidget);
     });
   });
 
-  apiTest('rejected: back here with the old ID put back to correct', (
-    tester,
-    api,
-  ) async {
+  apiTest('a rejected transaction ID from before the change: the page is '
+      'the mobile-money one, with no ID to correct', (tester, api) async {
     api.on(
       'GET /me/event-orders/ord_1',
-      manualOrderJson(
+      payableOrderJson(
         paymentView: paymentView(
           state: 'rejected',
           rejectCode: 'reference_not_found',
@@ -354,9 +256,10 @@ void main() {
         ),
       ),
     );
+    api.on('GET /payments/options', _momoOn);
     await _pump(tester, api);
-    expect(textOf(tester, find.byKey(_idField)), 'QGH7XK2L9P');
-    expect(find.byKey(const Key('pay-manual-banner')), findsOneWidget);
+    expect(find.byKey(_cta), findsOneWidget);
+    _expectNoPayByHand();
   });
 
   apiTest('a live payment sends the member to the order page', (
@@ -365,27 +268,42 @@ void main() {
   ) async {
     api.on(
       'GET /me/event-orders/ord_1',
-      manualOrderJson(paymentView: paymentView()),
+      payableOrderJson(paymentView: paymentView()),
     );
     await _pump(tester, api);
     expect(find.text('ROUTE-ORDER-ord_1'), findsOneWidget);
   });
 
-  apiTest('options mode none redirects to the order page', (tester, api) async {
+  apiTest('mode none redirects to the order page', (tester, api) async {
     api.on('GET /me/event-orders/ord_1', orderJson());
     await _pump(tester, api, options: optsS3());
     expect(find.text('ROUTE-ORDER-ord_1'), findsOneWidget);
-    expect(find.byKey(_submit), findsNothing);
+    expect(find.byKey(_cta), findsNothing);
   });
 
-  group('late mode', () {
-    apiTest('inside the grace window: warning, steps, late label', (
+  apiTest('a mode this release does not take (an older server\'s manual) '
+      'redirects to the order page', (tester, api) async {
+    api.on('GET /me/event-orders/ord_1', {
+      ...orderJson(),
+      'next': {
+        'payment': 'manual',
+        'instructions': {'lipaNamba': '5123456', 'accountName': 'FitFlex'},
+      },
+    });
+    await _pump(tester, api);
+    expect(find.text('ROUTE-ORDER-ord_1'), findsOneWidget);
+    _expectNoPayByHand();
+    expect(api.sent('POST', _payPath), isFalse);
+  });
+
+  group('an order whose hold ended', () {
+    apiTest('is the expired view, also just after it ended (no late pay)', (
       tester,
       api,
     ) async {
       api.on(
         'GET /me/event-orders/ord_1',
-        manualOrderJson(
+        payableOrderJson(
           status: 'expired',
           closeReason: 'expired',
           closedAt: '2027-03-10T11:00:00Z',
@@ -393,53 +311,21 @@ void main() {
           allowedActions: [],
         ),
       );
-      api.on(
-        'POST /me/event-orders/ord_1/payment',
-        paymentAccepted(late: true),
-      );
-      final host = await _pump(tester, api);
-      expect(find.byKey(const Key('pay-late-banner')), findsOneWidget);
-      expect(find.textContaining('only if you already paid'), findsOneWidget);
-      expect(find.byType(ManualPaymentSteps), findsOneWidget);
-      expect(find.byKey(const Key('pay-countdown')), findsNothing);
-      expect(buttonLabelled(host.tr('events.pay.late.cta')), findsOneWidget);
-      await _fill(tester);
-      await tapVisible(tester, find.byKey(_submit));
-      expect(api.only('POST', '/me/event-orders/ord_1/payment'), isNotNull);
-      expect(
-        EventsAnalytics.debugSink!
-            .firstWhere((e) => e.name == 'payment_submitted')
-            .props['late'],
-        isTrue,
-      );
-    });
-
-    apiTest('beyond the grace window it is the expired view', (
-      tester,
-      api,
-    ) async {
-      api.on(
-        'GET /me/event-orders/ord_1',
-        manualOrderJson(
-          status: 'expired',
-          closeReason: 'expired',
-          closedAt: '2027-03-09T10:00:00Z',
-          holdExpiresAt: null,
-          allowedActions: [],
-        ),
-      );
+      api.on('GET /payments/options', _momoOn);
       await _pump(tester, api);
       expect(find.byKey(const Key('pay-expired')), findsOneWidget);
-      expect(find.byType(ManualPaymentSteps), findsNothing);
+      expect(find.byKey(const Key('pay-late-banner')), findsNothing);
+      expect(find.byKey(_cta), findsNothing);
+      _expectNoPayByHand();
     });
 
-    apiTest('an order the member cancelled is never payable late', (
+    apiTest('an order the member cancelled is the expired view too', (
       tester,
       api,
     ) async {
       api.on(
         'GET /me/event-orders/ord_1',
-        manualOrderJson(
+        payableOrderJson(
           status: 'expired',
           closeReason: 'cancelled',
           closedAt: '2027-03-10T11:00:00Z',
@@ -452,111 +338,36 @@ void main() {
     });
   });
 
-  group('provider mode', () {
-    final providerOrder = orderJson(payment: 'provider');
-
-    apiTest('one button, no Lipa Namba, no ID field, no manual alert', (
-      tester,
-      api,
-    ) async {
-      api.on('GET /me/event-orders/ord_1', providerOrder);
-      api.on('GET /payments/options', {
-        'enabled': true,
-        'environment': 'production',
-        'mobileMoney': {
-          'products': ['EVENT_ORDER'],
-        },
-      });
-      final host = await _pump(
-        tester,
-        api,
-        options: optsS3(payment: 'provider'),
-      );
-      expect(find.byKey(const Key('pay-provider-cta')), findsOneWidget);
-      expect(
-        buttonLabelled(
-          host
-              .tr('events.pay.provider.cta')
-              .replaceFirst('{amount}', 'TSh 25,000'),
-        ),
-        findsOneWidget,
-      );
-      expect(find.byType(ManualPaymentSteps), findsNothing);
-      expect(find.byKey(_idField), findsNothing);
-      expect(find.byKey(const Key('pay-manual-banner')), findsNothing);
-      expect(find.textContaining('Lipa Namba'), findsNothing);
-      expect(find.byKey(const Key('pay-recap')), findsOneWidget);
+  apiTest('mobile money not offered: says so, and no other way to pay', (
+    tester,
+    api,
+  ) async {
+    api.on('GET /me/event-orders/ord_1', payableOrderJson());
+    api.on('GET /payments/options', {
+      'enabled': true,
+      'provider': 'azampay',
+      'mobileMoney': {
+        'products': ['FITFLEX_PASS'],
+      },
     });
-
-    apiTest('tap: empty body, key, then the existing mobile-money sheet', (
-      tester,
-      api,
-    ) async {
-      api.on('GET /me/event-orders/ord_1', providerOrder);
-      api.on('GET /payments/options', {
-        'enabled': true,
-        'environment': 'production',
-        'mobileMoney': {
-          'products': ['EVENT_ORDER'],
-        },
-      });
-      api.on(
-        'POST /me/event-orders/ord_1/payment',
-        paymentAccepted(mode: 'provider'),
-      );
-      final host = await _pump(
-        tester,
-        api,
-        options: optsS3(payment: 'provider'),
-      );
-      await tapVisible(tester, find.byKey(const Key('pay-provider-cta')));
-      final req = api.only('POST', '/me/event-orders/ord_1/payment');
-      expect(req.body, <String, dynamic>{});
-      expect(req.headers['idempotency-key'], startsWith('chk_'));
-      // The shared sheet opens for the server's payment request.
-      expect(find.text(host.tr('momo.title')), findsOneWidget);
-      expect(find.byKey(const Key('manual-pay-steps')), findsNothing);
-    });
-
-    apiTest('momo not offered: says so, and no other way to pay', (
-      tester,
-      api,
-    ) async {
-      api.on('GET /me/event-orders/ord_1', providerOrder);
-      api.on('GET /payments/options', {
-        'enabled': true,
-        'mobileMoney': {
-          'products': ['FITFLEX_PASS'],
-        },
-      });
-      final host = await _pump(
-        tester,
-        api,
-        options: optsS3(payment: 'provider'),
-      );
-      expect(find.byKey(const Key('pay-provider-unavailable')), findsOneWidget);
-      expect(
-        find.text(host.tr('events.pay.provider.unavailable')),
-        findsOneWidget,
-      );
-      expect(
-        isEnabled(tester, find.byKey(const Key('pay-provider-cta'))),
-        isFalse,
-      );
-      expect(find.byType(ManualPaymentSteps), findsNothing);
-      expect(api.sent('POST', '/me/event-orders/ord_1/payment'), isFalse);
-    });
-  });
-
-  apiTest('Swahili: the banner, amount and submit label', (tester, api) async {
-    api.on('GET /me/event-orders/ord_1', manualOrderJson());
-    await _pump(tester, api, lang: 'sw');
+    final host = await _pump(tester, api);
+    expect(find.byKey(const Key('pay-provider-unavailable')), findsOneWidget);
     expect(
-      find.textContaining('Uthibitisho wa mkono: FitFlex inakagua malipo yako'),
+      find.text(host.tr('events.pay.provider.unavailable')),
       findsOneWidget,
     );
+    expect(isEnabled(tester, find.byKey(_cta)), isFalse);
+    _expectNoPayByHand();
+    expect(api.sent('POST', _payPath), isFalse);
+  });
+
+  apiTest('Swahili: the amount and the button', (tester, api) async {
+    api.on('GET /me/event-orders/ord_1', payableOrderJson());
+    api.on('GET /payments/options', _momoOn);
+    await _pump(tester, api, lang: 'sw');
     expect(find.text('Lipa kiasi kamili: TSh 25,000'), findsOneWidget);
-    expect(find.text('Nimelipa · Tuma ikaguliwe'), findsOneWidget);
+    expect(find.text('Lipa kwa mtandao wa simu · TSh 25,000'), findsOneWidget);
+    expect(find.textContaining('Uthibitisho wa mkono'), findsNothing);
   });
 
   apiTest('a failed load is an error state with retry', (tester, api) async {
@@ -564,9 +375,10 @@ void main() {
     await _pump(tester, api);
     expect(find.byKey(const Key('pay-error')), findsOneWidget);
     api.heal('GET /me/event-orders/ord_1');
-    api.on('GET /me/event-orders/ord_1', manualOrderJson());
+    api.on('GET /me/event-orders/ord_1', payableOrderJson());
+    api.on('GET /payments/options', _momoOn);
     await tapVisible(tester, find.byType(FFButton).first);
-    expect(find.byKey(_submit), findsOneWidget);
+    expect(find.byKey(_cta), findsOneWidget);
   });
 
   apiTest('404 is the gone view', (tester, api) async {

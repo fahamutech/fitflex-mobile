@@ -808,37 +808,27 @@ class ApiClient {
     return await _request('GET', '/me/checkins?$query');
   }
 
-  /// [reference] is the member's mobile-money transaction ID and
-  /// [payerPhone] the number they paid from, sent only while manual Lipa
-  /// Namba payment is on (fitflex-functions#188).
-  Future<Map<String, dynamic>> requestPass(
-    String tier, {
-    String? reference,
-    String? payerPhone,
-  }) async => await _request(
+  /// Asks for a FitFlex Pass: the answer carries the `paymentRequest` to pay.
+  Future<Map<String, dynamic>> requestPass(String tier) async => await _request(
     'POST',
     '/me/subscribe',
-    body: {
-      'tier': tier,
-      'type': 'platform_pass',
-      'reference': ?reference,
-      'payerPhone': ?payerPhone,
-    },
+    body: {'tier': tier, 'type': 'platform_pass'},
   );
 
   Future<Map<String, dynamic>> subscribe(String tier) async =>
       await requestPass(tier);
 
-  /// Whether paying by mobile money is available: {enabled, environment}.
+  /// Whether paying by mobile money (AzamPay, the only payment method) is
+  /// available: {enabled, provider, environment, mobileMoney?: {products}}.
   /// `environment` is 'sandbox' while it is being tested (no real money).
   Future<Map<String, dynamic>> paymentOptions() async =>
       await _request('GET', '/payments/options') as Map<String, dynamic>;
 
   /// Ask the member's phone to approve a pending payment request.
   ///
-  /// [network] is the wallet that pays (AzamPay only: `Mpesa`, `Tigo`,
-  /// `Airtel`, `Halopesa`, `Azampesa`). Left out of the body when null, so a
-  /// Tunzaa payment sends exactly `{phone}` as before.
+  /// [network] is the wallet that pays (`Mpesa`, `Tigo`, `Airtel`,
+  /// `Halopesa`, `Azampesa`). Left out of the body when null: the server
+  /// then takes it from the number (400 `network_required` when it cannot).
   Future<Map<String, dynamic>> payByMobileMoney(
     String paymentRequestId,
     String phone, {
@@ -868,38 +858,18 @@ class ApiClient {
       await _request('GET', '/me/upgrade-options') as Map<String, dynamic>;
 
   /// Upgrade the FitFlex Pass by paying the price difference.
-  Future<Map<String, dynamic>> upgradePass(
-    String tier, {
-    String? reference,
-    String? payerPhone,
-  }) async =>
-      await _request(
-            'POST',
-            '/me/upgrade',
-            body: {
-              'tier': tier,
-              'reference': ?reference,
-              'payerPhone': ?payerPhone,
-            },
-          )
+  Future<Map<String, dynamic>> upgradePass(String tier) async =>
+      await _request('POST', '/me/upgrade', body: {'tier': tier})
           as Map<String, dynamic>;
 
   /// A7: subscribe to a gym's own Daily/Weekly/Monthly plan.
   Future<Map<String, dynamic>> subscribeDirect({
     required String gymId,
     required String plan,
-    String? reference,
-    String? payerPhone,
   }) async => await _request(
     'POST',
     '/me/subscribe',
-    body: {
-      'type': 'direct_sub',
-      'homeGymId': gymId,
-      'plan': plan,
-      'reference': ?reference,
-      'payerPhone': ?payerPhone,
-    },
+    body: {'type': 'direct_sub', 'homeGymId': gymId, 'plan': plan},
   );
 
   // ── Custom gym passes (GYM_CUSTOM_PASSES; docs/custom-gym-passes-api.md) ──
@@ -917,8 +887,6 @@ class ApiClient {
   Future<Map<String, dynamic>> buyGymPass({
     required String planId,
     List<Map<String, String>> others = const [],
-    String? reference,
-    String? payerPhone,
     int? termsVersion,
     num? expectedPriceTzs,
   }) => _map(
@@ -927,8 +895,6 @@ class ApiClient {
     body: {
       'planId': planId,
       if (others.isNotEmpty) 'beneficiaries': others,
-      'reference': ?reference,
-      'payerPhone': ?payerPhone,
       'termsVersion': ?termsVersion,
       // The price the member was shown: the server answers 409
       // price_changed (nothing created) when it no longer matches.
@@ -2184,7 +2150,6 @@ class ApiClient {
     required String deliveryMethod,
     String? pickupGymId,
     String? deliveryAddress,
-    required String paymentMethod,
     String paymentOutcome = 'success',
 
     /// Makes a retry safe: the server returns the order this key already made
@@ -2200,7 +2165,8 @@ class ApiClient {
       'deliveryMethod': deliveryMethod,
       'pickupGymId': ?pickupGymId,
       'deliveryAddress': ?deliveryAddress,
-      'paymentMethod': paymentMethod,
+      // No `paymentMethod`: the choice never drove a payment (the server
+      // keeps its default). A member pays the order by AzamPay prompt.
       'paymentOutcome': paymentOutcome,
     },
   );
@@ -3880,9 +3846,9 @@ class ApiClient {
   // needs the server's payment flags; tickets, cancel and refunds need only
   // EVENTS_REGISTRATION so a member who paid is never stranded.
 
-  /// Starts a payment for an awaiting order (§3.4.1). The body depends on
-  /// the server's mode and never carries an amount, currency or provider:
-  /// `{reference, payerPhone}` for `manual`, `{}` for `provider`.
+  /// Starts a payment for an awaiting order (§3.4.1). A member's [body] is
+  /// `{}`: it never carries an amount, currency, provider, reference or
+  /// paying number (409 `payment_mode_mismatch` otherwise).
   /// [idempotencyKey] is required; a replay returns the first payment.
   Future<Map<String, dynamic>> payEventOrder(
     String orderId, {

@@ -918,7 +918,6 @@ class EventOrderDetail {
     this.event,
     this.team,
     this.payment = 'none',
-    this.paymentInstructions,
     this.allowedActions = const [],
     this.replayed = false,
     this.paymentView,
@@ -932,9 +931,8 @@ class EventOrderDetail {
   final EventDetail? event;
   final EventTeam? team;
 
-  /// `next.payment`: `none` in S3; `manual` / `provider` are S4's slot.
+  /// `next.payment`: `provider` (pay by AzamPay mobile money) or `none`.
   final String payment;
-  final Map<String, dynamic>? paymentInstructions;
   final List<String> allowedActions;
   final bool replayed;
 
@@ -954,10 +952,6 @@ class EventOrderDetail {
   bool get hasPayment =>
       paymentView != null && paymentView!.state != EventPaymentState.none;
 
-  /// The manual-payment block of `next.instructions`, when it is usable.
-  EventManualInstructions? get manualInstructions =>
-      EventManualInstructions.fromJson(paymentInstructions);
-
   EventOrderDetail copyWith({
     EventOrder? order,
     List<EventRegistration>? registrations,
@@ -969,7 +963,6 @@ class EventOrderDetail {
     event: event,
     team: team,
     payment: payment,
-    paymentInstructions: paymentInstructions,
     allowedActions: allowedActions ?? this.allowedActions,
     replayed: replayed,
     paymentView: paymentView,
@@ -998,9 +991,6 @@ class EventOrderDetail {
           ? EventTeam.fromJson(json['team'] as Map)
           : null,
       payment: _opt(next['payment']) ?? 'none',
-      paymentInstructions: next['instructions'] is Map
-          ? Map<String, dynamic>.from(next['instructions'] as Map)
-          : null,
       allowedActions: json['allowedActions'] is List
           ? [for (final a in json['allowedActions'] as List) _str(a)]
           : const [],

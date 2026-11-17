@@ -14,7 +14,7 @@ import '../../../shared/models.dart';
 import '../member_shell.dart';
 
 /// Where a payment attempt stands, as the server reports it.
-enum MomoStage { input, sending, waiting, success, failed, held, slow }
+enum MomoStage { input, sending, waiting, success, failed, held, slow, ended }
 
 /// A Tanzanian number as typed, reduced to digits (and a leading +) for display.
 String momoDisplayPhone(String raw) => raw.replaceAll(RegExp(r'[^0-9+]'), '');
@@ -58,10 +58,15 @@ String? momoWalletGuess(String raw) {
 }
 
 /// The server's answer to "has it gone through?" as a stage.
+///
+/// `none` after a prompt went out means the prompt is no longer open: it
+/// was declined, or nobody answered it for ten minutes and the server gave
+/// it up. The request itself still waits, so the prompt can be sent again.
 MomoStage momoStageFor(String? state) => switch (state) {
   'completed' => MomoStage.success,
   'failed' => MomoStage.failed,
   'held' => MomoStage.held,
+  'none' => MomoStage.ended,
   _ => MomoStage.waiting,
 };
 
@@ -74,10 +79,15 @@ abstract final class MomoProduct {
 
   /// Event tickets (events S4); offered only when the server lists it.
   static const eventOrder = 'EVENT_ORDER';
+
+  /// A member's own shop order (AZAMPAY_SHOP_ORDERS); offered only when the
+  /// server lists it.
+  static const shopOrder = 'SHOP_ORDER';
 }
 
 /// What a server without the `mobileMoney` key pays by mobile money: members
 /// pay passes and gym plans, everyone else nothing (fitflex-functions#240).
+/// Event and shop orders are paid only when the server lists them.
 const _legacyMemberProducts = {MomoProduct.fitflexPass, MomoProduct.gymPlan};
 
 /// Whether "Pay now" may be offered for a [productType] request paid by
@@ -104,11 +114,22 @@ bool momoOffers(
   return role == 'member' && _legacyMemberProducts.contains(productType);
 }
 
+/// Whether "Pay now" (mobile money) is switched on at all, from
+/// `GET /payments/options`; false when it cannot be reached.
+Future<bool> loadMobileMoneyOn(ApiClient api) async {
+  try {
+    return (await api.paymentOptions())['enabled'] == true;
+  } catch (_) {
+    return false;
+  }
+}
+
 /// Offers mobile-money payment for a request that was just created, when the
 /// server has it switched on for this [productType] and [role]. Resolves true
 /// when the payment completed. Safe to call anywhere: with it off (or
 /// unreachable) it does nothing. [onCompleted] runs as soon as the server says
 /// the payment completed, so the list behind the sheet can be re-fetched.
+/// [options] is `GET /payments/options` when the caller already asked.
 Future<bool> offerMobileMoney(
   BuildContext context, {
   required String? paymentRequestId,
@@ -117,14 +138,16 @@ Future<bool> offerMobileMoney(
   String role = 'member',
   String? defaultPhone,
   VoidCallback? onCompleted,
+  Map<String, dynamic>? options,
 }) async {
   if (paymentRequestId == null || paymentRequestId.isEmpty) return false;
-  final api = AppScope.of(context).api;
-  Map<String, dynamic> options;
-  try {
-    options = await api.paymentOptions();
-  } catch (_) {
-    return false;
+  if (options == null) {
+    final api = AppScope.of(context).api;
+    try {
+      options = await api.paymentOptions();
+    } catch (_) {
+      return false;
+    }
   }
   if (!momoOffers(options, productType, role: role) || !context.mounted) {
     return false;
@@ -161,6 +184,7 @@ const momoHeldReasons = {
   'reference_already_used': 'momo.held.referenceAlreadyUsed',
   'amount_mismatch': 'momo.held.amountMismatch',
   'transaction_mismatch': 'momo.held.transactionMismatch',
+  'no_open_attempt': 'momo.held.noOpenAttempt',
 };
 
 /// The body text key for a completed payment of [productType].
@@ -168,6 +192,7 @@ String momoSuccessBodyKey(String? productType) => switch (productType) {
   MomoProduct.trainerSession => 'momo.successBody.session',
   MomoProduct.trainerGymPass => 'momo.successBody.trainerPass',
   MomoProduct.eventOrder => 'momo.successBody.eventOrder',
+  MomoProduct.shopOrder => 'shop.paymentConfirmed',
   _ => 'momo.successBody',
 };
 
@@ -204,8 +229,8 @@ class MobileMoneyPayPanel extends StatefulWidget {
   /// What is being paid for, so "payment received" says what happens next.
   final String? productType;
 
-  /// `GET /payments/options.provider`. Only 'azampay' asks which wallet
-  /// pays; any other provider (Tunzaa) keeps the panel and request as they were.
+  /// `GET /payments/options.provider`. 'azampay' (the only payment method)
+  /// asks which wallet pays; without it the request is just `{phone}`.
   final String? provider;
 
   @override
@@ -443,12 +468,17 @@ class _MobileMoneyPayPanelState extends State<MobileMoneyPayPanel> {
       case MomoStage.failed:
       case MomoStage.held:
       case MomoStage.slow:
+      case MomoStage.ended:
         final key = switch (_stage) {
           MomoStage.success => 'success',
           MomoStage.failed => 'failed',
           MomoStage.held => 'held',
+          MomoStage.ended => 'ended',
           _ => 'slow',
         };
+        // The prompt can be sent again: after a failure, or once the last
+        // prompt is no longer open.
+        final again = _stage == MomoStage.failed || _stage == MomoStage.ended;
         children.addAll([
           Icon(
             _stage == MomoStage.success
@@ -478,17 +508,33 @@ class _MobileMoneyPayPanelState extends State<MobileMoneyPayPanel> {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: FFTokens.spacingMd),
-          if (_stage == MomoStage.failed) ...[
+          if (again) ...[
             FFButton(
-              label: context.tr('momo.tryAgain'),
+              key: const Key('momo-send-again'),
+              label: context.tr(
+                _stage == MomoStage.ended ? 'momo.sendAgain' : 'momo.tryAgain',
+              ),
               fullWidth: true,
               onPressed: () => setState(() => _stage = MomoStage.input),
             ),
             const SizedBox(height: FFTokens.spacingSm),
           ],
+          if (_stage == MomoStage.slow) ...[
+            // Still unanswered after the wait: look again by hand, so a
+            // prompt the server has given up can be sent again.
+            FFButton(
+              key: const Key('momo-check-again'),
+              label: context.tr('momo.checkNow'),
+              variant: FFButtonVariant.secondary,
+              fullWidth: true,
+              onPressed: _check,
+            ),
+            const SizedBox(height: FFTokens.spacingSm),
+          ],
           FFButton(
+            key: const Key('momo-done'),
             label: context.tr('momo.done'),
-            variant: _stage == MomoStage.failed
+            variant: again
                 ? FFButtonVariant.secondary
                 : FFButtonVariant.primary,
             fullWidth: true,

@@ -9,8 +9,6 @@ import '../../../shared/design_tokens.dart';
 import '../../../shared/formatters.dart';
 import '../../../shared/i18n.dart';
 import '../../../shared/models.dart';
-import '../../../shared/manual_payment.dart';
-import '../member_shell.dart';
 
 /// A7 — Gym direct plan model derived from the gym's own rates.
 class GymPlan {
@@ -59,70 +57,22 @@ class _GymPlansSheetState extends State<GymPlansSheet> {
   String? _selectedPlan;
   bool _busy = false;
   String? _error;
-  PaymentModes _modes = PaymentModes.none;
-  final _manualInput = ManualPaymentInput();
-
-  @override
-  void initState() {
-    super.initState();
-    // Read without depending on it: initState may not register dependencies.
-    final scope = context.getInheritedWidgetOfExactType<AppScope>();
-    if (scope == null) return;
-    loadPaymentModes(scope.api).then((m) {
-      if (!mounted) return;
-      _manualInput.prefillPhone(
-        context
-            .getInheritedWidgetOfExactType<MemberDataScope>()
-            ?.notifier
-            ?.me
-            ?.user
-            .phone,
-      );
-      setState(() => _modes = m);
-    });
-  }
-
-  @override
-  void dispose() {
-    _manualInput.dispose();
-    super.dispose();
-  }
 
   Future<void> _subscribe() async {
     final plan = _selectedPlan;
     if (plan == null || _busy) return;
-    final manual = _modes.manual;
-    String? reference;
-    String? payerPhone;
-    if (manual != null) {
-      final ready = _manualInput.check(manual);
-      if (ready == null) {
-        setState(() {});
-        return;
-      }
-      reference = ready.reference;
-      payerPhone = ready.payerPhone;
-    }
-    // Let go of the focused field before it is disabled for the request:
-    // disabling a focused field throws "Null check operator used on a null
-    // value" on the web, even when the request then fails (L4).
-    FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
-      final created = await AppScope.of(context).api.subscribeDirect(
-        gymId: widget.gym.id,
-        plan: plan,
-        reference: reference,
-        payerPhone: payerPhone,
-      );
+      final created = await AppScope.of(
+        context,
+      ).api.subscribeDirect(gymId: widget.gym.id, plan: plan);
       if (!mounted) return;
-      // With mobile money switched on, pay straight away; a transaction ID
-      // means it was already paid by hand.
+      // With mobile money switched on, pay straight away.
       final req = created['paymentRequest'];
-      if (manual == null && req is Map) {
+      if (req is Map) {
         await offerMobileMoney(
           context,
           paymentRequestId: req['id'] as String?,
@@ -131,17 +81,12 @@ class _GymPlansSheetState extends State<GymPlansSheet> {
         );
       }
       if (!mounted) return;
-      // A focused field must not outlive the sheet it is in (L4).
-      FocusManager.instance.primaryFocus?.unfocus();
       Navigator.pop(context, true);
     } on ApiException catch (e) {
       if (!mounted) return;
-      final onField = manual != null && _manualInput.takeServerError(e);
       setState(() {
         _busy = false;
-        if (!onField) {
-          _error = apiErrorMessage(FFLocaleScope.of(context), e);
-        }
+        _error = apiErrorMessage(FFLocaleScope.of(context), e);
       });
     } catch (e) {
       // Offline or timed out: say so, rather than a generic failure.
@@ -204,26 +149,6 @@ class _GymPlansSheetState extends State<GymPlansSheet> {
                     ),
                   ),
                 ),
-              if (_modes.manual != null && _selectedPlan != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 6, bottom: 6),
-                  child: ManualPaymentFields(
-                    key: const Key('gym-plan-manual-pay'),
-                    manual: _modes.manual!,
-                    amountLabel: formatCurrency(
-                      plans
-                              .where((p) => p.id == _selectedPlan)
-                              .firstOrNull
-                              ?.price ??
-                          0,
-                    ),
-                    input: _manualInput,
-                    enabled: !_busy,
-                    onChanged: (_) {
-                      if (_manualInput.clearErrors()) setState(() {});
-                    },
-                  ),
-                ),
               if (_error != null) ...[
                 const SizedBox(height: 6),
                 FFAlert(message: _error!, tone: FFAlertTone.error),
@@ -244,11 +169,7 @@ class _GymPlansSheetState extends State<GymPlansSheet> {
                   width: double.infinity,
                   child: FFButton(
                     key: const Key('gym-plan-subscribe'),
-                    label: context.tr(
-                      _modes.manual != null
-                          ? 'manualPay.submit'
-                          : 'member.subscribe',
-                    ),
+                    label: context.tr('member.subscribe'),
                     onPressed: _busy ? null : _subscribe,
                     loading: _busy,
                   ),

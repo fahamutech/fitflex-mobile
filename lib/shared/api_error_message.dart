@@ -342,13 +342,9 @@ String? _knownReason(FFLocale locale, String reason) {
     'plan_not_offered': 'error.reason.planNotOffered',
     'gym_not_available': 'error.reason.gymNotAvailable',
     'tier_not_available': 'error.reason.tierNotAvailable',
-    // Manual Lipa Namba payment (fitflex-functions#188).
-    'payment_reference_required': 'error.reason.paymentReferenceRequired',
-    'payment_reference_invalid': 'error.reason.paymentReferenceInvalid',
-    'payment_reference_duplicate': 'error.reason.paymentReferenceDuplicate',
+    // A request paid by hand with a transaction ID before AzamPay became
+    // the only payment method: it is not paid a second time.
     'manual_payment_submitted': 'error.reason.manualPaymentSubmitted',
-    'payer_phone_required': 'error.reason.payerPhoneRequired',
-    'payer_phone_invalid': 'error.reason.payerPhoneInvalid',
     'invalid_tier': 'error.reason.tierNotAvailable',
     'not_an_upgrade': 'error.reason.notAnUpgrade',
     'invalid_phone': 'error.reason.invalidPhone',
@@ -366,6 +362,10 @@ String? _knownReason(FFLocale locale, String reason) {
     // AzamPay (fitflex-functions#357): the wallet could not be told from the
     // number; a renewal is already paid and waiting (SCHEDULED_RENEWALS).
     'network_required': 'error.reason.networkRequired',
+    // A member's own shop order paid by AzamPay prompt (fitflex-functions#360);
+    // `order_not_found` and `order_not_payable` are worded with the orders.
+    'order_buyer_mismatch': 'error.reason.orderBuyerMismatch',
+    'order_amount_mismatch': 'error.reason.orderAmountMismatch',
     'renewal_already_scheduled': 'error.reason.renewalAlreadyScheduled',
     // Accounts.
     'email_already_used': 'error.reason.emailAlreadyUsed',

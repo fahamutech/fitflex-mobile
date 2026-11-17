@@ -15,7 +15,6 @@ import 'package:fitflexmobile/shared/auth_state.dart';
 import 'package:fitflexmobile/shared/design_tokens.dart';
 import 'package:fitflexmobile/shared/formatters.dart';
 import 'package:fitflexmobile/shared/i18n.dart';
-import 'package:fitflexmobile/shared/manual_payment.dart';
 import 'package:fitflexmobile/shared/models.dart';
 import 'package:fitflexmobile/shared/payment_labels.dart';
 import 'package:fitflexmobile/shared/theme_notifier.dart';
@@ -77,12 +76,6 @@ int _lines(WidgetTester tester, Finder text) {
   return boxes.map((b) => b.top.round()).toSet().length;
 }
 
-const _manual = ManualPayment(
-  lipaNamba: '55512345',
-  accountName: 'FitFlex DQA Test',
-  network: 'M-Pesa',
-);
-
 MemberData _member({
   Map<String, dynamic>? subscription,
   Map<String, dynamic>? pending,
@@ -109,124 +102,6 @@ Map<String, dynamic> _pass({int daysLeft = 30}) => {
 };
 
 void main() {
-  group('H1 Lipa Namba steps at 360px', () {
-    for (final lang in _langs) {
-      testWidgets('the number stays on one line and is said once ($lang)', (
-        tester,
-      ) async {
-        _phone360(tester);
-        await tester.pumpWidget(
-          _app(
-            ListView(
-              // The payment page's own padding plus the card's.
-              padding: const EdgeInsets.all(FFTokens.spacingLg),
-              children: const [
-                ManualPaymentSteps(manual: _manual, amountLabel: 'TSh 60,000'),
-              ],
-            ),
-            lang: lang,
-            textScale: 1.3,
-          ),
-        );
-        expect(tester.takeException(), isNull);
-        final number = find.byKey(const Key('manual-pay-number'));
-        expect(_lines(tester, number), 1);
-        // Said once: only the big number carries it, not the sentence too.
-        expect(find.textContaining('55512345'), findsOneWidget);
-        // Amount and network are held together ("M-Pesa" never "M- / Pesa").
-        final sentence = _locale(lang)
-            .t('manualPay.step1Network')
-            .replaceAll('{amount}', 'TSh 60,000')
-            .replaceAll('{name}', 'FitFlex DQA Test')
-            .replaceAll('{network}', 'M⁠-⁠Pesa');
-        expect(find.text(sentence), findsOneWidget);
-        // Copy is a 48dp target.
-        final copy = tester.getSize(find.byKey(const Key('manual-pay-copy')));
-        expect(copy.width, greaterThanOrEqualTo(48));
-        expect(copy.height, greaterThanOrEqualTo(48));
-      });
-    }
-
-    testWidgets('a very long number shrinks rather than wrapping', (
-      tester,
-    ) async {
-      _phone360(tester);
-      await tester.pumpWidget(
-        _app(
-          const ManualPaymentSteps(
-            manual: ManualPayment(
-              lipaNamba: '255712345678901234',
-              accountName: 'X',
-            ),
-            amountLabel: 'TSh 1',
-          ),
-        ),
-      );
-      expect(tester.takeException(), isNull);
-      expect(_lines(tester, find.byKey(const Key('manual-pay-number'))), 1);
-    });
-
-    test('phone examples never break between their groups', () {
-      for (final lang in _langs) {
-        final l = _locale(lang);
-        expect(l.t('manualPay.phoneInvalid'), contains('0712 345 678'));
-        expect(l.t('manualPay.phoneHint'), contains('0712 345 678'));
-      }
-      expect(keepTogether('M-Pesa'), 'M⁠-⁠Pesa');
-      expect(keepTogether('TSh 60,000'), 'TSh 60,000');
-    });
-
-    for (final lang in _langs) {
-      testWidgets('an upgrade says it applies to the current pass ($lang)', (
-        tester,
-      ) async {
-        await tester.pumpWidget(
-          _app(
-            const SingleChildScrollView(
-              child: ManualPaymentSteps(
-                manual: _manual,
-                amountLabel: 'TSh 40,000',
-                upgrade: true,
-              ),
-            ),
-            lang: lang,
-          ),
-        );
-        final l = _locale(lang);
-        expect(find.text(l.t('manualPay.step3Upgrade')), findsOneWidget);
-        expect(find.text(l.t('manualPay.step3')), findsNothing);
-        expect(l.t('manualPay.step3Upgrade'), isNot(l.t('manualPay.step3')));
-      });
-    }
-
-    testWidgets('D3: a refused clipboard still shows the number', (
-      tester,
-    ) async {
-      final saved = manualPayCopier;
-      addTearDown(() => manualPayCopier = saved);
-      manualPayCopier = (_) async => throw Exception('clipboard blocked');
-      await tester.pumpWidget(
-        _app(
-          const SingleChildScrollView(
-            child: ManualPaymentSteps(manual: _manual, amountLabel: 'TSh 1'),
-          ),
-          lang: 'sw',
-        ),
-      );
-      await tester.tap(find.byKey(const Key('manual-pay-copy')));
-      await tester.pump();
-      expect(
-        find.text(
-          _locale(
-            'sw',
-          ).t('manualPay.copyFailed').replaceAll('{number}', '55512345'),
-        ),
-        findsOneWidget,
-      );
-      expect(find.text(_locale('sw').t('manualPay.copied')), findsNothing);
-    });
-  });
-
   group('H2 pass card header at 360px', () {
     for (final lang in _langs) {
       testWidgets('pending only: title whole, no duplicate badge ($lang)', (
@@ -455,10 +330,6 @@ void main() {
 
     test('every new line has its own Swahili', () {
       const keys = [
-        'manualPay.step3Upgrade',
-        'manualPay.submittedUpgrade',
-        'manualPay.copyFailed',
-        'manualPay.numberA11y',
         'member.chooseFirst',
         'member.passLastsDays',
         'member.planDurationOne',
@@ -539,15 +410,7 @@ void main() {
       tester,
       api,
     ) async {
-      api.on('GET /payments/options', {
-        'enabled': false,
-        'manual': {
-          'enabled': true,
-          'lipaNamba': '5123456',
-          'accountName': 'FitFlex',
-          'referenceRequired': true,
-        },
-      });
+      api.on('GET /payments/options', {'enabled': false});
       api.onCall(
         'POST /me/subscribe',
         (_) => throw http.ClientException('XMLHttpRequest error.'),
@@ -562,13 +425,6 @@ void main() {
         user: const {'id': 'm1', 'userType': 'member'},
         lang: 'sw',
         size: const Size(400, 1600),
-      );
-      await tester.enterText(
-        find.descendant(
-          of: find.byKey(const Key('manual-pay-transaction-id')),
-          matching: find.byType(EditableText),
-        ),
-        'QGH7XK2L9P',
       );
       await tapVisible(tester, find.byKey(const Key('payment-submit')));
       await tester.pumpAndSettle();

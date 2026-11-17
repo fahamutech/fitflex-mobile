@@ -46,7 +46,6 @@ String checkoutSignature({
   required String deliveryMethod,
   String? pickupGymId,
   String? deliveryAddress,
-  required String paymentMethod,
 }) {
   final lines =
       items
@@ -58,7 +57,6 @@ String checkoutSignature({
     deliveryMethod,
     pickupGymId ?? '',
     deliveryAddress ?? '',
-    paymentMethod,
   ].join('#');
 }
 

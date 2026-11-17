@@ -205,7 +205,6 @@ class EventsOptions {
     this.corporate = false,
     this.claim = const EventsClaimOptions(),
     this.consentTextVersion = '',
-    this.manualConfirmHours = 24,
     this.refundDays = 5,
     this.hold = const EventsHoldOptions(),
     this.tickets = const EventsTicketOptions(),
@@ -234,9 +233,9 @@ class EventsOptions {
   /// Most people in one member order (`EVENTS_MAX_PARTICIPANTS_PER_ORDER`).
   final int maxParticipantsPerOrder;
 
-  /// `none` | `manual` | `provider` (S4 spec §3.1): the one way the server
-  /// takes payment right now. `none` keeps the "payment isn't open yet"
-  /// slot on the order page.
+  /// `none` | `provider` (S4 spec §3.1): whether the server takes a
+  /// member's payment right now (`provider`: AzamPay mobile money). `none`
+  /// keeps the "payment isn't open yet" slot on the order page.
   final String payment;
   final bool teams;
   final bool corporate;
@@ -246,10 +245,6 @@ class EventsOptions {
   final String consentTextVersion;
 
   // ── Payments and tickets (S4 spec §3.1) ──
-
-  /// The target hours the app quotes for a manual confirmation (a target,
-  /// never a promise). Present when `payment` is `manual`.
-  final int manualConfirmHours;
 
   /// Working days FitFlex quotes for sending a refund.
   final int refundDays;
@@ -266,9 +261,9 @@ class EventsOptions {
   final EventsWaitlistOptions waitlist;
   final EventsAnalyticsOptions analytics;
 
-  /// Whether a payment can be started in the app at all (`manual` or
-  /// `provider`). `none` keeps the S3 "payment isn't open yet" slot.
-  bool get paymentsOn => payment == 'manual' || payment == 'provider';
+  /// Whether a payment can be started in the app at all (`provider`).
+  /// `none` keeps the S3 "payment isn't open yet" slot.
+  bool get paymentsOn => payment == 'provider';
 
   static EventsOptions fromJson(Object? json) {
     if (json is! Map) return off;
@@ -286,7 +281,6 @@ class EventsOptions {
       corporate: json['corporate'] == true,
       claim: EventsClaimOptions.fromJson(json['claim']),
       consentTextVersion: json['consentTextVersion']?.toString() ?? '',
-      manualConfirmHours: intOf(json['manualConfirmHours'], 24),
       refundDays: intOf(json['refundDays'], 5),
       hold: EventsHoldOptions.fromJson(json['hold']),
       tickets: EventsTicketOptions.fromJson(json['tickets']),

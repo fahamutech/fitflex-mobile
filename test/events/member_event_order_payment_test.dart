@@ -27,7 +27,7 @@ Future<PageHost> _pump(
   api,
   MemberEventOrderPage(
     orderId: 'ord_1',
-    options: options ?? optsS3(payment: 'manual', ticketsQr: true),
+    options: options ?? optsS3(payment: 'provider', ticketsQr: true),
     now: _now,
   ),
   user: member,
@@ -97,8 +97,8 @@ void main() {
       );
     });
 
-    apiTest('with manual on, the placeholder never shows', (tester, api) async {
-      api.on('GET /me/event-orders/ord_1', manualOrderJson());
+    apiTest('with paying on, the placeholder never shows', (tester, api) async {
+      api.on('GET /me/event-orders/ord_1', payableOrderJson());
       await _pump(tester, api);
       expect(find.byKey(const Key('order-payment-placeholder')), findsNothing);
       expect(find.byKey(const Key('order-payment-card')), findsOneWidget);
@@ -106,14 +106,16 @@ void main() {
   });
 
   group('awaiting payment', () {
-    apiTest('nothing sent: exact amount, manual badge, Pay bar opens pay', (
+    apiTest('nothing sent: exact amount, no manual badge, Pay bar opens pay', (
       tester,
       api,
     ) async {
-      api.on('GET /me/event-orders/ord_1', manualOrderJson());
+      api.on('GET /me/event-orders/ord_1', payableOrderJson());
       await _pump(tester, api);
       expect(find.text('Pay exactly TSh 25,000'), findsOneWidget);
-      expect(find.text('Manual confirmation'), findsOneWidget);
+      // Members no longer pay by hand: no "Manual confirmation" label.
+      expect(find.text('Manual confirmation'), findsNothing);
+      expect(find.textContaining('Lipa Namba'), findsNothing);
       expect(find.byKey(const Key('order-pay')), findsOneWidget);
       expect(buttonLabelled('Pay · TSh 25,000'), findsOneWidget);
       // Labelled button for assistive tech.
@@ -130,7 +132,7 @@ void main() {
         'cancel, no green', (tester, api) async {
       api.on(
         'GET /me/event-orders/ord_1',
-        manualOrderJson(
+        payableOrderJson(
           paymentView: paymentView(),
           holdExpiresAt: '2027-03-11T12:00:00Z',
           allowedActions: ['cancel'],
@@ -171,7 +173,7 @@ void main() {
     ) async {
       api.on(
         'GET /me/event-orders/ord_1',
-        manualOrderJson(paymentView: paymentView()),
+        payableOrderJson(paymentView: paymentView()),
       );
       api.on('GET /me/event-orders/ord_1/payment-status', {
         'order': {
@@ -208,10 +210,10 @@ void main() {
       api.onCall('GET /me/event-orders/ord_1', (_) {
         reads++;
         return reads == 1
-            ? manualOrderJson(paymentView: paymentView())
+            ? payableOrderJson(paymentView: paymentView())
             : orderJson(
                 status: 'confirmed',
-                payment: 'manual',
+                payment: 'provider',
                 paymentView: paymentView(state: 'confirmed'),
                 registrations: [_confirmedReg()],
                 allowedActions: [],
@@ -247,7 +249,7 @@ void main() {
       tester,
       api,
     ) async {
-      api.on('GET /me/event-orders/ord_1', manualOrderJson());
+      api.on('GET /me/event-orders/ord_1', payableOrderJson());
       await _pump(tester, api);
       api.clear();
       await tester.pump(const Duration(seconds: 61));
@@ -291,7 +293,7 @@ void main() {
     ) async {
       api.on(
         'GET /me/event-orders/ord_1',
-        manualOrderJson(
+        payableOrderJson(
           paymentView: paymentView(
             state: 'rejected',
             rejectCode: 'reference_not_found',
@@ -323,7 +325,7 @@ void main() {
         'has ended', (tester, api) async {
       api.on(
         'GET /me/event-orders/ord_1',
-        manualOrderJson(
+        payableOrderJson(
           paymentView: paymentView(
             state: 'rejected',
             rejectCode: 'amount_mismatch',
@@ -375,13 +377,11 @@ void main() {
   });
 
   group('expired', () {
-    apiTest('inside the grace window: "I already paid" opens the pay page', (
-      tester,
-      api,
-    ) async {
+    apiTest('just after the hold ended: no "I already paid" (a member does '
+        'not send a transaction ID any more)', (tester, api) async {
       api.on(
         'GET /me/event-orders/ord_1',
-        manualOrderJson(
+        payableOrderJson(
           status: 'expired',
           closeReason: 'expired',
           closedAt: '2027-03-10T11:50:00Z',
@@ -391,15 +391,14 @@ void main() {
       );
       await _pump(tester, api);
       expect(find.byKey(const Key('order-expired')), findsOneWidget);
-      expect(find.byKey(const Key('order-already-paid')), findsOneWidget);
-      await tapVisible(tester, find.byKey(const Key('order-already-paid')));
-      expect(find.text('ROUTE-PAY-ord_1'), findsOneWidget);
+      expect(find.byKey(const Key('order-already-paid')), findsNothing);
+      expect(find.byKey(const Key('order-pay')), findsNothing);
     });
 
     apiTest('beyond the window there is no such link', (tester, api) async {
       api.on(
         'GET /me/event-orders/ord_1',
-        manualOrderJson(
+        payableOrderJson(
           status: 'expired',
           closeReason: 'expired',
           closedAt: '2027-03-08T11:50:00Z',
@@ -417,7 +416,7 @@ void main() {
     ) async {
       api.on(
         'GET /me/event-orders/ord_1',
-        manualOrderJson(
+        payableOrderJson(
           status: 'expired',
           closeReason: 'expired',
           closedAt: '2027-03-10T11:50:00Z',
@@ -444,7 +443,7 @@ void main() {
   ) async {
     api.on(
       'GET /me/event-orders/ord_1',
-      manualOrderJson(
+      payableOrderJson(
         status: 'expired',
         closeReason: 'expired',
         closedAt: '2027-03-10T11:50:00Z',
@@ -474,7 +473,7 @@ void main() {
         'GET /me/event-orders/ord_1',
         orderJson(
           status: 'confirmed',
-          payment: 'manual',
+          payment: 'provider',
           paymentView: paymentView(state: 'confirmed'),
           registrations: [_confirmedReg()],
           allowedActions: ['cancel_refund'],
@@ -493,7 +492,7 @@ void main() {
         'GET /me/event-orders/ord_1',
         orderJson(
           status: 'confirmed',
-          payment: 'manual',
+          payment: 'provider',
           paymentView: paymentView(state: 'confirmed'),
           registrations: [_confirmedReg()],
           allowedActions: [],
@@ -512,7 +511,7 @@ void main() {
         'GET /me/event-orders/ord_1',
         orderJson(
           status: 'confirmed',
-          payment: 'manual',
+          payment: 'provider',
           paymentView: paymentView(state: 'confirmed'),
           registrations: [
             _confirmedReg(),
@@ -538,7 +537,7 @@ void main() {
         'GET /me/event-orders/ord_1',
         orderJson(
           status: 'confirmed',
-          payment: 'manual',
+          payment: 'provider',
           paymentView: paymentView(state: 'confirmed'),
           registrations: [
             _confirmedReg(
@@ -587,7 +586,7 @@ void main() {
         'GET /me/event-orders/ord_1',
         orderJson(
           status: 'confirmed',
-          payment: 'manual',
+          payment: 'provider',
           paymentView: paymentView(state: 'confirmed'),
           registrations: [
             _confirmedReg(
@@ -620,7 +619,7 @@ void main() {
         'GET /me/event-orders/ord_1',
         orderJson(
           status: 'confirmed',
-          payment: 'manual',
+          payment: 'provider',
           paymentView: paymentView(state: 'confirmed'),
           registrations: [_confirmedReg()],
           allowedActions: ['cancel_refund'],
@@ -659,7 +658,7 @@ void main() {
         'GET /me/event-orders/ord_1',
         orderJson(
           status: 'partially_cancelled',
-          payment: 'manual',
+          payment: 'provider',
           paymentView: paymentView(state: 'confirmed'),
           registrations: [_confirmedReg()],
           allowedActions: [],
@@ -690,7 +689,7 @@ void main() {
         'GET /me/event-orders/ord_1',
         orderJson(
           status: 'refunded',
-          payment: 'manual',
+          payment: 'provider',
           paymentView: paymentView(state: 'confirmed'),
           registrations: [
             registrationJson(status: 'cancelled', orderStatus: 'refunded'),
@@ -732,7 +731,7 @@ void main() {
         'GET /me/event-orders/ord_1',
         orderJson(
           status: 'cancelled',
-          payment: 'manual',
+          payment: 'provider',
           paymentView: paymentView(state: 'confirmed'),
           registrations: [
             registrationJson(status: 'cancelled', orderStatus: 'cancelled'),
@@ -765,7 +764,7 @@ void main() {
       api.onCall('GET /me/event-orders/ord_1', (_) {
         reads++;
         return reads == 1
-            ? orderJson(payment: 'manual', total: 0, instructions: null)
+            ? orderJson(payment: 'provider', total: 0, instructions: null)
             : orderJson(
                 status: 'confirmed',
                 payment: 'none',
@@ -798,7 +797,7 @@ void main() {
   apiTest('Swahili: order pills and the submitted card', (tester, api) async {
     api.on(
       'GET /me/event-orders/ord_1',
-      manualOrderJson(paymentView: paymentView()),
+      payableOrderJson(paymentView: paymentView()),
     );
     await _pump(tester, api, lang: 'sw');
     expect(find.text('Malipo yametumwa kukaguliwa'), findsOneWidget);
