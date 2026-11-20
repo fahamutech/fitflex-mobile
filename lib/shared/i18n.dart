@@ -3039,6 +3039,7 @@ class FFLocale extends ChangeNotifier {
       'ownerScan.tier': 'Tier',
       'ownerScan.visits': 'Visits used',
       'ownerScan.noPass': 'No active pass',
+      'ownerScan.passUntil': 'Valid until {date}',
       'ownerScan.gym': 'Gym',
       'ownerScan.chooseGym': 'Choose gym',
       'ownerScan.selectGymToVerify': 'Choose a gym to verify check-in',
@@ -11494,6 +11495,8 @@ class FFLocale extends ChangeNotifier {
       'ownerScan.tier': 'Kiwango',
       'ownerScan.visits': 'Ziara zilizotumika',
       'ownerScan.noPass': 'Hakuna pasi hai',
+      'ownerScan.passUntil':
+          "[SW pending review] Valid until {date}", // TODO(sw-review)
       'ownerScan.gym': 'Gym',
       'ownerScan.chooseGym': 'Chagua gym',
       'ownerScan.selectGymToVerify': 'Chagua gym kuthibitisha kuingia',

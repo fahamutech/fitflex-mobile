@@ -10,6 +10,7 @@ import '../../shared/api_error_message.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/events/event_ticket.dart';
+import '../../shared/formatters.dart';
 import '../../shared/i18n.dart';
 import '../../shared/payment_labels.dart';
 
@@ -256,6 +257,7 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
     final r = _verifyResult!;
     final member = r['member'] as Map<String, dynamic>? ?? {};
     final sub = r['subscription'] as Map<String, dynamic>?;
+    final pass = ownerScanPass(r);
     final gym = r['gym'] as Map<String, dynamic>?;
     final eligible = r['eligible'] == true;
     final reason = r['reason']?.toString() ?? '';
@@ -324,24 +326,42 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
                   children: [
                     Text(context.tr('ownerScan.tier')),
                     FFBadge(
-                      label: passTierLabel(context, sub['tier']),
+                      label: pass != null
+                          ? ownerScanPassName(
+                              pass,
+                              context.tr('gymPass.genericLabel'),
+                            )
+                          : passTierLabel(context, sub['tier']),
                       tone: FFBadgeTone.brand,
                     ),
                   ],
                 ),
                 const SizedBox(height: 4),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(context.tr('ownerScan.visits')),
-                    Text(
-                      visitCap != null
-                          ? '$visitsUsed / $visitCap'
-                          : '$visitsUsed / ${context.tr("pass.unlimited")}',
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ],
-                ),
+                if (pass != null)
+                  // A custom pass has no visit allowance to count: its name and end date are what the door needs.
+                  Text(
+                    context
+                        .tr('ownerScan.passUntil')
+                        .replaceFirst(
+                          '{date}',
+                          context.localDate(pass['expiresAt']),
+                        ),
+                    key: const Key('owner-scan-pass-until'),
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  )
+                else
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(context.tr('ownerScan.visits')),
+                      Text(
+                        visitCap != null
+                            ? '$visitsUsed / $visitCap'
+                            : '$visitsUsed / ${context.tr("pass.unlimited")}',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
               ] else
                 Text(
                   context.tr('ownerScan.noPass'),
@@ -459,6 +479,19 @@ class _OwnerQrScannerPageState extends State<OwnerQrScannerPage> {
     final gym = _verifyResult?['gym'] as Map<String, dynamic>?;
     return gym?['id']?.toString();
   }
+}
+
+/// GYM_CUSTOM_PASSES: the custom pass the scanned person is on, from the verify answer (name, category and dates only).
+/// Null for anyone else, or while the server flag is off (the key is absent).
+Map<String, dynamic>? ownerScanPass(Map<String, dynamic>? verifyResult) {
+  final pass = verifyResult?['pass'];
+  return pass is Map<String, dynamic> ? pass : null;
+}
+
+/// The pass name, or the generic label when the owner left it unnamed.
+String ownerScanPassName(Map<String, dynamic> pass, String genericLabel) {
+  final name = pass['name']?.toString().trim() ?? '';
+  return name.isEmpty ? genericLabel : name;
 }
 
 bool ownerScanNeedsGymSelection({
