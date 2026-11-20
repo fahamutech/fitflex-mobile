@@ -1187,11 +1187,12 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
         momoOffers(options, MomoProduct.shopOrder, role: 'member');
   }
 
-  /// Opens the mobile-money sheet for an unpaid order of the member's own.
-  /// The order's payment request is found in the member's own payments
-  /// (`GET /me/payments`, by `orderId`): checkout answers with the order
-  /// only. [quiet]: straight after checkout, say nothing when there is
-  /// nothing to pay here.
+  /// Opens the pay sheet for an unpaid order of the member's own. The
+  /// order carries its pending payment request (`paymentRequestId`,
+  /// fitflex-functions#361; null once it is paid, cancelled or free). An
+  /// older server sends no such key: the request is then found in the
+  /// member's own payments (`GET /me/payments`, by `orderId`). [quiet]:
+  /// straight after checkout, say nothing when there is nothing to pay here.
   Future<void> _payOrder(
     Map<String, dynamic> order, {
     bool quiet = false,
@@ -1204,13 +1205,23 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
     try {
       await _loadPayOptions();
       if (!mounted || !_shopPayOn || orderId.isEmpty) return;
-      final rows = await AppScope.of(context).api.myPayments();
-      if (!mounted) return;
-      final request = rows.whereType<Map>().where((p) {
-        return p['orderId']?.toString() == orderId && p['status'] == 'pending';
-      }).firstOrNull;
-      final id = request?['id']?.toString() ?? '';
-      if (request == null || id.isEmpty) {
+      var id = '';
+      // The amount is the server's: the order's own total, or (older
+      // server) the payment request's.
+      num amount = (order['totalTzs'] as num?) ?? 0;
+      if (order.containsKey('paymentRequestId')) {
+        id = order['paymentRequestId']?.toString() ?? '';
+      } else {
+        final rows = await AppScope.of(context).api.myPayments();
+        if (!mounted) return;
+        final request = rows.whereType<Map>().where((p) {
+          return p['orderId']?.toString() == orderId &&
+              p['status'] == 'pending';
+        }).firstOrNull;
+        id = request?['id']?.toString() ?? '';
+        amount = (request?['amountTzs'] as num?) ?? amount;
+      }
+      if (id.isEmpty) {
         if (!quiet) messenger.info(locale.t('shop.payNothingOpen'));
         return;
       }
@@ -1219,8 +1230,7 @@ class _ShopBrowseBodyState extends State<ShopBrowseBody> {
       await offerMobileMoney(
         context,
         paymentRequestId: id,
-        // The amount is the server's, taken from its payment request.
-        amountTzs: (request['amountTzs'] as num?) ?? 0,
+        amountTzs: amount,
         productType: MomoProduct.shopOrder,
         options: _payOptions,
       );

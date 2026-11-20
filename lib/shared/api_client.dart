@@ -841,6 +841,52 @@ class ApiClient {
           )
           as Map<String, dynamic>;
 
+  /// Pays a pending payment request by AzamPay bank checkout
+  /// (`AZAMPAY_BANK_CHECKOUT`). [otp] is the one-time password the payer's
+  /// own bank gave them: it is sent once and kept nowhere in the app.
+  Future<Map<String, dynamic>> payByBank(
+    String paymentRequestId, {
+    required String bank,
+    required String accountNumber,
+    required String phone,
+    required String otp,
+  }) async =>
+      await _request(
+            'POST',
+            '/me/payments/${_e(paymentRequestId)}/bank',
+            body: {
+              'bank': bank,
+              'accountNumber': accountNumber,
+              'phone': phone,
+              'otp': otp,
+            },
+          )
+          as Map<String, dynamic>;
+
+  /// Opens AzamPay's hosted payment page for a pending payment request
+  /// (`AZAMPAY_CHECKOUT_PAGE`) → `{state, method: page, checkoutUrl}`.
+  /// [returnTo] is a name the server listed (`app`), never an address;
+  /// while the page is open the same call answers with the same page.
+  Future<Map<String, dynamic>> openCheckoutPage(
+    String paymentRequestId, {
+    String? returnTo,
+    String? language,
+  }) async =>
+      await _request(
+            'POST',
+            '/me/payments/${_e(paymentRequestId)}/checkout-page',
+            body: {'returnTo': ?returnTo, 'language': ?language},
+          )
+          as Map<String, dynamic>;
+
+  /// Where a payment stands, for every method (mobile money, bank, page):
+  /// {state: in_progress | completed | failed | held | none, reason?,
+  /// checkoutUrl? (while a payment page is open)}. Only on a server whose
+  /// `/payments/options` lists `methods`; it settles nothing.
+  Future<Map<String, dynamic>> refreshPayment(String paymentRequestId) async =>
+      await _request('POST', '/me/payments/${_e(paymentRequestId)}/refresh')
+          as Map<String, dynamic>;
+
   /// Has the mobile-money payment gone through? state: in_progress |
   /// completed | failed | held | none.
   Future<Map<String, dynamic>> refreshMobileMoney(
