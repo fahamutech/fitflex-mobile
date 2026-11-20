@@ -438,7 +438,8 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
       if (recent.isEmpty)
         FFEmptyState(title: context.tr('activity.noActivity'))
       else ...[
-        for (final e in recent) recentEntryTile(e),
+        for (final e in recent)
+          recentEntryTile(e, passNames: data.gymPassNames),
         Align(
           alignment: Alignment.centerRight,
           child: FFButton(
