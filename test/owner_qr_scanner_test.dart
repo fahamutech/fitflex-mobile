@@ -39,4 +39,29 @@ void main() {
       true,
     );
   });
+
+  group('custom pass at the door', () {
+    test(
+      'the pass comes from the verify answer; absent, null or malformed means no pass',
+      () {
+        expect(
+          ownerScanPass({
+            'pass': {'name': 'Pair Pass', 'category': 'couples'},
+          })?['name'],
+          'Pair Pass',
+        );
+        expect(ownerScanPass({'pass': null}), isNull);
+        expect(ownerScanPass({'eligible': true}), isNull);
+        expect(ownerScanPass({'pass': 'x'}), isNull);
+        expect(ownerScanPass(null), isNull);
+      },
+    );
+
+    test('an unnamed pass falls back to the generic label', () {
+      expect(ownerScanPassName({'name': 'Pair Pass'}, 'Gym pass'), 'Pair Pass');
+      expect(ownerScanPassName({'name': null}, 'Gym pass'), 'Gym pass');
+      expect(ownerScanPassName({'name': '  '}, 'Gym pass'), 'Gym pass');
+      expect(ownerScanPassName({}, 'Gym pass'), 'Gym pass');
+    });
+  });
 }
