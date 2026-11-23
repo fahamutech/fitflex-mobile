@@ -1195,6 +1195,34 @@ class ApiClient {
         '/me/training-plans/${Uri.encodeComponent(id)}/cancel',
       );
 
+  // ── Programmes (P1, M1): FitFlex's free day-by-day plans ───────────────
+  /// `{ programmes }` — live programmes without their days. 404
+  /// `feature_disabled` while PROGRAMMES_CATALOGUE is off.
+  Future<Map<String, dynamic>> programmes(Map<String, String> filters) async {
+    final query = Uri(queryParameters: filters.isEmpty ? null : filters).query;
+    return await _request(
+      'GET',
+      query.isEmpty ? '/programmes' : '/programmes?$query',
+    );
+  }
+
+  /// `{ programme }` with `days[]`; 404 for a draft, retired or missing one.
+  Future<Map<String, dynamic>> programme(String id, {String? lang}) async {
+    final query = Uri(queryParameters: {'lang': ?lang}).query;
+    final path = '/programmes/${Uri.encodeComponent(id)}';
+    return await _request('GET', query.isEmpty ? path : '$path?$query');
+  }
+
+  /// Starts a programme: `{ startDate?, replace?, lang? }` → 201 `{ plan }`.
+  Future<Map<String, dynamic>> startProgramme(
+    String id,
+    Map<String, dynamic> body,
+  ) async => await _request(
+    'POST',
+    '/programmes/${Uri.encodeComponent(id)}/enrol',
+    body: body,
+  );
+
   // ── Trainer ↔ member connections ──────────────────────────────────────
   Future<List<dynamic>> myTrainerConnections() async {
     final res = await _request('GET', '/me/trainer-connections');

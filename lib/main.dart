@@ -343,6 +343,7 @@ class _FitFlexAppState extends State<FitFlexApp> with WidgetsBindingObserver {
       goalRepository: _activity.goals,
       workoutRepository: _activity.workouts,
       trainingRepository: _activity.training,
+      programmeRepository: _activity.programmes,
       manualActivityLog: _activity.manualLog,
       phoneSteps: _phoneSteps,
       runRecorder: _runs,

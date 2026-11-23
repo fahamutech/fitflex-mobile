@@ -15,6 +15,7 @@ import 'providers/geolocator_gps_source.dart';
 import 'providers/phone_step_counter.dart';
 import 'run_recorder.dart';
 import 'sample_activity_log.dart';
+import 'programme.dart';
 import 'training_repository.dart';
 import 'workout_repository.dart';
 
@@ -47,6 +48,9 @@ class ActivityBackend {
   /// Training preferences and plans.
   final TrainingRepository training;
 
+  /// FitFlex programmes (P1). None in sample mode.
+  final ProgrammeRepository programmes;
+
   /// Where hand-logged activity is saved.
   final ManualActivityLog manualLog;
 
@@ -55,6 +59,7 @@ class ActivityBackend {
     required this.goals,
     required this.workouts,
     required this.training,
+    this.programmes = const LocalProgrammeRepository(),
     required this.manualLog,
   });
 
@@ -75,6 +80,7 @@ class ActivityBackend {
     goals: ApiGoalRepository(api),
     workouts: ApiWorkoutRepository(api),
     training: ApiTrainingRepository(api),
+    programmes: ApiProgrammeRepository(api),
     manualLog: ApiManualActivityLog(api),
   );
 
