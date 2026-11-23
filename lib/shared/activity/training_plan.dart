@@ -131,6 +131,16 @@ class TrainingPlanDay {
   final int? estimatedDuration;
   final int exerciseCount;
 
+  /// Programmes (P1): day 1..N of the programme, its type (`gym`, `home`,
+  /// `rest`) and what completed it (`workout` or `checkin`). Null on other
+  /// plans.
+  final int? programmeDay;
+  final String? type;
+  final String? completedBy;
+
+  /// When a check-in completed the day.
+  final DateTime? completedAt;
+
   const TrainingPlanDay({
     required this.date,
     this.focusAreas = const [],
@@ -139,7 +149,14 @@ class TrainingPlanDay {
     this.status = 'planned',
     this.estimatedDuration,
     this.exerciseCount = 0,
+    this.programmeDay,
+    this.type,
+    this.completedBy,
+    this.completedAt,
   });
+
+  bool get isRest => status == 'rest' || type == 'rest';
+  bool get isGym => type == 'gym';
 
   bool get isOpen => status == 'planned' || status == 'in_progress';
   bool get isDone => status == 'completed';
@@ -156,6 +173,16 @@ class TrainingPlanDay {
       status: raw['status'] as String? ?? 'planned',
       estimatedDuration: (raw['estimatedDuration'] as num?)?.toInt(),
       exerciseCount: (raw['exerciseCount'] as num?)?.toInt() ?? 0,
+      programmeDay: (raw['programmeDay'] as num?)?.toInt(),
+      type: raw['type'] as String?,
+      completedBy: raw['completedBy'] is Map
+          ? (raw['completedBy'] as Map)['source'] as String?
+          : null,
+      completedAt: raw['completedBy'] is Map
+          ? DateTime.tryParse(
+              (raw['completedBy'] as Map)['completedAt'] as String? ?? '',
+            )?.toLocal()
+          : null,
     );
   }
 }
@@ -205,6 +232,11 @@ class TrainingPlan {
   final int? lengthDays;
   final int? currentDay;
 
+  /// Programme streaks: training days done in a row (rest days don't break
+  /// it), now and at best.
+  final int streak;
+  final int bestStreak;
+
   const TrainingPlan({
     required this.id,
     required this.name,
@@ -230,6 +262,8 @@ class TrainingPlan {
     this.programmeId,
     this.lengthDays,
     this.currentDay,
+    this.streak = 0,
+    this.bestStreak = 0,
   });
 
   bool get isProgramme => programmeId != null;
@@ -305,6 +339,8 @@ class TrainingPlan {
           ? ((json['lengthDays'] ?? progress['lengthDays']) as num).toInt()
           : null,
       currentDay: (progress['currentDay'] as num?)?.toInt(),
+      streak: n(progress['streak']),
+      bestStreak: n(progress['bestStreak']),
     );
   }
 }

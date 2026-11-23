@@ -683,6 +683,12 @@ class LibraryExercise {
   final bool tracksWeight;
   final List<String> instructions;
 
+  /// Seconds of rest between sets (0 = none); picture and clip links
+  /// (Programmes P1, M2). Hosting and licence of clips are still open.
+  final int restSeconds;
+  final String? stillUrl;
+  final String? clipUrl;
+
   const LibraryExercise({
     required this.id,
     required this.name,
@@ -695,7 +701,17 @@ class LibraryExercise {
     this.duration,
     this.tracksWeight = false,
     this.instructions = const [],
+    this.restSeconds = 0,
+    this.stillUrl,
+    this.clipUrl,
   });
+
+  static String? _https(Object? v) {
+    final u = Uri.tryParse(v is String ? v.trim() : '');
+    return u != null && u.scheme == 'https' && u.host.isNotEmpty
+        ? u.toString()
+        : null;
+  }
 
   static List<String> _strings(Object? v) => [
     for (final x in (v as List? ?? const [])) x.toString(),
@@ -720,6 +736,9 @@ class LibraryExercise {
       duration: reps == null ? duration : null,
       tracksWeight: raw['tracksWeight'] == true,
       instructions: _strings(raw['instructions']),
+      restSeconds: (raw['restSeconds'] as num?)?.toInt() ?? 0,
+      stillUrl: _https(raw['stillUrl']),
+      clipUrl: _https(raw['clipUrl']),
     );
   }
 

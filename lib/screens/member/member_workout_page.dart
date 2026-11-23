@@ -1,11 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app_scope.dart';
 import '../../router.dart';
+import '../../shared/activity/exercise_library_cache.dart';
 import '../../shared/activity/workout.dart';
 import '../../shared/activity/workout_repository.dart';
 import '../../shared/activity/workout_summary.dart';
@@ -14,6 +16,7 @@ import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import 'member_shell.dart';
 import 'widgets/workout_widgets.dart';
+import 'widgets/workout_rest_media.dart';
 
 /// Runs one workout: start it, log each set (reps, weight, duration), mark
 /// sets and exercises done, add notes, and finish — then shows the summary.
@@ -45,6 +48,10 @@ class _MemberWorkoutPageState extends State<MemberWorkoutPage> {
   final Map<String, TextEditingController> _fields = {};
   final Set<String> _noteOpen = {};
 
+  // Programmes P1 (M2): rest between sets, from the exercise library.
+  Timer? _rest;
+  int? _restLeft;
+
   DateTime _now() => (widget.now ?? DateTime.now)();
 
   late WorkoutRepository _repo;
@@ -53,6 +60,14 @@ class _MemberWorkoutPageState extends State<MemberWorkoutPage> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _repo = AppScope.of(context).workouts;
+    if (!ExerciseLibraryCache.loaded) {
+      ExerciseLibraryCache.ensure(
+        AppScope.of(context).api,
+        lang: Localizations.localeOf(context).languageCode,
+      ).then((_) {
+        if (mounted) setState(() {});
+      });
+    }
     if (_loaded) return;
     final data = MemberDataScope.of(context);
     if (!data.workoutsLoaded) return;
@@ -76,6 +91,7 @@ class _MemberWorkoutPageState extends State<MemberWorkoutPage> {
   @override
   void dispose() {
     _tick?.cancel();
+    _rest?.cancel();
     _autosave?.cancel();
     // Flush unsaved edits; the page is going away, so don't await.
     final w = _w;
@@ -261,8 +277,52 @@ class _MemberWorkoutPageState extends State<MemberWorkoutPage> {
         s.duration = s.targetDuration;
         _field('${s.id}-dur', null).text = _fmtNum(s.duration);
       }
+      _startRest(e);
     }
     _changed();
+  }
+
+  /// Starts the rest after a set, unless the library gives it none.
+  void _startRest(WorkoutExercise e) {
+    final seconds = ExerciseLibraryCache.of(e.libraryId)?.restSeconds ?? 0;
+    if (seconds <= 0 || _w?.status != WorkoutStatus.inProgress) return;
+    _rest?.cancel();
+    setState(() => _restLeft = seconds);
+    _rest = Timer.periodic(const Duration(seconds: 1), (_) => _restTick());
+  }
+
+  void _restTick() {
+    final left = (_restLeft ?? 0) - 1;
+    if (!mounted) return;
+    setState(() => _restLeft = left);
+    final dir = Directionality.of(context);
+    if (left == 10) {
+      SemanticsService.sendAnnouncement(
+        View.of(context),
+        context.tr('workout.restLeft').replaceAll('{n}', '10'),
+        dir,
+      );
+    }
+    if (left <= 0) {
+      _rest?.cancel();
+      HapticFeedback.lightImpact();
+      SemanticsService.sendAnnouncement(
+        View.of(context),
+        context.tr('workout.nextSet'),
+        dir,
+      );
+    }
+  }
+
+  void _addRest() {
+    final left = _restLeft;
+    if (left == null || left <= 0) return;
+    setState(() => _restLeft = left + 15);
+  }
+
+  void _endRest() {
+    _rest?.cancel();
+    setState(() => _restLeft = null);
   }
 
   /// The calories recorded for a workout finished earlier, from its
@@ -384,7 +444,16 @@ class _MemberWorkoutPageState extends State<MemberWorkoutPage> {
         onExerciseFeedback: _exerciseFeedback,
       );
     }
-    return _session(context, w);
+    final rest = _restLeft;
+    if (rest == null || w.status != WorkoutStatus.inProgress) {
+      return _session(context, w);
+    }
+    return Column(
+      children: [
+        Expanded(child: _session(context, w)),
+        WorkoutRestBar(secondsLeft: rest, onAdd: _addRest, onDismiss: _endRest),
+      ],
+    );
   }
 
   Widget _session(BuildContext context, Workout w) {
@@ -580,6 +649,9 @@ class _MemberWorkoutPageState extends State<MemberWorkoutPage> {
                 ),
             ],
           ),
+          // Programmes P1 (M2): the library's picture and clip, if any.
+          if (!e.skipped)
+            ExerciseMedia(libraryId: e.libraryId, name: e.exerciseName),
           if (e.instructions != null && !e.skipped)
             Padding(
               padding: const EdgeInsets.only(top: FFTokens.spacingXs),
