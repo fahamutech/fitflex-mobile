@@ -4,6 +4,7 @@ import 'package:fitflexmobile/app_scope.dart';
 import 'package:fitflexmobile/screens/member/member_shell.dart';
 import 'package:fitflexmobile/screens/member/member_training_plan_page.dart';
 import 'package:fitflexmobile/shared/activity/exercise_library_cache.dart';
+import 'package:fitflexmobile/shared/activity/programme.dart';
 import 'package:fitflexmobile/shared/activity/sample_activity_log.dart';
 import 'package:fitflexmobile/shared/activity/trainer_connection.dart';
 import 'package:fitflexmobile/shared/activity/training_plan.dart';
@@ -83,12 +84,42 @@ TrainingPlan _programmePlan({
   'progress': {'currentDay': 3, 'lengthDays': 7, 'streak': 2, 'bestStreak': 2},
 })!;
 
-Widget _app(MemberData data, Widget child, {WorkoutRepository? workouts}) {
+/// Programmes on (catalogue answers) or off (feature_disabled).
+class _Programmes implements ProgrammeRepository {
+  _Programmes({this.on = true});
+  final bool on;
+
+  @override
+  Future<List<Programme>> catalogue({
+    ProgrammeFilters filters = const ProgrammeFilters(),
+    String? lang,
+  }) async => on ? const [] : throw const ProgrammesDisabled();
+
+  @override
+  Future<Programme> programme(String id, {String? lang}) =>
+      throw const ProgrammesDisabled();
+
+  @override
+  Future<TrainingPlan> start(
+    String id, {
+    DateTime? startDate,
+    bool replace = false,
+    String? lang,
+  }) => throw const ProgrammesDisabled();
+}
+
+Widget _app(
+  MemberData data,
+  Widget child, {
+  WorkoutRepository? workouts,
+  ProgrammeRepository? programmes,
+}) {
   final api = ApiClient();
   return AppScope(
     api: api,
     auth: AuthState(api),
     workoutRepository: workouts,
+    programmeRepository: programmes ?? _Programmes(),
     child: FFLocaleScope(
       notifier: FFLocale(),
       child: MaterialApp(
@@ -262,7 +293,7 @@ void main() {
             name: 'Bodyweight Squat',
             restSeconds: 30,
           ),
-        ]);
+        ], lang: 'en');
         final repo = LocalWorkoutRepository(log: SampleActivityLog());
         await tester.pumpWidget(
           _app(
@@ -274,6 +305,7 @@ void main() {
             workouts: repo,
           ),
         );
+        await tester.pump();
         await tester.pump();
         expect(find.byKey(const Key('workout-rest-bar')), findsNothing);
 
@@ -300,7 +332,7 @@ void main() {
         await _tall(tester);
         ExerciseLibraryCache.seed([
           const LibraryExercise(id: 'ex_squat', name: 'Bodyweight Squat'),
-        ]);
+        ], lang: 'en');
         final repo = LocalWorkoutRepository(log: SampleActivityLog());
         await tester.pumpWidget(
           _app(
@@ -312,6 +344,7 @@ void main() {
             workouts: repo,
           ),
         );
+        await tester.pump();
         await tester.pump();
         await tester.tap(find.byKey(const Key('set-e1-s1-done')));
         await tester.pump();
@@ -333,7 +366,7 @@ void main() {
           stillUrl: 'https://media.example.test/squat.jpg',
           clipUrl: 'https://media.example.test/squat.mp4',
         ),
-      ]);
+      ], lang: 'en');
       final repo = LocalWorkoutRepository(log: SampleActivityLog());
       await tester.pumpWidget(
         _app(
@@ -346,11 +379,49 @@ void main() {
         ),
       );
       await tester.pump();
+      await tester.pump();
       expect(find.byKey(const Key('exercise-still-ex_squat')), findsOneWidget);
       expect(find.byKey(const Key('exercise-clip-ex_squat')), findsOneWidget);
       expect(find.text('Watch clip'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
     });
+  });
+
+  testWidgets('with programmes off there is no rest timer and no media', (
+    tester,
+  ) async {
+    await _tall(tester);
+    ExerciseLibraryCache.seed([
+      const LibraryExercise(
+        id: 'ex_squat',
+        name: 'Bodyweight Squat',
+        restSeconds: 30,
+        stillUrl: 'https://media.example.test/squat.jpg',
+        clipUrl: 'https://media.example.test/squat.mp4',
+      ),
+    ], lang: 'en');
+    final data = MemberData()
+      ..workouts = [_workout()]
+      ..workoutsLoaded = true
+      ..trainingLoaded = true;
+    await tester.pumpWidget(
+      _app(
+        data,
+        MemberWorkoutPage(
+          workoutId: 'w9',
+          now: () => DateTime(2026, 11, 23, 8, 5),
+        ),
+        workouts: LocalWorkoutRepository(log: SampleActivityLog()),
+        programmes: _Programmes(on: false),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    expect(find.byKey(const Key('exercise-still-ex_squat')), findsNothing);
+    await tester.tap(find.byKey(const Key('set-e1-s1-done')));
+    await tester.pump();
+    expect(find.byKey(const Key('workout-rest-bar')), findsNothing);
+    await tester.pumpWidget(const SizedBox());
   });
 
   test('library links are https only', () {

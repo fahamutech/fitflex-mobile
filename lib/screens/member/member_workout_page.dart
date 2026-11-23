@@ -16,6 +16,7 @@ import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import 'member_shell.dart';
 import 'widgets/workout_widgets.dart';
+import 'widgets/programme_widgets.dart';
 import 'widgets/workout_rest_media.dart';
 
 /// Runs one workout: start it, log each set (reps, weight, duration), mark
@@ -51,6 +52,8 @@ class _MemberWorkoutPageState extends State<MemberWorkoutPage> {
   // Programmes P1 (M2): rest between sets, from the exercise library.
   Timer? _rest;
   int? _restLeft;
+  bool _programmesAsked = false;
+  bool _programmesOn = false;
 
   DateTime _now() => (widget.now ?? DateTime.now)();
 
@@ -60,12 +63,16 @@ class _MemberWorkoutPageState extends State<MemberWorkoutPage> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _repo = AppScope.of(context).workouts;
-    if (!ExerciseLibraryCache.loaded) {
-      ExerciseLibraryCache.ensure(
-        AppScope.of(context).api,
-        lang: Localizations.localeOf(context).languageCode,
-      ).then((_) {
-        if (mounted) setState(() {});
+    // Programmes P1 (M2): rest timer and clips only while the server offers
+    // programmes (dormant behind PROGRAMMES_CATALOGUE like the rest of P1).
+    if (!_programmesAsked) {
+      _programmesAsked = true;
+      final scope = AppScope.of(context);
+      final lang = Localizations.localeOf(context).languageCode;
+      programmesOffered(scope.programmes).then((on) async {
+        if (!on) return;
+        await ExerciseLibraryCache.ensure(scope.api, lang: lang);
+        if (mounted) setState(() => _programmesOn = true);
       });
     }
     if (_loaded) return;
@@ -284,6 +291,7 @@ class _MemberWorkoutPageState extends State<MemberWorkoutPage> {
 
   /// Starts the rest after a set, unless the library gives it none.
   void _startRest(WorkoutExercise e) {
+    if (!_programmesOn) return;
     final seconds = ExerciseLibraryCache.of(e.libraryId)?.restSeconds ?? 0;
     if (seconds <= 0 || _w?.status != WorkoutStatus.inProgress) return;
     _rest?.cancel();
@@ -650,7 +658,7 @@ class _MemberWorkoutPageState extends State<MemberWorkoutPage> {
             ],
           ),
           // Programmes P1 (M2): the library's picture and clip, if any.
-          if (!e.skipped)
+          if (_programmesOn && !e.skipped)
             ExerciseMedia(libraryId: e.libraryId, name: e.exerciseName),
           if (e.instructions != null && !e.skipped)
             Padding(
