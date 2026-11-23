@@ -199,6 +199,12 @@ class TrainingPlan {
   final int missed;
   final int currentWeek;
 
+  /// Programmes (P1): the FitFlex programme this plan was started from, its
+  /// length and which day of it today is. Null for every other plan.
+  final String? programmeId;
+  final int? lengthDays;
+  final int? currentDay;
+
   const TrainingPlan({
     required this.id,
     required this.name,
@@ -221,7 +227,12 @@ class TrainingPlan {
     this.skipped = 0,
     this.missed = 0,
     this.currentWeek = 1,
+    this.programmeId,
+    this.lengthDays,
+    this.currentDay,
   });
+
+  bool get isProgramme => programmeId != null;
 
   bool get isActive => status == 'active';
   bool get fromTrainer => createdByType == 'trainer';
@@ -289,6 +300,11 @@ class TrainingPlan {
       skipped: n(progress['skipped']),
       missed: n(progress['missed']),
       currentWeek: n(progress['currentWeek'], 1),
+      programmeId: json['programmeId'] as String?,
+      lengthDays: (json['lengthDays'] ?? progress['lengthDays']) is num
+          ? ((json['lengthDays'] ?? progress['lengthDays']) as num).toInt()
+          : null,
+      currentDay: (progress['currentDay'] as num?)?.toInt(),
     );
   }
 }

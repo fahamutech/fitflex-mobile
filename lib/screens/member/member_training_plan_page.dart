@@ -9,6 +9,7 @@ import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import 'member_shell.dart';
+import 'widgets/programme_widgets.dart';
 import 'widgets/training_widgets.dart';
 import 'widgets/workout_widgets.dart';
 
@@ -96,10 +97,27 @@ class _MemberTrainingPlanPageState extends State<MemberTrainingPlanPage> {
             key: const Key('training-plan-empty'),
             title: context.tr('training.noneTitle'),
             body: context.tr('training.noneBody'),
-            action: FFButton(
-              key: const Key('training-create'),
-              label: context.tr('training.create'),
-              onPressed: () => context.go(AppRoutes.memberTrainingSetup),
+            action: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FFButton(
+                  key: const Key('training-create'),
+                  label: context.tr('training.create'),
+                  onPressed: () => context.go(AppRoutes.memberTrainingSetup),
+                ),
+                // Programmes P1 (M1): only when the server offers them.
+                ProgrammesAvailable(
+                  builder: (context) => Padding(
+                    padding: const EdgeInsets.only(top: FFTokens.spacingSm),
+                    child: FFButton(
+                      key: const Key('training-browse-programmes'),
+                      label: context.tr('programmes.browse'),
+                      variant: FFButtonVariant.secondary,
+                      onPressed: () => context.go(AppRoutes.memberProgrammes),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],

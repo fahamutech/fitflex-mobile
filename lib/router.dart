@@ -21,6 +21,7 @@ import 'screens/member/member_shell.dart';
 import 'screens/member/member_training_offer_page.dart';
 import 'screens/member/member_training_plan_page.dart';
 import 'screens/member/member_training_setup_page.dart';
+import 'screens/member/member_programmes_page.dart';
 import 'shared/activity/activity.dart';
 import 'screens/member/member_shop_tab.dart';
 import 'screens/member/member_onboarding_page.dart';
@@ -233,6 +234,9 @@ abstract class AppRoutes {
   static const memberWorkout = '/member/activity/workouts/:workoutId';
   static const memberTrainingPlan = '/member/activity/training';
   static const memberTrainingSetup = '/member/activity/training/setup';
+  static const memberProgrammes = '/member/activity/training/programmes';
+  static const memberProgramme =
+      '/member/activity/training/programmes/:programmeId';
   static const memberTrainingOffer =
       '/member/activity/training/offers/:offerId';
   static const memberChallenge = '/member/activity/challenges/:challengeId';
@@ -1599,6 +1603,22 @@ GoRouter buildRouter(AuthState auth) {
                     name: 'memberTrainingSetup',
                     builder: (context, state) =>
                         const MemberTrainingSetupPage(),
+                  ),
+                  // Programmes P1 (M1). Without the server flag the pages
+                  // say "Not available"; nothing links here then.
+                  GoRoute(
+                    path: 'programmes',
+                    name: 'memberProgrammes',
+                    builder: (context, state) => const MemberProgrammesPage(),
+                    routes: [
+                      GoRoute(
+                        path: ':programmeId',
+                        name: 'memberProgramme',
+                        builder: (context, state) => MemberProgrammePage(
+                          programmeId: state.pathParameters['programmeId']!,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
