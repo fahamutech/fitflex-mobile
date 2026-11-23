@@ -9,6 +9,7 @@ import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import 'member_shell.dart';
+import 'widgets/programme_plan_view.dart';
 import 'widgets/programme_widgets.dart';
 import 'widgets/training_widgets.dart';
 import 'widgets/workout_widgets.dart';
@@ -25,16 +26,49 @@ class MemberTrainingPlanPage extends StatefulWidget {
   State<MemberTrainingPlanPage> createState() => _MemberTrainingPlanPageState();
 }
 
-class _MemberTrainingPlanPageState extends State<MemberTrainingPlanPage> {
+class _MemberTrainingPlanPageState extends State<MemberTrainingPlanPage>
+    with WidgetsBindingObserver {
   bool _busy = false;
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  // Programmes (M2): a check-in completes a gym day on the server; re-read
+  // when the member comes back to the app so the day shows done.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed || !mounted) return;
+    if (MemberDataScope.of(context).trainingPlan?.isProgramme ?? false) {
+      _refresh();
+    }
+  }
+
+  Future<void> _refresh() async {
+    final shell = context.findAncestorStateOfType<MemberShellState>();
+    if (shell != null) await shell.refreshTraining();
+  }
+
   Future<void> _stop(TrainingPlan plan) async {
+    final programme = plan.isProgramme;
     final ok = await showFFConfirmDialog(
       context,
-      title: context.tr('training.stopTitle'),
-      message: context.tr('training.stopBody'),
+      title: context.tr(
+        programme ? 'programmes.stopTitle' : 'training.stopTitle',
+      ),
+      message: context.tr(
+        programme ? 'programmes.stopBody' : 'training.stopBody',
+      ),
       cancelLabel: context.tr('training.keepPlan'),
-      confirmLabel: context.tr('training.stop'),
+      confirmLabel: context.tr(programme ? 'programmes.stop' : 'training.stop'),
       confirmKey: const Key('training-stop-confirm'),
     );
     if (ok != true || !mounted) return;
@@ -121,6 +155,27 @@ class _MemberTrainingPlanPageState extends State<MemberTrainingPlanPage> {
             ),
           ),
         ],
+      );
+    }
+
+    if (plan.isProgramme) {
+      return ProgrammePlanView(
+        plan: plan,
+        today: today,
+        back: back,
+        onRefresh: _refresh,
+        menu: PopupMenuButton<String>(
+          key: const Key('training-plan-menu'),
+          enabled: !_busy,
+          onSelected: (_) => _stop(plan),
+          itemBuilder: (_) => [
+            PopupMenuItem(
+              key: const Key('training-stop'),
+              value: 'stop',
+              child: Text(context.tr('programmes.stop')),
+            ),
+          ],
+        ),
       );
     }
 

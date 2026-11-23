@@ -51,6 +51,21 @@ class ProgrammesAvailable extends StatefulWidget {
   State<ProgrammesAvailable> createState() => _ProgrammesAvailableState();
 }
 
+/// Whether the server offers programmes (PROGRAMMES_CATALOGUE on), asked
+/// once per repository; false while unknown, off or unreachable. Also gates
+/// the workout page's rest timer and clips (M2), so they stay dormant too.
+Future<bool> programmesOffered(ProgrammeRepository repo) async {
+  final known = _ProgrammesAvailableState._known[repo];
+  if (known != null) return known;
+  try {
+    await repo.catalogue();
+    _ProgrammesAvailableState._known[repo] = true;
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
 class _ProgrammesAvailableState extends State<ProgrammesAvailable> {
   // One answer per repository: every way in on screen asks once.
   static final Expando<bool> _known = Expando();
