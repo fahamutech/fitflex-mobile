@@ -18,10 +18,13 @@ import 'widgets/workout_widgets.dart';
 /// The member's training plan, week by week: every session with its day
 /// and state, and a way into each workout.
 class MemberTrainingPlanPage extends StatefulWidget {
-  const MemberTrainingPlanPage({super.key, this.now});
+  const MemberTrainingPlanPage({super.key, this.now, this.onRefresh});
 
   /// Injectable clock for tests.
   final DateTime? now;
+
+  /// Re-reads the plan; defaults to the member shell's. Injectable for tests.
+  final Future<void> Function()? onRefresh;
 
   @override
   State<MemberTrainingPlanPage> createState() => _MemberTrainingPlanPageState();
@@ -35,6 +38,15 @@ class _MemberTrainingPlanPageState extends State<MemberTrainingPlanPage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Programmes (UAT D-1): a check-in may have completed a gym day since the
+    // plan was loaded, so re-read it each time the page opens. Pull-to-refresh
+    // can't be done with a mouse on web.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (MemberDataScope.of(context).trainingPlan?.isProgramme ?? false) {
+        _refresh();
+      }
+    });
   }
 
   @override
@@ -54,6 +66,8 @@ class _MemberTrainingPlanPageState extends State<MemberTrainingPlanPage>
   }
 
   Future<void> _refresh() async {
+    final override = widget.onRefresh;
+    if (override != null) return override();
     final shell = context.findAncestorStateOfType<MemberShellState>();
     if (shell != null) await shell.refreshTraining();
   }

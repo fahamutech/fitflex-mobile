@@ -183,52 +183,53 @@ class _MemberProgrammesPageState extends State<MemberProgrammesPage> {
               onTap: () => context.go(AppRoutes.memberTrainingPlan),
             ),
           ),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              _chip<String>(
-                'goal',
-                context.tr('programmes.filter.goal'),
-                _filters.goal,
-                (v) => programmeGoal(context, v),
-                _goals,
-                (v) => _filters.copyWith(goal: () => v),
+        // The chips wrap onto a second line rather than scroll sideways: a
+        // mouse can't drag-scroll on web, and Clear must stay in view.
+        Wrap(
+          runSpacing: FFTokens.spacingXs,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            _chip<String>(
+              'goal',
+              context.tr('programmes.filter.goal'),
+              _filters.goal,
+              (v) => programmeGoal(context, v),
+              _goals,
+              (v) => _filters.copyWith(goal: () => v),
+            ),
+            _chip<String>(
+              'level',
+              context.tr('programmes.filter.level'),
+              _filters.level,
+              (v) => programmeLevel(context, v),
+              _levels,
+              (v) => _filters.copyWith(level: () => v),
+            ),
+            _chip<int>(
+              'length',
+              context.tr('programmes.filter.length'),
+              _filters.length,
+              length,
+              _lengths,
+              (v) => _filters.copyWith(length: () => v),
+            ),
+            _chip<String>(
+              'where',
+              context.tr('programmes.filter.where'),
+              _filters.where,
+              (v) => programmeWhere(context, v),
+              _wheres,
+              (v) => _filters.copyWith(where: () => v),
+            ),
+            if (!_filters.isEmpty)
+              FFButton(
+                key: const Key('programmes-clear'),
+                label: context.tr('programmes.clear'),
+                variant: FFButtonVariant.ghost,
+                size: FFButtonSize.sm,
+                onPressed: () => _set(const ProgrammeFilters()),
               ),
-              _chip<String>(
-                'level',
-                context.tr('programmes.filter.level'),
-                _filters.level,
-                (v) => programmeLevel(context, v),
-                _levels,
-                (v) => _filters.copyWith(level: () => v),
-              ),
-              _chip<int>(
-                'length',
-                context.tr('programmes.filter.length'),
-                _filters.length,
-                length,
-                _lengths,
-                (v) => _filters.copyWith(length: () => v),
-              ),
-              _chip<String>(
-                'where',
-                context.tr('programmes.filter.where'),
-                _filters.where,
-                (v) => programmeWhere(context, v),
-                _wheres,
-                (v) => _filters.copyWith(where: () => v),
-              ),
-              if (!_filters.isEmpty)
-                FFButton(
-                  key: const Key('programmes-clear'),
-                  label: context.tr('programmes.clear'),
-                  variant: FFButtonVariant.ghost,
-                  size: FFButtonSize.sm,
-                  onPressed: () => _set(const ProgrammeFilters()),
-                ),
-            ],
-          ),
+          ],
         ),
         const SizedBox(height: FFTokens.spacingMd),
         if (_failed)
