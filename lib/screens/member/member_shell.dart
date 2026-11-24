@@ -138,7 +138,15 @@ class MemberData extends ChangeNotifier {
   /// A sponsor (employer, insurer, club) gives this member gym access through
   /// a wellness benefit, so they can check in without a pass of their own.
   bool sponsoredGymAccess = false;
-  bool get canCheckIn => hasActivePass || sponsoredGymAccess;
+
+  /// Also true when the newest subscription is an expired or suspended gym
+  /// pass but another entitlement is active: the server still issues the QR.
+  bool get canCheckIn =>
+      hasActivePass || me?.hasActiveEntitlement == true || sponsoredGymAccess;
+
+  /// Custom gym pass names by purchase id, from `GET /me/gym-passes`. Empty
+  /// with the flag off. Labels pass visits in the visit history.
+  Map<String, String> gymPassNames = {};
   bool get needsOnboarding => me?.needsOnboarding == true;
   Subscription? get subscription => me?.subscription;
   PaymentRequest? get pendingPayment => me?.pendingPayment;
@@ -352,9 +360,10 @@ class MemberShellState extends State<MemberShell> with WidgetsBindingObserver {
     if (!gymCustomPassesEnabled || _auth?.token == null) return;
     try {
       final out = await AppScope.of(context).api.myGymPasses();
+      final mine = GymPassesMine.fromJson(out);
+      _data.update((d) => d.gymPassNames = gymPassNamesById(mine));
       final known = _data.me?.knownSubscriptionIds ?? const <String>{};
-      if (gymPassNeedsProfileReload(GymPassesMine.fromJson(out), known) &&
-          mounted) {
+      if (gymPassNeedsProfileReload(mine, known) && mounted) {
         await _refreshMe();
       }
     } catch (_) {

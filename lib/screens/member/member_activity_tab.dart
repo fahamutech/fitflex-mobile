@@ -16,6 +16,7 @@ import '../../shared/photo_footer_flag.dart';
 import '../../shared/photo_hero_flag.dart';
 import 'member_shell.dart';
 import 'events/events_discovery_view.dart';
+import 'widgets/programme_widgets.dart';
 import 'widgets/home_hero.dart';
 import 'widgets/phone_steps_card.dart';
 import 'widgets/run_widgets.dart';
@@ -438,7 +439,8 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
       if (recent.isEmpty)
         FFEmptyState(title: context.tr('activity.noActivity'))
       else ...[
-        for (final e in recent) recentEntryTile(e),
+        for (final e in recent)
+          recentEntryTile(e, passNames: data.gymPassNames),
         Align(
           alignment: Alignment.centerRight,
           child: FFButton(
@@ -480,6 +482,8 @@ class _MemberActivityTabState extends State<MemberActivityTab> {
         todayIds.isEmpty;
     return [
       for (final offer in data.trainingOffers) TrainingOfferCard(offer: offer),
+      // Programmes P1 (M1): shown only when the server offers programmes.
+      const ProgrammesTile(),
       TrainingPlanCard(data: data, now: now),
       if (noPlanNoWorkout)
         // One invitation, two actions: the plan card above already offers

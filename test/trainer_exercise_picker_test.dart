@@ -206,6 +206,28 @@ void main() {
     expect(exercises[1].containsKey('reps'), isFalse);
   });
 
+  testWidgets('the list is grouped by body area (PD-8)', (tester) async {
+    await _open(tester);
+    await tester.tap(find.byKey(const Key('plan-add-from-library')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('exercise-picker-group-upper_body')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('exercise-picker-group-lower_body')),
+      findsOneWidget,
+    );
+    // Upper body comes before lower body, as on the setup screen.
+    final upper = tester.getTopLeft(
+      find.byKey(const Key('exercise-picker-group-upper_body')),
+    );
+    final lower = tester.getTopLeft(
+      find.byKey(const Key('exercise-picker-group-lower_body')),
+    );
+    expect(upper.dy, lessThan(lower.dy));
+  });
+
   testWidgets('search and area narrow the list; nothing found says so', (
     tester,
   ) async {

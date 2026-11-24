@@ -320,6 +320,28 @@ String directSubscriptionLabel(
   return locale.t('member.plan_${plan ?? 'monthly'}');
 }
 
+/// Plan names of the passes I belong to, by purchase id.
+Map<String, String> gymPassNamesById(GymPassesMine mine) => {
+  for (final m in mine.memberships)
+    if (m.planName.trim().isNotEmpty) m.purchaseId: m.planName.trim(),
+};
+
+/// The label for a visit made with a custom gym pass: the pass name, or the
+/// generic "Gym pass" when the name is not known. Null for any other visit
+/// and whenever custom passes are off, so those rows stay as they were.
+String? gymPassVisitLabel(
+  FFLocale locale, {
+  required String? passPurchaseId,
+  required Map<String, String> names,
+  required bool enabled,
+}) {
+  if (!enabled || passPurchaseId == null || passPurchaseId.isEmpty) {
+    return null;
+  }
+  final name = names[passPurchaseId]?.trim() ?? '';
+  return name.isNotEmpty ? name : locale.t('gymPass.genericLabel');
+}
+
 /// A typed contact as the add / checkout routes take it: `{phone}` or
 /// `{email}`. Null when it is neither (nothing is sent).
 Map<String, String>? gymPassContactBody(String raw) {

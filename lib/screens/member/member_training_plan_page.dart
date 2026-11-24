@@ -9,31 +9,81 @@ import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import 'member_shell.dart';
+import 'member_programme_summary_page.dart';
+import 'widgets/programme_plan_view.dart';
+import 'widgets/programme_widgets.dart';
 import 'widgets/training_widgets.dart';
 import 'widgets/workout_widgets.dart';
 
 /// The member's training plan, week by week: every session with its day
 /// and state, and a way into each workout.
 class MemberTrainingPlanPage extends StatefulWidget {
-  const MemberTrainingPlanPage({super.key, this.now});
+  const MemberTrainingPlanPage({super.key, this.now, this.onRefresh});
 
   /// Injectable clock for tests.
   final DateTime? now;
+
+  /// Re-reads the plan; defaults to the member shell's. Injectable for tests.
+  final Future<void> Function()? onRefresh;
 
   @override
   State<MemberTrainingPlanPage> createState() => _MemberTrainingPlanPageState();
 }
 
-class _MemberTrainingPlanPageState extends State<MemberTrainingPlanPage> {
+class _MemberTrainingPlanPageState extends State<MemberTrainingPlanPage>
+    with WidgetsBindingObserver {
   bool _busy = false;
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Programmes (UAT D-1): a check-in may have completed a gym day since the
+    // plan was loaded, so re-read it each time the page opens. Pull-to-refresh
+    // can't be done with a mouse on web.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (MemberDataScope.of(context).trainingPlan?.isProgramme ?? false) {
+        _refresh();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  // Programmes (M2): a check-in completes a gym day on the server; re-read
+  // when the member comes back to the app so the day shows done.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed || !mounted) return;
+    if (MemberDataScope.of(context).trainingPlan?.isProgramme ?? false) {
+      _refresh();
+    }
+  }
+
+  Future<void> _refresh() async {
+    final override = widget.onRefresh;
+    if (override != null) return override();
+    final shell = context.findAncestorStateOfType<MemberShellState>();
+    if (shell != null) await shell.refreshTraining();
+  }
+
   Future<void> _stop(TrainingPlan plan) async {
+    final programme = plan.isProgramme;
     final ok = await showFFConfirmDialog(
       context,
-      title: context.tr('training.stopTitle'),
-      message: context.tr('training.stopBody'),
+      title: context.tr(
+        programme ? 'programmes.stopTitle' : 'training.stopTitle',
+      ),
+      message: context.tr(
+        programme ? 'programmes.stopBody' : 'training.stopBody',
+      ),
       cancelLabel: context.tr('training.keepPlan'),
-      confirmLabel: context.tr('training.stop'),
+      confirmLabel: context.tr(programme ? 'programmes.stop' : 'training.stop'),
       confirmKey: const Key('training-stop-confirm'),
     );
     if (ok != true || !mounted) return;
@@ -92,17 +142,57 @@ class _MemberTrainingPlanPageState extends State<MemberTrainingPlanPage> {
         padding: const EdgeInsets.all(FFTokens.spacingLg),
         children: [
           back,
+          // Programmes P1: a programme that ended recently has a summary.
+          ProgrammeSummaryCard(now: widget.now),
           FFEmptyState(
             key: const Key('training-plan-empty'),
             title: context.tr('training.noneTitle'),
             body: context.tr('training.noneBody'),
-            action: FFButton(
-              key: const Key('training-create'),
-              label: context.tr('training.create'),
-              onPressed: () => context.go(AppRoutes.memberTrainingSetup),
+            action: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FFButton(
+                  key: const Key('training-create'),
+                  label: context.tr('training.create'),
+                  onPressed: () => context.go(AppRoutes.memberTrainingSetup),
+                ),
+                // Programmes P1 (M1): only when the server offers them.
+                ProgrammesAvailable(
+                  builder: (context) => Padding(
+                    padding: const EdgeInsets.only(top: FFTokens.spacingSm),
+                    child: FFButton(
+                      key: const Key('training-browse-programmes'),
+                      label: context.tr('programmes.browse'),
+                      variant: FFButtonVariant.secondary,
+                      onPressed: () => context.go(AppRoutes.memberProgrammes),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
+      );
+    }
+
+    if (plan.isProgramme) {
+      return ProgrammePlanView(
+        plan: plan,
+        today: today,
+        back: back,
+        onRefresh: _refresh,
+        menu: PopupMenuButton<String>(
+          key: const Key('training-plan-menu'),
+          enabled: !_busy,
+          onSelected: (_) => _stop(plan),
+          itemBuilder: (_) => [
+            PopupMenuItem(
+              key: const Key('training-stop'),
+              value: 'stop',
+              child: Text(context.tr('programmes.stop')),
+            ),
+          ],
+        ),
       );
     }
 
