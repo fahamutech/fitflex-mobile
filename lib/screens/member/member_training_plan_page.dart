@@ -9,6 +9,7 @@ import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
 import 'member_shell.dart';
+import 'member_programme_summary_page.dart';
 import 'widgets/programme_plan_view.dart';
 import 'widgets/programme_widgets.dart';
 import 'widgets/training_widgets.dart';
@@ -127,6 +128,8 @@ class _MemberTrainingPlanPageState extends State<MemberTrainingPlanPage>
         padding: const EdgeInsets.all(FFTokens.spacingLg),
         children: [
           back,
+          // Programmes P1: a programme that ended recently has a summary.
+          ProgrammeSummaryCard(now: widget.now),
           FFEmptyState(
             key: const Key('training-plan-empty'),
             title: context.tr('training.noneTitle'),

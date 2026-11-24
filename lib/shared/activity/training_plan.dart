@@ -237,6 +237,10 @@ class TrainingPlan {
   final int streak;
   final int bestStreak;
 
+  /// Programme days done by a workout and by a gym check-in.
+  final int byWorkout;
+  final int byCheckin;
+
   const TrainingPlan({
     required this.id,
     required this.name,
@@ -264,6 +268,8 @@ class TrainingPlan {
     this.currentDay,
     this.streak = 0,
     this.bestStreak = 0,
+    this.byWorkout = 0,
+    this.byCheckin = 0,
   });
 
   bool get isProgramme => programmeId != null;
@@ -341,6 +347,8 @@ class TrainingPlan {
       currentDay: (progress['currentDay'] as num?)?.toInt(),
       streak: n(progress['streak']),
       bestStreak: n(progress['bestStreak']),
+      byWorkout: n(progress['byWorkout']),
+      byCheckin: n(progress['byCheckin']),
     );
   }
 }

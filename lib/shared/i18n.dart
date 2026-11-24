@@ -87,6 +87,16 @@ class FFLocale extends ChangeNotifier {
 
   static const Map<String, Map<String, String>> _messages = {
     'en': {
+      // Programmes P1: summary after a programme ends.
+      'programmes.seeSummary': "See your summary",
+      'programmes.finished': "You finished {title}!",
+      'programmes.ended': "{title} has ended",
+      'programmes.sum.days': "Days done",
+      'programmes.sum.workouts': "Workouts",
+      'programmes.sum.checkins': "Gym check-ins",
+      'programmes.sum.bestStreak': "Best streak",
+      'programmes.findNext': "Find your next programme",
+      'programmes.backToTraining': "Back to training",
       // Programmes P1 (M2): plan page programme mode, rest timer, clips.
       'programmes.dayOf': "Day {n} of {N}",
       'programmes.progress': "Programme progress",
@@ -8590,6 +8600,16 @@ class FFLocale extends ChangeNotifier {
           "The invitation was sent by message.",
     },
     'sw': {
+      // TODO(sw-review): Programmes P1 summary. [SW-PENDING] = English placeholder.
+      'programmes.seeSummary': "[SW-PENDING] See your summary",
+      'programmes.finished': "[SW-PENDING] You finished {title}!",
+      'programmes.ended': "[SW-PENDING] {title} has ended",
+      'programmes.sum.days': "[SW-PENDING] Days done",
+      'programmes.sum.workouts': "[SW-PENDING] Workouts",
+      'programmes.sum.checkins': "[SW-PENDING] Gym check-ins",
+      'programmes.sum.bestStreak': "[SW-PENDING] Best streak",
+      'programmes.findNext': "[SW-PENDING] Find your next programme",
+      'programmes.backToTraining': "[SW-PENDING] Back to training",
       // TODO(sw-review): Programmes P1 (M2).
       // [SW-PENDING] = English placeholder awaiting a native-speaker translation.
       'programmes.dayOf': "[SW-PENDING] Day {n} of {N}",
