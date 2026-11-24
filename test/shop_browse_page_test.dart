@@ -1551,6 +1551,89 @@ void main() {
       });
     });
 
+    // fitflex-functions#361: the order itself carries its pending payment
+    // request; the payments are read only for an older server.
+    apiTest('the order names its payment request: it is paid without reading '
+        'the payments', (tester, api) async {
+      _seed(
+        api,
+        orders: [
+          {...unpaid, 'paymentRequestId': 'pay_direct'},
+        ],
+      );
+      api.on('GET /payments/options', shopPayOn);
+      final host = await pumpAs(tester, api);
+      await _openMyOrders(tester, host);
+      await tapVisible(tester, _key('order-pay-now-o1'));
+      expect(find.text(host.tr('momo.title')), findsOneWidget);
+      // The amount is the order's own total.
+      expect(find.textContaining(formatCurrency(170000)), findsWidgets);
+      expect(api.sent('GET', '/me/payments'), isFalse);
+
+      await tester.tap(find.textContaining('Send payment request'));
+      await tester.pump();
+      await tester.pump();
+      expect(api.only('POST', '/me/payments/pay_direct/mobile-money').body, {
+        'phone': '0754123456',
+        'network': 'Mpesa',
+      });
+    });
+
+    apiTest('the order says nothing is waiting (null): says so, and the '
+        'payments are not read', (tester, api) async {
+      _seed(
+        api,
+        orders: [
+          {...unpaid, 'paymentRequestId': null},
+        ],
+      );
+      api.on('GET /payments/options', shopPayOn);
+      final host = await pumpAs(tester, api);
+      await _openMyOrders(tester, host);
+      await tapVisible(tester, _key('order-pay-now-o1'));
+      expect(host.snack(host.tr('shop.payNothingOpen')), findsOneWidget);
+      expect(find.text(host.tr('momo.title')), findsNothing);
+      expect(api.sent('GET', '/me/payments'), isFalse);
+    });
+
+    apiTest('checkout answers with the payment request: the sheet opens '
+        'for it, with the choice of how to pay when the server lists more '
+        'than one way', (tester, api) async {
+      _seed(api);
+      api.on('GET /payments/options', {
+        ...shopPayOn,
+        'methods': ['mobile_money', 'bank', 'page'],
+        'bank': {
+          'providers': ['CRDB', 'NMB'],
+          'maxAmountTzs': 5000000,
+        },
+        'page': {
+          'returnTo': ['app'],
+          'languages': ['en', 'sw'],
+        },
+      });
+      api.on('POST /me/shop-orders', {
+        'id': 'o9',
+        'status': 'pending',
+        'paymentStatus': 'pending',
+        'totalTzs': 85000,
+        'paymentRequestId': 'pay_o9',
+      });
+      final host = await pumpAs(tester, api);
+      await _add(tester, 'p1');
+      await _openCheckout(tester);
+      await typeInto(tester, _key('shop-delivery-address'), 'Masaki');
+      await tapVisible(tester, _key('shop-place-order'));
+      expect(api.sent('GET', '/me/payments'), isFalse);
+      // More than one way: the sheet is "Payment", not "Pay with mobile money".
+      expect(find.text(host.tr('momo.title')), findsNothing);
+      expect(find.text(host.tr('momo.method')), findsOneWidget);
+      for (final m in ['mobile_money', 'bank', 'page']) {
+        expect(_key('momo-method-$m'), findsOneWidget);
+      }
+      expect(find.textContaining(formatCurrency(85000)), findsWidgets);
+    });
+
     apiTest('checkout, not listed: as before (pending message, no sheet)', (
       tester,
       api,
