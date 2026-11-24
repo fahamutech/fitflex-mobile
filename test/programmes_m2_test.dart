@@ -111,7 +111,6 @@ class _Programmes implements ProgrammeRepository {
     DateTime? now,
     Duration within = const Duration(days: 30),
   }) async => null;
-
 }
 
 Widget _app(
@@ -252,6 +251,53 @@ void main() {
       expect(find.text('Stop programme'), findsOneWidget);
     },
   );
+
+  // UAT 2026-11-24 D-1: a check-in may have completed a day since the plan
+  // was loaded, so opening the page re-reads a programme plan.
+  testWidgets('opening a programme plan re-reads it once', (tester) async {
+    await _tall(tester);
+    var reads = 0;
+    final data = MemberData()
+      ..trainingPlan = _programmePlan(todayDone: false)
+      ..trainingLoaded = true;
+    await tester.pumpWidget(
+      _app(
+        data,
+        MemberTrainingPlanPage(
+          now: DateTime(2026, 11, 22, 12),
+          onRefresh: () async => reads++,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(reads, 1);
+  });
+
+  testWidgets('opening an ordinary plan does not re-read it', (tester) async {
+    await _tall(tester);
+    var reads = 0;
+    final data = MemberData()
+      ..trainingPlan = TrainingPlan.tryParse({
+        'id': 'tpl_x',
+        'name': 'My plan',
+        'durationWeeks': 1,
+        'startDate': '2026-11-20',
+        'endDate': '2026-11-26',
+        'weeks': [],
+      })
+      ..trainingLoaded = true;
+    await tester.pumpWidget(
+      _app(
+        data,
+        MemberTrainingPlanPage(
+          now: DateTime(2026, 11, 22, 12),
+          onRefresh: () async => reads++,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(reads, 0);
+  });
 
   testWidgets('a gym day not yet done says to check in at any gym', (
     tester,

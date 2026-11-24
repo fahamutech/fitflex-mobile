@@ -41,19 +41,35 @@ class _MemberProgrammePageState extends State<MemberProgrammePage> {
     if (_programme == null && !_failed && !_gone) _load();
   }
 
+  // The same page can be shown for another programme (a link, or the
+  // browser's back/forward): start over for the new id.
+  @override
+  void didUpdateWidget(covariant MemberProgrammePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.programmeId == widget.programmeId) return;
+    _programme = null;
+    _failed = false;
+    _gone = false;
+    _after = null;
+    _load();
+  }
+
   Future<void> _load() async {
     final repo = AppScope.of(context).programmes;
     final lang = Localizations.localeOf(context).languageCode;
+    final id = widget.programmeId;
     setState(() => _failed = false);
+    // A reply for an id the page no longer shows is dropped.
+    bool current() => mounted && widget.programmeId == id;
     try {
-      final p = await repo.programme(widget.programmeId, lang: lang);
-      if (mounted) setState(() => _programme = p);
+      final p = await repo.programme(id, lang: lang);
+      if (current()) setState(() => _programme = p);
     } on ProgrammesDisabled {
-      if (mounted) setState(() => _gone = true);
+      if (current()) setState(() => _gone = true);
     } on ProgrammeUnavailable {
-      if (mounted) setState(() => _gone = true);
+      if (current()) setState(() => _gone = true);
     } catch (_) {
-      if (mounted) setState(() => _failed = true);
+      if (current()) setState(() => _failed = true);
     }
   }
 
@@ -253,25 +269,29 @@ class _MemberProgrammePageState extends State<MemberProgrammePage> {
                 Text(p.summary!, style: theme.textTheme.bodyMedium),
               ],
               const SizedBox(height: FFTokens.spacingMd),
-              Row(
-                children: [
-                  for (final (type, icon) in const [
-                    ('gym', Icons.fitness_center),
-                    ('home', Icons.home_outlined),
-                    ('rest', Icons.bedtime_outlined),
-                  ]) ...[
-                    Expanded(
-                      child: FFStatTile(
-                        key: Key('programme-stat-$type'),
-                        icon: icon,
-                        value: '${p.count(type)}',
-                        label: context.tr('programmes.stat.$type'),
+              // Same height for all three, even when a label wraps.
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (final (type, icon) in const [
+                      ('gym', Icons.fitness_center),
+                      ('home', Icons.home_outlined),
+                      ('rest', Icons.bedtime_outlined),
+                    ]) ...[
+                      Expanded(
+                        child: FFStatTile(
+                          key: Key('programme-stat-$type'),
+                          icon: icon,
+                          value: '${p.count(type)}',
+                          label: context.tr('programmes.stat.$type'),
+                        ),
                       ),
-                    ),
-                    if (type != 'rest')
-                      const SizedBox(width: FFTokens.spacingXs),
+                      if (type != 'rest')
+                        const SizedBox(width: FFTokens.spacingXs),
+                    ],
                   ],
-                ],
+                ),
               ),
               FFSectionTitle(context.tr('programmes.needs')),
               Wrap(

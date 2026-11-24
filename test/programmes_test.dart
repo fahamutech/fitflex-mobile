@@ -113,10 +113,17 @@ class _Fake implements ProgrammeRepository {
     ];
   }
 
+  /// Ids that answer as retired.
+  final gone = <String>{};
+
   @override
   Future<Programme> programme(String id, {String? lang}) async {
     if (disabled) throw const ProgrammesDisabled();
-    return Programme.tryParse(_programmeJson(id: id))!;
+    if (gone.contains(id)) throw const ProgrammeUnavailable();
+    return Programme.tryParse({
+      ..._programmeJson(id: id),
+      if (id != 'prg_1') 'title': 'Programme $id',
+    })!;
   }
 
   @override
@@ -510,5 +517,75 @@ void main() {
     await tester.tap(find.byKey(const Key('programme-summary-card')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('summary-stats')), findsOneWidget);
+  });
+
+  // UAT 2026-11-24 D-2: the same page shown for another id starts over.
+  testWidgets('the detail page reloads when its programme id changes', (
+    tester,
+  ) async {
+    await _tall(tester);
+    final repo = _Fake()..gone.add('prg_gone');
+    final id = ValueNotifier('prg_gone');
+    addTearDown(id.dispose);
+    await tester.pumpWidget(
+      _app(
+        repo,
+        at: '/',
+        home: ValueListenableBuilder<String>(
+          valueListenable: id,
+          builder: (_, v, _) =>
+              MemberProgrammePage(programmeId: v, now: DateTime(2026, 11, 23)),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('programme-not-available')), findsOneWidget);
+
+    id.value = 'prg_2';
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('programme-not-available')), findsNothing);
+    expect(find.text('Programme prg_2'), findsOneWidget);
+  });
+
+  // UAT 2026-11-24 D-4: the three stat tiles line up.
+  testWidgets('the detail stat tiles are the same height and aligned', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(375 * 3, 812 * 3);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      _app(_Fake(), at: '/member/activity/training/programmes/prg_1'),
+    );
+    await tester.pumpAndSettle();
+    final rects = [
+      for (final t in ['gym', 'home', 'rest'])
+        tester.getRect(find.byKey(Key('programme-stat-$t'))),
+    ];
+    for (final r in rects.skip(1)) {
+      expect(r.top, rects.first.top);
+      expect(r.height, rects.first.height);
+    }
+  });
+
+  // UAT 2026-11-24 D-4: Clear stays on screen on a narrow phone.
+  testWidgets('Clear stays in view on a 375 px phone', (tester) async {
+    tester.view.physicalSize = const Size(375 * 3, 812 * 3);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final repo = _Fake();
+    await tester.pumpWidget(
+      _app(repo, at: '/member/activity/training/programmes'),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('programmes-filter-length')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('programmes-option-14')));
+    await tester.pumpAndSettle();
+    final clear = tester.getRect(find.byKey(const Key('programmes-clear')));
+    expect(clear.right, lessThanOrEqualTo(375));
+    await tester.tap(find.byKey(const Key('programmes-clear')));
+    await tester.pumpAndSettle();
+    expect(repo.catalogueCalls.last, isEmpty);
   });
 }
