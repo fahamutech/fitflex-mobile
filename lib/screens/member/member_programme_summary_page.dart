@@ -4,9 +4,11 @@ import 'package:go_router/go_router.dart';
 import '../../app_scope.dart';
 import '../../router.dart';
 import '../../shared/activity/training_plan.dart';
+import '../../shared/activity/programme.dart';
 import '../../shared/components/components.dart';
 import '../../shared/design_tokens.dart';
 import '../../shared/i18n.dart';
+import 'widgets/programme_widgets.dart';
 
 /// Programmes P1: what the member did in the programme that just ended.
 class MemberProgrammeSummaryPage extends StatefulWidget {
@@ -194,9 +196,19 @@ class _ProgrammeSummaryCardState extends State<ProgrammeSummaryCard> {
         .dependOnInheritedWidgetOfExactType<AppScope>()
         ?.programmes;
     if (repo == null) return;
-    repo.finished(now: widget.now).then((p) {
+    _load(repo);
+  }
+
+  // UAT 2026-11-24 D-5: like every way into programmes, the card shows only
+  // while the server offers them (PROGRAMMES_CATALOGUE on).
+  Future<void> _load(ProgrammeRepository repo) async {
+    try {
+      if (!await programmesOffered(repo)) return;
+      final p = await repo.finished(now: widget.now);
       if (mounted && p != null) setState(() => _plan = p);
-    }, onError: (_) {});
+    } catch (_) {
+      // Nothing to show.
+    }
   }
 
   @override

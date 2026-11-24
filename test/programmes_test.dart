@@ -519,6 +519,21 @@ void main() {
     expect(find.byKey(const Key('summary-stats')), findsOneWidget);
   });
 
+  // UAT 2026-11-24 D-5: with programmes off, no summary card either.
+  testWidgets('with programmes off the summary card stays hidden', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(
+        _Fake(disabled: true)..finishedPlan = finishedPlan(),
+        at: '/',
+        home: const ProgrammeSummaryCard(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('programme-summary-card')), findsNothing);
+  });
+
   // UAT 2026-11-24 D-2: the same page shown for another id starts over.
   testWidgets('the detail page reloads when its programme id changes', (
     tester,
