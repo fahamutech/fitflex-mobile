@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app_scope.dart';
 import '../../../shared/api_client.dart';
@@ -69,6 +70,99 @@ MomoStage momoStageFor(String? state) => switch (state) {
   'none' => MomoStage.ended,
   _ => MomoStage.waiting,
 };
+
+/// The ways a payment request can be paid (`GET /payments/options.methods`,
+/// fitflex-functions#361). All three pay the same request and are settled
+/// the same way: only when the server says `completed`.
+abstract final class MomoMethod {
+  /// A prompt on the payer's phone (`POST …/mobile-money`).
+  static const mobileMoney = 'mobile_money';
+
+  /// Bank checkout with the bank's one-time password (`POST …/bank`).
+  static const bank = 'bank';
+
+  /// AzamPay's hosted payment page, in the browser (`POST …/checkout-page`).
+  static const page = 'page';
+}
+
+/// Whether the server lists the ways to pay at all. Only such a server has
+/// `POST /me/payments/:id/refresh`; an older one is asked the mobile-money
+/// way, as before.
+bool momoListsMethods(Map<String, dynamic>? options) =>
+    options?['methods'] is List;
+
+/// The banks bank checkout takes (`bank.providers`), as the server names them.
+List<String> momoBanks(Map<String, dynamic>? options) {
+  final block = options?['bank'];
+  if (block is! Map || block['providers'] is! List) return const [];
+  return [
+    for (final b in block['providers'] as List)
+      if (b is String && b.trim().isNotEmpty) b.trim(),
+  ];
+}
+
+/// The ways [amountTzs] can be paid in this app, in the server's order.
+///
+/// Without `methods` (an older server) it is mobile money only, exactly as
+/// before. Bank needs a bank to choose and an amount within
+/// `bank.maxAmountTzs`; the page needs the server's `app` return target (the
+/// app never sends an address, and `web` returns to the member portal).
+/// Mobile money is always on while paying is, so it is what is left.
+List<String> momoMethodsFor(Map<String, dynamic>? options, num amountTzs) {
+  const fallback = [MomoMethod.mobileMoney];
+  if (!momoListsMethods(options)) return fallback;
+  final out = <String>[];
+  for (final m in options!['methods'] as List) {
+    switch (m) {
+      case MomoMethod.mobileMoney:
+        out.add(MomoMethod.mobileMoney);
+      case MomoMethod.bank:
+        final max = (options['bank'] as Map?)?['maxAmountTzs'];
+        if (momoBanks(options).isNotEmpty &&
+            (max is! num || amountTzs <= max)) {
+          out.add(MomoMethod.bank);
+        }
+      case MomoMethod.page:
+        final page = options['page'];
+        if (page is Map &&
+            page['returnTo'] is List &&
+            (page['returnTo'] as List).contains('app')) {
+          out.add(MomoMethod.page);
+        }
+    }
+  }
+  return out.isEmpty ? fallback : out;
+}
+
+/// The language to ask AzamPay's page for: the app's, when the server
+/// lists it (`page.languages`); otherwise none is sent (the server's default).
+String? momoPageLanguage(Map<String, dynamic>? options, String appLanguage) {
+  final page = options?['page'];
+  if (page is! Map || page['languages'] is! List) return null;
+  return (page['languages'] as List).contains(appLanguage) ? appLanguage : null;
+}
+
+/// Whether [raw] can be a bank account number as the server takes it: 5–30
+/// letters, digits, `-`, `/` or spaces.
+bool looksLikeBankAccount(String raw) =>
+    RegExp(r'^[A-Za-z0-9\-/ ]{5,30}$').hasMatch(raw.trim());
+
+/// Whether [raw] can be a bank's one-time password: 4–12 letters or digits.
+bool looksLikeBankOtp(String raw) =>
+    RegExp(r'^[A-Za-z0-9]{4,12}$').hasMatch(raw.trim());
+
+/// A payment page address the app may open: https only.
+Uri? momoCheckoutUri(Object? raw) {
+  if (raw is! String) return null;
+  final uri = Uri.tryParse(raw.trim());
+  if (uri == null || uri.scheme != 'https' || uri.host.isEmpty) return null;
+  return uri;
+}
+
+/// Opens AzamPay's payment page in the external browser. Tests replace it.
+@visibleForTesting
+Future<bool> Function(Uri uri) momoOpenExternal = (uri) =>
+    launchUrl(uri, mode: LaunchMode.externalApplication);
 
 /// Product kinds a payment request can be for (`productType` on the server).
 abstract final class MomoProduct {
@@ -152,6 +246,8 @@ Future<bool> offerMobileMoney(
   if (!momoOffers(options, productType, role: role) || !context.mounted) {
     return false;
   }
+  // Only what can be paid in this app counts towards "more than one way".
+  final several = momoMethodsFor(options, amountTzs).length > 1;
   final phone =
       defaultPhone ??
       context
@@ -163,7 +259,7 @@ Future<bool> offerMobileMoney(
       AppScope.of(context).auth.user?['phone']?.toString();
   final done = await showFFSheet<bool>(
     context,
-    title: context.tr('momo.title'),
+    title: context.tr(several ? 'member.payment' : 'momo.title'),
     isDismissible: false,
     child: MobileMoneyPayPanel(
       paymentRequestId: paymentRequestId,
@@ -173,6 +269,7 @@ Future<bool> offerMobileMoney(
       productType: productType,
       onCompleted: onCompleted,
       provider: options['provider']?.toString(),
+      options: options,
     ),
   );
   return done == true;
@@ -214,6 +311,7 @@ class MobileMoneyPayPanel extends StatefulWidget {
     this.onCompleted,
     this.productType,
     this.provider,
+    this.options,
   });
 
   final String paymentRequestId;
@@ -233,16 +331,46 @@ class MobileMoneyPayPanel extends StatefulWidget {
   /// asks which wallet pays; without it the request is just `{phone}`.
   final String? provider;
 
+  /// `GET /payments/options`. With `methods` listing more than one way that
+  /// can be used here, the member chooses how to pay (mobile money, bank,
+  /// AzamPay's page). Null, no `methods`, or mobile money only: the panel is
+  /// the mobile-money one, exactly as before.
+  final Map<String, dynamic>? options;
+
   @override
   State<MobileMoneyPayPanel> createState() => _MobileMoneyPayPanelState();
 }
 
-class _MobileMoneyPayPanelState extends State<MobileMoneyPayPanel> {
+class _MobileMoneyPayPanelState extends State<MobileMoneyPayPanel>
+    with WidgetsBindingObserver {
   late final TextEditingController _phone = TextEditingController(
     text: widget.defaultPhone ?? '',
   );
   MomoStage _stage = MomoStage.input;
   String? _error;
+
+  /// The ways this amount can be paid here, and the one chosen.
+  late final List<String> _methods = momoMethodsFor(
+    widget.options,
+    widget.amountTzs,
+  );
+  late String _method = _methods.first;
+
+  // Bank checkout. The one-time password lives only in [_otp] while it is
+  // typed: it is cleared as soon as it has been sent, and never stored.
+  late final List<String> _banks = momoBanks(widget.options);
+  late String? _bank = _banks.length == 1 ? _banks.single : null;
+  final _account = TextEditingController();
+  final _otp = TextEditingController();
+  String? _bankError;
+  String? _accountError;
+  String? _otpError;
+
+  /// A refusal that belongs to no field (bank and page).
+  String? _formError;
+
+  /// AzamPay's page for this request while it is open, to open it again.
+  Uri? _checkoutUri;
   Timer? _timer;
   int _polls = 0;
   bool _checking = false;
@@ -259,10 +387,176 @@ class _MobileMoneyPayPanelState extends State<MobileMoneyPayPanel> {
   bool get _picksWallet => widget.provider == 'azampay';
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
     _phone.dispose();
+    _account.dispose();
+    _otp.dispose();
     super.dispose();
+  }
+
+  /// Back from the browser: ask the server where the payment stands. Coming
+  /// back proves nothing; only its answer `completed` is a payment.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed &&
+        _method == MomoMethod.page &&
+        _stage == MomoStage.waiting) {
+      _check();
+    }
+  }
+
+  void _choose(String method) {
+    if (_stage != MomoStage.input || method == _method) return;
+    setState(() {
+      _method = method;
+      _error = null;
+      _walletError = null;
+      _bankError = null;
+      _accountError = null;
+      _otpError = null;
+      _formError = null;
+      // A code typed for the bank does not wait behind another choice.
+      _otp.clear();
+    });
+  }
+
+  void _follow() {
+    _polls = 0;
+    setState(() => _stage = MomoStage.waiting);
+    _timer?.cancel();
+    _timer = Timer.periodic(widget.pollEvery, (_) => _check());
+  }
+
+  Future<void> _sendBank() async {
+    if (_stage == MomoStage.sending) return; // one request per tap
+    final bank = _bank;
+    final account = _account.text.trim();
+    final otp = _otp.text.trim();
+    setState(() {
+      _formError = null;
+      _bankError = bank == null ? context.tr('momo.bank.chooseBank') : null;
+      _accountError = looksLikeBankAccount(account)
+          ? null
+          : context.tr('error.reason.invalidAccountNumber');
+      _error = looksLikeTzMobile(_phone.text)
+          ? null
+          : context.tr('error.reason.invalidPhone');
+      _otpError = looksLikeBankOtp(otp)
+          ? null
+          : context.tr('error.reason.invalidOtp');
+    });
+    if (bank == null ||
+        _accountError != null ||
+        _error != null ||
+        _otpError != null) {
+      return;
+    }
+    // Let go of the focused field before it is disabled for the request.
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() => _stage = MomoStage.sending);
+    final api = AppScope.of(context).api;
+    final locale = FFLocaleScope.of(context);
+    try {
+      try {
+        await api.payByBank(
+          widget.paymentRequestId,
+          bank: bank,
+          accountNumber: account,
+          phone: _phone.text.trim(),
+          otp: otp,
+        );
+      } finally {
+        // Sent (or refused): the code is used up either way. A new attempt
+        // needs a new one from the bank.
+        _otp.clear();
+      }
+      if (!mounted) return;
+      _follow();
+    } catch (e) {
+      if (!mounted) return;
+      final code = e is ApiException ? e.code : null;
+      setState(() {
+        _stage = MomoStage.input;
+        switch (code) {
+          case 'invalid_bank':
+            _bankError = errorMessage(locale, e);
+          case 'invalid_account_number':
+            _accountError = errorMessage(locale, e);
+          case 'invalid_phone':
+            _error = errorMessage(locale, e);
+          case 'invalid_otp':
+            _otpError = errorMessage(locale, e);
+          case 'provider_rejected':
+            // AzamPay refused it, e.g. a wrong code: say what to check.
+            _formError = locale.t('momo.bank.rejected');
+          default:
+            _formError = errorMessage(locale, e);
+        }
+      });
+    }
+  }
+
+  Future<void> _openPage() async {
+    if (_stage == MomoStage.sending) return; // one request per tap
+    setState(() {
+      _stage = MomoStage.sending;
+      _formError = null;
+    });
+    final api = AppScope.of(context).api;
+    final locale = FFLocaleScope.of(context);
+    try {
+      final out = await api.openCheckoutPage(
+        widget.paymentRequestId,
+        // A name the server listed, never an address.
+        returnTo: 'app',
+        language: momoPageLanguage(widget.options, locale.locale.languageCode),
+      );
+      if (!mounted) return;
+      final uri = momoCheckoutUri(out['checkoutUrl']);
+      if (uri == null) {
+        setState(() {
+          _stage = MomoStage.input;
+          _formError = locale.t('momo.page.openFailed');
+        });
+        return;
+      }
+      // No timer: the page stays open for up to 30 minutes. The payment is
+      // looked at when the app comes back, and by "check now".
+      _timer?.cancel();
+      setState(() {
+        _checkoutUri = uri;
+        _stage = MomoStage.waiting;
+      });
+      await _launchPage();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _stage = MomoStage.input;
+        _formError = errorMessage(locale, e);
+      });
+    }
+  }
+
+  /// Opens (or opens again) the same payment page in the external browser.
+  Future<void> _launchPage() async {
+    final uri = _checkoutUri;
+    if (uri == null) return;
+    var ok = false;
+    try {
+      ok = await momoOpenExternal(uri);
+    } catch (_) {
+      ok = false;
+    }
+    if (!mounted) return;
+    setState(() => _formError = ok ? null : context.tr('momo.page.openFailed'));
   }
 
   Future<void> _send() async {
@@ -317,10 +611,17 @@ class _MobileMoneyPayPanelState extends State<MobileMoneyPayPanel> {
     if (_checking || !mounted) return;
     _checking = true;
     try {
-      final out = await AppScope.of(
-        context,
-      ).api.refreshMobileMoney(widget.paymentRequestId);
+      final api = AppScope.of(context).api;
+      // One rule: a server that lists `methods` has the refresh for every
+      // method, and is asked that way for all three; an older server only
+      // has the mobile-money one.
+      final out = momoListsMethods(widget.options)
+          ? await api.refreshPayment(widget.paymentRequestId)
+          : await api.refreshMobileMoney(widget.paymentRequestId);
       if (!mounted) return;
+      // The same page, to open again while it is open.
+      final again = momoCheckoutUri(out['checkoutUrl']);
+      if (again != null) _checkoutUri = again;
       final stage = momoStageFor(out['state'] as String?);
       if (stage != MomoStage.waiting) {
         _timer?.cancel();
@@ -337,6 +638,8 @@ class _MobileMoneyPayPanelState extends State<MobileMoneyPayPanel> {
         }
         return;
       }
+      // The page has no timer and no "still waiting": it is simply open.
+      if (_method == MomoMethod.page) return;
       // Counted in polls, not wall time: a phone that slept does not give up early.
       _polls += 1;
       if (widget.pollEvery * _polls >= widget.giveUpAfter) {
@@ -389,10 +692,186 @@ class _MobileMoneyPayPanelState extends State<MobileMoneyPayPanel> {
     ],
   );
 
+  /// How to pay, when the server offers more than one way usable here.
+  Widget _methodChoice(ThemeData theme) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(context.tr('momo.method'), style: theme.textTheme.labelMedium),
+      const SizedBox(height: FFTokens.spacingXs),
+      Wrap(
+        spacing: FFTokens.spacingSm,
+        children: [
+          for (final m in _methods)
+            FFFilterChip(
+              key: Key('momo-method-$m'),
+              label: context.tr('momo.method.$m'),
+              selected: _method == m,
+              tone: FFFilterChipTone.tint,
+              selection: FFChipSelection.radio,
+              onSelected: () => _choose(m),
+            ),
+        ],
+      ),
+    ],
+  );
+
+  Widget _fieldError(ThemeData theme, String text) => Padding(
+    padding: const EdgeInsets.only(top: FFTokens.spacingXs),
+    child: Text(
+      text,
+      style: theme.textTheme.bodySmall?.copyWith(
+        color: theme.colorScheme.error,
+      ),
+    ),
+  );
+
+  /// Bank checkout: the bank, how to get its one-time code, the account,
+  /// the number registered with the bank, and the code.
+  List<Widget> _bankForm(ThemeData theme, String amount) {
+    final editable = _stage == MomoStage.input;
+    final stepsKey = 'momo.bank.steps.$_bank';
+    final steps = _bank == null ? stepsKey : context.tr(stepsKey);
+    return [
+      Text(
+        '$amount · ${context.tr('momo.bank.intro')}',
+        style: theme.textTheme.bodyMedium,
+      ),
+      const SizedBox(height: FFTokens.spacingMd),
+      Text(context.tr('momo.bank.bank'), style: theme.textTheme.labelMedium),
+      const SizedBox(height: FFTokens.spacingXs),
+      Wrap(
+        spacing: FFTokens.spacingSm,
+        children: [
+          for (final b in _banks)
+            FFFilterChip(
+              key: Key('momo-bank-$b'),
+              // Bank names are brand names, the same in both languages.
+              label: b,
+              selected: _bank == b,
+              tone: FFFilterChipTone.tint,
+              selection: FFChipSelection.radio,
+              onSelected: editable
+                  ? () => setState(() {
+                      _bank = b;
+                      _bankError = null;
+                    })
+                  : () {},
+            ),
+        ],
+      ),
+      if (_bankError != null) _fieldError(theme, _bankError!),
+      // The steps are the bank's own; shown only for a bank we have them for.
+      if (_bank != null && steps != stepsKey) ...[
+        const SizedBox(height: FFTokens.spacingMd),
+        FFAlert(
+          key: const Key('momo-bank-steps'),
+          message: '${context.tr('momo.bank.stepsTitle')}\n$steps',
+          tone: FFAlertTone.info,
+        ),
+      ],
+      const SizedBox(height: FFTokens.spacingMd),
+      FFTextField(
+        key: const Key('momo-bank-account'),
+        controller: _account,
+        label: context.tr('momo.bank.account'),
+        enabled: editable,
+        errorText: _accountError,
+        autofillHints: const [],
+        inputFormatters: [
+          FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9\-/ ]')),
+          LengthLimitingTextInputFormatter(30),
+        ],
+        onChanged: (_) {
+          if (_accountError != null) setState(() => _accountError = null);
+        },
+      ),
+      const SizedBox(height: FFTokens.spacingMd),
+      FFTextField(
+        key: const Key('momo-bank-phone'),
+        controller: _phone,
+        label: context.tr('momo.bank.phone'),
+        hint: context.tr('momo.phoneHint'),
+        keyboardType: TextInputType.phone,
+        enabled: editable,
+        errorText: _error,
+        inputFormatters: [
+          FilteringTextInputFormatter.allow(RegExp(r'[0-9+\s\-]')),
+        ],
+        onChanged: (_) {
+          if (_error != null) setState(() => _error = null);
+        },
+      ),
+      const SizedBox(height: FFTokens.spacingMd),
+      FFTextField(
+        key: const Key('momo-bank-otp'),
+        controller: _otp,
+        label: context.tr('momo.bank.otp'),
+        helperText: context.tr('momo.bank.otpHelp'),
+        enabled: editable,
+        errorText: _otpError,
+        // Never offered back by the keyboard or a password manager.
+        obscureText: true,
+        autofillHints: const [],
+        inputFormatters: [
+          FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
+          LengthLimitingTextInputFormatter(12),
+        ],
+        onChanged: (_) {
+          if (_otpError != null) setState(() => _otpError = null);
+        },
+      ),
+      if (_formError != null) ...[
+        const SizedBox(height: FFTokens.spacingMd),
+        FFAlert(
+          key: const Key('momo-form-error'),
+          message: _formError!,
+          tone: FFAlertTone.error,
+        ),
+      ],
+      const SizedBox(height: FFTokens.spacingMd),
+      FFButton(
+        key: const Key('momo-bank-pay'),
+        label: context.tr('momo.bank.pay').replaceFirst('{amount}', amount),
+        loading: _stage == MomoStage.sending,
+        fullWidth: true,
+        maxLines: 2,
+        onPressed: _stage == MomoStage.sending ? null : _sendBank,
+      ),
+    ];
+  }
+
+  /// AzamPay's hosted page: what will happen, and the button that opens it.
+  List<Widget> _pageIntro(ThemeData theme, String amount) => [
+    Text(
+      '$amount · ${context.tr('momo.page.intro')}',
+      style: theme.textTheme.bodyMedium,
+    ),
+    if (_formError != null) ...[
+      const SizedBox(height: FFTokens.spacingMd),
+      FFAlert(
+        key: const Key('momo-form-error'),
+        message: _formError!,
+        tone: FFAlertTone.error,
+      ),
+    ],
+    const SizedBox(height: FFTokens.spacingMd),
+    FFButton(
+      key: const Key('momo-page-open'),
+      label: context.tr('momo.page.open'),
+      icon: Icons.open_in_new,
+      loading: _stage == MomoStage.sending,
+      fullWidth: true,
+      maxLines: 2,
+      onPressed: _stage == MomoStage.sending ? null : _openPage,
+    ),
+  ];
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final amount = formatCurrency(widget.amountTzs);
+    final byBank = _method == MomoMethod.bank;
+    final byPage = _method == MomoMethod.page;
     final children = <Widget>[
       if (widget.testMode) ...[
         FFAlert(
@@ -405,6 +884,20 @@ class _MobileMoneyPayPanelState extends State<MobileMoneyPayPanel> {
     switch (_stage) {
       case MomoStage.input:
       case MomoStage.sending:
+        if (_methods.length > 1) {
+          children.addAll([
+            _methodChoice(theme),
+            const SizedBox(height: FFTokens.spacingMd),
+          ]);
+        }
+        if (byBank) {
+          children.addAll(_bankForm(theme, amount));
+          break;
+        }
+        if (byPage) {
+          children.addAll(_pageIntro(theme, amount));
+          break;
+        }
         children.addAll([
           Text(
             '$amount · ${context.tr('momo.intro')}',
@@ -446,23 +939,72 @@ class _MobileMoneyPayPanelState extends State<MobileMoneyPayPanel> {
           const Center(child: FFSpinner(size: 28)),
           const SizedBox(height: FFTokens.spacingMd),
           Text(
-            context.tr('momo.waitingTitle'),
+            context.tr(
+              byPage
+                  ? 'momo.page.waitingTitle'
+                  : byBank
+                  ? 'momo.bank.waitingTitle'
+                  : 'momo.waitingTitle',
+            ),
             style: theme.textTheme.titleMedium,
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 4),
           Text(
-            context.tr('momo.waitingBody').replaceFirst('{amount}', amount),
+            context
+                .tr(
+                  byPage
+                      ? 'momo.page.waitingBody'
+                      : byBank
+                      ? 'momo.bank.waitingBody'
+                      : 'momo.waitingBody',
+                )
+                .replaceFirst('{amount}', amount),
             style: theme.textTheme.bodyMedium,
             textAlign: TextAlign.center,
           ),
+          if (byPage && _formError != null) ...[
+            const SizedBox(height: FFTokens.spacingMd),
+            FFAlert(
+              key: const Key('momo-form-error'),
+              message: _formError!,
+              tone: FFAlertTone.error,
+            ),
+          ],
           const SizedBox(height: FFTokens.spacingMd),
           FFButton(
-            label: context.tr('momo.checkNow'),
+            key: const Key('momo-check-now'),
+            // "I have approved" is about a prompt on the phone.
+            label: context.tr(
+              byPage || byBank ? 'momo.checkNowPlain' : 'momo.checkNow',
+            ),
             variant: FFButtonVariant.secondary,
             fullWidth: true,
             onPressed: _check,
           ),
+          if (byPage) ...[
+            const SizedBox(height: FFTokens.spacingSm),
+            // The same page while it is open: no second attempt is made.
+            FFButton(
+              key: const Key('momo-page-reopen'),
+              label: context.tr('momo.page.reopen'),
+              icon: Icons.open_in_new,
+              variant: FFButtonVariant.secondary,
+              fullWidth: true,
+              maxLines: 2,
+              onPressed: _checkoutUri == null ? null : _launchPage,
+            ),
+            const SizedBox(height: FFTokens.spacingSm),
+            // The page stays open for a while: the sheet can be closed and
+            // the payment looked at later. Closing is never "paid".
+            FFButton(
+              key: const Key('momo-page-close'),
+              label: context.tr('common.close'),
+              variant: FFButtonVariant.ghost,
+              fullWidth: true,
+              onPressed: () => Navigator.of(context).pop(false),
+            ),
+          ],
         ]);
       case MomoStage.success:
       case MomoStage.failed:
@@ -502,6 +1044,10 @@ class _MobileMoneyPayPanelState extends State<MobileMoneyPayPanel> {
             context.tr(switch (_stage) {
               MomoStage.held => momoHeldBodyKey(_heldReason),
               MomoStage.success => momoSuccessBodyKey(widget.productType),
+              // An ended prompt is about the phone; a bank attempt and a
+              // payment page end in their own words.
+              MomoStage.ended when byBank => 'momo.bank.endedBody',
+              MomoStage.ended when byPage => 'momo.page.endedBody',
               _ => 'momo.${key}Body',
             }),
             style: theme.textTheme.bodyMedium,
@@ -512,10 +1058,16 @@ class _MobileMoneyPayPanelState extends State<MobileMoneyPayPanel> {
             FFButton(
               key: const Key('momo-send-again'),
               label: context.tr(
-                _stage == MomoStage.ended ? 'momo.sendAgain' : 'momo.tryAgain',
+                _stage == MomoStage.ended && !byBank && !byPage
+                    ? 'momo.sendAgain'
+                    : 'momo.tryAgain',
               ),
               fullWidth: true,
-              onPressed: () => setState(() => _stage = MomoStage.input),
+              onPressed: () => setState(() {
+                _stage = MomoStage.input;
+                _formError = null;
+                _checkoutUri = null;
+              }),
             ),
             const SizedBox(height: FFTokens.spacingSm),
           ],
@@ -524,7 +1076,9 @@ class _MobileMoneyPayPanelState extends State<MobileMoneyPayPanel> {
             // prompt the server has given up can be sent again.
             FFButton(
               key: const Key('momo-check-again'),
-              label: context.tr('momo.checkNow'),
+              label: context.tr(
+                byBank ? 'momo.checkNowPlain' : 'momo.checkNow',
+              ),
               variant: FFButtonVariant.secondary,
               fullWidth: true,
               onPressed: _check,
