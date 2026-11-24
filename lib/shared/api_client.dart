@@ -1213,6 +1213,14 @@ class ApiClient {
     return await _request('GET', query.isEmpty ? path : '$path?$query');
   }
 
+  /// `{ plans }` — every plan the member has had, newest first, without days.
+  Future<Map<String, dynamic>> trainingPlans() async =>
+      await _request('GET', '/me/training-plans');
+
+  /// `{ plan }` — one of the member's plans in full, finished ones too.
+  Future<Map<String, dynamic>> trainingPlan(String id) async =>
+      await _request('GET', '/me/training-plans/${Uri.encodeComponent(id)}');
+
   /// Starts a programme: `{ startDate?, replace?, lang? }` → 201 `{ plan }`.
   Future<Map<String, dynamic>> startProgramme(
     String id,

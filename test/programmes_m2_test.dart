@@ -106,6 +106,12 @@ class _Programmes implements ProgrammeRepository {
     bool replace = false,
     String? lang,
   }) => throw const ProgrammesDisabled();
+  @override
+  Future<TrainingPlan?> finished({
+    DateTime? now,
+    Duration within = const Duration(days: 30),
+  }) async => null;
+
 }
 
 Widget _app(

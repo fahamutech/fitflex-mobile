@@ -5,7 +5,8 @@ import 'package:go_router/go_router.dart';
 
 import 'shared/auth_state.dart';
 import 'shared/held_nav_extras.dart';
-import 'shared/inbox/inbox_controller.dart' show b2bMemberRequestsRoute, securityActivityRoute;
+import 'shared/inbox/inbox_controller.dart'
+    show b2bMemberRequestsRoute, securityActivityRoute;
 import 'screens/splash_screen.dart';
 import 'screens/route_status_pages.dart';
 import 'screens/language_screen.dart';
@@ -21,6 +22,7 @@ import 'screens/member/member_shell.dart';
 import 'screens/member/member_training_offer_page.dart';
 import 'screens/member/member_training_plan_page.dart';
 import 'screens/member/member_training_setup_page.dart';
+import 'screens/member/member_programme_summary_page.dart';
 import 'screens/member/member_programmes_page.dart';
 import 'shared/activity/activity.dart';
 import 'screens/member/member_shop_tab.dart';
@@ -235,6 +237,7 @@ abstract class AppRoutes {
   static const memberTrainingPlan = '/member/activity/training';
   static const memberTrainingSetup = '/member/activity/training/setup';
   static const memberProgrammes = '/member/activity/training/programmes';
+  static const memberProgrammeSummary = '/member/activity/training/summary';
   static const memberProgramme =
       '/member/activity/training/programmes/:programmeId';
   static const memberTrainingOffer =
@@ -1607,9 +1610,17 @@ GoRouter buildRouter(AuthState auth) {
                   // Programmes P1 (M1). Without the server flag the pages
                   // say "Not available"; nothing links here then.
                   GoRoute(
+                    path: 'summary',
+                    name: 'memberProgrammeSummary',
+                    builder: (context, state) =>
+                        const MemberProgrammeSummaryPage(),
+                  ),
+                  GoRoute(
                     path: 'programmes',
                     name: 'memberProgrammes',
-                    builder: (context, state) => const MemberProgrammesPage(),
+                    builder: (context, state) => MemberProgrammesPage(
+                      initialGoal: state.uri.queryParameters['goal'],
+                    ),
                     routes: [
                       GoRoute(
                         path: ':programmeId',

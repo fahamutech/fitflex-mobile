@@ -29,14 +29,19 @@ const _wheres = ['gym', 'home', 'outdoor', 'any'];
 /// Programmes P1 (M1): the catalogue of live FitFlex programmes, filtered by
 /// goal, level, length and where.
 class MemberProgrammesPage extends StatefulWidget {
-  const MemberProgrammesPage({super.key});
+  const MemberProgrammesPage({super.key, this.initialGoal});
+
+  /// Opens filtered to this goal ("Find your next programme").
+  final String? initialGoal;
 
   @override
   State<MemberProgrammesPage> createState() => _MemberProgrammesPageState();
 }
 
 class _MemberProgrammesPageState extends State<MemberProgrammesPage> {
-  ProgrammeFilters _filters = const ProgrammeFilters();
+  late ProgrammeFilters _filters = ProgrammeFilters(
+    goal: _goals.contains(widget.initialGoal) ? widget.initialGoal : null,
+  );
   List<Programme>? _rows;
   bool _failed = false;
   bool _disabled = false;

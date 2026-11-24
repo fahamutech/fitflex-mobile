@@ -190,6 +190,13 @@ abstract class ProgrammeRepository {
     bool replace = false,
     String? lang,
   });
+
+  /// The member's most recent programme plan that ran to its end within
+  /// the last [within], in full (for the summary); null when there is none.
+  Future<TrainingPlan?> finished({
+    DateTime? now,
+    Duration within = const Duration(days: 30),
+  });
 }
 
 String _date(DateTime d) =>
@@ -270,6 +277,32 @@ class ApiProgrammeRepository implements ProgrammeRepository {
       _rethrow(e);
     }
   }
+
+  @override
+  Future<TrainingPlan?> finished({
+    DateTime? now,
+    Duration within = const Duration(days: 30),
+  }) => _latestFinished(api, now: now, within: within);
+}
+
+/// The latest completed programme plan from the member's plan list.
+Future<TrainingPlan?> _latestFinished(
+  ApiClient api, {
+  DateTime? now,
+  required Duration within,
+}) async {
+  final today = now ?? DateTime.now();
+  final cutoff = DateTime(today.year, today.month, today.day).subtract(within);
+  final rows = (await api.trainingPlans())['plans'] as List? ?? const [];
+  for (final raw in rows.whereType<Map>()) {
+    if (raw['programmeId'] == null || raw['status'] != 'completed') continue;
+    final end = DateTime.tryParse(raw['endDate'] as String? ?? '');
+    if (end == null || end.isBefore(cutoff)) continue;
+    final id = raw['id'] as String?;
+    if (id == null) continue;
+    return TrainingPlan.tryParse((await api.trainingPlan(id))['plan']);
+  }
+  return null;
 }
 
 /// Sample-data mode: programmes are a backend feature, so there are none.
@@ -294,4 +327,10 @@ class LocalProgrammeRepository implements ProgrammeRepository {
     bool replace = false,
     String? lang,
   }) async => throw const ProgrammesDisabled();
+
+  @override
+  Future<TrainingPlan?> finished({
+    DateTime? now,
+    Duration within = const Duration(days: 30),
+  }) async => null;
 }

@@ -1,6 +1,7 @@
 // Programmes P1 (M1): the catalogue, a programme's detail and starting it,
 // and the ways in that only show when the server offers programmes.
 import 'package:fitflexmobile/app_scope.dart';
+import 'package:fitflexmobile/screens/member/member_programme_summary_page.dart';
 import 'package:fitflexmobile/screens/member/member_programmes_page.dart';
 import 'package:fitflexmobile/screens/member/member_shell.dart';
 import 'package:fitflexmobile/screens/member/widgets/programme_widgets.dart';
@@ -133,6 +134,14 @@ class _Fake implements ProgrammeRepository {
     }
     return _plan(programmeId: id);
   }
+
+  TrainingPlan? finishedPlan;
+
+  @override
+  Future<TrainingPlan?> finished({
+    DateTime? now,
+    Duration within = const Duration(days: 30),
+  }) async => finishedPlan;
 }
 
 Widget _app(
@@ -157,8 +166,14 @@ Widget _app(
         builder: (_, _) => page(const Text('plan-page')),
         routes: [
           GoRoute(
+            path: 'summary',
+            builder: (_, _) => page(const MemberProgrammeSummaryPage()),
+          ),
+          GoRoute(
             path: 'programmes',
-            builder: (_, _) => page(const MemberProgrammesPage()),
+            builder: (_, s) => page(
+              MemberProgrammesPage(initialGoal: s.uri.queryParameters['goal']),
+            ),
             routes: [
               GoRoute(
                 path: ':programmeId',
@@ -425,5 +440,75 @@ void main() {
     for (final k in keys) {
       expect(FFLocale.textOf('sw', k), startsWith('[SW-PENDING] '), reason: k);
     }
+  });
+
+  TrainingPlan finishedPlan({int completed = 4}) => TrainingPlan.tryParse({
+    'id': 'tpl_done',
+    'name': '7-day home starter',
+    'goal': 'lose_weight',
+    'programmeId': 'prg_1',
+    'status': 'completed',
+    'lengthDays': 7,
+    'durationWeeks': 1,
+    'startDate': '2026-11-10',
+    'endDate': '2026-11-16',
+    'progress': {
+      'sessions': 5,
+      'completed': completed,
+      'byWorkout': 3,
+      'byCheckin': completed > 3 ? completed - 3 : 0,
+      'bestStreak': 3,
+    },
+  })!;
+
+  testWidgets('the summary says what was done and finds the next programme', (
+    tester,
+  ) async {
+    await _tall(tester);
+    final repo = _Fake()..finishedPlan = finishedPlan();
+    await tester.pumpWidget(
+      _app(repo, at: '/member/activity/training/summary'),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('You finished 7-day home starter!'), findsOneWidget);
+    expect(find.text('4/5'), findsOneWidget);
+    expect(find.text('Best streak'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('summary-next')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('programmes-scroll')), findsOneWidget);
+    expect(repo.catalogueCalls.last['goal'], 'lose_weight');
+  });
+
+  testWidgets('under half done, the summary says the programme has ended', (
+    tester,
+  ) async {
+    await _tall(tester);
+    final repo = _Fake()..finishedPlan = finishedPlan(completed: 2);
+    await tester.pumpWidget(
+      _app(repo, at: '/member/activity/training/summary'),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('7-day home starter has ended'), findsOneWidget);
+  });
+
+  testWidgets('the summary card shows only after a programme ended', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(_Fake(), at: '/', home: const ProgrammeSummaryCard()),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('programme-summary-card')), findsNothing);
+    await tester.pumpWidget(
+      _app(
+        _Fake()..finishedPlan = finishedPlan(),
+        at: '/',
+        home: const ProgrammeSummaryCard(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('programme-summary-card')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('summary-stats')), findsOneWidget);
   });
 }
