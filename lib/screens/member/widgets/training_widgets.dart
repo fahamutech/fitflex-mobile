@@ -10,9 +10,13 @@ import '../../../shared/design_tokens.dart';
 import '../../../shared/i18n.dart';
 import '../member_shell.dart';
 
-/// "4-week plan".
+/// "4-week plan", or a programme's own title (UAT 2026-11-24 D-6).
 String trainingPlanTitle(BuildContext context, TrainingPlan plan) =>
-    context.tr('training.planWeeks').replaceAll('{n}', '${plan.durationWeeks}');
+    plan.isProgramme && plan.name.isNotEmpty
+    ? plan.name
+    : context
+          .tr('training.planWeeks')
+          .replaceAll('{n}', '${plan.durationWeeks}');
 
 /// Who the plan is from: "From Coach Amani" for a trainer's plan, else the
 /// goal FitFlex built it for.

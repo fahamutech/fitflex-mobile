@@ -511,6 +511,27 @@ void main() {
       expect(find.text('Create my plan'), findsOneWidget);
     });
 
+    // UAT 2026-11-24 D-6: a programme plan is named by its programme.
+    testWidgets('on a programme: the card shows the programme title', (
+      tester,
+    ) async {
+      final plan = TrainingPlan.tryParse({
+        ..._planJson(),
+        'name': '7-day home starter',
+        'programmeId': 'prg_1',
+        'lengthDays': 7,
+      })!;
+      final data = _data(plan: plan);
+      await tester.pumpWidget(
+        _app(
+          TrainingPlanCard(data: data, now: _now),
+          data: data,
+        ),
+      );
+      expect(find.text('7-day home starter'), findsOneWidget);
+      expect(find.textContaining('-week plan'), findsNothing);
+    });
+
     testWidgets('on a plan: progress and what is next', (tester) async {
       final plan = TrainingPlan.tryParse(_planJson())!;
       final data = _data(plan: plan);
