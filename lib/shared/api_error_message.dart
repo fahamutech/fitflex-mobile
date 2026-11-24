@@ -371,6 +371,7 @@ String? _knownReason(FFLocale locale, String reason) {
     'invalid_account_number': 'error.reason.invalidAccountNumber',
     'invalid_otp': 'error.reason.invalidOtp',
     'amount_over_bank_limit': 'error.reason.amountOverBankLimit',
+    'bank_attempts_exhausted': 'error.reason.bankAttemptsExhausted',
     'return_not_configured': 'error.reason.pageUnavailable',
     'invalid_return_to': 'error.reason.pageUnavailable',
     'invalid_language': 'error.reason.pageUnavailable',

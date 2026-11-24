@@ -971,6 +971,8 @@ class FFLocale extends ChangeNotifier {
           'Enter the one-time code from your bank (4 to 12 letters or digits).',
       'error.reason.amountOverBankLimit':
           'This amount is above the limit for paying from a bank account. Choose another way to pay.',
+      'error.reason.bankAttemptsExhausted':
+          'The bank refused this payment too many times. Choose another way to pay.',
       'error.reason.pageUnavailable':
           "AzamPay's payment page is not available right now. Choose another way to pay.",
       'shop.payNothingOpen':
@@ -9610,6 +9612,8 @@ class FFLocale extends ChangeNotifier {
           '[SW-PENDING] Enter the one-time code from your bank (4 to 12 letters or digits).',
       'error.reason.amountOverBankLimit':
           '[SW-PENDING] This amount is above the limit for paying from a bank account. Choose another way to pay.',
+      'error.reason.bankAttemptsExhausted':
+          '[SW-PENDING] The bank refused this payment too many times. Choose another way to pay.',
       'error.reason.pageUnavailable':
           "[SW-PENDING] AzamPay's payment page is not available right now. Choose another way to pay.",
       'shop.payNothingOpen':
