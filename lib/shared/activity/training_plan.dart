@@ -131,6 +131,16 @@ class TrainingPlanDay {
   final int? estimatedDuration;
   final int exerciseCount;
 
+  /// Programmes (P1): day 1..N of the programme, its type (`gym`, `home`,
+  /// `rest`) and what completed it (`workout` or `checkin`). Null on other
+  /// plans.
+  final int? programmeDay;
+  final String? type;
+  final String? completedBy;
+
+  /// When a check-in completed the day.
+  final DateTime? completedAt;
+
   const TrainingPlanDay({
     required this.date,
     this.focusAreas = const [],
@@ -139,7 +149,14 @@ class TrainingPlanDay {
     this.status = 'planned',
     this.estimatedDuration,
     this.exerciseCount = 0,
+    this.programmeDay,
+    this.type,
+    this.completedBy,
+    this.completedAt,
   });
+
+  bool get isRest => status == 'rest' || type == 'rest';
+  bool get isGym => type == 'gym';
 
   bool get isOpen => status == 'planned' || status == 'in_progress';
   bool get isDone => status == 'completed';
@@ -156,6 +173,16 @@ class TrainingPlanDay {
       status: raw['status'] as String? ?? 'planned',
       estimatedDuration: (raw['estimatedDuration'] as num?)?.toInt(),
       exerciseCount: (raw['exerciseCount'] as num?)?.toInt() ?? 0,
+      programmeDay: (raw['programmeDay'] as num?)?.toInt(),
+      type: raw['type'] as String?,
+      completedBy: raw['completedBy'] is Map
+          ? (raw['completedBy'] as Map)['source'] as String?
+          : null,
+      completedAt: raw['completedBy'] is Map
+          ? DateTime.tryParse(
+              (raw['completedBy'] as Map)['completedAt'] as String? ?? '',
+            )?.toLocal()
+          : null,
     );
   }
 }
@@ -199,6 +226,21 @@ class TrainingPlan {
   final int missed;
   final int currentWeek;
 
+  /// Programmes (P1): the FitFlex programme this plan was started from, its
+  /// length and which day of it today is. Null for every other plan.
+  final String? programmeId;
+  final int? lengthDays;
+  final int? currentDay;
+
+  /// Programme streaks: training days done in a row (rest days don't break
+  /// it), now and at best.
+  final int streak;
+  final int bestStreak;
+
+  /// Programme days done by a workout and by a gym check-in.
+  final int byWorkout;
+  final int byCheckin;
+
   const TrainingPlan({
     required this.id,
     required this.name,
@@ -221,7 +263,16 @@ class TrainingPlan {
     this.skipped = 0,
     this.missed = 0,
     this.currentWeek = 1,
+    this.programmeId,
+    this.lengthDays,
+    this.currentDay,
+    this.streak = 0,
+    this.bestStreak = 0,
+    this.byWorkout = 0,
+    this.byCheckin = 0,
   });
+
+  bool get isProgramme => programmeId != null;
 
   bool get isActive => status == 'active';
   bool get fromTrainer => createdByType == 'trainer';
@@ -289,6 +340,15 @@ class TrainingPlan {
       skipped: n(progress['skipped']),
       missed: n(progress['missed']),
       currentWeek: n(progress['currentWeek'], 1),
+      programmeId: json['programmeId'] as String?,
+      lengthDays: (json['lengthDays'] ?? progress['lengthDays']) is num
+          ? ((json['lengthDays'] ?? progress['lengthDays']) as num).toInt()
+          : null,
+      currentDay: (progress['currentDay'] as num?)?.toInt(),
+      streak: n(progress['streak']),
+      bestStreak: n(progress['bestStreak']),
+      byWorkout: n(progress['byWorkout']),
+      byCheckin: n(progress['byCheckin']),
     );
   }
 }

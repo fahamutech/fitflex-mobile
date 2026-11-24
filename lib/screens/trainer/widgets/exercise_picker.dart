@@ -25,6 +25,25 @@ String libraryExerciseLine(BuildContext context, LibraryExercise e) => [
       : '${e.sets} × ${e.duration ?? 0} ${context.tr('workout.secondsShort')}',
 ].where((s) => s.isNotEmpty).join(' · ');
 
+/// The exercises by the body-area group of their first main area, in the
+/// order of [trainingAreaGroups]; anything unknown goes under "general".
+Map<String, List<LibraryExercise>> _grouped(List<LibraryExercise> list) {
+  String groupOf(LibraryExercise e) {
+    final area = e.targetAreas.firstOrNull;
+    for (final g in trainingAreaGroups.entries) {
+      if (g.value.contains(area)) return g.key;
+    }
+    return 'general';
+  }
+
+  final out = {for (final k in trainingAreaGroups.keys) k: <LibraryExercise>[]};
+  for (final e in list) {
+    out[groupOf(e)]!.add(e);
+  }
+  out.removeWhere((_, v) => v.isEmpty);
+  return out;
+}
+
 class _ExercisePickerSheet extends StatefulWidget {
   const _ExercisePickerSheet();
 
@@ -167,22 +186,40 @@ class _ExercisePickerSheetState extends State<_ExercisePickerSheet> {
                         title: context.tr('exercisePicker.none'),
                         body: context.tr('exercisePicker.noneBody'),
                       )
-                    : ListView.builder(
-                        itemCount: shown.length,
-                        itemBuilder: (context, i) {
-                          final e = shown[i];
-                          return ListTile(
-                            key: Key('exercise-pick-${e.id}'),
-                            contentPadding: EdgeInsets.zero,
-                            title: Text(e.name),
-                            subtitle: Text(libraryExerciseLine(context, e)),
-                            trailing: Text(
-                              context.tr('onboarding.level_${e.difficulty}'),
-                              style: theme.textTheme.bodySmall,
+                    // PD-8: grouped by body area, the groups in the
+                    // setup screen's order.
+                    : ListView(
+                        key: const Key('exercise-picker-list'),
+                        children: [
+                          for (final g in _grouped(shown).entries) ...[
+                            Padding(
+                              key: Key('exercise-picker-group-${g.key}'),
+                              padding: const EdgeInsets.only(
+                                top: FFTokens.spacingSm,
+                              ),
+                              child: Text(
+                                context.tr('training.areaGroup.${g.key}'),
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ),
-                            onTap: () => Navigator.pop(context, e),
-                          );
-                        },
+                            for (final e in g.value)
+                              ListTile(
+                                key: Key('exercise-pick-${e.id}'),
+                                contentPadding: EdgeInsets.zero,
+                                title: Text(e.name),
+                                subtitle: Text(libraryExerciseLine(context, e)),
+                                trailing: Text(
+                                  context.tr(
+                                    'onboarding.level_${e.difficulty}',
+                                  ),
+                                  style: theme.textTheme.bodySmall,
+                                ),
+                                onTap: () => Navigator.pop(context, e),
+                              ),
+                          ],
+                        ],
                       ),
               ),
             ],
