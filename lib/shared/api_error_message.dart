@@ -372,6 +372,9 @@ String? _knownReason(FFLocale locale, String reason) {
     'invalid_otp': 'error.reason.invalidOtp',
     'amount_over_bank_limit': 'error.reason.amountOverBankLimit',
     'bank_attempts_exhausted': 'error.reason.bankAttemptsExhausted',
+    // A pass upgrade whose plan is no longer active is refused before any prompt (fitflex-functions, 2026-11-25).
+    'upgrade_plan_not_active': 'error.reason.upgradePlanNotActive',
+    'upgrade_plan_not_found': 'error.reason.upgradePlanNotActive',
     'return_not_configured': 'error.reason.pageUnavailable',
     'invalid_return_to': 'error.reason.pageUnavailable',
     'invalid_language': 'error.reason.pageUnavailable',
